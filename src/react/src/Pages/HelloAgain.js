@@ -13,7 +13,7 @@ class Hello extends React.Component {
             message: "No response yet"
         };
 
-        commitMutation(harnessApi.getEnvironment("test"), {
+        commitMutation(harnessApi.getEnvironment("bilby"), {
             mutation: graphql`mutation HelloAgainMutation($input: HelloInput!)
                 {
                   hello(input: $input) 
@@ -45,7 +45,7 @@ class Hello extends React.Component {
                     <Message>
                         Just a different route. Hello {this.props.username}!
                     </Message>
-                    Back to the other route? <Link to='/test/' activeClassName="selected" exact {...this.props}>I
+                    Back to the other route? <Link to='/bilby/' activeClassName="selected" exact {...this.props}>I
                     guess</Link>
                 </Grid.Column>
             </Grid>
