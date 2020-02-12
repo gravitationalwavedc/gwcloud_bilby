@@ -9,7 +9,7 @@ click==7.0                # via pip-tools
 django-cors-headers==3.2.1
 django-filter==2.2.0
 django-graphql-jwt==0.3.0
-django==2.2.9
+django==2.2.10
 graphene-django==2.8.0
 graphene==2.1.8           # via graphene-django
 graphql-core==2.2.1       # via django-graphql-jwt, graphene, graphene-django, graphql-relay
