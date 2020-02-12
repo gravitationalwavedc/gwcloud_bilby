@@ -1,11 +1,12 @@
 import React from "react";
-import {Grid, Header, Image, Message, Step, Button} from "semantic-ui-react";
+import {Grid, Header, Image, Message, Step, Button, Label} from "semantic-ui-react";
 import Link from 'found/lib/Link';
 import {commitMutation} from "relay-runtime";
 import {harnessApi} from "../index";
 import {graphql} from "graphql";
 
 import {StartForm, DataForm, SignalForm, PriorsForm, SamplerForm, SubmitForm} from "./Forms";
+import StepControl from "./Steps";
 
 class StepForm extends React.Component {
     constructor() {
@@ -40,6 +41,12 @@ class StepForm extends React.Component {
         })
     }
 
+    handleStepClick = (e, {stepnum}) => {
+        this.setState({
+            step: stepnum
+        })
+    }
+
     renderSwitch(step) {
         switch(step) {
             case 1:
@@ -65,9 +72,24 @@ class StepForm extends React.Component {
     render() {
         const {step} = this.state
         return <React.Fragment>
-            {this.renderSwitch(step)}
-            {this.state.step!=1 ? <Button onClick={this.prevStep}>Back</Button> : null}
-            <Button onClick={this.nextStep}>Continue</Button>
+            <Grid.Row>
+                <Grid.Column>
+                    <StepControl activeStep={step} onClick={this.handleStepClick}/>
+                </Grid.Column>
+            </Grid.Row>
+            <Grid.Row columns={3}>
+                <Grid.Column>
+                    {this.renderSwitch(step)}
+                </Grid.Column>
+            </Grid.Row>
+            <Grid.Row columns={2}>
+                <Grid.Column floated='left'>
+                    {this.state.step!=1 ? <Button onClick={this.prevStep}>Back</Button> : null}
+                </Grid.Column>
+                <Grid.Column floated='right'>
+                    <Button onClick={this.nextStep}>Continue</Button>
+                </Grid.Column>
+            </Grid.Row>
         </React.Fragment>
     }
 }

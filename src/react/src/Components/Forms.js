@@ -1,48 +1,116 @@
 import React from "react";
-import {Form} from "semantic-ui-react";
+import {Form, TextArea, Grid} from "semantic-ui-react";
 
-class BaseForm extends React.Component {
+function BaseForm(props) {
+    const forms = props.forms
+    const form_arr = forms.map((form, index) => <FormRow key={index} rowName={form.rowName} children={form.form}/>)
 
-    render() {
-        // const {values} = this.props
-
-        return(
-            <div>
-                {this.props.children}
-            </div>
-        )
-    }
+    return(
+        <Grid divided='vertically' textAlign='left'>
+            {form_arr}
+        </Grid>
+    )
 }
 
+function FormRow(props) {
+    return (
+        <Grid.Row columns={2}>
+            <Grid.Column>
+                {props.rowName}
+            </Grid.Column>
+            <Grid.Column>
+                <Form>
+                    {props.children}
+                </Form>
+            </Grid.Column>
+        </Grid.Row>
+    )
+
+}
+
+// const StartForm = ({handleChange}) => 
+//     <Grid divided='vertically' textAlign='left'>
+//         <FormRow rowName="Job Name">
+//             <Form.Input placeholder="Job Name"/>
+//         </FormRow>
+//         <FormRow rowName="Job Description">
+//             <Form.TextArea placeholder="Job Description"/>
+//         </FormRow>
+//     </Grid>
+
 const StartForm = ({handleChange}) => 
-    <Form>
-        <Form.Input label="Job Name" placeholder="Job Name" onChange={handleChange}/>
-    </Form>
+    <BaseForm 
+        forms={[
+                {rowName: "Job Name", form: <Form.Input placeholder="Job Name"/>},
+                {rowName: "Job Description", form: <Form.TextArea placeholder="Job Description"/>}
+        ]}
+    />
 
 const DataForm = () => 
-    <BaseForm>
-        Forms go here        
-    </BaseForm>
+    <BaseForm 
+        forms={[
+            {rowName: 'Type of Data', form: <Form.Select placeholder="Select Data Type" options={[
+                {key: 'simulated', text: 'Simulated', value: 'simulated'},
+                {key: 'open', text: 'Open', value: 'open'}
+            ]}/>},
+            {rowName: 'Detectors', form: [<Form.Checkbox key={1} label="Hanford"/>,
+                                          <Form.Checkbox key={2} label="Livingston"/>,
+                                          <Form.Checkbox key={3} label="Virgo"/>]},
+            {rowName: 'Signal Duration (s)', form: <Form.Input placeholder='2'/>},
+            {rowName: 'Sampling Frequency (Hz)', form: <Form.Input placeholder='2'/>},
+            {rowName: 'Start Time', form: <Form.Input placeholder='2.1'/>}
+
+        ]}
+    />
+
 
 const SignalForm = () => 
-    <BaseForm>
-        Forms go here        
-    </BaseForm>
+    <BaseForm 
+        forms={[
+            {rowName: 'Signal Inject', form: <Form.Select placeholder="Select Signal Type" options={[
+                {key: 'binarybh', text: 'Binary Black Hole', value: 'binarybh'},
+            ]}/>},
+            {rowName: 'Mass 1 (M\u2299)', form: <Form.Input placeholder="2.0"/>},
+            {rowName: 'Mass 2 (M\u2299)', form: <Form.Input placeholder="1.0"/>},
+            {rowName: 'Luminosity Distance (Mpc)', form: <Form.Input placeholder="1.0"/>},
+            {rowName: 'psi', form: <Form.Input placeholder="1.0"/>},
+            {rowName: 'iota', form: <Form.Input placeholder="1.0"/>},
+            {rowName: 'Phase', form: <Form.Input placeholder="1.0"/>},
+            {rowName: 'Merger Time (GPS Time)', form: <Form.Input placeholder="1.0"/>},
+            {rowName: 'Right Ascension (radians)', form: <Form.Input placeholder="1.0"/>},
+            {rowName: 'Declination (degrees)', form: <Form.Input placeholder="1.0"/>},
+            {rowName: 'Same Signal for Model', form: <Form.Checkbox/>},
+        ]}
+    />
 
 const PriorsForm = () => 
-    <BaseForm>
-        Forms go here        
-    </BaseForm>
+    <BaseForm
+        forms={[
+            {rowName: 'Type', form: <Form.Select placeholder="Select Prior Type" options={[
+                {key: 'fixed', text: 'Fixed', value: 'fixed'},
+                {key: 'uniform', text: 'Uniform', value: 'uniform'},
+            ]}/>}
+        ]}
+    />
 
 const SamplerForm = () => 
-    <BaseForm>
-        Forms go here        
-    </BaseForm>
+    <BaseForm
+        forms={[
+            {rowName: 'Sampler', form: <Form.Select placeholder="Select Sampler" options={[
+                {key: 'dynesty', text: 'Dynesty', value: 'dynesty'},
+                {key: 'nestle', text: 'Nestle', value: 'nestle'},
+                {key: 'emcee', text: 'Emcee', value: 'emcee'},
+            ]}/>},
+            {rowName: 'Number of Live Points', form: <Form.Input placeholder='1000'/>}
+        ]}
+    />
 
 const SubmitForm = () => 
-    <BaseForm>
-        Forms go here        
-    </BaseForm>
+    <BaseForm
+        forms={[
+            {rowName: 'Placeholder', form: 'Placeholder'}
+        ]}
+    />
 
 export {
     StartForm,

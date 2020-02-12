@@ -1,5 +1,5 @@
 import React from "react";
-import {Grid, Header, Image, Message, Step} from "semantic-ui-react";
+import {Grid, Container, Image, Message, Step} from "semantic-ui-react";
 import Link from 'found/lib/Link';
 import {commitMutation} from "relay-runtime";
 import {harnessApi} from "../index";
@@ -15,15 +15,6 @@ class BilbyJobForm extends React.Component {
             message: "No response yet",
             step: 1
         };
-
-        this.steps = [
-            {key: 'start', title: 'Start', description: 'Start a new job'},
-            {key: 'data', title: 'Data', description: 'Select the data'},
-            {key: 'signal', title: 'Signal', description: 'Inject a signal'},
-            {key: 'priors', title: 'Priors', description: 'State priors'},
-            {key: 'sampler', title: 'Sampler', description: 'Choose sampler'},
-            {key: 'submit', title: 'Submit', description: 'Submit your job'}
-        ]
 
         commitMutation(harnessApi.getEnvironment("bilby"), {
             mutation: graphql`mutation HelloAgainMutation($input: HelloInput!)
