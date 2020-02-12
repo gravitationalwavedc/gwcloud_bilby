@@ -35,10 +35,11 @@ class StepForm extends React.Component {
         })
     }
 
-    handleChange = (e) => {
+    handleChange = (e, data) => {
         this.setState({
-            [e.target.name]: e.target.value
+            [data.name]: data.type === "checkbox" ? data.checked : data.value
         })
+        console.log(this.state)
     }
 
     handleStepClick = (e, {stepnum}) => {
