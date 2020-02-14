@@ -13,7 +13,48 @@ class StepForm extends React.Component {
         super();
 
         this.state = {
-            step: 1
+            step: 1,
+            start: {
+                jobName: '',
+                jobDescription: ''
+            },
+            data: {
+                dataType: '',
+                hanford: false,
+                livingston: false,
+                virgo: false,
+                signalDuration: '',
+                samplingFrequency: '',
+                startTime: ''
+            },
+            signal: {
+                signalType: '',
+                mass1: '',
+                mass2: '',
+                luminosityDistance: '',
+                psi: '',
+                iota: '',
+                phase: '',
+                mergerTime: '',
+                ra: '',
+                dec: '',
+                sameSignal: false
+            },
+            priors: {
+                mass1: {type: 'fixed', value: '', min: '', max: ''},
+                mass2: {type: 'fixed', value: '', min: '', max: ''},
+                luminosityDistance: {type: 'fixed', value: '', min: '', max: ''},
+                iota: {type: 'fixed', value: '', min: '', max: ''},
+                psi: {type: 'fixed', value: '', min: '', max: ''},
+                phase: {type: 'fixed', value: '', min: '', max: ''},
+                mergerTime: {type: 'fixed', value: '', min: '', max: ''},
+                ra: {type: 'fixed', value: '', min: '', max: ''},
+                dec: {type: 'fixed', value: '', min: '', max: ''}
+            },
+            sampler: {
+                sampler: 'dynesty',
+                number: ''
+            }
         }
     }
 
@@ -35,9 +76,19 @@ class StepForm extends React.Component {
         })
     }
 
-    handleChange = (e, data) => {
+    handleChange = (form) => (e, data) => {
         this.setState({
-            [data.name]: data.type === "checkbox" ? data.checked : data.value
+            [form]: {...this.state[form], [data.name]: data.type === "checkbox" ? data.checked : data.value}
+        })
+        console.log(this.state)
+    }
+    
+    handleChangePriors = (form) => (param) => (e, data) => {
+        this.setState({
+            [form]: {
+                ...this.state[form],
+                [param]: {...this.state[form][param], [data.name]: data.type === "checkbox" ? data.checked : data.value}
+            }
         })
         console.log(this.state)
     }
@@ -51,19 +102,19 @@ class StepForm extends React.Component {
     renderSwitch(step) {
         switch(step) {
             case 1:
-                return <StartForm handleChange={this.handleChange}/>
+                return <StartForm handleChange={this.handleChange('start')} formVals={this.state.start}/>
             
             case 2:
-                return <DataForm handleChange={this.handleChange}/>
+                return <DataForm handleChange={this.handleChange('data')} formVals={this.state.data}/>
 
             case 3:
-                return <SignalForm handleChange={this.handleChange} />
+                return <SignalForm handleChange={this.handleChange('signal')} formVals={this.state.signal}/>
 
             case 4:
-                return <PriorsForm handleChange={this.handleChange} />
+                return <PriorsForm handleChange={this.handleChangePriors('priors')} formVals={this.state.priors} />
 
             case 5:
-                return <SamplerForm handleChange={this.handleChange} />
+                return <SamplerForm handleChange={this.handleChange('sampler')} formVals={this.state.sampler} />
 
             case 6:
                 return <SubmitForm handleChange={this.handleChange} />
