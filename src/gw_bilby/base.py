@@ -141,12 +141,17 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 
-def jwt_get_user_override(username):
-    from .jwt_tools import jwt_get_user
-    return jwt_get_user(username)
+def jwt_get_user_by_payload_override(payload):
+    from .jwt_tools import jwt_get_user_by_payload
+    return jwt_get_user_by_payload(payload)
 
 
 GRAPHQL_JWT = {
-    'JWT_GET_USER_BY_NATURAL_KEY_HANDLER': jwt_get_user_override,
+    # Our implementation of JWT_PAYLOAD_GET_USERNAME_HANDLER returns a full user object rather than just a username
+    'JWT_PAYLOAD_GET_USERNAME_HANDLER': jwt_get_user_by_payload_override,
+    # Internally this usually takes a username returned by JWT_PAYLOAD_GET_USERNAME_HANDLER, but as we're returning
+    # the full user object from JWT_PAYLOAD_GET_USERNAME_HANDLER, we don't do any processing, and simply just return
+    # the passed user object.
+    'JWT_GET_USER_BY_NATURAL_KEY_HANDLER': lambda x: x,
     'JWT_VERIFY_EXPIRATION': True
 }
