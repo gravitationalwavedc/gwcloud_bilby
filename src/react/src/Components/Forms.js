@@ -1,5 +1,8 @@
 import React from "react";
-import {Form, Divider, Grid} from "semantic-ui-react";
+import {Form, Divider, Grid, Button} from "semantic-ui-react";
+import {commitMutation} from "relay-runtime";
+import {harnessApi} from "../index";
+
 
 function BaseForm({forms, onChange}) {
     const form_arr = forms.map((form, index) => <FormRow key={index} rowName={form.rowName} children={form.form} onChange={onChange}/>)
@@ -113,25 +116,30 @@ const DataForm = ({handleChange, formVals}) => {
 }
 
 
-const SignalForm = ({handleChange, formVals}) => {
-    const {signalType, mass1, mass2, luminosityDistance, psi, iota, phase, mergerTime, ra, dec, sameSignal} = formVals
+const SignalForm = ({handleChange, formVals, dataType}) => {
+    const {signalType, signalModel, mass1, mass2, luminosityDistance, psi, iota, phase, mergerTime, ra, dec, sameSignal} = formVals
+    const noneOption = [{key: 'none', text: 'None', value: 'none'}]
+    const signalOptions = [{key: 'binaryBlackHole', text: 'Binary Black Hole', value: 'binaryBlackHole'}]
     return (
         <BaseForm onChange={handleChange}
-            forms={[
-                {rowName: 'Signal Inject', form: <Form.Select name='signalType' placeholder="Select Signal Type" value={signalType} options={[
-                    {key: 'binarybh', text: 'Binary Black Hole', value: 'binarybh'},
-                ]}/>},
-                {rowName: 'Mass 1 (M\u2299)', form: <Form.Input name='mass1' placeholder="2.0" value={mass1}/>},
-                {rowName: 'Mass 2 (M\u2299)', form: <Form.Input name='mass2' placeholder="1.0" value={mass2}/>},
-                {rowName: 'Luminosity Distance (Mpc)', form: <Form.Input name='luminosityDistance' placeholder="1.0" value={luminosityDistance}/>},
-                {rowName: 'psi', form: <Form.Input name='psi' placeholder="1.0" value={psi}/>},
-                {rowName: 'iota', form: <Form.Input name='iota' placeholder="1.0" value={iota}/>},
-                {rowName: 'Phase', form: <Form.Input name='phase' placeholder="1.0" value={phase}/>},
-                {rowName: 'Merger Time (GPS Time)', form: <Form.Input name='mergerTime' placeholder="1.0" value={mergerTime}/>},
-                {rowName: 'Right Ascension (radians)', form: <Form.Input name='ra' placeholder="1.0" value={ra}/>},
-                {rowName: 'Declination (degrees)', form: <Form.Input name='dec' placeholder="1.0" value={dec}/>},
-                {rowName: 'Same Signal for Model', form: <Form.Checkbox name='sameSignal' checked={sameSignal}/>},
-            ]}
+            forms={dataType == 'open' ? [
+                    {rowName: 'Signal Inject', form: <Form.Select name='signalType' placeholder="Select Signal Type" value={signalType} options={noneOption}/>},
+                    {rowName: 'Signal Model', form: <Form.Select name='signalModel' placeholder="Select Signal Model" value={signalModel} options={signalOptions}/>},
+                ]
+                : [
+                    {rowName: 'Signal Inject', form: <Form.Select name='signalType' placeholder="Select Signal Type" value={signalType} options={signalOptions}/>},
+                    {rowName: 'Mass 1 (M\u2299)', form: <Form.Input name='mass1' placeholder="2.0" value={mass1}/>},
+                    {rowName: 'Mass 2 (M\u2299)', form: <Form.Input name='mass2' placeholder="1.0" value={mass2}/>},
+                    {rowName: 'Luminosity Distance (Mpc)', form: <Form.Input name='luminosityDistance' placeholder="1.0" value={luminosityDistance}/>},
+                    {rowName: 'psi', form: <Form.Input name='psi' placeholder="1.0" value={psi}/>},
+                    {rowName: 'iota', form: <Form.Input name='iota' placeholder="1.0" value={iota}/>},
+                    {rowName: 'Phase', form: <Form.Input name='phase' placeholder="1.0" value={phase}/>},
+                    {rowName: 'Merger Time (GPS Time)', form: <Form.Input name='mergerTime' placeholder="1.0" value={mergerTime}/>},
+                    {rowName: 'Right Ascension (radians)', form: <Form.Input name='ra' placeholder="1.0" value={ra}/>},
+                    {rowName: 'Declination (degrees)', form: <Form.Input name='dec' placeholder="1.0" value={dec}/>},
+                    {rowName: 'Same Signal for Model', form: <Form.Checkbox name='sameSignal' checked={sameSignal}/>},
+                ]
+            }
         />
     )
 }
@@ -172,11 +180,9 @@ const SamplerForm = ({handleChange, formVals}) => {
 }
 
 const SubmitForm = () => 
-    <BaseForm
-        forms={[
-            {rowName: 'Placeholder', form: <Form.Input placeholder='Placeholder'/>}
-        ]}
-    />
+    <React.Fragment>
+        Placeholder
+    </React.Fragment>
 
 export {
     StartForm,

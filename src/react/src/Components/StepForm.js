@@ -29,6 +29,7 @@ class StepForm extends React.Component {
             },
             signal: {
                 signalType: '',
+                signalModel: '',
                 mass1: '',
                 mass2: '',
                 luminosityDistance: '',
@@ -58,10 +59,6 @@ class StepForm extends React.Component {
         }
     }
 
-    // handleChange = () => {
-    //     this.setState({})
-    // }
-
     nextStep = () => {
         const {step} = this.state
         this.setState({
@@ -80,7 +77,6 @@ class StepForm extends React.Component {
         this.setState({
             [form]: {...this.state[form], [data.name]: data.type === "checkbox" ? data.checked : data.value}
         })
-        console.log(this.state)
     }
     
     handleChangePriors = (form) => (param) => (e, data) => {
@@ -90,7 +86,6 @@ class StepForm extends React.Component {
                 [param]: {...this.state[form][param], [data.name]: data.type === "checkbox" ? data.checked : data.value}
             }
         })
-        console.log(this.state)
     }
 
     handleStepClick = (e, {stepnum}) => {
@@ -98,6 +93,42 @@ class StepForm extends React.Component {
             step: stepnum
         })
     }
+
+    handleSubmit = () => {
+        if (this.state.signal.sameSignal) {
+            this.setState({
+                signal: {
+                    ...this.state.signal,
+                    signalModel: this.state.signal.signalType,
+                    sameSignal: undefined
+                }
+            })
+        }
+        let signal = {...this.state.signal}
+        delete signal.sameSignal
+        commitMutation(harnessApi.getEnvironment("bilby"), {
+            mutation: graphql`mutation StepFormSubmitMutation($input: BilbyJobMutationInput!)
+                {
+                  newBilbyJob(input: $input) 
+                  {
+                    result
+                  }
+                }`,
+            variables: {
+                input: {
+                    start: this.state.start,
+                    data: this.state.data,
+                    signal: signal,
+                    prior: this.state.priors,
+                    sampler: this.state.sampler
+                }
+            },
+            onCompleted: (response, errors) => {
+                console.log(response)
+            },
+        })
+    }
+
 
     renderSwitch(step) {
         switch(step) {
@@ -108,7 +139,7 @@ class StepForm extends React.Component {
                 return <DataForm handleChange={this.handleChange('data')} formVals={this.state.data}/>
 
             case 3:
-                return <SignalForm handleChange={this.handleChange('signal')} formVals={this.state.signal}/>
+                return <SignalForm handleChange={this.handleChange('signal')} formVals={this.state.signal} dataType={this.state.data.dataType}/>
 
             case 4:
                 return <PriorsForm handleChange={this.handleChangePriors('priors')} formVals={this.state.priors} />
@@ -117,7 +148,7 @@ class StepForm extends React.Component {
                 return <SamplerForm handleChange={this.handleChange('sampler')} formVals={this.state.sampler} />
 
             case 6:
-                return <SubmitForm handleChange={this.handleChange} />
+                return <SubmitForm />
         }
     }
 
@@ -139,7 +170,7 @@ class StepForm extends React.Component {
                     {this.state.step!=1 ? <Button onClick={this.prevStep}>Back</Button> : null}
                 </Grid.Column>
                 <Grid.Column floated='right'>
-                    <Button onClick={this.nextStep}>Continue</Button>
+                    {this.state.step != 6 ? <Button onClick={this.nextStep}>Continue</Button> : <Button onClick={this.handleSubmit}>Submit</Button>}
                 </Grid.Column>
             </Grid.Row>
         </React.Fragment>
