@@ -5,7 +5,11 @@ import {commitMutation} from "relay-runtime";
 import {harnessApi} from "../index";
 import {graphql} from "graphql";
 
-import {StartForm, DataForm, SignalForm, PriorsForm, SamplerForm, SubmitForm} from "./Forms";
+import {SamplerForm, SubmitForm} from "./Forms";
+import StartForm from "./StartForm";
+import DataForm from "./DataForm";
+import SignalForm from "./SignalForm";
+import PriorsForm from "./PriorsForm";
 import StepControl from "./Steps";
 
 class StepForm extends React.Component {
@@ -14,44 +18,11 @@ class StepForm extends React.Component {
 
         this.state = {
             step: 1,
-            start: {
-                jobName: '',
-                jobDescription: ''
-            },
-            data: {
-                dataType: '',
-                hanford: false,
-                livingston: false,
-                virgo: false,
-                signalDuration: '',
-                samplingFrequency: '',
-                startTime: ''
-            },
-            signal: {
-                signalType: '',
-                signalModel: '',
-                mass1: '',
-                mass2: '',
-                luminosityDistance: '',
-                psi: '',
-                iota: '',
-                phase: '',
-                mergerTime: '',
-                ra: '',
-                dec: '',
-                sameSignal: false
-            },
-            priors: {
-                mass1: {type: 'fixed', value: '', min: '', max: ''},
-                mass2: {type: 'fixed', value: '', min: '', max: ''},
-                luminosityDistance: {type: 'fixed', value: '', min: '', max: ''},
-                iota: {type: 'fixed', value: '', min: '', max: ''},
-                psi: {type: 'fixed', value: '', min: '', max: ''},
-                phase: {type: 'fixed', value: '', min: '', max: ''},
-                mergerTime: {type: 'fixed', value: '', min: '', max: ''},
-                ra: {type: 'fixed', value: '', min: '', max: ''},
-                dec: {type: 'fixed', value: '', min: '', max: ''}
-            },
+            stepsCompleted: 1,
+            start: null,
+            data: null,
+            signal: null,
+            priors: null,
             sampler: {
                 sampler: 'dynesty',
                 number: ''
@@ -60,9 +31,10 @@ class StepForm extends React.Component {
     }
 
     nextStep = () => {
-        const {step} = this.state
+        const {step, stepsCompleted} = this.state
         this.setState({
-            step: step + 1
+            step: step + 1,
+            stepsCompleted: step == stepsCompleted ? step + 1 : stepsCompleted
         })
     }
 
@@ -75,10 +47,22 @@ class StepForm extends React.Component {
 
     handleChange = (form) => (e, data) => {
         this.setState({
-            [form]: {...this.state[form], [data.name]: data.type === "checkbox" ? data.checked : data.value}
+            [form]: {
+                ...this.state[form],
+                [data.name]: data.type === "checkbox" ? data.checked : data.value,
+            }
         })
+        console.log(this.state[form])
     }
-    
+
+    handleChangeNew = (form) => (childState) => {
+        this.setState({
+            ...this.state,
+            [form]: childState
+        })
+        console.log(this.state)
+    }
+
     handleChangePriors = (form) => (param) => (e, data) => {
         this.setState({
             [form]: {
@@ -133,16 +117,16 @@ class StepForm extends React.Component {
     renderSwitch(step) {
         switch(step) {
             case 1:
-                return <StartForm handleChange={this.handleChange('start')} formVals={this.state.start}/>
+                return <StartForm state={this.state.start} updateParentState={this.handleChangeNew('start')} nextStep={this.nextStep}/>
             
             case 2:
-                return <DataForm handleChange={this.handleChange('data')} formVals={this.state.data}/>
+                return <DataForm state={this.state.data} updateParentState={this.handleChangeNew('data')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 3:
-                return <SignalForm handleChange={this.handleChange('signal')} formVals={this.state.signal} dataType={this.state.data.dataType}/>
+                return <SignalForm state={this.state.signal} updateParentState={this.handleChangeNew('signal')} prevStep={this.prevStep} nextStep={this.nextStep} dataType={this.state.data.dataType}/>
 
             case 4:
-                return <PriorsForm handleChange={this.handleChangePriors('priors')} formVals={this.state.priors} />
+                return <PriorsForm state={this.state.priors} updateParentState={this.handleChangeNew('priors')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 5:
                 return <SamplerForm handleChange={this.handleChange('sampler')} formVals={this.state.sampler} />
@@ -153,26 +137,14 @@ class StepForm extends React.Component {
     }
 
     render() {
-        const {step} = this.state
+        const {step, stepsCompleted} = this.state
         return <React.Fragment>
             <Grid.Row>
                 <Grid.Column>
-                    <StepControl activeStep={step} onClick={this.handleStepClick}/>
+                    <StepControl activeStep={step} stepsCompleted={stepsCompleted} onClick={this.handleStepClick}/>
                 </Grid.Column>
             </Grid.Row>
-            <Grid.Row columns={3}>
-                <Grid.Column>
-                    {this.renderSwitch(step)}
-                </Grid.Column>
-            </Grid.Row>
-            <Grid.Row columns={2}>
-                <Grid.Column floated='left'>
-                    {this.state.step!=1 ? <Button onClick={this.prevStep}>Back</Button> : null}
-                </Grid.Column>
-                <Grid.Column floated='right'>
-                    {this.state.step != 6 ? <Button onClick={this.nextStep}>Continue</Button> : <Button onClick={this.handleSubmit}>Submit</Button>}
-                </Grid.Column>
-            </Grid.Row>
+            {this.renderSwitch(step)}
         </React.Fragment>
     }
 }

@@ -17,6 +17,7 @@ class StepControl extends React.Component {
     handleSwitch() {
         for (const element of this.stepList) {
             element.active = element.key == this.props.activeStep ? true : false
+            element.disabled = element.key > this.props.stepsCompleted ? true : false
         }
     }
 

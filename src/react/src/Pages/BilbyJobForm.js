@@ -23,7 +23,7 @@ class BilbyJobForm extends React.Component {
             return <div>{error.message}</div>
         } else if (props) {
             return (
-                <Grid textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
+                <Grid centered textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
                     <StepForm />
                 </Grid>
             )
