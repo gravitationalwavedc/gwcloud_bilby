@@ -8,9 +8,9 @@ class BilbyJobForm(forms.Form):
 
     # Data
     data_type = forms.CharField()
-    hanford = forms.BooleanField()
-    livingston = forms.BooleanField()
-    virgo = forms.BooleanField()
+    hanford = forms.BooleanField(required=False)
+    livingston = forms.BooleanField(required=False)
+    virgo = forms.BooleanField(required=False)
     signal_duration = forms.FloatField()
     sampling_frequency = forms.FloatField()
     start_time = forms.FloatField()

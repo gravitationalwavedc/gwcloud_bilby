@@ -1,7 +1,7 @@
 import React from "react";
 import {BaseForm} from "./Forms";
 import {Form, Grid, Button} from "semantic-ui-react";
-import {checkForErrors, isNumber, smallerThan} from "../Utils/errors";
+import {checkForErrors, isNumber, smallerThan, notEmpty} from "../Utils/errors";
 
 
 
@@ -11,7 +11,7 @@ class SignalForm extends React.Component {
 
         this.state = {
             data: {
-                signalType: '',
+                signalType: 'binaryBlackHole',
                 signalModel: '',
                 mass1: '',
                 mass2: '',
@@ -43,50 +43,58 @@ class SignalForm extends React.Component {
     }
 
     handleChange = (e, data) => {
-        const errors = this.handleErrors(data)
         this.setState({
             ...this.state,
             data: {
                 ...this.state.data,
                 [data.name]: data.type === "checkbox" ? data.checked : data.value,
             },
-            errors: errors
         })
-        console.log(this.state)
     }
 
-    handleErrors = (data) => {
-        let {errors} = this.state
-        switch (data.name) {
+    checkErrors = (name, value) => {
+        let errors = []
+        switch (name) {
             case 'mass1':
-                errors[data.name] = checkForErrors(isNumber)(data.value)
+                errors = checkForErrors(isNumber, notEmpty)(value)
                 break;
             case 'mass2':
-                errors[data.name] = checkForErrors(smallerThan(this.state.data.mass1, 'Mass 1'), isNumber)(data.value)
+                errors = checkForErrors(smallerThan(this.state.data.mass1, 'Mass 1'), isNumber, notEmpty)(value)
                 break;
             case 'luminosityDistance':
-                errors[data.name] = checkForErrors(isNumber)(data.value)
+                errors = checkForErrors(isNumber, notEmpty)(value)
                 break;
             case 'psi':
-                errors[data.name] = checkForErrors(isNumber)(data.value)
+                errors = checkForErrors(isNumber, notEmpty)(value)
                 break;
             case 'iota':
-                errors[data.name] = checkForErrors(isNumber)(data.value)
+                errors = checkForErrors(isNumber, notEmpty)(value)
                 break;
             case 'phase':
-                errors[data.name] = checkForErrors(isNumber)(data.value)
+                errors = checkForErrors(isNumber, notEmpty)(value)
                 break;
             case 'mergerTime':
-                errors[data.name] = checkForErrors(isNumber)(data.value)
+                errors = checkForErrors(isNumber, notEmpty)(value)
                 break;
             case 'ra':
-                errors[data.name] = checkForErrors(isNumber)(data.value)
+                errors = checkForErrors(isNumber, notEmpty)(value)
                 break;
             case 'dec':
-                errors[data.name] = checkForErrors(isNumber)(data.value)
+                errors = checkForErrors(isNumber, notEmpty)(value)
                 break;
         }
         return errors;
+    }
+
+    handleErrors = () => {
+        let {data, errors} = this.state
+        for (const [name, val] of Object.entries(data)) {
+            errors[name] = this.checkErrors(name, val)
+        }
+        this.setState({
+            ...this.state,
+            errors: errors
+        })
     }
 
     prevStep = () => {
@@ -94,6 +102,7 @@ class SignalForm extends React.Component {
     }
 
     nextStep = () => {
+        this.handleErrors()
         const notEmpty = (arr) => {return Boolean(arr && arr.length)}
         if (Object.values(this.state.errors).some(notEmpty)) {
             this.setState({

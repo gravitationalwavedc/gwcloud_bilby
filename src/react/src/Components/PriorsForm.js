@@ -1,5 +1,5 @@
 import React from "react";
-import {PriorsBaseForm} from "./Forms";
+import {BaseForm, PriorsFormInput} from "./Forms";
 import {Form, Grid, Button} from "semantic-ui-react";
 import {checkForErrors, isNumber, smallerThan} from "../Utils/errors";
 
@@ -39,17 +39,14 @@ class PriorsForm extends React.Component {
         this.state.data = this.props.state === null ? this.state.data : this.props.state
     }
 
-    handleChange = (e, data) => {
-        const errors = this.handleErrors(data)
+    handleChange = (name, formData) => {
         this.setState({
             ...this.state,
             data: {
                 ...this.state.data,
-                [data.name]: data.type === "checkbox" ? data.checked : data.value,
+                [name]: formData
             },
-            errors: errors
         })
-        console.log(this.state)
     }
 
     handleErrors = (data) => {
@@ -78,17 +75,17 @@ class PriorsForm extends React.Component {
         const {data, errors} = this.state
         return (
             <React.Fragment>
-                <PriorsBaseForm onChange={this.handleChange} validate={this.state.validate}
+                <BaseForm onChange={this.handleChange} validate={this.state.validate}
                     forms={[
-                        {title: 'Mass 1 (M\u2299)', name: 'mass1', data: data.mass1},
-                        {title: 'Mass 2 (M\u2299)', name: 'mass2', data: data.mass2},
-                        {title: 'Luminosity Distance (Mpc)', name: 'luminosityDistance', data: data.luminosityDistance},
-                        {title: 'iota', name: 'iota', data: data.iota},
-                        {title: 'psi', name: 'psi', data: data.psi},
-                        {title: 'Phase', name: 'phase', data: data.phase},
-                        {title: 'Merger Time (GPS Time)', name: 'mergerTime', data: data.mergerTime},
-                        {title: 'Right Ascension (Radians)', name: 'ra', data: data.ra},
-                        {title: 'Declination (Degrees)', name: 'dec', data: data.dec}
+                        {form: <PriorsFormInput title={'Mass 1 (M\u2299)'} name='mass1' placeholder='2' value={data.mass1}/>},
+                        {form: <PriorsFormInput title={'Mass 2 (M\u2299)'} name='mass2' placeholder='2' value={data.mass2}/>},
+                        {form: <PriorsFormInput title='Luminosity Distance (Mpc)' name='luminosityDistance' placeholder='2' value={data.luminosityDistance}/>},
+                        {form: <PriorsFormInput title='iota' name='iota' placeholder='2' value={data.iota}/>},
+                        {form: <PriorsFormInput title='psi' name='psi' placeholder='2' value={data.psi}/>},
+                        {form: <PriorsFormInput title='phase' name='phase' placeholder='2' value={data.phase}/>},
+                        {form: <PriorsFormInput title='Merger Time (GPS Time)' name='mergerTime' placeholder='2' value={data.mergerTime}/>},
+                        {form: <PriorsFormInput title='Right Ascension (Radians)' name='ra' placeholder='2' value={data.ra}/>},
+                        {form: <PriorsFormInput title='Declination (Degrees)' name='dec' placeholder='2' value={data.dec}/>},
                     ]}
                 />
                 <Grid.Row columns={2}>

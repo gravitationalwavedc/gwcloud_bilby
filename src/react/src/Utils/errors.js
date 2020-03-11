@@ -33,8 +33,15 @@ const isNumber = ({data, errors}) => {
 }
 
 const smallerThan = (threshold, name) => ({data, errors}) => {
-    if (data > threshold) {
+    if (data >= threshold) {
         errors.push('smaller than ' + name)
+    }
+    return {data, errors}
+}
+
+const notEmpty = ({data, errors}) => {
+    if (data.trim() === "") {
+        errors.push('not empty')
     }
     return {data, errors}
 }
@@ -48,4 +55,5 @@ export {
     shorterThan,
     isNumber,
     smallerThan,
+    notEmpty
 }

@@ -4,9 +4,8 @@ from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prio
 
 def create_bilby_job(user_id, username, start, data, signal, prior, sampler):
     validate_form = BilbyJobForm(data={**start, **data, **signal, **sampler})
-    print(validate_form.is_valid())
-    print(validate_form.cleaned_data)
-    print(validate_form.errors.as_data())
+    # should be making use of cleaned_data below
+    
     bilby_job = BilbyJob(
         user_id = user_id,
         username = username,

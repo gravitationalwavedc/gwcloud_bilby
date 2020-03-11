@@ -34,47 +34,64 @@ function PriorsBaseForm({forms, validate, onChange}) {
         </Grid.Row>
     )
 }
-function PriorsFormRow({title, data, onChange}) {
-    const {type, value, min, max} = data
-    return (
-        <Grid textAlign='left'>
-            <Grid.Column width={16}>
-                <Divider horizontal>{title}</Divider>
-            </Grid.Column>
-            <Grid.Row columns={4}>
-                <Grid.Column>
-                    Type
+
+class PriorsFormInput extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.state = this.props.value
+    }
+    
+    handleChange = (e, data) => {
+        const newState = {
+            ...this.state,
+            [data.name]: data.value
+        }
+        this.setState(newState)
+        this.props.onChange(this.props.name, newState)
+    }
+
+    render() {
+        return (
+            <Grid textAlign='left'>
+                <Grid.Column width={16}>
+                    <Divider horizontal>{this.props.title}</Divider>
                 </Grid.Column>
-                <Grid.Column>
-                    <Form.Select name={'type'} value={type} onChange={onChange} options={[
-                        {key: 'fixed', text: 'Fixed', value: 'fixed'},
-                        {key: 'uniform', text: 'Uniform', value: 'uniform'},
-                    ]}/>
-                </Grid.Column>
-            </Grid.Row>
-            {type === 'fixed' ? 
                 <Grid.Row columns={4}>
                     <Grid.Column>
-                        Value
+                        Type
                     </Grid.Column>
                     <Grid.Column>
-                        <Form.Input fluid name={'value'} placeholder='Hello' value={value} onChange={onChange}/>
+                        <Form.Select name={'type'} value={this.state.type} onChange={this.handleChange} options={[
+                            {key: 'fixed', text: 'Fixed', value: 'fixed'},
+                            {key: 'uniform', text: 'Uniform', value: 'uniform'},
+                        ]}/>
                     </Grid.Column>
                 </Grid.Row>
-            :
-                <Grid.Row columns={4}>
-                    <Grid.Column children='Min'/>
-                    <Grid.Column>
-                        <Form.Input fluid name={'min'} placeholder='Hello' value={min} onChange={onChange}/>
-                    </Grid.Column>
-                    <Grid.Column children='Max'/>
-                    <Grid.Column>
-                        <Form.Input fluid name={'max'} placeholder='Hello' value={max} onChange={onChange}/>
-                    </Grid.Column>
-                </Grid.Row>
-            }
-        </Grid>
-    )
+                {this.state.type === 'fixed' ? 
+                    <Grid.Row columns={4}>
+                        <Grid.Column>
+                            Value
+                        </Grid.Column>
+                        <Grid.Column>
+                            <Form.Input fluid name='value' placeholder='Hello' value={this.state.value} onChange={this.handleChange}/>
+                        </Grid.Column>
+                    </Grid.Row>
+                :
+                    <Grid.Row columns={4}>
+                        <Grid.Column children='Min'/>
+                        <Grid.Column>
+                            <Form.Input fluid name='min' placeholder='Hello' value={this.state.min} onChange={this.handleChange}/>
+                        </Grid.Column>
+                        <Grid.Column children='Max'/>
+                        <Grid.Column>
+                            <Form.Input fluid name='max' placeholder='Hello' value={this.state.max} onChange={this.handleChange}/>
+                        </Grid.Column>
+                    </Grid.Row>
+                }
+            </Grid>
+        )
+    }
 }
 
 function FormRow(props) {
@@ -100,49 +117,8 @@ function FormRow(props) {
 
 }
 
-// const PriorsForm = ({handleChange, formVals}) => {
-//     const {mass1, mass2, luminosityDistance, iota, psi, phase, mergerTime, ra, dec} = formVals
-//     return (
-//         <PriorsBaseForm onChange={handleChange}
-//             forms={[
-//                 {title: 'Mass 1 (M\u2299)', name: 'mass1', data: mass1},
-//                 {title: 'Mass 2 (M\u2299)', name: 'mass2', data: mass2},
-//                 {title: 'Luminosity Distance (Mpc)', name: 'luminosityDistance', data: luminosityDistance},
-//                 {title: 'iota', name: 'iota', data: iota},
-//                 {title: 'psi', name: 'psi', data: psi},
-//                 {title: 'Phase', name: 'phase', data: phase},
-//                 {title: 'Merger Time (GPS Time)', name: 'mergerTime', data: mergerTime},
-//                 {title: 'Right Ascension (Radians)', name: 'ra', data: ra},
-//                 {title: 'Declination (Degrees)', name: 'dec', data: dec}
-//             ]}
-//         />
-//     )
-// }
-
-const SamplerForm = ({handleChange, formVals}) => {
-    const {sampler, number} = formVals
-    return (
-        <BaseForm onChange={handleChange}
-            forms={[
-                {rowName: 'Sampler', form: <Form.Select name='sampler' placeholder="Select Sampler" value={sampler} options={[
-                    {key: 'dynesty', text: 'Dynesty', value: 'dynesty'},
-                    {key: 'nestle', text: 'Nestle', value: 'nestle'},
-                    {key: 'emcee', text: 'Emcee', value: 'emcee'},
-                ]}/>},
-                {rowName: sampler==='emcee' ? 'Number of Steps' : 'Number of Live Points', form: <Form.Input name='number' placeholder='1000' value={number}/>}
-            ]}
-        />
-    )
-}
-
-const SubmitForm = () => 
-    <React.Fragment>
-        Placeholder
-    </React.Fragment>
-
 export {
-    SamplerForm,
-    SubmitForm,
     BaseForm,
-    PriorsBaseForm
+    PriorsBaseForm,
+    PriorsFormInput
 };

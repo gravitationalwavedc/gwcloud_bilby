@@ -16,6 +16,12 @@ class InlineDataParameterAdmin(admin.TabularInline):
         else:
             return True
 
+class InlineSamplerAdmin(admin.TabularInline):
+    model = Sampler
+
+class InlineSamplerParameterAdmin(admin.TabularInline):
+    model = SamplerParameter
+
 class InlineSignalAdmin(admin.TabularInline):
     model = Signal
 
@@ -24,6 +30,10 @@ class InlineSignalParameterAdmin(admin.TabularInline):
 
 class InlinePriorAdmin(admin.TabularInline):
     model = Prior
+
+@admin.register(Sampler)
+class SamplerAdmin(admin.ModelAdmin):
+    fields = ['job', 'sampler_choice']
 
 @admin.register(Signal)
 class SignalAdmin(admin.ModelAdmin):
@@ -38,7 +48,13 @@ class DataAdmin(admin.ModelAdmin):
 class BilbyJobAdmin(admin.ModelAdmin):
     fields = ['username', 'name', 'description']
     readonly_fields = ('creation_time', 'last_updated')
-    inlines = (InlineDataAdmin, InlineDataParameterAdmin, InlineSignalAdmin, InlineSignalParameterAdmin, InlinePriorAdmin)
+    inlines = (
+        InlineDataAdmin,
+        InlineDataParameterAdmin,
+        InlineSignalAdmin,
+        InlineSignalParameterAdmin,
+        InlinePriorAdmin,
+        InlineSamplerAdmin,
+        InlineSamplerParameterAdmin
+    )
 
-admin.site.register(Sampler)
-admin.site.register(SamplerParameter)

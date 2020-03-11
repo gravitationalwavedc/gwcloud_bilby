@@ -5,11 +5,13 @@ import {commitMutation} from "relay-runtime";
 import {harnessApi} from "../index";
 import {graphql} from "graphql";
 
-import {SamplerForm, SubmitForm} from "./Forms";
 import StartForm from "./StartForm";
 import DataForm from "./DataForm";
 import SignalForm from "./SignalForm";
 import PriorsForm from "./PriorsForm";
+import SamplerForm from "./SamplerForm";
+import SubmitForm from "./SubmitForm";
+
 import StepControl from "./Steps";
 
 class StepForm extends React.Component {
@@ -23,10 +25,7 @@ class StepForm extends React.Component {
             data: null,
             signal: null,
             priors: null,
-            sampler: {
-                sampler: 'dynesty',
-                number: ''
-            }
+            sampler: null,
         }
     }
 
@@ -36,6 +35,7 @@ class StepForm extends React.Component {
             step: step + 1,
             stepsCompleted: step == stepsCompleted ? step + 1 : stepsCompleted
         })
+        console.log(this.state)
     }
 
     prevStep = () => {
@@ -45,30 +45,10 @@ class StepForm extends React.Component {
         })
     }
 
-    handleChange = (form) => (e, data) => {
-        this.setState({
-            [form]: {
-                ...this.state[form],
-                [data.name]: data.type === "checkbox" ? data.checked : data.value,
-            }
-        })
-        console.log(this.state[form])
-    }
-
-    handleChangeNew = (form) => (childState) => {
+    handleChange = (form) => (childState) => {
         this.setState({
             ...this.state,
             [form]: childState
-        })
-        console.log(this.state)
-    }
-
-    handleChangePriors = (form) => (param) => (e, data) => {
-        this.setState({
-            [form]: {
-                ...this.state[form],
-                [param]: {...this.state[form][param], [data.name]: data.type === "checkbox" ? data.checked : data.value}
-            }
         })
     }
 
@@ -117,22 +97,22 @@ class StepForm extends React.Component {
     renderSwitch(step) {
         switch(step) {
             case 1:
-                return <StartForm state={this.state.start} updateParentState={this.handleChangeNew('start')} nextStep={this.nextStep}/>
+                return <StartForm state={this.state.start} updateParentState={this.handleChange('start')} nextStep={this.nextStep}/>
             
             case 2:
-                return <DataForm state={this.state.data} updateParentState={this.handleChangeNew('data')} prevStep={this.prevStep} nextStep={this.nextStep}/>
+                return <DataForm state={this.state.data} updateParentState={this.handleChange('data')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 3:
-                return <SignalForm state={this.state.signal} updateParentState={this.handleChangeNew('signal')} prevStep={this.prevStep} nextStep={this.nextStep} dataType={this.state.data.dataType}/>
+                return <SignalForm state={this.state.signal} updateParentState={this.handleChange('signal')} prevStep={this.prevStep} nextStep={this.nextStep} dataType={this.state.data.dataType}/>
 
             case 4:
-                return <PriorsForm state={this.state.priors} updateParentState={this.handleChangeNew('priors')} prevStep={this.prevStep} nextStep={this.nextStep}/>
+                return <PriorsForm state={this.state.priors} updateParentState={this.handleChange('priors')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 5:
-                return <SamplerForm handleChange={this.handleChange('sampler')} formVals={this.state.sampler} />
+                return <SamplerForm state={this.state.sampler} updateParentState={this.handleChange('sampler')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 6:
-                return <SubmitForm />
+                return <SubmitForm prevStep={this.prevStep} onSubmit={this.handleSubmit}/>
         }
     }
 
