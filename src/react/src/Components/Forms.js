@@ -21,20 +21,6 @@ function BaseForm({forms, validate, onChange}) {
     )
 }
 
-function PriorsBaseForm({forms, validate, onChange}) {
-    const form_arr = forms.map((form, index) => <PriorsFormRow key={index} title={form.title} data={form.data} onChange={onChange(form.name)}/>)
-
-    return (
-        <Grid.Row>
-            <Grid.Column width={8}>
-                <Grid textAlign='left'>
-                    {form_arr}
-                </Grid>
-            </Grid.Column>
-        </Grid.Row>
-    )
-}
-
 class PriorsFormInput extends React.Component {
     constructor(props) {
         super(props);
@@ -74,18 +60,18 @@ class PriorsFormInput extends React.Component {
                             Value
                         </Grid.Column>
                         <Grid.Column>
-                            <Form.Input fluid name='value' placeholder='Hello' value={this.state.value} onChange={this.handleChange}/>
+                            <Form.Input fluid name='value' placeholder='Hello' value={this.state.value} onChange={this.handleChange} error={this.props.error}/>
                         </Grid.Column>
                     </Grid.Row>
                 :
                     <Grid.Row columns={4}>
                         <Grid.Column children='Min'/>
                         <Grid.Column>
-                            <Form.Input fluid name='min' placeholder='Hello' value={this.state.min} onChange={this.handleChange}/>
+                            <Form.Input fluid name='min' placeholder='Hello' value={this.state.min} onChange={this.handleChange} error={this.props.error}/>
                         </Grid.Column>
                         <Grid.Column children='Max'/>
                         <Grid.Column>
-                            <Form.Input fluid name='max' placeholder='Hello' value={this.state.max} onChange={this.handleChange}/>
+                            <Form.Input fluid name='max' placeholder='Hello' value={this.state.max} onChange={this.handleChange} error={this.props.error}/>
                         </Grid.Column>
                     </Grid.Row>
                 }
@@ -101,15 +87,15 @@ function FormRow(props) {
     }
     return (
         <Grid.Row columns={3}>
-            <Grid.Column width={4}>
+            <Grid.Column verticalAlign='middle' width={4}>
                 {props.rowName}
             </Grid.Column>
-            <Grid.Column width={8}>
+            <Grid.Column verticalAlign='middle' width={8}>
                 <Form>
                     {React.Children.map(props.children, (child => React.cloneElement(child, {onChange: props.onChange, error: formHasError})))}
                 </Form>
             </Grid.Column>
-            <Grid.Column width={4}>
+            <Grid.Column verticalAlign='middle' width={4}>
                 {formHasError ? <Label basic pointing='left' color='red' content={assembleErrorString(props.errors)}/> : null}
             </Grid.Column>
         </Grid.Row>
@@ -119,6 +105,5 @@ function FormRow(props) {
 
 export {
     BaseForm,
-    PriorsBaseForm,
     PriorsFormInput
 };

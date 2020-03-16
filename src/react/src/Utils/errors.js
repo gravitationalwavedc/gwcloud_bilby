@@ -39,6 +39,23 @@ const smallerThan = (threshold, name) => ({data, errors}) => {
     return {data, errors}
 }
 
+const handlePriors = ({data, errors}) => {
+    if (data.type === 'fixed') {
+        if (isNaN(data.value)) {
+            errors.push('a number')
+        }
+    } else if (data.type === 'uniform') {
+        if (isNaN(data.min) || isNaN(data.max)) {
+            errors.push('both numbers')
+        } else {
+            if (data.min >= data.max) {
+                errors.push('smaller than max')    
+            }
+        }
+    }
+    return {data, errors}
+}
+
 const notEmpty = ({data, errors}) => {
     if (data.trim() === "") {
         errors.push('not empty')
@@ -55,5 +72,6 @@ export {
     shorterThan,
     isNumber,
     smallerThan,
+    handlePriors,
     notEmpty
 }

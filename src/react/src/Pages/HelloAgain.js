@@ -1,11 +1,11 @@
 import React from "react";
 import {Grid, Header, Image, Message} from "semantic-ui-react";
 import Link from 'found/lib/Link';
-import {commitMutation} from "relay-runtime";
+import {createFragmentContainer, commitMutation} from "relay-runtime";
 import {harnessApi} from "../index";
 import {graphql} from "graphql";
 
-class Hello extends React.Component {
+class HelloAgain extends React.Component {
     constructor() {
         super();
 
@@ -44,6 +44,7 @@ class Hello extends React.Component {
                     </Header>
                     <Message>
                         Just a different route. Hello {this.props.username}!
+                        {console.log(this.props)}
                     </Message>
                     Back to the other route? <Link to='/bilby/' activeClassName="selected" exact {...this.props}>I
                     guess</Link>
@@ -53,4 +54,11 @@ class Hello extends React.Component {
     }
 }
 
-export default Hello;
+// export default HelloAgain;
+export default createFragmentContainer(HelloAgain, {
+    username: graphql`
+        fragment HelloAgain_username on UserDetails {
+            username
+        }
+    `
+});
