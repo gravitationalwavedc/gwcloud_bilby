@@ -1,4 +1,5 @@
 const webpack = require("webpack");
+const ModuleReplaceWebpackPlugin = require('module-replace-webpack-plugin');
 
 module.exports = {
     module: {
@@ -65,6 +66,8 @@ module.exports = {
     output: {
         publicPath: "/",
         globalObject: "this",
+        library: 'RemoteModule',
+        libraryTarget: 'this'
     },
     // Server Configuration options
     devServer: {
@@ -84,6 +87,18 @@ module.exports = {
             'process.env': {
                 NODE_ENV: JSON.stringify(process.env.NODE_ENV || 'development')
             }
+        }),
+        new ModuleReplaceWebpackPlugin({
+            modules: [
+                {
+                    test: /react-relay/,
+                    replace: './src/Lib/react-relay/index.js'
+                }
+            ],
+            exclude: [
+                /react-override.js$/,
+                /node_modules\/react\/index.js$/
+            ]
         })
     ],
     resolve: {

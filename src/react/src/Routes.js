@@ -26,12 +26,19 @@ function getRoutes() {
                 query={graphql`
                    query Routes_HelloAgain_Query {
                      gwclouduser {
-                       ...HelloAgain_username
+                       ...HelloAgain_user
                      }
                    }
                 `}
                 environment={harnessApi.getEnvironment('bilby')}
-                path="another"/>
+                path="another"
+                render={({Component, props, retry, error}) => {
+                    if (!Component || !props)
+                        return <div>Loading...</div>;
+
+                    return <Component user={props.gwclouduser} {...props}/>
+                }}
+            />
             <Route path="job-form" Component={BilbyJobForm}/>
             {/* <Route path="job-list" Component={BilbyJobList}/> */}
         </Route>
