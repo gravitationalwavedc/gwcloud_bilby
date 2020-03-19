@@ -28,16 +28,54 @@ class BilbyJobList extends React.Component {
     }
 }
 
-export default BilbyJobList;
-// export default createPaginationContainer(BilbyJobList, 
-//     {
-//         bilbyJobs: graphql`
-//             fragment BilbyJobList_bilbyJobs on BilbyJobNode {
-//                 bilbyJobs(
-//                     first: $count,
-//                     after: $after,
-//                     orderBy: lastUpdated_DESC
-//                 )
-//             }
-//         `
-//     }
+// export default BilbyJobList;
+export default createPaginationContainer(BilbyJobList, 
+    {
+        bilbyJobs: graphql`
+            fragment BilbyJobList_bilbyJobs on BilbyJobNodeConnection {
+                bilbyJobs(
+                    first: $count,
+                    after: $cursor
+                ) @connection(key: BilbyJobList_bilbyJobs) {
+                    edges {
+                        node {
+                            name,
+                            description,
+                            lastUpdated
+                        }
+                    }
+                }
+            }
+        `,
+    },
+    {
+        direction: 'forward',
+        query: graphql`
+            query BilbyJobListForwardQuery(
+                $count: Int!,
+                $cursor: String
+            ) {
+                bilbyJobs {
+                    ...BilbyJobList_bilbyJobs
+                }
+            }
+        `,
+        getConnectionFromProps(props) {
+            return props.jobs && props.jobs.bilbyJobs
+        },
+
+        getFragmentVariables(previousVariables, totalCount) {
+            return {
+                ...previousVariables,
+                count: totalCount
+            }
+        },
+
+        getVariables(props, {count, cursor}, fragmentVariables) {
+            return {
+                count,
+                cursor,
+            }
+        }
+    }
+)

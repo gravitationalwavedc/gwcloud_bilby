@@ -1,5 +1,5 @@
 import graphene
-from graphene import ObjectType, relay
+from graphene import ObjectType, relay, Connection, Int
 from graphene_django.types import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 import django_filters
@@ -28,6 +28,14 @@ class BilbyJobNode(DjangoObjectType):
         filter_fields = ['name', 'username']
         #filterset_class = UserBilbyJobFilter
         interfaces = (relay.Node, )
+
+# class BilbyJobConnection(Connection):
+#     class Meta:
+#         node = BilbyJobNode
+#     count = Int()
+
+#     def resolve_count(root, info):
+#         return len(root.edges)
 
 class DataType(DjangoObjectType):
     class Meta:
