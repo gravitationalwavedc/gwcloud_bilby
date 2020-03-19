@@ -8,12 +8,13 @@ import {graphql} from "graphql";
 class JobList extends React.Component {
     constructor(props) {
         super(props);
-        this.rows = this.props.bilbyJobs.edges.map(({node}) => <TableRow key={node.id} name={node.name} description={node.description} lastUpdated={node.lastUpdated} actions={''}/>)
-        console.log(this.rows)
     }
 
 
     render() {
+        this.rows = this.props.bilbyJobs.edges.map(({node}) => <TableRow key={node.id} name={node.name} description={node.description} lastUpdated={node.lastUpdated} actions={''}/>)
+        console.log(this.rows)
+
         return <React.Fragment>
             <Grid.Row>
                 <Grid.Column>

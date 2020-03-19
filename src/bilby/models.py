@@ -3,6 +3,7 @@ from django.db import models
 
 from .variables import *
 
+
 class BilbyJob(models.Model):
     user_id = models.IntegerField()
     username = models.CharField(max_length=30)

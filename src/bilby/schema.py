@@ -29,13 +29,13 @@ class BilbyJobNode(DjangoObjectType):
         #filterset_class = UserBilbyJobFilter
         interfaces = (relay.Node, )
 
-# class BilbyJobConnection(Connection):
-#     class Meta:
-#         node = BilbyJobNode
-#     count = Int()
+class BilbyJobConnection(Connection):
+    class Meta:
+        node = BilbyJobNode
+    count = Int()
 
-#     def resolve_count(root, info):
-#         return len(root.edges)
+    def resolve_count(root, info):
+        return len(root.edges)
 
 class DataType(DjangoObjectType):
     class Meta:

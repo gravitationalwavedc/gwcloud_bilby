@@ -40,21 +40,13 @@ function getRoutes() {
                 }}
             />
             <Route path="job-form" Component={BilbyJobForm}/>
-            <Route path="job-list" 
+            <Route path="job-list"
               query={graphql`
                 query Routes_JobList_Query(
                   $count: Int!,
                   $cursor: String,
                 ) {
-                  gwclouduser {
-                    username
-                  }
-                  bilbyJobs (
-                    first: $count,
-                    after: $cursor
-                  ){
-                    ...BilbyJobList_bilbyJobs
-                  }
+                  ...BilbyJobList_data
                 }
               `}
               prepareVariables={params => ({
@@ -67,7 +59,7 @@ function getRoutes() {
                   if (!Component || !props)
                       return <div>Loading...</div>;
 
-                  return <Component user={props.gwclouduser} {...props}/>
+                  return <Component data={props} {...props}/>
               }}/>
         </Route>
     )
