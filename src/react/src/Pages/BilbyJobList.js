@@ -1,38 +1,43 @@
 import React from "react";
-import {Grid} from "semantic-ui-react";
+import {Grid, Header, Segment} from "semantic-ui-react";
 import {harnessApi} from "../index";
-import StepForm from "../Components/StepForm";
-import { graphql, QueryRenderer } from "react-relay";
+import JobList from "../Components/List/JobList";
+import { graphql, createPaginationContainer } from "react-relay";
 
 class BilbyJobList extends React.Component {
-    constructor() {
-        super();
+    constructor(props) {
+        super(props);
+        console.log(this.props)
     }
 
-    renderForms = ({error, props}) => {
-        if (error) {
-            return <div>{error.message}</div>
-        } else if (props) {
-            return (
-                <Grid centered textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
-                    {this.props.username}
-                </Grid>
-            )
-        }
+    loadMore() {
+
     }
 
     render() {
-        return <div>hello</div>
-        // return <QueryRenderer
-        //     environment={harnessApi.getEnvironment('bilby')}
-        //     query={graphql`
-        //         query Routes_UserDetails_Query {
-        //             gwclouduser {
-        //                 username
-        //             }
-        //         }
-        //     `}
-        //     render={this.renderForms}
-        // />
+        return (
+            <React.Fragment>
+                <Header as='h2' attached='top'>Bilby Job Form</Header>
+                <Segment attached>
+                    <Grid centered textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
+                        <JobList bilbyJobs={this.props.bilbyJobs}/>
+                    </Grid>
+                </Segment>
+            </React.Fragment>
+        )
     }
 }
+
+export default BilbyJobList;
+// export default createPaginationContainer(BilbyJobList, 
+//     {
+//         bilbyJobs: graphql`
+//             fragment BilbyJobList_bilbyJobs on BilbyJobNode {
+//                 bilbyJobs(
+//                     first: $count,
+//                     after: $after,
+//                     orderBy: lastUpdated_DESC
+//                 )
+//             }
+//         `
+//     }

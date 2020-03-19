@@ -3,8 +3,8 @@ import {Route} from 'found'
 import HelloAgain from "./Pages/HelloAgain";
 import Hello from "./Pages/Hello";
 import BilbyJobForm from "./Pages/BilbyJobForm";
-// import BilbyJobList from "./Pages/BilbyJobList";
-import {graphql, createFragmentContainer} from "react-relay";
+import BilbyJobList from "./Pages/BilbyJobList";
+import {graphql} from "react-relay";
 import {harnessApi} from "./index";
 
 function getRoutes() {
@@ -40,7 +40,28 @@ function getRoutes() {
                 }}
             />
             <Route path="job-form" Component={BilbyJobForm}/>
-            {/* <Route path="job-list" Component={BilbyJobList}/> */}
+            <Route path="job-list" 
+              query={graphql`
+                query Routes_JobList_Query($name: String) {
+                  gwclouduser {
+                    username
+                  }
+                  bilbyJobs(name: $name) {
+                    edges {
+                      node {
+                        id,
+                        name,
+                        description,
+                        lastUpdated
+                      }
+                    }
+                  }
+
+                }
+              `}
+              prepareVariables={params => ({...params})}
+              environment={harnessApi.getEnvironment('bilby')}
+              Component={BilbyJobList}/>
         </Route>
     )
 }

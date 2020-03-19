@@ -2,6 +2,7 @@ import graphene
 from graphene import ObjectType, relay
 from graphene_django.types import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
+import django_filters
 
 from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
 from .views import create_bilby_job
@@ -11,9 +12,22 @@ from graphql_jwt.decorators import login_required
 from django.conf import settings
 
 
-class BilbyJobType(DjangoObjectType):
+class UserBilbyJobFilter(django_filters.FilterSet):
     class Meta:
         model = BilbyJob
+        fields = ['name']
+
+    @property
+    def qs(self):
+        return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
+
+
+class BilbyJobNode(DjangoObjectType):
+    class Meta:
+        model = BilbyJob
+        filter_fields = ['name', 'username']
+        #filterset_class = UserBilbyJobFilter
+        interfaces = (relay.Node, )
 
 class DataType(DjangoObjectType):
     class Meta:
@@ -48,17 +62,17 @@ class UserDetails(ObjectType):
 
 
 class Query(object):
-    bilby_job = graphene.Field(BilbyJobType, job_id=graphene.String())
-    all_bilby_jobs = graphene.List(BilbyJobType)
+    bilby_job = graphene.Field(BilbyJobNode, job_id=graphene.String())
+    bilby_jobs = DjangoFilterConnectionField(BilbyJobNode)
 
     data = graphene.Field(DataType, data_id=graphene.String())
     all_data = graphene.List(DataType)
 
-    def resolve_bilby_job(self, info, job_id):
-        return BilbyJob.objects.get(pk=job_id)
+    # def resolve_bilby_job(self, info, job_id):
+    #     return BilbyJob.objects.get(pk=job_id)
     
-    def resolve_all_bilby_jobs(self, info, **kwargs):
-        return BilbyJob.objects.all()
+    # def resolve_bilby_jobs(self, info, **kwargs):
+    #     return BilbyJob.objects.all()
     
     def resolve_data(self, info, data_id):
         return Data.objects.get(pk=data_id)
