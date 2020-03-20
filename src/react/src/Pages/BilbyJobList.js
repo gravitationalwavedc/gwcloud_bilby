@@ -3,6 +3,7 @@ import {Button, Grid, Header, Segment} from "semantic-ui-react";
 import {harnessApi} from "../index";
 import JobList from "../Components/List/JobList";
 import { graphql, createPaginationContainer } from "react-relay";
+import _ from "lodash";
 
 const RECORDS_PER_PAGE = 2;
 
@@ -13,6 +14,21 @@ class BilbyJobList extends React.Component {
         this.state = {
             page: 5,
             loading: false
+        }
+    }
+
+    componentDidMount() {
+        window.addEventListener('scroll', _.debounce(this.handleScroll,100), true)
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener('scroll', _.debounce(this.handleScroll,100))
+    }
+
+    handleScroll = () => {
+        const wrappedElement = document.getElementById('scrollable');
+        if (wrappedElement.getBoundingClientRect().bottom <= window.innerHeight) {
+            this.loadMore()
         }
     }
 
@@ -28,10 +44,10 @@ class BilbyJobList extends React.Component {
         return (
             <React.Fragment>
                 <Header as='h2' attached='top'>Bilby Job Form</Header>
-                <Segment attached>
+                <Segment attached id='scrollable'>
                     <Grid centered textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
                         <JobList bilbyJobs={this.props.data.bilbyJobs}/>
-                        <Button onClick={() => this.loadMore()} content="Next"/>
+                        {/* <Button onClick={() => this.loadMore()} content="Next"/> */}
                     </Grid>
                 </Segment>
             </React.Fragment>
