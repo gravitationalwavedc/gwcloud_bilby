@@ -1,5 +1,5 @@
 import React from "react";
-import {Button, Grid, Header, Segment} from "semantic-ui-react";
+import {Grid, Header, Segment, Dropdown} from "semantic-ui-react";
 import {harnessApi} from "../index";
 import JobList from "../Components/List/JobList";
 import { graphql, createPaginationContainer } from "react-relay";
@@ -13,7 +13,8 @@ class BilbyJobList extends React.Component {
 
         this.state = {
             page: 5,
-            loading: false
+            loading: false,
+            order: 'name'
         }
     }
 
@@ -34,20 +35,35 @@ class BilbyJobList extends React.Component {
 
     loadMore() {
         if (this.props.relay.hasMore()) {
-            this.props.relay.loadMore(1);
+            this.props.relay.loadMore(RECORDS_PER_PAGE);
         }
     }
 
-    render() {
-        console.log(this.props.data.bilbyJobs)
+    handleSort = ({order, direction}) => {
+        // this.setState({
+        //     ...this.state,
+        //     order: order,
+        //     direction: direction
+        // })
+        
+        const refetchVariables = {
+            count: 1,
+            orderBy: order
+        }
+        this.props.relay.refetchConnection(1, null, refetchVariables)
+    }
 
+    render() {
         return (
             <React.Fragment>
-                <Header as='h2' attached='top'>Bilby Job Form</Header>
+                <Header as='h2' attached='top'>Bilby Job List</Header>
                 <Segment attached id='scrollable'>
                     <Grid centered textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
-                        <JobList bilbyJobs={this.props.data.bilbyJobs}/>
-                        {/* <Button onClick={() => this.loadMore()} content="Next"/> */}
+                        {/* <Dropdown selection options={[
+                            {key: 'name', value: 'name', text: 'Name'},
+                            {key: 'date', value: 'last_updated', text: 'Date'}
+                        ]} placeholder='Select to sort...' onChange={this.setOrder}/> */}
+                        <JobList jobs={this.props.data.bilbyJobs} handleSort={this.handleSort}/>
                     </Grid>
                 </Segment>
             </React.Fragment>
@@ -62,7 +78,8 @@ export default createPaginationContainer(BilbyJobList,
             fragment BilbyJobList_data on Query {
                 bilbyJobs(
                     first: $count,
-                    after: $cursor
+                    after: $cursor,
+                    orderBy: $orderBy
                 ) @connection(key: "BilbyJobList_bilbyJobs") {
                     edges {
                         node {
@@ -81,7 +98,8 @@ export default createPaginationContainer(BilbyJobList,
         query: graphql`
             query BilbyJobListForwardQuery(
                 $count: Int!,
-                $cursor: String
+                $cursor: String,
+                $orderBy: String
             ) {
               ...BilbyJobList_data
             }
@@ -97,10 +115,11 @@ export default createPaginationContainer(BilbyJobList,
             }
         },
 
-        getVariables(props, {count, cursor}, fragmentVariables) {
+        getVariables(props, {count, cursor}, {orderBy}) {
             return {
                 count,
                 cursor,
+                orderBy,
             }
         }
     }

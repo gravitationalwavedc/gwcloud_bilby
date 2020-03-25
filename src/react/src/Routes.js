@@ -45,13 +45,15 @@ function getRoutes() {
                 query Routes_JobList_Query(
                   $count: Int!,
                   $cursor: String,
+                  $orderBy: String
                 ) {
                   ...BilbyJobList_data
                 }
               `}
               prepareVariables={params => ({
                 ...params,
-                count: 1
+                count: 1,
+                orderBy: 'last_updated'
               })}
               environment={harnessApi.getEnvironment('bilby')}
               Component={BilbyJobList}

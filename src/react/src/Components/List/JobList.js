@@ -8,22 +8,44 @@ import {graphql} from "graphql";
 class JobList extends React.Component {
     constructor(props) {
         super(props);
+
+        this.state = {
+            order: 'name',
+            direction: 'ascending'
+        }
     }
 
+    handleSort = (clickedColumn) => () => {
+        console.log(clickedColumn)
+        const {order, direction} = this.state
+        let newState = {}
+        if (order !== clickedColumn) {
+            newState = {
+                order: clickedColumn,
+                direction: 'ascending'
+            }
+        } else {
+            newState = {
+                ...this.state,
+                direction: direction === 'ascending' ? 'descending' : 'ascending',
+            }
+        }
+        this.setState(newState)
+        this.props.handleSort(newState)
+    }
 
     render() {
-        this.rows = this.props.bilbyJobs.edges.map(({node}) => <TableRow key={node.id} name={node.name} description={node.description} lastUpdated={node.lastUpdated} actions={''}/>)
-        console.log(this.rows)
-
+        this.rows = this.props.jobs.edges.map(({node}) => <TableRow key={node.id} name={node.name} description={node.description} lastUpdated={node.lastUpdated} actions={''}/>)
+        const {order, direction} = this.state
         return <React.Fragment>
             <Grid.Row>
                 <Grid.Column>
-                    <Table>
+                    <Table sortable fixed celled>
                         <Table.Header>
                             <Table.Row>
-                                <Table.HeaderCell>Name</Table.HeaderCell>
-                                <Table.HeaderCell>Description</Table.HeaderCell>
-                                <Table.HeaderCell>Edit Date</Table.HeaderCell>
+                                <Table.HeaderCell sorted={order === 'name' ? direction : null} onClick={this.handleSort('name')}>Name</Table.HeaderCell>
+                                <Table.HeaderCell sorted={order === 'description' ? direction : null} onClick={this.handleSort('description')}>Description</Table.HeaderCell>
+                                <Table.HeaderCell sorted={order === 'last_updated' ? direction : null} onClick={this.handleSort('last_updated')}>Edit Date</Table.HeaderCell>
                                 <Table.HeaderCell>Actions</Table.HeaderCell>
                             </Table.Row>
                         </Table.Header>

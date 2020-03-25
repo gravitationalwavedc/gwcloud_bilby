@@ -2,7 +2,7 @@ import graphene
 from graphene import ObjectType, relay, Connection, Int
 from graphene_django.types import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
-import django_filters
+from django_filters import FilterSet, OrderingFilter
 
 from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
 from .views import create_bilby_job
@@ -12,30 +12,33 @@ from graphql_jwt.decorators import login_required
 from django.conf import settings
 
 
-class UserBilbyJobFilter(django_filters.FilterSet):
+class UserBilbyJobFilter(FilterSet):
     class Meta:
         model = BilbyJob
-        fields = ['name']
+        fields = '__all__'
 
-    @property
-    def qs(self):
-        return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
+    order_by = OrderingFilter(
+        fields=(
+            ('last_updated', 'last_updated'),
+            ('name', 'name'),
+        )
+    )
 
+    # @property
+    # def qs(self):
+    #     return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
 
 class BilbyJobNode(DjangoObjectType):
     class Meta:
         model = BilbyJob
-        filter_fields = ['name', 'username']
-        #filterset_class = UserBilbyJobFilter
         interfaces = (relay.Node, )
+        filterset_class=UserBilbyJobFilter
 
-class BilbyJobConnection(Connection):
-    class Meta:
-        node = BilbyJobNode
-    count = Int()
+    last_updated = graphene.String()
 
-    def resolve_count(root, info):
-        return len(root.edges)
+    def resolve_last_updated(parent, info):
+        print(info.context._body)
+        return parent.last_updated.strftime("%d/%m/%Y, %H:%M:%S")
 
 class DataType(DjangoObjectType):
     class Meta:
@@ -80,7 +83,7 @@ class Query(object):
     #     return BilbyJob.objects.get(pk=job_id)
     
     # def resolve_bilby_jobs(self, info, **kwargs):
-    #     return BilbyJob.objects.all()
+    #     return UserBilbyJobFilter(kwargs).qs
     
     def resolve_data(self, info, data_id):
         return Data.objects.get(pk=data_id)
