@@ -17,7 +17,7 @@ class Hello extends React.Component {
                     <Message>
                         Hello {this.props.gwclouduser ? this.props.gwclouduser.username : ""}!
                     </Message>
-                    Go to another route? <Link to='/bilby/another/' activeClassName="selected"
+                    Go to another route? <Link to={{pathname: '/bilby/another/', state: {message: 'hello'}}} activeClassName="selected"
                                                exact {...this.props}>Yes!</Link>
                 </Grid.Column>
             </Grid>

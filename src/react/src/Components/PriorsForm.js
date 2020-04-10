@@ -37,6 +37,7 @@ class PriorsForm extends React.Component {
             validate: false
         }
         this.state.data = this.props.state === null ? this.state.data : this.props.state
+        console.log(this.state.data)
     }
 
     handleChange = (name, formData) => {

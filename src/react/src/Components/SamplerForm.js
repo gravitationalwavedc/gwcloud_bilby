@@ -11,12 +11,12 @@ class SamplerForm extends React.Component {
 
         this.state = {
             data: {
-                sampler: 'dynesty',
+                samplerChoice: 'dynesty',
                 number: ''
             },
 
             errors: {
-                sampler: [],
+                samplerChoice: [],
                 number: [],
             },
 
@@ -80,12 +80,12 @@ class SamplerForm extends React.Component {
             <React.Fragment>
                 <BaseForm onChange={this.handleChange} validate={this.state.validate}
                     forms={[
-                        {rowName: 'Sampler', form: <Form.Select name='sampler' placeholder="Select Sampler" value={data.sampler} options={[
+                        {rowName: 'Sampler', form: <Form.Select name='samplerChoice' placeholder="Select Sampler" value={data.samplerChoice} options={[
                             {key: 'dynesty', text: 'Dynesty', value: 'dynesty'},
                             {key: 'nestle', text: 'Nestle', value: 'nestle'},
                             {key: 'emcee', text: 'Emcee', value: 'emcee'},
                         ]}/>},
-                        {rowName: data.sampler==='emcee' ? 'Number of Steps' : 'Number of Live Points', form: <Form.Input name='number' placeholder='1000' value={data.number}/>, errors: errors.number}
+                        {rowName: data.samplerChoice==='emcee' ? 'Number of Steps' : 'Number of Live Points', form: <Form.Input name='number' placeholder='1000' value={data.number}/>, errors: errors.number}
                     ]}
                 />
                 <Grid.Row columns={2}>

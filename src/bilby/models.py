@@ -76,7 +76,7 @@ class SignalParameter(models.Model):
         IOTA,
         PSI,
         PHASE,
-        GEOCENT,
+        MERGER,
         RA,
         DEC,
     ]
@@ -85,7 +85,7 @@ class SignalParameter(models.Model):
     value = models.FloatField(blank=True, null=True)
 
 class Prior(models.Model):
-    job = models.ForeignKey(BilbyJob, related_name='job_prior', on_delete=models.CASCADE)
+    job = models.ForeignKey(BilbyJob, related_name='prior', on_delete=models.CASCADE)
     name = models.CharField(max_length=50, blank=False, null=False)
 
     PRIOR_CHOICES = [

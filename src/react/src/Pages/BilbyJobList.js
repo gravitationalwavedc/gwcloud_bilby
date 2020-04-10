@@ -10,21 +10,23 @@ const RECORDS_PER_PAGE = 2;
 class BilbyJobList extends React.Component {
     constructor(props) {
         super(props);
-
+        
         this.state = {
             page: 5,
             loading: false,
-            order: 'name'
         }
+
+        this.debouncedScroll =  _.debounce(this.handleScroll,100)
     }
 
     componentDidMount() {
-        window.addEventListener('scroll', _.debounce(this.handleScroll,100), true)
+        window.addEventListener('scroll', this.debouncedScroll)
     }
 
     componentWillUnmount() {
-        window.removeEventListener('scroll', _.debounce(this.handleScroll,100))
+        window.removeEventListener('scroll', this.debouncedScroll)
     }
+
 
     handleScroll = () => {
         const wrappedElement = document.getElementById('scrollable');
@@ -39,12 +41,7 @@ class BilbyJobList extends React.Component {
         }
     }
 
-    handleSort = ({order, direction}) => {
-        // this.setState({
-        //     ...this.state,
-        //     order: order,
-        //     direction: direction
-        // })
+    handleSort = (order) => {
         
         const refetchVariables = {
             count: 1,
@@ -59,11 +56,7 @@ class BilbyJobList extends React.Component {
                 <Header as='h2' attached='top'>Bilby Job List</Header>
                 <Segment attached id='scrollable'>
                     <Grid centered textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
-                        {/* <Dropdown selection options={[
-                            {key: 'name', value: 'name', text: 'Name'},
-                            {key: 'date', value: 'last_updated', text: 'Date'}
-                        ]} placeholder='Select to sort...' onChange={this.setOrder}/> */}
-                        <JobList jobs={this.props.data.bilbyJobs} handleSort={this.handleSort}/>
+                        <JobList jobs={this.props.data.bilbyJobs} handleSort={this.handleSort} {...this.props}/>
                     </Grid>
                 </Segment>
             </React.Fragment>

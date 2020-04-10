@@ -15,18 +15,23 @@ import SubmitForm from "./SubmitForm";
 import StepControl from "./Steps";
 
 class StepForm extends React.Component {
-    constructor() {
-        super();
-
-        this.state = {
-            step: 1,
-            stepsCompleted: 1,
+    constructor(props) {
+        super(props);
+        const initialState = this.props.data.bilbyJob === null ? {
             start: null,
             data: null,
             signal: null,
             priors: null,
-            sampler: null,
+            sampler: null
+        } : this.props.data.bilbyJob
+
+        this.state = {
+            step: 1,
+            stepsCompleted: 1,
+            ...initialState
         }
+
+        this.jobNames = this.props.data.bilbyJobs.edges.map(({node}) => node.name)
     }
 
     nextStep = () => {
@@ -97,7 +102,7 @@ class StepForm extends React.Component {
     renderSwitch(step) {
         switch(step) {
             case 1:
-                return <StartForm state={this.state.start} updateParentState={this.handleChange('start')} nextStep={this.nextStep}/>
+                return <StartForm state={this.state.start} updateParentState={this.handleChange('start')} nextStep={this.nextStep} jobNames={this.jobNames}/>
             
             case 2:
                 return <DataForm state={this.state.data} updateParentState={this.handleChange('data')} prevStep={this.prevStep} nextStep={this.nextStep}/>

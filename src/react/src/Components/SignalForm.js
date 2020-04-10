@@ -11,7 +11,7 @@ class SignalForm extends React.Component {
 
         this.state = {
             data: {
-                signalType: 'binaryBlackHole',
+                signalChoice: 'binaryBlackHole',
                 signalModel: '',
                 mass1: '',
                 mass2: '',
@@ -123,11 +123,11 @@ class SignalForm extends React.Component {
             <React.Fragment>
                 <BaseForm onChange={this.handleChange} validate={this.state.validate}
                     forms={this.props.dataType == 'open' ? [
-                            {rowName: 'Signal Inject', form: <Form.Select name='signalType' placeholder="Select Signal Type" value={data.signalType} options={noneOption}/>},
+                            {rowName: 'Signal Inject', form: <Form.Select name='signalChoice' placeholder="Select Signal Type" value={data.signalChoice} options={noneOption}/>},
                             {rowName: 'Signal Model', form: <Form.Select name='signalModel' placeholder="Select Signal Model" value={data.signalModel} options={signalOptions}/>},
                         ]
                         : [
-                            {rowName: 'Signal Inject', form: <Form.Select name='signalType' placeholder="Select Signal Type" value={data.signalType} options={signalOptions}/>},
+                            {rowName: 'Signal Inject', form: <Form.Select name='signalChoice' placeholder="Select Signal Type" value={data.signalChoice} options={signalOptions}/>},
                             {rowName: 'Mass 1 (M\u2299)', form: <Form.Input name='mass1' placeholder="2.0" value={data.mass1}/>, errors: errors.mass1},
                             {rowName: 'Mass 2 (M\u2299)', form: <Form.Input name='mass2' placeholder="1.0" value={data.mass2}/>, errors: errors.mass2},
                             {rowName: 'Luminosity Distance (Mpc)', form: <Form.Input name='luminosityDistance' placeholder="1.0" value={data.luminosityDistance}/>, errors: errors.luminosityDistance},

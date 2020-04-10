@@ -1,22 +1,19 @@
 import React from "react";
 import {Grid, Table} from "semantic-ui-react";
-import Link from 'found/lib/Link';
-import {commitMutation} from "relay-runtime";
-import {harnessApi} from "../../index";
-import {graphql} from "graphql";
+import Link from "found/lib/Link";
 
 class JobList extends React.Component {
     constructor(props) {
         super(props);
 
         this.state = {
-            order: 'name',
+            order: 'last_updated',
             direction: 'ascending'
         }
     }
 
     handleSort = (clickedColumn) => () => {
-        console.log(clickedColumn)
+        // This is very inelegant
         const {order, direction} = this.state
         let newState = {}
         if (order !== clickedColumn) {
@@ -26,16 +23,18 @@ class JobList extends React.Component {
             }
         } else {
             newState = {
-                ...this.state,
+                order: order,
                 direction: direction === 'ascending' ? 'descending' : 'ascending',
             }
         }
         this.setState(newState)
-        this.props.handleSort(newState)
+        
+        const signedOrder = newState.direction === 'ascending' ? newState.order : '-' + newState.order
+        this.props.handleSort(signedOrder)
     }
 
     render() {
-        this.rows = this.props.jobs.edges.map(({node}) => <TableRow key={node.id} name={node.name} description={node.description} lastUpdated={node.lastUpdated} actions={''}/>)
+        this.rows = this.props.jobs.edges.map(({node}) => <TableRow key={node.id} id={node.id} name={node.name} description={node.description} lastUpdated={node.lastUpdated} {...this.props}/>)
         const {order, direction} = this.state
         return <React.Fragment>
             <Grid.Row>
@@ -60,13 +59,23 @@ class JobList extends React.Component {
 }
 
 function TableRow(props) {
-    const {name, description, lastUpdated, actions} = props
+    const {id, name, description, lastUpdated, match, router} = props
+    console.log(props)
     return (
         <Table.Row>
             <Table.Cell content={name}/>
             <Table.Cell content={description}/>
             <Table.Cell content={lastUpdated}/>
-            <Table.Cell content={actions}/>
+            <Table.Cell>
+                <Link to={{
+                    pathname: '/bilby/job-form/',
+                    state: {
+                        jobId: id
+                    }
+                }} activeClassName="selected" exact match={match} router={router}>
+                    Edit Job
+                </Link>
+            </Table.Cell>
         </Table.Row>
     )
 

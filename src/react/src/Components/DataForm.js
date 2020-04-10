@@ -11,7 +11,7 @@ class DataForm extends React.Component {
 
         this.state = {
             data: {
-                dataType: 'simulated',
+                dataChoice: 'simulated',
                 hanford: false,
                 livingston: false,
                 virgo: false,
@@ -92,7 +92,7 @@ class DataForm extends React.Component {
             <React.Fragment>
                 <BaseForm onChange={this.handleChange} validate={this.state.validate}
                     forms={[
-                        {rowName: 'Type of Data', form: <Form.Select name='dataType' placeholder="Select Data Type" value={data.dataType} options={[
+                        {rowName: 'Type of Data', form: <Form.Select name='dataChoice' placeholder="Select Data Type" value={data.dataChoice} options={[
                             {key: 'simulated', text: 'Simulated', value: 'simulated'},
                             {key: 'open', text: 'Open', value: 'open'}
                         ]}/>},

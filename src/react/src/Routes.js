@@ -39,7 +39,24 @@ function getRoutes() {
                     return <Component user={props.gwclouduser} {...props}/>
                 }}
             />
-            <Route path="job-form" Component={BilbyJobForm}/>
+            <Route path="job-form" 
+              query={graphql`
+                query Routes_JobForm_Query ($jobId: ID!){
+                  ...BilbyJobForm_data @arguments(jobId: $jobId)
+                }
+              `}
+              prepareVariables={(params, {location}) => ({
+                ...params,
+                jobId: location.state && location.state.jobId ? location.state.jobId : "" 
+              })}
+              environment={harnessApi.getEnvironment('bilby')}
+              Component={BilbyJobForm}
+              render={({Component, props, retry, error}) => {
+                  if (!Component || !props)
+                      return <div>Loading...</div>;
+
+                  return <Component data={props} {...props}/>
+              }}/>
             <Route path="job-list"
               query={graphql`
                 query Routes_JobList_Query(

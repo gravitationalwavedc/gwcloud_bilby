@@ -1,13 +1,12 @@
 import React from "react";
 import {Grid, GridColumn, Header, Image, Message} from "semantic-ui-react";
 import Link from 'found/lib/Link';
-import {commitMutation} from "relay-runtime";
 import {createFragmentContainer} from "react-relay"
-import {harnessApi} from "../index";
 import {graphql} from "graphql";
 
 class HelloAgain extends React.Component {
     render() {
+        {console.log(this.props)}
         return (
             <Grid textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
                 <GridColumn style={{maxWidth: 450}}>

@@ -10,13 +10,13 @@ class StartForm extends React.Component {
 
         this.state = {
             data: {
-                jobName: '',
-                jobDescription: '',
+                name: '',
+                description: '',
             },
 
             errors: {
-                jobName: [],
-                jobDescription: []
+                name: [],
+                description: []
             },
 
             validate: false
@@ -37,10 +37,10 @@ class StartForm extends React.Component {
     checkErrors = (name, value) => {
         let errors = []
         switch (name) {
-            case 'jobName':
+            case 'name':
                 errors = checkForErrors(longerThan(5))(value)
                 break;
-            case 'jobDescription':
+            case 'description':
                 errors = checkForErrors(shorterThan(200))(value)
                 break;
         }
@@ -78,8 +78,8 @@ class StartForm extends React.Component {
             <React.Fragment>
                 <BaseForm onChange={this.handleChange} validate={this.state.validate}
                     forms={[
-                        {rowName: "Job Name", form: <Form.Input name='jobName' placeholder="Job Name" value={data.jobName}/>, errors: errors.jobName},
-                        {rowName: "Job Description", form: <Form.TextArea name='jobDescription' placeholder="Job Description" value={data.jobDescription}/>, errors: errors.jobDescription}
+                        {rowName: "Job Name", form: <Form.Input name='name' placeholder="Job Name" value={data.name}/>, errors: errors.name},
+                        {rowName: "Job Description", form: <Form.TextArea name='description' placeholder="Job Description" value={data.description}/>, errors: errors.description}
                     ]}
                 />
                 <Grid.Row columns={2}>
