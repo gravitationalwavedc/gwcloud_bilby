@@ -1,7 +1,5 @@
 import React from "react";
-import {BaseForm} from "./Forms";
-import {Form, Grid, Button} from "semantic-ui-react";
-import {checkForErrors, longerThan, shorterThan} from "../Utils/errors";
+import {Grid, Button} from "semantic-ui-react";
 
 
 class SubmitForm extends React.Component {

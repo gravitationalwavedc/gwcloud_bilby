@@ -4,12 +4,20 @@ import {harnessApi} from "../index";
 import JobList from "../Components/List/JobList";
 import { graphql, createPaginationContainer } from "react-relay";
 import _ from "lodash";
+import BilbyBasePage from "./BilbyBasePage";
 
 const RECORDS_PER_PAGE = 2;
 
 class BilbyJobList extends React.Component {
     constructor(props) {
         super(props);
+        this.routing = {
+            match: this.props.match,
+            router: this.props.router,
+            breadcrumbPaths: [
+                {name: 'Job List', path: '/bilby/job-list/'}
+            ]
+        }
         
         this.state = {
             page: 5,
@@ -52,14 +60,9 @@ class BilbyJobList extends React.Component {
 
     render() {
         return (
-            <React.Fragment>
-                <Header as='h2' attached='top'>Bilby Job List</Header>
-                <Segment attached id='scrollable'>
-                    <Grid centered textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
-                        <JobList jobs={this.props.data.bilbyJobs} handleSort={this.handleSort} {...this.props}/>
-                    </Grid>
-                </Segment>
-            </React.Fragment>
+            <BilbyBasePage title='Bilby Job List' {...this.routing}>
+                <JobList jobs={this.props.data.bilbyJobs} handleSort={this.handleSort} {...this.props}/>
+            </BilbyBasePage>
         )
     }
 }

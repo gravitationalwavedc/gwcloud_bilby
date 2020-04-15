@@ -1,25 +1,29 @@
 import React from "react";
-import {Grid, Header, Segment} from "semantic-ui-react";
-import {harnessApi} from "../index";
-import StepForm from "../Components/StepForm";
+import {Grid} from "semantic-ui-react";
+import StepForm from "../Components/Forms/StepForm";
 import { graphql, createFragmentContainer } from "react-relay";
+import BilbyBasePage from "./BilbyBasePage";
 
 
 class BilbyJobForm extends React.Component {
     constructor(props) {
         super(props);
+        this.routing = {
+            match: this.props.match,
+            router: this.props.router,
+            breadcrumbPaths: [
+                {name: 'Job Form', path: '/bilby/job-form/'}
+            ]
+        }
     }
     
     render() {
         return (
-            <React.Fragment>
-                <Header as='h2' attached='top'>Bilby Job Form</Header>
-                <Segment attached>
-                    <Grid centered textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
-                            <StepForm data={this.props.data} match={this.props.match} router={this.props.router}/>
-                    </Grid>
-                </Segment>
-            </React.Fragment>
+            <BilbyBasePage title='Bilby Job Form' {...this.routing}>
+                <Grid centered textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
+                    <StepForm data={this.props.data} {...this.routing}/>
+                </Grid>
+            </BilbyBasePage>
         )
     }
 }

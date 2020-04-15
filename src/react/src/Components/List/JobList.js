@@ -60,7 +60,6 @@ class JobList extends React.Component {
 
 function TableRow(props) {
     const {id, name, description, lastUpdated, match, router} = props
-    console.log(props)
     return (
         <Table.Row>
             <Table.Cell content={name}/>
@@ -73,7 +72,7 @@ function TableRow(props) {
                         jobId: id
                     }
                 }} activeClassName="selected" exact match={match} router={router}>
-                    Edit Job
+                    Copy Job and Edit
                 </Link>
             </Table.Cell>
         </Table.Row>

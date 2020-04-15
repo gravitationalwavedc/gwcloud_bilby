@@ -1,8 +1,7 @@
 import React from "react";
 import {BaseForm, PriorsFormInput} from "./Forms";
-import {Form, Grid, Button} from "semantic-ui-react";
-import {checkForErrors, isNumber, handlePriors} from "../Utils/errors";
-
+import {Grid, Button} from "semantic-ui-react";
+import {checkForErrors, handlePriors} from "../../Utils/errors";
 
 
 class PriorsForm extends React.Component {

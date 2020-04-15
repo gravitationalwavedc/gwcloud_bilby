@@ -1,23 +1,29 @@
 import React from "react";
 import {BaseForm} from "./Forms";
 import {Form, Grid, Button} from "semantic-ui-react";
-import {checkForErrors, isNumber, smallerThan, notEmpty} from "../Utils/errors";
+import {checkForErrors, isNumber, notEmpty} from "../../Utils/errors";
 
 
 
-class SamplerForm extends React.Component {
+class DataForm extends React.Component {
     constructor(props) {
         super(props);
 
         this.state = {
             data: {
-                samplerChoice: 'dynesty',
-                number: ''
+                dataChoice: 'simulated',
+                hanford: false,
+                livingston: false,
+                virgo: false,
+                signalDuration: '',
+                samplingFrequency: '',
+                startTime: ''
             },
 
             errors: {
-                samplerChoice: [],
-                number: [],
+                signalDuration: [],
+                samplingFrequency: [],
+                startTime: []
             },
 
             validate: false
@@ -31,14 +37,20 @@ class SamplerForm extends React.Component {
             data: {
                 ...this.state.data,
                 [data.name]: data.type === "checkbox" ? data.checked : data.value,
-            },
+            }
         })
     }
 
     checkErrors = (name, value) => {
         let errors = []
         switch (name) {
-            case 'number':
+            case 'signalDuration':
+                errors = checkForErrors(isNumber, notEmpty)(value)
+                break;
+            case 'samplingFrequency':
+                errors = checkForErrors(isNumber, notEmpty)(value)
+                break;
+            case 'startTime':
                 errors = checkForErrors(isNumber, notEmpty)(value)
                 break;
         }
@@ -80,12 +92,17 @@ class SamplerForm extends React.Component {
             <React.Fragment>
                 <BaseForm onChange={this.handleChange} validate={this.state.validate}
                     forms={[
-                        {rowName: 'Sampler', form: <Form.Select name='samplerChoice' placeholder="Select Sampler" value={data.samplerChoice} options={[
-                            {key: 'dynesty', text: 'Dynesty', value: 'dynesty'},
-                            {key: 'nestle', text: 'Nestle', value: 'nestle'},
-                            {key: 'emcee', text: 'Emcee', value: 'emcee'},
+                        {rowName: 'Type of Data', form: <Form.Select name='dataChoice' placeholder="Select Data Type" value={data.dataChoice} options={[
+                            {key: 'simulated', text: 'Simulated', value: 'simulated'},
+                            {key: 'open', text: 'Open', value: 'open'}
                         ]}/>},
-                        {rowName: data.samplerChoice==='emcee' ? 'Number of Steps' : 'Number of Live Points', form: <Form.Input name='number' placeholder='1000' value={data.number}/>, errors: errors.number}
+                        {rowName: 'Detectors', form: [<Form.Checkbox key={1} name='hanford' label="Hanford" checked={data.hanford}/>,
+                                                    <Form.Checkbox key={2} name='livingston' label="Livingston" checked={data.livingston}/>,
+                                                    <Form.Checkbox key={3} name='virgo' label="Virgo" checked={data.virgo}/>]},
+                        {rowName: 'Signal Duration (s)', form: <Form.Input name='signalDuration' placeholder='2' value={data.signalDuration}/>, errors: errors.signalDuration},
+                        {rowName: 'Sampling Frequency (Hz)', form: <Form.Input name='samplingFrequency' placeholder='2' value={data.samplingFrequency}/>, errors: errors.samplingFrequency},
+                        {rowName: 'Start Time', form: <Form.Input name='startTime' placeholder='2.1' value={data.startTime}/>, errors: errors.startTime}
+        
                     ]}
                 />
                 <Grid.Row columns={2}>
@@ -101,4 +118,4 @@ class SamplerForm extends React.Component {
     }
 }
 
-export default SamplerForm;
+export default DataForm;

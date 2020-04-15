@@ -1,7 +1,7 @@
 import React from "react";
 import {BaseForm} from "./Forms";
 import {Form, Grid, Button} from "semantic-ui-react";
-import {checkForErrors, isNumber, smallerThan, notEmpty} from "../Utils/errors";
+import {checkForErrors, isNumber, smallerThan, notEmpty} from "../../Utils/errors";
 
 
 

@@ -6,11 +6,12 @@ import BilbyJobForm from "./Pages/BilbyJobForm";
 import BilbyJobList from "./Pages/BilbyJobList";
 import {graphql} from "react-relay";
 import {harnessApi} from "./index";
+import BilbyHomePage from "./Pages/BilbyHomePage";
 
 function getRoutes() {
     return (
         <Route>
-            <Route
+            {/* <Route
                 Component={Hello}
                 query={graphql`
                    query Routes_UserDetails_Query {
@@ -20,8 +21,8 @@ function getRoutes() {
                    }
                 `}
                 environment={harnessApi.getEnvironment('bilby')}
-            />
-            <Route
+            /> */}
+            {/* <Route
                 Component={HelloAgain}
                 query={graphql`
                    query Routes_HelloAgain_Query {
@@ -33,11 +34,22 @@ function getRoutes() {
                 environment={harnessApi.getEnvironment('bilby')}
                 path="another"
                 render={({Component, props, retry, error}) => {
-                    if (!Component || !props)
-                        return <div>Loading...</div>;
-
-                    return <Component user={props.gwclouduser} {...props}/>
+                  if (!Component || !props)
+                  return <div>Loading...</div>;
+                  
+                  return <Component user={props.gwclouduser} {...props}/>
                 }}
+            /> */}
+            <Route
+                Component={BilbyHomePage}
+                query={graphql`
+                   query Routes_UserDetails_Query {
+                     gwclouduser {
+                       username
+                     }
+                   }
+                `}
+                environment={harnessApi.getEnvironment('bilby')}
             />
             <Route path="job-form" 
               query={graphql`

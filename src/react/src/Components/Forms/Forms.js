@@ -1,8 +1,6 @@
 import React from "react";
 import {Form, Divider, Grid, Label} from "semantic-ui-react";
-import {commitMutation} from "relay-runtime";
-import {harnessApi} from "../index";
-import {assembleErrorString} from "../Utils/errors";
+import {assembleErrorString} from "../../Utils/errors";
 
 
 

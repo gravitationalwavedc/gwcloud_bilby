@@ -1,22 +1,23 @@
 import React from "react";
 import {BaseForm} from "./Forms";
 import {Form, Grid, Button} from "semantic-ui-react";
-import {checkForErrors, longerThan, shorterThan} from "../Utils/errors";
+import {checkForErrors, isNumber, notEmpty} from "../../Utils/errors";
 
 
-class StartForm extends React.Component {
+
+class SamplerForm extends React.Component {
     constructor(props) {
         super(props);
 
         this.state = {
             data: {
-                name: '',
-                description: '',
+                samplerChoice: 'dynesty',
+                number: ''
             },
 
             errors: {
-                name: [],
-                description: []
+                samplerChoice: [],
+                number: [],
             },
 
             validate: false
@@ -29,7 +30,7 @@ class StartForm extends React.Component {
             ...this.state,
             data: {
                 ...this.state.data,
-                [data.name]: data.value,
+                [data.name]: data.type === "checkbox" ? data.checked : data.value,
             },
         })
     }
@@ -37,11 +38,8 @@ class StartForm extends React.Component {
     checkErrors = (name, value) => {
         let errors = []
         switch (name) {
-            case 'name':
-                errors = checkForErrors(longerThan(5))(value)
-                break;
-            case 'description':
-                errors = checkForErrors(shorterThan(200))(value)
+            case 'number':
+                errors = checkForErrors(isNumber, notEmpty)(value)
                 break;
         }
         return errors;
@@ -56,6 +54,10 @@ class StartForm extends React.Component {
             ...this.state,
             errors: errors
         })
+    }
+
+    prevStep = () => {
+        this.props.prevStep()
     }
 
     nextStep = () => {
@@ -78,11 +80,18 @@ class StartForm extends React.Component {
             <React.Fragment>
                 <BaseForm onChange={this.handleChange} validate={this.state.validate}
                     forms={[
-                        {rowName: "Job Name", form: <Form.Input name='name' placeholder="Job Name" value={data.name}/>, errors: errors.name},
-                        {rowName: "Job Description", form: <Form.TextArea name='description' placeholder="Job Description" value={data.description}/>, errors: errors.description}
+                        {rowName: 'Sampler', form: <Form.Select name='samplerChoice' placeholder="Select Sampler" value={data.samplerChoice} options={[
+                            {key: 'dynesty', text: 'Dynesty', value: 'dynesty'},
+                            {key: 'nestle', text: 'Nestle', value: 'nestle'},
+                            {key: 'emcee', text: 'Emcee', value: 'emcee'},
+                        ]}/>},
+                        {rowName: data.samplerChoice==='emcee' ? 'Number of Steps' : 'Number of Live Points', form: <Form.Input name='number' placeholder='1000' value={data.number}/>, errors: errors.number}
                     ]}
                 />
                 <Grid.Row columns={2}>
+                    <Grid.Column floated='left'>
+                        <Button onClick={this.prevStep}>Back</Button>
+                    </Grid.Column>
                     <Grid.Column floated='right'>
                         <Button onClick={this.nextStep}>Continue</Button>
                     </Grid.Column>
@@ -92,4 +101,4 @@ class StartForm extends React.Component {
     }
 }
 
-export default StartForm;
+export default SamplerForm;

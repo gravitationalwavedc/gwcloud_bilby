@@ -1,8 +1,7 @@
 import React from "react";
-import {Grid, Header, Image, Message, Step, Button, Label} from "semantic-ui-react";
-import Link from 'found/lib/Link';
+import {Grid} from "semantic-ui-react";
 import {commitMutation} from "relay-runtime";
-import {harnessApi} from "../index";
+import {harnessApi} from "../../index";
 import {graphql} from "graphql";
 
 import StartForm from "./StartForm";
@@ -12,7 +11,7 @@ import PriorsForm from "./PriorsForm";
 import SamplerForm from "./SamplerForm";
 import SubmitForm from "./SubmitForm";
 
-import StepControl from "./Steps";
+import StepControl from "../Utils/Steps";
 
 class StepForm extends React.Component {
     constructor(props) {
@@ -125,7 +124,7 @@ class StepForm extends React.Component {
         const {step, stepsCompleted} = this.state
         return <React.Fragment>
             <Grid.Row>
-                <Grid.Column>
+                <Grid.Column textAlign='center'>
                     <StepControl activeStep={step} stepsCompleted={stepsCompleted} onClick={this.handleStepClick}/>
                 </Grid.Column>
             </Grid.Row>
