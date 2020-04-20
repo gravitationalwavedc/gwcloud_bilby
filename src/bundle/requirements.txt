@@ -1,0 +1,3 @@
+bilby-pipe==0.3.10
+bilby==0.6.5
+filelock

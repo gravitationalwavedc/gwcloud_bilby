@@ -1,0 +1,92 @@
+{
+  "name": "bilby",
+  "description": "",
+  "data": {
+    "type": "simulated",
+    "detector_choice": "['H1', 'L1']",
+    "signal_duration": "4",
+    "sampling_frequency": "4096",
+    "start_time": "0"
+  },
+  "signal": {
+    "luminosity_distance": 2000,
+    "theta_jn": 0.5,
+    "psi": 0.24,
+    "phase": 1.3,
+    "geocent_time": 0,
+    "ra": 1.375,
+    "dec": -1.2108
+  },
+  "priors": {
+    "chirp_mass": {
+      "type": "uniform",
+      "min": 30,
+      "max": 40
+    },
+    "mass_ratio": {
+      "type": "uniform",
+      "min": 0.5,
+      "max": 1
+    },
+    "luminosity_distance": {
+      "type": "uniform",
+      "min": 500,
+      "max": 5000
+    },
+    "theta_jn": {
+      "type": "sine",
+      "boundary": "reflective"
+    },
+    "psi": {
+      "type": "uniform",
+      "min": 0,
+      "max": 3.1415926436
+    },
+    "phase": {
+      "type": "uniform",
+      "min": 0,
+      "max": 6.2831853072
+    },
+    "ra": {
+      "type": "uniform",
+      "min": 0.001,
+      "max": 3.14
+    },
+    "dec": {
+      "type": "uniform",
+      "min": -1.571,
+      "max": 1.571
+    },
+    "tilt_1": {
+      "type": "fixed",
+      "value": 0
+    },
+    "tilt_2": {
+      "type": "fixed",
+      "value": 0
+    },
+    "a_1": {
+      "type": "fixed",
+      "value": 0
+    },
+    "a_2": {
+      "type": "fixed",
+      "value": 0
+    },
+    "phi_12": {
+      "type": "fixed",
+      "value": 0
+    },
+    "phi_jl": {
+      "type": "fixed",
+      "value": 0
+    }
+  },
+  "sampler": {
+    "type": "dynesty",
+    "nlive": "250",
+    "walks": 10,
+    "nact": 2,
+    "dlogz": 0.5
+  }
+}
