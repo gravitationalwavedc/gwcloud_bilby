@@ -2,7 +2,7 @@ import React from "react";
 import {Grid} from "semantic-ui-react";
 import {commitMutation} from "relay-runtime";
 import {harnessApi} from "../../index";
-import {graphql} from "graphql";
+import { graphql, createFragmentContainer } from "react-relay";
 
 import StartForm from "./StartForm";
 import DataForm from "./DataForm";
@@ -16,21 +16,20 @@ import StepControl from "../Utils/Steps";
 class StepForm extends React.Component {
     constructor(props) {
         super(props);
-        const initialState = this.props.data.bilbyJob === null ? {
+
+        const initialState = {
             start: null,
             data: null,
             signal: null,
             priors: null,
             sampler: null
-        } : this.props.data.bilbyJob
+        }
 
         this.state = {
             step: 1,
             stepsCompleted: 1,
             ...initialState
         }
-
-        this.jobNames = this.props.data.bilbyJobs.edges.map(({node}) => node.name)
     }
 
     nextStep = () => {
@@ -39,7 +38,6 @@ class StepForm extends React.Component {
             step: step + 1,
             stepsCompleted: step == stepsCompleted ? step + 1 : stepsCompleted
         })
-        console.log(this.state)
     }
 
     prevStep = () => {
@@ -67,7 +65,7 @@ class StepForm extends React.Component {
             this.setState({
                 signal: {
                     ...this.state.signal,
-                    signalModel: this.state.signal.signalType,
+                    signalModel: this.state.signal.signalChoice,
                     sameSignal: undefined
                 }
             })
@@ -99,21 +97,22 @@ class StepForm extends React.Component {
 
 
     renderSwitch(step) {
+        const {bilbyJob} = this.props.data
         switch(step) {
             case 1:
-                return <StartForm state={this.state.start} updateParentState={this.handleChange('start')} nextStep={this.nextStep} jobNames={this.jobNames}/>
+                return <StartForm data={bilbyJob === null ? null : bilbyJob.start} state={this.state.start} updateParentState={this.handleChange('start')} nextStep={this.nextStep} jobNames={this.props}/>
             
             case 2:
-                return <DataForm state={this.state.data} updateParentState={this.handleChange('data')} prevStep={this.prevStep} nextStep={this.nextStep}/>
+                return <DataForm data={bilbyJob === null ? null : bilbyJob.data} state={this.state.data} updateParentState={this.handleChange('data')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 3:
-                return <SignalForm state={this.state.signal} updateParentState={this.handleChange('signal')} prevStep={this.prevStep} nextStep={this.nextStep} dataType={this.state.data.dataType}/>
+                return <SignalForm data={bilbyJob === null ? null : bilbyJob.signal} state={this.state.signal} updateParentState={this.handleChange('signal')} prevStep={this.prevStep} nextStep={this.nextStep} dataChoice={this.state.data.dataChoice}/>
 
             case 4:
-                return <PriorsForm state={this.state.priors} updateParentState={this.handleChange('priors')} prevStep={this.prevStep} nextStep={this.nextStep}/>
+                return <PriorsForm data={bilbyJob === null ? null : bilbyJob.priors} state={this.state.priors} updateParentState={this.handleChange('priors')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 5:
-                return <SamplerForm state={this.state.sampler} updateParentState={this.handleChange('sampler')} prevStep={this.prevStep} nextStep={this.nextStep}/>
+                return <SamplerForm data={bilbyJob === null ? null : bilbyJob.sampler} state={this.state.sampler} updateParentState={this.handleChange('sampler')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 6:
                 return <SubmitForm prevStep={this.prevStep} onSubmit={this.handleSubmit}/>
@@ -133,4 +132,29 @@ class StepForm extends React.Component {
     }
 }
 
-export default StepForm;
+// export default StepForm;
+export default createFragmentContainer(StepForm, {
+    data: graphql`
+        fragment StepForm_data on Query @argumentDefinitions(
+            jobId: {type: "ID!"}
+        ){
+            bilbyJob (id: $jobId){
+                start {
+                    ...StartForm_data
+                }
+                data {
+                    ...DataForm_data
+                }
+                signal {
+                    ...SignalForm_data
+                }
+                priors {
+                    ...PriorsForm_data
+                }
+                sampler {
+                    ...SamplerForm_data
+                }
+            }
+        }
+    `
+});

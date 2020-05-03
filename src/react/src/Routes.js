@@ -11,35 +11,6 @@ import BilbyHomePage from "./Pages/BilbyHomePage";
 function getRoutes() {
     return (
         <Route>
-            {/* <Route
-                Component={Hello}
-                query={graphql`
-                   query Routes_UserDetails_Query {
-                     gwclouduser {
-                       username
-                     }
-                   }
-                `}
-                environment={harnessApi.getEnvironment('bilby')}
-            /> */}
-            {/* <Route
-                Component={HelloAgain}
-                query={graphql`
-                   query Routes_HelloAgain_Query {
-                     gwclouduser {
-                       ...HelloAgain_user
-                     }
-                   }
-                `}
-                environment={harnessApi.getEnvironment('bilby')}
-                path="another"
-                render={({Component, props, retry, error}) => {
-                  if (!Component || !props)
-                  return <div>Loading...</div>;
-                  
-                  return <Component user={props.gwclouduser} {...props}/>
-                }}
-            /> */}
             <Route
                 Component={BilbyHomePage}
                 query={graphql`
@@ -54,7 +25,8 @@ function getRoutes() {
             <Route path="job-form" 
               query={graphql`
                 query Routes_JobForm_Query ($jobId: ID!){
-                  ...BilbyJobForm_data @arguments(jobId: $jobId)
+                  ...StepForm_data @arguments(jobId: $jobId)
+                  ...StartForm_jobNames
                 }
               `}
               prepareVariables={(params, {location}) => ({
@@ -67,7 +39,7 @@ function getRoutes() {
                   if (!Component || !props)
                       return <div>Loading...</div>;
 
-                  return <Component data={props} {...props}/>
+                  return <Component {...props}/>
               }}/>
             <Route path="job-list"
               query={graphql`

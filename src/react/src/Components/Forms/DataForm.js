@@ -3,69 +3,61 @@ import {BaseForm} from "./Forms";
 import {Form, Grid, Button} from "semantic-ui-react";
 import {checkForErrors, isNumber, notEmpty} from "../../Utils/errors";
 
-
+import { graphql, createFragmentContainer } from "react-relay";
 
 class DataForm extends React.Component {
     constructor(props) {
         super(props);
 
+        const initialData = {
+            dataChoice: 'simulated',
+            hanford: false,
+            livingston: false,
+            virgo: false,
+            signalDuration: '',
+            samplingFrequency: '',
+            startTime: ''
+        }
+
+        const errors = {}
+        Object.keys(initialData).map((key) => {
+            errors[key] = []
+        })
+
+        var data = (this.props.data !== null) ? this.props.data : initialData
+        data = (this.props.state !== null) ? this.props.state : data
         this.state = {
-            data: {
-                dataChoice: 'simulated',
-                hanford: false,
-                livingston: false,
-                virgo: false,
-                signalDuration: '',
-                samplingFrequency: '',
-                startTime: ''
-            },
-
-            errors: {
-                signalDuration: [],
-                samplingFrequency: [],
-                startTime: []
-            },
-
+            data: data,
+            errors: errors,
             validate: false
         }
-        this.state.data = this.props.state === null ? this.state.data : this.props.state
+
+        this.forms = [
+            {label: 'Type of Data', name: 'dataChoice', form: <Form.Select placeholder="Select Data Type" options={[
+                {key: 'simulated', text: 'Simulated', value: 'simulated'},
+                {key: 'open', text: 'Open', value: 'open'}
+            ]}/>},
+            {label: 'Detectors', name: 'hanford', form: <Form.Checkbox label="Hanford"/>},
+            {label: null, name: 'livingston', form: <Form.Checkbox label="Livingston"/>},
+            {label: null, name: 'virgo', form: <Form.Checkbox label="Virgo"/>},
+            {label: 'Signal Duration (s)', name: 'signalDuration', form: <Form.Input placeholder='2'/>, errFunc: checkForErrors(isNumber, notEmpty)},
+            {label: 'Sampling Frequency (Hz)', name: 'samplingFrequency', form: <Form.Input placeholder='2'/>, errFunc: checkForErrors(isNumber, notEmpty)},
+            {label: 'Start Time', name: 'startTime', form: <Form.Input placeholder='2.1'/>, errFunc: checkForErrors(isNumber, notEmpty)}
+
+        ]
     }
 
-    handleChange = (e, data) => {
-        this.setState({
-            ...this.state,
+    handleChange = ({name, value, errors}) => {
+        this.setState(prevState => ({
             data: {
-                ...this.state.data,
-                [data.name]: data.type === "checkbox" ? data.checked : data.value,
+                ...prevState.data,
+                [name]: value,
+            },
+            errors: {
+                ...prevState.errors,
+                [name]: errors
             }
-        })
-    }
-
-    checkErrors = (name, value) => {
-        let errors = []
-        switch (name) {
-            case 'signalDuration':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-            case 'samplingFrequency':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-            case 'startTime':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-        }
-        return errors;
-    }
-
-    handleErrors = () => {
-        let {data, errors} = this.state
-        for (const [name, val] of Object.entries(data)) {
-            errors[name] = this.checkErrors(name, val)
-        }
-        this.setState({
-            ...this.state,
-            errors: errors
-        })
+        })) 
     }
 
     prevStep = () => {
@@ -73,11 +65,9 @@ class DataForm extends React.Component {
     }
 
     nextStep = () => {
-        this.handleErrors()
         const notEmpty = (arr) => {return Boolean(arr && arr.length)}
         if (Object.values(this.state.errors).some(notEmpty)) {
             this.setState({
-              ...this.state,
               validate: true  
             })
         } else {
@@ -90,27 +80,13 @@ class DataForm extends React.Component {
         const {data, errors} = this.state
         return (
             <React.Fragment>
-                <BaseForm onChange={this.handleChange} validate={this.state.validate}
-                    forms={[
-                        {rowName: 'Type of Data', form: <Form.Select name='dataChoice' placeholder="Select Data Type" value={data.dataChoice} options={[
-                            {key: 'simulated', text: 'Simulated', value: 'simulated'},
-                            {key: 'open', text: 'Open', value: 'open'}
-                        ]}/>},
-                        {rowName: 'Detectors', form: [<Form.Checkbox key={1} name='hanford' label="Hanford" checked={data.hanford}/>,
-                                                    <Form.Checkbox key={2} name='livingston' label="Livingston" checked={data.livingston}/>,
-                                                    <Form.Checkbox key={3} name='virgo' label="Virgo" checked={data.virgo}/>]},
-                        {rowName: 'Signal Duration (s)', form: <Form.Input name='signalDuration' placeholder='2' value={data.signalDuration}/>, errors: errors.signalDuration},
-                        {rowName: 'Sampling Frequency (Hz)', form: <Form.Input name='samplingFrequency' placeholder='2' value={data.samplingFrequency}/>, errors: errors.samplingFrequency},
-                        {rowName: 'Start Time', form: <Form.Input name='startTime' placeholder='2.1' value={data.startTime}/>, errors: errors.startTime}
-        
-                    ]}
-                />
+                <BaseForm data={data} errors={errors} forms={this.forms} onChange={this.handleChange} validate={this.state.validate}/>
                 <Grid.Row columns={2}>
                     <Grid.Column floated='left'>
                         <Button onClick={this.prevStep}>Back</Button>
                     </Grid.Column>
                     <Grid.Column floated='right'>
-                        <Button onClick={this.nextStep}>Continue</Button>
+                        <Button onClick={this.nextStep}>Save and Continue</Button>
                     </Grid.Column>
                 </Grid.Row>
             </React.Fragment>
@@ -118,4 +94,17 @@ class DataForm extends React.Component {
     }
 }
 
-export default DataForm;
+// export default DataForm;
+export default createFragmentContainer(DataForm, {
+    data: graphql`
+        fragment DataForm_data on DataType {
+            dataChoice
+            hanford
+            livingston
+            virgo
+            signalDuration
+            samplingFrequency
+            startTime
+        }
+    `
+});

@@ -4,15 +4,17 @@ import {assembleErrorString} from "../../Utils/errors";
 
 
 
-function BaseForm({forms, validate, onChange}) {
-    const form_arr = forms.map((form, index) => <FormRow key={index} rowName={form.rowName} children={form.form} errors={form.errors} validate={validate} onChange={onChange}/>)
+function BaseForm({data, errors, forms, onChange, validate}) {
+    const form_arr = forms.map(({label, name, form, errFunc, requiredField, toggle}, index) => (toggle ? null : <FormBundle key={index} label={label} children={form} name={name} value={data[name]} errors={errors[name]} errFunc={errFunc} validate={validate} onChange={onChange} required={typeof(requiredField) !== 'undefined' ? requiredField : true  }/>))
 
     return (
         <Grid.Row>
-            <Grid.Column width={8}>
-                <Grid divided='vertically' textAlign='left'>
-                    {form_arr}
-                </Grid>
+            <Grid.Column width={10}>
+                <Form>
+                    <Grid textAlign='left'>
+                        {form_arr}
+                    </Grid>
+                </Form>
             </Grid.Column>
         </Grid.Row>
 
@@ -23,7 +25,11 @@ class PriorsFormInput extends React.Component {
     constructor(props) {
         super(props);
 
-        this.state = this.props.value
+        var initialState = {}
+        for (let [key, val] of Object.entries(this.props.value)) {
+            initialState[key] = val !== null ? val : ''
+        }
+        this.state = initialState
     }
     
     handleChange = (e, data) => {
@@ -32,7 +38,7 @@ class PriorsFormInput extends React.Component {
             [data.name]: data.value
         }
         this.setState(newState)
-        this.props.onChange(this.props.name, newState)
+        this.props.onChange(e, {name: this.props.name, value: newState})
     }
 
     render() {
@@ -78,23 +84,34 @@ class PriorsFormInput extends React.Component {
     }
 }
 
-function FormRow(props) {
-    let formHasError = false
-    if (props.errors && props.errors.length && props.validate) {
-        formHasError = true
+function FormBundle({label, children, name, value, errors, errFunc, validate, onChange, required}) {
+    let showError = false
+    if (errors && errors.length && validate) {
+        showError = true
     }
+    
+    const handleChange = (e, data) => {
+        const errors = typeof(errFunc) !== 'undefined' ? errFunc(data.value) : []
+        onChange({name: data.name, value: data.type === "checkbox" ? data.checked : data.value, errors: errors})
+    }
+
+    const childProps = {onChange: handleChange, name: name, error: showError}
+    if (children.props.control && children.props.control.defaultProps && children.props.control.defaultProps.type === 'checkbox') {
+        childProps['checked'] = value
+    } else {
+        childProps['value'] = value
+    }
+
     return (
-        <Grid.Row columns={3}>
+        <Grid.Row columns={2}>
             <Grid.Column verticalAlign='middle' width={4}>
-                {props.rowName}
+                <Form.Field required={required} label={label}/>
             </Grid.Column>
             <Grid.Column verticalAlign='middle' width={8}>
-                <Form>
-                    {React.Children.map(props.children, (child => React.cloneElement(child, {onChange: props.onChange, error: formHasError})))}
-                </Form>
+                {React.cloneElement(children, childProps)}
             </Grid.Column>
             <Grid.Column verticalAlign='middle' width={4}>
-                {formHasError ? <Label basic pointing='left' color='red' content={assembleErrorString(props.errors)}/> : null}
+                {showError ? <Label basic pointing='left' color='red' content={assembleErrorString(errors)}/> : null}
             </Grid.Column>
         </Grid.Row>
     )

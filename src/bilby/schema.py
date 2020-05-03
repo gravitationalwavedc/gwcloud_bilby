@@ -176,7 +176,6 @@ class BilbyJobMutation(relay.ClientIDMutation):
 
     @classmethod
     def mutate_and_get_payload(cls, root, info, start, data, signal, prior, sampler):
-        print(info.context.user.user_id, info.context.user.username)
         create_bilby_job(info.context.user.user_id, info.context.user.username, start, data, signal, prior, sampler)
 
         return BilbyJobMutation(result='Job created')

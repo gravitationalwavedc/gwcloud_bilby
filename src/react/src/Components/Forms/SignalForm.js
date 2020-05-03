@@ -3,98 +3,88 @@ import {BaseForm} from "./Forms";
 import {Form, Grid, Button} from "semantic-ui-react";
 import {checkForErrors, isNumber, smallerThan, notEmpty} from "../../Utils/errors";
 
+import { graphql, createFragmentContainer } from "react-relay";
 
 
 class SignalForm extends React.Component {
     constructor(props) {
         super(props);
 
+        const initialData = {
+            signalChoice: 'binaryBlackHole',
+            signalModel: '',
+            mass1: '',
+            mass2: '',
+            luminosityDistance: '',
+            psi: '',
+            iota: '',
+            phase: '',
+            mergerTime: '',
+            ra: '',
+            dec: '',
+            sameSignal: true
+        }
+
+        const errors = {}
+        Object.keys(initialData).map((key) => {
+            errors[key] = []
+        })
+
+        var data = (this.props.data !== null) ? this.props.data : initialData
+        data = (this.props.state !== null) ? this.props.state : data
+
+        const toggles = {
+            openData: this.props.dataChoice == 'open',
+            bbhToggle: initialData.signalChoice == 'binaryBlackHole'
+        }
         this.state = {
-            data: {
-                signalChoice: 'binaryBlackHole',
-                signalModel: '',
-                mass1: '',
-                mass2: '',
-                luminosityDistance: '',
-                psi: '',
-                iota: '',
-                phase: '',
-                mergerTime: '',
-                ra: '',
-                dec: '',
-                sameSignal: false
-            },
+            data: data,
+            errors: errors,
+            validate: false,
+            toggles: toggles
+        }
+    }
 
+    setForms = ({openData, bbhToggle}) => {
+        const signalOptions = [{key: 'binaryBlackHole', text: 'Binary Black Hole', value: 'binaryBlackHole'}]
+        const signalInjectOptions = openData ? [{key: 'none', text: 'None', value: 'none'}].concat(signalOptions) : signalOptions
+
+        this.forms = [{label: 'Signal Inject', name: 'signalChoice', form: <Form.Select placeholder="Select Signal Type" options={signalInjectOptions}/>}]
+        if (bbhToggle) {
+            this.forms.push(
+                {label: 'Mass 1 (M\u2299)', name: 'mass1', form: <Form.Input  placeholder="2.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Mass 2 (M\u2299)', name: 'mass2', form: <Form.Input  placeholder="1.0"/>, errFunc: checkForErrors(smallerThan(this.state.data.mass1, 'Mass 1'), isNumber, notEmpty)},
+                {label: 'Luminosity Distance (Mpc)', name: 'luminosityDistance', form: <Form.Input  placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'psi', name: 'psi', form: <Form.Input placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'iota', name: 'iota', form: <Form.Input placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Phase', name: 'phase', form: <Form.Input placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Merger Time (GPS Time)', name: 'mergerTime', form: <Form.Input placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Right Ascension (radians)', name: 'ra', form: <Form.Input placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Declination (degrees)', name: 'dec', form: <Form.Input  placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Same Signal for Model', name: 'sameSignal', form: <Form.Checkbox/>}
+            )
+        }
+        if ((openData && !bbhToggle) || (bbhToggle && !this.state.data.sameSignal)) {
+            this.forms.push({label: 'Signal Model', name: 'signalModel', form: <Form.Select placeholder="Select Signal Model" options={signalOptions}/>})
+        }
+    }
+
+    handleChange = ({name, value, errors}) => {
+        const bbhToggle = name === 'signalChoice' ? value === 'binaryBlackHole' : this.state.data.signalChoice === 'binaryBlackHole'
+        this.setState(prevState => ({
+            data: {
+                ...prevState.data,
+                [name]: value,
+            },
             errors: {
-                mass1: [],
-                mass2: [],
-                luminosityDistance: [],
-                psi: [],
-                iota: [],
-                phase: [],
-                mergerTime: [],
-                ra: [],
-                dec: [],
+                ...prevState.errors,
+                [name]: errors
             },
-
-            validate: false
-        }
-        this.state.data = this.props.state === null ? this.state.data : this.props.state
-    }
-
-    handleChange = (e, data) => {
-        this.setState({
-            ...this.state,
-            data: {
-                ...this.state.data,
-                [data.name]: data.type === "checkbox" ? data.checked : data.value,
-            },
-        })
-    }
-
-    checkErrors = (name, value) => {
-        let errors = []
-        switch (name) {
-            case 'mass1':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-            case 'mass2':
-                errors = checkForErrors(smallerThan(this.state.data.mass1, 'Mass 1'), isNumber, notEmpty)(value)
-                break;
-            case 'luminosityDistance':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-            case 'psi':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-            case 'iota':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-            case 'phase':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-            case 'mergerTime':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-            case 'ra':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-            case 'dec':
-                errors = checkForErrors(isNumber, notEmpty)(value)
-                break;
-        }
-        return errors;
-    }
-
-    handleErrors = () => {
-        let {data, errors} = this.state
-        for (const [name, val] of Object.entries(data)) {
-            errors[name] = this.checkErrors(name, val)
-        }
-        this.setState({
-            ...this.state,
-            errors: errors
-        })
+            toggles: {
+                ...prevState.toggles,
+                bbhToggle: bbhToggle
+            }
+        })) 
     }
 
     prevStep = () => {
@@ -102,7 +92,6 @@ class SignalForm extends React.Component {
     }
 
     nextStep = () => {
-        this.handleErrors()
         const notEmpty = (arr) => {return Boolean(arr && arr.length)}
         if (Object.values(this.state.errors).some(notEmpty)) {
             this.setState({
@@ -116,37 +105,17 @@ class SignalForm extends React.Component {
     }
 
     render() {
-        const {data, errors} = this.state
-        const noneOption = [{key: 'none', text: 'None', value: 'none'}]
-        const signalOptions = [{key: 'binaryBlackHole', text: 'Binary Black Hole', value: 'binaryBlackHole'}]
+        const {data, errors, toggles} = this.state
+        this.setForms(toggles)
         return (
             <React.Fragment>
-                <BaseForm onChange={this.handleChange} validate={this.state.validate}
-                    forms={this.props.dataType == 'open' ? [
-                            {rowName: 'Signal Inject', form: <Form.Select name='signalChoice' placeholder="Select Signal Type" value={data.signalChoice} options={noneOption}/>},
-                            {rowName: 'Signal Model', form: <Form.Select name='signalModel' placeholder="Select Signal Model" value={data.signalModel} options={signalOptions}/>},
-                        ]
-                        : [
-                            {rowName: 'Signal Inject', form: <Form.Select name='signalChoice' placeholder="Select Signal Type" value={data.signalChoice} options={signalOptions}/>},
-                            {rowName: 'Mass 1 (M\u2299)', form: <Form.Input name='mass1' placeholder="2.0" value={data.mass1}/>, errors: errors.mass1},
-                            {rowName: 'Mass 2 (M\u2299)', form: <Form.Input name='mass2' placeholder="1.0" value={data.mass2}/>, errors: errors.mass2},
-                            {rowName: 'Luminosity Distance (Mpc)', form: <Form.Input name='luminosityDistance' placeholder="1.0" value={data.luminosityDistance}/>, errors: errors.luminosityDistance},
-                            {rowName: 'psi', form: <Form.Input name='psi' placeholder="1.0" value={data.psi}/>, errors: errors.psi},
-                            {rowName: 'iota', form: <Form.Input name='iota' placeholder="1.0" value={data.iota}/>, errors: errors.iota},
-                            {rowName: 'Phase', form: <Form.Input name='phase' placeholder="1.0" value={data.phase}/>, errors: errors.phase},
-                            {rowName: 'Merger Time (GPS Time)', form: <Form.Input name='mergerTime' placeholder="1.0" value={data.mergerTime}/>, errors: errors.mergerTime},
-                            {rowName: 'Right Ascension (radians)', form: <Form.Input name='ra' placeholder="1.0" value={data.ra}/>, errors: errors.ra},
-                            {rowName: 'Declination (degrees)', form: <Form.Input name='dec' placeholder="1.0" value={data.dec}/>, errors: errors.dec},
-                            {rowName: 'Same Signal for Model', form: <Form.Checkbox name='sameSignal' checked={data.sameSignal}/>},
-                        ]
-                    }
-                />
+                <BaseForm data={data} errors={errors} forms={this.forms} onChange={this.handleChange} validate={this.state.validate}/>
                 <Grid.Row columns={2}>
                     <Grid.Column floated='left'>
                         <Button onClick={this.prevStep}>Back</Button>
                     </Grid.Column>
                     <Grid.Column floated='right'>
-                        <Button onClick={this.nextStep}>Continue</Button>
+                        <Button onClick={this.nextStep}>Save and Continue</Button>
                     </Grid.Column>
                 </Grid.Row>
             </React.Fragment>
@@ -154,4 +123,21 @@ class SignalForm extends React.Component {
     }
 }
 
-export default SignalForm;
+export default createFragmentContainer(SignalForm, {
+    data: graphql`
+        fragment SignalForm_data on SignalType {
+            signalChoice
+            signalModel
+            mass1
+            mass2
+            luminosityDistance
+            psi
+            iota
+            phase
+            mergerTime
+            ra
+            dec
+        }
+    `
+});
+
