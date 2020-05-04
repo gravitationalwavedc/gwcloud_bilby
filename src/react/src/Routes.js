@@ -1,7 +1,5 @@
 import React from "react";
 import {Route} from 'found'
-import HelloAgain from "./Pages/HelloAgain";
-import Hello from "./Pages/Hello";
 import BilbyJobForm from "./Pages/BilbyJobForm";
 import BilbyJobList from "./Pages/BilbyJobList";
 import {graphql} from "react-relay";

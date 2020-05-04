@@ -14,7 +14,7 @@ class BilbyBasePage extends React.Component {
                 <Header as='h2' attached='top'>{this.props.title}</Header>
                 <Breadcrumbs match={this.props.match} router={this.props.router} paths={this.props.breadcrumbPaths}/>
                 <Segment attached id='scrollable'>
-                    <Grid centered textAlign='center' style={{height: '100vh'}} verticalAlign='middle'>
+                    <Grid centered textAlign='center' style={{minHeight: '100vh'}} verticalAlign='middle'>
                         {this.props.children}
                     </Grid>
                 </Segment>

@@ -14,7 +14,12 @@ from django.conf import settings
 
 def parameter_resolvers(name):
     def func(parent, info):
-        return parent.parameter.get(name=name).value
+        if parent.parameter.get(name=name).value in ['true', 'True']:
+            return True
+        elif parent.parameter.get(name=name).value in ['false', 'False']:
+            return False
+        else:
+            return parent.parameter.get(name=name).value
     return func
 
 # Used to give values to fields in a DjangoObjectType, if the fields were not present in the Django model
