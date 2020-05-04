@@ -1,3 +1,8 @@
+import datetime
+
+import jwt
+from django.conf import settings
+
 from .forms import BilbyJobForm
 from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
 
@@ -47,5 +52,35 @@ def create_bilby_job(user_id, username, start, data, signal, prior, sampler):
             sampler_param = SamplerParameter(job=bilby_job, sampler=job_sampler, name=key, value=val)
             sampler_param.save()
 
+    # Submit the job to the job controller
 
+    # Create the jwt token
+    jwt_enc = jwt.encode(
+        {
+            'userId': user_id,
+            'exp': datetime.datetime.now() + datetime.timedelta(days=30)
+        },
+        settings.SECRET_KEY,
+        algorithm='HS256'
+    )
+
+    # Create the parameter json
+
+    data = {
+        "parameters": params,
+        "cluster": "localhost",
+        "bundle": "fbc9f7c0815f1a83b0de36f957351c93797b2049"
+    }
+
+    result = requests.request(
+        "POST", "http://localhost:8000/job/apiv1/job/",
+        data=json.dumps(data),
+        headers={
+            "Authorization": jwt_enc
+        }
+    )
+
+    print(result.status_code)
+    print(result.headers)
+    print(result.content)
     

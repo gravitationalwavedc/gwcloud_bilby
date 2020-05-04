@@ -13,6 +13,8 @@ class BilbyJob(models.Model):
     creation_time = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now_add=True)
 
+    job_id = models.IntegerField(default=None, blank=True, null=True)
+
     class Meta:
         unique_together = (
             ('username', 'name'),
@@ -20,6 +22,54 @@ class BilbyJob(models.Model):
 
     def __str__(self):
         return 'Bilby Job: {}'.format(self.name)
+
+    def as_json(self):
+        # Get the data container type for this job
+        data = {
+            "type": self.data.data_choice
+        }
+
+        # Iterate over the data parameters
+        for d in self.data_parameter.all():
+            data[d.name] = d.value
+
+        # Get the signal data
+        signal = {}
+        for s in self.signal_parameter.all():
+            signal[s.name] = s.value
+
+        # Get the prior data
+        prior = {}
+        for p in self.prior.all():
+            if p.prior_choice in FIXED:
+                prior[p.name] = {
+                    "type": "fixed",
+                    "value": p.fixed_value
+                }
+            elif p.prior_choice in UNIFORM:
+                prior[p.name] = {
+                    "type": "uniform",
+                    "min": p.uniform_min_value,
+                    "max": p.uniform_max_value
+                }
+
+        # Get the sampler type
+        sampler = {
+            "type": self.sampler.sampler_choice
+        }
+
+        # Iterate over the sampler parameters
+        for s in self.sampler_parameter.all():
+            sampler[s.name] = s.value
+
+        return dict(
+            name=self.name,
+            description=self.description,
+            data=data,
+            signal=signal,
+            priors=prior,
+            sampler=sampler
+        )
 
 
 class Data(models.Model):
@@ -34,6 +84,16 @@ class Data(models.Model):
 
     def __str__(self):
         return 'Data container for {}'.format(self.job.name)
+
+    def as_json(self):
+        return dict(
+            id=self.id,
+            value=dict(
+                job=self.job.id,
+                choice=self.data_choice,
+            ),
+        )
+
 
 class DataParameter(models.Model):
     job = models.ForeignKey(BilbyJob, related_name='data_parameter', on_delete=models.CASCADE)
@@ -50,9 +110,10 @@ class DataParameter(models.Model):
 
     name = models.CharField(max_length=20, choices=PARAMETER_CHOICES, blank=False, null=False)
     value = models.CharField(max_length=1000, blank=True, null=True)
-    
+
     def __str__(self):
         return 'Data parameter {} for Bilby Job {}'.format(self.name, self.job.name)
+
 
 class Signal(models.Model):
     job = models.OneToOneField(BilbyJob, related_name='signal', on_delete=models.CASCADE)
@@ -65,10 +126,11 @@ class Signal(models.Model):
     signal_choice = models.CharField(max_length=50, choices=SIGNAL_CHOICES, default=SKIP[0])
     signal_model = models.CharField(max_length=50, choices=SIGNAL_CHOICES[1:])
 
+
 class SignalParameter(models.Model):
     job = models.ForeignKey(BilbyJob, related_name='signal_parameter', on_delete=models.CASCADE)
     signal = models.ForeignKey(Signal, related_name='parameter', on_delete=models.CASCADE)
-    
+
     PARAMETER_CHOICES = [
         MASS1,
         MASS2,
@@ -83,6 +145,7 @@ class SignalParameter(models.Model):
 
     name = models.CharField(max_length=20, choices=PARAMETER_CHOICES, blank=False, null=False)
     value = models.FloatField(blank=True, null=True)
+
 
 class Prior(models.Model):
     job = models.ForeignKey(BilbyJob, related_name='prior', on_delete=models.CASCADE)
@@ -103,6 +166,7 @@ class Prior(models.Model):
             ('job', 'name')
         )
 
+
 class Sampler(models.Model):
     job = models.OneToOneField(BilbyJob, related_name='sampler', on_delete=models.CASCADE)
 
@@ -113,6 +177,16 @@ class Sampler(models.Model):
     ]
 
     sampler_choice = models.CharField(max_length=15, choices=SAMPLER_CHOICES, default=DYNESTY[0])
+
+    def as_json(self):
+        return dict(
+            id=self.id,
+            value=dict(
+                job=self.job.id,
+                choice=self.sampler_choice,
+            ),
+        )
+
 
 class SamplerParameter(models.Model):
     job = models.ForeignKey(BilbyJob, related_name='sampler_parameter', on_delete=models.CASCADE)

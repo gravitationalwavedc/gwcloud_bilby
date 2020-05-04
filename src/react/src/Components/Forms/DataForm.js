@@ -42,7 +42,7 @@ class DataForm extends React.Component {
             {label: null, name: 'virgo', form: <Form.Checkbox label="Virgo"/>},
             {label: 'Signal Duration (s)', name: 'signalDuration', form: <Form.Input placeholder='2'/>, errFunc: checkForErrors(isNumber, notEmpty)},
             {label: 'Sampling Frequency (Hz)', name: 'samplingFrequency', form: <Form.Input placeholder='2'/>, errFunc: checkForErrors(isNumber, notEmpty)},
-            {label: 'Start Time', name: 'startTime', form: <Form.Input placeholder='2.1'/>, errFunc: checkForErrors(isNumber, notEmpty)}
+            {label: 'Trigger Time', name: 'trigger-time', form: <Form.Input placeholder='2.1'/>, errFunc: checkForErrors(isNumber, notEmpty)}
 
         ]
     }
