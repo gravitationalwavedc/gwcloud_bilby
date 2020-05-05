@@ -1,8 +1,10 @@
 import datetime
+import json
 
 import jwt
 from django.conf import settings
 from django.db import transaction
+import requests
 
 from .forms import BilbyJobForm
 from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
@@ -73,20 +75,34 @@ def create_bilby_job(user_id, username, start, data, signal, prior, sampler):
 
         print(params)
 
+        # Construct the request parameters to the job controller, note that parameters must be a string, not an objects
         data = {
-            "parameters": params,
-            "cluster": "localhost",
+            "parameters": json.dumps(params),
+            "cluster": "ozstar",
             "bundle": "fbc9f7c0815f1a83b0de36f957351c93797b2049"
         }
 
-        # result = requests.request(
-        #     "POST", "http://localhost:8000/job/apiv1/job/",
-        #     data=json.dumps(data),
-        #     headers={
-        #         "Authorization": jwt_enc
-        #     }
-        # )
-        #
-        # print(result.status_code)
-        # print(result.headers)
-        # print(result.content)
+        # Initiate the request to the job controller
+        result = requests.request(
+            "POST", settings.GWCLOUD_JOB_CONTROLLER_API_URL,
+            data=json.dumps(data),
+            headers={
+                "Authorization": jwt_enc
+            }
+        )
+
+        # Check that the request was successful
+        if result.status_code != 200:
+            # Oops
+            msg = f"Error submitting job, got error code: {result.status_code}\n\n{result.headers}\n\n{result.content}"
+            print(msg)
+            raise Exception(msg)
+
+        print(f"Job submitted OK.\n{result.headers}\n\n{result.content}")
+
+        # Parse the response from the job controller
+        result = json.loads(result.content)
+
+        # Save the job id
+        bilby_job.job_id = result["jobId"]
+        bilby_job.save()

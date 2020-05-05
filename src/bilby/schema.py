@@ -57,6 +57,7 @@ class BilbyJobNode(DjangoObjectType):
         interfaces = (relay.Node,)
         filterset_class = UserBilbyJobFilter
 
+    job_status = graphene.String()
     last_updated = graphene.String()
     start = graphene.Field(OutputStartType)
     priors = graphene.Field(OutputPriorType)

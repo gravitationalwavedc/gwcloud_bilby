@@ -176,7 +176,7 @@ export default createFragmentContainer(DataForm, {
             virgo
             signalDuration
             samplingFrequency
-            startTime
+            #startTime
         }
     `
 });

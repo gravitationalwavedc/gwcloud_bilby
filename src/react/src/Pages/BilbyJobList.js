@@ -83,6 +83,7 @@ export default createPaginationContainer(BilbyJobList,
                             name
                             description
                             lastUpdated
+                            jobStatus
                         }
                     }
                   }

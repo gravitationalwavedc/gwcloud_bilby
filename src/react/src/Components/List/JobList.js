@@ -34,7 +34,7 @@ class JobList extends React.Component {
     }
 
     render() {
-        this.rows = this.props.jobs.edges.map(({node}) => <TableRow key={node.id} id={node.id} name={node.name} description={node.description} lastUpdated={node.lastUpdated} {...this.props}/>)
+        this.rows = this.props.jobs.edges.map(({node}) => <TableRow key={node.id} id={node.id} name={node.name} description={node.description} lastUpdated={node.lastUpdated} jobStatus={node.jobStatus} {...this.props}/>)
         const {order, direction} = this.state
         return <React.Fragment>
             <Grid.Row>
@@ -45,6 +45,7 @@ class JobList extends React.Component {
                                 <Table.HeaderCell sorted={order === 'name' ? direction : null} onClick={this.handleSort('name')}>Name</Table.HeaderCell>
                                 <Table.HeaderCell sorted={order === 'description' ? direction : null} onClick={this.handleSort('description')}>Description</Table.HeaderCell>
                                 <Table.HeaderCell sorted={order === 'last_updated' ? direction : null} onClick={this.handleSort('last_updated')}>Edit Date</Table.HeaderCell>
+                                <Table.HeaderCell sorted={order === 'jobStatus' ? direction : null} onClick={this.handleSort('jobStatus')}>Job Status</Table.HeaderCell>
                                 <Table.HeaderCell>Actions</Table.HeaderCell>
                             </Table.Row>
                         </Table.Header>
@@ -59,12 +60,13 @@ class JobList extends React.Component {
 }
 
 function TableRow(props) {
-    const {id, name, description, lastUpdated, match, router} = props
+    const {id, name, description, lastUpdated, jobStatus, match, router} = props
     return (
         <Table.Row>
             <Table.Cell content={name}/>
             <Table.Cell content={description}/>
             <Table.Cell content={lastUpdated}/>
+            <Table.Cell content={jobStatus}/>
             <Table.Cell>
                 <Link to={{
                     pathname: '/bilby/job-form/',
@@ -73,6 +75,15 @@ function TableRow(props) {
                     }
                 }} activeClassName="selected" exact match={match} router={router}>
                     Copy Job and Edit
+                </Link>
+                <br/>
+                <Link to={{
+                    pathname: '/bilby/job-results/',
+                    state: {
+                        jobId: id
+                    }
+                }} activeClassName="selected" exact match={match} router={router}>
+                    View Results
                 </Link>
             </Table.Cell>
         </Table.Row>

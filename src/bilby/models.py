@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from .utils.request_job_status import request_job_status
 from .variables import *
 
 
@@ -22,6 +23,10 @@ class BilbyJob(models.Model):
 
     def __str__(self):
         return 'Bilby Job: {}'.format(self.name)
+
+    @property
+    def job_status(self):
+        return request_job_status(self)
 
     def as_json(self):
         # Get the data container type for this job

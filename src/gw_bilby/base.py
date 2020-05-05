@@ -155,3 +155,5 @@ GRAPHQL_JWT = {
     'JWT_GET_USER_BY_NATURAL_KEY_HANDLER': lambda x: x,
     'JWT_VERIFY_EXPIRATION': True
 }
+
+GWCLOUD_JOB_CONTROLLER_API_URL = "https://gw-cloud.org/job/apiv1/job/"
