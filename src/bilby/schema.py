@@ -6,11 +6,13 @@ from django_filters import FilterSet, OrderingFilter
 
 from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
 from .views import create_bilby_job
-from .types import OutputStartType, AbstractDataType, AbstractSignalType, OutputPriorType, OutputPriorStructureType, InputPriorType, AbstractSamplerType
+from .types import OutputStartType, AbstractDataType, AbstractSignalType, OutputPriorType, OutputPriorStructureType, \
+    InputPriorType, AbstractSamplerType
 
 from graphql_jwt.decorators import login_required
 
 from django.conf import settings
+
 
 def parameter_resolvers(name):
     def func(parent, info):
@@ -20,13 +22,16 @@ def parameter_resolvers(name):
             return False
         else:
             return parent.parameter.get(name=name).value
+
     return func
+
 
 # Used to give values to fields in a DjangoObjectType, if the fields were not present in the Django model
 # Specifically used here to get values from the parameter models
 def populate_fields(object_to_modify, field_list, resolver_func):
     for name in field_list:
         setattr(object_to_modify, 'resolve_{}'.format(name), staticmethod(resolver_func(name)))
+
 
 class UserBilbyJobFilter(FilterSet):
     class Meta:
@@ -44,11 +49,12 @@ class UserBilbyJobFilter(FilterSet):
     def qs(self):
         return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
 
+
 class BilbyJobNode(DjangoObjectType):
     class Meta:
         model = BilbyJob
         convert_choices_to_enum = False
-        interfaces = (relay.Node, )
+        interfaces = (relay.Node,)
         filterset_class = UserBilbyJobFilter
 
     last_updated = graphene.String()
@@ -69,7 +75,7 @@ class BilbyJobNode(DjangoObjectType):
         d = {}
         for prior in parent.prior.all():
             d.update({
-                prior.name : {
+                prior.name: {
                     "value": prior.fixed_value,
                     "type": prior.prior_choice,
                     "min": prior.uniform_min_value,
@@ -79,13 +85,35 @@ class BilbyJobNode(DjangoObjectType):
 
         return d
 
+
 class DataType(DjangoObjectType, AbstractDataType):
     class Meta:
         model = Data
         interfaces = (relay.Node,)
         convert_choices_to_enum = False
 
-populate_fields(DataType, ['hanford', 'livingston', 'virgo', 'signal_duration', 'sampling_frequency', 'start_time'], parameter_resolvers)
+
+populate_fields(
+    DataType,
+    [
+        'hanford',
+        'livingston',
+        'virgo',
+        'signal_duration',
+        'sampling_frequency',
+        'trigger_time',
+        'hanford_minimum_frequency',
+        'hanford_maximum_frequency',
+        'hanfordChannel',
+        'livingston_minimum_frequency',
+        'livingston_maximum_frequency',
+        'livingston_channel',
+        'virgo_minimum_frequency',
+        'virgo_maximum_frequency',
+        'virgo_channel',
+    ],
+    parameter_resolvers
+)
 
 
 class SignalType(DjangoObjectType, AbstractSignalType):
@@ -94,7 +122,22 @@ class SignalType(DjangoObjectType, AbstractSignalType):
         interfaces = (relay.Node,)
         convert_choices_to_enum = False
 
-populate_fields(SignalType, ['mass1', 'mass2', 'luminosity_distance', 'psi', 'iota', 'phase', 'merger_time', 'ra', 'dec'], parameter_resolvers)
+
+populate_fields(
+    SignalType,
+    [
+        # 'mass1',
+        # 'mass2',
+        # 'luminosity_distance',
+        # 'psi',
+        # 'iota',
+        # 'phase',
+        # 'merger_time',
+        # 'ra',
+        # 'dec'
+    ],
+    parameter_resolvers
+)
 
 
 class SamplerType(DjangoObjectType, AbstractSamplerType):
@@ -103,13 +146,18 @@ class SamplerType(DjangoObjectType, AbstractSamplerType):
         interfaces = (relay.Node,)
         convert_choices_to_enum = False
 
-populate_fields(SamplerType, ['number'], parameter_resolvers)
 
+populate_fields(
+    SamplerType,
+    [
+    #    'number'
+    ],
+    parameter_resolvers
+)
 
 
 class UserDetails(ObjectType):
     username = graphene.String()
-    
 
 
 class Query(object):
@@ -141,12 +189,15 @@ class StartInput(graphene.InputObjectType):
     name = graphene.String()
     description = graphene.String()
 
+
 class DataInput(graphene.InputObjectType, AbstractDataType):
     data_choice = graphene.String()
+
 
 class SignalInput(graphene.InputObjectType, AbstractSignalType):
     signal_choice = graphene.String()
     signal_model = graphene.String()
+
 
 # class PriorStructureInput(graphene.InputObjectType):
 #     type = graphene.String()
@@ -184,6 +235,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
         create_bilby_job(info.context.user.user_id, info.context.user.username, start, data, signal, prior, sampler)
 
         return BilbyJobMutation(result='Job created')
+
 
 class Mutation(graphene.ObjectType):
     hello = Hello.Field()

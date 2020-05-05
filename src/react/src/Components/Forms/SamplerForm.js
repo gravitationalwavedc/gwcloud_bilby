@@ -11,7 +11,7 @@ class SamplerForm extends React.Component {
 
         const initialData = {
                 samplerChoice: 'dynesty',
-                number: ''
+                //number: ''
         }
 
         const errors = {}
@@ -30,10 +30,10 @@ class SamplerForm extends React.Component {
         this.forms = [
             {label: 'Sampler', name: 'samplerChoice', form: <Form.Select placeholder="Select Sampler" options={[
                 {key: 'dynesty', text: 'Dynesty', value: 'dynesty'},
-                {key: 'nestle', text: 'Nestle', value: 'nestle'},
-                {key: 'emcee', text: 'Emcee', value: 'emcee'},
+                //{key: 'nestle', text: 'Nestle', value: 'nestle'},
+                //{key: 'emcee', text: 'Emcee', value: 'emcee'},
             ]}/>},
-            {label: data.samplerChoice==='emcee' ? 'Number of Steps' : 'Number of Live Points', name: 'number', form: <Form.Input placeholder='1000'/>, errFunc: checkForErrors(isNumber, notEmpty)}
+            //{label: data.samplerChoice==='emcee' ? 'Number of Steps' : 'Number of Live Points', name: 'number', form: <Form.Input placeholder='1000'/>, errFunc: checkForErrors(isNumber, notEmpty)}
         ]
     }
 

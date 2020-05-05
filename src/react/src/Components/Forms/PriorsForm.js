@@ -1,6 +1,6 @@
 import React from "react";
 import {BaseForm, PriorsFormInput} from "./Forms";
-import {Grid, Button} from "semantic-ui-react";
+import {Grid, Button, Form} from "semantic-ui-react";
 import {checkForErrors, handlePriors} from "../../Utils/errors";
 
 import { graphql, createFragmentContainer } from "react-relay";
@@ -11,15 +11,16 @@ class PriorsForm extends React.Component {
         super(props);
 
         const initialData = {
-            mass1: {type: 'fixed', value: '', min: '', max: ''},
-            mass2: {type: 'fixed', value: '', min: '', max: ''},
-            luminosityDistance: {type: 'fixed', value: '', min: '', max: ''},
-            iota: {type: 'fixed', value: '', min: '', max: ''},
-            psi: {type: 'fixed', value: '', min: '', max: ''},
-            phase: {type: 'fixed', value: '', min: '', max: ''},
-            mergerTime: {type: 'fixed', value: '', min: '', max: ''},
-            ra: {type: 'fixed', value: '', min: '', max: ''},
-            dec: {type: 'fixed', value: '', min: '', max: ''}
+            prior: '4s'
+            // mass1: {type: 'fixed', value: '', min: '', max: ''},
+            // mass2: {type: 'fixed', value: '', min: '', max: ''},
+            // luminosityDistance: {type: 'fixed', value: '', min: '', max: ''},
+            // iota: {type: 'fixed', value: '', min: '', max: ''},
+            // psi: {type: 'fixed', value: '', min: '', max: ''},
+            // phase: {type: 'fixed', value: '', min: '', max: ''},
+            // mergerTime: {type: 'fixed', value: '', min: '', max: ''},
+            // ra: {type: 'fixed', value: '', min: '', max: ''},
+            // dec: {type: 'fixed', value: '', min: '', max: ''}
         }
 
 
@@ -36,15 +37,27 @@ class PriorsForm extends React.Component {
             validate: false
         }
         this.forms = [
-            {name: 'mass1', form: <PriorsFormInput title={'Mass 1 (M\u2299)'}/>, errFunc: checkForErrors(handlePriors)},
-            {name: 'mass2', form: <PriorsFormInput title={'Mass 2 (M\u2299)'}/>, errFunc: checkForErrors(handlePriors)},
-            {name: 'luminosityDistance', form: <PriorsFormInput title={'Luminosity Distance (Mpc)'}/>, errFunc: checkForErrors(handlePriors)},
-            {name: 'iota', form: <PriorsFormInput title={'iota'}/>, errFunc: checkForErrors(handlePriors)},
-            {name: 'psi', form: <PriorsFormInput title={'psi'}/>, errFunc: checkForErrors(handlePriors)},
-            {name: 'phase', form: <PriorsFormInput title={'phase'}/>, errFunc: checkForErrors(handlePriors)},
-            {name: 'mergerTime', form: <PriorsFormInput title={'Merger Time (GPS Time)'}/>, errFunc: checkForErrors(handlePriors)},
-            {name: 'ra', form: <PriorsFormInput title={'Right Ascension (Radians)'}/>, errFunc: checkForErrors(handlePriors)},
-            {name: 'dec', form: <PriorsFormInput title={'Declination (Degrees)'}/>, errFunc: checkForErrors(handlePriors)}
+            {
+                label: 'Default Prior', name: 'prior', form: <Form.Select placeholder="Select Default Prior" options={
+                    [
+                        {key: '4s', text: '4s', value: '4s'},
+                        {key: '8s', text: '8s', value: '8s'},
+                        {key: '16s', text: '16s', value: '16s'},
+                        {key: '32s', text: '32s', value: '32s'},
+                        {key: '64s', text: '64s', value: '64s'},
+                        {key: '128s', text: '128s', value: '128s'},
+                    ]
+                }/>
+            },
+            // {name: 'mass1', form: <PriorsFormInput title={'Mass 1 (M\u2299)'}/>, errFunc: checkForErrors(handlePriors)},
+            // {name: 'mass2', form: <PriorsFormInput title={'Mass 2 (M\u2299)'}/>, errFunc: checkForErrors(handlePriors)},
+            // {name: 'luminosityDistance', form: <PriorsFormInput title={'Luminosity Distance (Mpc)'}/>, errFunc: checkForErrors(handlePriors)},
+            // {name: 'iota', form: <PriorsFormInput title={'iota'}/>, errFunc: checkForErrors(handlePriors)},
+            // {name: 'psi', form: <PriorsFormInput title={'psi'}/>, errFunc: checkForErrors(handlePriors)},
+            // {name: 'phase', form: <PriorsFormInput title={'phase'}/>, errFunc: checkForErrors(handlePriors)},
+            // {name: 'mergerTime', form: <PriorsFormInput title={'Merger Time (GPS Time)'}/>, errFunc: checkForErrors(handlePriors)},
+            // {name: 'ra', form: <PriorsFormInput title={'Right Ascension (Radians)'}/>, errFunc: checkForErrors(handlePriors)},
+            // {name: 'dec', form: <PriorsFormInput title={'Declination (Degrees)'}/>, errFunc: checkForErrors(handlePriors)}
         ]
     }
 

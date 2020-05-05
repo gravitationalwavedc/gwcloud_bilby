@@ -3,20 +3,30 @@ import {BaseForm} from "./Forms";
 import {Form, Grid, Button} from "semantic-ui-react";
 import {checkForErrors, isNumber, notEmpty} from "../../Utils/errors";
 
-import { graphql, createFragmentContainer } from "react-relay";
+import {graphql, createFragmentContainer} from "react-relay";
+import * as Enumerable from "linq";
 
 class DataForm extends React.Component {
     constructor(props) {
         super(props);
 
         const initialData = {
-            dataChoice: 'simulated',
+            dataChoice: 'open',
             hanford: false,
             livingston: false,
             virgo: false,
-            signalDuration: '',
-            samplingFrequency: '',
-            startTime: ''
+            signalDuration: '4',
+            samplingFrequency: '16384',
+            triggerTime: '',
+            hanfordMinimumFrequency: 20,
+            hanfordMaximumFrequency: 1024,
+            hanfordChannel: 'GDS-CALIB_STRAIN',
+            livingstonMinimumFrequency: 20,
+            livingstonMaximumFrequency: 1024,
+            livingstonChannel: 'GDS-CALIB_STRAIN',
+            virgoMinimumFrequency: 20,
+            virgoMaximumFrequency: 1024,
+            virgoChannel: 'Hrec_hoft_16384Hz'
         }
 
         const errors = {}
@@ -31,20 +41,6 @@ class DataForm extends React.Component {
             errors: errors,
             validate: false
         }
-
-        this.forms = [
-            {label: 'Type of Data', name: 'dataChoice', form: <Form.Select placeholder="Select Data Type" options={[
-                {key: 'simulated', text: 'Simulated', value: 'simulated'},
-                {key: 'open', text: 'Open', value: 'open'}
-            ]}/>},
-            {label: 'Detectors', name: 'hanford', form: <Form.Checkbox label="Hanford"/>},
-            {label: null, name: 'livingston', form: <Form.Checkbox label="Livingston"/>},
-            {label: null, name: 'virgo', form: <Form.Checkbox label="Virgo"/>},
-            {label: 'Signal Duration (s)', name: 'signalDuration', form: <Form.Input placeholder='2'/>, errFunc: checkForErrors(isNumber, notEmpty)},
-            {label: 'Sampling Frequency (Hz)', name: 'samplingFrequency', form: <Form.Input placeholder='2'/>, errFunc: checkForErrors(isNumber, notEmpty)},
-            {label: 'Trigger Time', name: 'trigger-time', form: <Form.Input placeholder='2.1'/>, errFunc: checkForErrors(isNumber, notEmpty)}
-
-        ]
     }
 
     handleChange = ({name, value, errors}) => {
@@ -57,7 +53,7 @@ class DataForm extends React.Component {
                 ...prevState.errors,
                 [name]: errors
             }
-        })) 
+        }))
     }
 
     prevStep = () => {
@@ -65,10 +61,12 @@ class DataForm extends React.Component {
     }
 
     nextStep = () => {
-        const notEmpty = (arr) => {return Boolean(arr && arr.length)}
+        const notEmpty = (arr) => {
+            return Boolean(arr && arr.length)
+        }
         if (Object.values(this.state.errors).some(notEmpty)) {
             this.setState({
-              validate: true  
+                validate: true
             })
         } else {
             this.props.updateParentState(this.state.data)
@@ -77,10 +75,84 @@ class DataForm extends React.Component {
     }
 
     render() {
-        const {data, errors} = this.state
+        const forms = [
+            {
+                label: 'Type of Data', name: 'dataChoice', form: <Form.Select placeholder="Select Data Type" options={
+                    [
+                        {key: 'open', text: 'Open', value: 'open'},
+                        {key: 'simulated', text: 'Simulated', value: 'simulated'}
+                    ]
+                }/>
+            },
+            {label: 'Detectors', name: 'hanford', form: <Form.Checkbox label="Hanford"/>},
+            {label: null, name: 'livingston', form: <Form.Checkbox label="Livingston"/>},
+            {label: null, name: 'virgo', form: <Form.Checkbox label="Virgo"/>},
+            {
+                label: 'Signal Duration (s)',
+                name: 'signalDuration',
+                form: <Form.Select placeholder="Select Signal Duration" options={
+                    [
+                        {key: '4', text: '4', value: '4'},
+                        {key: '8', text: '8', value: '8'},
+                        {key: '16', text: '16', value: '16'},
+                        {key: '32', text: '32', value: '32'},
+                        {key: '64', text: '64', value: '64'},
+                        {key: '128', text: '128', value: '128'}
+                    ]
+                }/>
+            },
+            {
+                label: 'Sampling Frequency (Hz)',
+                name: 'samplingFrequency',
+                form: <Form.Select placeholder="Select Sampling Frequency" options={
+                    [
+                        {key: '512', text: '512', value: '512'},
+                        {key: '1024', text: '1024', value: '1024'},
+                        {key: '2048', text: '2048', value: '2048'},
+                        {key: '4096', text: '4096', value: '4096'},
+                        {key: '8192', text: '8192', value: '8192'},
+                        {key: '16384', text: '16384', value: '16384'},
+                    ]
+                }/>
+            },
+            {
+                label: 'Trigger Time',
+                name: 'triggerTime',
+                form: <Form.Input placeholder='2.1'/>,
+                errFunc: checkForErrors(isNumber, notEmpty)
+            }
+        ];
+
+        Enumerable.from(['hanford', 'livingston', 'virgo']).forEach((e, i) => {
+           if (this.state.data[e]) {
+               forms.push(
+                   {
+                       label: e[0].toUpperCase() + e.slice(1) + ': Minimum Frequency (Hz)',
+                       name: e + 'MinimumFrequency',
+                       form: <Form.Input placeholder=''/>,
+                       errFunc: checkForErrors(notEmpty)
+                   },
+                   {
+                       label: e[0].toUpperCase() + e.slice(1) + ': Maximum Frequency (Hz)',
+                       name: e + 'MaximumFrequency',
+                       form: <Form.Input placeholder=''/>,
+                       errFunc: checkForErrors(notEmpty)
+                   },
+                   {
+                       label: e[0].toUpperCase() + e.slice(1) + ': Channel',
+                       name: e + 'Channel',
+                       form: <Form.Input placeholder=''/>,
+                       errFunc: checkForErrors(notEmpty)
+                   }
+               )
+           }
+        });
+
+        const {data, errors} = this.state;
         return (
             <React.Fragment>
-                <BaseForm data={data} errors={errors} forms={this.forms} onChange={this.handleChange} validate={this.state.validate}/>
+                <BaseForm data={data} errors={errors} forms={forms} onChange={this.handleChange}
+                          validate={this.state.validate}/>
                 <Grid.Row columns={2}>
                     <Grid.Column floated='left'>
                         <Button onClick={this.prevStep}>Back</Button>

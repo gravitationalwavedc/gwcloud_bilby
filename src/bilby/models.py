@@ -34,24 +34,28 @@ class BilbyJob(models.Model):
             data[d.name] = d.value
 
         # Get the signal data
-        signal = {}
+        signal = {
+            'model': self.signal.signal_model
+        }
         for s in self.signal_parameter.all():
             signal[s.name] = s.value
 
         # Get the prior data
-        prior = {}
-        for p in self.prior.all():
-            if p.prior_choice in FIXED:
-                prior[p.name] = {
-                    "type": "fixed",
-                    "value": p.fixed_value
-                }
-            elif p.prior_choice in UNIFORM:
-                prior[p.name] = {
-                    "type": "uniform",
-                    "min": p.uniform_min_value,
-                    "max": p.uniform_max_value
-                }
+        prior = {
+            "default": self.prior.first().prior
+        }
+        # for p in self.prior.all():
+            # if p.prior_choice in FIXED:
+            #     prior[p.name] = {
+            #         "type": "fixed",
+            #         "value": p.fixed_value
+            #     }
+            # elif p.prior_choice in UNIFORM:
+            #     prior[p.name] = {
+            #         "type": "uniform",
+            #         "min": p.uniform_min_value,
+            #         "max": p.uniform_max_value
+            #     }
 
         # Get the sampler type
         sampler = {
@@ -105,7 +109,8 @@ class DataParameter(models.Model):
         VIRGO,
         SIGNAL_DURATION,
         SAMPLING_FREQUENCY,
-        START_TIME
+        TRIGGER_TIME,
+        HANFORD_CHANNEL
     ]
 
     name = models.CharField(max_length=20, choices=PARAMETER_CHOICES, blank=False, null=False)
@@ -120,7 +125,8 @@ class Signal(models.Model):
 
     SIGNAL_CHOICES = [
         SKIP,
-        BBH
+        BBH,
+        BNS
     ]
 
     signal_choice = models.CharField(max_length=50, choices=SIGNAL_CHOICES, default=SKIP[0])
@@ -151,15 +157,26 @@ class Prior(models.Model):
     job = models.ForeignKey(BilbyJob, related_name='prior', on_delete=models.CASCADE)
     name = models.CharField(max_length=50, blank=False, null=False)
 
+    # PRIOR_CHOICES = [
+    #     FIXED,
+    #     UNIFORM,
+    # ]
+
     PRIOR_CHOICES = [
-        FIXED,
-        UNIFORM,
+        PRIOR_4S,
+        PRIOR_8S,
+        PRIOR_16S,
+        PRIOR_32S,
+        PRIOR_64S,
+        PRIOR_128S
     ]
 
-    prior_choice = models.CharField(max_length=20, choices=PRIOR_CHOICES, default=FIXED[0])
-    fixed_value = models.FloatField(blank=True, null=True)
-    uniform_min_value = models.FloatField(blank=True, null=True)
-    uniform_max_value = models.FloatField(blank=True, null=True)
+    # prior_choice = models.CharField(max_length=20, choices=PRIOR_CHOICES, default=FIXED[0])
+    # fixed_value = models.FloatField(blank=True, null=True)
+    # uniform_min_value = models.FloatField(blank=True, null=True)
+    # uniform_max_value = models.FloatField(blank=True, null=True)
+
+    prior = models.CharField(max_length=4, choices=PRIOR_CHOICES)
 
     class Meta:
         unique_together = (

@@ -15,7 +15,16 @@ class AbstractDataType(AbstractType):
     virgo = Boolean()
     signal_duration = String()
     sampling_frequency = String()
-    start_time = String()
+    trigger_time = String()
+    hanford_minimum_frequency = String()
+    hanford_maximum_frequency = String()
+    hanford_channel = String()
+    livingston_minimum_frequency = String()
+    livingston_maximum_frequency = String()
+    livingston_channel = String()
+    virgo_minimum_frequency = String()
+    virgo_maximum_frequency = String()
+    virgo_channel = String()
 
 
 class AbstractSignalType(AbstractType):
@@ -43,15 +52,16 @@ class InputPriorStructureType(InputObjectType):
     max = String()
 
 class InputPriorType(InputObjectType):
-    mass1 = Field(InputPriorStructureType)
-    mass2 = Field(InputPriorStructureType)
-    luminosity_distance = Field(InputPriorStructureType)
-    psi = Field(InputPriorStructureType)
-    iota = Field(InputPriorStructureType)
-    phase = Field(InputPriorStructureType)
-    merger_time = Field(InputPriorStructureType)
-    ra = Field(InputPriorStructureType)
-    dec = Field(InputPriorStructureType)
+    prior = String()
+    # mass1 = Field(InputPriorStructureType)
+    # mass2 = Field(InputPriorStructureType)
+    # luminosity_distance = Field(InputPriorStructureType)
+    # psi = Field(InputPriorStructureType)
+    # iota = Field(InputPriorStructureType)
+    # phase = Field(InputPriorStructureType)
+    # merger_time = Field(InputPriorStructureType)
+    # ra = Field(InputPriorStructureType)
+    # dec = Field(InputPriorStructureType)
 
 class OutputPriorStructureType(ObjectType):
     type = String()

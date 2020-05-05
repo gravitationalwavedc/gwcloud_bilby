@@ -13,7 +13,16 @@ class BilbyJobForm(forms.Form):
     virgo = forms.BooleanField(required=False)
     signal_duration = forms.FloatField()
     sampling_frequency = forms.FloatField()
-    start_time = forms.FloatField()
+    trigger_time = forms.FloatField()
+    hanford_minimum_frequency = forms.FloatField()
+    hanford_maximum_frequency = forms.FloatField()
+    hanford_channel: forms.CharField()
+    livingston_minimum_frequency = forms.FloatField()
+    livingston_maximum_frequency = forms.FloatField()
+    livingston_channel: forms.CharField()
+    virgo_minimum_frequency = forms.FloatField()
+    virgo_maximum_frequency = forms.FloatField()
+    virgo_channel: forms.CharField()
 
     # Signal
     signal_type = forms.CharField()
