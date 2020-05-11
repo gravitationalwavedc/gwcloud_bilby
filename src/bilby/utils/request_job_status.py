@@ -24,7 +24,7 @@ def request_job_status(job, user_id=None):
             'userId': user_id or job.user_id,
             'exp': datetime.datetime.now() + datetime.timedelta(days=30)
         },
-        settings.SECRET_KEY,
+        settings.JOB_CONTROLLER_JWT_SECRET,
         algorithm='HS256'
     )
 

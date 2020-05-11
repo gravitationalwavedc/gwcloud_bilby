@@ -66,7 +66,7 @@ def create_bilby_job(user_id, username, start, data, signal, prior, sampler):
                 'userId': user_id,
                 'exp': datetime.datetime.now() + datetime.timedelta(days=30)
             },
-            settings.SECRET_KEY,
+            settings.JOB_CONTROLLER_JWT_SECRET,
             algorithm='HS256'
         )
 
