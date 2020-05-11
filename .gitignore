@@ -5,3 +5,4 @@ venv
 .venv
 db.sqlite3
 __generated__
+local.py
