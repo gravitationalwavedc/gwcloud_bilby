@@ -1,0 +1,54 @@
+version: '3'
+
+services:
+  django:
+    build:
+      dockerfile: ./docker/gwcloud_bilby_django.Dockerfile
+      context: .
+    image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_django:0.1
+    container_name: gwcloud_bilby_django
+    environment:
+      MYSQL_ROOT_PASSWORD: 76vcqmGKP19Z1AEx
+      MYSQL_DATABASE: gwcloud_bilby
+      MYSQL_USER: django
+      MYSQL_PASSWORD: 76vcqmGKP19Z1AEx
+      MYSQL_HOST: db
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  nginx:
+    build:
+      dockerfile: ./docker/gwcloud_bilby_nginx.Dockerfile
+      context: .
+    image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_nginx:0.1
+    container_name: gwcloud_bilby_nginx
+    ports:
+      - "8000:8000"
+    depends_on:
+      - static
+      - django
+      
+  static:
+    build:
+      dockerfile: ./docker/gwcloud_bilby_static.Dockerfile
+      context: .
+    image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_static:0.1
+    container_name: gwcloud_bilby_static
+    ports:
+      - "8000:8000"
+      
+  db:
+    image: mysql:5.7
+    container_name: gwcloud_bilby_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 76vcqmGKP19Z1AEx
+      MYSQL_DATABASE: gwcloud_bilby
+      MYSQL_USER: django
+      MYSQL_PASSWORD: 76vcqmGKP19Z1AEx
+    volumes:
+      - var_lib_mysql:/var/lib/mysql
+  
+volumes:
+  var_lib_mysql:

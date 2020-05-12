@@ -1,0 +1,40 @@
+---
+# 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gwcloud-bilby-django
+  namespace: gwcloud
+  labels:
+    name: gwcloud-bilby-django
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+        name: gwcloud-bilby-django
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        name: gwcloud-bilby-django
+    spec:
+      containers:
+        - envFrom:
+            - secretRef:
+                name: bilby
+            - secretRef:
+                name: common
+          name: gwcloud-bilby-django
+          image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_django:0.1
+          ports:
+            - name: http
+              containerPort: 8000
+          resources: {}
+          tty: true
+      imagePullSecrets:
+      - name: regcred
+... 

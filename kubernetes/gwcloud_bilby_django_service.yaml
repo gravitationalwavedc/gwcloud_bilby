@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: gwcloud-bilby-django
+  name: gwcloud-bilby-django
+  namespace: gwcloud
+spec:
+  ports:
+  - name: http
+    port: 8000
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    name: gwcloud-bilby-django
+  sessionAffinity: None
+  type: ClusterIP
