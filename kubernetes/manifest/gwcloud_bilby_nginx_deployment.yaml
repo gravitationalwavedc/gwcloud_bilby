@@ -23,13 +23,13 @@ spec:
         name: gwcloud-bilby-nginx
     spec:
       containers:
-        name: gwcloud-bilby-nginx
-        image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_nginx:0.1
-        ports:
-          - name: http
-            containerPort: 8000
-        resources: {}
-        tty: true
+        - name: gwcloud-bilby-nginx
+          image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_nginx:0.1
+          ports:
+            - name: http
+              containerPort: 8000
+          resources: {}
+          tty: true
       imagePullSecrets:
       - name: regcred
 ... 
