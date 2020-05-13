@@ -7,7 +7,6 @@ from .variables import *
 
 class BilbyJob(models.Model):
     user_id = models.IntegerField()
-    username = models.CharField(max_length=30)
     name = models.CharField(max_length=255, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
 
@@ -20,7 +19,7 @@ class BilbyJob(models.Model):
 
     class Meta:
         unique_together = (
-            ('username', 'name'),
+            ('user_id', 'name'),
         )
 
     def __str__(self):
@@ -49,7 +48,7 @@ class BilbyJob(models.Model):
 
         # Get the prior data
         prior = {
-            "default": self.prior.first().prior
+            "default": self.prior.prior_choice
         }
         # for p in self.prior.all():
             # if p.prior_choice in FIXED:

@@ -175,6 +175,9 @@ populate_fields(
 class UserDetails(ObjectType):
     username = graphene.String()
 
+    def resolve_username(parent, info):
+        return "Todo"
+
 
 class Query(object):
     bilby_job = relay.Node.Field(BilbyJobNode)
@@ -233,7 +236,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
 
     @classmethod
     def mutate_and_get_payload(cls, root, info, start, data, signal, prior, sampler):
-        create_bilby_job(info.context.user.user_id, info.context.user.username, start, data, signal, prior, sampler)
+        create_bilby_job(info.context.user.user_id, start, data, signal, prior, sampler)
 
         return BilbyJobMutation(result='Job created')
 

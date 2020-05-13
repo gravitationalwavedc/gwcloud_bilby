@@ -10,14 +10,13 @@ from .forms import BilbyJobForm
 from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
 
 
-def create_bilby_job(user_id, username, start, data, signal, prior, sampler):
+def create_bilby_job(user_id, start, data, signal, prior, sampler):
     # validate_form = BilbyJobForm(data={**start, **data, **signal, **sampler})
     # should be making use of cleaned_data below
 
     with transaction.atomic():
         bilby_job = BilbyJob(
             user_id=user_id,
-            username=username,
             name=start.name,
             description=start.description
         )
