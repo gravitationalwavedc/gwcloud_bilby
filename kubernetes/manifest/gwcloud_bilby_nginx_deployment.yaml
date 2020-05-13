@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: gwcloud-bilby-nginx
-          image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_nginx:0.2
+          image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_nginx:0.3
           ports:
             - name: http
               containerPort: 8000

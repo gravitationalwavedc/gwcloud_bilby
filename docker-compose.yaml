@@ -22,7 +22,7 @@ services:
     build:
       dockerfile: ./docker/gwcloud_bilby_nginx.Dockerfile
       context: .
-    image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_nginx:0.2
+    image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_nginx:0.3
     container_name: gwcloud_bilby_nginx
     ports:
       - "8000:8000"
