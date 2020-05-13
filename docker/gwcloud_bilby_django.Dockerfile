@@ -7,6 +7,8 @@ RUN apt-get -y install python-virtualenv default-libmysqlclient-dev python3-dev 
 
 # Copy the source code in to the container
 COPY src /src
+COPY ./runserver.sh /runserver.sh
+RUN chmod +x /runserver.sh
 
 # Create python virtualenv
 RUN rm -Rf /src/venv
