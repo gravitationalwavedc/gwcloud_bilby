@@ -1,5 +1,6 @@
 const webpack = require("webpack");
 const ModuleReplaceWebpackPlugin = require('module-replace-webpack-plugin');
+const path = require('path');
 
 module.exports = {
     module: {
@@ -66,6 +67,7 @@ module.exports = {
     output: {
         publicPath: "/",
         globalObject: "this",
+	path: path.resolve(__dirname, '../static/'),
         library: 'RemoteModule',
         libraryTarget: 'this'
     },
