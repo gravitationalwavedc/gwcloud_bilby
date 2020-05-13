@@ -25,9 +25,12 @@ RUN mv /tmp/gwcloud_bilby/src/react/data/schema.json /gwcloud_bilby/src/react/da
 RUN rm -Rf /tmp/gwcloud_bilby
 
 # Build webpack bundle
-RUN mkdir /static
+RUN mkdir /src/static
 RUN curl https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
 RUN . ~/.nvm/nvm.sh && cd /src/react/ && nvm install && nvm use && nvm install-latest-npm && npm install && npm run relay && npm run build
+
+# Copy the javascript bundle
+RUN rsync -arv /src/static/ /static/
 
 # Don't need any of the javascipt code now
 RUN rm -Rf /src
