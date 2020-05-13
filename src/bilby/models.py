@@ -127,7 +127,7 @@ class DataParameter(models.Model):
         VIRGO_CHANNEL
     ]
 
-    name = models.CharField(max_length=20, choices=PARAMETER_CHOICES, blank=False, null=False)
+    name = models.CharField(max_length=50, choices=PARAMETER_CHOICES, blank=False, null=False)
     value = models.CharField(max_length=1000, blank=True, null=True)
 
     def __str__(self):
@@ -163,7 +163,7 @@ class SignalParameter(models.Model):
         DEC,
     ]
 
-    name = models.CharField(max_length=20, choices=PARAMETER_CHOICES, blank=False, null=False)
+    name = models.CharField(max_length=50, choices=PARAMETER_CHOICES, blank=False, null=False)
     value = models.FloatField(blank=True, null=True)
 
 
