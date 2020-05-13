@@ -23,18 +23,13 @@ spec:
         name: gwcloud-bilby-static
     spec:
       containers:
-        - envFrom:
-            - secretRef:
-                name: bilby
-            - secretRef:
-                name: common
-          name: gwcloud-bilby-static
-          image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_static:0.1
-          ports:
-            - name: http
-              containerPort: 8000
-          resources: {}
-          tty: true
+        name: gwcloud-bilby-static
+        image: nexus.gw-cloud.org/gwcloud-dev/gwcloud_bilby_static:0.1
+        ports:
+          - name: http
+            containerPort: 8000
+        resources: {}
+        tty: true
       imagePullSecrets:
       - name: regcred
 ... 
