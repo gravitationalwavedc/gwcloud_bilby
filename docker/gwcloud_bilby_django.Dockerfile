@@ -26,4 +26,7 @@ RUN rm -Rf /src/react
 
 # Expose the port and set the run script
 EXPOSE 8000
-CMD [ "./runserver.sh" ]
+
+# Set the working directory and start script
+WORKDIR /src
+CMD [ "/runserver.sh" ]
