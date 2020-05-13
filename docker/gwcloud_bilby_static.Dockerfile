@@ -2,7 +2,7 @@ FROM nginx:latest
 
 # Install needed packages
 RUN apt-get update
-RUN apt-get install -y curl git python3 python-virtualenv
+RUN apt-get install -y curl git python3 python-virtualenv rsync
 
 # Pull down and set up the bilby repo
 RUN cd /tmp && git clone https://github.com/gravitationalwavedc/gwcloud_bilby.git
@@ -36,7 +36,7 @@ RUN rsync -arv /src/static/ /static/
 RUN rm -Rf /src
 RUN rm -Rf ~/.nvm/
 
-RUN apt-get remove -y python3 python-virtualenv
+RUN apt-get remove -y --purge python3 python-virtualenv rsync
 RUN apt-get autoremove --purge -y
 
 RUN rm -Rf /gwcloud_bilby
