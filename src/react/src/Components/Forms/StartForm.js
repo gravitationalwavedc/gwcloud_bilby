@@ -164,16 +164,5 @@ export default createFragmentContainer(StartForm, {
             name
             description
         }
-    `,
-    jobNames:  graphql`
-        fragment StartForm_jobNames on Query {
-            bilbyJobs {
-                edges {
-                    node {
-                        name
-                    }
-                }
-            }
-        }
     `
 });

@@ -63,6 +63,14 @@ const notEmpty = ({data, errors}) => {
     return {data, errors}
 }
 
+const noneFalse = (otherBools) => ({data, errors}) => {
+    otherBools.push(data)
+    if (!otherBools.some((e) => e === true)) {
+        errors.push('at least one checked')
+    }
+    return {data, errors}
+}
+
 
 
 export {
@@ -73,5 +81,6 @@ export {
     isNumber,
     smallerThan,
     handlePriors,
-    notEmpty
+    notEmpty,
+    noneFalse
 }

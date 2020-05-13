@@ -1,7 +1,7 @@
 import React from "react";
 import {BaseForm} from "./Forms";
 import {Form, Grid, Button} from "semantic-ui-react";
-import {checkForErrors, isNumber, notEmpty} from "../../Utils/errors";
+import {checkForErrors, isNumber, notEmpty, noneFalse} from "../../Utils/errors";
 
 import {graphql, createFragmentContainer} from "react-relay";
 import * as Enumerable from "linq";
@@ -9,7 +9,6 @@ import * as Enumerable from "linq";
 class DataForm extends React.Component {
     constructor(props) {
         super(props);
-
         const initialData = {
             dataChoice: 'open',
             hanford: false,
@@ -18,14 +17,14 @@ class DataForm extends React.Component {
             signalDuration: '4',
             samplingFrequency: '16384',
             triggerTime: '',
-            hanfordMinimumFrequency: 20,
-            hanfordMaximumFrequency: 1024,
+            hanfordMinimumFrequency: '20',
+            hanfordMaximumFrequency: '1024',
             hanfordChannel: 'GDS-CALIB_STRAIN',
-            livingstonMinimumFrequency: 20,
-            livingstonMaximumFrequency: 1024,
+            livingstonMinimumFrequency: '20',
+            livingstonMaximumFrequency: '1024',
             livingstonChannel: 'GDS-CALIB_STRAIN',
-            virgoMinimumFrequency: 20,
-            virgoMaximumFrequency: 1024,
+            virgoMinimumFrequency: '20',
+            virgoMaximumFrequency: '1024',
             virgoChannel: 'Hrec_hoft_16384Hz'
         }
 
@@ -44,15 +43,27 @@ class DataForm extends React.Component {
     }
 
     handleChange = ({name, value, errors}) => {
-        this.setState(prevState => ({
+        // This change is to group the detector checkbox errors together
+        if (['hanford', 'livingston', 'virgo'].includes(name)) {
+            var newErrors = {
+                ...this.state.errors,
+                hanford: errors,
+                livingston: errors,
+                virgo: errors
+            }
+        } else {
+            var newErrors = {
+                ...this.state.errors,
+                [name]: errors
+            }
+        }
+        this.setState(prevState => (
+            {
             data: {
                 ...prevState.data,
                 [name]: value,
             },
-            errors: {
-                ...prevState.errors,
-                [name]: errors
-            }
+            errors: newErrors
         }))
     }
 
@@ -84,9 +95,9 @@ class DataForm extends React.Component {
                     ]
                 }/>
             },
-            {label: 'Detectors', name: 'hanford', form: <Form.Checkbox label="Hanford"/>},
-            {label: null, name: 'livingston', form: <Form.Checkbox label="Livingston"/>},
-            {label: null, name: 'virgo', form: <Form.Checkbox label="Virgo"/>},
+            {label: 'Detectors', name: 'hanford', form: <Form.Checkbox label="Hanford"/>, errFunc: checkForErrors(noneFalse([this.state.data.livingston, this.state.data.virgo]))},
+            {label: null, name: 'livingston', form: <Form.Checkbox label="Livingston"/>, errFunc: checkForErrors(noneFalse([this.state.data.hanford, this.state.data.virgo]))},
+            {label: null, name: 'virgo', form: <Form.Checkbox label="Virgo"/>, errFunc: checkForErrors(noneFalse([this.state.data.hanford, this.state.data.livingston]))},
             {
                 label: 'Signal Duration (s)',
                 name: 'signalDuration',
@@ -130,13 +141,13 @@ class DataForm extends React.Component {
                        label: e[0].toUpperCase() + e.slice(1) + ': Minimum Frequency (Hz)',
                        name: e + 'MinimumFrequency',
                        form: <Form.Input placeholder=''/>,
-                       errFunc: checkForErrors(notEmpty)
+                       errFunc: checkForErrors(isNumber, notEmpty)
                    },
                    {
                        label: e[0].toUpperCase() + e.slice(1) + ': Maximum Frequency (Hz)',
                        name: e + 'MaximumFrequency',
                        form: <Form.Input placeholder=''/>,
-                       errFunc: checkForErrors(notEmpty)
+                       errFunc: checkForErrors(isNumber, notEmpty)
                    },
                    {
                        label: e[0].toUpperCase() + e.slice(1) + ': Channel',
@@ -176,7 +187,16 @@ export default createFragmentContainer(DataForm, {
             virgo
             signalDuration
             samplingFrequency
-            #startTime
+            triggerTime
+            hanfordMinimumFrequency
+            hanfordMaximumFrequency
+            hanfordChannel
+            livingstonMinimumFrequency
+            livingstonMaximumFrequency
+            livingstonChannel
+            virgoMinimumFrequency
+            virgoMaximumFrequency
+            virgoChannel
         }
     `
 });

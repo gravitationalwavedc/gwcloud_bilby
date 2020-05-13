@@ -6,8 +6,7 @@ from django_filters import FilterSet, OrderingFilter
 
 from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
 from .views import create_bilby_job
-from .types import OutputStartType, AbstractDataType, AbstractSignalType, OutputPriorType, OutputPriorStructureType, \
-    InputPriorType, AbstractSamplerType
+from .types import OutputStartType, AbstractDataType, AbstractSignalType, AbstractSamplerType
 
 from graphql_jwt.decorators import login_required
 
@@ -47,7 +46,7 @@ class UserBilbyJobFilter(FilterSet):
 
     @property
     def qs(self):
-        return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
+       return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
 
 
 class BilbyJobNode(DjangoObjectType):
@@ -60,7 +59,7 @@ class BilbyJobNode(DjangoObjectType):
     job_status = graphene.String()
     last_updated = graphene.String()
     start = graphene.Field(OutputStartType)
-    priors = graphene.Field(OutputPriorType)
+    # priors = graphene.Field(OutputPriorType)
 
     def resolve_last_updated(parent, info):
         return parent.last_updated.strftime("%d/%m/%Y, %H:%M:%S")
@@ -72,19 +71,19 @@ class BilbyJobNode(DjangoObjectType):
         }
 
     # Couldn't do priors in the same way as the other things - It may require more though to restructure the models and frontend
-    def resolve_priors(parent, info):
-        d = {}
-        for prior in parent.prior.all():
-            d.update({
-                prior.name: {
-                    "value": prior.fixed_value,
-                    "type": prior.prior_choice,
-                    "min": prior.uniform_min_value,
-                    "max": prior.uniform_max_value
-                }
-            })
+    # def resolve_priors(parent, info):
+    #     d = {}
+    #     for prior in parent.prior.all():
+    #         d.update({
+    #             prior.name: {
+    #                 "value": prior.fixed_value,
+    #                 "type": prior.prior_choice,
+    #                 "min": prior.uniform_min_value,
+    #                 "max": prior.uniform_max_value
+    #             }
+    #         })
 
-        return d
+    #     return d
 
 
 class DataType(DjangoObjectType, AbstractDataType):
@@ -105,7 +104,7 @@ populate_fields(
         'trigger_time',
         'hanford_minimum_frequency',
         'hanford_maximum_frequency',
-        'hanfordChannel',
+        'hanford_channel',
         'livingston_minimum_frequency',
         'livingston_maximum_frequency',
         'livingston_channel',
@@ -127,26 +126,42 @@ class SignalType(DjangoObjectType, AbstractSignalType):
 populate_fields(
     SignalType,
     [
-        # 'mass1',
-        # 'mass2',
-        # 'luminosity_distance',
-        # 'psi',
-        # 'iota',
-        # 'phase',
-        # 'merger_time',
-        # 'ra',
-        # 'dec'
+        'mass1',
+        'mass2',
+        'luminosity_distance',
+        'psi',
+        'iota',
+        'phase',
+        'merger_time',
+        'ra',
+        'dec'
     ],
     parameter_resolvers
 )
 
+
+class PriorType(DjangoObjectType):
+    class Meta:
+        model = Prior
+        interfaces = (relay.Node,)
+        convert_choices_to_enum = False
+
+    def resolve_prior_choice(parent, info):
+        return parent.prior_choice
+
+# populate_fields(
+#     PriorType,
+#     [
+#     #    'number'
+#     ],
+#     parameter_resolvers
+# )
 
 class SamplerType(DjangoObjectType, AbstractSamplerType):
     class Meta:
         model = Sampler
         interfaces = (relay.Node,)
         convert_choices_to_enum = False
-
 
 populate_fields(
     SamplerType,
@@ -199,23 +214,8 @@ class SignalInput(graphene.InputObjectType, AbstractSignalType):
     signal_choice = graphene.String()
     signal_model = graphene.String()
 
-
-# class PriorStructureInput(graphene.InputObjectType):
-#     type = graphene.String()
-#     value = graphene.String()
-#     min = graphene.String()
-#     max = graphene.String()
-
-# class PriorInput(graphene.InputObjectType):
-#     mass1 = graphene.InputField(PriorStructureInput)
-#     mass2 = graphene.InputField(PriorStructureInput)
-#     luminosity_distance = graphene.InputField(PriorStructureInput)
-#     psi = graphene.InputField(PriorStructureInput)
-#     iota = graphene.InputField(PriorStructureInput)
-#     phase = graphene.InputField(PriorStructureInput)
-#     merger_time = graphene.InputField(PriorStructureInput)
-#     ra = graphene.InputField(PriorStructureInput)
-#     dec = graphene.InputField(PriorStructureInput)
+class PriorInput(graphene.InputObjectType):
+    prior_choice = graphene.String()
 
 class SamplerInput(graphene.InputObjectType, AbstractSamplerType):
     sampler_choice = graphene.String()
@@ -226,7 +226,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
         start = StartInput()
         data = DataInput()
         signal = SignalInput()
-        prior = InputPriorType()
+        prior = PriorInput()
         sampler = SamplerInput()
 
     result = graphene.String()

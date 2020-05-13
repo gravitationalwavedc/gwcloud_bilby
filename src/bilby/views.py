@@ -39,7 +39,7 @@ def create_bilby_job(user_id, username, start, data, signal, prior, sampler):
                 signal_param = SignalParameter(job=bilby_job, signal=job_signal, name=key, value=val)
                 signal_param.save()
 
-        job_prior = Prior(job=bilby_job, name="prior", prior=prior.prior)
+        job_prior = Prior(job=bilby_job, name="prior", prior_choice=prior.prior_choice)
         job_prior.save()
         # for key, val in prior.items():
         #     job_prior = Prior(job=bilby_job, name=key, prior_choice=val.type)
@@ -61,6 +61,7 @@ def create_bilby_job(user_id, username, start, data, signal, prior, sampler):
         # Submit the job to the job controller
 
         # Create the jwt token
+<<<<<<< Updated upstream
         jwt_enc = jwt.encode(
             {
                 'userId': user_id,
@@ -106,3 +107,50 @@ def create_bilby_job(user_id, username, start, data, signal, prior, sampler):
         # Save the job id
         bilby_job.job_id = result["jobId"]
         bilby_job.save()
+=======
+        # jwt_enc = jwt.encode(
+        #     {
+        #         'userId': user_id,
+        #         'exp': datetime.datetime.now() + datetime.timedelta(days=30)
+        #     },
+        #     settings.SECRET_KEY,
+        #     algorithm='HS256'
+        # )
+
+        # # Create the parameter json
+        # params = bilby_job.as_json()
+
+        # print(params)
+
+        # # Construct the request parameters to the job controller, note that parameters must be a string, not an objects
+        # data = {
+        #     "parameters": json.dumps(params),
+        #     "cluster": "ozstar",
+        #     "bundle": "fbc9f7c0815f1a83b0de36f957351c93797b2049"
+        # }
+
+        # # Initiate the request to the job controller
+        # result = requests.request(
+        #     "POST", settings.GWCLOUD_JOB_CONTROLLER_API_URL,
+        #     data=json.dumps(data),
+        #     headers={
+        #         "Authorization": jwt_enc
+        #     }
+        # )
+
+        # # Check that the request was successful
+        # if result.status_code != 200:
+        #     # Oops
+        #     msg = f"Error submitting job, got error code: {result.status_code}\n\n{result.headers}\n\n{result.content}"
+        #     print(msg)
+        #     raise Exception(msg)
+
+        # print(f"Job submitted OK.\n{result.headers}\n\n{result.content}")
+
+        # # Parse the response from the job controller
+        # result = json.loads(result.content)
+
+        # # Save the job id
+        # bilby_job.job_id = result["jobId"]
+        # bilby_job.save()
+>>>>>>> Stashed changes

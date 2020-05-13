@@ -9,9 +9,8 @@ import { graphql, createFragmentContainer } from "react-relay";
 class PriorsForm extends React.Component {
     constructor(props) {
         super(props);
-
         const initialData = {
-            prior: '4s'
+            priorChoice: '4s'
             // mass1: {type: 'fixed', value: '', min: '', max: ''},
             // mass2: {type: 'fixed', value: '', min: '', max: ''},
             // luminosityDistance: {type: 'fixed', value: '', min: '', max: ''},
@@ -38,7 +37,7 @@ class PriorsForm extends React.Component {
         }
         this.forms = [
             {
-                label: 'Default Prior', name: 'prior', form: <Form.Select placeholder="Select Default Prior" options={
+                label: 'Default Prior', name: 'priorChoice', form: <Form.Select placeholder="Select Default Prior" options={
                     [
                         {key: '4s', text: '4s', value: '4s'},
                         {key: '8s', text: '8s', value: '8s'},
@@ -71,7 +70,7 @@ class PriorsForm extends React.Component {
                 ...prevState.errors,
                 [name]: errors
             }
-        }), () => {console.log(this.state)})
+        }))
     }
 
     prevStep = () => {
@@ -112,61 +111,68 @@ class PriorsForm extends React.Component {
 // export default PriorsForm;
 export default createFragmentContainer(PriorsForm, {
     data: graphql`
-        fragment PriorsForm_data on OutputPriorType {
-            mass1 {
-                type
-                value
-                min
-                max
-            }
-            mass2 {
-                type
-                value
-                min
-                max
-            }
-            luminosityDistance {
-                type
-                value
-                min
-                max
-            }
-            psi {
-                type
-                value
-                min
-                max
-            }
-            iota {
-                type
-                value
-                min
-                max
-            }
-            phase {
-                type
-                value
-                min
-                max
-            }
-            mergerTime {
-                type
-                value
-                min
-                max
-            }
-            ra {
-                type
-                value
-                min
-                max
-            }
-            dec {
-                type
-                value
-                min
-                max
-            }
+        fragment PriorsForm_data on PriorType {
+            priorChoice
         }
     `
 });
+// export default createFragmentContainer(PriorsForm, {
+//     data: graphql`
+//         fragment PriorsForm_data on OutputPriorType {
+//             mass1 {
+//                 type
+//                 value
+//                 min
+//                 max
+//             }
+//             mass2 {
+//                 type
+//                 value
+//                 min
+//                 max
+//             }
+//             luminosityDistance {
+//                 type
+//                 value
+//                 min
+//                 max
+//             }
+//             psi {
+//                 type
+//                 value
+//                 min
+//                 max
+//             }
+//             iota {
+//                 type
+//                 value
+//                 min
+//                 max
+//             }
+//             phase {
+//                 type
+//                 value
+//                 min
+//                 max
+//             }
+//             mergerTime {
+//                 type
+//                 value
+//                 min
+//                 max
+//             }
+//             ra {
+//                 type
+//                 value
+//                 min
+//                 max
+//             }
+//             dec {
+//                 type
+//                 value
+//                 min
+//                 max
+//             }
+//         }
+//     `
+// });

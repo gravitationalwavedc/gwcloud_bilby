@@ -5,6 +5,7 @@ import BilbyJobList from "./Pages/BilbyJobList";
 import {graphql} from "react-relay";
 import {harnessApi} from "./index";
 import BilbyHomePage from "./Pages/BilbyHomePage";
+import BilbyJobResults from "./Pages/BilbyJobResults";
 
 function getRoutes() {
     return (
@@ -24,7 +25,6 @@ function getRoutes() {
               query={graphql`
                 query Routes_JobForm_Query ($jobId: ID!){
                   ...StepForm_data @arguments(jobId: $jobId)
-                  ...StartForm_jobNames
                 }
               `}
               prepareVariables={(params, {location}) => ({
@@ -59,9 +59,13 @@ function getRoutes() {
               render={({Component, props, retry, error}) => {
                   if (!Component || !props)
                       return <div>Loading...</div>;
-
+                  console.log('hello',props)
                   return <Component data={props} {...props}/>
               }}/>
+            <Route path="job-results"
+              environment={harnessApi.getEnvironment('bilby')}
+              Component={BilbyJobResults}
+              />
         </Route>
     )
 }

@@ -9,7 +9,6 @@ import { graphql, createFragmentContainer } from "react-relay";
 class SignalForm extends React.Component {
     constructor(props) {
         super(props);
-
         const initialData = {
             signalChoice: 'binaryBlackHole',
             signalModel: '',
@@ -54,19 +53,19 @@ class SignalForm extends React.Component {
 
         this.forms = [
             {label: 'Signal Inject', name: 'signalChoice', form: <Form.Select placeholder="Select Signal Type" options={signalInjectOptions}/>},
-            {label: 'Signal Params Under Construction', name: '', form: (<p>Under Construction</p>)}
+            {label: 'Signal Params Under Construction', name: '', form: <Form.Input placeholder="Under Construction" disabled/>}
         ]
         if (bbhToggle) {
             this.forms.push(
-                {label: 'Mass 1 (M\u2299)', name: 'mass1', form: <Form.Input  placeholder="2.0"/>}, //, errFunc: checkForErrors(isNumber, notEmpty)},
-                {label: 'Mass 2 (M\u2299)', name: 'mass2', form: <Form.Input  placeholder="1.0"/>}, //, errFunc: checkForErrors(smallerThan(this.state.data.mass1, 'Mass 1'), isNumber, notEmpty)},
-                {label: 'Luminosity Distance (Mpc)', name: 'luminosityDistance', form: <Form.Input  placeholder="1.0"/>}, //, errFunc: checkForErrors(isNumber, notEmpty)},
-                {label: 'psi', name: 'psi', form: <Form.Input placeholder="1.0"/>}, //, errFunc: checkForErrors(isNumber, notEmpty)},
-                {label: 'iota', name: 'iota', form: <Form.Input placeholder="1.0"/>}, //, errFunc: checkForErrors(isNumber, notEmpty)},
-                {label: 'Phase', name: 'phase', form: <Form.Input placeholder="1.0"/>}, //, errFunc: checkForErrors(isNumber, notEmpty)},
-                {label: 'Merger Time (GPS Time)', name: 'mergerTime', form: <Form.Input placeholder="1.0"/>}, //, errFunc: checkForErrors(isNumber, notEmpty)},
-                {label: 'Right Ascension (radians)', name: 'ra', form: <Form.Input placeholder="1.0"/>}, //, errFunc: checkForErrors(isNumber, notEmpty)},
-                {label: 'Declination (degrees)', name: 'dec', form: <Form.Input  placeholder="1.0"/>}, //, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Mass 1 (M\u2299)', name: 'mass1', form: <Form.Input  placeholder="2.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Mass 2 (M\u2299)', name: 'mass2', form: <Form.Input  placeholder="1.0"/>, errFunc: checkForErrors(smallerThan(this.state.data.mass1, 'Mass 1'), isNumber, notEmpty)},
+                {label: 'Luminosity Distance (Mpc)', name: 'luminosityDistance', form: <Form.Input  placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'psi', name: 'psi', form: <Form.Input placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'iota', name: 'iota', form: <Form.Input placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Phase', name: 'phase', form: <Form.Input placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Merger Time (GPS Time)', name: 'mergerTime', form: <Form.Input placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Right Ascension (radians)', name: 'ra', form: <Form.Input placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
+                {label: 'Declination (degrees)', name: 'dec', form: <Form.Input  placeholder="1.0"/>, errFunc: checkForErrors(isNumber, notEmpty)},
                 {label: 'Same Signal for Model', name: 'sameSignal', form: <Form.Checkbox/>}
             )
         }
@@ -105,7 +104,15 @@ class SignalForm extends React.Component {
               validate: true  
             })
         } else {
-            this.props.updateParentState(this.state.data)
+            if (this.state.data.sameSignal) {
+                const data = {
+                    ...this.state.data,
+                    signalModel: this.state.data.signalChoice
+                }
+                this.props.updateParentState(data)
+            } else {
+                this.props.updateParentState(this.state.data)
+            }
             this.props.nextStep()
         }
     }

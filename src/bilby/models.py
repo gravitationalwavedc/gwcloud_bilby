@@ -14,6 +14,8 @@ class BilbyJob(models.Model):
     creation_time = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now_add=True)
 
+    public = models.BooleanField(default=False)
+
     job_id = models.IntegerField(default=None, blank=True, null=True)
 
     class Meta:
@@ -115,7 +117,15 @@ class DataParameter(models.Model):
         SIGNAL_DURATION,
         SAMPLING_FREQUENCY,
         TRIGGER_TIME,
-        HANFORD_CHANNEL
+        HANFORD_MIN_FREQ,
+        HANFORD_MAX_FREQ,
+        HANFORD_CHANNEL,
+        LIVINGSTON_MIN_FREQ,
+        LIVINGSTON_MAX_FREQ,
+        LIVINGSTON_CHANNEL,
+        VIRGO_MIN_FREQ,
+        VIRGO_MAX_FREQ,
+        VIRGO_CHANNEL
     ]
 
     name = models.CharField(max_length=20, choices=PARAMETER_CHOICES, blank=False, null=False)
@@ -159,7 +169,7 @@ class SignalParameter(models.Model):
 
 
 class Prior(models.Model):
-    job = models.ForeignKey(BilbyJob, related_name='prior', on_delete=models.CASCADE)
+    job = models.OneToOneField(BilbyJob, related_name='prior', on_delete=models.CASCADE)
     name = models.CharField(max_length=50, blank=False, null=False)
 
     # PRIOR_CHOICES = [
@@ -181,7 +191,7 @@ class Prior(models.Model):
     # uniform_min_value = models.FloatField(blank=True, null=True)
     # uniform_max_value = models.FloatField(blank=True, null=True)
 
-    prior = models.CharField(max_length=4, choices=PRIOR_CHOICES)
+    prior_choice = models.CharField(max_length=4, choices=PRIOR_CHOICES)
 
     class Meta:
         unique_together = (

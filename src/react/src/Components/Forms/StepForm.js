@@ -51,7 +51,7 @@ class StepForm extends React.Component {
         this.setState({
             ...this.state,
             [form]: childState
-        })
+        }, () => {console.log(this.state)})
     }
 
     handleStepClick = (e, {stepnum}) => {
@@ -61,16 +61,7 @@ class StepForm extends React.Component {
     }
 
     handleSubmit = () => {
-        if (this.state.signal.sameSignal) {
-            this.setState({
-                signal: {
-                    ...this.state.signal,
-                    signalModel: this.state.signal.signalChoice,
-                    sameSignal: undefined
-                }
-            })
-        }
-        let signal = {...this.state.signal}
+        const {start, data, signal, priors, sampler} = this.state
         delete signal.sameSignal
         commitMutation(harnessApi.getEnvironment("bilby"), {
             mutation: graphql`mutation StepFormSubmitMutation($input: BilbyJobMutationInput!)
@@ -82,11 +73,11 @@ class StepForm extends React.Component {
                 }`,
             variables: {
                 input: {
-                    start: this.state.start,
-                    data: this.state.data,
+                    start: start,
+                    data: data,
                     signal: signal,
-                    prior: this.state.priors,
-                    sampler: this.state.sampler
+                    prior: priors,
+                    sampler: sampler
                 }
             },
             onCompleted: (response, errors) => {
@@ -109,7 +100,7 @@ class StepForm extends React.Component {
                 return <SignalForm data={bilbyJob === null ? null : bilbyJob.signal} state={this.state.signal} updateParentState={this.handleChange('signal')} prevStep={this.prevStep} nextStep={this.nextStep} dataChoice={this.state.data.dataChoice}/>
 
             case 4:
-                return <PriorsForm data={bilbyJob === null ? null : bilbyJob.priors} state={this.state.priors} updateParentState={this.handleChange('priors')} prevStep={this.prevStep} nextStep={this.nextStep}/>
+                return <PriorsForm data={bilbyJob === null ? null : bilbyJob.prior} state={this.state.priors} updateParentState={this.handleChange('priors')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 5:
                 return <SamplerForm data={bilbyJob === null ? null : bilbyJob.sampler} state={this.state.sampler} updateParentState={this.handleChange('sampler')} prevStep={this.prevStep} nextStep={this.nextStep}/>
@@ -148,7 +139,7 @@ export default createFragmentContainer(StepForm, {
                 signal {
                     ...SignalForm_data
                 }
-                priors {
+                prior {
                     ...PriorsForm_data
                 }
                 sampler {

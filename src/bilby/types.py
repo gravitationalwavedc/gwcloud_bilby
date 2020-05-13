@@ -38,6 +38,8 @@ class AbstractSignalType(AbstractType):
     ra = String()
     dec = String()
 
+# class AbstractPriorType(AbstractType):
+#     prior = String()
 
 class AbstractSamplerType(AbstractType):
     number = String()
@@ -45,37 +47,38 @@ class AbstractSamplerType(AbstractType):
 
 # It seems priors have to be handled differently, kept running into errors with nested AbstractTypes
 
-class InputPriorStructureType(InputObjectType):
-    type = String()
-    value = String()
-    min = String()
-    max = String()
+# class InputPriorStructureType(InputObjectType):
+#     type = String()
+#     value = String()
+#     min = String()
+#     max = String()
 
-class InputPriorType(InputObjectType):
-    prior = String()
-    # mass1 = Field(InputPriorStructureType)
-    # mass2 = Field(InputPriorStructureType)
-    # luminosity_distance = Field(InputPriorStructureType)
-    # psi = Field(InputPriorStructureType)
-    # iota = Field(InputPriorStructureType)
-    # phase = Field(InputPriorStructureType)
-    # merger_time = Field(InputPriorStructureType)
-    # ra = Field(InputPriorStructureType)
-    # dec = Field(InputPriorStructureType)
+# class InputPriorType(InputObjectType):
+#     prior = String()
+#     # mass1 = Field(InputPriorStructureType)
+#     # mass2 = Field(InputPriorStructureType)
+#     # luminosity_distance = Field(InputPriorStructureType)
+#     # psi = Field(InputPriorStructureType)
+#     # iota = Field(InputPriorStructureType)
+#     # phase = Field(InputPriorStructureType)
+#     # merger_time = Field(InputPriorStructureType)
+#     # ra = Field(InputPriorStructureType)
+#     # dec = Field(InputPriorStructureType)
 
-class OutputPriorStructureType(ObjectType):
-    type = String()
-    value = String()
-    min = String()
-    max = String()
+# class OutputPriorStructureType(ObjectType):
+#     type = String()
+#     value = String()
+#     min = String()
+#     max = String()
 
-class OutputPriorType(ObjectType):
-    mass1 = Field(OutputPriorStructureType)
-    mass2 = Field(OutputPriorStructureType)
-    luminosity_distance = Field(OutputPriorStructureType)
-    psi = Field(OutputPriorStructureType)
-    iota = Field(OutputPriorStructureType)
-    phase = Field(OutputPriorStructureType)
-    merger_time = Field(OutputPriorStructureType)
-    ra = Field(OutputPriorStructureType)
-    dec = Field(OutputPriorStructureType)
+# class OutputPriorType(ObjectType):
+#     prior = String()
+#     # mass1 = Field(OutputPriorStructureType)
+#     # mass2 = Field(OutputPriorStructureType)
+#     # luminosity_distance = Field(OutputPriorStructureType)
+#     # psi = Field(OutputPriorStructureType)
+#     # iota = Field(OutputPriorStructureType)
+#     # phase = Field(OutputPriorStructureType)
+#     # merger_time = Field(OutputPriorStructureType)
+#     # ra = Field(OutputPriorStructureType)
+#     # dec = Field(OutputPriorStructureType)

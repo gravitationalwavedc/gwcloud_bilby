@@ -1,6 +1,4 @@
 import React from "react";
-import {Grid, Header, Segment, Dropdown} from "semantic-ui-react";
-import {harnessApi} from "../index";
 import JobList from "../Components/List/JobList";
 import { graphql, createPaginationContainer } from "react-relay";
 import _ from "lodash";
