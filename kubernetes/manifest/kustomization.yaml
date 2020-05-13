@@ -1,6 +1,6 @@
 resources:
-  - gwcloud_bilby_db_pv.yaml
   - gwcloud_bilby_db_pvc.yaml
+  - gwcloud_bilby_db_pv.yaml
   - gwcloud_bilby_db_deployment.yaml
   - gwcloud_bilby_db_service.yaml
   - gwcloud_bilby_django_deployment.yaml
