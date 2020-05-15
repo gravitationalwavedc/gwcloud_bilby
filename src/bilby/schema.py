@@ -69,6 +69,7 @@ class BilbyJobNode(DjangoObjectType):
         return {
             "name": parent.name,
             "description": parent.description,
+            "private": parent.private
         }
 
     # Couldn't do priors in the same way as the other things - It may require more though to restructure the models and frontend
@@ -269,6 +270,7 @@ class Hello(graphene.relay.ClientIDMutation):
 class StartInput(graphene.InputObjectType):
     name = graphene.String()
     description = graphene.String()
+    private = graphene.Boolean()
 
 
 class DataInput(graphene.InputObjectType, AbstractDataType):
@@ -315,7 +317,19 @@ class BilbyJobMutation(relay.ClientIDMutation):
             result=BilbyJobCreationResult(job_id=job_id)
         )
 
+class UniqueNameMutation(relay.ClientIDMutation):
+    class Input:
+        name = graphene.String()
+
+    result = graphene.String()
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, name):
+
+        return UniqueNameMutation(result=name)
+
 
 class Mutation(graphene.ObjectType):
     hello = Hello.Field()
     new_bilby_job = BilbyJobMutation.Field()
+    is_name_unique = UniqueNameMutation.Field()

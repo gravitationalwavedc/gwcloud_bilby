@@ -13,14 +13,30 @@ function getRoutes() {
             <Route
                 Component={BilbyHomePage}
                 query={graphql`
-                   query Routes_UserDetails_Query {
-                     gwclouduser {
-                       username
-                     }
-                   }
-                `}
-                environment={harnessApi.getEnvironment('bilby')}
-            />
+                query Routes_HomePage_Query (
+                  $count: Int!,
+                  $cursor: String,
+                  $orderBy: String
+                ) {
+                    gwclouduser {
+                      username
+                    }
+                    ...BilbyHomePage_data
+                }
+              `}
+              prepareVariables={params => ({
+                ...params,
+                count: 5,
+                orderBy: '-last_updated'
+              })}
+              environment={harnessApi.getEnvironment('bilby')}
+              Component={BilbyHomePage}
+              render={({Component, props, retry, error}) => {
+                  if (!Component || !props)
+                      return <div>Loading...</div>;
+                  console.log('hello',props)
+                  return <Component data={props} match={props.match} router={props.router}/>
+            }}/>
             <Route
                 path="job-form"
                 query={graphql`

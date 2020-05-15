@@ -1,7 +1,7 @@
 import React, {useState} from "react";
 import {BaseForm} from "./Forms";
 import {Form, Grid, Button} from "semantic-ui-react";
-import {checkForErrors, longerThan, shorterThan} from "../../Utils/errors";
+import {checkForErrors, longerThan, shorterThan, nameUnique} from "../../Utils/errors";
 
 import { graphql, createFragmentContainer } from "react-relay";
 
@@ -97,7 +97,8 @@ class StartForm extends React.Component {
         super(props);
         const initialData = {
             name: '',
-            description: ''
+            description: '',
+            private: false
         }
 
         const errors = {}
@@ -114,7 +115,8 @@ class StartForm extends React.Component {
         }
         this.forms = [
             {label: "Job Name", name: "name", form: <Form.Input placeholder="Job Name"/>, errFunc: checkForErrors(longerThan(5))},
-            {label: "Job Description", name: "description", form: <Form.TextArea placeholder="Job Description"/>, errFunc: checkForErrors(shorterThan(200)), requiredField: false}
+            {label: "Job Description", name: "description", form: <Form.TextArea placeholder="Job Description"/>, errFunc: checkForErrors(shorterThan(200)), requiredField: false},
+            {label: "Private job", name: "private", form: <Form.Checkbox />}
         ]
     }
 

@@ -1,3 +1,5 @@
+import {harnessApi} from "../index";
+import { graphql, commitMutation } from "react-relay";
 
 const assembleErrorString = (errors) => {
     let prefix = 'Must be '
@@ -71,6 +73,27 @@ const noneFalse = (otherBools) => ({data, errors}) => {
     return {data, errors}
 }
 
+const nameUnique = ({data, errors}) => {
+    commitMutation(harnessApi.getEnvironment("bilby"), {
+        mutation: graphql`mutation errorsNameUniqueMutation($input: UniqueNameMutationInput!)
+            {
+              isNameUnique(input: $input) 
+              {
+                result
+              }
+            }`,
+        variables: {
+            input: {
+                name: data
+            }
+        },
+        onCompleted: (response, errors) => {
+            console.log(response)
+        },
+    })
+    return {data, errors}
+}
+
 
 
 export {
@@ -82,5 +105,6 @@ export {
     smallerThan,
     handlePriors,
     notEmpty,
-    noneFalse
+    noneFalse,
+    nameUnique
 }

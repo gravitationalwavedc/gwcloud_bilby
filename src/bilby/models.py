@@ -15,7 +15,7 @@ class BilbyJob(models.Model):
     creation_time = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now_add=True)
 
-    public = models.BooleanField(default=False)
+    private = models.BooleanField(default=False)
 
     job_id = models.IntegerField(default=None, blank=True, null=True)
 

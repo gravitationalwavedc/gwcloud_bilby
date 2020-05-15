@@ -187,7 +187,7 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "public",
+                  "name": "private",
                   "type": {
                     "kind": "SCALAR",
                     "name": "Boolean",
@@ -407,7 +407,7 @@
               "deprecationReason": null,
               "description": "",
               "isDeprecated": false,
-              "name": "public",
+              "name": "private",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -1603,6 +1603,33 @@
                 "name": "BilbyJobMutationPayload",
                 "ofType": null
               }
+            },
+            {
+              "args": [
+                {
+                  "defaultValue": null,
+                  "description": null,
+                  "name": "input",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": null,
+                    "ofType": {
+                      "kind": "INPUT_OBJECT",
+                      "name": "UniqueNameMutationInput",
+                      "ofType": null
+                    }
+                  }
+                }
+              ],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
+              "name": "isNameUnique",
+              "type": {
+                "kind": "OBJECT",
+                "name": "UniqueNameMutationPayload",
+                "ofType": null
+              }
             }
           ],
           "inputFields": null,
@@ -1832,6 +1859,16 @@
               "type": {
                 "kind": "SCALAR",
                 "name": "String",
+                "ofType": null
+              }
+            },
+            {
+              "defaultValue": null,
+              "description": null,
+              "name": "private",
+              "type": {
+                "kind": "SCALAR",
+                "name": "Boolean",
                 "ofType": null
               }
             }
@@ -2193,6 +2230,72 @@
           "interfaces": null,
           "kind": "INPUT_OBJECT",
           "name": "SamplerInput",
+          "possibleTypes": null
+        },
+        {
+          "description": null,
+          "enumValues": null,
+          "fields": [
+            {
+              "args": [],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
+              "name": "result",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            {
+              "args": [],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
+              "name": "clientMutationId",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "kind": "OBJECT",
+          "name": "UniqueNameMutationPayload",
+          "possibleTypes": null
+        },
+        {
+          "description": null,
+          "enumValues": null,
+          "fields": null,
+          "inputFields": [
+            {
+              "defaultValue": null,
+              "description": null,
+              "name": "name",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            {
+              "defaultValue": null,
+              "description": null,
+              "name": "clientMutationId",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            }
+          ],
+          "interfaces": null,
+          "kind": "INPUT_OBJECT",
+          "name": "UniqueNameMutationInput",
           "possibleTypes": null
         },
         {

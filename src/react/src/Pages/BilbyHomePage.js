@@ -2,6 +2,8 @@ import React from "react";
 import {Grid, Segment, Button} from "semantic-ui-react";
 import Link from 'found/lib/Link';
 import BilbyBasePage from "./BilbyBasePage";
+import { createFragmentContainer, graphql } from "react-relay";
+import PublicJobList from "../Components/List/PublicJobList";
 
 class BilbyHomePage extends React.Component {
     constructor(props) {
@@ -29,9 +31,17 @@ class BilbyHomePage extends React.Component {
                         <Button>Job list</Button>
                     </Link>
                 </Grid.Row>
+                <PublicJobList data={this.props.data} {...this.routing}/>
             </BilbyBasePage>
         )
     }
 }
 
-export default BilbyHomePage;
+// export default BilbyHomePage;
+export default createFragmentContainer(BilbyHomePage, {
+    data: graphql`
+        fragment BilbyHomePage_data on Query {
+            ...PublicJobList_data
+        }
+    `
+});

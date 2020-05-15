@@ -18,7 +18,8 @@ def create_bilby_job(user_id, start, data, signal, prior, sampler):
         bilby_job = BilbyJob(
             user_id=user_id,
             name=start.name,
-            description=start.description
+            description=start.description,
+            private=start.private
         )
         bilby_job.save()
 
