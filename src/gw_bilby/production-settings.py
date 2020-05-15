@@ -11,7 +11,7 @@ ALLOWED_HOSTS = ['*']
 EMAIL_HOST = 'mail.swin.edu.au'
 EMAIL_PORT = 25
 
-GWCLOUD_JOB_CONTROLLER_API_URL = "http://gwcloud-job-server:8000/job/apiv1/job/"
+GWCLOUD_JOB_CONTROLLER_API_URL = "http://gwcloud-job-server:8000/job/apiv1"
 
 try:
     from .environment import *
