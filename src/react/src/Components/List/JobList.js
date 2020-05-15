@@ -78,7 +78,7 @@ function TableRow(props) {
                 </Link>
                 <br/>
                 <Link to={{
-                    pathname: '/bilby/job-results/',
+                    pathname: '/bilby/job-results/' + id + "/",
                 }} activeClassName="selected" exact match={match} router={router}>
                     View Results
                 </Link>

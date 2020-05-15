@@ -163,4 +163,5 @@ GRAPHQL_JWT = {
     'JWT_VERIFY_EXPIRATION': True
 }
 
-GWCLOUD_JOB_CONTROLLER_API_URL = "https://gw-cloud.org/job/apiv1/job/"
+# URL of the job controller - note: No trailing slash
+GWCLOUD_JOB_CONTROLLER_API_URL = "https://gw-cloud.org/job/apiv1"

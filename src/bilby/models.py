@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from .utils.request_file_download_id import request_file_download_id
+from .utils.request_file_list import request_file_list
 from .utils.request_job_status import request_job_status
 from .variables import *
 
@@ -28,6 +30,12 @@ class BilbyJob(models.Model):
     @property
     def job_status(self):
         return request_job_status(self)
+
+    def get_file_list(self, path='', recursive=True):
+        return request_file_list(self, path, recursive)
+
+    def get_file_download_id(self, path):
+        return request_file_download_id(self, path)
 
     def as_json(self):
         # Get the data container type for this job

@@ -9,7 +9,7 @@ from .views import create_bilby_job
 from .types import OutputStartType, AbstractDataType, AbstractSignalType, AbstractSamplerType
 
 from graphql_jwt.decorators import login_required
-
+from graphql_relay.node.node import from_global_id, to_global_id
 from django.conf import settings
 
 
@@ -46,7 +46,7 @@ class UserBilbyJobFilter(FilterSet):
 
     @property
     def qs(self):
-       return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
+        return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
 
 
 class BilbyJobNode(DjangoObjectType):
@@ -59,6 +59,7 @@ class BilbyJobNode(DjangoObjectType):
     job_status = graphene.String()
     last_updated = graphene.String()
     start = graphene.Field(OutputStartType)
+
     # priors = graphene.Field(OutputPriorType)
 
     def resolve_last_updated(parent, info):
@@ -149,6 +150,7 @@ class PriorType(DjangoObjectType):
     def resolve_prior_choice(parent, info):
         return parent.prior_choice
 
+
 # populate_fields(
 #     PriorType,
 #     [
@@ -163,10 +165,11 @@ class SamplerType(DjangoObjectType, AbstractSamplerType):
         interfaces = (relay.Node,)
         convert_choices_to_enum = False
 
+
 populate_fields(
     SamplerType,
     [
-    #    'number'
+        #    'number'
     ],
     parameter_resolvers
 )
@@ -179,6 +182,23 @@ class UserDetails(ObjectType):
         return "Todo"
 
 
+class BilbyResultFile(ObjectType):
+    path = graphene.String()
+    is_dir = graphene.Boolean()
+    file_size = graphene.Int()
+    download_id = graphene.String()
+
+
+class BilbyResultFiles(ObjectType):
+    class Meta:
+        interfaces = (relay.Node,)
+
+    class Input:
+        job_id = graphene.ID()
+
+    files = graphene.List(BilbyResultFile)
+
+
 class Query(object):
     bilby_job = relay.Node.Field(BilbyJobNode)
     bilby_jobs = DjangoFilterConnectionField(BilbyJobNode)
@@ -186,11 +206,53 @@ class Query(object):
     data = graphene.Field(DataType, data_id=graphene.String())
     all_data = graphene.List(DataType)
 
+    bilby_result_files = graphene.Field(BilbyResultFiles, job_id=graphene.ID(required=True))
+
     gwclouduser = graphene.Field(UserDetails)
 
     @login_required
     def resolve_gwclouduser(self, info, **kwargs):
         return info.context.user
+
+    @login_required
+    def resolve_bilby_result_files(self, info, **kwargs):
+        # Get the model id of the bilby job
+        _, job_id = from_global_id(kwargs.get("job_id"))
+
+        # Try to look up the job with the id provided
+        job = BilbyJob.objects.get(id=job_id)
+
+        # Can only get the file list if the job is public or the user owns the job
+        if job.public or info.context.user.user_id == job.user_id:
+            # Fetch the file list from the job controller
+            success, files = job.get_file_list()
+            if not success:
+                raise Exception("Error getting file list. " + str(files))
+
+            # Build the resulting file list and send it back to the client
+            result = []
+            for f in files:
+                download_id = ""
+                if not f["isDir"]:
+                    # todo: Optimize how file download ids are generated. An id for every file every time
+                    # todo: the page is loaded is not effective at all
+                    # Create a file download id for this file
+                    success, download_id = job.get_file_download_id(f["path"])
+                    if not success:
+                        raise Exception("Error creating file download url. " + str(download_id))
+
+                result.append(
+                    BilbyResultFile(
+                        path=f["path"],
+                        is_dir=f["isDir"],
+                        file_size=f["fileSize"],
+                        download_id=download_id
+                    )
+                )
+
+            return BilbyResultFiles(files=result)
+
+        raise Exception("Permission Denied")
 
 
 class Hello(graphene.relay.ClientIDMutation):
@@ -217,11 +279,17 @@ class SignalInput(graphene.InputObjectType, AbstractSignalType):
     signal_choice = graphene.String()
     signal_model = graphene.String()
 
+
 class PriorInput(graphene.InputObjectType):
     prior_choice = graphene.String()
 
+
 class SamplerInput(graphene.InputObjectType, AbstractSamplerType):
     sampler_choice = graphene.String()
+
+
+class BilbyJobCreationResult(ObjectType):
+    job_id = graphene.String()
 
 
 class BilbyJobMutation(relay.ClientIDMutation):
@@ -232,13 +300,20 @@ class BilbyJobMutation(relay.ClientIDMutation):
         prior = PriorInput()
         sampler = SamplerInput()
 
-    result = graphene.String()
+    result = graphene.Field(BilbyJobCreationResult)
 
     @classmethod
     def mutate_and_get_payload(cls, root, info, start, data, signal, prior, sampler):
-        create_bilby_job(info.context.user.user_id, start, data, signal, prior, sampler)
+        # Create the bilby job
+        job_id = create_bilby_job(info.context.user.user_id, start, data, signal, prior, sampler)
 
-        return BilbyJobMutation(result='Job created')
+        # Convert the bilby job id to a global id
+        job_id = to_global_id("BilbyJobNode", job_id)
+
+        # Return the bilby job id to the client
+        return BilbyJobMutation(
+            result=BilbyJobCreationResult(job_id=job_id)
+        )
 
 
 class Mutation(graphene.ObjectType):

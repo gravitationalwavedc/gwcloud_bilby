@@ -4,7 +4,7 @@ import { graphql, createPaginationContainer } from "react-relay";
 import _ from "lodash";
 import BilbyBasePage from "./BilbyBasePage";
 
-const RECORDS_PER_PAGE = 2;
+const RECORDS_PER_PAGE = 10;
 
 class BilbyJobList extends React.Component {
     constructor(props) {
@@ -18,7 +18,7 @@ class BilbyJobList extends React.Component {
         }
         
         this.state = {
-            page: 5,
+            page:  0,
             loading: false,
         }
 
@@ -50,7 +50,7 @@ class BilbyJobList extends React.Component {
     handleSort = (order) => {
         
         const refetchVariables = {
-            count: 1,
+            count: 10,
             orderBy: order
         }
         this.props.relay.refetchConnection(1, null, refetchVariables)
@@ -58,7 +58,7 @@ class BilbyJobList extends React.Component {
 
     render() {
         return (
-            <BilbyBasePage title='Bilby Job List' {...this.routing}>
+            <BilbyBasePage loginRequired title='Bilby Job List' {...this.routing}>
                 <JobList jobs={this.props.data.bilbyJobs} handleSort={this.handleSort} {...this.props}/>
             </BilbyBasePage>
         )

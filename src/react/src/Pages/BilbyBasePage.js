@@ -1,6 +1,7 @@
 import React from "react";
 import {Grid, Header, Segment, Breadcrumb} from "semantic-ui-react";
 import Breadcrumbs from "../Components/Utils/Breadcrumbs";
+import {harnessApi} from "../index";
 
 class BilbyBasePage extends React.Component {
     constructor(props) {
@@ -9,6 +10,10 @@ class BilbyBasePage extends React.Component {
 
 
     render() {
+        // Make sure user is logged in. If they are not, redirect the user to the login page
+        if (this.props.loginRequired && !harnessApi.currentUser) {
+            this.props.router.replace("/auth/?next=" + this.props.match.location.pathname)
+        }
         return (
             <React.Fragment>
                 <Header as='h2' attached='top'>{this.props.title}</Header>

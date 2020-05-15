@@ -28,6 +28,7 @@ class StepForm extends React.Component {
         this.state = {
             step: 1,
             stepsCompleted: 1,
+            jobErrors: [],
             ...initialState
         }
     }
@@ -68,7 +69,9 @@ class StepForm extends React.Component {
                 {
                   newBilbyJob(input: $input) 
                   {
-                    result
+                    result {
+                      jobId
+                    }
                   }
                 }`,
             variables: {
@@ -81,7 +84,16 @@ class StepForm extends React.Component {
                 }
             },
             onCompleted: (response, errors) => {
-                console.log(response)
+                if (errors) {
+                    this.setState({
+                        ...this.state,
+                        jobErrors: errors
+                    })
+                }
+                else {
+                    // Job was created successfully
+                    this.props.router.replace('/bilby/job-results/' + response.newBilbyJob.result.jobId + "/",)
+                }
             },
         })
     }
@@ -106,7 +118,7 @@ class StepForm extends React.Component {
                 return <SamplerForm data={bilbyJob === null ? null : bilbyJob.sampler} state={this.state.sampler} updateParentState={this.handleChange('sampler')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 6:
-                return <SubmitForm prevStep={this.prevStep} onSubmit={this.handleSubmit}/>
+                return <SubmitForm prevStep={this.prevStep} onSubmit={this.handleSubmit} errors={this.state.jobErrors}/>
         }
     }
 

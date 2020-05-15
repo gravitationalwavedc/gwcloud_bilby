@@ -21,51 +21,69 @@ function getRoutes() {
                 `}
                 environment={harnessApi.getEnvironment('bilby')}
             />
-            <Route path="job-form" 
-              query={graphql`
-                query Routes_JobForm_Query ($jobId: ID!){
-                  ...StepForm_data @arguments(jobId: $jobId)
-                }
-              `}
-              prepareVariables={(params, {location}) => ({
-                ...params,
-                jobId: location.state && location.state.jobId ? location.state.jobId : "" 
-              })}
-              environment={harnessApi.getEnvironment('bilby')}
-              Component={BilbyJobForm}
-              render={({Component, props, retry, error}) => {
-                  if (!Component || !props)
-                      return <div>Loading...</div>;
+            <Route
+                path="job-form"
+                query={graphql`
+                    query Routes_JobForm_Query ($jobId: ID!){
+                      ...StepForm_data @arguments(jobId: $jobId)
+                    }
+                `}
+                prepareVariables={(params, {location}) => ({
+                    ...params,
+                    jobId: location.state && location.state.jobId ? location.state.jobId : ""
+                })}
+                environment={harnessApi.getEnvironment('bilby')}
+                Component={BilbyJobForm}
+                render={({Component, props, retry, error}) => {
+                    if (!Component || !props)
+                        return <div>Loading...</div>;
 
-                  return <Component {...props}/>
-              }}/>
-            <Route path="job-list"
-              query={graphql`
-                query Routes_JobList_Query(
-                  $count: Int!,
-                  $cursor: String,
-                  $orderBy: String
-                ) {
-                  ...BilbyJobList_data
-                }
-              `}
-              prepareVariables={params => ({
-                ...params,
-                count: 1,
-                orderBy: 'last_updated'
-              })}
-              environment={harnessApi.getEnvironment('bilby')}
-              Component={BilbyJobList}
-              render={({Component, props, retry, error}) => {
-                  if (!Component || !props)
-                      return <div>Loading...</div>;
-                  console.log('hello',props)
-                  return <Component data={props} {...props}/>
-              }}/>
-            <Route path="job-results"
-              environment={harnessApi.getEnvironment('bilby')}
-              Component={BilbyJobResults}
-              />
+                    return <Component {...props}/>
+                }}/>
+            <Route
+                path="job-list"
+                query={graphql`
+                    query Routes_JobList_Query(
+                      $count: Int!,
+                      $cursor: String,
+                      $orderBy: String
+                    ) {
+                      ...BilbyJobList_data
+                    }
+                `}
+                prepareVariables={params => ({
+                    ...params,
+                    count: 10,
+                    orderBy: 'last_updated'
+                })}
+                environment={harnessApi.getEnvironment('bilby')}
+                Component={BilbyJobList}
+                render={({Component, props, retry, error}) => {
+                    if (!Component || !props)
+                        return <div>Loading...</div>;
+                    console.log('hello', props)
+                    return <Component data={props} {...props}/>
+                }}/>
+            <Route
+                path="job-results/:jobId/"
+                environment={harnessApi.getEnvironment('bilby')}
+                Component={BilbyJobResults}
+                query={graphql`
+                    query Routes_BilbyJobResults_Query ($jobId: ID!){
+                      ...BilbyJobResults_data @arguments(jobId: $jobId)
+                    }
+                `}
+                prepareVariables={(params, {location}) => ({
+                    ...params,
+                    jobId: params.jobId
+                })}
+                render={({Component, props, retry, error}) => {
+                    if (!Component || !props)
+                        return <div>Loading...</div>;
+
+                    return <Component data={props} {...props}/>
+                }}
+            />
         </Route>
     )
 }

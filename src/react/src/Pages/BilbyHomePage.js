@@ -15,7 +15,7 @@ class BilbyHomePage extends React.Component {
 
     render() {
         return (
-            <BilbyBasePage title="Welcome to Bilby" {...this.routing}>
+            <BilbyBasePage loginRequired title="Welcome to Bilby" {...this.routing}>
                 <Grid.Row>
                     <Segment>
                         Welcome to Bilby!

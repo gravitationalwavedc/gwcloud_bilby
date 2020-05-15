@@ -1,5 +1,5 @@
 import React from "react";
-import { graphql, createPaginationContainer } from "react-relay";
+import {graphql, createPaginationContainer, createFragmentContainer} from "react-relay";
 import _ from "lodash";
 import BilbyBasePage from "./BilbyBasePage";
 import JobResults from "../Components/Results/JobResults";
@@ -18,65 +18,25 @@ class BilbyJobResults extends React.Component {
 
 
     render() {
+        console.log("top", this.props)
         return (
-            <BilbyBasePage title='Bilby Job Results' {...this.routing}>
-                <JobResults jobId={this.props.jobId} {...this.props}/>
+            <BilbyBasePage loginRequired title='Bilby Job Results' {...this.routing}>
+                <JobResults bilbyResultFiles={this.props.data.bilbyResultFiles} {...this.props}/>
             </BilbyBasePage>
         )
     }
 }
 
-export default BilbyJobResults;
-// export default createPaginationContainer(BilbyJobList,
-//     {
-//         data: graphql`
-//             fragment BilbyJobList_data on Query {
-//                 bilbyJobs(
-//                     first: $count,
-//                     after: $cursor,
-//                     orderBy: $orderBy
-//                 ) @connection(key: "BilbyJobList_bilbyJobs") {
-//                     edges {
-//                         node {
-//                             id
-//                             name
-//                             description
-//                             lastUpdated
-//                             jobStatus
-//                         }
-//                     }
-//                   }
-//             }
-//         `,
-//     },
-//     {
-//         direction: 'forward',
-//         query: graphql`
-//             query BilbyJobListForwardQuery(
-//                 $count: Int!,
-//                 $cursor: String,
-//                 $orderBy: String
-//             ) {
-//               ...BilbyJobList_data
-//             }
-//         `,
-//         getConnectionFromProps(props) {
-//             return props.data && props.data.bilbyJobs
-//         },
-
-//         getFragmentVariables(previousVariables, totalCount) {
-//             return {
-//                 ...previousVariables,
-//                 count: totalCount
-//             }
-//         },
-
-//         getVariables(props, {count, cursor}, {orderBy}) {
-//             return {
-//                 count,
-//                 cursor,
-//                 orderBy,
-//             }
-//         }
-//     }
-// )
+export default createFragmentContainer(BilbyJobResults,
+    {
+        data: graphql`
+            fragment BilbyJobResults_data on Query @argumentDefinitions(
+                jobId: {type: "ID!"}
+            ){
+                bilbyResultFiles(jobId: $jobId) {
+                    ...JobResults_bilbyResultFiles
+                }
+            }
+        `,
+    },
+);

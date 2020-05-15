@@ -83,7 +83,7 @@ def create_bilby_job(user_id, start, data, signal, prior, sampler):
 
         # Initiate the request to the job controller
         result = requests.request(
-            "POST", settings.GWCLOUD_JOB_CONTROLLER_API_URL,
+            "POST", settings.GWCLOUD_JOB_CONTROLLER_API_URL + "/job/",
             data=json.dumps(data),
             headers={
                 "Authorization": jwt_enc
@@ -105,3 +105,5 @@ def create_bilby_job(user_id, start, data, signal, prior, sampler):
         # Save the job id
         bilby_job.job_id = result["jobId"]
         bilby_job.save()
+
+        return bilby_job.id

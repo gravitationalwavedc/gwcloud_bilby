@@ -19,7 +19,7 @@ class BilbyJobForm extends React.Component {
     
     render() {
         return (
-            <BilbyBasePage title='Bilby Job Form' {...this.routing}>
+            <BilbyBasePage loginRequired title='Bilby Job Form' {...this.routing}>
                 <StepForm data={this.props} {...this.props}/>
             </BilbyBasePage>
         )
