@@ -39,7 +39,7 @@ class UserBilbyJobFilter(FilterSet):
 
     order_by = OrderingFilter(
         fields=(
-            ('last_updated', 'last_updated'),
+            ('last_updated', 'lastUpdated'),
             ('name', 'name'),
         )
     )
@@ -48,13 +48,28 @@ class UserBilbyJobFilter(FilterSet):
     def qs(self):
         return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
 
+class PublicBilbyJobFilter(FilterSet):
+    class Meta:
+        model = BilbyJob
+        fields = '__all__'
+
+    order_by = OrderingFilter(
+        fields=(
+            ('last_updated', 'last_updated'),
+            ('name', 'name'),
+        )
+    )
+
+    @property
+    def qs(self):
+        return super(PublicBilbyJobFilter, self).qs.filter(private=False)
+
 
 class BilbyJobNode(DjangoObjectType):
     class Meta:
         model = BilbyJob
         convert_choices_to_enum = False
         interfaces = (relay.Node,)
-        filterset_class = UserBilbyJobFilter
 
     job_status = graphene.String()
     last_updated = graphene.String()
@@ -202,7 +217,8 @@ class BilbyResultFiles(ObjectType):
 
 class Query(object):
     bilby_job = relay.Node.Field(BilbyJobNode)
-    bilby_jobs = DjangoFilterConnectionField(BilbyJobNode)
+    bilby_jobs = DjangoFilterConnectionField(BilbyJobNode, filterset_class=UserBilbyJobFilter)
+    public_bilby_jobs = DjangoFilterConnectionField(BilbyJobNode, filterset_class=PublicBilbyJobFilter)
 
     data = graphene.Field(DataType, data_id=graphene.String())
     all_data = graphene.List(DataType)

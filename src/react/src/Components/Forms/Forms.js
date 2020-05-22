@@ -1,11 +1,12 @@
 import React from "react";
+import _ from "lodash";
 import {Form, Divider, Grid, Label} from "semantic-ui-react";
 import {assembleErrorString} from "../../Utils/errors";
 
 
 
 function BaseForm({data, errors, forms, onChange, validate}) {
-    const form_arr = forms.map(({label, name, form, errFunc, requiredField, toggle}, index) => (toggle ? null : <FormBundle key={index} label={label} children={form} name={name} value={data[name]} errors={errors[name]} errFunc={errFunc} validate={validate} onChange={onChange} required={typeof(requiredField) !== 'undefined' ? requiredField : true}/>))
+    const form_arr = forms.map(({label, name, form, errFunc, requiredField}, index) => (<FormBundle key={index} label={label} children={form} name={name} value={data[name]} errors={errors[name]} errFunc={errFunc} validate={validate} onChange={onChange} required={typeof(requiredField) !== 'undefined' ? requiredField : true}/>))
 
     return (
         <Grid.Row>
@@ -90,7 +91,7 @@ class FormBundle extends React.Component {
 
     componentDidMount() {
         const {name, value, errFunc, onChange} = this.props
-        const errors = typeof(errFunc) !== 'undefined' ? errFunc(value) : []
+        const errors = errFunc == null ? [] : errFunc(value)
         onChange({name: name, value: value, errors: errors})
     }
 

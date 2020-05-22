@@ -27,14 +27,14 @@ function getRoutes() {
               prepareVariables={params => ({
                 ...params,
                 count: 5,
-                orderBy: '-last_updated'
+                orderBy: 'name'
               })}
               environment={harnessApi.getEnvironment('bilby')}
               Component={BilbyHomePage}
               render={({Component, props, retry, error}) => {
                   if (!Component || !props)
                       return <div>Loading...</div>;
-                  console.log('hello',props)
+                    
                   return <Component data={props} match={props.match} router={props.router}/>
             }}/>
             <Route
@@ -69,15 +69,15 @@ function getRoutes() {
                 `}
                 prepareVariables={params => ({
                     ...params,
-                    count: 10,
-                    orderBy: 'last_updated'
+                    count: 1,
+                    orderBy: 'lastUpdated'
                 })}
                 environment={harnessApi.getEnvironment('bilby')}
                 Component={BilbyJobList}
                 render={({Component, props, retry, error}) => {
                     if (!Component || !props)
                         return <div>Loading...</div>;
-                    console.log('hello', props)
+                    
                     return <Component data={props} {...props}/>
                 }}/>
             <Route

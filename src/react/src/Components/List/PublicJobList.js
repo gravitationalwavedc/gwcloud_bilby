@@ -1,103 +1,68 @@
 import React from "react";
-import {Grid, Table, Segment} from "semantic-ui-react";
 import Link from "found/lib/Link";
 import { createPaginationContainer, graphql } from "react-relay";
+import BaseJobList from "./BaseJobList";
+import { Grid } from "semantic-ui-react";
 
 class PublicJobList extends React.Component {
     constructor(props) {
         super(props);
-
-        this.state = {
-            order: 'last_updated',
-            direction: 'ascending'
-        }
     }
 
-    // handleSort = (clickedColumn) => () => {
-    //     // This is very inelegant
-    //     const {order, direction} = this.state
-    //     let newState = {}
-    //     if (order !== clickedColumn) {
-    //         newState = {
-    //             order: clickedColumn,
-    //             direction: 'ascending'
-    //         }
-    //     } else {
-    //         newState = {
-    //             order: order,
-    //             direction: direction === 'ascending' ? 'descending' : 'ascending',
-    //         }
-    //     }
-    //     this.setState(newState)
-        
-    //     const signedOrder = newState.direction === 'ascending' ? newState.order : '-' + newState.order
-    //     this.props.handleSort(signedOrder)
-    // }
+    handleSort = (order) => {
+        const refetchVariables = {
+            count: 10,
+            orderBy: order
+        }
+        this.props.relay.refetchConnection(1, null, refetchVariables)
+    }
 
     render() {
-        console.log(this.props.data)
-        this.rows = this.props.data.bilbyJobs.edges.map(({node}) => <TableRow key={node.id} id={node.id} name={node.name} description={node.description} lastUpdated={node.lastUpdated} jobStatus={node.jobStatus} {...this.props}/>)
-        const {order, direction} = this.state
-        return <React.Fragment>
+        const headers = [
+            {key: 'userId', display: 'User'},
+            {key: 'name', display: 'Name'},
+            {key: 'description', display: 'Description'},
+            {key: null, display: 'Status'},
+            {key: null, display: 'Actions'},
+        ]
+
+        const rows = this.props.data.publicBilbyJobs.edges.map(({node}) => (
+            [
+                node.userId,
+                node.name,
+                node.description,
+                node.jobStatus,
+                <Link to={{
+                    pathname: '/bilby/job-results/' + node.id + "/",
+                }} activeClassName="selected" exact match={this.props.match} router={this.props.router}>
+                    View Results
+                </Link>
+            ]
+        ))
+
+        return (
             <Grid.Row>
                 <Grid.Column>
-                    <Segment style={{overflow: 'auto', maxHeight: 200}}>
-                        <Table sortable fixed celled>
-                            <Table.Header>
-                                <Table.Row>
-                                    {/* <Table.HeaderCell sorted={order === 'name' ? direction : null} onClick={this.handleSort('name')}>Name</Table.HeaderCell>
-                                    <Table.HeaderCell sorted={order === 'description' ? direction : null} onClick={this.handleSort('description')}>Description</Table.HeaderCell>
-                                    <Table.HeaderCell sorted={order === 'last_updated' ? direction : null} onClick={this.handleSort('last_updated')}>Edit Date</Table.HeaderCell>
-                                    <Table.HeaderCell sorted={order === 'jobStatus' ? direction : null} onClick={this.handleSort('jobStatus')}>Job Status</Table.HeaderCell> */}
-                                    <Table.HeaderCell>Name</Table.HeaderCell>
-                                    <Table.HeaderCell>Description</Table.HeaderCell>
-                                    <Table.HeaderCell>Status</Table.HeaderCell>
-                                    <Table.HeaderCell>Actions</Table.HeaderCell>
-                                </Table.Row>
-                            </Table.Header>
-                            <Table.Body>
-                                {this.rows}
-                            </Table.Body>
-                        </Table>
-                    </Segment>
+                    <BaseJobList headers={headers} rows={rows} handleSort={this.handleSort} initialSort={'name'}/>
                 </Grid.Column>
             </Grid.Row>
-        </React.Fragment>
+        )
     }
 }
 
-function TableRow(props) {
-    const {id, name, description, lastUpdated, jobStatus, match, router} = props
-    return (
-        <Table.Row>
-            <Table.Cell content={name}/>
-            <Table.Cell content={description}/>
-            <Table.Cell content={jobStatus}/>
-            <Table.Cell>
-                <Link to={{
-                    pathname: '/bilby/job-results/',
-                }} activeClassName="selected" exact match={match} router={router}>
-                    View Results
-                </Link>
-            </Table.Cell>
-        </Table.Row>
-    )
-
-}
-
-// export default PublicJobList;
 export default createPaginationContainer(PublicJobList,
     {
         data: graphql`
             fragment PublicJobList_data on Query {
-                bilbyJobs(
+                publicBilbyJobs(
                     first: $count,
                     after: $cursor,
                     orderBy: $orderBy
-                ) @connection(key: "PublicJobList_bilbyJobs") {
+                ) @connection(key: "PublicJobList_publicBilbyJobs") {
                     edges {
                         node {
                             id
+                            userId
                             name
                             description
                             jobStatus
