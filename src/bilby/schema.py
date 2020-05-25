@@ -48,6 +48,7 @@ class UserBilbyJobFilter(FilterSet):
     def qs(self):
         return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
 
+
 class PublicBilbyJobFilter(FilterSet):
     class Meta:
         model = BilbyJob
@@ -272,17 +273,6 @@ class Query(object):
         raise Exception("Permission Denied")
 
 
-class Hello(graphene.relay.ClientIDMutation):
-    class Input:
-        message = graphene.String(required=True)
-
-    result = graphene.String()
-
-    @classmethod
-    def mutate_and_get_payload(cls, root, info, **kwargs):
-        return Hello(kwargs['message'])
-
-
 class StartInput(graphene.InputObjectType):
     name = graphene.String()
     description = graphene.String()
@@ -333,6 +323,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
             result=BilbyJobCreationResult(job_id=job_id)
         )
 
+
 class UniqueNameMutation(relay.ClientIDMutation):
     class Input:
         name = graphene.String()
@@ -346,6 +337,5 @@ class UniqueNameMutation(relay.ClientIDMutation):
 
 
 class Mutation(graphene.ObjectType):
-    hello = Hello.Field()
     new_bilby_job = BilbyJobMutation.Field()
     is_name_unique = UniqueNameMutation.Field()
