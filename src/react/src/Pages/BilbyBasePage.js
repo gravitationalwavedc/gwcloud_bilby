@@ -1,11 +1,17 @@
 import React from "react";
-import {Grid, Header, Segment, Breadcrumb} from "semantic-ui-react";
+import {Grid, Header, Segment, Button, Menu} from "semantic-ui-react";
+import Link from 'found/lib/Link';
+
 import Breadcrumbs from "../Components/Utils/Breadcrumbs";
 import {harnessApi} from "../index";
 
 class BilbyBasePage extends React.Component {
     constructor(props) {
         super(props);
+        this.routing = {
+            match: this.props.match,
+            router: this.props.router
+        }
     }
 
 
@@ -16,13 +22,16 @@ class BilbyBasePage extends React.Component {
         }
         return (
             <React.Fragment>
-                <Header as='h2' attached='top'>{this.props.title}</Header>
-                <Breadcrumbs match={this.props.match} router={this.props.router} paths={this.props.breadcrumbPaths}/>
-                <Segment attached id='scrollable'>
-                    <Grid centered textAlign='center' style={{minHeight: '100vh'}} verticalAlign='middle'>
-                        {this.props.children}
-                    </Grid>
-                </Segment>
+                <Menu borderless size='large'>
+                    <Menu.Item>
+                        <Breadcrumbs size='large' paths={this.props.breadcrumbPaths} {...this.routing}/>
+                    </Menu.Item>
+                    <Menu.Item position='right' content={'New Job'} as={Link} to={'/bilby/job-form/'} exact={true} {...this.routing}/>
+                    <Menu.Item content={'My Jobs'} as={Link} to={'/bilby/job-list/'} exact={true} {...this.routing}/>
+                </Menu>
+                <Grid centered textAlign='center' style={{minHeight: '100vh'}} verticalAlign='middle'>
+                    {this.props.children}
+                </Grid>
             </React.Fragment>
         )
     }

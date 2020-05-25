@@ -3,6 +3,8 @@ import {graphql, createPaginationContainer, createFragmentContainer} from "react
 import _ from "lodash";
 import BilbyBasePage from "./BilbyBasePage";
 import JobResults from "../Components/Results/JobResults";
+import JobParameters from "../Components/Results/JobParameters";
+import { Divider } from "semantic-ui-react";
 
 class BilbyJobResults extends React.Component {
     constructor(props) {
@@ -18,9 +20,10 @@ class BilbyJobResults extends React.Component {
 
 
     render() {
-        console.log("top", this.props)
+        console.log(this.props)
         return (
             <BilbyBasePage loginRequired title='Bilby Job Results' {...this.routing}>
+                <JobParameters bilbyJobParameters={this.props.data.bilbyJob} {...this.props}/>
                 <JobResults bilbyResultFiles={this.props.data.bilbyResultFiles} {...this.props}/>
             </BilbyBasePage>
         )
@@ -35,6 +38,10 @@ export default createFragmentContainer(BilbyJobResults,
             ){
                 bilbyResultFiles(jobId: $jobId) {
                     ...JobResults_bilbyResultFiles
+                }
+                
+                bilbyJob (id: $jobId) {
+                    ...JobParameters_bilbyJobParameters
                 }
             }
         `,

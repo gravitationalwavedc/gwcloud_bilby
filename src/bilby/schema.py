@@ -240,7 +240,7 @@ class Query(object):
         job = BilbyJob.objects.get(id=job_id)
 
         # Can only get the file list if the job is public or the user owns the job
-        if job.public or info.context.user.user_id == job.user_id:
+        if not job.private or info.context.user.user_id == job.user_id:
             # Fetch the file list from the job controller
             success, files = job.get_file_list()
             if not success:

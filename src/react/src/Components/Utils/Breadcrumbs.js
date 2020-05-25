@@ -1,5 +1,5 @@
 import React from "react";
-import {Breadcrumb} from "semantic-ui-react";
+import {Breadcrumb, Grid} from "semantic-ui-react";
 import { Link } from "found";
 
 
@@ -27,11 +27,11 @@ class Breadcrumbs extends React.Component {
 
         this.crumbs.unshift(
             <React.Fragment key={'home'}>
-                <Breadcrumb.Section>
                     <Link to={'/bilby'} match={this.props.match} router={this.props.router}>
+                <Breadcrumb.Section>
                         Bilby Home
-                    </Link>
                 </Breadcrumb.Section>
+                    </Link>
             </React.Fragment>
         )
     }
@@ -39,9 +39,13 @@ class Breadcrumbs extends React.Component {
 
     render() {
         return (
-            <Breadcrumb>
-                {this.crumbs}
-            </Breadcrumb>
+            <Grid>
+                {/* <Grid.Row> */}
+                    <Breadcrumb size={this.props.size}>
+                        {this.crumbs}
+                    </Breadcrumb>
+                {/* </Grid.Row> */}
+            </Grid>
         )
     }
 }

@@ -21,7 +21,7 @@ class PublicJobList extends React.Component {
         const headers = [
             {key: 'userId', display: 'User'},
             {key: 'name', display: 'Name'},
-            {key: 'description', display: 'Description'},
+            // {key: 'description', display: 'Description'},
             {key: null, display: 'Status'},
             {key: null, display: 'Actions'},
         ]
@@ -30,7 +30,7 @@ class PublicJobList extends React.Component {
             [
                 node.userId,
                 node.name,
-                node.description,
+                // node.description,
                 node.jobStatus,
                 <Link to={{
                     pathname: '/bilby/job-results/' + node.id + "/",

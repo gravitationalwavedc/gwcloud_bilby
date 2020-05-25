@@ -1,5 +1,5 @@
 import React from "react";
-import {Grid, Table} from "semantic-ui-react";
+import {Grid, Table, Divider, Icon, Header} from "semantic-ui-react";
 import {createFragmentContainer, graphql} from "react-relay";
 import JobResultFile from "./JobResultFile";
 import * as Enumerable from "linq";
@@ -36,8 +36,16 @@ class JobResults extends React.Component {
         const {order, direction} = this.state;
 
         return <React.Fragment>
-            {this.props.bilbyResultFiles ? (
-                <Grid.Row>
+            <Grid.Column width={16}>
+                <Divider horizontal>
+                    <Header>
+                        <Icon name='chart line'/>
+                        Results
+                    </Header>
+                </Divider>
+            </Grid.Column>
+            <Grid.Row>
+                {this.props.bilbyResultFiles ? (
                     <Grid.Column>
                         <Table sortable fixed celled>
                             <Table.Header>
@@ -56,10 +64,10 @@ class JobResults extends React.Component {
                             </Table.Body>
                         </Table>
                     </Grid.Column>
-                </Grid.Row>
-            ) : (
-                <h4>Job does not have any files</h4>
-            )}
+                ) : (
+                    <h4>Job does not have any files</h4>
+                )}
+            </Grid.Row>
         </React.Fragment>
     }
 }

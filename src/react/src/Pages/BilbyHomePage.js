@@ -1,5 +1,5 @@
 import React from "react";
-import {Grid, Segment, Button} from "semantic-ui-react";
+import {Grid, Segment, Button, Header} from "semantic-ui-react";
 import Link from 'found/lib/Link';
 import BilbyBasePage from "./BilbyBasePage";
 import { createFragmentContainer, graphql } from "react-relay";
@@ -19,19 +19,14 @@ class BilbyHomePage extends React.Component {
         return (
             <BilbyBasePage loginRequired title="Welcome to Bilby" {...this.routing}>
                 <Grid.Row>
-                    <Segment>
-                        Welcome to Bilby!
-                    </Segment>
+                    <Header>Welcome to Bilby!</Header>
                 </Grid.Row>
                 <Grid.Row>
-                    <Link to={'/bilby/job-form/'} exact {...this.props}>
-                        <Button>Create new job</Button>
-                    </Link>
-                    <Link to={'/bilby/job-list/'} exact {...this.props}>
-                        <Button>Job list</Button>
-                    </Link>
+                    <Grid.Column width={15}>
+
+                        <PublicJobList data={this.props.data} {...this.routing}/>
+                    </Grid.Column>
                 </Grid.Row>
-                <PublicJobList data={this.props.data} {...this.routing}/>
             </BilbyBasePage>
         )
     }
