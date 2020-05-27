@@ -219,7 +219,12 @@ class BilbyResultFiles(ObjectType):
 class Query(object):
     bilby_job = relay.Node.Field(BilbyJobNode)
     bilby_jobs = DjangoFilterConnectionField(BilbyJobNode, filterset_class=UserBilbyJobFilter)
-    public_bilby_jobs = DjangoFilterConnectionField(BilbyJobNode, filterset_class=PublicBilbyJobFilter)
+    public_bilby_jobs = DjangoFilterConnectionField(
+        BilbyJobNode,
+        filterset_class=PublicBilbyJobFilter,
+        search=graphene.String(),
+        time_range=graphene.String()
+    )
 
     data = graphene.Field(DataType, data_id=graphene.String())
     all_data = graphene.List(DataType)
@@ -227,6 +232,12 @@ class Query(object):
     bilby_result_files = graphene.Field(BilbyResultFiles, job_id=graphene.ID(required=True))
 
     gwclouduser = graphene.Field(UserDetails)
+
+    @login_required
+    def resolve_public_bilby_jobs(self, info, **kwargs):
+        search = kwargs.get("search")
+        print("Got search: ", search)
+        return BilbyJob.objects.all()
 
     @login_required
     def resolve_gwclouduser(self, info, **kwargs):

@@ -49,6 +49,7 @@ def request_job_status(job, user_id=None):
         # Parse the response from the job controller
         result = json.loads(result.content)
 
-        return "OK", result["history"]
-    except:
+        return "OK", result[0]["history"]
+    except Exception as e:
+        print(e)
         return "UNKNOWN", "Error getting job status"

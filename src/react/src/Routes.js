@@ -16,7 +16,9 @@ function getRoutes() {
                 query Routes_HomePage_Query (
                   $count: Int!,
                   $cursor: String,
-                  $orderBy: String
+                  $orderBy: String,
+                  $search: String,
+                  $timeRange: String
                 ) {
                     gwclouduser {
                       username
