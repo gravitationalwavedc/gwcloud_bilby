@@ -5,7 +5,7 @@ from graphene_django.filter import DjangoFilterConnectionField
 from django_filters import FilterSet, OrderingFilter
 
 from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
-from .views import create_bilby_job
+from .views import create_bilby_job, change_job_privacy
 from .types import OutputStartType, AbstractDataType, AbstractSignalType, AbstractSamplerType
 
 from graphql_jwt.decorators import login_required
@@ -334,6 +334,22 @@ class BilbyJobMutation(relay.ClientIDMutation):
             result=BilbyJobCreationResult(job_id=job_id)
         )
 
+class UpdateBilbyJobMutation(relay.ClientIDMutation):
+    class Input:
+        job_id = graphene.ID(required=True)
+        private = graphene.Boolean(required=True)
+
+    result = graphene.String()
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, job_id, private):
+        # Update privacy of bilby job
+        message = change_job_privacy(from_global_id(job_id)[1], private)
+
+        # Return the bilby job id to the client
+        return UpdateBilbyJobMutation(
+            result=message
+        )
 
 class UniqueNameMutation(relay.ClientIDMutation):
     class Input:
@@ -349,4 +365,5 @@ class UniqueNameMutation(relay.ClientIDMutation):
 
 class Mutation(graphene.ObjectType):
     new_bilby_job = BilbyJobMutation.Field()
+    update_bilby_job = UpdateBilbyJobMutation.Field()
     is_name_unique = UniqueNameMutation.Field()

@@ -36,38 +36,28 @@ class JobResults extends React.Component {
         const {order, direction} = this.state;
 
         return <React.Fragment>
-            <Grid.Column width={16}>
-                <Divider horizontal>
-                    <Header>
-                        <Icon name='chart line'/>
-                        Results
-                    </Header>
-                </Divider>
-            </Grid.Column>
-            <Grid.Row>
+            <Grid.Column>
                 {this.props.bilbyResultFiles ? (
-                    <Grid.Column>
-                        <Table sortable fixed celled>
-                            <Table.Header>
-                                <Table.Row>
-                                    <Table.HeaderCell sorted={order === 'path' ? direction : null}
-                                                      onClick={this.handleSort('path')}>File Path</Table.HeaderCell>
-                                    <Table.HeaderCell sorted={order === 'isDir' ? direction : null}
-                                                      onClick={this.handleSort('isDir')}>Type</Table.HeaderCell>
-                                    <Table.HeaderCell sorted={order === 'fileSize' ? direction : null}
-                                                      onClick={this.handleSort('fileSize')}>File Size</Table.HeaderCell>
-                                </Table.Row>
-                            </Table.Header>
-                            <Table.Body>
-                                {Enumerable.from(this.props.bilbyResultFiles.files).select((e, i) => <JobResultFile
-                                    key={i} bilbyResultFile={e} {...this.props}/>).toArray()}
-                            </Table.Body>
-                        </Table>
-                    </Grid.Column>
+                    <Table sortable fixed celled>
+                        <Table.Header>
+                            <Table.Row>
+                                <Table.HeaderCell sorted={order === 'path' ? direction : null}
+                                                    onClick={this.handleSort('path')}>File Path</Table.HeaderCell>
+                                <Table.HeaderCell sorted={order === 'isDir' ? direction : null}
+                                                    onClick={this.handleSort('isDir')}>Type</Table.HeaderCell>
+                                <Table.HeaderCell sorted={order === 'fileSize' ? direction : null}
+                                                    onClick={this.handleSort('fileSize')}>File Size</Table.HeaderCell>
+                            </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                            {Enumerable.from(this.props.bilbyResultFiles.files).select((e, i) => <JobResultFile
+                                key={i} bilbyResultFile={e} {...this.props}/>).toArray()}
+                        </Table.Body>
+                    </Table>
                 ) : (
                     <h4>Job does not have any files</h4>
                 )}
-            </Grid.Row>
+            </Grid.Column>
         </React.Fragment>
     }
 }

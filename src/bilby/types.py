@@ -7,6 +7,7 @@ from django_filters import FilterSet, OrderingFilter
 class OutputStartType(ObjectType):
     name = String()
     description = String()
+    private = Boolean()
 
 class AbstractDataType(AbstractType):
     data_type = String()
