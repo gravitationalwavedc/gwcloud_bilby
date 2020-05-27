@@ -55,9 +55,9 @@ class StepForm extends React.Component {
         }, () => {console.log(this.state)})
     }
 
-    handleStepClick = (e, {stepNum}) => {
+    handleStepClick = (e, {stepnum}) => {
         this.setState({
-            step: stepNum
+            step: stepnum
         })
     }
 
