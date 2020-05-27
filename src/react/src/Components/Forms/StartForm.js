@@ -113,6 +113,7 @@ class StartForm extends React.Component {
             errors: errors,
             validate: false
         }
+        console.log(this.state)
         this.forms = [
             {label: "Job Name", name: "name", form: <Form.Input placeholder="Job Name"/>, errFunc: checkForErrors(longerThan(5), validJobName)},
             {label: "Job Description", name: "description", form: <Form.TextArea placeholder="Job Description"/>, errFunc: checkForErrors(shorterThan(200)), requiredField: false},
@@ -165,6 +166,7 @@ export default createFragmentContainer(StartForm, {
         fragment StartForm_data on OutputStartType {
             name
             description
+            private
         }
     `
 });

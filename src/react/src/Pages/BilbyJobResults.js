@@ -25,6 +25,9 @@ class BilbyJobResults extends React.Component {
     }
 
     handleSave = (e, data) => {
+        this.setState({
+            private: data.checked
+        })
         commitMutation(harnessApi.getEnvironment("bilby"), {
             mutation: graphql`mutation BilbyJobResultsSetPrivacyMutation($jobId: ID!, $private: Boolean!)
                 {
@@ -66,7 +69,7 @@ class BilbyJobResults extends React.Component {
                                     </Label.Group>
                                 </Grid.Column>
                                 <Grid.Column width={8} textAlign='right'>
-                                    <Checkbox toggle label={'Private'} onChange={this.handleSave}/>
+                                    <Checkbox toggle checked={this.state.private} label={'Private'} onChange={this.handleSave}/>
                                 </Grid.Column>
                             </Grid>
                             <Divider/>
