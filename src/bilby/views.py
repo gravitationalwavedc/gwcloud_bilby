@@ -58,56 +58,56 @@ def create_bilby_job(user_id, start, data, signal, prior, sampler):
                 sampler_param = SamplerParameter(job=bilby_job, sampler=job_sampler, name=key, value=val)
                 sampler_param.save()
 
-        # # Submit the job to the job controller
+        # Submit the job to the job controller
 
-        # # Create the jwt token
-        # jwt_enc = jwt.encode(
-        #     {
-        #         'userId': user_id,
-        #         'exp': datetime.datetime.now() + datetime.timedelta(days=30)
-        #     },
-        #     settings.JOB_CONTROLLER_JWT_SECRET,
-        #     algorithm='HS256'
-        # )
+        # Create the jwt token
+        jwt_enc = jwt.encode(
+            {
+                'userId': user_id,
+                'exp': datetime.datetime.now() + datetime.timedelta(days=30)
+            },
+            settings.JOB_CONTROLLER_JWT_SECRET,
+            algorithm='HS256'
+        )
 
-        # # Create the parameter json
-        # params = bilby_job.as_json()
+        # Create the parameter json
+        params = bilby_job.as_json()
 
-        # print(params)
+        print(params)
 
-        # # Construct the request parameters to the job controller, note that parameters must be a string, not an objects
-        # data = {
-        #     "parameters": json.dumps(params),
-        #     "cluster": "ozstar",
-        #     "bundle": "fbc9f7c0815f1a83b0de36f957351c93797b2049"
-        # }
+        # Construct the request parameters to the job controller, note that parameters must be a string, not an objects
+        data = {
+            "parameters": json.dumps(params),
+            "cluster": "ozstar",
+            "bundle": "fbc9f7c0815f1a83b0de36f957351c93797b2049"
+        }
 
-        # # Initiate the request to the job controller
-        # result = requests.request(
-        #     "POST", settings.GWCLOUD_JOB_CONTROLLER_API_URL + "/job/",
-        #     data=json.dumps(data),
-        #     headers={
-        #         "Authorization": jwt_enc
-        #     }
-        # )
+        # Initiate the request to the job controller
+        result = requests.request(
+            "POST", settings.GWCLOUD_JOB_CONTROLLER_API_URL + "/job/",
+            data=json.dumps(data),
+            headers={
+                "Authorization": jwt_enc
+            }
+        )
 
-        # # Check that the request was successful
-        # if result.status_code != 200:
-        #     # Oops
-        #     msg = f"Error submitting job, got error code: {result.status_code}\n\n{result.headers}\n\n{result.content}"
-        #     print(msg)
-        #     raise Exception(msg)
+        # Check that the request was successful
+        if result.status_code != 200:
+            # Oops
+            msg = f"Error submitting job, got error code: {result.status_code}\n\n{result.headers}\n\n{result.content}"
+            print(msg)
+            raise Exception(msg)
 
-        # print(f"Job submitted OK.\n{result.headers}\n\n{result.content}")
+        print(f"Job submitted OK.\n{result.headers}\n\n{result.content}")
 
-        # # Parse the response from the job controller
-        # result = json.loads(result.content)
+        # Parse the response from the job controller
+        result = json.loads(result.content)
 
-        # # Save the job id
-        # bilby_job.job_id = result["jobId"]
-        # bilby_job.save()
+        # Save the job id
+        bilby_job.job_id = result["jobId"]
+        bilby_job.save()
 
-        # return bilby_job.id
+        return bilby_job.id
 
 
 def change_job_privacy(job_id, private, user_id):
