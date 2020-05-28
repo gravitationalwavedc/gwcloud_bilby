@@ -5,7 +5,7 @@ import BaseJobList from "./BaseJobList";
 import {Form, Grid, Visibility} from "semantic-ui-react";
 import Button from "semantic-ui-react/dist/commonjs/elements/Button";
 
-const RECORDS_PER_PAGE = 5;
+const RECORDS_PER_PAGE = 10;
 
 class PublicJobList extends React.Component {
     constructor(props) {

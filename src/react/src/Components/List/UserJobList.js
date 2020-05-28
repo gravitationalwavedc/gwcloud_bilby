@@ -5,7 +5,7 @@ import BaseJobList from "./BaseJobList";
 import Link from "found/lib/Link";
 import { Visibility, Grid } from "semantic-ui-react";
 
-const RECORDS_PER_PAGE = 1;
+const RECORDS_PER_PAGE = 10;
 
 class UserJobList extends React.Component {
     constructor(props) {

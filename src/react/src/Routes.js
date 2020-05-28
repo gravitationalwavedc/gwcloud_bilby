@@ -28,7 +28,7 @@ function getRoutes() {
               `}
               prepareVariables={params => ({
                 ...params,
-                count: 5,
+                count: 10,
                 orderBy: 'name'
               })}
               environment={harnessApi.getEnvironment('bilby')}
@@ -71,7 +71,7 @@ function getRoutes() {
                 `}
                 prepareVariables={params => ({
                     ...params,
-                    count: 1,
+                    count: 10,
                     orderBy: 'lastUpdated'
                 })}
                 environment={harnessApi.getEnvironment('bilby')}
