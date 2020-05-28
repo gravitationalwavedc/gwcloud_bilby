@@ -18,7 +18,7 @@ def derive_job_status(history):
             "data": h
         })
 
-    history_items.sort(key=lambda x: x["timestamp"])
+    history_items.sort(key=lambda x: x["timestamp"], reverse=True)
 
     if len(history_items):
         return JobStatus.display_name(history_items[0]["data"]["state"])
