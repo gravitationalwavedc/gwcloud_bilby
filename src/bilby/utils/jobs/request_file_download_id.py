@@ -6,19 +6,18 @@ import requests
 from django.conf import settings
 
 
-def request_file_list(job, path, recursive, user_id=None):
+def request_file_download_id(job, path, user_id=None):
     """
-    Requests the file list for a job
+    Requests a file download id from the job controller for the provided file
 
     :param job: The BilbyJob instance to get the status of
+    :param path: The path to the file to download
     :param user_id: On optional user id to make the request as
-    :param path: The relative path to the job to fetch the file list for
-    :param recursive: If the file list should be recursive or not
     """
 
     # Make sure that the job was actually submitted (Might be in a draft state?)
     if not job.job_id:
-        return False, "Job has not been submitted"
+        return False, "Job not submitted"
 
     # Create the jwt token
     jwt_enc = jwt.encode(
@@ -30,17 +29,16 @@ def request_file_list(job, path, recursive, user_id=None):
         algorithm='HS256'
     )
 
-    # Build the data object
+    # Generate the post payload
     data = {
         'jobId': job.job_id,
-        'recursive': recursive,
         'path': path
     }
 
     try:
         # Initiate the request to the job controller
         result = requests.request(
-            "PATCH", f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
+            "POST", f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
             data=json.dumps(data),
             headers={
                 "Authorization": jwt_enc
@@ -50,15 +48,13 @@ def request_file_list(job, path, recursive, user_id=None):
         # Check that the request was successful
         if result.status_code != 200:
             # Oops
-            msg = f"Error getting job file list, got error code: {result.status_code}\n\n{result.headers}\n\n{result.content}"
+            msg = f"Error getting job file download url, got error code: {result.status_code}\n\n{result.headers}\n\n{result.content}"
             print(msg)
             raise Exception(msg)
-
-        print(f"Job file list fetched OK.\n{result.headers}\n\n{result.content}")
 
         # Parse the response from the job controller
         result = json.loads(result.content)
 
-        return True, result["files"]
+        return True, result["fileId"]
     except:
-        return False, "Error getting job file list"
+        return False, "Error getting job file download url"

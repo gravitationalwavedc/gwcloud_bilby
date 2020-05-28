@@ -1,9 +1,8 @@
-from django.conf import settings
 from django.db import models
 
-from .utils.request_file_download_id import request_file_download_id
-from .utils.request_file_list import request_file_list
-from .utils.request_job_status import request_job_status
+from bilby.utils.jobs.request_file_download_id import request_file_download_id
+from bilby.utils.jobs.request_file_list import request_file_list
+from bilby.utils.jobs.request_job_status import request_job_status
 from .variables import *
 
 

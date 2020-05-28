@@ -5,6 +5,9 @@ from graphene_django.filter import DjangoFilterConnectionField
 from django_filters import FilterSet, OrderingFilter
 
 from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
+
+from .utils.auth.filter_users import request_filter_users
+from .utils.auth.lookup_users import request_lookup_users
 from .views import create_bilby_job, change_job_privacy
 from .types import OutputStartType, AbstractDataType, AbstractSignalType, AbstractSamplerType
 
@@ -216,15 +219,34 @@ class BilbyResultFiles(ObjectType):
     files = graphene.List(BilbyResultFile)
 
 
+class BilbyPublicJobNode(graphene.ObjectType):
+    user = graphene.String()
+    name = graphene.String()
+    job_status = graphene.String()
+    description = graphene.String()
+    id = graphene.ID()
+
+
+class BilbyPublicJobConnection(relay.Connection):
+    class Meta:
+        node = BilbyPublicJobNode
+
 class Query(object):
     bilby_job = relay.Node.Field(BilbyJobNode)
     bilby_jobs = DjangoFilterConnectionField(BilbyJobNode, filterset_class=UserBilbyJobFilter)
-    public_bilby_jobs = DjangoFilterConnectionField(
-        BilbyJobNode,
-        filterset_class=PublicBilbyJobFilter,
+    public_bilby_jobs = relay.ConnectionField(
+        BilbyPublicJobConnection,
+        order_by=graphene.String(),
         search=graphene.String(),
         time_range=graphene.String()
     )
+
+        # BilbyPublicJobNode,
+        # search=graphene.String(),
+        # time_range=graphene.String(),
+        # first=graphene.Int(),
+        # after=graphene.Int()
+    # )
 
     data = graphene.Field(DataType, data_id=graphene.String())
     all_data = graphene.List(DataType)
@@ -235,9 +257,64 @@ class Query(object):
 
     @login_required
     def resolve_public_bilby_jobs(self, info, **kwargs):
-        search = kwargs.get("search")
-        print("Got search: ", search)
-        return BilbyJob.objects.all()
+        # Get the search criteria
+        search = kwargs.get("search", "")
+
+        # Get the list of search terms
+        search_terms = []
+        for term in search.split(' '):
+            # Remove any extranious whitespace
+            term = term.strip()
+
+            # If the term is valid, add it to the list of search terms
+            if len(term):
+                search_terms.append(term)
+
+        # If there are search terms,
+        if len(search_terms):
+            # First look up a list of users
+            _, terms = request_filter_users(" ".join(search_terms), info.context.user.user_id)
+
+            # Collate the user id's to search for jobs on
+            user_ids = []
+            for term in terms:
+                for user in term['users']:
+                    user_ids.append(user['userId'])
+
+            print("user ids", user_ids)
+
+            jobs = BilbyJob.objects.filter(user_id__in=user_ids)
+        else:
+            jobs = BilbyJob.objects.all()
+
+        # Next try searching on the description
+        
+
+        # Get the user id's from the list of jobs
+        user_ids = [i['user_id'] for i in jobs.values("user_id").distinct()]
+        _, user_details = request_lookup_users(user_ids, info.context.user.user_id)
+
+        def user_name_from_id(user_id):
+            for u in user_details:
+                if u['userId'] == user_id:
+                    return f"{u['firstName']} {u['lastName']}"
+
+            return None
+
+        result = []
+        for job in jobs:
+            result.append(
+                BilbyPublicJobNode(
+                    user=user_name_from_id(job.user_id),
+                    name=job.name,
+                    job_status="Unknown",
+                    description=job.description,
+                    id=to_global_id("BilbyJobNode", job.id)
+                )
+            )
+
+        return result
+
 
     @login_required
     def resolve_gwclouduser(self, info, **kwargs):

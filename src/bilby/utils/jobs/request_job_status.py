@@ -44,8 +44,6 @@ def request_job_status(job, user_id=None):
             print(msg)
             raise Exception(msg)
 
-        print(f"Job status fetched OK.\n{result.headers}\n\n{result.content}")
-
         # Parse the response from the job controller
         result = json.loads(result.content)
 
