@@ -31,7 +31,7 @@ def request_job_status(job, user_id=None):
     try:
         # Initiate the request to the job controller
         result = requests.request(
-            "GET", f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?jobId={job.job_id}",
+            "GET", f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?jobIds={job.job_id}",
             headers={
                 "Authorization": jwt_enc
             }
