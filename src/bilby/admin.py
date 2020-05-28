@@ -46,7 +46,7 @@ class DataAdmin(admin.ModelAdmin):
 
 @admin.register(BilbyJob)
 class BilbyJobAdmin(admin.ModelAdmin):
-    fields = ['name', 'description', 'private']
+    fields = ['name', 'description', 'private', 'job_id']
     readonly_fields = ('creation_time', 'last_updated')
     inlines = (
         InlineDataAdmin,

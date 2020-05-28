@@ -57,7 +57,6 @@ class BaseJobList extends React.Component {
 
 function TableRow(props) {
     const cells = props.row.map((cell, index) => <Table.Cell key={index} content={cell}/>)
-    console.log(cells)
     return (
         <Table.Row>
             {cells}
@@ -66,4 +65,4 @@ function TableRow(props) {
 
 }
 
-export default BaseJobList;
+export default BaseJobList

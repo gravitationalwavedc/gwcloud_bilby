@@ -110,14 +110,17 @@ def create_bilby_job(user_id, start, data, signal, prior, sampler):
         # return bilby_job.id
 
 
-def change_job_privacy(job_id, private):
+def change_job_privacy(job_id, private, user_id):
     bilby_job = BilbyJob.objects.get(id=job_id)
-    bilby_job.private = private
-    bilby_job.save()
 
-    if private is True:
-        return_str = 'Job is now private'
+    if user_id == bilby_job.user_id:
+        bilby_job.private = private
+        bilby_job.save()
+
+        if private is True:
+            return 'Job is now private'
+        else:
+            return 'Job is now public'
     else:
-        return_str = 'Job is now public'
+        raise Exception('You must own the job to change the privacy!')
 
-    return return_str

@@ -52,7 +52,7 @@ class BilbyJobResults extends React.Component {
     }
 
     render() {
-        const {start, jobStatus, lastUpdated} = this.props.data.bilbyJob
+        const {start, jobStatus, lastUpdated, userId} = this.props.data.bilbyJob
         return (
             <BilbyBasePage loginRequired title='Bilby Job Results' {...this.routing}>
                 <Grid container stretched textAlign='left'>
@@ -63,13 +63,11 @@ class BilbyJobResults extends React.Component {
                                     <Header size='huge' content={start.name} subheader={lastUpdated}/>
                                     <Label as={Message} warning>{jobStatus}</Label>
                                     <Label.Group>
-                                        <Label>Bad Run</Label>
-                                        <Label>Production Run</Label>
-                                        <Label>Other Label</Label>
+                                        <Label>Labels will go here</Label>
                                     </Label.Group>
                                 </Grid.Column>
                                 <Grid.Column width={8} textAlign='right'>
-                                    <Checkbox toggle checked={this.state.private} label={'Private'} onChange={this.handleSave}/>
+                                    <Checkbox toggle label={'Private'} onChange={this.handleSave} disabled={harnessApi.currentUser.userId !== userId} checked={this.state.private}/>
                                 </Grid.Column>
                             </Grid>
                             <Divider/>
@@ -99,6 +97,7 @@ export default createFragmentContainer(BilbyJobResults,
                 }
                 
                 bilbyJob (id: $jobId) {
+                    userId
                     jobStatus
                     lastUpdated
                     start {
