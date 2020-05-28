@@ -1,3 +1,5 @@
+import datetime
+
 import graphene
 from graphene import ObjectType, relay, Connection, Int
 from graphene_django.types import DjangoObjectType
@@ -8,6 +10,8 @@ from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prio
 
 from .utils.auth.filter_users import request_filter_users
 from .utils.auth.lookup_users import request_lookup_users
+from .utils.derive_job_status import derive_job_status
+from .utils.jobs.request_job_filter import request_job_filter
 from .views import create_bilby_job, change_job_privacy
 from .types import OutputStartType, AbstractDataType, AbstractSignalType, AbstractSamplerType
 
@@ -270,7 +274,7 @@ class Query(object):
             if len(term):
                 search_terms.append(term)
 
-        # If there are search terms,
+        # If there are search terms
         if len(search_terms):
             # First look up a list of users
             _, terms = request_filter_users(" ".join(search_terms), info.context.user.user_id)
@@ -287,34 +291,102 @@ class Query(object):
         else:
             jobs = BilbyJob.objects.all()
 
-        # Next try searching on the description
-        
+        # Make sure every job has a valid job id and is public
+        jobs = jobs.filter(job_id__isnull=False, private=False)
+
+        # Calculate the end time for jobs
+        time_range = kwargs.get("time_range", "1d")
+        end_time = datetime.datetime.now()
+        if time_range == "1d":
+            end_time -= datetime.timedelta(days=1)
+        elif time_range == "1w":
+            end_time -= datetime.timedelta(weeks=1)
+        elif time_range == "1m":
+            end_time -= datetime.timedelta(days=31)
+        elif time_range == "1y":
+            end_time -= datetime.timedelta(days=365)
+        else:
+            end_time = None
+
+        # Get job details from the job controller
+        _, jc_jobs = request_job_filter(
+            info.context.user.user_id,
+            ids=[j['job_id'] for j in jobs.values("job_id").distinct()],
+            end_time_gt=end_time
+        )
+
+        # Make sure that the result is an array
+        jc_jobs = jc_jobs or []
+        print(jc_jobs)
+
+        # Get the user id's that match any of the terms
+        user_ids = set([j['user'] for j in jc_jobs])
+        print(user_ids)
 
         # Get the user id's from the list of jobs
-        user_ids = [i['user_id'] for i in jobs.values("user_id").distinct()]
         _, user_details = request_lookup_users(user_ids, info.context.user.user_id)
+
+        def user_from_id(user_id):
+            for u in user_details:
+                if u['userId'] == user_id:
+                    return u
+
+            return "Unknown User"
+
+        # Match user and job details to the job controller results
+        for job in jc_jobs:
+            job["user"] = user_from_id(job["user"])
+            job["job"] = jobs.get(job_id=job["id"])
 
         def user_name_from_id(user_id):
             for u in user_details:
                 if u['userId'] == user_id:
                     return f"{u['firstName']} {u['lastName']}"
 
-            return None
+            return "Unknown User"
 
-        result = []
-        for job in jobs:
-            result.append(
-                BilbyPublicJobNode(
-                    user=user_name_from_id(job.user_id),
-                    name=job.name,
-                    job_status="Unknown",
-                    description=job.description,
-                    id=to_global_id("BilbyJobNode", job.id)
+        # Now do the search
+        matched_jobs = []
+
+        # Iterate over each job
+        for job in jc_jobs:
+            # Iterate over each term and make sure the term exists in the record
+            valid = True
+            for term in search_terms:
+                if not valid:
+                    break
+
+                # Match username, first name and last name
+                if term in job["user"]["username"]:
+                    continue
+                if term in job["user"]["firstName"]:
+                    continue
+                if term in job["user"]["lastName"]:
+                    continue
+
+                # Match job name
+                if term in job["job"].name:
+                    continue
+
+                # Match description
+                if term in job["job"].description:
+                    continue
+
+                valid = False
+
+            if valid:
+                print("His:", job["history"])
+                matched_jobs.append(
+                    BilbyPublicJobNode(
+                        user=user_name_from_id(job["user"]["userId"]),
+                        name=job["job"].name,
+                        job_status=derive_job_status(job["history"]),
+                        description=job["job"].description,
+                        id=to_global_id("BilbyJobNode", job["job"].id)
+                    )
                 )
-            )
 
-        return result
-
+        return matched_jobs
 
     @login_required
     def resolve_gwclouduser(self, info, **kwargs):
