@@ -417,9 +417,7 @@ class Query(object):
                     continue
 
                 valid = False
-                print(valid, job)
 
-            print(valid, status_valid)
             if valid and status_valid:
                 matched_jobs.append(
                     BilbyPublicJobNode(
