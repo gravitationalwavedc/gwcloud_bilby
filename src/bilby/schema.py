@@ -7,6 +7,7 @@ from graphene_django.filter import DjangoFilterConnectionField
 from django_filters import FilterSet, OrderingFilter
 
 from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
+from .status import JobStatus
 
 from .utils.auth.filter_users import request_filter_users
 from .utils.auth.lookup_users import request_lookup_users
@@ -228,6 +229,7 @@ class BilbyPublicJobNode(graphene.ObjectType):
     name = graphene.String()
     job_status = graphene.String()
     description = graphene.String()
+    timestamp = graphene.String()
     id = graphene.ID()
 
 
@@ -268,7 +270,7 @@ class Query(object):
         search_terms = []
         for term in search.split(' '):
             # Remove any extranious whitespace
-            term = term.strip()
+            term = term.strip().lower()
 
             # If the term is valid, add it to the list of search terms
             if len(term):
@@ -334,9 +336,22 @@ class Query(object):
             return "Unknown User"
 
         # Match user and job details to the job controller results
+        valid_jobs = []
         for job in jc_jobs:
-            job["user"] = user_from_id(job["user"])
-            job["job"] = jobs.get(job_id=job["id"])
+            try:
+                job["user"] = user_from_id(job["user"])
+                job["job"] = jobs.get(job_id=job["id"])
+
+                job_status, job_status_str, timestamp = derive_job_status(job["history"])
+                job["status"] = job_status_str
+                job["status_int"] = job_status
+                job["timestamp"] = timestamp.strftime("%d/%m/%Y, %H:%M:%S")
+
+                valid_jobs.append(job)
+            except:
+                pass
+
+        jc_jobs = valid_jobs
 
         def user_name_from_id(user_id):
             for u in user_details:
@@ -352,36 +367,67 @@ class Query(object):
         for job in jc_jobs:
             # Iterate over each term and make sure the term exists in the record
             valid = True
+
+            valid_status = [
+                JobStatus.PENDING,
+                JobStatus.SUBMITTING,
+                JobStatus.SUBMITTED,
+                JobStatus.QUEUED,
+                JobStatus.RUNNING,
+                JobStatus.COMPLETED
+            ]
+
+            status_valid = True
+            if not len(search_terms) and job["status_int"] not in valid_status:
+                status_valid = False
+
+            if len(search_terms) and job["status_int"] not in valid_status:
+                status_valid = False
+
+            status_valid_terms = []
+            if not status_valid:
+                # Check if any search terms match the job status
+                for term in search_terms:
+                    if term in job["status"].lower():
+                        status_valid = True
+                        status_valid_terms.append(term)
+                        break
+
             for term in search_terms:
                 if not valid:
                     break
 
                 # Match username, first name and last name
-                if term in job["user"]["username"]:
+                if term in job["user"]["username"].lower():
                     continue
-                if term in job["user"]["firstName"]:
+                if term in job["user"]["firstName"].lower():
                     continue
-                if term in job["user"]["lastName"]:
+                if term in job["user"]["lastName"].lower():
                     continue
 
                 # Match job name
-                if term in job["job"].name:
+                if term in job["job"].name.lower():
                     continue
 
                 # Match description
-                if term in job["job"].description:
+                if term in job["job"].description.lower():
+                    continue
+
+                if term in status_valid_terms:
                     continue
 
                 valid = False
+                print(valid, job)
 
-            if valid:
-                print("His:", job["history"])
+            print(valid, status_valid)
+            if valid and status_valid:
                 matched_jobs.append(
                     BilbyPublicJobNode(
                         user=user_name_from_id(job["user"]["userId"]),
                         name=job["job"].name,
-                        job_status=derive_job_status(job["history"]),
+                        job_status=job["status"],
                         description=job["job"].description,
+                        timestamp=job["timestamp"],
                         id=to_global_id("BilbyJobNode", job["job"].id)
                     )
                 )

@@ -21,6 +21,9 @@ def derive_job_status(history):
     history_items.sort(key=lambda x: x["timestamp"], reverse=True)
 
     if len(history_items):
-        return JobStatus.display_name(history_items[0]["data"]["state"])
+        return \
+            history_items[0]["data"]["state"], \
+            JobStatus.display_name(history_items[0]["data"]["state"]), \
+            history_items[0]["timestamp"]
 
-    return "Unknown"
+    return JobStatus.DRAFT, "Unknown", None
