@@ -14,7 +14,7 @@ from .utils.auth.lookup_users import request_lookup_users
 from .utils.derive_job_status import derive_job_status
 from .utils.jobs.request_job_filter import request_job_filter
 from .views import create_bilby_job, change_job_privacy
-from .types import OutputStartType, AbstractDataType, AbstractSignalType, AbstractSamplerType
+from .types import OutputStartType, AbstractDataType, AbstractSignalType, AbstractSamplerType, JobStatusType
 
 from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
@@ -80,7 +80,7 @@ class BilbyJobNode(DjangoObjectType):
         convert_choices_to_enum = False
         interfaces = (relay.Node,)
 
-    job_status = graphene.String()
+    job_status = graphene.Field(JobStatusType)
     last_updated = graphene.String()
     start = graphene.Field(OutputStartType)
 
@@ -96,6 +96,21 @@ class BilbyJobNode(DjangoObjectType):
             "private": parent.private
         }
 
+    def resolve_job_status(parent, info):
+        # Get job details from the job controller
+        _, jc_jobs = request_job_filter(
+            info.context.user.user_id,
+            ids=[parent.job_id]
+        )
+
+        status_number, status_name, status_date = derive_job_status(jc_jobs[0]["history"])
+
+        return {
+            "name": status_name,
+            "number": status_number,
+            "date": status_date.strftime("%d/%m/%Y, %H:%M:%S")
+        }
+    
     # Couldn't do priors in the same way as the other things - It may require more though to restructure the models and frontend
     # def resolve_priors(parent, info):
     #     d = {}
@@ -537,7 +552,7 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
     @classmethod
     def mutate_and_get_payload(cls, root, info, job_id, private):
         # Update privacy of bilby job
-        message = change_job_privacy(from_global_id(job_id)[1], private)
+        message = change_job_privacy(from_global_id(job_id)[1], private, info.context.user.user_id)
 
         # Return the bilby job id to the client
         return UpdateBilbyJobMutation(

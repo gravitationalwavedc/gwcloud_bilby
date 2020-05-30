@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import {graphql, createFragmentContainer, commitMutation} from "react-relay";
 import {harnessApi} from "../index";
 
@@ -7,6 +7,9 @@ import BilbyBasePage from "./BilbyBasePage";
 import JobResults from "../Components/Results/JobResults";
 import JobParameters from "../Components/Results/JobParameters";
 import { Divider, Grid, Header, Message, Container, Checkbox, Label, Card, Segment, Tab, Button } from "semantic-ui-react";
+import Link from "found/lib/Link";
+
+import statusColours from "../Utils/statusColours";
 
 class BilbyJobResults extends React.Component {
     constructor(props) {
@@ -61,12 +64,20 @@ class BilbyJobResults extends React.Component {
                             <Grid>
                                 <Grid.Column width={8}>
                                     <Header size='huge' content={start.name} subheader={lastUpdated}/>
-                                    <Label as={Message} warning>{jobStatus}</Label>
+                                    <Message className={statusColours[jobStatus.number]} compact header={'Status: ' + jobStatus.name} content={jobStatus.date}/>
                                     <Label.Group>
                                         <Label>Labels will go here</Label>
                                     </Label.Group>
                                 </Grid.Column>
                                 <Grid.Column width={8} textAlign='right'>
+                                    <Link as={Button} to={{
+                                        pathname: '/bilby/job-form/',
+                                        state: {
+                                            jobId: this.props.match.params.jobId
+                                        }
+                                    }} activeClassName="selected" exact match={this.props.match} router={this.props.router}>
+                                        Copy Job and Edit
+                                    </Link>
                                     <Checkbox toggle label={'Private'} onChange={this.handleSave} disabled={harnessApi.currentUser.userId !== userId} checked={this.state.private}/>
                                 </Grid.Column>
                             </Grid>
@@ -98,7 +109,11 @@ export default createFragmentContainer(BilbyJobResults,
                 
                 bilbyJob (id: $jobId) {
                     userId
-                    jobStatus
+                    jobStatus {
+                        name
+                        number
+                        date
+                    }
                     lastUpdated
                     start {
                         name

@@ -1,7 +1,8 @@
 import React from "react";
-import {Grid, Item, List} from "semantic-ui-react";
+import {Grid, Item, List, Table, Segment, Header} from "semantic-ui-react";
 import {createFragmentContainer, graphql} from "react-relay";
 import BasicTable from "../Utils/BasicTable";
+import { unCamelCase } from "../../Utils/utilMethods";
 
 class JobParameters extends React.Component {
     constructor(props) {
@@ -30,12 +31,6 @@ class JobParameters extends React.Component {
             virgoChannel
         } = data
 
-        const detectorRows = [
-            hanford ? ['Hanford', hanfordMinimumFrequency, hanfordMaximumFrequency, hanfordChannel] : null,
-            livingston ? ['Livingston', livingstonMinimumFrequency, livingstonMaximumFrequency, livingstonChannel] : null,
-            virgo ? ['Virgo', virgoMinimumFrequency, virgoMaximumFrequency, virgoChannel] : null
-        ]
-
         const {
             signalChoice,
             signalModel,
@@ -50,50 +45,74 @@ class JobParameters extends React.Component {
             dec
         } = signal
 
+
+        const detectorRows = [
+            hanford ? ['Hanford', hanfordMinimumFrequency, hanfordMaximumFrequency, hanfordChannel] : null,
+            livingston ? ['Livingston', livingstonMinimumFrequency, livingstonMaximumFrequency, livingstonChannel] : null,
+            virgo ? ['Virgo', virgoMinimumFrequency, virgoMaximumFrequency, virgoChannel] : null
+        ]
+
+        const miscDataRows = [
+            ['Signal Duration', signalDuration],
+            ['Sampling Frequency', samplingFrequency],
+            ['Trigger Time', triggerTime]
+        ]
+
+        const injectedSignalRows = [
+            ['Injected Signal', unCamelCase(signalChoice)],
+            ['Mass 1', mass1],
+            ['Mass 2', mass2],
+            ['Luminosity Distance', luminosityDistance],
+            ['psi', psi],
+            ['iota', iota],
+            ['Phase', phase],
+            ['Merger Time', mergerTime],
+            ['Right Ascension', ra],
+            ['Declination', dec]
+        ]
+
         return (
             <React.Fragment>
-                <Grid centered textAlign='center' verticalAlign='middle'>
-                    <Grid.Column>
-                        <Item.Group>
-                            <Item>
-                                <Item.Content>
-                                    <Item.Header content={dataChoice.charAt(0).toUpperCase() + dataChoice.slice(1) + ' Data'}/>
-                                    <Item.Description>
-                                        <BasicTable headers={['Detector', 'Minimum Frequency', 'Maximum Frequency', 'Channel']} rows={detectorRows}/>
-                                    </Item.Description>
-                                    <Item.Meta>
-                                        <List size='large' bulleted horizontal items={[
-                                            {key: '1', content: 'Signal Duration: ' + signalDuration},
-                                            {key: '2', content: 'Sampling Frequency: ' + samplingFrequency},
-                                            {key: '3', content: 'Trigger Time: ' + triggerTime}
-                                        ]}/>
-                                    </Item.Meta>
-                                </Item.Content>
-                            </Item>
-                            <Item>
-                                <Item.Content>
-                                    <Item.Header content={'Model: ' + signalModel.charAt(0).toUpperCase() + signalModel.slice(1)}/>
-                                    <Item.Description content={'Injected: ' + signalChoice.charAt(0).toUpperCase() + signalChoice.slice(1)}/>
-                                    <Item.Meta>
-                                        <List size='large' bulleted horizontal items={[
-                                            {key: '1', content: 'Mass 1: ' + mass1},
-                                            {key: '2', content: 'Mass 2: ' + mass2},
-                                            {key: '3', content: 'Luminosity Distance: ' + luminosityDistance},
-                                            {key: '4', content: 'psi: ' + psi},
-                                            {key: '5', content: 'iota: ' + iota},
-                                            {key: '6', content: 'Phase: ' + phase},
-                                            {key: '7', content: 'Merger Time: ' + mergerTime},
-                                            {key: '8', content: 'Right Ascension: ' + ra},
-                                            {key: '9', content: 'Declination: ' + dec}
-                                        ]}/>
-                                    </Item.Meta>
-
-                                </Item.Content>
-                            </Item>
-                            <Item header='Priors' meta={prior.priorChoice}/>
-                            <Item header='Sampler' meta={sampler.samplerChoice}/>
-                        </Item.Group>
-                    </Grid.Column>
+                <Grid centered textAlign='center' verticalAlign='middle' divided='vertically'>
+                    <Grid.Row>
+                        <Grid.Column width={4}>
+                            <Header>
+                                <Header.Subheader content='Data'/>
+                                {unCamelCase(dataChoice)}
+                            </Header>
+                        </Grid.Column>
+                        <Grid.Column width={12} >
+                            <BasicTable headers={['', 'Minimum Frequency', 'Maximum Frequency', 'Channel']} rows={detectorRows}/>
+                            <BasicTable headers={[]} rows={miscDataRows}/>
+                        </Grid.Column>
+                    </Grid.Row>
+                    <Grid.Row>
+                        <Grid.Column width={4}>
+                            <Header>
+                                <Header.Subheader content='Signal'/>
+                                {unCamelCase(signalModel)}
+                            </Header>
+                        </Grid.Column>
+                        <Grid.Column width={12} >
+                            <BasicTable headers={[]} rows={injectedSignalRows}/>
+                        </Grid.Column>
+                    </Grid.Row>
+                    <Grid.Row>
+                        <Grid.Column width={4}>
+                            <Header>
+                                <Header.Subheader content='Prior'/>
+                                {unCamelCase(prior.priorChoice)}
+                            </Header>
+                        </Grid.Column>
+                    </Grid.Row>
+                    <Grid.Row>
+                        <Grid.Column width={4}>
+                            <Header>
+                                <Header.Subheader content='Sampler'/>
+                                {unCamelCase(sampler.samplerChoice)}
+                            </Header>
+                        </Grid.Column>
+                    </Grid.Row>
                 </Grid>
             </React.Fragment>
         )

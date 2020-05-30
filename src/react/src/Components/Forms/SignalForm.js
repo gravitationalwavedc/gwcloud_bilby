@@ -74,7 +74,9 @@ class SignalForm extends React.Component {
         // if (formToggle===2) {
 
         // }
-        forms.push({label: 'Same Signal for Model', name: 'sameSignal', form: <Form.Checkbox/>})
+        if (formToggle !== 0) {
+            forms.push({label: 'Same Signal for Model', name: 'sameSignal', form: <Form.Checkbox/>})
+        }
         if ((openData && formToggle===0) || (formToggle>0 && !this.state.data.sameSignal)) {
             forms.push({label: 'Signal Model', name: 'signalModel', form: <Form.Select placeholder="Select Signal Model" options={signalOptions}/>})
         }
@@ -111,7 +113,7 @@ class SignalForm extends React.Component {
               validate: true  
             })
         } else {
-            if (this.state.data.sameSignal) {
+            if (this.state.data.sameSignal && this.state.toggles.formToggle !== 0) {
                 const data = {
                     ...this.state.data,
                     signalModel: this.state.data.signalChoice

@@ -53,7 +53,7 @@ class UserJobList extends React.Component {
                 node.name,
                 node.description,
                 node.lastUpdated,
-                node.jobStatus,
+                node.jobStatus.name,
                 <React.Fragment>
                     <Link to={{
                         pathname: '/bilby/job-form/',
@@ -100,7 +100,9 @@ export default createPaginationContainer(UserJobList,
                             name
                             description
                             lastUpdated
-                            jobStatus
+                            jobStatus {
+                                name
+                            }
                         }
                     }
                   }

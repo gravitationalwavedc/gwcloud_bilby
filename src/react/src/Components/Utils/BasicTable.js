@@ -2,12 +2,11 @@ import React from "react";
 import {Table} from "semantic-ui-react";
 
 function BasicTable(props) {
-    console.log(props)
     const headerCells = props.headers.map((header, index) => <Table.HeaderCell key={index} content={header}/>)
     const rows = props.rows.map((row, index) => <TableRow key={index} row={row}/>)
 
     return (
-        <Table fixed celled>
+        <Table fixed definition>
             <Table.Header>
                 <Table.Row>
                     {headerCells}
