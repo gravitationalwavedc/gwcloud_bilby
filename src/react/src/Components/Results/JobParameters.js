@@ -1,5 +1,5 @@
 import React from "react";
-import {Grid, Item, List, Table, Segment, Header} from "semantic-ui-react";
+import {Grid, Header} from "semantic-ui-react";
 import {createFragmentContainer, graphql} from "react-relay";
 import BasicTable from "../Utils/BasicTable";
 import { unCamelCase } from "../../Utils/utilMethods";

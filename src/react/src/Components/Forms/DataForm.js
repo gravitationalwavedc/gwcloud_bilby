@@ -1,7 +1,8 @@
 import React from "react";
 import {BaseForm} from "./Forms";
-import {Form, Grid, Button} from "semantic-ui-react";
+import {Form, Grid, Button, Select} from "semantic-ui-react";
 import {checkForErrors, isNumber, notEmpty, noneFalse} from "../../Utils/errors";
+import _ from "lodash";
 
 import {graphql, createFragmentContainer} from "react-relay";
 import * as Enumerable from "linq";
@@ -19,13 +20,13 @@ class DataForm extends React.Component {
             triggerTime: '',
             hanfordMinimumFrequency: '20',
             hanfordMaximumFrequency: '1024',
-            hanfordChannel: 'GDS-CALIB_STRAIN',
+            hanfordChannel: 'GWOSC',
             livingstonMinimumFrequency: '20',
             livingstonMaximumFrequency: '1024',
-            livingstonChannel: 'GDS-CALIB_STRAIN',
+            livingstonChannel: 'GWOSC',
             virgoMinimumFrequency: '20',
             virgoMaximumFrequency: '1024',
-            virgoChannel: 'Hrec_hoft_16384Hz'
+            virgoChannel: 'GWOSC'
         }
 
         const errors = {}
@@ -35,14 +36,39 @@ class DataForm extends React.Component {
 
         var data = (this.props.data !== null) ? this.props.data : initialData
         data = (this.props.state !== null) ? this.props.state : data
+
+        const channelOptions = [
+            'GWOSC',
+            'GDS-CALIB_STRAIN',
+            'Hrec_hoft_16384Hz',
+            data.hanfordChannel,
+            data.livingstonChannel,
+            data.virgoChannel,
+        ]
+        
         this.state = {
             data: data,
             errors: errors,
-            validate: false
+            validate: false,
+            channelOptions: _.uniq(channelOptions)
         }
     }
 
     handleChange = ({name, value, errors}) => {
+        if (['dataChoice'].includes(name) && value === 'open') {
+            var newData = {
+                ...this.state.data,
+                dataChoice: value,
+                hanfordChannel: 'GWOSC',
+                livingstonChannel: 'GWOSC',
+                virgoChannel: 'GWOSC'
+            } 
+        } else {
+            var newData = {
+                ...this.state.data,
+                [name]: value,
+            } 
+        }
         // This change is to group the detector checkbox errors together
         if (['hanford', 'livingston', 'virgo'].includes(name)) {
             var newErrors = {
@@ -57,15 +83,17 @@ class DataForm extends React.Component {
                 [name]: errors
             }
         }
-        this.setState(prevState => (
-            {
-            data: {
-                ...prevState.data,
-                [name]: value,
-            },
+        this.setState({
+            data: newData,
             errors: newErrors
-        }))
+        })
     }
+
+    handleAddition = (e, { value }) => {
+        this.setState((prevState) => ({
+          channelOptions: [value, ...prevState.channelOptions],
+        }), () => {console.log(this.state)})
+      }
 
     prevStep = () => {
         this.props.prevStep()
@@ -137,24 +165,35 @@ class DataForm extends React.Component {
         Enumerable.from(['hanford', 'livingston', 'virgo']).forEach((e, i) => {
            if (this.state.data[e]) {
                forms.push(
-                   {
-                       label: e[0].toUpperCase() + e.slice(1) + ': Minimum Frequency (Hz)',
-                       name: e + 'MinimumFrequency',
-                       form: <Form.Input placeholder=''/>,
-                       errFunc: checkForErrors(isNumber, notEmpty)
-                   },
-                   {
-                       label: e[0].toUpperCase() + e.slice(1) + ': Maximum Frequency (Hz)',
-                       name: e + 'MaximumFrequency',
-                       form: <Form.Input placeholder=''/>,
-                       errFunc: checkForErrors(isNumber, notEmpty)
-                   },
-                   {
-                       label: e[0].toUpperCase() + e.slice(1) + ': Channel',
-                       name: e + 'Channel',
-                       form: <Form.Input placeholder=''/>,
-                       errFunc: checkForErrors(notEmpty)
-                   }
+                    {
+                        label: e[0].toUpperCase() + e.slice(1) + ': Minimum Frequency (Hz)',
+                        name: e + 'MinimumFrequency',
+                        form: <Form.Input placeholder=''/>,
+                        errFunc: checkForErrors(isNumber, notEmpty)
+                    },
+                    {
+                        label: e[0].toUpperCase() + e.slice(1) + ': Maximum Frequency (Hz)',
+                        name: e + 'MaximumFrequency',
+                        form: <Form.Input placeholder=''/>,
+                        errFunc: checkForErrors(isNumber, notEmpty)
+                    },
+                    {
+                        label: e[0].toUpperCase() + e.slice(1) + ': Channel',
+                        name: e + 'Channel',
+                        form: <Form.Field 
+                            control={Select} 
+                            search 
+                            allowAdditions 
+                            onAddItem={this.handleAddition} 
+                            placeholder="Select Channel"
+                            options={
+                                    // Create options from list of values, excluding some of the values
+                                _.without(this.state.channelOptions, e==='virgo' ? 'GDS-CALIB_STRAIN' : 'Hrec_hoft_16384Hz').map(value => ({key: value, text: value, value: value}))
+                            }
+                            disabled={this.state.data.dataChoice==='open'}
+                        />,
+                        errFunc: checkForErrors(notEmpty)
+                    }
                )
            }
         });

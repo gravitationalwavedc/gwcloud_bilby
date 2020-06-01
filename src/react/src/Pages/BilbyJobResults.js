@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React from "react";
 import {graphql, createFragmentContainer, commitMutation} from "react-relay";
 import {harnessApi} from "../index";
 
