@@ -1,4 +1,4 @@
-# gwcloud_module_template
+# GW Cloud - Bilby module
 GW Cloud module template
 
 
