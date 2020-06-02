@@ -12,7 +12,7 @@ class DataForm extends React.Component {
         super(props);
         const initialData = {
             dataChoice: 'open',
-            hanford: false,
+            hanford: true, // This is because of an annoying bug with errors.. I may need to, once again, refactor the forms.
             livingston: false,
             virgo: false,
             signalDuration: '4',
@@ -69,6 +69,7 @@ class DataForm extends React.Component {
                 [name]: value,
             } 
         }
+
         // This change is to group the detector checkbox errors together
         if (['hanford', 'livingston', 'virgo'].includes(name)) {
             var newErrors = {
@@ -83,6 +84,7 @@ class DataForm extends React.Component {
                 [name]: errors
             }
         }
+
         this.setState({
             data: newData,
             errors: newErrors

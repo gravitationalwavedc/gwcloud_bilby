@@ -1,7 +1,7 @@
 import React from "react";
 import {BaseForm, PriorsFormInput} from "./Forms";
 import {Grid, Button, Form} from "semantic-ui-react";
-import {checkForErrors, handlePriors} from "../../Utils/errors";
+import {checkForErrors} from "../../Utils/errors";
 
 import { graphql, createFragmentContainer } from "react-relay";
 
