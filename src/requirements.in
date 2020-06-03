@@ -6,3 +6,4 @@ django-cors-headers
 django-graphql-jwt
 python-jwt
 requests
+coverage

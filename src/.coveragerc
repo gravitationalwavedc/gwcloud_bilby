@@ -1,0 +1,13 @@
+[run]
+omit =
+    # Omit the virtual env
+    */venv/*
+
+    # Ignore manage.py files
+    ./*manage.py
+
+    # Ignore settings.py files
+    gw_bilby/*settings.py
+
+    # Ignore local.py if one exists
+    gw_bilby/local.py
