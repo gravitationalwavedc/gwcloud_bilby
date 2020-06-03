@@ -97,19 +97,26 @@ class BilbyJobNode(DjangoObjectType):
         }
 
     def resolve_job_status(parent, info):
-        # Get job details from the job controller
-        _, jc_jobs = request_job_filter(
-            info.context.user.user_id,
-            ids=[parent.job_id]
-        )
+        try:
+            # Get job details from the job controller
+            _, jc_jobs = request_job_filter(
+                info.context.user.user_id,
+                ids=[parent.job_id]
+            )
 
-        status_number, status_name, status_date = derive_job_status(jc_jobs[0]["history"])
+            status_number, status_name, status_date = derive_job_status(jc_jobs[0]["history"])
 
-        return {
-            "name": status_name,
-            "number": status_number,
-            "date": status_date.strftime("%d/%m/%Y, %H:%M:%S")
-        }
+            return {
+                "name": status_name,
+                "number": status_number,
+                "date": status_date.strftime("%d/%m/%Y, %H:%M:%S")
+            }
+        except:
+            return {
+                "name": "Unknown",
+                "number": 0,
+                "data": "Unknown"
+            }
     
     # Couldn't do priors in the same way as the other things - It may require more though to restructure the models and frontend
     # def resolve_priors(parent, info):
