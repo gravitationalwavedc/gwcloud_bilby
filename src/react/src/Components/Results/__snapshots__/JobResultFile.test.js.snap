@@ -1,0 +1,50 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Test Directory Result 1`] = `
+<tr
+  className=""
+>
+  <td
+    className=""
+  >
+    /this/is/a.directory
+  </td>
+  <td
+    className=""
+  >
+    Directory
+  </td>
+  <td
+    className=""
+  >
+    506 KB
+  </td>
+</tr>
+`;
+
+exports[`Test File Result 1`] = `
+<tr
+  className=""
+>
+  <td
+    className=""
+  >
+    <a
+      href="https://gw-cloud.org/job/apiv1/file/?fileId=ba82f910-c4f3-464c-8465-b53a2f51b853"
+      target="_blank"
+    >
+      /this/is/a.file
+    </a>
+  </td>
+  <td
+    className=""
+  >
+    File
+  </td>
+  <td
+    className=""
+  >
+    102 KB
+  </td>
+</tr>
+`;

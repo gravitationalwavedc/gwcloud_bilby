@@ -1,6 +1,6 @@
 import getRoutes from "./Routes";
 
-let harnessApi = {};
+let harnessApi = null;
 
 function setHarnessApi(api) {
     harnessApi = api;
