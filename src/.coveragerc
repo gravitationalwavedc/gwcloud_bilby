@@ -11,3 +11,7 @@ omit =
 
     # Ignore local.py if one exists
     gw_bilby/local.py
+
+    # Ignore environment and base settings
+    gw_bilby/base.py
+    gw_bilby/environment.py

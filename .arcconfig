@@ -1,0 +1,5 @@
+{
+     "load": ["arcutils"],
+     "unit.engine": "DjangoUnitTestEngine",
+     "unit.engine.django.manage_py_dir": "src"
+}
