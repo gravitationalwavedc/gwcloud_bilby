@@ -1,3 +1,3 @@
 <?php
 
-phutil_register_library('libarcdjango', __FILE__);
+phutil_register_library('libarcdjangojest', __FILE__);

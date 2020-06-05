@@ -7,9 +7,15 @@ const LINEBREAK =
 "----------------------------------------------------------------------";
 
 
-final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
+final class DjangoUnitTestEngine  {
+    private $unitTestBase;
+    public function __construct($unitTestBase)
+    {
+        $this->unitTestBase = $unitTestBase;
+    }
+
     public function getConfig($key, $default){
-        return $this->getConfigurationManager()->getConfigFromAnySource(
+        return $this->unitTestBase->getConfigurationManager()->getConfigFromAnySource(
             $key,
             $default
         );
@@ -27,7 +33,7 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
 
     private function getPythonPaths() {
         $pythonPaths = array();
-        foreach($this->getPaths() as $path) {
+        foreach($this->unitTestBase->getPaths() as $path) {
             if(preg_match("/\.py$/", $path)) {
                 $pythonPaths[] = $path;
             }
@@ -37,14 +43,12 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
     }
 
     private function runDjangoTestSuite($managepyPath) {
-	$managepyDir = join("/", [getcwd(), $this->getConfig(
-		            "unit.engine.django.manage_py_dir", "")]);
-        if($this->getEnableCoverage()) {
+        if($this->unitTestBase->getEnableCoverage()) {
             // cleans coverage results from any previous runs
             exec("coverage erase");
-            $cmd = "cd $managepyDir && coverage run --source='.'";
+            $cmd = "coverage run --source='.'";
         } else {
-            $cmd = "cd $managepyDir && python";
+            $cmd = "python";
         }
 
         // runs tests with code coverage for specified app names,
@@ -55,11 +59,11 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
         $appNames = $this->getAppNames();
         $additionalArgs = $this->getAdditionalManageArgs();
         exec("$cmd $managepyPath test -v2 $appNames $additionalArgs 2>&1",
-		$testLines, $testExitCode);
+            $testLines, $testExitCode);
 
-	exec("mv $managepyDir/.coverage ./");
+        exec("mv .coverage " . $this->unitTestBase->getWorkingCopy()->getProjectRoot());
 
-	$testResults = array();
+        $testResults = array();
         $testResults["testLines"] = $testLines;
         $testResults["testExitCode"] = $testExitCode;
         $testResults["results"] = $this->parseTestResults($testLines);
@@ -73,15 +77,15 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
 
         // buffer to help with regex finds, as we use multiline patterns
         $strbuf = "";
-	foreach ($testLines as $testLine) {
+        foreach ($testLines as $testLine) {
             $strbuf .= $testLine."\n";
 
             // pattern for a test run:
             // test_blah blah (some.package.SimpleTest) blahblah ... ok
             while(preg_match("/(test_.*? \(.*?\)).*? \.\.\. (.*)\n/s",
-                             $strbuf,
-                             $testStatusMatches,
-                             PREG_OFFSET_CAPTURE)) {
+                $strbuf,
+                $testStatusMatches,
+                PREG_OFFSET_CAPTURE)) {
                 $result = new ArcanistUnitTestResult();
                 // name of the test
                 $testName = $testStatusMatches[1][0];
@@ -119,7 +123,7 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
 
                 // flush strbuf up to the end of the regex match
                 $end = $testStatusMatches[0][1] +
-                       strlen($testStatusMatches[0][0]);
+                    strlen($testStatusMatches[0][0]);
                 $strbuf = substr($strbuf, $end);
             }
 
@@ -131,10 +135,10 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
             // more tracebacklines
             // (empty line, so "\n\n")
             while(preg_match(
-                    "/".DLINEBREAK."\n(FAIL|ERROR): (.*)\n".LINEBREAK."\n(.*?)\n\n/s",
-                    $strbuf,
-                    $failMatches,
-                    PREG_OFFSET_CAPTURE)) {
+                "/".DLINEBREAK."\n(FAIL|ERROR): (.*)\n".LINEBREAK."\n(.*?)\n\n/s",
+                $strbuf,
+                $failMatches,
+                PREG_OFFSET_CAPTURE)) {
                 // name of the test
                 $testName = $failMatches[2][0];
                 // error/traceback string
@@ -148,7 +152,7 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
 
                 // flush strbuf up to the end of the regex match
                 $end = $failMatches[0][1] +
-                       strlen($failMatches[0][0]);
+                    strlen($failMatches[0][0]);
                 $strbuf = substr($strbuf, $end);
             }
         }
@@ -169,7 +173,7 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
         // walk through project directory, searching for all ",cover" files
         // that coverage.py left behind
         foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
-                ".")) as $path) {
+            ".")) as $path) {
             // paths are given as "./path/to/file.py,cover", so match the
             // "path/to/file.py" part
             if(!preg_match(":^\./(.*),cover$:", $path, $matches)) {
@@ -204,7 +208,7 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
 
             // only add to coverage report if the path was originally
             // specified by arc
-            if(in_array($srcFilePath, $this->getPaths())) {
+            if(in_array($srcFilePath, $this->unitTestBase->getPaths())) {
                 $coverageArray[$srcFilePath] = $coverageStr;
             }
         }
@@ -219,10 +223,10 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
     public function run() {
         // run everything relative to project root, so that our paths match up
         // with $this->getPaths()
-        chdir($this->getWorkingCopy()->getProjectRoot());
+        chdir($this->unitTestBase->getWorkingCopy()->getProjectRoot() . "/src/");
 
         // coverage enabled ?
-        $this->setEnableCoverage($this->getConfig(
+        $this->unitTestBase->setEnableCoverage($this->getConfig(
             "unit.engine.django.coverage", true));
         $resultsArray = array();
         // manage_py_dir should be a relative path to current .arcconfig
@@ -250,7 +254,7 @@ final class DjangoUnitTestEngine extends ArcanistUnitTestEngine {
 
             // add to final results array
             $resultsArray[$failTestName] = $result;
-        } else if($this->getEnableCoverage()) {
+        } else if($this->unitTestBase->getEnableCoverage()) {
             // continue with coverage
             $this->processCoverageResults($results);
         }

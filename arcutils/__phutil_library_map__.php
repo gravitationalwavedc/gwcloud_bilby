@@ -10,15 +10,15 @@ phutil_register_library_map(array(
   '__library_version__' => 2,
   'class' =>
   array(
-    'DjangoLintEngine' => 'lint/engine/DjangoLintEngine.php',
-    'DjangoUnitTestEngine' => 'unit/DjangoUnitTestEngine.php',
+    'DjangoJestLintEngine' => 'lint/engine/DjangoJestLintEngine.php',
+    'DjangoJestUnitTestEngine' => 'unit/DjangoJestUnitTestEngine.php',
   ),
   'function' =>
   array(
   ),
   'xmap' =>
   array(
-    'DjangoLintEngine' => 'ArcanistLintEngine',
-    'DjangoUnitTestEngine' => 'ArcanistBaseUnitTestEngine',
+    'DjangoJestLintEngine' => 'ArcanistLintEngine',
+    'DjangoJestUnitTestEngine' => 'ArcanistUnitTestEngine',
   ),
 ));

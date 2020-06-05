@@ -1,12 +1,25 @@
 from django.test import TestCase
 
-# from bilby.models import BilbyJob
+from bilby.models import BilbyJob, Data
+from bilby.variables import SIMULATED
 
 
 class TestModels(TestCase):
-    def test_create_bilby_job(self):
+    def test_data_to_json(self):
         """
-        Check that a bilby job can be created
+        Check that a Data object can be successfully converted to json
         """
 
-        self.assertTrue(True)
+        job = BilbyJob(user_id=1)
+        job.save()
+
+        data = Data(job=job, data_choice=SIMULATED)
+        data.save()
+
+        self.assertDictEqual(data.as_json(), {
+            "id": data.id,
+            "value": {
+                "job": job.id,
+                "choice": SIMULATED
+            }
+        })

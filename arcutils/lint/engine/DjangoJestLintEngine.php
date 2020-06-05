@@ -1,6 +1,6 @@
 <?php
 
-final class DjangoLintEngine extends ArcanistLintEngine {
+final class DjangoJestLintEngine extends ArcanistLintEngine {
     public function buildLinters() {
         $paths = $this->getPaths();
 

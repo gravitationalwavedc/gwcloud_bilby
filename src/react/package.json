@@ -8,7 +8,8 @@
     "start_win": "set \"NODE_ENV=development\" && webpack-dev-server --mode development --hot ",
     "build": "NODE_ENV=production webpack --mode production",
     "relay": "relay-compiler --src ./src --schema ./data/schema.json --extensions=js --extensions=jsx",
-    "test": "jest"
+    "test": "jest",
+    "test-ci": "jest --ci --reporters=default --reporters=jest-junit"
   },
   "keywords": [],
   "author": "",
@@ -39,6 +40,7 @@
     "filesize": "^6.1.0",
     "found": "^0.4.9",
     "graphql": "^14.5.8",
+    "jest-junit": "^10.0.0",
     "linq": "^3.2.1",
     "query-string": "^6.10.1",
     "react-relay": "^9.0.0",
