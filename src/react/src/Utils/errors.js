@@ -60,8 +60,8 @@ const notEmpty = ({data, errors}) => {
 }
 
 const noneFalse = (otherBools) => ({data, errors}) => {
-    otherBools.push(data)
-    if (!otherBools.some((e) => e === true)) {
+    const boolArray = [...otherBools, data]
+    if (!boolArray.some((e) => e === true)) {
         errors.push('have at least one checked')
     }
     return {data, errors}

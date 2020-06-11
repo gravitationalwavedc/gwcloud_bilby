@@ -109,7 +109,7 @@ class StepForm extends React.Component {
                 return <DataForm data={bilbyJob === null ? null : bilbyJob.data} state={this.state.data} updateParentState={this.handleChange('data')} prevStep={this.prevStep} nextStep={this.nextStep}/>
 
             case 3:
-                return <SignalForm data={bilbyJob === null ? null : bilbyJob.signal} state={this.state.signal} updateParentState={this.handleChange('signal')} prevStep={this.prevStep} nextStep={this.nextStep} dataChoice={this.state.data.dataChoice}/>
+                return <SignalForm data={bilbyJob === null ? null : bilbyJob.signal} state={this.state.signal} updateParentState={this.handleChange('signal')} prevStep={this.prevStep} nextStep={this.nextStep} openData={this.state.data.dataChoice==='open'}/>
 
             case 4:
                 return <PriorsForm data={bilbyJob === null ? null : bilbyJob.prior} state={this.state.priors} updateParentState={this.handleChange('priors')} prevStep={this.prevStep} nextStep={this.nextStep}/>

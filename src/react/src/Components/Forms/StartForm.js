@@ -1,9 +1,11 @@
-import React, {useState} from "react";
-import {BaseForm} from "./Forms";
-import {Form, Grid, Button} from "semantic-ui-react";
-import {checkForErrors, longerThan, shorterThan, nameUnique, validJobName} from "../../Utils/errors";
+import React from "react";
+import {FormController, FormField} from "./Forms";
+import {Form, Grid, Button, Label} from "semantic-ui-react";
+import {checkForErrors, longerThan, shorterThan, nameUnique, validJobName, assembleErrorString} from "../../Utils/errors";
 
 import { graphql, createFragmentContainer } from "react-relay";
+
+
 
 // function useFormInput(initialValue) {
 //     const [value, setValue] = useState(initialValue)
@@ -95,63 +97,83 @@ import { graphql, createFragmentContainer } from "react-relay";
 class StartForm extends React.Component {
     constructor(props) {
         super(props);
-        const initialData = {
+        this.formController = React.createRef();
+    }
+
+    nextStep = () => {
+        this.formController.current.setValidating()
+        if (this.formController.current.state.isValid) {
+            this.props.updateParentState(this.formController.current.state.values)
+            this.props.nextStep()
+        }
+    }
+
+    setForms(values) {
+        return [
+            {
+                label: "Job Name",
+                name: "name",
+                form: <Form.Input placeholder="Job Name"/>,
+                errFunc: checkForErrors(longerThan(5), validJobName),
+            },
+            
+            {
+                label: "Job Description",
+                name: "description",
+                form: <Form.TextArea placeholder="Job Description"/>,
+                errFunc: checkForErrors(shorterThan(200)),
+                required: false,
+            },
+            
+            {
+                label: "Private job",
+                name: "private",
+                form: <Form.Checkbox />,
+                required: false
+            },
+        ]
+    }
+
+    render() {
+        var initialData = {
             name: '',
             description: '',
             private: false
         }
 
-        const errors = {}
-        Object.keys(initialData).map((key) => {
-            errors[key] = []
-        })
+        initialData = (this.props.data !== null) ? this.props.data : initialData
+        initialData = (this.props.state !== null) ? this.props.state : initialData
 
-        var data = (this.props.data !== null) ? this.props.data : initialData
-        data = (this.props.state !== null) ? this.props.state : data
-        this.state = {
-            data: data,
-            errors: errors,
-            validate: false
-        }
-        console.log(this.state)
-        this.forms = [
-            {label: "Job Name", name: "name", form: <Form.Input placeholder="Job Name"/>, errFunc: checkForErrors(longerThan(5), validJobName)},
-            {label: "Job Description", name: "description", form: <Form.TextArea placeholder="Job Description"/>, errFunc: checkForErrors(shorterThan(200)), requiredField: false},
-            {label: "Private job", name: "private", form: <Form.Checkbox />}
-        ]
-    }
-
-    handleChange = ({name, value, errors}) => {
-        this.setState(prevState => ({
-            data: {
-                ...prevState.data,
-                [name]: value,
-            },
-            errors: {
-                ...prevState.errors,
-                [name]: errors
-            }
-        })) 
-    }
-
-    nextStep = () => {
-        const notEmpty = (arr) => {return Boolean(arr && arr.length)}
-        if (Object.values(this.state.errors).some(notEmpty)) {
-            this.setState({
-              validate: true  
-            })
-        } else {
-            this.props.updateParentState(this.state.data)
-            this.props.nextStep()
-        }
-    }
-
-    render() {
-        const {data, errors} = this.state
         return (
             <React.Fragment>
-                <BaseForm data={data} errors={errors} forms={this.forms} onChange={this.handleChange} validate={this.state.validate}/>
+                <FormController
+                    initialValues={initialData}
+                    ref={this.formController}
+                >
+                    {
+                        props => {
+                            return (
+                                <Grid.Row>
+                                    <Grid.Column width={10}>
+                                        <Form>
+                                            <Grid textAlign='left'>
+                                                {
+                                                    this.setForms(props.values).map(
+                                                        (form, index) => (<FormField key={index} {...form}/>)
+                                                    )
+                                                }
+                                            </Grid>
+                                        </Form>
+                                    </Grid.Column>
+                                </Grid.Row>
+                            )
+                        }
+                    }
+                </FormController>
                 <Grid.Row columns={2}>
+                    <Grid.Column floated='left'>
+                        <Button onClick={() => this.formController.current.setValidating()}>Validate</Button>
+                    </Grid.Column>
                     <Grid.Column floated='right'>
                         <Button onClick={this.nextStep}>Save and Continue</Button>
                     </Grid.Column>

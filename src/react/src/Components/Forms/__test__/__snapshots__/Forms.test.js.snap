@@ -1,0 +1,319 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Form Controller with Form Field displays error message when set to validate 1`] = `
+<FormController
+  initialValues={
+    Object {
+      "test": "Test",
+    }
+  }
+>
+  <Form
+    as="form"
+  >
+    <form
+      className="ui form"
+      onSubmit={[Function]}
+    >
+      <Grid
+        textAlign="left"
+      >
+        <div
+          className="ui left aligned grid"
+        >
+          <FormField
+            errFunc={[Function]}
+            form={
+              <FormInput
+                as={[Function]}
+                control={[Function]}
+              />
+            }
+            label="Test"
+            name="test"
+            required={true}
+            valFunc={[Function]}
+            visible={true}
+          >
+            <GridRow
+              columns={3}
+            >
+              <div
+                className="three column row"
+              >
+                <GridColumn
+                  verticalAlign="middle"
+                  width={4}
+                >
+                  <div
+                    className="middle aligned four wide column"
+                  >
+                    <FormField
+                      label="Test"
+                      required={true}
+                    >
+                      <div
+                        className="required field"
+                      >
+                        <label>
+                          Test
+                        </label>
+                      </div>
+                    </FormField>
+                  </div>
+                </GridColumn>
+                <GridColumn
+                  verticalAlign="middle"
+                  width={8}
+                >
+                  <div
+                    className="middle aligned eight wide column"
+                  >
+                    <FormInput
+                      as={[Function]}
+                      control={[Function]}
+                      error={true}
+                      name="test"
+                      onChange={[Function]}
+                      value="Testing"
+                    >
+                      <FormField
+                        control={[Function]}
+                        error={true}
+                        name="test"
+                        onChange={[Function]}
+                        value="Testing"
+                      >
+                        <div
+                          className="error field"
+                        >
+                          <Input
+                            aria-describedby={null}
+                            aria-invalid={true}
+                            name="test"
+                            onChange={[Function]}
+                            type="text"
+                            value="Testing"
+                          >
+                            <div
+                              className="ui input"
+                            >
+                              <input
+                                aria-describedby={null}
+                                aria-invalid={true}
+                                name="test"
+                                onChange={[Function]}
+                                type="text"
+                                value="Testing"
+                              />
+                            </div>
+                          </Input>
+                        </div>
+                      </FormField>
+                    </FormInput>
+                  </div>
+                </GridColumn>
+                <GridColumn
+                  verticalAlign="middle"
+                  width={4}
+                >
+                  <div
+                    className="middle aligned four wide column"
+                  >
+                    <Label
+                      basic={true}
+                      color="red"
+                      content="Must be shorter than 5 characters"
+                      pointing="left"
+                    >
+                      <div
+                        className="ui red left pointing basic label"
+                        onClick={[Function]}
+                      >
+                        Must be shorter than 5 characters
+                      </div>
+                    </Label>
+                  </div>
+                </GridColumn>
+              </div>
+            </GridRow>
+          </FormField>
+        </div>
+      </Grid>
+    </form>
+  </Form>
+</FormController>
+`;
+
+exports[`Form Controller with Form Field renders correctly 1`] = `
+<FormController
+  initialValues={
+    Object {
+      "test": "Test",
+    }
+  }
+>
+  <Form
+    as="form"
+  >
+    <form
+      className="ui form"
+      onSubmit={[Function]}
+    >
+      <Grid
+        textAlign="left"
+      >
+        <div
+          className="ui left aligned grid"
+        >
+          <FormField
+            errFunc={[Function]}
+            form={
+              <FormInput
+                as={[Function]}
+                control={[Function]}
+              />
+            }
+            label="Test"
+            name="test"
+            required={true}
+            valFunc={[Function]}
+            visible={true}
+          >
+            <GridRow
+              columns={3}
+            >
+              <div
+                className="three column row"
+              >
+                <GridColumn
+                  verticalAlign="middle"
+                  width={4}
+                >
+                  <div
+                    className="middle aligned four wide column"
+                  >
+                    <FormField
+                      label="Test"
+                      required={true}
+                    >
+                      <div
+                        className="required field"
+                      >
+                        <label>
+                          Test
+                        </label>
+                      </div>
+                    </FormField>
+                  </div>
+                </GridColumn>
+                <GridColumn
+                  verticalAlign="middle"
+                  width={8}
+                >
+                  <div
+                    className="middle aligned eight wide column"
+                  >
+                    <FormInput
+                      as={[Function]}
+                      control={[Function]}
+                      error={false}
+                      name="test"
+                      onChange={[Function]}
+                      value="Test"
+                    >
+                      <FormField
+                        control={[Function]}
+                        error={false}
+                        name="test"
+                        onChange={[Function]}
+                        value="Test"
+                      >
+                        <div
+                          className="field"
+                        >
+                          <Input
+                            aria-describedby={null}
+                            aria-invalid={true}
+                            name="test"
+                            onChange={[Function]}
+                            type="text"
+                            value="Test"
+                          >
+                            <div
+                              className="ui input"
+                            >
+                              <input
+                                aria-describedby={null}
+                                aria-invalid={true}
+                                name="test"
+                                onChange={[Function]}
+                                type="text"
+                                value="Test"
+                              />
+                            </div>
+                          </Input>
+                        </div>
+                      </FormField>
+                    </FormInput>
+                  </div>
+                </GridColumn>
+                <GridColumn
+                  verticalAlign="middle"
+                  width={4}
+                >
+                  <div
+                    className="middle aligned four wide column"
+                  />
+                </GridColumn>
+              </div>
+            </GridRow>
+          </FormField>
+        </div>
+      </Grid>
+    </form>
+  </Form>
+</FormController>
+`;
+
+exports[`Form Controller with Form Field vanishes when visible is false 1`] = `
+<FormController
+  initialValues={
+    Object {
+      "test": "Test",
+    }
+  }
+>
+  <Form
+    as="form"
+  >
+    <form
+      className="ui form"
+      onSubmit={[Function]}
+    >
+      <Grid
+        textAlign="left"
+      >
+        <div
+          className="ui left aligned grid"
+        >
+          <FormField
+            errFunc={[Function]}
+            form={
+              <FormInput
+                as={[Function]}
+                control={[Function]}
+              />
+            }
+            label="Test"
+            name="test"
+            required={true}
+            valFunc={[Function]}
+            visible={false}
+          />
+        </div>
+      </Grid>
+    </form>
+  </Form>
+</FormController>
+`;

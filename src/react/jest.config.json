@@ -1,5 +1,7 @@
 {
   "collectCoverage": true,
   "reporters": ["default", "jest-junit"],
-  "coverageReporters": ["text", "cobertura"]
+  "coverageReporters": ["text", "cobertura"],
+  "setupFilesAfterEnv": ["<rootDir>src/setupTest.js"],
+  "snapshotSerializers": ["enzyme-to-json/serializer"]
 }

@@ -31,7 +31,7 @@ class JobResults extends React.Component {
         }
         this.setState(newState)
     }
-
+    
     render() {
         const {order, direction} = this.state;
 

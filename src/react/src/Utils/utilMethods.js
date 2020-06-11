@@ -1,15 +1,17 @@
 import _ from "lodash";
 
-function setAll (input, newValue) {
-    Object.entries(input).map(([key, value]) => {
-        if (_.isPlainObject(value)) {
-            input[key] = setAll(value, newValue)
-        } else {
-            input[key] = newValue
-        }
-    })
-    return input
-}
+// This function has not been used anywhere, so commented out currently
+
+// function setAll (input, newValue) {
+//     Object.entries(input).map(([key, value]) => {
+//         if (_.isPlainObject(value)) {
+//             input[key] = setAll(value, newValue)
+//         } else {
+//             input[key] = newValue
+//         }
+//     })
+//     return input
+// }
 
 // From https://stackoverflow.com/questions/4149276/how-to-convert-camelcase-to-camel-case
 function unCamelCase (string) {
@@ -20,4 +22,4 @@ function unCamelCase (string) {
     .replace(/^./, function(str){ return str.toUpperCase(); })
 }
 
-export {setAll, unCamelCase};
+export {unCamelCase};
