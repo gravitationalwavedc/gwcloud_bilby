@@ -1,7 +1,7 @@
 import React from "react";
-import {FormController, FormField} from "./Forms";
-import {Form, Grid, Button, Select} from "semantic-ui-react";
-import {checkForErrors, isNumber, notEmpty, noneFalse} from "../../Utils/errors";
+import {Form, Select} from "semantic-ui-react";
+import BaseForm from "./BaseForm";
+import {checkForErrors, isANumber, isNotEmpty, hasNoneFalse} from "../../Utils/errors";
 import _ from "lodash";
 
 import {graphql, createFragmentContainer} from "react-relay";
@@ -10,16 +10,40 @@ import * as Enumerable from "linq";
 class DataForm extends React.Component {
     constructor(props) {
         super(props);
-        this.formController = React.createRef();
+
+        this.initialData = {
+            dataChoice: 'open',
+            hanford: true, // This is because of an annoying bug with errors.. I may need to, once again, refactor the forms.
+            livingston: false,
+            virgo: false,
+            signalDuration: '4',
+            samplingFrequency: '16384',
+            triggerTime: '',
+            hanfordMinimumFrequency: '20',
+            hanfordMaximumFrequency: '1024',
+            hanfordChannel: 'GWOSC',
+            livingstonMinimumFrequency: '20',
+            livingstonMaximumFrequency: '1024',
+            livingstonChannel: 'GWOSC',
+            virgoMinimumFrequency: '20',
+            virgoMaximumFrequency: '1024',
+            virgoChannel: 'GWOSC'
+        }
+
+        this.initialData = (this.props.data !== null) ? this.props.data : this.initialData
+        this.initialData = (this.props.state !== null) ? this.props.state : this.initialData
 
         const channelOptions = [
             'GWOSC',
             'GDS-CALIB_STRAIN',
             'Hrec_hoft_16384Hz',
+            this.initialData.hanfordChannel,
+            this.initialData.livingstonChannel, 
+            this.initialData.virgoChannel,
         ]
         
         this.state = {
-            channelOptions: _.uniq(channelOptions)
+            channelOptions: _.uniq(channelOptions),
         }
     }
 
@@ -29,19 +53,7 @@ class DataForm extends React.Component {
         }))
     }
 
-    prevStep = () => {
-        this.props.prevStep()
-    }
-
-    nextStep = () => {
-        this.formController.current.setValidating()
-        if (this.formController.current.state.isValid) {
-            this.props.updateParentState(this.formController.current.state.values)
-            this.props.nextStep()
-        }
-    }
-
-    setForms(values) {
+    setForms = (values) => {
         const forms = [
             {
                 label: 'Type of Data',
@@ -59,10 +71,10 @@ class DataForm extends React.Component {
                 label: 'Detectors',
                 name: 'hanford',
                 form: <Form.Checkbox label="Hanford"/>,
-                errFunc: checkForErrors(noneFalse([values.livingston, values.virgo])),
+                errFunc: checkForErrors(hasNoneFalse([values.livingston, values.virgo])),
                 linkedErrors: {
-                    livingston: (val) => checkForErrors(noneFalse([val, values.virgo])),
-                    virgo: (val) => checkForErrors(noneFalse([val, values.livingston]))
+                    livingston: (val) => checkForErrors(hasNoneFalse([val, values.virgo])),
+                    virgo: (val) => checkForErrors(hasNoneFalse([val, values.livingston]))
                 }
             },
 
@@ -70,22 +82,24 @@ class DataForm extends React.Component {
                 label: null,
                 name: 'livingston',
                 form: <Form.Checkbox label="Livingston"/>,
-                errFunc: checkForErrors(noneFalse([values.hanford, values.virgo])),
+                errFunc: checkForErrors(hasNoneFalse([values.hanford, values.virgo])),
                 linkedErrors: {
-                    hanford: (val) => checkForErrors(noneFalse([val, values.virgo])),
-                    virgo: (val) => checkForErrors(noneFalse([val, values.livingston]))
-                }
+                    hanford: (val) => checkForErrors(hasNoneFalse([val, values.virgo])),
+                    virgo: (val) => checkForErrors(hasNoneFalse([val, values.livingston]))
+                },
+                required: false
             },
-
+            
             {
                 label: null,
                 name: 'virgo',
                 form: <Form.Checkbox label="Virgo"/>,
-                errFunc: checkForErrors(noneFalse([values.hanford, values.livingston])),
+                errFunc: checkForErrors(hasNoneFalse([values.hanford, values.livingston])),
                 linkedErrors: {
-                    hanford: (val) => checkForErrors(noneFalse([values.livingston, val])),
-                    livingston: (val) => checkForErrors(noneFalse([values.hanford, val]))
-                }
+                    hanford: (val) => checkForErrors(hasNoneFalse([values.livingston, val])),
+                    livingston: (val) => checkForErrors(hasNoneFalse([values.hanford, val]))
+                },
+                required: false
             },
 
             {
@@ -122,7 +136,7 @@ class DataForm extends React.Component {
                 label: 'Trigger Time',
                 name: 'triggerTime',
                 form: <Form.Input placeholder='2.1'/>,
-                errFunc: checkForErrors(isNumber, notEmpty)
+                errFunc: checkForErrors(isANumber, isNotEmpty)
             },
         ]
         
@@ -133,7 +147,7 @@ class DataForm extends React.Component {
                     label: name[0].toUpperCase() + name.slice(1) + ': Minimum Frequency (Hz)',
                     name: name + 'MinimumFrequency',
                     form: <Form.Input placeholder=''/>,
-                    errFunc: checkForErrors(isNumber, notEmpty),
+                    errFunc: checkForErrors(isANumber, isNotEmpty),
                     visible: values[name]
                 },
 
@@ -141,7 +155,7 @@ class DataForm extends React.Component {
                     label: name[0].toUpperCase() + name.slice(1) + ': Maximum Frequency (Hz)',
                     name: name + 'MaximumFrequency',
                     form: <Form.Input placeholder=''/>,
-                    errFunc: checkForErrors(isNumber, notEmpty),
+                    errFunc: checkForErrors(isANumber, isNotEmpty),
                     visible: values[name]
                 },
                 
@@ -160,7 +174,7 @@ class DataForm extends React.Component {
                         }
                         disabled={values.dataChoice==='open'}
                     />,
-                    errFunc: checkForErrors(notEmpty),
+                    errFunc: checkForErrors(isNotEmpty),
                     visible: values[name]
 
                 }
@@ -171,63 +185,14 @@ class DataForm extends React.Component {
     }
 
     render() {
-        var initialData = {
-            dataChoice: 'open',
-            hanford: true, // This is because of an annoying bug with errors.. I may need to, once again, refactor the forms.
-            livingston: false,
-            virgo: false,
-            signalDuration: '4',
-            samplingFrequency: '16384',
-            triggerTime: '',
-            hanfordMinimumFrequency: '20',
-            hanfordMaximumFrequency: '1024',
-            hanfordChannel: 'GWOSC',
-            livingstonMinimumFrequency: '20',
-            livingstonMaximumFrequency: '1024',
-            livingstonChannel: 'GWOSC',
-            virgoMinimumFrequency: '20',
-            virgoMaximumFrequency: '1024',
-            virgoChannel: 'GWOSC'
-        }
-
-        initialData = (this.props.data !== null) ? this.props.data : initialData
-        initialData = (this.props.state !== null) ? this.props.state : initialData
-
         return (
-            <React.Fragment>
-                <FormController
-                    initialValues={initialData}
-                    ref={this.formController}
-                >
-                    {
-                        props => {
-                            return (
-                                <Grid.Row>
-                                    <Grid.Column width={10}>
-                                        <Form>
-                                            <Grid textAlign='left'>
-                                                {
-                                                    this.setForms(props.values).map(
-                                                        (form, index) => (<FormField key={index} {...form}/>)
-                                                    )
-                                                }
-                                            </Grid>
-                                        </Form>
-                                    </Grid.Column>
-                                </Grid.Row>
-                            )
-                        }
-                    }
-                </FormController>
-                <Grid.Row columns={2}>
-                    <Grid.Column floated='left'>
-                        <Button onClick={this.prevStep}>Back</Button>
-                    </Grid.Column>
-                    <Grid.Column floated='right'>
-                        <Button onClick={this.nextStep}>Save and Continue</Button>
-                    </Grid.Column>
-                </Grid.Row>
-            </React.Fragment>
+            <BaseForm 
+                initialData={this.initialData}
+                setForms={this.setForms}
+                prevStep={this.props.prevStep}
+                nextStep={this.props.nextStep}
+                updateParentState={this.props.updateParentState}
+            />
         )
     }
 }

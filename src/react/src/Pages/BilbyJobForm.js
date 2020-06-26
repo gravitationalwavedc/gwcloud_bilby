@@ -1,8 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import StepForm from "../Components/Forms/StepForm";
 import { graphql, createFragmentContainer } from "react-relay";
 import BilbyBasePage from "./BilbyBasePage";
-
 
 class BilbyJobForm extends React.Component {
     constructor(props) {
