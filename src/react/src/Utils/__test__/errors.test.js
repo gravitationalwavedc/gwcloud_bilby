@@ -1,134 +1,234 @@
 import {expect} from "@jest/globals";
 import { 
     checkForErrors,
-    longerThan,
-    shorterThan,
-    isNumber,
-    smallerThan,
-    notEmpty,
-    noneFalse,
-    validJobName 
+    isLongerThan,
+    isShorterThan,
+    isANumber,
+    isAPositiveNumber,
+    isAnInteger,
+    isAPositiveInteger,
+    isLargerThan,
+    isSmallerThan,
+    isNotEmpty,
+    hasNoneFalse,
+    isValidJobName
 } from "../errors";
 
 // Just testing all the error functions
 
-let testString = 'test'
-let testStringLong = 'test string'
-let emptyishString = ' '
-let allowedName = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890-_'
-let disallowedName = 'We cannot use punctuation, with the exception of underscores and hyphens.' 
+const testString = 'test'
+const testStringLong = 'test string'
+const emptyishString = ' '
+const allowedName = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890-_'
+const disallowedName = 'We cannot use punctuation, with the exception of underscores and hyphens.' 
 
-let testInt = 1
-let testIntLarge = 10
+const testInt = 1
+const testIntLarge = 10
+const testIntNegative = -1
 
-let testFloat = 1.0
+const testFloat = 1.0
+const testFloatNegative = -1.0
 
-let boolArrayWithTrue = [true, false]
-let boolArrayWithoutTrue = [false, false]
+const boolArrayWithTrue = [true, false]
+const boolArrayWithoutTrue = [false, false]
 
-describe('longerThan', () => {
+describe('isLongerThan', () => {
     it('raises no error for string longer than threshold', () => {
-        const { errors } = longerThan(5)({data: testStringLong, errors: []})
+        const { errors } = isLongerThan(5)({data: testStringLong, errors: []})
         expect(errors).toHaveLength(0);
     })
     
     it('raises one error for string shorter than threshold', () => {
-        const { errors } = longerThan(5)({data: testString, errors: []})
+        const { errors } = isLongerThan(5)({data: testString, errors: []})
         expect(errors).toHaveLength(1);
     })
 })
 
-describe('shorterThan', () => {
+describe('isShorterThan', () => {
     it('raises no error for string shorter than threshold', () => {
-        const { errors } = shorterThan(5)({data: testString, errors: []})
+        const { errors } = isShorterThan(5)({data: testString, errors: []})
         expect(errors).toHaveLength(0);
     })
     
     it('raises one error for string shorter than threshold', () => {
-        const { errors } = shorterThan(5)({data: testStringLong, errors: []})
+        const { errors } = isShorterThan(5)({data: testStringLong, errors: []})
         expect(errors).toHaveLength(1);
     })
 })
 
-describe('isNumber', () => {
+describe('isANumber', () => {
     it('raises no error for integer, or string that can be converted to integer', () => {
-        let { errors } = isNumber({data: testInt, errors: []})
+        let { errors } = isANumber({data: testInt, errors: []})
         expect(errors).toHaveLength(0);
 
-        ({ errors } = isNumber({data: testInt.toString(), errors: []}))
+        ({ errors } = isANumber({data: testInt.toString(), errors: []}))
         expect(errors).toHaveLength(0);
     })
     
-    it('raises no error for float, or string that can be converted to integer', () => {
-        let { errors } = isNumber({data: testFloat, errors: []})
+    it('raises no error for float, or string that can be converted to float', () => {
+        let { errors } = isANumber({data: testFloat, errors: []})
         expect(errors).toHaveLength(0);
         
-        ({ errors } = isNumber({data: testFloat.toString(), errors: []}))
+        ({ errors } = isANumber({data: testFloat.toString(), errors: []}))
         expect(errors).toHaveLength(0);
     })
 
     it('raises one error for other strings', () => {
-        const { errors } = isNumber({data: testString, errors: []})
+        const { errors } = isANumber({data: testString, errors: []})
         expect(errors).toHaveLength(1);
     })
 })
 
-describe('smallerThan', () => {
+describe('isAPositiveNumber', () => {
+    it('raises no error for integer, or string that can be converted to integer', () => {
+        let { errors } = isAPositiveNumber({data: testInt, errors: []})
+        expect(errors).toHaveLength(0);
+
+        ({ errors } = isAPositiveNumber({data: testInt.toString(), errors: []}))
+        expect(errors).toHaveLength(0);
+    })
+    
+    it('raises no error for float, or string that can be converted to float', () => {
+        let { errors } = isAPositiveNumber({data: testFloat, errors: []})
+        expect(errors).toHaveLength(0);
+        
+        ({ errors } = isAPositiveNumber({data: testFloat.toString(), errors: []}))
+        expect(errors).toHaveLength(0);
+    })
+
+    it('raises one error for other strings', () => {
+        const { errors } = isAPositiveNumber({data: testString, errors: []})
+        expect(errors).toHaveLength(1);
+    })
+
+    it('raises one error for negative numbers', () => {
+        let { errors } = isAPositiveNumber({data: testIntNegative, errors: []})
+        expect(errors).toHaveLength(1);
+
+        ({ errors } = isAPositiveNumber({data: testFloatNegative, errors: []}))
+        expect(errors).toHaveLength(1);
+    })
+})
+
+describe('isAnInteger', () => {
+    it('raises no error for integer, or string that can be converted to integer', () => {
+        let { errors } = isAnInteger({data: testInt, errors: []})
+        expect(errors).toHaveLength(0);
+
+        ({ errors } = isAnInteger({data: testInt.toString(), errors: []}))
+        expect(errors).toHaveLength(0);
+    })
+    
+    it('raises one error for float, or string that can be converted to float', () => {
+        let { errors } = isAnInteger({data: testFloat, errors: []})
+        expect(errors).toHaveLength(0);
+        
+        ({ errors } = isAnInteger({data: testFloat.toString(), errors: []}))
+        expect(errors).toHaveLength(0);
+    })
+
+    it('raises one error for other strings', () => {
+        const { errors } = isAnInteger({data: testString, errors: []})
+        expect(errors).toHaveLength(1);
+    })
+})
+
+describe('isAPositiveInteger', () => {
+    it('raises no error for integer, or string that can be converted to integer', () => {
+        let { errors } = isAPositiveInteger({data: testInt, errors: []})
+        expect(errors).toHaveLength(0);
+
+        ({ errors } = isAPositiveInteger({data: testInt.toString(), errors: []}))
+        expect(errors).toHaveLength(0);
+    })
+    
+    it('raises one error for float, or string that can be converted to float', () => {
+        let { errors } = isAPositiveInteger({data: testFloat, errors: []})
+        expect(errors).toHaveLength(0);
+        
+        ({ errors } = isAPositiveInteger({data: testFloat.toString(), errors: []}))
+        expect(errors).toHaveLength(0);
+    })
+
+    it('raises one error for other strings', () => {
+        const { errors } = isAPositiveInteger({data: testString, errors: []})
+        expect(errors).toHaveLength(1);
+    })
+
+    it('raises one error for negative integer', () => {
+        const { errors } = isAPositiveInteger({data: testIntNegative, errors: []})
+        expect(errors).toHaveLength(1);
+    })
+})
+
+describe('isLargerThan', () => {
     it('raises no error if data is smaller than threshold', () => {
-        let { errors } = smallerThan(testIntLarge, 'placeholder')({data: testInt, errors: []})
+        const { errors } = isLargerThan(testInt, 'placeholder')({data: testIntLarge, errors: []})
         expect(errors).toHaveLength(0);
     })
     
     it('raises an error if threshold is smaller than data', () => {
-        let { errors } = smallerThan(testInt, 'placeholder')({data: testIntLarge, errors: []})
+        const { errors } = isLargerThan(testIntLarge, 'placeholder')({data: testInt, errors: []})
         expect(errors).toHaveLength(1);
     })
 })
 
-describe('notEmpty', () => {
+describe('isSmallerThan', () => {
+    it('raises no error if data is smaller than threshold', () => {
+        const { errors } = isSmallerThan(testIntLarge, 'placeholder')({data: testInt, errors: []})
+        expect(errors).toHaveLength(0);
+    })
+    
+    it('raises an error if threshold is smaller than data', () => {
+        const { errors } = isSmallerThan(testInt, 'placeholder')({data: testIntLarge, errors: []})
+        expect(errors).toHaveLength(1);
+    })
+})
+
+describe('isNotEmpty', () => {
     it('raises no error if string has anything other than whitespace', () => {
-        let { errors } = notEmpty({data: testString, errors: []})
+        const { errors } = isNotEmpty({data: testString, errors: []})
         expect(errors).toHaveLength(0);
     })
     
     it('raises an error if string is empty or contains only whitespace', () => {
-        let { errors } = notEmpty({data: emptyishString, errors: []})
+        const { errors } = isNotEmpty({data: emptyishString, errors: []})
         expect(errors).toHaveLength(1);
     })
 })
 
-describe('noneFalse', () => {
+describe('hasNoneFalse', () => {
     it('raises no error if input list has at least one true value', () => {
-        let { errors } = noneFalse(boolArrayWithTrue)({data: false, errors: []})
+        const { errors } = hasNoneFalse(boolArrayWithTrue)({data: false, errors: []})
         expect(errors).toHaveLength(0);
     })
 
     it('raises no error if input list has only false values, but data is true', () => {
-        let { errors } = noneFalse(boolArrayWithoutTrue)({data: true, errors: []})
+        const { errors } = hasNoneFalse(boolArrayWithoutTrue)({data: true, errors: []})
         expect(errors).toHaveLength(0);
     })
 
     it('raises an error if input list has only false values, and data is false', () => {
-        let { errors } = noneFalse(boolArrayWithoutTrue)({data: false, errors: []})
+        const { errors } = hasNoneFalse(boolArrayWithoutTrue)({data: false, errors: []})
         expect(errors).toHaveLength(1);
     })
 })
 
-describe('validJobName', () => {
+describe('isValidJobName', () => {
     it('raises no error if name contains only valid characters', () => {
-        let { errors } = validJobName({data: allowedName, errors: []})
+        const { errors } = isValidJobName({data: allowedName, errors: []})
         expect(errors).toHaveLength(0);
     })
 
     it('raises an error if name contains at least one invalid character', () => {
-        let { errors } = validJobName({data: disallowedName, errors: []})
+        const { errors } = isValidJobName({data: disallowedName, errors: []})
         expect(errors).toHaveLength(1);
     })
 })
 
 describe('checkForErrors', () => {
     it('creates an array with multiple error messages from each error test', () => {
-        const errors = checkForErrors(shorterThan(5), notEmpty, isNumber, validJobName)(disallowedName)
-        expect(errors).toHaveLength(3); // Should check all of the above errors except for notEmpty
+        const errors = checkForErrors(isShorterThan(5), isNotEmpty, isANumber, isValidJobName)(disallowedName)
+        expect(errors).toHaveLength(3); // Should check all of the above errors except for isNotEmpty
     })
 })

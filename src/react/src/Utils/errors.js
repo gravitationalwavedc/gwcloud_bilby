@@ -2,14 +2,14 @@ import React from "react";
 import {harnessApi} from "../index";
 import { graphql, commitMutation } from "react-relay";
 import { List } from "semantic-ui-react";
+import { isNumeric, isInteger, isPositive } from "./utilMethods";
 
+// This should be fixed so that it only ever returns a string or Fragment, not either.
 const assembleErrorString = (errors) => {
     let prefix = 'Must'
     if (errors.length === 1) {
         return prefix + " " + errors[0]
     } else {
-        // const last = errors.pop()
-        // return prefix + errors.join(', ') + ' and ' + last
         const bullets = errors.map((error, index) => <List.Item key={index} content={error}/>)
         return (
             <React.Fragment>
@@ -24,48 +24,78 @@ const assembleErrorString = (errors) => {
 
 const checkForErrors = (...fns) => (data) => fns.reduceRight((y, f) => f(y), {data: data, errors: []}).errors
 
-const longerThan = threshold => ({data, errors}) => {
+const isLongerThan = threshold => ({data, errors}) => {
     if (data.length < threshold) {
         errors.push('be longer than ' + threshold + ' characters')
     }
     return {data, errors}
 }
 
-const shorterThan = threshold => ({data, errors}) => {
+const isShorterThan = threshold => ({data, errors}) => {
     if (data.length > threshold) {
         errors.push('be shorter than ' + threshold + ' characters')
     }
     return {data, errors}
 }
 
-const isNumber = ({data, errors}) => {
-    if (isNaN(data)) {
+
+const isANumber = ({data, errors}) => {
+    if (!isNumeric(data)) {
         errors.push('be a number')
     }
     return {data, errors}
 }
 
-const smallerThan = (threshold, name) => ({data, errors}) => {
-    if (data >= threshold) {
-        errors.push('be smaller than ' + name)
+const isAPositiveNumber = ({data, errors}) => {
+    if (!isNumeric(data) || !isPositive(data)) {
+        errors.push('be a positive number')
     }
     return {data, errors}
 }
 
-const notEmpty = ({data, errors}) => {
+const isAnInteger = ({data, errors}) => {
+    if (!isNumeric(data) || !isInteger(data)) {
+        errors.push('be an integer')
+    }
+    return {data, errors}
+}
+
+const isAPositiveInteger = ({data, errors}) => {
+    if (!isNumeric(data) || !(isInteger(data) && isPositive(data))) {
+        errors.push('be a positive integer')
+    }
+    return {data, errors}
+}
+
+const isLargerThan = (threshold, name=null) => ({data, errors}) => {
+    if (data <= threshold) {
+        errors.push('be smaller than ' + (name ? name : threshold))
+    }
+    return {data, errors}
+}
+
+const isSmallerThan = (threshold, name=null) => ({data, errors}) => {
+    if (data >= threshold) {
+        errors.push('be smaller than ' + (name ? name : threshold))
+    }
+    return {data, errors}
+}
+
+const isNotEmpty = ({data, errors}) => {
     if (data.trim() === "") {
         errors.push('not be empty')
     }
     return {data, errors}
 }
 
-const noneFalse = (otherBools) => ({data, errors}) => {
+const hasNoneFalse = (otherBools) => ({data, errors}) => {
     const boolArray = [...otherBools, data]
     if (!boolArray.some((e) => e === true)) {
         errors.push('have at least one checked')
     }
     return {data, errors}
 }
+
 
 const nameUnique = ({data, errors}) => {
     commitMutation(harnessApi.getEnvironment("bilby"), {
@@ -88,7 +118,7 @@ const nameUnique = ({data, errors}) => {
     return {data, errors}
 }
 
-const validJobName = ({data, errors}) => {
+const isValidJobName = ({data, errors}) => {
     // Matches case insensitive alphabet, number, underscore and hyphen
     let re = /^[0-9a-z\_\-]+$/i
 
@@ -102,12 +132,15 @@ const validJobName = ({data, errors}) => {
 export {
     checkForErrors,
     assembleErrorString,
-    longerThan,
-    shorterThan,
-    isNumber,
-    smallerThan,
-    notEmpty,
-    noneFalse,
-    nameUnique,
-    validJobName
+    isLongerThan,
+    isShorterThan,
+    isANumber,
+    isAPositiveNumber,
+    isAnInteger,
+    isAPositiveInteger,
+    isLargerThan,
+    isSmallerThan,
+    isNotEmpty,
+    hasNoneFalse,
+    isValidJobName
 }

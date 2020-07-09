@@ -22,4 +22,23 @@ function unCamelCase (string) {
     .replace(/^./, function(str){ return str.toUpperCase(); })
 }
 
-export {unCamelCase};
+// Based on my tests, this answer on SO is good and simple
+// https://stackoverflow.com/a/52986361
+function isNumeric (num) {
+    return (!isNaN(parseFloat(num)) && isFinite(num))
+}
+
+function isInteger (num) {
+    return (Number.isInteger(Number.parseFloat(num)))
+}
+
+function isPositive (num) {
+    return (Number.parseFloat(num) > 0)
+}
+
+export {
+    unCamelCase,
+    isNumeric,
+    isInteger,
+    isPositive
+};

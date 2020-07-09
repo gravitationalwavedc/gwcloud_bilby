@@ -1,30 +1,22 @@
 import React from "react";
-import {FormController, FormField} from "./Forms";
-import {Form, Grid, Button} from "semantic-ui-react";
-import {checkForErrors, isNumber, notEmpty} from "../../Utils/errors";
+import {Form} from "semantic-ui-react";
+import BaseForm from "./BaseForm";
 
 import { graphql, createFragmentContainer } from "react-relay";
 
 class SamplerForm extends React.Component {
     constructor(props) {
         super(props);
-        this.formController = React.createRef();
-    }
 
-    prevStep = () => {
-        this.props.prevStep()
-    }
-
-    nextStep = () => {
-        this.formController.current.setValidating()
-        if (this.formController.current.state.isValid) {
-            this.props.updateParentState(this.formController.current.state.values)
-            this.props.nextStep()
+        this.initialData = {
+            samplerChoice: 'dynesty',
         }
+
+        this.initialData = (this.props.data !== null) ? this.props.data : this.initialData
+        this.initialData = (this.props.state !== null) ? this.props.state : this.initialData
     }
 
-    setForms(values) {
-
+    setForms = (values) => {
         const forms = [
             {
                 label: 'Sampler',
@@ -39,48 +31,14 @@ class SamplerForm extends React.Component {
     }
 
     render() {
-        var initialData = {
-            samplerChoice: 'dynesty'
-        }
-
-        initialData = (this.props.data !== null) ? this.props.data : initialData
-        initialData = (this.props.state !== null) ? this.props.state : initialData
-
         return (
-            <React.Fragment>
-                <FormController
-                    initialValues={initialData}
-                    ref={this.formController}
-                >
-                    {
-                        props => {
-                            return (
-                                <Grid.Row>
-                                    <Grid.Column width={10}>
-                                        <Form>
-                                            <Grid textAlign='left'>
-                                                {
-                                                    this.setForms(props.values).map(
-                                                        (form, index) => (<FormField key={index} {...form}/>)
-                                                    )
-                                                }
-                                            </Grid>
-                                        </Form>
-                                    </Grid.Column>
-                                </Grid.Row>
-                            )
-                        }
-                    }
-                </FormController>
-                <Grid.Row columns={2}>
-                    <Grid.Column floated='left'>
-                        <Button onClick={this.prevStep}>Back</Button>
-                    </Grid.Column>
-                    <Grid.Column floated='right'>
-                        <Button onClick={this.nextStep}>Save and Continue</Button>
-                    </Grid.Column>
-                </Grid.Row>
-            </React.Fragment>
+            <BaseForm
+                initialData={this.initialData}
+                setForms={this.setForms}
+                prevStep={this.props.prevStep}
+                nextStep={this.props.nextStep}
+                updateParentState={this.props.updateParentState}
+            />
         )
     }
 }
