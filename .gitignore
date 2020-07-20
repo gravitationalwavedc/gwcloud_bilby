@@ -8,3 +8,5 @@ __generated__
 local.py
 src/react/coverage
 .coverage
+.DS_Store
+src/react/junit.xml

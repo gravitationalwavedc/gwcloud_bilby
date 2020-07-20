@@ -68,7 +68,7 @@ final class JestUnitTestEngine {
         // getEnableCoverage() returns either true, false, or null
         // true and false means it was explicitly turned on or off.  null means use the default
         if ($this->unitTestBase->getEnableCoverage() !== false) {
-            $this->command .= ' --coverage';
+            $this->command .= ' --coverage --coverageReporters=clover';
         }
 
         return new ExecFuture('%C', $this->command);

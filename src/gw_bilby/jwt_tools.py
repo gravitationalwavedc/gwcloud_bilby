@@ -5,6 +5,7 @@ class GWCloudUser:
     """
     Asher suggests converting this to a named tuple
     """
+
     def __init__(self, username):
         self.is_active = True
         self.is_authenticated = True
@@ -20,7 +21,7 @@ def jwt_get_user_by_payload(payload):
     user = GWCloudUser(username)
 
     # Next extract any other fields from the payload that we need
-    user.user_id = payload.get('userId')
+    user.user_id = payload.get("userId")
 
     # All done
     return user

@@ -90,6 +90,12 @@ class BilbyJobNode(DjangoObjectType):
 
     # priors = graphene.Field(OutputPriorType)
 
+    @classmethod
+    def get_queryset(parent, queryset, info):
+        if info.context.user.is_anonymous:
+            raise Exception("You must be logged in to perform this action.")
+        return queryset
+
     def resolve_last_updated(parent, info):
         return parent.last_updated.strftime("%d/%m/%Y, %H:%M:%S")
 
