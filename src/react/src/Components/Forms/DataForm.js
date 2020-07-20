@@ -6,32 +6,34 @@ import _ from "lodash";
 
 import {graphql, createFragmentContainer} from "react-relay";
 import * as Enumerable from "linq";
+import { mergeUnlessNull } from "../../Utils/utilMethods";
 
 class DataForm extends React.Component {
     constructor(props) {
         super(props);
 
-        this.initialData = {
-            dataChoice: 'open',
-            hanford: true, // This is because of an annoying bug with errors.. I may need to, once again, refactor the forms.
-            livingston: false,
-            virgo: false,
-            signalDuration: '4',
-            samplingFrequency: '16384',
-            triggerTime: '',
-            hanfordMinimumFrequency: '20',
-            hanfordMaximumFrequency: '1024',
-            hanfordChannel: 'GWOSC',
-            livingstonMinimumFrequency: '20',
-            livingstonMaximumFrequency: '1024',
-            livingstonChannel: 'GWOSC',
-            virgoMinimumFrequency: '20',
-            virgoMaximumFrequency: '1024',
-            virgoChannel: 'GWOSC'
-        }
-
-        this.initialData = (this.props.data !== null) ? this.props.data : this.initialData
-        this.initialData = (this.props.state !== null) ? this.props.state : this.initialData
+        this.initialData = mergeUnlessNull(
+            {
+                dataChoice: 'open',
+                hanford: false,
+                livingston: false,
+                virgo: false,
+                signalDuration: '4',
+                samplingFrequency: '16384',
+                triggerTime: '',
+                hanfordMinimumFrequency: '20',
+                hanfordMaximumFrequency: '1024',
+                hanfordChannel: 'GWOSC',
+                livingstonMinimumFrequency: '20',
+                livingstonMaximumFrequency: '1024',
+                livingstonChannel: 'GWOSC',
+                virgoMinimumFrequency: '20',
+                virgoMaximumFrequency: '1024',
+                virgoChannel: 'GWOSC'
+            },
+            this.props.data,
+            this.props.state
+        )
 
         const channelOptions = [
             'GWOSC',

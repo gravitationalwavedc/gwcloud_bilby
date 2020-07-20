@@ -4,29 +4,30 @@ import BaseForm from "./BaseForm";
 import {checkForErrors, isANumber, isSmallerThan, isNotEmpty} from "../../Utils/errors";
 
 import { graphql, createFragmentContainer } from "react-relay";
+import { mergeUnlessNull } from "../../Utils/utilMethods";
 
 class SignalForm extends React.Component {
     constructor(props) {
         super(props);
 
-        this.initialData = {
-            signalChoice: 'binaryBlackHole',
-            signalModel: '',
-            mass1: '',
-            mass2: '',
-            luminosityDistance: '',
-            psi: '',
-            iota: '',
-            phase: '',
-            mergerTime: '',
-            ra: '',
-            dec: '',
-            sameSignal: true
-        }
-        
-        this.initialData = (this.props.data !== null) ? this.props.data : this.initialData
-        this.initialData = (this.props.state !== null) ? this.props.state : this.initialData
-
+        this.initialData = mergeUnlessNull(
+            {
+                signalChoice: 'binaryBlackHole',
+                signalModel: '',
+                mass1: '',
+                mass2: '',
+                luminosityDistance: '',
+                psi: '',
+                iota: '',
+                phase: '',
+                mergerTime: '',
+                ra: '',
+                dec: '',
+                sameSignal: true
+            },
+            this.props.data,
+            this.props.state
+        )
     }
 
     setForms = (values) => {

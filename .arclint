@@ -9,9 +9,9 @@
       "type": "flake8",
       "include": "(\\.py$)",
       "exclude": "(^react/|^venv/)",
-      "severity": {
-        "E501": "warning"
-      }
+      "flags": [
+         "--max-line-length=120"
+      ]
     }
   }
 }

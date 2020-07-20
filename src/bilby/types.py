@@ -1,13 +1,11 @@
-import graphene
-from graphene import AbstractType, ObjectType, InputObjectType, relay, Connection, Int, String, Boolean, Field
-from graphene_django.types import DjangoObjectType
-from graphene_django.filter import DjangoFilterConnectionField
-from django_filters import FilterSet, OrderingFilter
+from graphene import AbstractType, ObjectType, Int, String, Boolean
+
 
 class OutputStartType(ObjectType):
     name = String()
     description = String()
     private = Boolean()
+
 
 class AbstractDataType(AbstractType):
     data_type = String()
@@ -39,11 +37,19 @@ class AbstractSignalType(AbstractType):
     ra = String()
     dec = String()
 
+
 # class AbstractPriorType(AbstractType):
 #     prior = String()
 
+
 class AbstractSamplerType(AbstractType):
-    number = String()
+    nlive = String()
+    nact = String()
+    maxmcmc = String()
+    walks = String()
+    dlogz = String()
+    cpus = String()
+
 
 class JobStatusType(ObjectType):
     name = String()

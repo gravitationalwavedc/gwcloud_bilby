@@ -3,7 +3,7 @@ from django.db import models
 from bilby.utils.jobs.request_file_download_id import request_file_download_id
 from bilby.utils.jobs.request_file_list import request_file_list
 from bilby.utils.jobs.request_job_status import request_job_status
-from .variables import *
+from .variables import bilby_parameters
 
 
 class BilbyJob(models.Model):
@@ -57,18 +57,19 @@ class BilbyJob(models.Model):
         prior = {
             "default": self.prior.prior_choice
         }
+
         # for p in self.prior.all():
-            # if p.prior_choice in FIXED:
-            #     prior[p.name] = {
-            #         "type": "fixed",
-            #         "value": p.fixed_value
-            #     }
-            # elif p.prior_choice in UNIFORM:
-            #     prior[p.name] = {
-            #         "type": "uniform",
-            #         "min": p.uniform_min_value,
-            #         "max": p.uniform_max_value
-            #     }
+        # if p.prior_choice in FIXED:
+        #     prior[p.name] = {
+        #         "type": "fixed",
+        #         "value": p.fixed_value
+        #     }
+        # elif p.prior_choice in UNIFORM:
+        #     prior[p.name] = {
+        #         "type": "uniform",
+        #         "min": p.uniform_min_value,
+        #         "max": p.uniform_max_value
+        #     }
 
         # Get the sampler type
         sampler = {
@@ -93,11 +94,11 @@ class Data(models.Model):
     job = models.OneToOneField(BilbyJob, related_name='data', on_delete=models.CASCADE)
 
     DATA_CHOICES = [
-        SIMULATED,
-        OPEN
+        bilby_parameters.SIMULATED,
+        bilby_parameters.OPEN
     ]
 
-    data_choice = models.CharField(max_length=20, choices=DATA_CHOICES, default=SIMULATED[0])
+    data_choice = models.CharField(max_length=20, choices=DATA_CHOICES, default=bilby_parameters.SIMULATED[0])
 
     def __str__(self):
         return 'Data container for {}'.format(self.job.name)
@@ -117,21 +118,21 @@ class DataParameter(models.Model):
     data = models.ForeignKey(Data, related_name='parameter', on_delete=models.CASCADE)
 
     PARAMETER_CHOICES = [
-        HANFORD,
-        LIVINGSTON,
-        VIRGO,
-        SIGNAL_DURATION,
-        SAMPLING_FREQUENCY,
-        TRIGGER_TIME,
-        HANFORD_MIN_FREQ,
-        HANFORD_MAX_FREQ,
-        HANFORD_CHANNEL,
-        LIVINGSTON_MIN_FREQ,
-        LIVINGSTON_MAX_FREQ,
-        LIVINGSTON_CHANNEL,
-        VIRGO_MIN_FREQ,
-        VIRGO_MAX_FREQ,
-        VIRGO_CHANNEL
+        bilby_parameters.HANFORD,
+        bilby_parameters.LIVINGSTON,
+        bilby_parameters.VIRGO,
+        bilby_parameters.SIGNAL_DURATION,
+        bilby_parameters.SAMPLING_FREQUENCY,
+        bilby_parameters.TRIGGER_TIME,
+        bilby_parameters.HANFORD_MIN_FREQ,
+        bilby_parameters.HANFORD_MAX_FREQ,
+        bilby_parameters.HANFORD_CHANNEL,
+        bilby_parameters.LIVINGSTON_MIN_FREQ,
+        bilby_parameters.LIVINGSTON_MAX_FREQ,
+        bilby_parameters.LIVINGSTON_CHANNEL,
+        bilby_parameters.VIRGO_MIN_FREQ,
+        bilby_parameters.VIRGO_MAX_FREQ,
+        bilby_parameters.VIRGO_CHANNEL
     ]
 
     name = models.CharField(max_length=50, choices=PARAMETER_CHOICES, blank=False, null=False)
@@ -145,12 +146,12 @@ class Signal(models.Model):
     job = models.OneToOneField(BilbyJob, related_name='signal', on_delete=models.CASCADE)
 
     SIGNAL_CHOICES = [
-        SKIP,
-        BBH,
-        BNS
+        bilby_parameters.SKIP,
+        bilby_parameters.BBH,
+        bilby_parameters.BNS
     ]
 
-    signal_choice = models.CharField(max_length=50, choices=SIGNAL_CHOICES, default=SKIP[0])
+    signal_choice = models.CharField(max_length=50, choices=SIGNAL_CHOICES, default=bilby_parameters.SKIP[0])
     signal_model = models.CharField(max_length=50, choices=SIGNAL_CHOICES[1:])
 
 
@@ -159,15 +160,15 @@ class SignalParameter(models.Model):
     signal = models.ForeignKey(Signal, related_name='parameter', on_delete=models.CASCADE)
 
     PARAMETER_CHOICES = [
-        MASS1,
-        MASS2,
-        LUMINOSITY_DISTANCE,
-        IOTA,
-        PSI,
-        PHASE,
-        MERGER,
-        RA,
-        DEC,
+        bilby_parameters.MASS1,
+        bilby_parameters.MASS2,
+        bilby_parameters.LUMINOSITY_DISTANCE,
+        bilby_parameters.IOTA,
+        bilby_parameters.PSI,
+        bilby_parameters.PHASE,
+        bilby_parameters.MERGER,
+        bilby_parameters.RA,
+        bilby_parameters.DEC,
     ]
 
     name = models.CharField(max_length=50, choices=PARAMETER_CHOICES, blank=False, null=False)
@@ -184,12 +185,12 @@ class Prior(models.Model):
     # ]
 
     PRIOR_CHOICES = [
-        PRIOR_4S,
-        PRIOR_8S,
-        PRIOR_16S,
-        PRIOR_32S,
-        PRIOR_64S,
-        PRIOR_128S
+        bilby_parameters.PRIOR_4S,
+        bilby_parameters.PRIOR_8S,
+        bilby_parameters.PRIOR_16S,
+        bilby_parameters.PRIOR_32S,
+        bilby_parameters.PRIOR_64S,
+        bilby_parameters.PRIOR_128S
     ]
 
     # prior_choice = models.CharField(max_length=20, choices=PRIOR_CHOICES, default=FIXED[0])
@@ -209,12 +210,12 @@ class Sampler(models.Model):
     job = models.OneToOneField(BilbyJob, related_name='sampler', on_delete=models.CASCADE)
 
     SAMPLER_CHOICES = [
-        DYNESTY,
-        NESTLE,
-        EMCEE,
+        bilby_parameters.DYNESTY,
+        bilby_parameters.NESTLE,
+        bilby_parameters.EMCEE,
     ]
 
-    sampler_choice = models.CharField(max_length=15, choices=SAMPLER_CHOICES, default=DYNESTY[0])
+    sampler_choice = models.CharField(max_length=15, choices=SAMPLER_CHOICES, default=bilby_parameters.DYNESTY[0])
 
     def as_json(self):
         return dict(
@@ -229,5 +230,15 @@ class Sampler(models.Model):
 class SamplerParameter(models.Model):
     job = models.ForeignKey(BilbyJob, related_name='sampler_parameter', on_delete=models.CASCADE)
     sampler = models.ForeignKey(Sampler, related_name='parameter', on_delete=models.CASCADE)
-    name = models.CharField(max_length=50, blank=False, null=False)
-    value = models.CharField(max_length=50, blank=True, null=True)
+
+    PARAMETER_CHOICES = [
+        bilby_parameters.NLIVE,
+        bilby_parameters.NACT,
+        bilby_parameters.MAXMCMC,
+        bilby_parameters.WALKS,
+        bilby_parameters.DLOGZ,
+        bilby_parameters.CPUS
+    ]
+
+    name = models.CharField(max_length=50, choices=PARAMETER_CHOICES, blank=False, null=False)
+    value = models.FloatField(blank=True, null=True)

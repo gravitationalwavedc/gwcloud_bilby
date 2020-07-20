@@ -157,7 +157,7 @@ class FormField extends React.Component {
 
         return (
             visible && (
-                <Grid.Row columns={3}>
+                <Grid columns={3} container>
                     <Grid.Column verticalAlign='middle' width={4}>
                         <Form.Field required={required} label={{ children: label, htmlFor: name }} />
                     </Grid.Column>
@@ -167,7 +167,7 @@ class FormField extends React.Component {
                     <Grid.Column verticalAlign='middle' width={4}>
                         {showError ? <Label basic pointing='left' color='red' content={assembleErrorString(errors)} /> : null}
                     </Grid.Column>
-                </Grid.Row>
+                </Grid>
             )
         )
     }

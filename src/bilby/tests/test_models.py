@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from bilby.models import BilbyJob, Data
-from bilby.variables import SIMULATED
+from bilby.variables import bilby_parameters
 
 
 class TestModels(TestCase):
@@ -13,13 +13,13 @@ class TestModels(TestCase):
         job = BilbyJob(user_id=1)
         job.save()
 
-        data = Data(job=job, data_choice=SIMULATED)
+        data = Data(job=job, data_choice=bilby_parameters.SIMULATED)
         data.save()
 
         self.assertDictEqual(data.as_json(), {
             "id": data.id,
             "value": {
                 "job": job.id,
-                "choice": SIMULATED
+                "choice": bilby_parameters.SIMULATED
             }
         })

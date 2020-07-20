@@ -23,6 +23,7 @@ function unCamelCase (string) {
 }
 
 // Based on my tests, this answer on SO is good and simple
+// Tests if a string is a number
 // https://stackoverflow.com/a/52986361
 function isNumeric (num) {
     return (!isNaN(parseFloat(num)) && isFinite(num))
@@ -36,9 +37,18 @@ function isPositive (num) {
     return (Number.parseFloat(num) > 0)
 }
 
+// Will merge obj2 and obj3 into obj1, with values from objects to the right overwriting objects to the left
+// obj1 is modified in place
+// Nulls do not overwrite
+// Null object can also be input, but will do nothing
+function mergeUnlessNull (obj1, obj2, obj3) {
+    return _.mergeWith(obj1, obj2, obj3, (o, s) => _.isNull(s) ? o : s)
+}
+
 export {
     unCamelCase,
     isNumeric,
     isInteger,
-    isPositive
+    isPositive,
+    mergeUnlessNull
 };

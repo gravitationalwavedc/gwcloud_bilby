@@ -3,17 +3,19 @@ import {Form} from "semantic-ui-react";
 import BaseForm from "./BaseForm";
 
 import { graphql, createFragmentContainer } from "react-relay";
+import { mergeUnlessNull } from "../../Utils/utilMethods";
 
 class PriorsForm extends React.Component {
     constructor(props) {
         super(props);
 
-        this.initialData = {
-            priorChoice: '4s'
-        }
-        
-        this.initialData = (this.props.data !== null) ? this.props.data : this.initialData
-        this.initialData = (this.props.state !== null) ? this.props.state : this.initialData
+        this.initialData = mergeUnlessNull(
+            {
+                priorChoice: '4s'
+            },
+            this.props.data,
+            this.props.state
+        )
     }
 
     setForms = (values) => {

@@ -1,12 +1,12 @@
 import datetime
 
 import graphene
-from graphene import ObjectType, relay, Connection, Int
+from graphene import relay
 from graphene_django.types import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 from django_filters import FilterSet, OrderingFilter
 
-from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
+from .models import BilbyJob, Data, Signal, Prior, Sampler
 from .status import JobStatus
 
 from .utils.auth.filter_users import request_filter_users
@@ -18,17 +18,21 @@ from .types import OutputStartType, AbstractDataType, AbstractSignalType, Abstra
 
 from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
-from django.conf import settings
 
 
 def parameter_resolvers(name):
     def func(parent, info):
-        if parent.parameter.get(name=name).value in ['true', 'True']:
-            return True
-        elif parent.parameter.get(name=name).value in ['false', 'False']:
-            return False
-        else:
-            return parent.parameter.get(name=name).value
+        try:
+            param = parent.parameter.get(name=name)
+            if param.value in ['true', 'True']:
+                return True
+            elif param.value in ['false', 'False']:
+                return False
+            else:
+                return param.value
+
+        except parent.parameter.model.DoesNotExist:
+            return None
 
     return func
 
@@ -111,27 +115,12 @@ class BilbyJobNode(DjangoObjectType):
                 "number": status_number,
                 "date": status_date.strftime("%d/%m/%Y, %H:%M:%S")
             }
-        except:
+        except Exception:
             return {
                 "name": "Unknown",
                 "number": 0,
                 "data": "Unknown"
             }
-    
-    # Couldn't do priors in the same way as the other things - It may require more though to restructure the models and frontend
-    # def resolve_priors(parent, info):
-    #     d = {}
-    #     for prior in parent.prior.all():
-    #         d.update({
-    #             prior.name: {
-    #                 "value": prior.fixed_value,
-    #                 "type": prior.prior_choice,
-    #                 "min": prior.uniform_min_value,
-    #                 "max": prior.uniform_max_value
-    #             }
-    #         })
-
-    #     return d
 
 
 class DataType(DjangoObjectType, AbstractDataType):
@@ -206,6 +195,7 @@ class PriorType(DjangoObjectType):
 #     parameter_resolvers
 # )
 
+
 class SamplerType(DjangoObjectType, AbstractSamplerType):
     class Meta:
         model = Sampler
@@ -216,27 +206,32 @@ class SamplerType(DjangoObjectType, AbstractSamplerType):
 populate_fields(
     SamplerType,
     [
-        #    'number'
+           'nlive',
+           'nact',
+           'maxmcmc',
+           'walks',
+           'dlogz',
+           'cpus',
     ],
     parameter_resolvers
 )
 
 
-class UserDetails(ObjectType):
+class UserDetails(graphene.ObjectType):
     username = graphene.String()
 
     def resolve_username(parent, info):
         return "Todo"
 
 
-class BilbyResultFile(ObjectType):
+class BilbyResultFile(graphene.ObjectType):
     path = graphene.String()
     is_dir = graphene.Boolean()
     file_size = graphene.Int()
     download_id = graphene.String()
 
 
-class BilbyResultFiles(ObjectType):
+class BilbyResultFiles(graphene.ObjectType):
     class Meta:
         interfaces = (relay.Node,)
 
@@ -259,6 +254,7 @@ class BilbyPublicJobConnection(relay.Connection):
     class Meta:
         node = BilbyPublicJobNode
 
+
 class Query(object):
     bilby_job = relay.Node.Field(BilbyJobNode)
     bilby_jobs = DjangoFilterConnectionField(BilbyJobNode, filterset_class=UserBilbyJobFilter)
@@ -267,14 +263,12 @@ class Query(object):
         order_by=graphene.String(),
         search=graphene.String(),
         time_range=graphene.String()
-    )
-
         # BilbyPublicJobNode,
         # search=graphene.String(),
         # time_range=graphene.String(),
         # first=graphene.Int(),
         # after=graphene.Int()
-    # )
+    )
 
     data = graphene.Field(DataType, data_id=graphene.String())
     all_data = graphene.List(DataType)
@@ -370,7 +364,7 @@ class Query(object):
                 job["timestamp"] = timestamp.strftime("%d/%m/%Y, %H:%M:%S")
 
                 valid_jobs.append(job)
-            except:
+            except Exception:
                 pass
 
         jc_jobs = valid_jobs
@@ -522,7 +516,7 @@ class SamplerInput(graphene.InputObjectType, AbstractSamplerType):
     sampler_choice = graphene.String()
 
 
-class BilbyJobCreationResult(ObjectType):
+class BilbyJobCreationResult(graphene.ObjectType):
     job_id = graphene.String()
 
 
@@ -549,6 +543,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
             result=BilbyJobCreationResult(job_id=job_id)
         )
 
+
 class UpdateBilbyJobMutation(relay.ClientIDMutation):
     class Input:
         job_id = graphene.ID(required=True)
@@ -565,6 +560,7 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         return UpdateBilbyJobMutation(
             result=message
         )
+
 
 class UniqueNameMutation(relay.ClientIDMutation):
     class Input:

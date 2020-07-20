@@ -1,7 +1,8 @@
 import React from "react";
-import {Form} from "semantic-ui-react";
+import { Form } from "semantic-ui-react";
 import BaseForm from "./BaseForm";
-import {checkForErrors, isLongerThan, isShorterThan, isValidJobName} from "../../Utils/errors";
+import { checkForErrors, isLongerThan, isShorterThan, isValidJobName } from "../../Utils/errors";
+import { mergeUnlessNull } from "../../Utils/utilMethods";
 
 import { graphql, createFragmentContainer } from "react-relay";
 
@@ -9,14 +10,16 @@ class StartForm extends React.Component {
     constructor(props) {
         super(props);
 
-        this.initialData = {
-            name: '',
-            description: '',
-            private: false
-        }
-        
-        this.initialData = (this.props.data !== null) ? this.props.data : this.initialData
-        this.initialData = (this.props.state !== null) ? this.props.state : this.initialData
+
+        this.initialData = mergeUnlessNull(
+            {
+                name: '',
+                description: '',
+                private: false
+            },
+            this.props.data,
+            this.props.state
+        )
     }
 
     setForms = (values) => {
@@ -24,20 +27,20 @@ class StartForm extends React.Component {
             {
                 label: "Job Name",
                 name: "name",
-                form: <Form.Input placeholder="Job Name"/>,
+                form: <Form.Input placeholder="Job Name" />,
                 errFunc: checkForErrors(isLongerThan(5), isValidJobName),
             },
-            
+
             {
                 label: "Job Description",
                 name: "description",
-                form: <Form.TextArea placeholder="Job Description"/>,
+                form: <Form.TextArea placeholder="Job Description" />,
                 errFunc: checkForErrors(isShorterThan(200)),
                 required: false,
             },
-            
+
             {
-                label: "Private job",
+                label: "Private Job",
                 name: "private",
                 form: <Form.Checkbox />,
                 required: false
