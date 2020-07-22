@@ -193,15 +193,6 @@ class PriorType(DjangoObjectType):
         return parent.prior_choice
 
 
-# populate_fields(
-#     PriorType,
-#     [
-#     #    'number'
-#     ],
-#     parameter_resolvers
-# )
-
-
 class SamplerType(DjangoObjectType, AbstractSamplerType):
     class Meta:
         model = Sampler
@@ -269,15 +260,7 @@ class Query(object):
         order_by=graphene.String(),
         search=graphene.String(),
         time_range=graphene.String()
-        # BilbyPublicJobNode,
-        # search=graphene.String(),
-        # time_range=graphene.String(),
-        # first=graphene.Int(),
-        # after=graphene.Int()
     )
-
-    data = graphene.Field(DataType, data_id=graphene.String())
-    all_data = graphene.List(DataType)
 
     bilby_result_files = graphene.Field(BilbyResultFiles, job_id=graphene.ID(required=True))
 
@@ -309,15 +292,12 @@ class Query(object):
                 for user in term['users']:
                     user_ids.append(user['userId'])
 
-            print("user ids", user_ids)
-
             jobs = BilbyJob.objects.filter(user_id__in=user_ids)
         else:
             jobs = BilbyJob.objects.all()
 
         # Make sure every job has a valid job id and is public
         jobs = jobs.filter(job_id__isnull=False, private=False)
-
         # Calculate the end time for jobs
         time_range = kwargs.get("time_range", "1d")
         end_time = datetime.datetime.now()
@@ -341,11 +321,9 @@ class Query(object):
 
         # Make sure that the result is an array
         jc_jobs = jc_jobs or []
-        print(jc_jobs)
 
         # Get the user id's that match any of the terms
         user_ids = set([j['user'] for j in jc_jobs])
-        print(user_ids)
 
         # Get the user id's from the list of jobs
         _, user_details = request_lookup_users(user_ids, info.context.user.user_id)
@@ -400,6 +378,7 @@ class Query(object):
             ]
 
             status_valid = True
+
             if not len(search_terms) and job["status_int"] not in valid_status:
                 status_valid = False
 
