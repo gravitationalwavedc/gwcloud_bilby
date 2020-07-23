@@ -313,45 +313,6 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "dataId",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "String",
-                    "ofType": null
-                  }
-                }
-              ],
-              "deprecationReason": null,
-              "description": null,
-              "isDeprecated": false,
-              "name": "data",
-              "type": {
-                "kind": "OBJECT",
-                "name": "DataType",
-                "ofType": null
-              }
-            },
-            {
-              "args": [],
-              "deprecationReason": null,
-              "description": null,
-              "isDeprecated": false,
-              "name": "allData",
-              "type": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "OBJECT",
-                  "name": "DataType",
-                  "ofType": null
-                }
-              }
-            },
-            {
-              "args": [
-                {
-                  "defaultValue": null,
-                  "description": null,
                   "name": "jobId",
                   "type": {
                     "kind": "NON_NULL",
