@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: gwcloud-bilby-static
-          image: nexus.gw-cloud.org/docker/gwcloud_bilby_static:0.14
+          image: nexus.gw-cloud.org/docker/gwcloud_bilby_static:0.15
           ports:
             - name: http
               containerPort: 8000
