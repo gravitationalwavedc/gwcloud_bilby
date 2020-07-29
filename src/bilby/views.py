@@ -6,8 +6,8 @@ from django.conf import settings
 from django.db import transaction
 import requests
 
-from .forms import BilbyJobForm
-from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter
+# from .forms import BilbyJobForm
+from .models import BilbyJob, Data, DataParameter, Signal, SignalParameter, Prior, Sampler, SamplerParameter, Label
 
 
 def create_bilby_job(user_id, start, data, signal, prior, sampler):
@@ -73,8 +73,6 @@ def create_bilby_job(user_id, start, data, signal, prior, sampler):
         # Create the parameter json
         params = bilby_job.as_json()
 
-        print(params)
-
         # Construct the request parameters to the job controller, note that parameters must be a string, not an objects
         data = {
             "parameters": json.dumps(params),
@@ -110,17 +108,19 @@ def create_bilby_job(user_id, start, data, signal, prior, sampler):
         return bilby_job.id
 
 
-def change_job_privacy(job_id, private, user_id):
+def update_bilby_job(job_id, user_id, private=None, labels=None):
     bilby_job = BilbyJob.objects.get(id=job_id)
 
     if user_id == bilby_job.user_id:
-        bilby_job.private = private
+        if labels is not None:
+            bilby_job.labels.set(Label.objects.filter(name__in=labels))
+
+        if private is not None:
+            bilby_job.private = private
+
         bilby_job.save()
 
-        if private is True:
-            return 'Job is now private'
-        else:
-            return 'Job is now public'
+        return 'Job saved!'
     else:
         raise Exception('You must own the job to change the privacy!')
 

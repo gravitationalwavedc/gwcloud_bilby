@@ -6,6 +6,14 @@ from bilby.utils.jobs.request_job_status import request_job_status
 from .variables import bilby_parameters
 
 
+class Label(models.Model):
+    name = models.CharField(max_length=50, blank=False, null=False)
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Label: {self.name}"
+
+
 class BilbyJob(models.Model):
     user_id = models.IntegerField()
     name = models.CharField(max_length=255, blank=False, null=False)
@@ -18,13 +26,15 @@ class BilbyJob(models.Model):
 
     job_id = models.IntegerField(default=None, blank=True, null=True)
 
+    labels = models.ManyToManyField(Label)
+
     class Meta:
         unique_together = (
             ('user_id', 'name'),
         )
 
     def __str__(self):
-        return 'Bilby Job: {}'.format(self.name)
+        return f"Bilby Job: {self.name}"
 
     @property
     def job_status(self):
@@ -101,7 +111,7 @@ class Data(models.Model):
     data_choice = models.CharField(max_length=20, choices=DATA_CHOICES, default=bilby_parameters.SIMULATED[0])
 
     def __str__(self):
-        return 'Data container for {}'.format(self.job.name)
+        return f"Data container for {self.job.name}"
 
     def as_json(self):
         return dict(
@@ -139,7 +149,7 @@ class DataParameter(models.Model):
     value = models.CharField(max_length=1000, blank=True, null=True)
 
     def __str__(self):
-        return 'Data parameter {} for Bilby Job {}'.format(self.name, self.job.name)
+        return f"Data parameter {self.name} for Bilby Job {self.job.name}"
 
 
 class Signal(models.Model):

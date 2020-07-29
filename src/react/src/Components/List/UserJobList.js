@@ -3,7 +3,8 @@ import { graphql, createPaginationContainer } from "react-relay";
 import _ from "lodash";
 import BaseJobList from "./BaseJobList";
 import Link from "found/lib/Link";
-import { Visibility, Grid } from "semantic-ui-react";
+import { Visibility, Grid, Label } from "semantic-ui-react";
+
 
 const RECORDS_PER_PAGE = 10;
 
@@ -45,6 +46,7 @@ class UserJobList extends React.Component {
             {key: 'description', display: 'Description'},
             {key: 'lastUpdated', display: 'Updated'},
             {key: 'jobStatus', display: 'Status'},
+            {key: null, display: 'Labels'},
             {key: null, display: 'Actions'},
         ]
 
@@ -54,6 +56,13 @@ class UserJobList extends React.Component {
                 node.description,
                 node.lastUpdated,
                 node.jobStatus.name,
+                <Label.Group>
+                    {
+                        node.labels.map(({name}, index) => {
+                            return <Label key={index} content={name}/>
+                        })
+                    }
+                </Label.Group>,
                 <React.Fragment>
                     <Link to={{
                         pathname: '/bilby/job-form/',
@@ -101,6 +110,9 @@ export default createPaginationContainer(UserJobList,
                             description
                             lastUpdated
                             jobStatus {
+                                name
+                            }
+                            labels {
                                 name
                             }
                         }

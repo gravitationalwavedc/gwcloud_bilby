@@ -30,7 +30,7 @@ class JobParameters extends React.Component {
             virgoMaximumFrequency,
             virgoChannel
         } = data
-
+        
         const {
             signalChoice,
             signalModel,
@@ -82,8 +82,8 @@ class JobParameters extends React.Component {
                             </Header>
                         </Grid.Column>
                         <Grid.Column width={12} >
-                            <BasicTable headers={['', 'Minimum Frequency', 'Maximum Frequency', 'Channel']} rows={detectorRows}/>
-                            <BasicTable headers={[]} rows={miscDataRows}/>
+                            <BasicTable headers={['', 'Minimum Frequency', 'Maximum Frequency', 'Channel']} rows={detectorRows} data-testid="detectorTable"/>
+                            <BasicTable headers={[]} rows={miscDataRows} data-testid="dataTable"/>
                         </Grid.Column>
                     </Grid.Row>
                     <Grid.Row>
@@ -94,7 +94,7 @@ class JobParameters extends React.Component {
                             </Header>
                         </Grid.Column>
                         <Grid.Column width={12} >
-                            <BasicTable headers={[]} rows={injectedSignalRows}/>
+                            <BasicTable headers={[]} rows={injectedSignalRows} data-testid="signalTable"/>
                         </Grid.Column>
                     </Grid.Row>
                     <Grid.Row>

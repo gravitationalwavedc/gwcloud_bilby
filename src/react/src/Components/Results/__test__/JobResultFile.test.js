@@ -1,8 +1,8 @@
 // Set the harnessApi
 import {createMockEnvironment, MockPayloadGenerator} from "relay-test-utils";
 import {QueryRenderer} from 'react-relay';
-import {setHarnessApi} from "../../index";
-import JobResultFile from "./JobResultFile";
+import {setHarnessApi} from "../../../index";
+import JobResultFile from "../JobResultFile";
 import React from "react";
 import {graphql} from "react-relay";
 import {expect} from "@jest/globals";

@@ -9,6 +9,9 @@ global.queryRendererSetup = (inputQuery, componentToRender) => {
     setHarnessApi({
         getEnvironment: name => {
             return createMockEnvironment();
+        },
+        currentUser: {
+            userId: 1
         }
     })
 

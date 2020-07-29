@@ -2,8 +2,7 @@ import React from "react";
 import Link from "found/lib/Link";
 import {createPaginationContainer, graphql} from "react-relay";
 import BaseJobList from "./BaseJobList";
-import {Form, Grid, Visibility} from "semantic-ui-react";
-import Button from "semantic-ui-react/dist/commonjs/elements/Button";
+import {Form, Grid, Visibility, Label} from "semantic-ui-react";
 
 const RECORDS_PER_PAGE = 10;
 
@@ -62,6 +61,7 @@ class PublicJobList extends React.Component {
             {key: 'name', display: 'Name'},
             {key: 'description', display: 'Description'},
             {key: null, display: 'Status'},
+            {key: null, display: 'Labels'},
             {key: null, display: 'Actions'},
         ]
 
@@ -71,6 +71,13 @@ class PublicJobList extends React.Component {
                 node.name,
                 node.description,
                 node.jobStatus,
+                <Label.Group>
+                    {
+                        node.labels.map(({name}, index) => {
+                            return <Label key={index} content={name}/>
+                        })
+                    }
+                </Label.Group>,
                 <Link to={{
                     pathname: '/bilby/job-results/' + node.id + "/",
                 }} activeClassName="selected" exact match={this.props.match} router={this.props.router}>
@@ -134,6 +141,9 @@ export default createPaginationContainer(PublicJobList,
                             name
                             description
                             jobStatus
+                            labels {
+                                name
+                            }
                         }
                     }
                   }

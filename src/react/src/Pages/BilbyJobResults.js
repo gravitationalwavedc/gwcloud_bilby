@@ -6,18 +6,24 @@ import _ from "lodash";
 import BilbyBasePage from "./BilbyBasePage";
 import JobResults from "../Components/Results/JobResults";
 import JobParameters from "../Components/Results/JobParameters";
-import { Divider, Grid, Header, Message, Container, Checkbox, Label, Card, Segment, Tab, Button } from "semantic-ui-react";
+import { Divider, Grid, Header, Message, Container, Checkbox, Tab, Button, Dropdown } from "semantic-ui-react";
 import Link from "found/lib/Link";
 
-import statusColours from "../Utils/statusColours";
+import JobStatusMessage from "../Components/Results/JobStatusMessage";
+import JobLabelDropdown from "../Components/Results/JobLabelDropdown";
+import JobPrivacyToggle from "../Components/Results/JobPrivacyToggle";
+import TemporaryMessage from "../Components/Utils/TemporaryMessage";
+
 
 class BilbyJobResults extends React.Component {
     constructor(props) {
         super(props);
 
         this.state = {
-            private: this.props.data.bilbyJob.start.private
+            saved: false,
+            saveMessage: null
         }
+
         this.routing = {
             match: this.props.match,
             router: this.props.router,
@@ -27,47 +33,27 @@ class BilbyJobResults extends React.Component {
         }
     }
 
-    handleSave = (e, data) => {
+    onSave = (saved, message) => {
         this.setState({
-            private: data.checked
-        })
-        commitMutation(harnessApi.getEnvironment("bilby"), {
-            mutation: graphql`mutation BilbyJobResultsSetPrivacyMutation($jobId: ID!, $private: Boolean!)
-                {
-                  updateBilbyJob(input: {jobId: $jobId, private: $private}) 
-                  {
-                    result
-                  }
-                }`,
-            variables: {
-                jobId: this.props.match.params.jobId,
-                private: data.checked
-            },
-            onCompleted: (response, errors) => {
-                if (errors) {
-                    console.log(errors)
-                }
-                else {
-                    console.log(response)
-                }
-            },
+            saved: saved,
+            saveMessage: message
         })
     }
 
     render() {
-        const {start, jobStatus, lastUpdated, userId} = this.props.data.bilbyJob
+        const {start, lastUpdated, userId} = this.props.data.bilbyJob
+
         return (
             <BilbyBasePage loginRequired title='Bilby Job Results' {...this.routing}>
+                <TemporaryMessage success={this.state.saved} content={this.state.saveMessage} icon='save' timeout={5000}/>
                 <Grid container stretched textAlign='left'>
                     <Grid.Row verticalAlign='top'>
                         <Grid.Column width={16}>
                             <Grid>
                                 <Grid.Column width={8}>
                                     <Header size='huge' content={start.name} subheader={lastUpdated}/>
-                                    <Message className={statusColours[jobStatus.number]} compact header={'Status: ' + jobStatus.name} content={jobStatus.date}/>
-                                    <Label.Group>
-                                        <Label>Labels will go here</Label>
-                                    </Label.Group>
+                                    <JobStatusMessage status={this.props.data.bilbyJob} />
+                                    <JobLabelDropdown jobId={this.props.match.params.jobId} data={this.props.data} onUpdate={this.onSave} />
                                 </Grid.Column>
                                 <Grid.Column width={8} textAlign='right'>
                                     <Link as={Button} to={{
@@ -78,7 +64,7 @@ class BilbyJobResults extends React.Component {
                                     }} activeClassName="selected" exact match={this.props.match} router={this.props.router}>
                                         Copy Job and Edit
                                     </Link>
-                                    <Checkbox toggle label={'Private'} onChange={this.handleSave} disabled={harnessApi.currentUser.userId !== userId} checked={this.state.private}/>
+                                    <JobPrivacyToggle userId={userId} jobId={this.props.match.params.jobId} data={this.props.data.bilbyJob.start} onUpdate={this.onSave}/>
                                 </Grid.Column>
                             </Grid>
                             <Divider/>
@@ -109,19 +95,18 @@ export default createFragmentContainer(BilbyJobResults,
                 
                 bilbyJob (id: $jobId) {
                     userId
-                    jobStatus {
-                        name
-                        number
-                        date
-                    }
                     lastUpdated
                     start {
                         name
                         description
-                        private
+                        ...JobPrivacyToggle_data
                     }
+
+                    ...JobStatusMessage_status
                     ...JobParameters_bilbyJobParameters
                 }
+
+                ...JobLabelDropdown_data @arguments(jobId: $jobId)
             }
         `,
     },

@@ -1,4 +1,5 @@
 {
+  "exclude": "(.*/migrations/)",
   "linters": {
     "pyflakes": {
       "type": "pyflakes",

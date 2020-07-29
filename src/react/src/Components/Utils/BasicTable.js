@@ -6,7 +6,7 @@ function BasicTable(props) {
     const rows = props.rows.map((row, index) => <TableRow key={index} row={row}/>)
 
     return (
-        <Table fixed definition>
+        <Table fixed definition data-testid={props['data-testid']}>
             <Table.Header>
                 <Table.Row>
                     {headerCells}

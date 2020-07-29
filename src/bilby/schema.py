@@ -6,14 +6,14 @@ from graphene_django.types import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 from django_filters import FilterSet, OrderingFilter
 
-from .models import BilbyJob, Data, Signal, Prior, Sampler
+from .models import BilbyJob, Data, Signal, Prior, Sampler, Label
 from .status import JobStatus
 
 from .utils.auth.filter_users import request_filter_users
 from .utils.auth.lookup_users import request_lookup_users
 from .utils.derive_job_status import derive_job_status
 from .utils.jobs.request_job_filter import request_job_filter
-from .views import create_bilby_job, change_job_privacy
+from .views import create_bilby_job, update_bilby_job
 from .types import OutputStartType, AbstractDataType, AbstractSignalType, AbstractSamplerType, JobStatusType
 
 from graphql_jwt.decorators import login_required
@@ -42,6 +42,12 @@ def parameter_resolvers(name):
 def populate_fields(object_to_modify, field_list, resolver_func):
     for name in field_list:
         setattr(object_to_modify, 'resolve_{}'.format(name), staticmethod(resolver_func(name)))
+
+
+class LabelType(DjangoObjectType):
+    class Meta:
+        model = Label
+        interfaces = (relay.Node,)
 
 
 class UserBilbyJobFilter(FilterSet):
@@ -87,6 +93,7 @@ class BilbyJobNode(DjangoObjectType):
     job_status = graphene.Field(JobStatusType)
     last_updated = graphene.String()
     start = graphene.Field(OutputStartType)
+    labels = graphene.List(LabelType)
 
     # priors = graphene.Field(OutputPriorType)
 
@@ -105,6 +112,9 @@ class BilbyJobNode(DjangoObjectType):
             "description": parent.description,
             "private": parent.private
         }
+
+    def resolve_labels(parent, info):
+        return parent.labels.all()
 
     def resolve_job_status(parent, info):
         try:
@@ -242,6 +252,7 @@ class BilbyPublicJobNode(graphene.ObjectType):
     user = graphene.String()
     name = graphene.String()
     job_status = graphene.String()
+    labels = graphene.List(LabelType)
     description = graphene.String()
     timestamp = graphene.String()
     id = graphene.ID()
@@ -262,9 +273,14 @@ class Query(object):
         time_range=graphene.String()
     )
 
+    all_labels = graphene.List(LabelType)
+
     bilby_result_files = graphene.Field(BilbyResultFiles, job_id=graphene.ID(required=True))
 
     gwclouduser = graphene.Field(UserDetails)
+
+    def resolve_all_labels(self, info, **kwargs):
+        return Label.objects.all()
 
     @login_required
     def resolve_public_bilby_jobs(self, info, **kwargs):
@@ -346,6 +362,7 @@ class Query(object):
                 job["status"] = job_status_str
                 job["status_int"] = job_status
                 job["timestamp"] = timestamp.strftime("%d/%m/%Y, %H:%M:%S")
+                job["labels"] = job["job"].labels.all()
 
                 valid_jobs.append(job)
             except Exception:
@@ -426,6 +443,7 @@ class Query(object):
                         name=job["job"].name,
                         job_status=job["status"],
                         description=job["job"].description,
+                        labels=job["labels"],
                         timestamp=job["timestamp"],
                         id=to_global_id("BilbyJobNode", job["job"].id)
                     )
@@ -532,14 +550,17 @@ class BilbyJobMutation(relay.ClientIDMutation):
 class UpdateBilbyJobMutation(relay.ClientIDMutation):
     class Input:
         job_id = graphene.ID(required=True)
-        private = graphene.Boolean(required=True)
+        private = graphene.Boolean(required=False)
+        labels = graphene.List(graphene.String, required=False)
 
     result = graphene.String()
 
     @classmethod
-    def mutate_and_get_payload(cls, root, info, job_id, private):
+    def mutate_and_get_payload(cls, root, info, **kwargs):
+        job_id = kwargs.pop("job_id")
+
         # Update privacy of bilby job
-        message = change_job_privacy(from_global_id(job_id)[1], private, info.context.user.user_id)
+        message = update_bilby_job(from_global_id(job_id)[1], info.context.user.user_id, **kwargs)
 
         # Return the bilby job id to the client
         return UpdateBilbyJobMutation(

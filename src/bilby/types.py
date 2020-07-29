@@ -55,6 +55,7 @@ class JobStatusType(ObjectType):
     name = String()
     number = Int()
     date = String()
+
 # It seems priors have to be handled differently, kept running into errors with nested AbstractTypes
 
 # class InputPriorStructureType(InputObjectType):
