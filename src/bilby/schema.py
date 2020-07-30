@@ -104,7 +104,7 @@ class BilbyJobNode(DjangoObjectType):
         return queryset
 
     def resolve_last_updated(parent, info):
-        return parent.last_updated.strftime("%d/%m/%Y, %H:%M:%S")
+        return parent.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
 
     def resolve_start(parent, info):
         return {
@@ -129,7 +129,7 @@ class BilbyJobNode(DjangoObjectType):
             return {
                 "name": status_name,
                 "number": status_number,
-                "date": status_date.strftime("%d/%m/%Y, %H:%M:%S")
+                "date": status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
             }
         except Exception:
             return {
@@ -361,7 +361,7 @@ class Query(object):
                 job_status, job_status_str, timestamp = derive_job_status(job["history"])
                 job["status"] = job_status_str
                 job["status_int"] = job_status
-                job["timestamp"] = timestamp.strftime("%d/%m/%Y, %H:%M:%S")
+                job["timestamp"] = timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
                 job["labels"] = job["job"].labels.all()
 
                 valid_jobs.append(job)

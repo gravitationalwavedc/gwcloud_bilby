@@ -1,5 +1,5 @@
 import {expect} from "@jest/globals";
-import { unCamelCase, mergeUnlessNull } from "../utilMethods";
+import { unCamelCase, mergeUnlessNull, formatDate } from "../utilMethods";
 
 // Just testing all the error functions
 
@@ -106,5 +106,13 @@ describe('mergeUnlessNull', () => {
 
         const merged = mergeUnlessNull(obj1, obj2, obj3)
         expect(merged).toEqual(expected);
+    })
+})
+
+describe('formatDate', () => {
+    const UTCDate = "2020-06-15 12:30:30 UTC"
+    const AESTDate = "6/15/2020, 22:30:30"
+    it('correctly changes the date format from UTC to the date of the current timezone', () => {
+        expect(formatDate(UTCDate, "en-AU")).toBe(AESTDate)
     })
 })

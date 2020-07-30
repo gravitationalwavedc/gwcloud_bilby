@@ -74,7 +74,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                 "description": None,
                 "jobId": None,
                 "private": False,
-                "lastUpdated": job.last_updated.strftime("%d/%m/%Y, %H:%M:%S"),
+                "lastUpdated": job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "start": {"name": "", "description": None, "private": False},
             }
         }
@@ -159,7 +159,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                             'id': 'QmlsYnlKb2JOb2RlOjI=',
                             'name': 'Test2',
                             'jobStatus': 'Completed',
-                            'timestamp': '01/01/2020, 12:00:00',
+                            'timestamp': '2020-01-01 12:00:00 UTC',
                             'user': 'buffy summers'
                         }},
                         {'node': {
@@ -167,7 +167,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                             'id': 'QmlsYnlKb2JOb2RlOjE=',
                             'name': 'Test1',
                             'jobStatus': 'Completed',
-                            'timestamp': '01/01/2020, 12:00:00',
+                            'timestamp': '2020-01-01 12:00:00 UTC',
                             'user': 'buffy summers'
                         }}
                     ]}}

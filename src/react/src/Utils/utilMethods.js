@@ -45,10 +45,20 @@ function mergeUnlessNull (obj1, obj2, obj3) {
     return _.mergeWith(obj1, obj2, obj3, (o, s) => _.isNull(s) ? o : s)
 }
 
+// This seems to work in my current timezone
+// Therefore I shall infer it works everywhere
+function formatDate(date, localeString) {
+    const dateObject = new Date(date);
+    const dateString = dateObject.toLocaleString(localeString, {hour12: false})
+    
+    return dateString
+}
+
 export {
     unCamelCase,
     isNumeric,
     isInteger,
     isPositive,
-    mergeUnlessNull
+    mergeUnlessNull,
+    formatDate
 };

@@ -4,6 +4,7 @@ import _ from "lodash";
 import BaseJobList from "./BaseJobList";
 import Link from "found/lib/Link";
 import { Visibility, Grid, Label } from "semantic-ui-react";
+import { formatDate } from "../../Utils/utilMethods";
 
 
 const RECORDS_PER_PAGE = 10;
@@ -54,7 +55,7 @@ class UserJobList extends React.Component {
             [
                 node.name,
                 node.description,
-                node.lastUpdated,
+                formatDate(node.lastUpdated),
                 node.jobStatus.name,
                 <Label.Group>
                     {
