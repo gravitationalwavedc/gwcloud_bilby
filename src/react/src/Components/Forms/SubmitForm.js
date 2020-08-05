@@ -30,7 +30,7 @@ class SubmitForm extends React.Component {
                 <Grid.Row columns={2}>
                     <Grid.Column floated='left'>
                         <Button onClick={this.props.prevStep}>Back</Button>
-                    </Grid.Column>left
+                    </Grid.Column>
                     <Grid.Column floated='right'>
                         <Button onClick={this.props.onSubmit}>Submit Job</Button>
                     </Grid.Column>

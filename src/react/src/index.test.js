@@ -8,6 +8,8 @@ const newApi = {
     }
 }
 
+beforeAll(() => setHarnessApi(null))
+
 // Test setHarnessApi
 test('setHarnessApi works correctly', () => {
     // Check that it is initially null

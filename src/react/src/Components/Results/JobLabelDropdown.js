@@ -1,48 +1,39 @@
 import React from "react";
-import {harnessApi} from "../../index";
 
 import { Dropdown, Header, Container } from "semantic-ui-react";
 import { createFragmentContainer, commitMutation, graphql } from "react-relay";
 import UpdateBilbyJob from "./mutations/UpdateBilbyJob";
+import { useState, useEffect, useRef } from "../../Utils/hooks";
 
-class JobLabelDropdown extends React.Component {
-    constructor(props) {
-        super(props);
+function JobLabelDropdown(props) {
+    const [labels, setLabels] = useState(props.data.bilbyJob.labels.map(label => {return label.name}))
+    
+    const isMounted = useRef()
 
-        this.state = {
-            labels: this.props.data.bilbyJob.labels.map(label => {return label.name})
+    useEffect(() => {
+        if (isMounted.current) {
+            UpdateBilbyJob(
+                {
+                    jobId: props.jobId,
+                    labels: labels
+                },
+                props.onUpdate
+            )
+        } else {
+            isMounted.current = true
         }
-    }
+    }, [labels])
+
+    const allLabels = props.data.allLabels.map(({name, description}) => {
+        return {
+            key: name,
+            text: name,
+            value: name,
+            content: <Header content={name} subheader={description}/>
+        }
+    })
     
-    handleChange = (e, {value}) => {
-        this.setState({
-            labels: value
-        }, () => this.handleSave())
-    }
-
-    handleSave = () => {
-        UpdateBilbyJob(
-            {
-                jobId: this.props.jobId,
-                labels: this.state.labels
-            },
-            this.props.onUpdate
-        )
-    }
-    
-    render() {
-        const allLabels = this.props.data.allLabels.map(({name, description}, index) => {
-            return {
-                key: name,
-                text: name,
-                value: name,
-                content: <Header content={name} subheader={description}/>
-            }
-        })
-
-        return <Dropdown onChange={this.handleChange} as={Container} options={allLabels} placeholder='Add job labels...' multiple value={this.state.labels}/>
-
-    }
+    return <Dropdown onChange={(e, {value}) => setLabels(value)} as={Container} options={allLabels} placeholder='Add job labels...' multiple value={labels}/>
 }
 
 export default createFragmentContainer(JobLabelDropdown, {

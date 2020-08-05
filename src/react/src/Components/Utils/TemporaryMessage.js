@@ -1,42 +1,33 @@
 import React from "react";
 import { Message, Icon, Container } from "semantic-ui-react";
 import Floating from "./Floating";
+import { useState, useEffect, usePrevious } from "../../Utils/hooks";
 
-class TemporaryMessage extends React.Component {
-    constructor(props) {
-        super(props);
+function TemporaryMessage(props) {
+    const [isVisible, setVisible] = useState(false)
+    const prevVisible = usePrevious(isVisible)
 
-        this.state = {
-            isVisible: false
+    useEffect(() => {
+        if (prevVisible === false) {
+            setVisible(true)
         }
-    }
+        
+        const timeout = setTimeout(() => setVisible(false), props.timeout)
+        return () => clearTimeout(timeout)
+    })
 
-    onDismiss = () => {
-        this.setState({ isVisible: false })
-    }
-
-    componentDidUpdate(prevProps, prevState) {
-        clearTimeout(this.timeout)
-        if (!prevState.isVisible) {
-            this.setState({ isVisible: true })
-        } else if (this.state.isVisible) {
-            this.timeout = setTimeout(() => this.setState({ isVisible: false }), this.props.timeout)
-        }
-    }
-
-    render() {
-        return this.state.isVisible && (
-            <Floating>
-                <Container>
-                    <Message success={this.props.success} error={!this.props.success} onDismiss={this.onDismiss}>
-                        <Message.Content >
-                            <Icon name={this.props.icon} />
-                            {this.props.content}
-                        </Message.Content>
-                    </Message>
-                </Container>
-            </Floating>
-        )
-    }
+    return isVisible && (
+        <Floating>
+            <Container>
+                <Message success={props.success} error={!props.success} onDismiss={() => {setVisible(false)}}>
+                    <Message.Content >
+                        <Icon name={props.icon} />
+                        {props.content}
+                    </Message.Content>
+                </Message>
+            </Container>
+        </Floating>
+    )
 }
+
 export default TemporaryMessage

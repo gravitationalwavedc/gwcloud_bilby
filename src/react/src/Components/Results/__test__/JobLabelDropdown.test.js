@@ -1,12 +1,44 @@
-// Set the harnessApi
-import React from "react";
-import { MockPayloadGenerator } from "relay-test-utils";
+import React, {
+    useState,
+    useEffect,
+    useContext,
+    useReducer,
+    useCallback,
+    useMemo,
+    useRef,
+    useImperativeHandle,
+    useLayoutEffect,
+    useDebugValue
+} from "react";
+import { MockPayloadGenerator, createMockEnvironment } from "relay-test-utils";
 
 import { graphql } from "react-relay";
 import { expect } from "@jest/globals";
 import { within, cleanup, screen, fireEvent, logRoles } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
 import JobLabelDropdown from "../JobLabelDropdown";
+import { setHarnessApi } from "../../../index";
+
+// setHarnessApi({
+//     getEnvironment: name => {
+//         return createMockEnvironment();
+//     },
+//     currentUser: {
+//         userId: 1
+//     },
+//     reactHooks: {
+//         useState: useState,
+//         useEffect: useEffect,
+//         useContext: useContext,
+//         useReducer: useReducer,
+//         useCallback: useCallback,
+//         useMemo: useMemo,
+//         useRef: useRef,
+//         useImperativeHandle: useImperativeHandle,
+//         useLayoutEffect: useLayoutEffect,
+//         useDebugValue: useDebugValue
+//     }
+// })
 
 const testData = {
     labels: [

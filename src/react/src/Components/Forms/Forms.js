@@ -28,8 +28,12 @@ class FormController extends React.Component {
         }
     }
 
-    componentDidupdate(prevProps) {
-        if ((this.props.validating !== prevProps.validating) && (this.props.validating)) {
+    componentDidUpdate(prevProps, prevState) {
+        if (
+            ((this.props.validating !== prevProps.validating) && (this.props.validating)) ||
+            (prevState.values !== this.state.values) ||
+            (prevState.visible !== this.state.visible) 
+        ) {
             this.setValid()
         }
     }
@@ -44,7 +48,7 @@ class FormController extends React.Component {
                 ...prevState.errors,
                 ...errors
             }
-        }), () => this.setValid())
+        }))
     }
 
     handleVisibility = (name, visible) => {

@@ -1,21 +1,46 @@
-import React from "react";
+import React, {
+    useState,
+    useEffect,
+    useContext,
+    useReducer,
+    useCallback,
+    useMemo,
+    useRef,
+    useImperativeHandle,
+    useLayoutEffect,
+    useDebugValue
+} from "react";
 import { setHarnessApi } from "./index";
 import { render } from '@testing-library/react';
 import { createMockEnvironment } from "relay-test-utils";
 import { QueryRenderer } from 'react-relay';
 
 
-global.queryRendererSetup = (inputQuery, componentToRender) => {
-    setHarnessApi({
-        getEnvironment: name => {
-            return createMockEnvironment();
-        },
-        currentUser: {
-            userId: 1
-        }
-    })
+const environment = createMockEnvironment()
 
-    const environment = createMockEnvironment()
+setHarnessApi({
+    getEnvironment: name => {
+        return environment;
+    },
+    currentUser: {
+        userId: 1
+    },
+    reactHooks: {
+        useState: useState,
+        useEffect: useEffect,
+        useContext: useContext,
+        useReducer: useReducer,
+        useCallback: useCallback,
+        useMemo: useMemo,
+        useRef: useRef,
+        useImperativeHandle: useImperativeHandle,
+        useLayoutEffect: useLayoutEffect,
+        useDebugValue: useDebugValue
+    }
+})
+
+global.queryRendererSetup = (inputQuery, componentToRender) => {
+
 
     render(
         <QueryRenderer
