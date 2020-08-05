@@ -59,7 +59,7 @@ function setup(inputState) {
         virgo: screen.getByLabelText('Virgo'),
         signalDuration: screen.getByLabelText(/signal duration/i),
         samplingFrequency: screen.getByLabelText(/sampling frequency/i),
-        triggerTime: screen.getByLabelText('Trigger Time')
+        triggerTime: screen.getByLabelText(/trigger time/i)
     }
 }
 

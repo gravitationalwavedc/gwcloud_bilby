@@ -20,7 +20,7 @@ class DataForm extends React.Component {
                 virgo: false,
                 signalDuration: '4',
                 samplingFrequency: '16384',
-                triggerTime: '',
+                triggerTime: '1126259462.391',
                 hanfordMinimumFrequency: '20',
                 hanfordMaximumFrequency: '1024',
                 hanfordChannel: 'GWOSC',
@@ -135,9 +135,9 @@ class DataForm extends React.Component {
             },
 
             {
-                label: 'Trigger Time',
+                label: 'Trigger Time (GPS Time)',
                 name: 'triggerTime',
-                form: <Form.Input placeholder='2.1'/>,
+                form: <Form.Input />,
                 errFunc: checkForErrors(isANumber, isNotEmpty)
             },
         ]

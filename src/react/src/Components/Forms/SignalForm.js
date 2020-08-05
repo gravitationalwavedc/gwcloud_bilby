@@ -13,16 +13,16 @@ class SignalForm extends React.Component {
         this.initialData = mergeUnlessNull(
             {
                 signalChoice: 'binaryBlackHole',
-                signalModel: '',
-                mass1: '',
-                mass2: '',
-                luminosityDistance: '',
-                psi: '',
-                iota: '',
-                phase: '',
-                mergerTime: '',
-                ra: '',
-                dec: '',
+                signalModel: 'binaryBlackHole',
+                mass1: '30',
+                mass2: '25',
+                luminosityDistance: '2000',
+                psi: '0.4',
+                iota: '2.659',
+                phase: '1.3',
+                mergerTime: '1126259642.413',
+                ra: '1.375',
+                dec: '-1.2108',
                 sameSignal: true
             },
             this.props.data,
@@ -49,13 +49,13 @@ class SignalForm extends React.Component {
             {
                 label: 'Signal Params Under Construction',
                 name: '',
-                form: <Form.Input placeholder="Under Construction" disabled/>
+                form: <Form.Input disabled/>
             },
 
             {
                 label: 'Mass 1 (M\u2299)',
                 name: 'mass1',
-                form: <Form.Input placeholder="30.0"/>,
+                form: <Form.Input />,
                 errFunc: checkForErrors(isANumber, isNotEmpty),
                 linkedErrors: {
                     mass2: (val) => checkForErrors(isSmallerThan(val, 'Mass 1'), isANumber, isNotEmpty)
@@ -66,7 +66,7 @@ class SignalForm extends React.Component {
             {
                 label: 'Mass 2 (M\u2299)',
                 name: 'mass2',
-                form: <Form.Input placeholder="25.0"/>,
+                form: <Form.Input />,
                 errFunc: checkForErrors(isSmallerThan(values.mass1, 'Mass 1'), isANumber, isNotEmpty),
                 visible: formToggle === 1
             },
@@ -74,7 +74,7 @@ class SignalForm extends React.Component {
             {
                 label: 'Luminosity Distance (Mpc)',
                 name: 'luminosityDistance',
-                form: <Form.Input placeholder="2000"/>,
+                form: <Form.Input />,
                 errFunc: checkForErrors(isANumber, isNotEmpty),
                 visible: formToggle === 1
             },
@@ -82,7 +82,7 @@ class SignalForm extends React.Component {
             {
                 label: 'psi',
                 name: 'psi',
-                form: <Form.Input placeholder="0.4"/>,
+                form: <Form.Input />,
                 errFunc: checkForErrors(isANumber, isNotEmpty),
                 visible: formToggle === 1
             },
@@ -90,7 +90,7 @@ class SignalForm extends React.Component {
             {
                 label: 'iota',
                 name: 'iota',
-                form: <Form.Input placeholder="2.659"/>,
+                form: <Form.Input />,
                 errFunc: checkForErrors(isANumber, isNotEmpty),
                 visible: formToggle === 1
             },
@@ -98,7 +98,7 @@ class SignalForm extends React.Component {
             {
                 label: 'Phase',
                 name: 'phase',
-                form: <Form.Input placeholder="1.3"/>,
+                form: <Form.Input />,
                 errFunc: checkForErrors(isANumber, isNotEmpty),
                 visible: formToggle === 1
             },
@@ -106,7 +106,7 @@ class SignalForm extends React.Component {
             {
                 label: 'Merger Time (GPS Time)',
                 name: 'mergerTime',
-                form: <Form.Input placeholder="1126259642.413"/>,
+                form: <Form.Input />,
                 errFunc: checkForErrors(isANumber, isNotEmpty),
                 visible: formToggle === 1
             },
@@ -114,7 +114,7 @@ class SignalForm extends React.Component {
             {
                 label: 'Right Ascension (radians)',
                 name: 'ra',
-                form: <Form.Input placeholder="1.375"/>,
+                form: <Form.Input />,
                 errFunc: checkForErrors(isANumber, isNotEmpty),
                 visible: formToggle === 1
             },
@@ -122,7 +122,7 @@ class SignalForm extends React.Component {
             {
                 label: 'Declination (degrees)',
                 name: 'dec',
-                form: <Form.Input placeholder="-1.2108"/>,
+                form: <Form.Input />,
                 errFunc: checkForErrors(isANumber, isNotEmpty),
                 visible: formToggle === 1
             },
