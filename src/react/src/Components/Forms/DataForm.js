@@ -1,19 +1,23 @@
 import React from "react";
-import {Form, Select} from "semantic-ui-react";
 import BaseForm from "./BaseForm";
-import {checkForErrors, isANumber, isNotEmpty, hasNoneFalse} from "../../Utils/errors";
+import {isLargerThan, isANumber, isNotEmpty, hasNoneFalse, createValidationFunction, isLongerThan, isValidJobName} from "../../Utils/errors";
 import _ from "lodash";
 
 import {graphql, createFragmentContainer} from "react-relay";
-import * as Enumerable from "linq";
 import { mergeUnlessNull } from "../../Utils/utilMethods";
+import { useState } from "../../Utils/hooks";
+import { SelectField, CheckboxField, InputField, FormSegment } from "./Forms";
+import { Segment, Grid, Divider, Header } from "semantic-ui-react";
 
-class DataForm extends React.Component {
-    constructor(props) {
-        super(props);
-
-        this.initialData = mergeUnlessNull(
+function DataForm(props) {
+    const formProps = {
+        initialValues: mergeUnlessNull(
             {
+                start: {
+                    name: "",
+                    description: "",
+                    private: false
+                },
                 dataChoice: 'open',
                 hanford: false,
                 livingston: false,
@@ -31,83 +35,79 @@ class DataForm extends React.Component {
                 virgoMaximumFrequency: '1024',
                 virgoChannel: 'GWOSC'
             },
-            this.props.data,
-            this.props.state
-        )
-
-        const channelOptions = [
-            'GWOSC',
-            'GDS-CALIB_STRAIN',
-            'Hrec_hoft_16384Hz',
-            this.initialData.hanfordChannel,
-            this.initialData.livingstonChannel, 
-            this.initialData.virgoChannel,
-        ]
-        
-        this.state = {
-            channelOptions: _.uniq(channelOptions),
+            props.data === null ? null : {...props.data.data, start: props.data.start},
+            props.state
+        ),
+        onSubmit: (values) => {
+            const {start, ...data} = values
+            props.updateParentState('start')(start)
+            props.updateParentState('data')(data)
+        },
+        validate: (values) => createValidationFunction(
+            {
+                "start.name": [isLongerThan(5), isValidJobName],
+                hanford: [hasNoneFalse([values.livingston, values.virgo])],
+                livingston: [hasNoneFalse([values.hanford, values.virgo])],
+                virgo: [hasNoneFalse([values.hanford, values.livingston])],
+                triggerTime: [isANumber, isNotEmpty],
+                hanfordMinimumFrequency: [isANumber, isNotEmpty],
+                hanfordMaximumFrequency: [isLargerThan(values.hanfordMinimumFrequency, 'the minimum frequency'), isANumber, isNotEmpty],
+                hanfordChannel: [isNotEmpty],
+                livingstonMinimumFrequency: [isANumber, isNotEmpty],
+                livingstonMaximumFrequency: [isLargerThan(values.livingstonMinimumFrequency, 'the minimum frequency'), isANumber, isNotEmpty],
+                livingstonChannel: [isNotEmpty],
+                virgoMinimumFrequency: [isANumber, isNotEmpty],
+                virgoMaximumFrequency: [isLargerThan(values.virgoMinimumFrequency, 'the minimum frequency'), isANumber, isNotEmpty],
+                virgoChannel: [isNotEmpty]
+            },
+            values
+        ),
+        linkedErrors: {
+            hanford: ['livingston', 'virgo'],
+            livingston: ['hanford', 'virgo'],
+            virgo: ['hanford', 'livingston'],
+        },
+        linkedValues: (fieldName, fieldValue) => {
+            switch (fieldName) {
+                case 'dataChoice':
+                    if (fieldValue === "open") {
+                        return {hanfordChannel: 'GWOSC', livingstonChannel: 'GWOSC', virgoChannel: 'GWOSC'}
+                    }
+                    break;
+                default:
+                    break;
+            }
+    
         }
     }
 
-    handleAddition = (e, { value }) => {
-        this.setState((prevState) => ({
-          channelOptions: [value, ...prevState.channelOptions],
-        }))
+    const [channelOptions, setChannelOptions] = useState(_.uniq(
+        [
+            'GWOSC',
+            'GDS-CALIB_STRAIN',
+            'Hrec_hoft_16384Hz',
+            formProps.initialValues.hanfordChannel,
+            formProps.initialValues.livingstonChannel, 
+            formProps.initialValues.virgoChannel,
+        ]
+    ))
+
+    const handleAddition = (e, { value }) => {
+        setChannelOptions(prevChannelOptions => [value, ...prevChannelOptions])
     }
 
-    setForms = (values) => {
-        const forms = [
-            {
-                label: 'Type of Data',
-                name: 'dataChoice',
-                form: <Form.Select placeholder="Select Data Type" options={
-                    [
-                        {key: 'open', text: 'Open', value: 'open'},
-                        {key: 'simulated', text: 'Simulated', value: 'simulated'}
-                    ]
-                }/>,
-                valFunc: (val) => val === 'open' ? {hanfordChannel: 'GWOSC', livingstonChannel: 'GWOSC', virgoChannel: 'GWOSC'} : {},
-            },
-
-            {
-                label: 'Detectors',
-                name: 'hanford',
-                form: <Form.Checkbox label="Hanford"/>,
-                errFunc: checkForErrors(hasNoneFalse([values.livingston, values.virgo])),
-                linkedErrors: {
-                    livingston: (val) => checkForErrors(hasNoneFalse([val, values.virgo])),
-                    virgo: (val) => checkForErrors(hasNoneFalse([val, values.livingston]))
-                }
-            },
-
-            {
-                label: null,
-                name: 'livingston',
-                form: <Form.Checkbox label="Livingston"/>,
-                errFunc: checkForErrors(hasNoneFalse([values.hanford, values.virgo])),
-                linkedErrors: {
-                    hanford: (val) => checkForErrors(hasNoneFalse([val, values.virgo])),
-                    virgo: (val) => checkForErrors(hasNoneFalse([val, values.livingston]))
-                },
-                required: false
-            },
-            
-            {
-                label: null,
-                name: 'virgo',
-                form: <Form.Checkbox label="Virgo"/>,
-                errFunc: checkForErrors(hasNoneFalse([values.hanford, values.livingston])),
-                linkedErrors: {
-                    hanford: (val) => checkForErrors(hasNoneFalse([values.livingston, val])),
-                    livingston: (val) => checkForErrors(hasNoneFalse([values.hanford, val]))
-                },
-                required: false
-            },
-
-            {
-                label: 'Signal Duration (s)',
-                name: 'signalDuration',
-                form: <Form.Select placeholder="Select Signal Duration" options={
+    function setForms(values) {
+        const forms = {
+            dataChoice: <SelectField label="Type of Data" name="dataChoice" placeholder="Select Data Type" options={
+                [
+                    {key: 'open', text: 'Open', value: 'open'},
+                    {key: 'simulated', text: 'Simulated', value: 'simulated'}
+                ]
+            }/>,
+            hanford: <CheckboxField label="Hanford" name="hanford" toggle/>,
+            livingston: <CheckboxField label="Livingston" name="livingston" toggle/>,
+            virgo: <CheckboxField label="Virgo" name="virgo" toggle/>,
+            signalDuration: <SelectField label="Signal Duration (s)" name="signalDuration" placeholder="Select Signal Duration" options={
                     [
                         {key: '4', text: '4', value: '4'},
                         {key: '8', text: '8', value: '8'},
@@ -116,108 +116,137 @@ class DataForm extends React.Component {
                         {key: '64', text: '64', value: '64'},
                         {key: '128', text: '128', value: '128'}
                     ]
-                }/>
-            },
-
-            {
-                label: 'Sampling Frequency (Hz)',
-                name: 'samplingFrequency',
-                form: <Form.Select placeholder="Select Sampling Frequency" options={
-                    [
-                        {key: '512', text: '512', value: '512'},
-                        {key: '1024', text: '1024', value: '1024'},
-                        {key: '2048', text: '2048', value: '2048'},
-                        {key: '4096', text: '4096', value: '4096'},
-                        {key: '8192', text: '8192', value: '8192'},
-                        {key: '16384', text: '16384', value: '16384'},
-                    ]
-                }/>
-            },
-
-            {
-                label: 'Trigger Time (GPS Time)',
-                name: 'triggerTime',
-                form: <Form.Input />,
-                errFunc: checkForErrors(isANumber, isNotEmpty)
-            },
-        ]
-        
-
-        Enumerable.from(['hanford', 'livingston', 'virgo']).forEach((name) => {
-            forms.push(
-                {
-                    label: name[0].toUpperCase() + name.slice(1) + ': Minimum Frequency (Hz)',
-                    name: name + 'MinimumFrequency',
-                    form: <Form.Input placeholder=''/>,
-                    errFunc: checkForErrors(isANumber, isNotEmpty),
-                    visible: values[name]
-                },
-
-                {
-                    label: name[0].toUpperCase() + name.slice(1) + ': Maximum Frequency (Hz)',
-                    name: name + 'MaximumFrequency',
-                    form: <Form.Input placeholder=''/>,
-                    errFunc: checkForErrors(isANumber, isNotEmpty),
-                    visible: values[name]
-                },
-                
-                {
-                    label: name[0].toUpperCase() + name.slice(1) + ': Channel',
-                    name: name + 'Channel',
-                    form: <Form.Field 
-                        control={Select} 
-                        search 
-                        allowAdditions 
-                        onAddItem={this.handleAddition} 
-                        placeholder="Select Channel"
-                        options={
-                                // Create options from list of values, excluding some of the values
-                            _.without(this.state.channelOptions, name==='virgo' ? 'GDS-CALIB_STRAIN' : 'Hrec_hoft_16384Hz').map(value => ({key: value, text: value, value: value}))
-                        }
-                        disabled={values.dataChoice==='open'}
-                    />,
-                    errFunc: checkForErrors(isNotEmpty),
-                    visible: values[name]
-
+            }/>,
+            samplingFrequency: <SelectField label="Sampling Frequency (Hz)" name="samplingFrequency" placeholder="Select Sampling Frequency" options={
+                [
+                    {key: '512', text: '512', value: '512'},
+                    {key: '1024', text: '1024', value: '1024'},
+                    {key: '2048', text: '2048', value: '2048'},
+                    {key: '4096', text: '4096', value: '4096'},
+                    {key: '8192', text: '8192', value: '8192'},
+                    {key: '16384', text: '16384', value: '16384'},
+                ]
+            }/>,
+            triggerTime: <InputField label="Trigger Time (GPS Time)" name="triggerTime" />,
+            hanfordMinimumFrequency: <InputField label="Hanford Minimum Frequency (Hz)" name="hanfordMinimumFrequency" key="hanfordMinimumFrequency"/>,
+            hanfordMaximumFrequency: <InputField label="Hanford Maximum Frequency (Hz)" name="hanfordMaximumFrequency" key="hanfordMaximumFrequency"/>,
+            hanfordChannel: <SelectField label="Hanford Channel" name="hanfordChannel" key="hanfordChannel"
+                search 
+                allowAdditions 
+                onAddItem={handleAddition} 
+                placeholder="Select Channel"
+                options={
+                        // Create options from list of values, excluding some of the values
+                    _.without(channelOptions, 'Hrec_hoft_16384Hz').map(value => ({key: value, text: value, value: value}))
                 }
-            )
-        })
+                disabled={values.dataChoice==='simulated'}/>,
+            livingstonMinimumFrequency: <InputField label="Livingston Minimum Frequency (Hz)" name="livingstonMinimumFrequency" key="livingstonMinimumFrequency"/>,
+            livingstonMaximumFrequency: <InputField label="Livingston Maximum Frequency (Hz)" name="livingstonMaximumFrequency" key="livingstonMaximumFrequency"/>,
+            livingstonChannel: <SelectField label="Livingston Channel" name="livingstonChannel" key="livingstonChannel"
+                search 
+                allowAdditions 
+                onAddItem={handleAddition} 
+                placeholder="Select Channel"
+                options={
+                        // Create options from list of values, excluding some of the values
+                    _.without(channelOptions, 'Hrec_hoft_16384Hz').map(value => ({key: value, text: value, value: value}))
+                }
+                disabled={values.dataChoice==='simulated'}/>,
+            virgoMinimumFrequency: <InputField label="Virgo Minimum Frequency (Hz)" name="virgoMinimumFrequency" key="virgoMinimumFrequency"/>,
+            virgoMaximumFrequency: <InputField label="Virgo Maximum Frequency (Hz)" name="virgoMaximumFrequency" key="virgoMaximumFrequency"/>,
+            virgoChannel: <SelectField label="Virgo Channel" name="virgoChannel" key="virgoChannel"
+                search 
+                allowAdditions 
+                onAddItem={handleAddition} 
+                placeholder="Select Channel"
+                options={
+                        // Create options from list of values, excluding some of the values
+                    _.without(channelOptions, 'GDS-CALIB_STRAIN').map(value => ({key: value, text: value, value: value}))
+                }
+                disabled={values.dataChoice==='simulated'}/>
+        }
 
-        return forms
-    }
-
-    render() {
         return (
-            <BaseForm 
-                initialData={this.initialData}
-                setForms={this.setForms}
-                prevStep={this.props.prevStep}
-                nextStep={this.props.nextStep}
-                updateParentState={this.props.updateParentState}
-            />
+            <React.Fragment>
+                <FormSegment header="Data">
+                    <Grid.Row columns={2}>
+                        <Grid.Column>
+                            {forms.dataChoice}
+                            {forms.samplingFrequency}
+                        </Grid.Column>
+                        <Grid.Column>
+                            {forms.triggerTime}
+                            {forms.signalDuration}
+                        </Grid.Column>
+                    </Grid.Row>
+                </FormSegment>
+                <Segment basic as={Grid} columns='equal'>
+                    <Grid.Row>
+                        <Grid.Column>
+                            <Segment color={values.hanford ? "black" : null} basic={!values.hanford}>
+                                <Header as={Segment} basic textAlign="center">
+                                    {forms.hanford}
+                                    {values.hanford ? 'Activated' : 'Deactivated'}
+                                </Header>
+                                <Divider/>
+                                {values.hanford && [forms.hanfordChannel, forms.hanfordMinimumFrequency, forms.hanfordMaximumFrequency]}
+                            </Segment>
+                        </Grid.Column>
+                        <Grid.Column>
+                            <Segment color={values.livingston ? "black" : null} basic={!values.livingston}>
+                                <Header as={Segment} basic textAlign="center">
+                                    {forms.livingston}
+                                    {values.livingston ? 'Activated' : 'Deactivated'}
+                                </Header>
+                                <Divider/>
+                                {values.livingston && [forms.livingstonChannel, forms.livingstonMinimumFrequency, forms.livingstonMaximumFrequency]}
+                            </Segment>
+                        </Grid.Column>
+                        <Grid.Column>
+                            <Segment color={values.virgo ? "black" : null} basic={!values.virgo}>
+                                <Header as={Segment} basic textAlign="center">
+                                    {forms.virgo}
+                                    {values.virgo ? 'Activated' : 'Deactivated'}
+                                </Header>
+                                <Divider/>
+                                {values.virgo && [forms.virgoChannel, forms.virgoMinimumFrequency, forms.virgoMaximumFrequency]}
+                            </Segment>
+                        </Grid.Column>
+                    </Grid.Row>
+                </Segment>
+            </React.Fragment>
         )
     }
+
+    return <BaseForm formProps={formProps} setForms={setForms}/>
 }
 
 export default createFragmentContainer(DataForm, {
     data: graphql`
-        fragment DataForm_data on DataType {
-            dataChoice
-            hanford
-            livingston
-            virgo
-            signalDuration
-            samplingFrequency
-            triggerTime
-            hanfordMinimumFrequency
-            hanfordMaximumFrequency
-            hanfordChannel
-            livingstonMinimumFrequency
-            livingstonMaximumFrequency
-            livingstonChannel
-            virgoMinimumFrequency
-            virgoMaximumFrequency
-            virgoChannel
+        fragment DataForm_data on BilbyJobNode {
+            data {
+                dataChoice
+                hanford
+                livingston
+                virgo
+                signalDuration
+                samplingFrequency
+                triggerTime
+                hanfordMinimumFrequency
+                hanfordMaximumFrequency
+                hanfordChannel
+                livingstonMinimumFrequency
+                livingstonMaximumFrequency
+                livingstonChannel
+                virgoMinimumFrequency
+                virgoMaximumFrequency
+                virgoChannel
+            }
+            start {
+                name
+                description
+                private
+            }
         }
     `
 });

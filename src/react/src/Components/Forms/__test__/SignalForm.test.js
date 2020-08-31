@@ -27,50 +27,54 @@ const testData = {
 const inputQuery = graphql`
     query SignalFormTestQuery @relay_test_operation {
         bilbyJob (id: 1) {
-            signal {
             ...SignalForm_data
-            }
         }
     }
 `
 function setup(inputState) {
     const environment = global.queryRendererSetup(
         inputQuery,
-        (props) => <SignalForm data={props.bilbyJob.signal} state={inputState} updateParentState={testEmptyFunction} nextStep={testEmptyFunction} openData={true}/>
+        (props) => <SignalForm data={props.bilbyJob} state={inputState} updateParentState={testEmptyFunction} openData={true}/>
     )
 
     environment.mock.resolveMostRecentOperation(operation =>
         MockPayloadGenerator.generate(operation, {
-            SignalType() {
-                return testData
+            BilbyJobNode() {
+                return {
+                    signal: testData
+                }
             }
         }),
     );
 
     return {
-        signalChoice: screen.getByLabelText('Signal Inject'),
-        signalModel: screen.getByLabelText('Signal Model'),
-        mass1: screen.getByLabelText(/mass 1/i),
-        mass2: screen.getByLabelText(/mass 2/i),
-        luminosityDistance: screen.getByLabelText(/luminosity distance/i),
-        psi: screen.getByLabelText('psi'),
-        iota: screen.getByLabelText('iota'),
-        phase: screen.getByLabelText('Phase'),
-        mergerTime: screen.getByLabelText(/merger time/i),
-        ra: screen.getByLabelText(/right ascension/i),
-        dec: screen.getByLabelText(/declination/i),
-        sameSignal: screen.getByLabelText('Same Signal for Model')
+        signalChoice: screen.getByLabelText('Injection'),
+        signalModel: screen.getByLabelText('Model'),
+        mass1: screen.queryByLabelText(/mass 1/i),
+        mass2: screen.queryByLabelText(/mass 2/i),
+        luminosityDistance: screen.queryByLabelText(/luminosity distance/i),
+        psi: screen.queryByLabelText('psi'),
+        iota: screen.queryByLabelText('iota'),
+        phase: screen.queryByLabelText('Phase'),
+        mergerTime: screen.queryByLabelText(/merger time/i),
+        ra: screen.queryByLabelText(/right ascension/i),
+        dec: screen.queryByLabelText(/declination/i),
     }
 }
 
 describe('Signal form displays the initial form fields and values correctly:', () => {
     let fields
-    beforeAll(() => {fields = setup({sameSignal: false})})
+    beforeAll(() => {fields = setup(null)})
     afterAll(cleanup)
 
     it('signalChoice', () => {
         expect(fields.signalChoice).toBeInTheDocument()
         expect(within(fields.signalChoice).getByRole('alert')).toHaveTextContent('Binary Black Hole')
+    })
+
+    it('signalModel', () => {
+        expect(fields.signalModel).toBeInTheDocument()
+        expect(within(fields.signalModel).getByRole('alert')).toHaveTextContent('Binary Black Hole')
     })
 
     it('mass1', () => {
@@ -116,31 +120,5 @@ describe('Signal form displays the initial form fields and values correctly:', (
     it('dec', () => {
         expect(fields.dec).toBeInTheDocument()
         expect(fields.dec).toHaveValue(testData.dec)
-    })
-
-    it('sameSignal', () => {
-        expect(fields.sameSignal).toBeInTheDocument()
-        expect(fields.sameSignal).not.toBeChecked()
-    })
-
-    it('signalModel', () => {
-        expect(fields.signalModel).toBeInTheDocument()
-        expect(within(fields.signalModel).getByRole('alert')).toHaveTextContent('Binary Black Hole')
-    })
-})
-
-describe('Signal form dynamically', () => {
-    let fields
-    beforeAll(() => {fields = setup({sameSignal: false})})
-    afterAll(cleanup)
-
-    it('hides signalModel field when sameSignal checkbox is checked', () => {
-        expect(fields.sameSignal).toBeInTheDocument()
-        expect(fields.signalModel).toBeInTheDocument()
-
-        fireEvent.click(fields.sameSignal)
-        expect(fields.sameSignal).toBeChecked()
-
-        expect(fields.signalModel).not.toBeInTheDocument()
     })
 })

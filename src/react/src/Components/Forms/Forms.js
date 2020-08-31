@@ -1,180 +1,233 @@
 import React from "react";
 import _ from "lodash";
-import { Form, Grid, Label } from "semantic-ui-react";
+import { Form, Header, Grid, Segment, Item } from "semantic-ui-react";
+import { useEffect, useReducer, useContext, useState } from "../../Utils/hooks";
+import {setAll} from "../../Utils/utilMethods"
 import { assembleErrorString } from "../../Utils/errors";
 
+function reducer(state, action) {
+    switch (action.type) {
+        case 'SET_FIELD_VALUE':
+            const newValues = _.cloneDeep(state.values)
+            _.forIn(action.payload, (value, key) => {
+                _.set(newValues, key, value)
+            })
+            return {...state, values: newValues}
 
+        case 'SET_FIELD_TOUCHED':
+            const newTouched = _.cloneDeep(state.touched)
+            _.forIn(action.payload, (value, key) => {
+                _.set(newTouched, key, value)
+            })
+            return {...state, touched: newTouched}
 
-class FormController extends React.Component {
-    constructor(props) {
-        super(props);
+        case 'SET_FIELD_VISIBLE':
+            const newVisible = _.cloneDeep(state.visible)
+            _.forIn(action.payload, (value, key) => {
+                _.set(newVisible, key, value)
+            })
+            return {...state, visible: newVisible}
 
-        const initialErrors = {}
-        Object.keys(this.props.initialValues).map((key) => {
-            initialErrors[key] = []
-        })
+        case 'SET_ERRORS':
+            return {
+                ...state,
+                errors: action.payload
+            }
 
-        const initialVisible = {}
-        Object.keys(this.props.initialValues).map((key) => {
-            initialVisible[key] = true
-        })
+        case 'SUBMIT_ATTEMPT':
+            return {
+                ...state,
+                isSubmitting: true,
+                touched: setAll(state.values, true)
+            }
 
-        this.state = {
-            values: this.props.initialValues || {},
-            errors: initialErrors,
-            visible: initialVisible,
+        case 'SUBMIT_SUCCESS':
+            return {
+                ...state,
+                isSubmitting: false,
+            }
+            
+        case 'SUBMIT_FAILURE':
+            return {
+                ...state,
+                isSubmitting: false,
+            }
+        default:
+            return state
+    }
+}
+
+function useFormControl(props) {
+    const [state, dispatch] = useReducer(reducer,
+        {
+            values: props.initialValues,
+            errors: {},
             touched: {},
-            isValid: false
+            visible: setAll(props.initialValues, true),
+            isSubmitting: false
         }
-    }
+    )
 
-    componentDidUpdate(prevProps, prevState) {
-        if (
-            ((this.props.validating !== prevProps.validating) && (this.props.validating)) ||
-            (prevState.values !== this.state.values) ||
-            (prevState.visible !== this.state.visible) 
-        ) {
-            this.setValid()
+    useEffect(() => {
+        if (props.validate) {
+            const errors = props.validate(state.values)
+            dispatch({type: 'SET_ERRORS', payload: errors})
         }
-    }
+    }, [state.values])
 
-    handleChange = (values, errors) => {
-        this.setState(prevState => ({
-            values: {
-                ...prevState.values,
-                ...values
-            },
-            errors: {
-                ...prevState.errors,
-                ...errors
-            }
-        }))
-    }
+    const handleChange = fieldName => (event, data) => {
+        const value = data.type === 'checkbox' ? data.checked : data.value
+        var linkedVals = {}
+        
+        if (props.linkedValues) {
+            linkedVals = props.linkedValues(fieldName, value, state.values)
+        }
 
-    handleVisibility = (name, visible) => {
-        this.setState(prevState => ({
-            visible: {
-                ...prevState.visible,
-                [name]: visible
-            }
-        }))
-    }
-
-    setValid = () => {
-        const notEmpty = (arr) => { return Boolean(arr && arr.length) }
-        const visibleErrors = _.pick(this.state.errors, Object.keys(_.pickBy(this.state.visible, val => val)))
-
-        this.setState({
-            isValid: !Object.values(visibleErrors).some(notEmpty)
-        }, () => this.props.onValid(this.state.isValid, this.state.values))
-    }
-
-    render() {
-        return this.props.children({
-            values: this.state.values,
-            errors: this.state.errors,
-            validating: this.props.validating,
-            handleChange: this.handleChange,
-            handleVisibility: this.handleVisibility,
-            setValid: this.setValid,
-            setInitial: this.setInitial
+        dispatch({
+            type: 'SET_FIELD_VALUE',
+            payload: ({ ...linkedVals, [fieldName]: value })
         })
     }
-}
 
+    const handleBlur = (fieldName) => event => {
+        const linkedTouched = {}
 
-class FormField extends React.Component {
-
-    static defaultProps = {
-        visible: true,
-        required: true,
-        valFunc: () => { },
-        errFunc: () => []
-    }
-
-    componentDidMount() {
-        const { name, visible, values, handleVisibility, handleChange } = this.props
-        const [updatedValues, errors] = this._handleInitialValuesAndSettingErrors(name, values[name])
-
-        handleVisibility(name, visible)
-        handleChange(updatedValues, errors)
-    }
-
-    componentDidUpdate(prevProps) {
-        const { name, visible, handleVisibility } = this.props
-
-        if (visible !== prevProps.visible) {
-            handleVisibility(name, visible)
-        }
-    }
-
-    handleChange = (e, data) => {
-        const value = data.type === 'checkbox' ? data.checked : data.value
-        const { name } = data
-
-        const [values, errors] = this._handleUpdatingValuesAndSettingErrors(name, value)
-
-        this.props.handleChange(values, errors)
-    }
-
-    _handleInitialValuesAndSettingErrors(name, value) {
-        const { errFunc, linkedErrors, valFunc } = this.props
-
-        const values = {
-            ...valFunc(value)
+        if (props.linkedErrors && props.linkedErrors[fieldName]) {
+            props.linkedErrors[fieldName].forEach(name => linkedTouched[name] = true)
         }
 
-        const errors = {
-            [name]: errFunc(value),
-            ...(_.mapValues(linkedErrors, (linkedErrFunc, linkedErrName) => linkedErrFunc(value)(this.props.values[linkedErrName])))
-        }
-
-        return [values, errors]
+        dispatch({
+            type: 'SET_FIELD_TOUCHED',
+            payload: ({ ...linkedTouched, [fieldName]: true })
+        })
     }
 
-    _handleUpdatingValuesAndSettingErrors(name, value) {
-        let [values, errors] = this._handleInitialValuesAndSettingErrors(name, value)
-        values = {
-            [name]: value,
-            ...values
-        }
-
-        return [values, errors]
-    }
-
-    render() {
-        const { label, name, form, required, visible, validating } = this.props
-        const value = this.props.values[name]
-        const errors = this.props.errors[name]
-
-        let showError = false
-        if (errors && errors.length && validating) {
-            showError = true
-        }
-
-        const childProps = { id: name, onChange: this.handleChange, name: name, error: showError }
-        if (form.props.control && form.props.control.name === 'Checkbox') {
-            childProps['checked'] = value
+    const handleSubmit = () => {
+        dispatch({type: 'SUBMIT_ATTEMPT'})
+        const errors = props.validate ? props.validate(state.values) : {}
+        if (_.isEmpty(errors)) {
+            props.onSubmit(state.values)
+            dispatch({type: 'SUBMIT_SUCCESS'})
+            return true
         } else {
-            childProps['value'] = value
+            dispatch({type: 'SET_ERRORS', payload: errors})
+            dispatch({type: 'SUBMIT_FAILURE'})
+            return false
         }
-
-        return (
-            visible && (
-                <Grid columns={3} container>
-                    <Grid.Column verticalAlign='middle' width={4}>
-                        <Form.Field required={required} label={{ children: label, htmlFor: name }} />
-                    </Grid.Column>
-                    <Grid.Column verticalAlign='middle' width={8}>
-                        {React.cloneElement(form, childProps)}
-                    </Grid.Column>
-                    <Grid.Column verticalAlign='middle' width={4}>
-                        {showError ? <Label basic pointing='left' color='red' content={assembleErrorString(errors)} /> : null}
-                    </Grid.Column>
-                </Grid>
-            )
-        )
     }
+
+    const handleVisible = fieldName => visible => {
+        dispatch({type: 'SET_FIELD_VISIBLE', payload: {[fieldName]: visible}})
+    }
+
+    const getFieldProps = (fieldName) => ({
+        value: _.get(state.values, fieldName),
+        error: _.get(state.errors, fieldName),
+        touched: _.get(state.touched, fieldName),
+        handleVisible: handleVisible(fieldName),
+        onChange: handleChange(fieldName),
+        onBlur: handleBlur(fieldName)
+    })
+
+    return { handleSubmit, getFieldProps, ...state }
 }
 
-export { FormController, FormField }
+const FormControlContext = React.createContext({})
+
+
+function FormController(props) {
+    const formProps = useFormControl(props)
+    const {values, handleSubmit} = formProps
+    return (
+        <FormControlContext.Provider value={formProps}>
+            {props.children({values, handleSubmit})}
+        </FormControlContext.Provider>
+    )
+}
+
+function useField(fieldName) {
+    const {getFieldProps} = useContext(FormControlContext)
+    const {handleVisible, touched, ...fieldProps} = getFieldProps(fieldName)
+
+    useEffect(() => {
+        handleVisible(true)
+        return () => handleVisible(false)
+    }, [])
+
+    fieldProps.error = (touched && fieldProps.error) ? {content: assembleErrorString(fieldProps.error), pointing: "above"} : false
+
+    return fieldProps
+}
+
+function InputField(props) {
+    const {name, ...formProps} = props
+        const fieldProps = useField(name)
+
+
+    return (
+        <Form.Input
+            id={name}
+            {...formProps}
+            {...fieldProps}
+        />
+        
+    )
+}
+
+function TextField(props) {
+    const {name, ...formProps} = props
+        const fieldProps = useField(name)
+
+    return (
+        <Form.TextArea
+            id={name}
+            {...formProps}
+            {...fieldProps}
+        />
+        
+    )
+}
+
+function CheckboxField(props) {
+    const {name, ...formProps} = props
+    const {value, interacted, ...fieldProps} = useField(name)
+
+    return (
+        <Form.Checkbox
+            id={name}
+            {...formProps}
+            {...fieldProps}
+            checked={value}
+        />
+        
+    )
+}
+
+function SelectField(props) {
+    const {name, ...formProps} = props
+    const fieldProps = useField(name)
+    
+    return <Form.Select
+        id={name}
+        {...formProps}
+        {...fieldProps}
+    />
+}
+
+function FormSegment(props) {
+    const {header, subheader, children} = props
+    return (
+        <Segment color='black' as={Grid} verticalAlign='middle' columns={2}>
+            <Grid.Row>
+                <Grid.Column width={5}>
+                    <Header content={header} subheader={subheader}/>
+                </Grid.Column>
+                <Grid.Column width={11} as={Grid}>
+                    {children}
+                </Grid.Column>
+            </Grid.Row>
+        </Segment>
+    )
+}
+
+export { FormController, InputField, TextField, CheckboxField, SelectField, FormSegment }

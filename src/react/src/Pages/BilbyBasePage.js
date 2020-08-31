@@ -29,7 +29,7 @@ class BilbyBasePage extends React.Component {
                     <Menu.Item position='right' content={'New Job'} as={Link} to={'/bilby/job-form/'} exact={true} {...this.routing}/>
                     <Menu.Item content={'My Jobs'} as={Link} to={'/bilby/job-list/'} exact={true} {...this.routing}/>
                 </Menu>
-                <Grid centered textAlign='center' style={{minHeight: '100vh'}} verticalAlign='middle'>
+                <Grid centered textAlign='center' style={{minHeight: '100vh'}} verticalAlign='top'>
                     {this.props.children}
                 </Grid>
             </React.Fragment>

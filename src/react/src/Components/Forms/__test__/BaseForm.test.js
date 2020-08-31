@@ -3,8 +3,9 @@ import React from "react";
 import { expect } from "@jest/globals";
 import { fireEvent, render, cleanup, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
-import { Form } from "semantic-ui-react";
 import BaseForm from "../BaseForm";
+import { InputField } from "../Forms";
+import { StepController } from "../../Utils/Steps";
 
 const testFormLabel = 'Test Form'
 const testFormValue = 'testValue'
@@ -16,51 +17,58 @@ const testEmptyFunction = () => { }
 describe('BaseForm', () => {
     afterEach(cleanup)
 
-    function setup() {
-        const prevStep = jest.fn(testEmptyFunction)
-        const nextStep = jest.fn(testEmptyFunction)
-        render (
-            <BaseForm
-                initialData={{
-                    [testFormName]: testFormValue,
-                }}
-                setForms={(values) => {
-                    return [
-                        {
-                            label: testFormLabel,
-                            name: testFormName,
-                            form: <Form.Input />,
-                        },
-                    ]
-                }}
-                prevStep={prevStep}
-                nextStep={nextStep}
-                updateParentState={testEmptyFunction}
-            />
-        )
-        const backButton = screen.getByText('Back')
-        const nextButton = screen.getByText('Save and Continue')
+    function setup(initialStep) {
+        const onSubmit = jest.fn(testEmptyFunction)
 
-        return {backButton, nextButton, prevStep, nextStep}
+        const steps = [
+            {name: 'Step 1', description: 'Step 1'},
+            {name: 'Step 2', description: 'Step 2'}
+        ]
+
+        render (
+            <StepController 
+                steps={steps}
+                initialStep={initialStep} >
+                    {
+                        (step) => (
+                            <BaseForm
+                                formProps={{
+                                    initialValues: {[testFormName]: testFormValue},
+                                    onSubmit: onSubmit,
+                                }}
+                                setForms={(values) => {
+                                    <InputField label={testFormLabel} name={testFormName} />
+                                }}
+                            />
+                        )
+                    }
+                </StepController>
+
+        )
+        const backButton = screen.queryByText('Save and Back')
+        const nextButton = screen.queryByText('Save and Continue')
+
+        return {backButton, nextButton, onSubmit}
     }
 
-    it('renders back and next buttons', () => {
-        const {backButton, nextButton} = setup()
-        expect(backButton).toBeInTheDocument()
+    it('binds onSubmit to next button', () => {
+        const {nextButton, onSubmit} = setup(1)
         expect(nextButton).toBeInTheDocument()
-    })
 
-    it('assigns prevStep and nextStep to be called on click of the back and next buttons', () => {
-        const {backButton, nextButton, prevStep, nextStep} = setup()
-
-        expect(prevStep).not.toHaveBeenCalled()
-        fireEvent.click(backButton)
-        expect(prevStep).toHaveBeenCalled()
-
-        expect(nextStep).not.toHaveBeenCalled()
+        expect(onSubmit).not.toHaveBeenCalled()
         fireEvent.click(nextButton)
-        expect(nextStep).toHaveBeenCalled()
+        expect(onSubmit).toHaveBeenCalled()
     })
+
+    it('binds onSubmit to back button', () => {
+        const {backButton, onSubmit} = setup(2)
+        expect(backButton).toBeInTheDocument()
+
+        expect(onSubmit).not.toHaveBeenCalled()
+        fireEvent.click(backButton)
+        expect(onSubmit).toHaveBeenCalled()
+    })
+
 
 })
 

@@ -89,6 +89,7 @@ function setup(inputState) {
     const detectorTable = screen.getByTestId('detectorTable')
     const dataTable = screen.getByTestId('dataTable')
     const signalTable = screen.getByTestId('signalTable')
+    const samplerTable = screen.getByTestId('samplerTable')
 
     return {
         detectorRows: {
@@ -114,6 +115,14 @@ function setup(inputState) {
             mergerTime: within(signalTable).queryByRole('row', {name: /merger time/i}),
             ra: within(signalTable).queryByRole('row', {name: /right ascension/i}),
             dec: within(signalTable).queryByRole('row', {name: /declination/i})
+        },
+
+        samplerRows: {
+            nlive: within(samplerTable).queryByRole('row', {name: /number of live points/i}),
+            nact: within(samplerTable).queryByRole('row', {name: /number of auto-correlation steps/i}),
+            maxmcmc: within(samplerTable).queryByRole('row', {name: /maximum number of steps/i}),
+            walks: within(samplerTable).queryByRole('row', {name: /minimum number of walks/i}),
+            dlogz: within(samplerTable).queryByRole('row', {name: /stopping criteria/i}),
         }
     }
 }
@@ -142,7 +151,7 @@ describe('Detector table displays the detector parameters if they are being used
     })
 })
 
-describe('Data table displays the detector parameters if they are being used:', () => {
+describe('Data table displays the correct data parameters:', () => {
     let fields
     beforeAll(() => {fields = setup()})
     afterAll(cleanup)
@@ -163,7 +172,7 @@ describe('Data table displays the detector parameters if they are being used:', 
     })
 })
 
-describe('Signal table displays the detector parameters if they are being used:', () => {
+describe('Signal table displays the correct signal parameters:', () => {
     let fields
     beforeAll(() => {fields = setup()})
     afterAll(cleanup)
@@ -216,5 +225,36 @@ describe('Signal table displays the detector parameters if they are being used:'
     it('dec is displayed correctly', () => {
         expect(fields.signalRows.dec).toBeInTheDocument()
         expect(within(fields.signalRows.dec).getByText(testSignal.dec)).toBeInTheDocument()
+    })
+})
+
+describe('Sampler table displays the correct sampler parameters:', () => {
+    let fields
+    beforeAll(() => {fields = setup()})
+    afterAll(cleanup)
+
+    it('nlive is displayed correctly', () => {
+        expect(fields.samplerRows.nlive).toBeInTheDocument()
+        expect(within(fields.samplerRows.nlive).getByText(testSampler.nlive)).toBeInTheDocument()
+    })
+
+    it('nact is displayed correctly', () => {
+        expect(fields.samplerRows.nact).toBeInTheDocument()
+        expect(within(fields.samplerRows.nact).getByText(testSampler.nact)).toBeInTheDocument()
+    })
+
+    it('maxmcmc is displayed correctly', () => {
+        expect(fields.samplerRows.maxmcmc).toBeInTheDocument()
+        expect(within(fields.samplerRows.maxmcmc).getByText(testSampler.maxmcmc)).toBeInTheDocument()
+    })
+
+    it('walks is displayed correctly', () => {
+        expect(fields.samplerRows.walks).toBeInTheDocument()
+        expect(within(fields.samplerRows.walks).getByText(testSampler.walks)).toBeInTheDocument()
+    })
+
+    it('dlogz is displayed correctly', () => {
+        expect(fields.samplerRows.dlogz).toBeInTheDocument()
+        expect(within(fields.samplerRows.dlogz).getByText(testSampler.dlogz)).toBeInTheDocument()
     })
 })

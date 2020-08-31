@@ -3,9 +3,9 @@ import React from "react";
 import { expect } from "@jest/globals";
 import { fireEvent, render, cleanup, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
-import { FormController, FormField } from "../Forms";
 import { Form, Grid } from "semantic-ui-react";
-import { checkForErrors, assembleErrorString, isShorterThan } from "../../../Utils/errors";
+import { createValidationFunction, assembleErrorString, isShorterThan, isLongerThan, checkForErrors } from "../../../Utils/errors";
+import { FormController, InputField } from "../Forms";
 
 const testFormLabel = 'Test Form'
 const testFormValue = 'testValue'
@@ -15,99 +15,102 @@ const testFormLabel2 = 'Test Form 2'
 const testFormValue2 = 'testValue2'
 const testFormName2 = 'test2'
 
+const testFormValue3 = 'testValue3'
+const testFormValue4 = 'testValue4'
+
 const testEmptyFunction = () => { }
 
+function contextRender(setForms) {
+    const props = {
+        initialValues: {
+            [testFormName]: testFormValue,
+            [testFormName2]: testFormValue2,
+        },
+        onSubmit: testEmptyFunction,
+        validate: (values) => createValidationFunction(
+            {
+                [testFormName]: [isShorterThan(5)],
+                [testFormName2]: [isLongerThan(15)],
+            },
+            values
+        ),
+        linkedErrors: {
+            [testFormName]: [testFormName2]
+        },
+        linkedValues: (fieldName, fieldValue, values) => {
+            switch (fieldName) {
+                case testFormName:
+                    if (fieldValue === testFormValue3) {
+                        return {[testFormName2]: testFormValue4}
+                    }
+                    break;
+                default:
+                    break;
+            }
+    
+        }
+    }
+    render(
+        <FormController {...props}>
+            {({values}) => setForms(values)}
+        </FormController>
+    )
+}
 
-describe('FormField', () => {
-
+describe('FormController rendering some InputFields ', () => {
     afterEach(cleanup)
 
-    let props = {
-        values: { [testFormName]: testFormValue },
-        errors: { [testFormName]: [] },
-        validating: false,
-        handleChange: testEmptyFunction,
-        handleVisibility: testEmptyFunction,
-        setValid: testEmptyFunction,
-        setInitial: testEmptyFunction
+    function setup() {
+        function setForms(values) {
+            return (
+                <React.Fragment>
+                    <InputField name={testFormName} label={testFormLabel} />
+                    {values[testFormName] === testFormValue2 ? null : <InputField name={testFormName2} label={testFormLabel2} />}
+                </React.Fragment>
+            )
+        }
+        contextRender(setForms)
+        const inputField = screen.getByLabelText(testFormLabel)
+        const inputField2 = screen.queryByLabelText(testFormLabel2)
+        return {inputField, inputField2}
     }
 
-
-    it('places initial value in the form field', () => {
-        render(<FormField name={testFormName} label={testFormLabel} form={<Form.Input />} {...props} />)
-        expect(screen.getByLabelText(testFormLabel)).toHaveValue(testFormValue)
+    it('places initial values in the correct InputFields', () => {
+        const {inputField, inputField2} = setup()
+        expect(inputField).toHaveValue(testFormValue)
+        expect(inputField2).toHaveValue(testFormValue2)
     })
 
-    it('shows an error message if validating', () => {
-        const errors = checkForErrors(isShorterThan(5))(testFormValue)
-        props.validating = true
-        props.errors = { [testFormName]: errors }
+    it('modifies value if the conditions in linkedValues are met', () => {
+        const {inputField, inputField2} = setup()
+        expect(inputField2).toHaveValue(testFormValue2)
+        fireEvent.change(inputField, {target: {value: testFormValue3}})
+        expect(inputField2).toHaveValue(testFormValue4)
+    })
 
-        render(<FormField name={testFormName} label={testFormLabel} form={<Form.Input />} {...props} />)
+    it('shows an error message if the InputField value is not valid on blur', () => {
+        const {inputField} = setup()
+        const errors = checkForErrors(isShorterThan(5))(testFormValue)
+        expect(screen.queryByText(assembleErrorString(errors))).not.toBeInTheDocument()
+        fireEvent.focus(inputField)
+        fireEvent.blur(inputField)
         expect(screen.getByText(assembleErrorString(errors))).toBeInTheDocument()
     })
 
-    it('is hidden if visible is set to false', () => {
-        render(<FormField name={testFormName} label={testFormLabel} form={<Form.Input />} visible={false} {...props} />)
-        expect(screen.queryByLabelText(testFormLabel)).not.toBeInTheDocument()
+    it('shows an error message if the InputField value is not valid on blur of linked field', () => {
+        const {inputField} = setup()
+        const errors = checkForErrors(isLongerThan(15))(testFormValue2)
+        expect(screen.queryByText(assembleErrorString(errors))).not.toBeInTheDocument()
+        fireEvent.focus(inputField)
+        fireEvent.blur(inputField)
+        expect(screen.getByText(assembleErrorString(errors))).toBeInTheDocument()
+    })
+
+    it('handles hiding fields in setForms', () => {
+        const {inputField, inputField2} = setup()
+        expect(inputField2).toBeInTheDocument()
+        fireEvent.change(inputField, {target: {value: testFormValue2}})
+        expect(inputField2).not.toBeInTheDocument()
     })
 
 })
-
-describe('Form Controller with Form Field', () => {
-    afterEach(cleanup)
-
-    function setup(validating) {
-        render (
-            <FormController
-                initialValues={{ 
-                    [testFormName]: testFormValue,
-                    [testFormName2]: testFormValue2,
-                }}
-                validating={validating}
-                onValid={() => {}}
-            >
-                {
-                    props => {
-                        return (
-                            <Form>
-                                <Grid textAlign='left'>
-                                    <FormField name={testFormName} label={testFormLabel} form={<Form.Input />} errFunc={checkForErrors(isShorterThan(5))} visible={props.values[testFormName2] !== 'Invisible'} {...props} />
-                                    <FormField name={testFormName2} label={testFormLabel2} form={<Form.Input />} valFunc={(val) => val === 'Update First Field' ? {[testFormName]: 'Updated'} : {}} {...props} />
-                                </Grid>
-                            </Form>
-                        )
-                    }
-                }
-            </FormController>
-        )
-        const testForm = screen.getByLabelText(testFormLabel)
-        const testForm2 = screen.getByLabelText(testFormLabel2)
-
-        return {testForm, testForm2}
-    }
-
-    it('places initial values in the correct form fields', () => {
-        const {testForm, testForm2} = setup(false)
-        expect(testForm).toHaveValue(testFormValue)
-        expect(testForm2).toHaveValue(testFormValue2)
-    })
-    
-    it('changes form field values dynamically when the conditions are met', () => {
-        const {testForm, testForm2} = setup(false)
-        
-        expect(testForm).toHaveValue(testFormValue)
-        fireEvent.change(testForm2, {target: {value: 'Update First Field'}})
-        expect(testForm).toHaveValue('Updated')
-    })
-    
-    it('changes visibility dynamically when the conditions are met', () => {
-        const {testForm, testForm2} = setup(false)
-
-        expect(testForm).toBeInTheDocument()
-        fireEvent.change(testForm2, {target: {value: 'Invisible'}})
-        expect(testForm).not.toBeInTheDocument()
-    })
-
-})
-

@@ -2,68 +2,40 @@ import React from "react";
 import {Grid} from "semantic-ui-react";
 import {commitMutation} from "relay-runtime";
 import {harnessApi} from "../../index";
-import { graphql, createFragmentContainer } from "react-relay";
+import {graphql, createFragmentContainer} from "react-relay";
 
-import StartForm from "./StartForm";
 import DataForm from "./DataForm";
 import SignalForm from "./SignalForm";
-import PriorsForm from "./PriorsForm";
 import SamplerForm from "./SamplerForm";
 import SubmitForm from "./SubmitForm";
 
-import StepControl from "../Utils/Steps";
+import {StepController} from "../Utils/Steps";
+import {useState} from "../../Utils/hooks";
 
-class StepForm extends React.Component {
-    constructor(props) {
-        super(props);
+const initialState = {
+    start: null,
+    data: null,
+    signal: null,
+    prior: null,
+    sampler: null
+}
 
-        const initialState = {
-            start: null,
-            data: null,
-            signal: null,
-            priors: null,
-            sampler: null
-        }
+function StepForm(props) {
+    const [values, setValues] = useState(initialState)
+    const [jobErrors, setJobErrors] = useState([])
 
-        this.state = {
-            step: 1,
-            stepsCompleted: 1,
-            jobErrors: [],
-            ...initialState
-        }
+    const handleChange = (form) => (childState) => {
+        setValues(prevValues => ({
+            ...prevValues,
+            [form]: {
+                ...prevValues[form],
+                ...childState
+            }
+        }))
     }
 
-    nextStep = () => {
-        const {step, stepsCompleted} = this.state
-        this.setState({
-            step: step + 1,
-            stepsCompleted: step == stepsCompleted ? step + 1 : stepsCompleted
-        })
-    }
-
-    prevStep = () => {
-        const {step} = this.state
-        this.setState({
-            step: step - 1
-        })
-    }
-
-    handleChange = (form) => (childState) => {
-        this.setState({
-            ...this.state,
-            [form]: childState
-        }, () => {console.log(this.state)})
-    }
-
-    handleStepClick = (e, {stepnum}) => {
-        this.setState({
-            step: stepnum
-        })
-    }
-
-    handleSubmit = () => {
-        const {start, data, signal, priors, sampler} = this.state
-        delete signal.sameSignal
+    const handleSubmit = () => {
+        const {start, data, signal, prior, sampler} = values
         commitMutation(harnessApi.getEnvironment("bilby"), {
             mutation: graphql`mutation StepFormSubmitMutation($input: BilbyJobMutationInput!)
                 {
@@ -79,85 +51,72 @@ class StepForm extends React.Component {
                     start: start,
                     data: data,
                     signal: signal,
-                    prior: priors,
+                    prior: prior,
                     sampler: sampler
                 }
             },
             onCompleted: (response, errors) => {
                 if (errors) {
-                    this.setState({
-                        ...this.state,
-                        jobErrors: errors
-                    })
-                }
-                else {
+                    setJobErrors(errors)
+                } else {
                     // Job was created successfully
-                    this.props.router.replace('/bilby/job-results/' + response.newBilbyJob.result.jobId + "/",)
+                    props.router.replace('/bilby/job-results/' + response.newBilbyJob.result.jobId + "/")
                 }
             },
         })
     }
 
-
-    renderSwitch(step) {
-        const {bilbyJob} = this.props.data
-        switch(step) {
+    const renderSwitch = (step) => {
+        const {bilbyJob} = props.data
+        const {start, data, signal, prior, sampler} = values
+        switch (step) {
             case 1:
-                return <StartForm data={bilbyJob === null ? null : bilbyJob.start} state={this.state.start} updateParentState={this.handleChange('start')} nextStep={this.nextStep} jobNames={this.props}/>
-            
+                return <DataForm data={bilbyJob} state={{start, ...data}} updateParentState={handleChange}/>
+
             case 2:
-                return <DataForm data={bilbyJob === null ? null : bilbyJob.data} state={this.state.data} updateParentState={this.handleChange('data')} prevStep={this.prevStep} nextStep={this.nextStep}/>
+                return <SignalForm data={bilbyJob} state={{start, ...signal}} updateParentState={handleChange}
+                                   openData={data.dataChoice === 'open'}/>
 
             case 3:
-                return <SignalForm data={bilbyJob === null ? null : bilbyJob.signal} state={this.state.signal} updateParentState={this.handleChange('signal')} prevStep={this.prevStep} nextStep={this.nextStep} openData={this.state.data.dataChoice==='open'}/>
+                return <SamplerForm data={bilbyJob} state={{start, sampler, prior}} updateParentState={handleChange}/>
 
             case 4:
-                return <PriorsForm data={bilbyJob === null ? null : bilbyJob.prior} state={this.state.priors} updateParentState={this.handleChange('priors')} prevStep={this.prevStep} nextStep={this.nextStep}/>
+                return <SubmitForm onSubmit={handleSubmit} state={values} errors={jobErrors}/>
 
-            case 5:
-                return <SamplerForm data={bilbyJob === null ? null : bilbyJob.sampler} state={this.state.sampler} updateParentState={this.handleChange('sampler')} prevStep={this.prevStep} nextStep={this.nextStep}/>
-
-            case 6:
-                return <SubmitForm prevStep={this.prevStep} onSubmit={this.handleSubmit} errors={this.state.jobErrors}/>
+            default:
+                return <div>End: {step}</div>
         }
     }
 
-    render() {
-        const {step, stepsCompleted} = this.state
-        return <React.Fragment>
-            <Grid.Row>
-                <Grid.Column textAlign='center'>
-                    <StepControl activeStep={step} stepsCompleted={stepsCompleted} onClick={this.handleStepClick}/>
-                </Grid.Column>
-            </Grid.Row>
-            {this.renderSwitch(step)}
-        </React.Fragment>
-    }
+    const steps = [
+        {title: 'Data', description: 'Select the data'},
+        {title: 'Signal', description: 'Inject a signal'},
+        {title: 'Priors and Sampler', description: 'State priors and choose sampler'},
+        {title: 'Review and Submit', description: 'Review job parameters and submit'}
+    ]
+
+    return (
+        <Grid.Column width={14}>
+            <StepController steps={steps}>
+                {renderSwitch}
+            </StepController>
+        </Grid.Column>
+
+    )
 }
 
-// export default StepForm;
-export default createFragmentContainer(StepForm, {
-    data: graphql`
+export default createFragmentContainer(StepForm,
+    {
+        data: graphql`
         fragment StepForm_data on Query @argumentDefinitions(
             jobId: {type: "ID!"}
         ){
             bilbyJob (id: $jobId){
-                start {
-                    ...StartForm_data
-                }
-                data {
-                    ...DataForm_data
-                }
-                signal {
-                    ...SignalForm_data
-                }
-                prior {
-                    ...PriorsForm_data
-                }
-                sampler {
-                    ...SamplerForm_data
-                }
+                ...DataForm_data
+                ...SignalForm_data
+                ...SamplerForm_data
             }
         }
-    `
-});
+        `
+    }
+);

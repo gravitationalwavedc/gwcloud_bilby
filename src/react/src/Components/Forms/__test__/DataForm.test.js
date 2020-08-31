@@ -32,22 +32,22 @@ const testData = {
 const inputQuery = graphql`
     query DataFormTestQuery @relay_test_operation {
         bilbyJob (id: 1) {
-            data {
             ...DataForm_data
-            }
         }
     }
 `
 function setup(inputState) {
     const environment = global.queryRendererSetup(
         inputQuery,
-        (props) => <DataForm data={props.bilbyJob.data} state={inputState} updateParentState={testEmptyFunction} nextStep={testEmptyFunction} />
+        (props) => <DataForm data={props.bilbyJob} state={inputState} updateParentState={testEmptyFunction} />
     )
 
     environment.mock.resolveMostRecentOperation(operation =>
         MockPayloadGenerator.generate(operation, {
-            DataType() {
-                return testData
+            BilbyJobNode() {
+                return {
+                    data: testData
+                }
             }
         }),
     );
@@ -106,7 +106,7 @@ describe('Data form displays the initial form fields and values correctly:', () 
 
 describe('Data form displays associated fields when detector checkboxes are checked', () => {
     let fields
-    beforeAll(() => {fields = setup(null)})
+    beforeAll(() => {fields = setup({start: {name: "testJob"}})})
     afterAll(cleanup)
 
     it('hanford', () => {
@@ -114,9 +114,9 @@ describe('Data form displays associated fields when detector checkboxes are chec
         fireEvent.click(fields.hanford)
         expect(fields.hanford).toBeChecked()
 
-        const hanfordChannelField = screen.getByLabelText(/hanford\: channel/i)
-        const hanfordMinimumFrequencyField = screen.getByLabelText(/hanford\: minimum frequency/i)
-        const hanfordMaximumFrequencyField = screen.getByLabelText(/hanford\: maximum frequency/i)
+        const hanfordChannelField = screen.getByLabelText(/hanford channel/i)
+        const hanfordMinimumFrequencyField = screen.getByLabelText(/hanford minimum frequency/i)
+        const hanfordMaximumFrequencyField = screen.getByLabelText(/hanford maximum frequency/i)
 
 
         expect(hanfordChannelField).toBeInTheDocument()
@@ -134,9 +134,9 @@ describe('Data form displays associated fields when detector checkboxes are chec
         fireEvent.click(fields.livingston)
         expect(fields.livingston).toBeChecked()
 
-        const livingstonChannelField = screen.getByLabelText(/livingston\: channel/i)
-        const livingstonMinimumFrequencyField = screen.getByLabelText(/livingston\: minimum frequency/i)
-        const livingstonMaximumFrequencyField = screen.getByLabelText(/livingston\: maximum frequency/i)
+        const livingstonChannelField = screen.getByLabelText(/livingston channel/i)
+        const livingstonMinimumFrequencyField = screen.getByLabelText(/livingston minimum frequency/i)
+        const livingstonMaximumFrequencyField = screen.getByLabelText(/livingston maximum frequency/i)
 
 
         expect(livingstonChannelField).toBeInTheDocument()
@@ -154,9 +154,9 @@ describe('Data form displays associated fields when detector checkboxes are chec
         fireEvent.click(fields.virgo)
         expect(fields.virgo).toBeChecked()
 
-        const virgoChannelField = screen.getByLabelText(/virgo\: channel/i)
-        const virgoMinimumFrequencyField = screen.getByLabelText(/virgo\: minimum frequency/i)
-        const virgoMaximumFrequencyField = screen.getByLabelText(/virgo\: maximum frequency/i)
+        const virgoChannelField = screen.getByLabelText(/virgo channel/i)
+        const virgoMinimumFrequencyField = screen.getByLabelText(/virgo minimum frequency/i)
+        const virgoMaximumFrequencyField = screen.getByLabelText(/virgo maximum frequency/i)
 
 
         expect(virgoChannelField).toBeInTheDocument()

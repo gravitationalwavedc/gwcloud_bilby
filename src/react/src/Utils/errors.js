@@ -3,6 +3,7 @@ import {harnessApi} from "../index";
 import { graphql, commitMutation } from "react-relay";
 import { List } from "semantic-ui-react";
 import { isNumeric, isInteger, isPositive } from "./utilMethods";
+import _ from "lodash";
 
 // This should be fixed so that it only ever returns a string or Fragment, not either.
 const assembleErrorString = (errors) => {
@@ -22,7 +23,24 @@ const assembleErrorString = (errors) => {
     }
 }
 
+
+// If error function returns an error, adds to errors object, otherwise does nothing
+function errorHelper(fieldName, errorFunction, values, errors) {
+    const err = errorFunction(_.get(values, fieldName))
+    if (err && err.length) {
+        _.set(errors, fieldName, err)
+    }
+}
+
 const checkForErrors = (...fns) => (data) => fns.reduceRight((y, f) => f(y), {data: data, errors: []}).errors
+
+const createValidationFunction = (errorFunctions, values) => {
+    const errors = {}
+    _.forIn(errorFunctions, (errorFunction, name) => {
+        errorHelper(name, checkForErrors(...errorFunction), values, errors)
+    })
+    return errors
+}
 
 const isLongerThan = threshold => ({data, errors}) => {
     if (data.length < threshold) {
@@ -68,14 +86,14 @@ const isAPositiveInteger = ({data, errors}) => {
 }
 
 const isLargerThan = (threshold, name=null) => ({data, errors}) => {
-    if (data <= threshold) {
-        errors.push('be smaller than ' + (name ? name : threshold))
+    if (_.toNumber(data) <= _.toNumber(threshold)) {
+        errors.push('be larger than ' + (name ? name : threshold))
     }
     return {data, errors}
 }
 
 const isSmallerThan = (threshold, name=null) => ({data, errors}) => {
-    if (data >= threshold) {
+    if (_.toNumber(data) >= _.toNumber(threshold)) {
         errors.push('be smaller than ' + (name ? name : threshold))
     }
     return {data, errors}
@@ -132,6 +150,7 @@ const isValidJobName = ({data, errors}) => {
 export {
     checkForErrors,
     assembleErrorString,
+    createValidationFunction,
     isLongerThan,
     isShorterThan,
     isANumber,

@@ -1,32 +1,144 @@
 import React from "react";
-import {Step, Label} from "semantic-ui-react";
+import {Step, Menu, Button, Grid, Header} from "semantic-ui-react";
+import { useContext, useReducer } from "../../Utils/hooks";
 
-class StepControl extends React.Component {
-    constructor(props) {
-        super(props);
-        this.stepList = [
-            {key: 1, stepnum: 1, link: true, onClick: this.props.onClick, title: 'Start', description: 'Start a new job', icon: <Label circular content='1' size='big'/>},
-            {key: 2, stepnum: 2, link: true, onClick: this.props.onClick, title: 'Data', description: 'Select the data', icon: <Label circular content='2' size='big'/>},
-            {key: 3, stepnum: 3, link: true, onClick: this.props.onClick, title: 'Signal', description: 'Inject a signal', icon: <Label circular content='3' size='big'/>},
-            {key: 4, stepnum: 4, link: true, onClick: this.props.onClick, title: 'Priors', description: 'State priors', icon: <Label circular content='4' size='big'/>},
-            {key: 5, stepnum: 5, link: true, onClick: this.props.onClick, title: 'Sampler', description: 'Choose sampler', icon: <Label circular content='5' size='big'/>},
-            {key: 6, stepnum: 6, link: true, onClick: this.props.onClick, title: 'Submit', description: 'Submit your job', icon: <Label circular content='6' size='big'/>}
-        ]
-    }
+const StepContext = React.createContext({})
 
-    handleSwitch() {
-        for (const element of this.stepList) {
-            element.active = element.key == this.props.activeStep ? true : false
-            element.disabled = element.key > this.props.stepsCompleted ? true : false
-        }
-    }
-
-    render() {
-        this.handleSwitch()
-        return(
-            <Step.Group items={this.stepList}/>
-        )
+function reducer(state, action) {
+    const {activeStep, stepsCompleted, numSteps} = state
+    switch (action.type) {
+        case 'INCREMENT_STEP':
+            const nextStep = activeStep + 1 > numSteps ? activeStep : activeStep + 1
+            return {
+                ...state,
+                activeStep: nextStep,
+                stepsCompleted: nextStep > stepsCompleted ? nextStep : stepsCompleted
+            }
+        case 'DECREMENT_STEP':
+            const prevStep = activeStep - 1 < 0 ? activeStep : activeStep - 1
+            return {
+                ...state,
+                activeStep: prevStep
+            }
+        case 'SET_STEP':
+            return {
+                ...state,
+                activeStep: action.payload
+            }
+        case 'SET_VALID_FUNCTION':
+            return {
+                ...state,
+                validFunction: {
+                    ...state.validFunction,
+                    ...action.payload
+                }
+            }
     }
 }
 
-export default StepControl;
+function useStepControl(props) {
+    const initialState = {
+        activeStep: props.initialStep || 1,
+        stepsCompleted: props.initialStep || 1,
+        numSteps: props.steps.length,
+        validFunction: {
+            header: () => true,
+            body: () => true
+        }
+    }
+    
+    const [state, dispatch] = useReducer(reducer, initialState)
+    
+    const nextStep = () => {
+        dispatch({type: 'INCREMENT_STEP'})
+    }
+    
+    const prevStep = () => {
+        dispatch({type: 'DECREMENT_STEP'})
+    }
+    
+    const setStep = (stepNum) => {
+        dispatch({type: 'SET_STEP', payload: stepNum})
+    }
+
+    const setValidFunction = (name, fn) => {
+        dispatch({type: 'SET_VALID_FUNCTION', payload: {[name]: fn}})
+    }
+    
+    const stepList = props.steps.map((step, index) => (
+        {
+            key: index + 1,
+            stepnum: index + 1,
+            link: true,
+            onClick: (e, {stepnum}) => setStep(stepnum),
+            name: step.title,
+            content: <Header 
+                content={step.title}
+                subheader={step.description}
+                disabled={index + 1 > state.stepsCompleted}
+                />,
+            active: index + 1 === state.activeStep,
+        }
+    ))
+
+    return {...state, nextStep, prevStep, setStep, stepList}
+}
+
+function StepController(props) {
+    const stepProps = useStepControl(props)
+
+    return(
+        <StepContext.Provider value={stepProps}>
+            {props.children(stepProps.activeStep)}
+        </StepContext.Provider>
+    )
+}
+
+function useStepContext() {
+    const stepControlProps = useContext(StepContext)
+    return stepControlProps
+}
+
+function StepButton(props) {
+    const {nextStep, prevStep} = useStepContext()
+    const {direction, onClick, ...buttonProps} = props
+
+    const handleStepChange = () => {
+        if (onClick) {
+            if (onClick()) {
+                direction === 'next' ? nextStep() : prevStep()
+            }
+        } else {
+            direction === 'next' ? nextStep() : prevStep()
+        }
+    }
+
+    return <Button type='button' onClick={handleStepChange} {...buttonProps}/>
+}
+
+function StepPage(props) {
+    const {activeStep, numSteps, stepList} = useStepContext()
+    return (
+        <React.Fragment >
+            <Grid.Row columns={2}>
+                <Grid.Column width={3}>
+                    <Menu as={Step.Group} pointing secondary vertical items={stepList}/>
+                </Grid.Column>
+                <Grid.Column width={10}>
+                    {props.children}
+                </Grid.Column>
+            </Grid.Row>
+            <Grid.Row columns={2}>
+                <Grid.Column children={
+                    activeStep > 1 ? <StepButton onClick={props.onChangeForm} direction='back' content='Save and Back'/> : null
+                } textAlign='left'/>
+                <Grid.Column children={
+                    activeStep < numSteps ? <StepButton onClick={props.onChangeForm} direction='next' content='Save and Continue'/> : props.submitButton
+                } textAlign='right'/>
+            </Grid.Row>
+        </React.Fragment>
+    )
+}
+
+
+export {StepController, StepButton, StepPage, useStepContext};

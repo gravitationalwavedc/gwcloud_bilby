@@ -1,77 +1,40 @@
 import React from "react";
-import { Form, Button, Grid } from "semantic-ui-react";
-import { FormController, FormField } from "./Forms";
+import { Form, Grid } from "semantic-ui-react";
+import { FormController, InputField, TextField, CheckboxField } from "./Forms";
+import { StepPage } from "../Utils/Steps";
 
-class BaseForm extends React.Component {
-    constructor(props) {
-        super(props);
 
-        this.state = {
-            valid: false,
-            validating: false,
-            values: null
-        }
-    }
+function BaseForm(props) {
 
-    onValid = (valid, values) => {
-        this.setState(() => ({
-            valid: valid,
-            values: values
-        }))
-    }
-
-    prevStep = () => {
-        this.props.prevStep()
-    }
-
-    nextStep = () => {
-        this.setState(() => ({ validating: true }))
-        if (this.state.valid) {
-            this.props.updateParentState(this.state.values)
-            this.props.nextStep()
-        }
-    }
-
-    render() {
-
-        return (
-            <React.Fragment>
-                <Grid.Row>
-                    <Grid.Column width={10}>
-                        <Form>
-                            <Grid textAlign='left'>
-                                <FormController
-                                    initialValues={this.props.initialData}
-                                    validating={this.state.validating}
-                                    onValid={this.onValid}
-                                >
-                                    {
-                                        props => {
-                                            return (
-                                                this.props.setForms(props.values).map(
-                                                    (form, index) => (<FormField key={index} {...form} {...props} />)
-                                                )
-                                            )
-                                        }
-                                    }
-                                </FormController>
-                            </Grid>
-                        </Form>
-                    </Grid.Column>
-                </Grid.Row>
-                <Grid.Row columns={2}>
-                    <Grid.Column floated='left'>
-                        {
-                            this.props.prevStep && <Button onClick={this.prevStep}>Back</Button>
-                        }
-                    </Grid.Column>
-                    <Grid.Column floated='right'>
-                        <Button onClick={this.nextStep}>Save and Continue</Button>
-                    </Grid.Column>
-                </Grid.Row>
-            </React.Fragment>
-        )
-    }
+    return (
+        <Grid>
+            <Grid.Row>
+                <Form>
+                    <FormController {...props.formProps}>
+                        {({values, handleSubmit}) => {
+                            return (
+                                <Grid textAlign='left'>
+                                    <Grid.Row columns={3} verticalAlign="bottom" >
+                                        <Grid.Column width={3}/> {/*Spacing*/}
+                                        <Grid.Column width={8}>
+                                            <InputField placeholder='Name of your job...' name='start.name' size="massive"/>
+                                            <TextField placeholder='Describe your job...' name='start.description' />
+                                        </Grid.Column>
+                                        <Grid.Column width={2}>
+                                            <CheckboxField label='Private' name='start.private' toggle />
+                                        </Grid.Column>
+                                    </Grid.Row>
+                                    <StepPage onChangeForm={handleSubmit}>
+                                        {props.setForms(values)}
+                                    </StepPage>
+                                </Grid>
+                            )
+                        }}
+                    </FormController>
+                </Form>
+            </Grid.Row>
+        </Grid>
+    )
 }
 
-export default BaseForm;
+export default BaseForm

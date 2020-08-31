@@ -1,17 +1,16 @@
 import _ from "lodash";
 
-// This function has not been used anywhere, so commented out currently
-
-// function setAll (input, newValue) {
-//     Object.entries(input).map(([key, value]) => {
-//         if (_.isPlainObject(value)) {
-//             input[key] = setAll(value, newValue)
-//         } else {
-//             input[key] = newValue
-//         }
-//     })
-//     return input
-// }
+function setAll (input, newValue) {
+    const response = {}
+    Object.entries(input).map(([key, value]) => {
+        if (_.isPlainObject(value)) {
+            response[key] = setAll(value, newValue)
+        } else {
+            response[key] = newValue
+        }
+    })
+    return response
+}
 
 // From https://stackoverflow.com/questions/4149276/how-to-convert-camelcase-to-camel-case
 function unCamelCase (string) {
@@ -55,10 +54,11 @@ function formatDate(date, localeString) {
 }
 
 export {
+    setAll,
     unCamelCase,
     isNumeric,
     isInteger,
     isPositive,
     mergeUnlessNull,
-    formatDate
+    formatDate,
 };
