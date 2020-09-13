@@ -9,20 +9,38 @@ User = get_user_model()
 
 class TestQueriesWithAuthenticatedUser(BilbyTestCase):
     def setUp(self):
+        self.maxDiff = 9999
+
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user)
 
-    def request_job_filter_mock(*args, **kwargs):
-        return "Ok", [
+    def perform_db_search_mock(*args, **kwargs):
+        return True, [
             {
-                'user': 1,
-                'id': 1,
-                'history': [{'state': 500, 'timestamp': '2020-1-1 12:0:0.1 UTC'}],
+                'user': {
+                    'id': 1,
+                    'firstName': 'buffy',
+                    'lastName': 'summers'
+                },
+                'job': {
+                    'id': 1,
+                    'name': 'Test1',
+                    'description': 'A test job'
+                },
+                'history': [{'state': 500, 'timestamp': '2020-01-01 12:00:00 UTC'}],
             },
             {
-                'user': 1,
-                'id': 2,
-                'history': [{'state': 500, 'timestamp': '2020-1-1 12:0:0.1 UTC'}],
+                'user': {
+                    'id': 1,
+                    'firstName': 'buffy',
+                    'lastName': 'summers'
+                },
+                'job': {
+                    'id': 2,
+                    'name': 'Test2',
+                    'description': ''
+                },
+                'history': [{'state': 500, 'timestamp': '2020-01-01 12:00:00 UTC'}],
             }
         ]
 
@@ -125,9 +143,8 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
             response.data, expected, "bilbyJobs query returned unexpected data."
         )
 
-    @mock.patch('bilby.schema.request_job_filter', side_effect=request_job_filter_mock)
-    @mock.patch('bilby.schema.request_lookup_users', side_effect=request_lookup_users_mock)
-    def test_public_bilby_jobs_query(self, request_job_filter, request_lookup_users):
+    @mock.patch('bilby.schema.perform_db_search', side_effect=perform_db_search_mock)
+    def test_public_bilby_jobs_query(self, perform_db_search):
         BilbyJob.objects.create(user_id=self.user.id, name="Test1", description="first job", job_id=2, private=False)
         BilbyJob.objects.create(
             user_id=self.user.id, name="Test2", job_id=1, description="A test job", private=False
@@ -156,16 +173,16 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                     {'edges': [
                         {'node': {
                             'description': 'A test job',
-                            'id': 'QmlsYnlKb2JOb2RlOjI=',
-                            'name': 'Test2',
+                            'id': 'QmlsYnlKb2JOb2RlOjE=',
+                            'name': 'Test1',
                             'jobStatus': 'Completed',
                             'timestamp': '2020-01-01 12:00:00 UTC',
                             'user': 'buffy summers'
                         }},
                         {'node': {
-                            'description': 'first job',
-                            'id': 'QmlsYnlKb2JOb2RlOjE=',
-                            'name': 'Test1',
+                            'description': '',
+                            'id': 'QmlsYnlKb2JOb2RlOjI=',
+                            'name': 'Test2',
                             'jobStatus': 'Completed',
                             'timestamp': '2020-01-01 12:00:00 UTC',
                             'user': 'buffy summers'

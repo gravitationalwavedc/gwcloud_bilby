@@ -23,7 +23,6 @@ class BilbyHomePage extends React.Component {
                 </Grid.Row>
                 <Grid.Row>
                     <Grid.Column width={15}>
-
                         <PublicJobList data={this.props.data} {...this.routing}/>
                     </Grid.Column>
                 </Grid.Row>

@@ -123,4 +123,3 @@ def update_bilby_job(job_id, user_id, private=None, labels=None):
         return 'Job saved!'
     else:
         raise Exception('You must own the job to change the privacy!')
-

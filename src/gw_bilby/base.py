@@ -23,6 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '^zzul@u)rxayk67^%3kf^59!pw&-vfv0lnv6#6h)w6!eyjzz!g'
 JOB_CONTROLLER_JWT_SECRET = SECRET_KEY
 AUTH_SERVICE_JWT_SECRET = SECRET_KEY
+DB_SEARCH_SERVICE_JWT_SECRET = SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -163,3 +164,4 @@ GRAPHQL_JWT = {
 # URL of the job controller - note: No trailing slash
 GWCLOUD_JOB_CONTROLLER_API_URL = "https://gw-cloud.org/job/apiv1"
 GWCLOUD_AUTH_API_URL = "http://localhost:8000/graphql"
+GWCLOUD_DB_SEARCH_API_URL = "http://localhost:8002/graphql"

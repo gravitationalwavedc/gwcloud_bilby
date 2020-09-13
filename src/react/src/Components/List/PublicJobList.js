@@ -12,24 +12,8 @@ class PublicJobList extends React.Component {
 
         this.state = {
             search: "",
-            order: "name",
             timeRange: "1d"
         }
-    }
-
-    handleSort = (order) => {
-        this.setState({
-            ...this.state,
-            order: order
-        })
-
-        const refetchVariables = {
-            count: RECORDS_PER_PAGE,
-            orderBy: order,
-            search: this.state.search,
-            timeRange: this.state.timeRange
-        }
-        this.props.relay.refetchConnection(1, null, refetchVariables)
     }
 
     handleSearchChange = (e, data) => {
@@ -113,8 +97,7 @@ class PublicJobList extends React.Component {
                 <Grid.Row>
                     <Grid.Column>
                         <Visibility continuous onBottomVisible={this.loadMore}>
-                            <BaseJobList headers={headers} rows={rows} handleSort={this.handleSort}
-                                         initialSort={'name'}/>
+                            <BaseJobList headers={headers} rows={rows}/>
                         </Visibility>
                     </Grid.Column>
                 </Grid.Row>
@@ -130,7 +113,6 @@ export default createPaginationContainer(PublicJobList,
                 publicBilbyJobs(
                     first: $count,
                     after: $cursor,
-                    orderBy: $orderBy,
                     search: $search,
                     timeRange: $timeRange
                 ) @connection(key: "PublicJobList_publicBilbyJobs") {
@@ -156,7 +138,6 @@ export default createPaginationContainer(PublicJobList,
             query PublicJobListForwardQuery(
                 $count: Int!,
                 $cursor: String,
-                $orderBy: String,
                 $search: String,
                 $timeRange: String
             ) {
@@ -175,11 +156,10 @@ export default createPaginationContainer(PublicJobList,
             }
         },
 
-        getVariables(props, {count, cursor}, {orderBy}) {
+        getVariables(props, {count, cursor}, {}) {
             return {
                 count,
-                cursor,
-                orderBy,
+                cursor
             }
         }
     }

@@ -16,7 +16,6 @@ function getRoutes() {
                 query Routes_HomePage_Query (
                   $count: Int!,
                   $cursor: String,
-                  $orderBy: String,
                   $search: String,
                   $timeRange: String
                 ) {
@@ -27,9 +26,9 @@ function getRoutes() {
                 }
               `}
               prepareVariables={params => ({
-                ...params,
-                count: 10,
-                orderBy: 'name'
+                  ...params,
+                  timeRange: '1d',
+                  count: 10
               })}
               environment={harnessApi.getEnvironment('bilby')}
               Component={BilbyHomePage}
