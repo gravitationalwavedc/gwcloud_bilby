@@ -293,7 +293,7 @@ class Query(object):
                     name=job['job']['name'],
                     description=job['job']['description'],
                     job_status=JobStatus.display_name(job['history'][0]['state']),
-                    labels=BilbyJob.objects.get(id=job['job']['id']).labels,
+                    labels=BilbyJob.objects.get(id=job['job']['id']).labels.all(),
                     timestamp=job['history'][0]['timestamp'],
                     id=to_global_id("BilbyJobNode", job['job']['id'])
                 )
