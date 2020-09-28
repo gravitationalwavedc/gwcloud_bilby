@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useContext, useReducer } from "react";
 import {Step, Menu, Button, Grid, Header} from "semantic-ui-react";
-import { useContext, useReducer } from "../../Utils/hooks";
 
 const StepContext = React.createContext({})
 

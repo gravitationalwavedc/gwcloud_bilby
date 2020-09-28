@@ -93,12 +93,20 @@ module.exports = {
         new ModuleReplaceWebpackPlugin({
             modules: [
                 {
-                    test: /react-relay/,
+                    test: /^react-relay$/,
                     replace: './src/Lib/react-relay/index.js'
+                },
+                {
+                    test: /^React$/,
+                    replace: './src/Lib/ReactShim.js'
+                },
+                {
+                    test: /^react$/,
+                    replace: './src/Lib/ReactShim.js'
                 }
             ],
             exclude: [
-                /react-override.js$/,
+                /ReactShim.js$/,
                 /node_modules\/react\/index.js$/
             ]
         })

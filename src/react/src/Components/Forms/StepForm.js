@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {Grid} from "semantic-ui-react";
 import {commitMutation} from "relay-runtime";
 import {harnessApi} from "../../index";
@@ -10,7 +10,6 @@ import SamplerForm from "./SamplerForm";
 import SubmitForm from "./SubmitForm";
 
 import {StepController} from "../Utils/Steps";
-import {useState} from "../../Utils/hooks";
 
 const initialState = {
     start: null,

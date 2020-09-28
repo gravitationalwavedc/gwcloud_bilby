@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Message, Icon, Container } from "semantic-ui-react";
 import Floating from "./Floating";
-import { useState, useEffect, usePrevious } from "../../Utils/hooks";
+import { usePrevious } from "../Utils/hooks";
 
 function TemporaryMessage(props) {
     const [isVisible, setVisible] = useState(false)

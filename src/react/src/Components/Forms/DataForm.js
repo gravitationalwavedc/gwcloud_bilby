@@ -1,11 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import BaseForm from "./BaseForm";
 import {isLargerThan, isANumber, isNotEmpty, hasNoneFalse, createValidationFunction, isLongerThan, isValidJobName} from "../../Utils/errors";
 import _ from "lodash";
 
 import {graphql, createFragmentContainer} from "react-relay";
 import { mergeUnlessNull } from "../../Utils/utilMethods";
-import { useState } from "../../Utils/hooks";
 import { SelectField, CheckboxField, InputField, FormSegment } from "./Forms";
 import { Segment, Grid, Divider, Header } from "semantic-ui-react";
 

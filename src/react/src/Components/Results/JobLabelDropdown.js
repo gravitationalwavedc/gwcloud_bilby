@@ -1,9 +1,8 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 import { Dropdown, Header, Container } from "semantic-ui-react";
 import { createFragmentContainer, commitMutation, graphql } from "react-relay";
 import UpdateBilbyJob from "./mutations/UpdateBilbyJob";
-import { useState, useEffect, useRef } from "../../Utils/hooks";
 
 function JobLabelDropdown(props) {
     const [labels, setLabels] = useState(props.data.bilbyJob.labels.map(label => {return label.name}))
