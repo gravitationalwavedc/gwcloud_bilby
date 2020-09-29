@@ -1,28 +1,40 @@
 import React from "react";
 import {Route} from 'found'
-import BilbyJobForm from "./Pages/BilbyJobForm";
-import BilbyJobList from "./Pages/BilbyJobList";
+import StepForm from "./Components/Forms/StepForm";
+import UserJobList from "./Components/List/UserJobList";
+import PublicJobList from "./Components/List/PublicJobList";
 import {graphql} from "react-relay";
 import {harnessApi} from "./index";
-import BilbyHomePage from "./Pages/BilbyHomePage";
 import BilbyJobResults from "./Pages/BilbyJobResults";
+import Loading from "./Components/Loading";
+import {RedirectException} from "found";
+
+const handleRender = ({Component, props}) => {
+  if (!Component || !props)
+      return <Loading/>;
+
+  if (!harnessApi.hasAuthToken())
+      throw new RedirectException("/auth/?next=" + props.match.location.pathname, 401);
+  
+  return <Component data={props} {...props}/>;
+};
 
 function getRoutes() {
     return (
         <Route>
             <Route
-                Component={BilbyHomePage}
+                Component={PublicJobList}
                 query={graphql`
                 query Routes_HomePage_Query (
                   $count: Int!,
                   $cursor: String,
                   $search: String,
-                  $timeRange: String
+                  $timeRange: String,
                 ) {
                     gwclouduser {
                       username
                     }
-                    ...BilbyHomePage_data
+                    ...PublicJobList_data
                 }
               `}
               prepareVariables={params => ({
@@ -31,13 +43,8 @@ function getRoutes() {
                   count: 10
               })}
               environment={harnessApi.getEnvironment('bilby')}
-              Component={BilbyHomePage}
-              render={({Component, props, retry, error}) => {
-                  if (!Component || !props)
-                      return <div>Loading...</div>;
-                    
-                  return <Component data={props} match={props.match} router={props.router}/>
-            }}/>
+              Component={PublicJobList}
+              render={handleRender}/>
             <Route
                 path="job-form"
                 query={graphql`
@@ -50,13 +57,8 @@ function getRoutes() {
                     jobId: location.state && location.state.jobId ? location.state.jobId : ""
                 })}
                 environment={harnessApi.getEnvironment('bilby')}
-                Component={BilbyJobForm}
-                render={({Component, props, retry, error}) => {
-                    if (!Component || !props)
-                        return <div>Loading...</div>;
-
-                    return <Component {...props}/>
-                }}/>
+                Component={StepForm}
+                render={handleRender}/>
             <Route
                 path="job-list"
                 query={graphql`
@@ -65,7 +67,7 @@ function getRoutes() {
                       $cursor: String,
                       $orderBy: String
                     ) {
-                      ...BilbyJobList_data
+                      ...UserJobList_data
                     }
                 `}
                 prepareVariables={params => ({
@@ -74,13 +76,8 @@ function getRoutes() {
                     orderBy: 'lastUpdated'
                 })}
                 environment={harnessApi.getEnvironment('bilby')}
-                Component={BilbyJobList}
-                render={({Component, props, retry, error}) => {
-                    if (!Component || !props)
-                        return <div>Loading...</div>;
-                    
-                    return <Component data={props} {...props}/>
-                }}/>
+                Component={UserJobList}
+                render={handleRender}/>
             <Route
                 path="job-results/:jobId/"
                 environment={harnessApi.getEnvironment('bilby')}
@@ -94,12 +91,7 @@ function getRoutes() {
                     ...params,
                     jobId: params.jobId
                 })}
-                render={({Component, props, retry, error}) => {
-                    if (!Component || !props)
-                        return <div>Loading...</div>;
-
-                    return <Component data={props} {...props}/>
-                }}
+                render={handleRender}
             />
         </Route>
     )

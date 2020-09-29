@@ -1,98 +1,113 @@
-import React from "react";
-import { graphql, createPaginationContainer } from "react-relay";
-import _ from "lodash";
+import React, { useState, useEffect } from "react";
+import {createPaginationContainer, graphql} from "react-relay";
+import { Button, Container, Col, Form, InputGroup, Row } from "react-bootstrap";
+import { HiOutlineSearch } from "react-icons/hi";
+import Link from 'found/lib/Link';
 import BaseJobList from "./BaseJobList";
-import Link from "found/lib/Link";
-import { Visibility, Grid, Label } from "semantic-ui-react";
-import { formatDate } from "../../Utils/utilMethods";
-
+import { HiOutlinePlus } from "react-icons/hi";
 
 const RECORDS_PER_PAGE = 10;
 
-class UserJobList extends React.Component {
-    constructor(props) {
-        super(props);
-        this.routing = {
-            match: this.props.match,
-            router: this.props.router,
-            breadcrumbPaths: [
-                {name: 'Job List', path: '/bilby/job-list/'}
-            ]
-        }
-        
-        this.state = {
-            page:  0,
-            loading: false,
-        }
-    }
+const UserJobList = ({data, match, router,relay}) => {
+    const [search, setSearch] = useState("");
+    const [timeRange, setTimeRange] = useState("1d");
+    const [order, setOrder] = useState();
+    const [direction, setDirection] = useState("descending");
 
-    loadMore = () => {
-        if (this.props.relay.hasMore()) {
-            this.props.relay.loadMore(RECORDS_PER_PAGE);
-        }
-    }
+    useEffect(() => handleSearchChange(), [search, timeRange, direction, order]);
 
-    handleSort = (order) => {
-        
+    const handleSearchChange = () => {
         const refetchVariables = {
-            count: 1,
-            orderBy: order
+            count: RECORDS_PER_PAGE,
+            search: search,
+            timeRange: timeRange,
+            orderBy: order,
+            direction: direction
         }
-        this.props.relay.refetchConnection(1, null, refetchVariables)
+        relay.refetchConnection(1, null, refetchVariables)
     }
 
-    render() {
-        const headers = [
-            {key: 'name', display: 'Name'},
-            {key: 'description', display: 'Description'},
-            {key: 'lastUpdated', display: 'Updated'},
-            {key: 'jobStatus', display: 'Status'},
-            {key: null, display: 'Labels'},
-            {key: null, display: 'Actions'},
-        ]
+    const loadMore = () => {
+        if (relay.hasMore()) {
+            relay.loadMore(RECORDS_PER_PAGE);
+        }
+    };
 
-        const rows = this.props.data.bilbyJobs.edges.map(({node}) => (
-            [
-                node.name,
-                node.description,
-                formatDate(node.lastUpdated),
-                node.jobStatus.name,
-                <Label.Group>
-                    {
-                        node.labels.map(({name}, index) => {
-                            return <Label key={index} content={name}/>
-                        })
-                    }
-                </Label.Group>,
-                <React.Fragment>
-                    <Link to={{
-                        pathname: '/bilby/job-form/',
-                        state: {
-                            jobId: node.id
-                        }
-                    }} activeClassName="selected" exact match={this.props.match} router={this.props.router}>
-                        Copy Job and Edit
-                    </Link>
-                    <br/>
-                    <Link to={{
-                        pathname: '/bilby/job-results/' + node.id + "/",
-                    }} activeClassName="selected" exact match={this.props.match} router={this.props.router}>
-                        View Results
-                    </Link>
-                </React.Fragment>
-            ]
-        ))
+    const timeOptions = [
+        {text: 'Any time', value: 'all'},
+        {text: 'Past 24 hours', value: '1d'},
+        {text: 'Past week', value: '1w'},
+        {text: 'Past month', value: '1m'},
+        {text: 'Past year', value: '1y'},
+    ];
 
-        return (
-            <Grid.Row>
-                <Grid.Column>
-                    <Visibility continuous onBottomVisible={this.loadMore}>
-                        <BaseJobList headers={headers} rows={rows} handleSort={this.handleSort} initialSort={'lastUpdated'}/>
-                    </Visibility>
-                </Grid.Column>
-            </Grid.Row>
-        )
-    }
+    return (
+        <Container >
+          <h1 className="pt-5 mb-4">
+            My Jobs
+            <span className="float-right">
+            <Link 
+              as={Button}
+              variant="outline-primary"
+              to='/bilby/' 
+              exact 
+              match={match}
+              router={router}
+              className="mr-1">
+                Switch to public jobs
+              </Link>
+              <Link as={Button} to='/bilby/job-form/' exact match={match} router={router}>
+                <HiOutlinePlus size={18} className="mb-1 mr-1"/>
+                Start a new job 
+              </Link>
+            </span>
+            </h1>
+          <Form>
+            <Form.Row>
+              <Col lg={3}>
+                <Form.Group controlId="searchJobs">
+                  <Form.Label srOnly>
+                    Search
+                  </Form.Label>
+                  <InputGroup>
+                    <InputGroup.Prepend>
+                      <InputGroup.Text>
+                        <HiOutlineSearch />
+                      </InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <Form.Control placeholder="GW190425" value={search} onChange={({target}) => setSearch(target.value)} />
+                  </InputGroup>
+                </Form.Group>
+              </Col>
+              <Col lg={3}>
+                <Form.Group controlId="timeRange">
+                  <Form.Label srOnly>
+                    Time
+                  </Form.Label>
+                  <Form.Control as="select" value={timeRange} onChange={({target}) => setTimeRange(target.value)} custom>
+                    {timeOptions.map(option => <option key={option.value} value={option.value}>{option.text}</option>)}
+                  </Form.Control>
+                </Form.Group>
+              </Col>
+            </Form.Row>
+          </Form>
+          <Row>
+            <Col>
+              <BaseJobList 
+                data={data.bilbyJobs} 
+                setOrder={setOrder} 
+                order={order} 
+                setDirection={setDirection} 
+                direction={direction}
+                match={match}
+                router={router}
+                hasMore={relay.hasMore()}
+                loadMore={loadMore}
+              />
+            </Col>
+          </Row>
+        </Container>
+    )
 }
 
 export default createPaginationContainer(UserJobList,

@@ -2,7 +2,6 @@ import React from "react";
 import { graphql, createFragmentContainer, commitMutation } from "react-relay";
 
 import _ from "lodash";
-import BilbyBasePage from "./BilbyBasePage";
 import JobResults from "../Components/Results/JobResults";
 import JobParameters from "../Components/Results/JobParameters";
 import { Divider, Grid, Header, Message, Container, Checkbox, Tab, Button, Dropdown, Label, Segment, Input } from "semantic-ui-react";
@@ -43,7 +42,7 @@ class BilbyJobResults extends React.Component {
         const { start, lastUpdated, userId } = this.props.data.bilbyJob
 
         return (
-            <BilbyBasePage loginRequired title='Bilby Job Results' {...this.routing}>
+          <React.Fragment>
                 <TemporaryMessage success={this.state.saved} content={this.state.saveMessage} icon='save' timeout={5000} />
                 <Grid container stretched textAlign='left'>
                     <Grid.Row verticalAlign='top'>
@@ -79,7 +78,7 @@ class BilbyJobResults extends React.Component {
                         ]} />
                     </Grid.Column>
                 </Grid>
-            </BilbyBasePage>
+            </React.Fragment>
         )
     }
 }
