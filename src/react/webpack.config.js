@@ -1,5 +1,6 @@
-const webpack = require("webpack");
+const webpack = require('webpack');
 const ModuleReplaceWebpackPlugin = require('module-replace-webpack-plugin');
+const UnusedWebpackPlugin = require('unused-webpack-plugin');
 const path = require('path');
 
 module.exports = {
@@ -9,14 +10,14 @@ module.exports = {
                 test: /\.(js|jsx)$/,
                 exclude: /node_modules/,
                 use: {
-                    loader: "babel-loader",
+                    loader: 'babel-loader',
                     options: {
                         presets: [
-                            "@babel/preset-env",
-                            "@babel/preset-react"
+                            '@babel/preset-env',
+                            '@babel/preset-react'
                         ],
                         plugins: [
-                            "@babel/plugin-proposal-class-properties"
+                            '@babel/plugin-proposal-class-properties'
                         ]
                     }
                 }
@@ -25,16 +26,16 @@ module.exports = {
                 test: /\.html$/,
                 use: [
                     {
-                        loader: "html-loader"
+                        loader: 'html-loader'
                     }
                 ]
             },
             {
                 test: /\.scss$/,
                 use: [
-                    "style-loader",
-                    "css-loader",
-                    "sass-loader"
+                    'style-loader',
+                    'css-loader',
+                    'sass-loader'
                 ]
             },
             {
@@ -65,9 +66,9 @@ module.exports = {
         ]
     },
     output: {
-        publicPath: "/",
-        globalObject: "this",
-	path: path.resolve(__dirname, '../static/'),
+        publicPath: '/',
+        globalObject: 'this',
+        path: path.resolve(__dirname, '../static/'),
         library: 'RemoteModule',
         libraryTarget: 'this'
     },
@@ -78,10 +79,10 @@ module.exports = {
         disableHostCheck: true,
         historyApiFallback: true,
         headers: {
-            "Access-Control-Allow-Origin": "http://localhost:3000",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, x-id, Content-Length, X-Requested-With",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS"
+            'Access-Control-Allow-Origin': 'http://localhost:3000',
+            'Access-Control-Allow-Credentials': 'true',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-id, Content-Length, X-Requested-With',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
         }
     },
     plugins: [
@@ -109,6 +110,11 @@ module.exports = {
                 /ReactShim.js$/,
                 /node_modules\/react\/index.js$/
             ]
+        }),
+        new UnusedWebpackPlugin({
+            directories: [path.join(__dirname, 'src')],
+            exclude: ['*.test.js', 'setupTests.js', '**/__generated__/**', '**/__test__/**', '**/Lib/**'],
+            root: __dirname
         })
     ],
     resolve: {

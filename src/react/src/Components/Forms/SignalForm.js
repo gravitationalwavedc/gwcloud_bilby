@@ -1,172 +1,117 @@
-import React from "react";
-import BaseForm from "./BaseForm";
-import {createValidationFunction, isANumber, isSmallerThan, isNotEmpty, isLongerThan, isValidJobName} from "../../Utils/errors";
+import React from 'react';
+import { Button, Col, Row, Form } from 'react-bootstrap';
+import FormCard from './FormCard';
 
-import { graphql, createFragmentContainer } from "react-relay";
-import { mergeUnlessNull } from "../../Utils/utilMethods";
-import { SelectField, InputField, FormSegment } from "./Forms";
-import { Grid } from "semantic-ui-react";
+const SignalForm = ({formik, handlePageChange}) => 
+    <React.Fragment>
+        <Row>
+            <Col>
+                <FormCard title="Signal">
+                    <Row>
+                        <Col>
+                            <Form.Label>Injection</Form.Label>
+                            <Form.Check 
+                                custom 
+                                id="binaryBlackHole" 
+                                label="Binary Black Hole" 
+                                type="radio" 
+                                name="signalChoice" 
+                                value="binaryBlackHole" 
+                                onChange={formik.handleChange}
+                            />
+                            <Form.Check 
+                                custom 
+                                id="binaryNeutronStar" 
+                                label="Binary Neutron Star" 
+                                type="radio" 
+                                name="signalChoice" 
+                                value="binaryNeutronStar" 
+                                onChange={formik.handleChange}
+                            />
+                        </Col>
+                    </Row>
+                </FormCard>
+            </Col>
+        </Row>
+        <Row>
+            <Col>
+                <FormCard title="Injected Signal Parameters">
+                    <Row>
+                        <Col>
+                            <Form.Group controlId="mass1">
+                                <Form.Label>Mass 1 (M&#9737;)</Form.Label>
+                                <Form.Control name="mass1" type="number" {...formik.getFieldProps('mass1')}/>
+                            </Form.Group>
+                        </Col>
+                        <Col>
+                            <Form.Group controlId="mass2">
+                                <Form.Label>Mass 2 (M&#9737;)</Form.Label>
+                                <Form.Control name="mass2" type="number" {...formik.getFieldProps('mass2')}/>
+                            </Form.Group>
+                        </Col>
+                    </Row>
+                    <Row>
+                        <Col>
+                            <Form.Group controlId="luminosityDistance">
+                                <Form.Label>Luminosity distance (Mpc)</Form.Label>
+                                <Form.Control 
+                                    name="luminosityDistance" 
+                                    type="number" 
+                                    {...formik.getFieldProps('luminosityDistance')}/>
+                            </Form.Group>
+                        </Col>
+                        <Col>
+                            <Form.Group controlId="mergerTime">
+                                <Form.Label>Merger time (GPS)</Form.Label>
+                                <Form.Control name="mergerTime" type="number" {...formik.getFieldProps('mergerTime')}/>
+                            </Form.Group>
+                        </Col>
+                    </Row>
+                    <Row>
+                        <Col>
+                            <Form.Group controlId="psi">
+                                <Form.Label>psi</Form.Label>
+                                <Form.Control name="psi" type="number" {...formik.getFieldProps('psi')}/>
+                            </Form.Group>
+                        </Col>
+                        <Col>
+                            <Form.Group controlId="iota">
+                                <Form.Label>iota</Form.Label>
+                                <Form.Control name="iota" type="number" {...formik.getFieldProps('iota')}/>
+                            </Form.Group>
+                        </Col>
+                    </Row>
+                    <Row>
+                        <Col>
+                            <Form.Group controlId="phase">
+                                <Form.Label>Phase</Form.Label>
+                                <Form.Control name="phase" type="number" {...formik.getFieldProps('phase')}/>
+                            </Form.Group>
+                        </Col>
+                        <Col />
+                    </Row>
+                    <Row>
+                        <Col>
+                            <Form.Group controlId="ra">
+                                <Form.Label>Right ascension (radians)</Form.Label>
+                                <Form.Control name="ra" type="number" {...formik.getFieldProps('ra')}/>
+                            </Form.Group>
+                        </Col>
+                        <Col>
+                            <Form.Group controlId="dec">
+                                <Form.Label>Declination (degrees)</Form.Label>
+                                <Form.Control name="dec" type="number" {...formik.getFieldProps('dec')}/>
+                            </Form.Group>
+                        </Col>
+                    </Row>
+                </FormCard>
+            </Col>
+        </Row>
+        <Row className="mt-4">
+            <Col>
+                <Button size="lg" onClick={() => handlePageChange('priorsAndSampler')}>Save and continue</Button>
+            </Col>
+        </Row>
+    </React.Fragment>;
 
-
-function SignalForm(props) {
-    const formProps = {
-        initialValues: mergeUnlessNull(
-            {
-                start: {
-                    name: "",
-                    description: "",
-                    private: false
-                },
-                signalChoice: 'binaryBlackHole',
-                signalModel: 'binaryBlackHole',
-                mass1: '30',
-                mass2: '25',
-                luminosityDistance: '2000',
-                psi: '0.4',
-                iota: '2.659',
-                phase: '1.3',
-                mergerTime: '1126259642.413',
-                ra: '1.375',
-                dec: '-1.2108',
-            },
-            props.data === null ? null : {...props.data.signal, start: props.data.start},
-            props.state
-        ),
-        onSubmit: (values) => {
-            const {start, ...signal} = values
-            props.updateParentState('start')(start)
-            props.updateParentState('signal')(signal)
-        },
-        validate: (values) => createValidationFunction(
-            {
-                "start.name": [isLongerThan(5), isValidJobName],
-                mass1: [isANumber, isNotEmpty],
-                mass2: [isSmallerThan(values.mass1, 'Mass 1'), isANumber, isNotEmpty],
-                luminosityDistance: [isANumber, isNotEmpty],
-                psi: [isANumber, isNotEmpty],
-                iota: [isANumber, isNotEmpty],
-                phase: [isANumber, isNotEmpty],
-                mergerTime: [isANumber, isNotEmpty],
-                ra: [isANumber, isNotEmpty],
-                dec: [isANumber, isNotEmpty],
-            },
-            values
-        ),
-        linkedValues: (fieldName, fieldValue, state) => {
-            switch (fieldName) {
-                case 'sameSignal':
-                    if (fieldValue) {
-                        return {signalModel: state.values.signalChoice}
-                    }
-                    break;
-                default:
-                    break;
-            }
-    
-        }
-    }
-    
-    function setForms(values) {
-        const signalOptions = [
-            {key: 'binaryBlackHole', text: 'Binary Black Hole', value: 'binaryBlackHole'},
-            {key: 'binaryNeutronStar', text: 'Binary Neutron Star', value: 'binaryNeutronStar'},
-        ]
-        
-        const signalInjectOptions = props.openData ? [{key: 'none', text: 'None', value: 'none'}].concat(signalOptions) : signalOptions
-        const formToggle = ['none', 'binaryBlackHole', 'binaryNeutronStar'].indexOf(values.signalChoice)
-
-        const forms = {
-            signalChoice: <SelectField label="Injection" name="signalChoice" placeholder="Select Signal Type" options={signalInjectOptions}/>,
-            signalModel: <SelectField label="Model" name="signalModel" placeholder="Select Signal Type" options={signalOptions}/>,
-            mass1: <InputField label={"Mass 1 (M\u2299)"} name="mass1" />,
-            mass2: <InputField label={"Mass 2 (M\u2299)"} name="mass2" />,
-            luminosityDistance: <InputField label="Luminosity Distance (Mpc)" name="luminosityDistance" />,
-            psi: <InputField label="psi" name="psi" />,
-            iota: <InputField label="iota" name="iota" />,
-            phase: <InputField label="Phase" name="phase" />,
-            mergerTime: <InputField label="Merger Time (GPS Time)" name="mergerTime" />,
-            ra: <InputField label="Right Ascension (radians)" name="ra" />,
-            dec: <InputField label="Declination (degrees)" name="dec" />,
-        }
-
-        return (
-            <React.Fragment>
-                <FormSegment header="Signal">
-                    <Grid.Row columns={2}>
-                        <Grid.Column>
-                            {forms.signalChoice}
-                        </Grid.Column>
-                        <Grid.Column>
-                            {props.openData && forms.signalModel}
-                        </Grid.Column>
-                    </Grid.Row>
-                </FormSegment>
-                {
-                    formToggle > 0 && <FormSegment header="Injected Signal Parameters" subheader={values.signalChoice}>
-                        <Grid.Row columns={2}>
-                            <Grid.Column>
-                                {forms.mass1}
-                            </Grid.Column>
-                            <Grid.Column>
-                                {forms.mass2}
-                            </Grid.Column>
-                        </Grid.Row>
-                        <Grid.Row columns={2}>
-                            <Grid.Column>
-                                {forms.luminosityDistance}
-                            </Grid.Column>
-                            <Grid.Column>
-                                {forms.mergerTime}
-                            </Grid.Column>
-                        </Grid.Row>
-                        <Grid.Row columns={2}>
-                            <Grid.Column>
-                                {forms.psi}
-                                {forms.phase}
-                            </Grid.Column>
-                            <Grid.Column>
-                                {forms.iota}
-                            </Grid.Column>
-                        </Grid.Row>
-                        <Grid.Row columns={2}>
-                            <Grid.Column>
-                                {forms.ra}
-                            </Grid.Column>
-                            <Grid.Column>
-                                {forms.dec}
-                            </Grid.Column>
-                        </Grid.Row>
-                    </FormSegment>
-                }
-            </React.Fragment>
-        )
-    }
-
-    return <BaseForm formProps={formProps} setForms={setForms}/>
-}
-
-export default createFragmentContainer(SignalForm, {
-    data: graphql`
-        fragment SignalForm_data on BilbyJobNode {
-            start {
-                name
-                description
-                private
-            }
-            signal {
-                signalChoice
-                signalModel
-                mass1
-                mass2
-                luminosityDistance
-                psi
-                iota
-                phase
-                mergerTime
-                ra
-                dec
-            }
-        }
-    `
-});
-
+export default SignalForm;

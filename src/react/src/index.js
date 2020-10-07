@@ -1,3 +1,4 @@
+import "./assets/styles.scss";
 import getRoutes from "./Routes";
 
 let harnessApi = null;

@@ -1,0 +1,35 @@
+.edit-button {
+  background: none;
+  border: none;
+  padding: none;
+
+  &:hover,
+  &:focus {
+    color: #0592eb;
+    outline: none;
+  }
+}
+
+.save-button {
+  background: none;
+  border: none;
+  padding: none;
+  color: green;
+
+  &:hover,
+  &:focus {
+    outline: none;
+  }
+}
+
+.cancel-button {
+  background: none;
+  border: none;
+  padding: none;
+  color: red;
+
+  &:hover,
+  &:focus {
+    outline: none;
+  }
+}
