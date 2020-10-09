@@ -41,11 +41,9 @@ const Files = (props) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {props.files.files.map((e, i) => 
-                        <ResultFile
-                            key={i} 
-                            File={e} {...props}/>
-                    )}
+                    {props.files.files.map((e, i) => <ResultFile
+                        key={i} 
+                        file={e} {...props}/>)}
                 </tbody>
             </Table>
         ) : (

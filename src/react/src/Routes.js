@@ -38,8 +38,7 @@ function getRoutes() {
                     ...PublicJobs_data
                 }
               `}
-                prepareVariables={params => ({
-                    ...params,
+                prepareVariables={() => ({
                     timeRange: '1d',
                     count: 10
                 })}
@@ -58,7 +57,6 @@ function getRoutes() {
                     }
                 `}
                 prepareVariables={(params, {location}) => ({
-                    ...params,
                     jobId: location.state && location.state.jobId ? location.state.jobId : ''
                 })}
                 environment={harnessApi.getEnvironment('bilby')}
@@ -75,8 +73,7 @@ function getRoutes() {
                       ...MyJobs_data
                     }
                 `}
-                prepareVariables={params => ({
-                    ...params,
+                prepareVariables={() => ({
                     count: 10,
                     orderBy: 'lastUpdated'
                 })}
@@ -92,8 +89,7 @@ function getRoutes() {
                       ...ViewJob_data @arguments(jobId: $jobId)
                     }
                 `}
-                prepareVariables={(params ) => ({
-                    ...params,
+                prepareVariables={(params) => ({
                     jobId: params.jobId
                 })}
                 render={handleRender}

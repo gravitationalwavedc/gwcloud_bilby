@@ -25,7 +25,7 @@ const LabelDropdown = (props) => {
 
     const labelChoices = props.data.allLabels.filter(({name}) => !labels.includes(name));
     return (
-        <Row>
+        <Row className="mb-3">
             {labels.map(name => <Col key={name}>
                 <Alert 
                     variant={getBadgeType(name)} 

@@ -18,6 +18,7 @@ const SignalForm = ({formik, handlePageChange}) =>
                                 name="signalChoice" 
                                 value="binaryBlackHole" 
                                 onChange={formik.handleChange}
+                                checked={formik.values.signalChoice === 'binaryBlackHole' ? true : false}
                             />
                             <Form.Check 
                                 custom 
@@ -27,6 +28,7 @@ const SignalForm = ({formik, handlePageChange}) =>
                                 name="signalChoice" 
                                 value="binaryNeutronStar" 
                                 onChange={formik.handleChange}
+                                checked={formik.values.signalChoice === 'binaryNeutronStar' ? true : false}
                             />
                         </Col>
                     </Row>

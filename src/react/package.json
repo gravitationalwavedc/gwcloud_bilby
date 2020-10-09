@@ -30,6 +30,7 @@
     "enzyme-adapter-react-16": "^1.15.2",
     "enzyme-to-json": "^3.5.0",
     "eslint": "^7.10.0",
+    "eslint-plugin-jest": "^24.1.0",
     "eslint-plugin-react": "^7.21.3",
     "filesize": "^6.1.0",
     "formik": "^2.1.6",

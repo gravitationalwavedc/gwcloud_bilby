@@ -57,8 +57,8 @@ const JobTable = ({data, match, router, hasMore, loadMore, myJobs}) => {
     }) : [];
 
     const headerCells = headers.map(
-        ({key, display}) => 
-            <th key={key}>{display}</th>
+        ({display}) => 
+            <th key={display}>{display}</th>
     );
 
     const rows = jobRows.length ? 

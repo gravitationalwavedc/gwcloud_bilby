@@ -25,7 +25,7 @@ const initialValues = {
     livingstonMaximumFrequency: 1024,
 
     // Signal Page
-    signalChoice: 'Binary Black Hole',
+    signalChoice: 'binaryBlackHole',
     mass1: 30,
     mass2: 25,
     luminosityDistance: 2000,
@@ -37,7 +37,7 @@ const initialValues = {
     dec: -1.2108,
 
     // Priors
-    priorChoice: '4s',
+    priorsChoice: '4s',
       
     // Sampler
     sampler: 'dynasty',

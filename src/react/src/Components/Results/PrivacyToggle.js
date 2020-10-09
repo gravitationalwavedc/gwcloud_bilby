@@ -6,24 +6,25 @@ import { Form } from 'react-bootstrap';
 const PrivacyToggle = (props) => {
     const [isPrivate, setIsPrivate] = useState(props.data.private);
     
-    const handleChange = (e, {checked}) => {
-        setIsPrivate(checked);
+    const handleChange = () => {
+        const newValue = !isPrivate;
+        setIsPrivate(newValue);
         updateJob(
             {
                 jobId: props.jobId,
-                private: isPrivate,
+                private: newValue,
             },
             () => {}
         );
     };
     
-    return <Form.Group controlId="privateToggle">
-        <Form.Label>Private</Form.Label>
+    return <Form.Group className="mt-3" controlId="privateToggle">
         <Form.Check
             type="checkbox"
+            label="Share with LIGO collaborators"
             onChange={handleChange} 
             disabled={harnessApi.currentUser.userId !== props.userId} 
-            checked={isPrivate}/>
+            checked={!isPrivate}/>
     </Form.Group>;
 };
 

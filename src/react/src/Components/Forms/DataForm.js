@@ -21,7 +21,8 @@ const DataForm = ({formik, handlePageChange}) =>
                                 type="radio" 
                                 name="dataChoice" 
                                 value="open" 
-                                onChange={formik.handleChange}/>
+                                onChange={formik.handleChange} 
+                                checked={formik.values.dataChoice === 'open' ? true : false }/>
                             <Form.Check 
                                 custom 
                                 id="typeSimulated" 
@@ -29,7 +30,8 @@ const DataForm = ({formik, handlePageChange}) =>
                                 type="radio" 
                                 name="dataChoice" 
                                 value="simulated" 
-                                onChange={formik.handleChange}/>
+                                onChange={formik.handleChange}
+                                checked={formik.values.dataChoice === 'simulated' ? true : false }/>
                         </Col>
                         <Col>
                             <Form.Group controlId="triggerTime">
