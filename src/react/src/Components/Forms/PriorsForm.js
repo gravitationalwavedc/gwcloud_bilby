@@ -8,14 +8,14 @@ const PriorsForm = ({formik, handlePageChange}) =>
             <FormCard title="Priors & Sampler">
                 <Row className="mb-4">
                     <Col md={6}>
-                        <Form.Group controlId="priorsChoice">
+                        <Form.Group controlId="priorChoice">
                             <Form.Label>Priors</Form.Label>
                             <Form.Control 
-                                name="priorsChoice" 
+                                name="priorChoice" 
                                 as="select" 
                                 custom 
-                                value={formik.values.priorsChoice}
-                                {...formik.getFieldProps('priorsChoice')}>
+                                value={formik.values.priorChoice}
+                                {...formik.getFieldProps('priorChoice')}>
                                 <option>High Mass</option>
                                 <option>4s</option>
                                 <option>8s</option>

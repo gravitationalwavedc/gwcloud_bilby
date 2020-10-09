@@ -37,7 +37,7 @@ const initialValues = {
     dec: -1.2108,
 
     // Priors
-    priorsChoice: '4s',
+    priorChoice: '4s',
       
     // Sampler
     sampler: 'dynasty',
