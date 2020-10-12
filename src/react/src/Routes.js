@@ -39,14 +39,14 @@ function getRoutes() {
                 }
               `}
                 prepareVariables={() => ({
-                    timeRange: '1d',
-                    count: 10
+                    timeRange: 'all',
+                    count: 100
                 })}
+                fetchPolicy="store-and-network"
                 environment={harnessApi.getEnvironment('bilby')}
                 render={handleRender}/>
             <Route
                 path="job-form"
-                environment={harnessApi.getEnvironment('bilby')}
                 Component={NewJob}
                 render={handleRender}/>
             <Route
@@ -74,16 +74,19 @@ function getRoutes() {
                     }
                 `}
                 prepareVariables={() => ({
-                    count: 10,
+                    count: 100,
+                    timeRange: 'all',
                     orderBy: 'lastUpdated'
                 })}
                 environment={harnessApi.getEnvironment('bilby')}
+                fetchPolicy="store-and-network"
                 Component={MyJobs}
                 render={handleRender}/>
             <Route
                 path="job-results/:jobId/"
                 environment={harnessApi.getEnvironment('bilby')}
                 Component={ViewJob}
+                fetchPolicy="store-and-network"
                 query={graphql`
                     query Routes_ViewJob_Query ($jobId: ID!){
                       ...ViewJob_data @arguments(jobId: $jobId)

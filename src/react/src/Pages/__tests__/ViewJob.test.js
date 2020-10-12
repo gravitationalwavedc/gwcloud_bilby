@@ -41,7 +41,7 @@ describe('view job page', () => {
                 },
                 jobStatus:{
                     name:'Error',
-                    number:400,
+                    number:'400',
                     date:'2020-10-05 04:49:58 UTC'
                 },
                 data:{
@@ -106,7 +106,7 @@ describe('view job page', () => {
             return {
                 path: 'a_cool_path',
                 isDir: false,
-                filesize: 1234,
+                fileSize: 1234,
                 downloadId: 'anDownloadId'
             };
         },
@@ -118,7 +118,7 @@ describe('view job page', () => {
                         return {
                             path: 'a_cool_path',
                             isDir: false,
-                            filesize: 1234,
+                            fileSize: 1234,
                             downloadId: 'anDownloadId'
                         };
                     }}
@@ -133,14 +133,14 @@ describe('view job page', () => {
         expect(getByText('Loading...')).toBeInTheDocument();
     });
 
-    it('shouldl render the actual page', async () => {
+    it('should render the actual page', async () => {
         expect.hasAssertions();
-        const { getByText } = render(<TestRenderer />);
+        const { getByText, getAllByText } = render(<TestRenderer />);
         await waitFor(() => environment.mock.resolveMostRecentOperation(operation =>
             MockPayloadGenerator.generate(operation, mockBilbyJobReturn)
         ));   
         expect(getByText('GW-Sim-test32')).toBeInTheDocument();
-        expect(getByText('a_cool_path')).toBeInTheDocument();
+        expect(getAllByText('a_cool_path')[0]).toBeInTheDocument();
     });
 
 });

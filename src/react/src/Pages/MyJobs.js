@@ -5,7 +5,7 @@ import { HiOutlineSearch, HiOutlinePlus } from 'react-icons/hi';
 import Link from 'found/lib/Link';
 import JobTable from '../Components/JobTable';
 
-const RECORDS_PER_PAGE = 10;
+const RECORDS_PER_PAGE = 100;
 
 const MyJobs = ({data, match, router,relay}) => {
     const [search, setSearch] = useState('');
@@ -86,8 +86,16 @@ const MyJobs = ({data, match, router,relay}) => {
                             <Form.Label srOnly>
                     Time
                             </Form.Label>
-                            <Form.Control as="select" value={timeRange} onChange={({target}) => setTimeRange(target.value)} custom>
-                                {timeOptions.map(option => <option key={option.value} value={option.value}>{option.text}</option>)}
+                            <Form.Control 
+                                as="select" 
+                                value={timeRange} 
+                                onChange={({target}) => setTimeRange(target.value)} 
+                                custom>
+                                {timeOptions.map(
+                                    option => 
+                                        <option key={option.value} value={option.value}>
+                                            {option.text}
+                                        </option>)}
                             </Form.Control>
                         </Form.Group>
                     </Col>

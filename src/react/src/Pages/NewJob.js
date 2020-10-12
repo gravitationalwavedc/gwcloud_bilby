@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Redirect } from 'found';
 import {commitMutation} from 'relay-runtime';
 import {graphql} from 'react-relay';
 import {harnessApi} from '../index';
@@ -46,15 +47,15 @@ const NewJob = ({initialValues, router}) => {
                     signalDuration: values.signalDuration,
                     samplingFrequency: values.samplingFrequency,
                     triggerTime: values.triggerTime,
-                    hanford: values.hanfordActive,
+                    hanford: values.hanford,
                     hanfordMinimumFrequency: values.hanfordMinimumFrequency,
                     hanfordMaximumFrequency: values.hanfordMaximumFrequency,
                     hanfordChannel: values.hanfordChannel,
-                    livingston: values.livingstonActive,
+                    livingston: values.livingston,
                     livingstonMinimumFrequency: values.livingstonMinimumFrequency,
                     livingstonMaximumFrequency: values.livingstonMaximumFrequency,
                     livingstonChannel: values.livingstonChannel,
-                    virgo: values.virgoActive,
+                    virgo: values.virgo,
                     virgoMinimumFrequency: values.virgoMinimumFrequency,
                     virgoMaximumFrequency: values.virgoMaximumFrequency,
                     virgoChannel: values.virgoChannel,
@@ -92,7 +93,7 @@ const NewJob = ({initialValues, router}) => {
             variables: variables,
             onCompleted: (response, errors) => {
                 if (!errors) {
-                    router.replace('/bilby/job-results/' + response.newBilbyJob.result.jobId + '/');
+                    router.replace(`/bilby/job-results/${response.newBilbyJob.result.jobId}/`);
                 }
             },
         });

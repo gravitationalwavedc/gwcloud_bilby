@@ -18,7 +18,6 @@ const deactiveDetectorStyle = {
 };
 
 const DetectorCard = ({image, title, formik}) => {
-    const [isActive, setActive] = useState(false);
     const [options, setOptions] = useState([
         {label: 'GWOCS', value: 'GWOCS'}, 
         {label: 'GDS-CALIB_STRAIN', value: 'GDS-CALIB_STRAIN'}, 
@@ -28,11 +27,11 @@ const DetectorCard = ({image, title, formik}) => {
     const maximumFrequencyId = identifier + 'MaximumFrequency';
     const minimumFrequencyId = identifier + 'MaximumFrequency';
     const channelId = identifier + 'Channel';
-    const activeId = identifier + 'Active';
+
+    const isActive = formik.values[identifier];
 
     const toggleActive = () => {
-        setActive(!isActive);
-        formik.setFieldValue(identifier + 'Active', !isActive);
+        formik.setFieldValue(identifier, !isActive);
     };
     
     const handleChange = (newValue, actionMeta) => {
@@ -54,11 +53,6 @@ const DetectorCard = ({image, title, formik}) => {
                     onClick={toggleActive}>
                     {isActive ? 'Deactivate' : 'Activate' }
                 </Button>
-                <Form.Control 
-                    name={activeId} 
-                    type="check" 
-                    hidden 
-                    {...formik.getFieldProps(activeId)} />
             </Card.Header>
             <Card.Body>
                 <Form.Group controlId={channelId}>

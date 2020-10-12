@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import {createFragmentContainer, graphql} from 'react-relay';
+import {QueryRenderer, graphql} from 'react-relay';
+import {harnessApi} from '../../index';
 import Table from 'react-bootstrap/Table';
 import ResultFile from './ResultFile';
 
@@ -19,45 +20,55 @@ const Files = (props) => {
     };
     
     return <React.Fragment>
-        {props.files ? (
-            <Table>
-                <thead>
-                    <tr>
-                        <th 
-                            sorted={order === 'path' ? direction : null}
-                            onClick={() => handleSort('path')}>
+        <Table style={props.hidden ? { display: 'none'} : {}}>
+            <thead>
+                <tr>
+                    <th 
+                        sorted={order === 'path' ? direction : null}
+                        onClick={() => handleSort('path')}>
                             File Path
-                        </th>
-                        <th 
-                            sorted={order === 'isDir' ? direction : null}
-                            onClick={() => handleSort('isDir')}>
+                    </th>
+                    <th 
+                        sorted={order === 'isDir' ? direction : null}
+                        onClick={() => handleSort('isDir')}>
                           Type
-                        </th>
-                        <th 
-                            sorted={order === 'fileSize' ? direction : null}
-                            onClick={() => handleSort('fileSize')}>
+                    </th>
+                    <th 
+                        sorted={order === 'fileSize' ? direction : null}
+                        onClick={() => handleSort('fileSize')}>
                           File Size
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {props.files.files.map((e, i) => <ResultFile
-                        key={i} 
-                        file={e} {...props}/>)}
-                </tbody>
-            </Table>
-        ) : (
-            <h4>Job does not have any files</h4>
-        )}
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <QueryRenderer
+                    environment={harnessApi.getEnvironment('bilby')}
+                    query={graphql`
+                          query FilesQuery ($jobId: ID!) {
+                            bilbyResultFiles(jobId: $jobId) {
+                              files {
+                                ...ResultFile_file
+                              }
+                            } 
+                          }
+                        `}
+                    variables={{jobId: props.data.bilbyJob.id }}
+                    render={({error, props}) => {
+                        if(error) {
+                            return <div>{error.message}</div>;
+                        } else if (props) {
+                            return <React.Fragment>
+                                {props.bilbyResultFiles.files.map((e, i) => 
+                                    <ResultFile
+                                        key={i} 
+                                        file={e} {...props}/>)}
+                            </React.Fragment>;
+                        }
+
+                        return <tr><td colSpan={3}>Loading...</td></tr>;}} />
+            </tbody>
+        </Table>
     </React.Fragment>;
 };
 
-export default createFragmentContainer(Files, {
-    files: graphql`
-        fragment Files_files on BilbyResultFiles {
-            files {
-                ...ResultFile_file
-            }
-        }
-    `
-});
+export default Files;

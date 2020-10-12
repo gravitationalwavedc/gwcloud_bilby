@@ -5,7 +5,7 @@ import { HiOutlineSearch, HiOutlinePlus } from 'react-icons/hi';
 import Link from 'found/lib/Link';
 import JobTable from '../Components/JobTable';
 
-const RECORDS_PER_PAGE = 10;
+const RECORDS_PER_PAGE = 100;
 
 const PublicJobs = ({data, match, router, relay}) => {
     const [search, setSearch] = useState('');

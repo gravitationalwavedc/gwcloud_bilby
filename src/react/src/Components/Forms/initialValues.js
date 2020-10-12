@@ -6,20 +6,20 @@ const initialValues = {
     // Data Page
     dataChoice: 'open',
     triggerTime: 1126259462.391,
-    samplingFrequency: '512 hz',
-    signalDuration: '4 seconds',
+    samplingFrequency: '512',
+    signalDuration: '4',
     // Handford Detector
-    hanfordActive: false,
+    hanford: false,
     hanfordChannel: 'GWOSC',
     hanfordMinimumFrequency: 20,
     hanfordMaximumFrequency: 1024,
     // Virgo Detector
-    virgoActive: false,
+    virgo: false,
     virgoChannel: 'GWOSC',
     virgoMinimumFrequency: 20,
     virgoMaximumFrequency: 1024,
     // Livingston Detector
-    livingstonActive: false,
+    livingston: false,
     livingstonChannel: 'GWOSC',
     livingstonMinimumFrequency: 20,
     livingstonMaximumFrequency: 1024,

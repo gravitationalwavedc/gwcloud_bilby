@@ -52,12 +52,12 @@ const DataForm = ({formik, handlePageChange}) =>
                                     as="select" 
                                     custom 
                                     {...formik.getFieldProps('samplingFrequency')}>
-                                    <option>512 hz</option>
-                                    <option>1024 hz</option>
-                                    <option>2048 hz</option>
-                                    <option>4096 hz</option>
-                                    <option>8192 hz</option>
-                                    <option>16384 hz</option>
+                                    <option value='512'>512 hz</option>
+                                    <option value='1024'>1024 hz</option>
+                                    <option value='2048'>2048 hz</option>
+                                    <option value='4096'>4096 hz</option>
+                                    <option value='8192'>8192 hz</option>
+                                    <option value='16384'>16384 hz</option>
                                 </Form.Control>
                             </Form.Group>
                         </Col>
@@ -69,13 +69,13 @@ const DataForm = ({formik, handlePageChange}) =>
                                     as="select" 
                                     custom 
                                     {...formik.getFieldProps('signalDuration')}>
-                                    <option>4 seconds</option>
-                                    <option>8 seconds</option>
-                                    <option>16 seconds</option>
-                                    <option>24 seconds</option>
-                                    <option>32 seconds</option>
-                                    <option>64 seconds</option>
-                                    <option>128 seconds</option>
+                                    <option value='4'>4 seconds</option>
+                                    <option value='8'>8 seconds</option>
+                                    <option value='16'>16 seconds</option>
+                                    <option value='24'>24 seconds</option>
+                                    <option value='32'>32 seconds</option>
+                                    <option value='64'>64 seconds</option>
+                                    <option value='128'>128 seconds</option>
                                 </Form.Control>
                             </Form.Group>
                         </Col>

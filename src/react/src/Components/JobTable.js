@@ -22,7 +22,12 @@ const JobTable = ({data, match, router, hasMore, loadMore, myJobs}) => {
         const row = [
             node.name,
             node.description,
-            <Badge key={node.jobStatus.name} variant="primary" pill>{node.jobStatus.name}</Badge>,
+            <Badge 
+                key={node.jobStatus ? node.jobStatus : node.jobStatus.name } 
+                variant="primary" 
+                pill>
+                {node.jobStatus.name}
+            </Badge>,
             <div key={name + '-group'}>
                 {
                     node.labels.map(({name}) => 

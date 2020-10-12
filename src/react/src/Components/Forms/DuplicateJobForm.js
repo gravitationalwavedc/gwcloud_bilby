@@ -12,7 +12,7 @@ const DuplicateJobForm = (props) => {
     }, {});
     initialValues['name'] = `Copy-of-${initialValues.name}`;
     initialValues['description'] = `A duplicate job of ${initialValues.name}. Original description: ${initialValues.description}`;
-    return <NewJob initialValues={initialValues} />;
+    return <NewJob initialValues={initialValues} {...props}/>;
 };
 
 export default createFragmentContainer(DuplicateJobForm,

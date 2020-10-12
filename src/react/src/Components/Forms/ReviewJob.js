@@ -42,21 +42,21 @@ const ReviewJob = ({values, handleSubmit}) => (
                         <tbody>
                             <tr>
                                 <td>Hanford</td>
-                                <td>{values.hanfordActive ? 'Activated' : 'Deactivated'}</td>
+                                <td>{values.hanford ? 'Activated' : 'Deactivated'}</td>
                                 <td>{values.hanfordChannel}</td>
                                 <td className="text-right">{values.hanfordMinimumFrequency}</td>
                                 <td className="text-right">{values.hanfordMaximumFrequency}</td>
                             </tr>
                             <tr>
                                 <td>Livingston</td>
-                                <td>{values.livingstonActive ? 'Activated' : 'Deactivated'}</td>
+                                <td>{values.livingston ? 'Activated' : 'Deactivated'}</td>
                                 <td>{values.livingstonChannel}</td>
                                 <td className="text-right">{values.livingstonMinimumFrequency}</td>
                                 <td className="text-right">{values.livingstonMaximumFrequency}</td>
                             </tr>
                             <tr>
                                 <td>Virgo</td>
-                                <td>{values.virgoActive ? 'Activated' : 'Deactivated'}</td>
+                                <td>{values.virgo ? 'Activated' : 'Deactivated'}</td>
                                 <td>{values.virgoChannel}</td>
                                 <td className="text-right">{values.virgoMinimumFrequency}</td>
                                 <td className="text-right">{values.virgoMaximumFrequency}</td>

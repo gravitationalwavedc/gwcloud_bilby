@@ -40,8 +40,8 @@ const ViewJob = (props) => {
                 <Col md={8}>
                     <h1>{start.name}</h1>
                     <p>{start.description}</p>
-                    <p>{formatDate(lastUpdated)}</p>
-                    <p>Status {props.data.bilbyJob.name} {formatDate(props.data.bilbyJob.date)}</p>
+                    <p>Updated on {formatDate(lastUpdated)}</p>
+                    <p>{props.data.bilbyJob.jobStatus.name}</p>
                     <LabelDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} />
                     <Link as={Button} to={{
                         pathname: '/bilby/job-form/duplicate/',
@@ -80,12 +80,13 @@ const ViewJob = (props) => {
                                 <Parameters jobData={props.data.bilbyJob} {...props}/>
                             </Tab.Pane>
                             <Tab.Pane eventKey="results">
-                                <Files files={props.data.bilbyResultFiles} {...props}/>
+                                <Files {...props}/>
                             </Tab.Pane>
                         </Tab.Content>
                     </Col>
                 </Row>
             </Tab.Container>
+            <Files {...props} hidden style={{display:'none'}}/>
         </Container>
     );
 };
@@ -96,10 +97,8 @@ export default createFragmentContainer(ViewJob,
             fragment ViewJob_data on Query @argumentDefinitions(
                 jobId: {type: "ID!"}
             ){
-                bilbyResultFiles(jobId: $jobId) {
-                    ...Files_files
-                }
                 bilbyJob (id: $jobId) {
+                    id
                     userId
                     lastUpdated
                     start {
