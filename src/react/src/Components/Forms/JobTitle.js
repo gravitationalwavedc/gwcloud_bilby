@@ -1,20 +1,22 @@
-import React from "react";
-import { HiOutlinePencil, HiOutlineCheck, HiOutlineX} from "react-icons/hi";
-import EdiText from "react-editext";
+import React, { useState } from 'react';
+import { HiOutlinePencil, HiOutlineCheck, HiOutlineX} from 'react-icons/hi';
+import { Form } from 'react-bootstrap';
+import validationSchema from './validationSchema';
+import EdiText from 'react-editext';
 
-const EditButton = () => <React.Fragment><HiOutlinePencil /> edit</React.Fragment>
-const SaveButton = () => <HiOutlineCheck/>
-const CancelButton = () => <HiOutlineX/>
+const EditButton = () => <React.Fragment><HiOutlinePencil /> edit</React.Fragment>;
+const SaveButton = () => <HiOutlineCheck/>;
+const CancelButton = () => <HiOutlineX/>;
 
-const JobTitle = ({title, setTitle, description, setDescription}) => {
-  return (
+const JobTitle = ({formik}) => (
     <React.Fragment>
-          <EdiText 
+        <EdiText 
             type="text" 
-            value={title}
-            viewProps={{className: "h1"}}
-            onSave={(value) => setTitle(value)}
-            hint="You can use letters, numbers, underscores and hyphens."
+            name="name"
+            value={formik.values.name}
+            viewProps={{className: 'h1'}}
+            onSave={(value) => formik.setFieldValue('name', value)}
+            hint="You can use letters, numbers, underscores, and hyphens."
             editButtonContent={<EditButton/>}
             editButtonClassName="edit-button"
             saveButtonContent={<SaveButton />}
@@ -22,11 +24,19 @@ const JobTitle = ({title, setTitle, description, setDescription}) => {
             cancelButtonContent={<CancelButton />}
             cancelButtonClassName="cancel-button"
             hideIcons
-          />
-          <EdiText 
+            editOnViewClick
+            submitOnUnfocus
+            submitOnEnter
+        />
+        {formik.errors.name && 
+          <p className="text-danger small">
+              Invalid name. You can use letters, numbers, underscores, and hyphens.
+          </p>}
+        <EdiText 
             type="text" 
-            value={description}
-            onSave={(value) => setDescription(value)}
+            name="description"
+            value={formik.values.description}
+            onSave={(value) => formik.setFieldValue('description', value)}
             editButtonContent={<EditButton/>}
             editButtonClassName="edit-button"
             saveButtonContent={<SaveButton />}
@@ -34,9 +44,10 @@ const JobTitle = ({title, setTitle, description, setDescription}) => {
             cancelButtonContent={<CancelButton />}
             cancelButtonClassName="cancel-button"
             hideIcons
-          />
+            editOnViewClick
+            submitOnUnfocus
+            submitOnEnter
+        />
     </React.Fragment>
-  );
-}
-
+);
 export default JobTitle;

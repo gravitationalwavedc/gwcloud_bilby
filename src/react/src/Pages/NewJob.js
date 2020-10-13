@@ -11,6 +11,7 @@ import SignalForm from '../Components/Forms/SignalForm';
 import PriorsForm from '../Components/Forms/PriorsForm';
 import ReviewJob from '../Components/Forms/ReviewJob';
 import initialValues from '../Components/Forms/initialValues';
+import validationSchema from '../Components/Forms/validationSchema';
 
 const submitMutation = graphql`
   mutation NewJobMutation($input: BilbyJobMutationInput!) {
@@ -23,10 +24,13 @@ const submitMutation = graphql`
 `;
 
 const NewJob = ({initialValues, router}) => {
-    const [title, setTitle] = useState(initialValues.name); 
-    const [description, setDescription] = useState(initialValues.description);
-    const [isPrivate] = useState(initialValues.private);
     const [key, setKey] = useState('data');
+
+    const formik = useFormik({
+        initialValues: initialValues,
+        onSubmit: values => handleJobSubmission(values),
+        validationSchema: validationSchema
+    });
 
     const handleJobSubmission = (values) => {
     // The mutation requires all number values to be strings. 
@@ -37,9 +41,9 @@ const NewJob = ({initialValues, router}) => {
         const variables = {
             input: {
                 start: {
-                    name: title,
-                    description: description,
-                    private: isPrivate, 
+                    name: values.name,
+                    description: values.description,
+                    private: false, 
                 },
                 data: {
                     dataType: values.dataChoice,
@@ -99,21 +103,12 @@ const NewJob = ({initialValues, router}) => {
         });
     };
 
-    const formik = useFormik({
-        initialValues: initialValues,
-        onSubmit: values => handleJobSubmission(values)
-    });
-
     return (
         <Container fluid>
             <Row className="mb-3">
                 <Col md={2}/>
                 <Col md={8} style={{minHeight: '110px'}}>
-                    <JobTitle 
-                        title={title} 
-                        description={description} 
-                        setTitle={setTitle} 
-                        setDescription={setDescription} />
+                    <JobTitle formik={formik} />
                 </Col>
             </Row>
             <Tab.Container id="jobForm" activeKey={key} onSelect={(key) => setKey(key)}>

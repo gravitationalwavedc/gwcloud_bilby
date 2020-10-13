@@ -1,10 +1,14 @@
 import React from 'react';
 import { Button, CardDeck, Col, Row, Form } from 'react-bootstrap';
+import Input from './Atoms/Input';
+import RadioGroup from './Atoms/RadioGroup';
 import DetectorCard from './DetectorCard';
 import FormCard from './FormCard';
 import hanfordImg from '../../assets/hanford.png';
 import virgoImg from '../../assets/Virgo.jpg';
 import livingstonImg from '../../assets/livingston.png';
+import {hanford, virgo, livingston} from './channels';
+
 
 const DataForm = ({formik, handlePageChange}) =>
     <React.Fragment>
@@ -13,34 +17,14 @@ const DataForm = ({formik, handlePageChange}) =>
                 <FormCard title="Data">
                     <Row className="mb-4">
                         <Col>
-                            <Form.Label>Type of data</Form.Label>
-                            <Form.Check 
-                                custom 
-                                id="typeOpen" 
-                                label="Open" 
-                                type="radio" 
+                            <RadioGroup 
+                                title="Types of data" 
+                                formik={formik} 
                                 name="dataChoice" 
-                                value="open" 
-                                onChange={formik.handleChange} 
-                                checked={formik.values.dataChoice === 'open' ? true : false }/>
-                            <Form.Check 
-                                custom 
-                                id="typeSimulated" 
-                                label="Simulated" 
-                                type="radio" 
-                                name="dataChoice" 
-                                value="simulated" 
-                                onChange={formik.handleChange}
-                                checked={formik.values.dataChoice === 'simulated' ? true : false }/>
+                                options={[{label:'Open', value: 'open'},{label:'Simulated', value: 'simulated'}]} />
                         </Col>
                         <Col>
-                            <Form.Group controlId="triggerTime">
-                                <Form.Label>Trigger time (GPS)</Form.Label>
-                                <Form.Control 
-                                    name="triggerTime" 
-                                    type="number" 
-                                    {...formik.getFieldProps('triggerTime')}/>
-                            </Form.Group>
+                            <Input formik={formik} title="Trigger time (GPS)" name="triggerTime" type="number"/>
                         </Col>
                     </Row>
                     <Row>
@@ -84,9 +68,9 @@ const DataForm = ({formik, handlePageChange}) =>
             </Col>
         </Row>
         <CardDeck>
-            <DetectorCard title="Hanford" image={hanfordImg} formik={formik} />
-            <DetectorCard title="Livingston" image={livingstonImg} formik={formik} />
-            <DetectorCard title="Virgo" image={virgoImg} formik={formik}/>
+            <DetectorCard channelOptions={hanford} title="Hanford" image={hanfordImg} formik={formik} />
+            <DetectorCard channelOptions={livingston} title="Livingston" image={livingstonImg} formik={formik} />
+            <DetectorCard channelOptions={virgo} title="Virgo" image={virgoImg} formik={formik}/>
         </CardDeck>
         <Row className="mt-4">
             <Col>

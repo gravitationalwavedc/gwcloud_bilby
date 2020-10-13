@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button, Col, Row, Form } from 'react-bootstrap';
+import Input from './Atoms/Input';
 import FormCard from './FormCard';
 
 const PriorsForm = ({formik, handlePageChange}) =>
@@ -49,38 +50,23 @@ const PriorsForm = ({formik, handlePageChange}) =>
             <FormCard title="Sampler Parameters">
                 <Row className="mb-4">
                     <Col>
-                        <Form.Group controlId="nlive">
-                            <Form.Label>Live points</Form.Label>
-                            <Form.Control name="nlive" type="number" {...formik.getFieldProps('nlive')}/>
-                        </Form.Group>
+                        <Input formik={formik} name="nlive" title="Live points" type="number" min="100"/>
                     </Col>
                     <Col>
-                        <Form.Group controlId="nact">
-                            <Form.Label>Auto-correlation steps</Form.Label>
-                            <Form.Control name="nact" type="number" {...formik.getFieldProps('nact')}/>
-                        </Form.Group>
+                        <Input formik={formik} name="nact" title="Auto-correlation steps" type="number"/>
                     </Col>
                 </Row>
                 <Row className="mb-4">
                     <Col>
-                        <Form.Group controlId="maxmcmc">
-                            <Form.Label>Maximum steps</Form.Label>
-                            <Form.Control name="maxmcmc" type="number" {...formik.getFieldProps('maxmcmc')}/>
-                        </Form.Group>
+                        <Input formik={formik} name="maxmcmc" title="Maximum steps" type="number"/>
                     </Col>
                     <Col>
-                        <Form.Group controlId="walks">
-                            <Form.Label>Minimum walks</Form.Label>
-                            <Form.Control name="walks" type="number" {...formik.getFieldProps('walks')}/>
-                        </Form.Group>
+                        <Input formik={formik} name="walks" title="Minimum walks" type="number"/>
                     </Col>
                 </Row>
                 <Row className="mb-4">
                     <Col md={6}>
-                        <Form.Group controlId="dlogz">
-                            <Form.Label>Stopping criteria</Form.Label>
-                            <Form.Control name="dlogz" type="number" {...formik.getFieldProps('dlogz')}/>
-                        </Form.Group>
+                        <Input formik={formik} name="dlogz" title="Stopping criteria" type="number"/>
                     </Col>
                 </Row>
             </FormCard>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Card, Form } from 'react-bootstrap';
 import CreatableSelect from 'react-select/creatable';
+import Input from './Atoms/Input';
 
 const activeDetectorStyle = {
     borderLeft: 'none', 
@@ -17,15 +18,12 @@ const deactiveDetectorStyle = {
     borderRadius: 0
 };
 
-const DetectorCard = ({image, title, formik}) => {
-    const [options, setOptions] = useState([
-        {label: 'GWOCS', value: 'GWOCS'}, 
-        {label: 'GDS-CALIB_STRAIN', value: 'GDS-CALIB_STRAIN'}, 
-    ]);
+const DetectorCard = ({image, title, formik, channelOptions}) => {
+    const [options, setOptions] = useState(channelOptions);
 
     const identifier = title.toLowerCase();
     const maximumFrequencyId = identifier + 'MaximumFrequency';
-    const minimumFrequencyId = identifier + 'MaximumFrequency';
+    const minimumFrequencyId = identifier + 'MinimumFrequency';
     const channelId = identifier + 'Channel';
 
     const isActive = formik.values[identifier];
@@ -47,6 +45,7 @@ const DetectorCard = ({image, title, formik}) => {
             <Card.Header className="h4">
                 {title}
                 <Button 
+                    data-testid={identifier + 'Active'}
                     className="float-right" 
                     variant="outline-primary" 
                     size="sm" 
@@ -63,18 +62,8 @@ const DetectorCard = ({image, title, formik}) => {
                         value={{value:formik.values[channelId], label: formik.values[channelId]}}
                     />
                 </Form.Group>
-                <Form.Group controlId={minimumFrequencyId}>
-                    <Form.Label>Minimum Frequency</Form.Label>
-                    <Form.Control 
-                        name={minimumFrequencyId} 
-                        {...formik.getFieldProps(minimumFrequencyId)}/>
-                </Form.Group>
-                <Form.Group controlId={maximumFrequencyId}>
-                    <Form.Label>Maximum Frequency</Form.Label>
-                    <Form.Control 
-                        name={maximumFrequencyId} 
-                        {...formik.getFieldProps(maximumFrequencyId)}/>
-                </Form.Group>
+                <Input formik={formik} title="Minimum frequency" name={minimumFrequencyId} type="number" />
+                <Input formik={formik} title="Maximum frequency" name={maximumFrequencyId} type="number" />
             </Card.Body>
         </Card>
     );
