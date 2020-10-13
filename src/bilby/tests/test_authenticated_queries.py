@@ -160,7 +160,9 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                            user
                            description
                            name
-                           jobStatus
+                           jobStatus {
+                            name
+                           }
                            timestamp
                            id
                        }
@@ -175,7 +177,9 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                             'description': 'A test job',
                             'id': 'QmlsYnlKb2JOb2RlOjE=',
                             'name': 'Test1',
-                            'jobStatus': 'Completed',
+                            'jobStatus': {
+                                'name': 'Completed'
+                            },
                             'timestamp': '2020-01-01 12:00:00 UTC',
                             'user': 'buffy summers'
                         }},
@@ -183,7 +187,9 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                             'description': '',
                             'id': 'QmlsYnlKb2JOb2RlOjI=',
                             'name': 'Test2',
-                            'jobStatus': 'Completed',
+                            'jobStatus': {
+                                'name': 'Completed',
+                            },
                             'timestamp': '2020-01-01 12:00:00 UTC',
                             'user': 'buffy summers'
                         }}

@@ -142,7 +142,9 @@ export default createPaginationContainer(PublicJobs,
                             user
                             name
                             description
-                            jobStatus
+                            jobStatus {
+                              name
+                            }
                             labels {
                                 name
                             }

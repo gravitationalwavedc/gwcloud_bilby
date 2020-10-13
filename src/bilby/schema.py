@@ -246,7 +246,7 @@ class BilbyResultFiles(graphene.ObjectType):
 class BilbyPublicJobNode(graphene.ObjectType):
     user = graphene.String()
     name = graphene.String()
-    job_status = graphene.String()
+    job_status = graphene.Field(JobStatusType)
     labels = graphene.List(LabelType)
     description = graphene.String()
     timestamp = graphene.String()
@@ -292,7 +292,11 @@ class Query(object):
                     user=f"{job['user']['firstName']} {job['user']['lastName']}",
                     name=job['job']['name'],
                     description=job['job']['description'],
-                    job_status=JobStatus.display_name(job['history'][0]['state']),
+                    job_status=JobStatusType(
+                        name=JobStatus.display_name(job['history'][0]['state']),
+                        number=job['history'][0]['state'],
+                        date=job['history'][0]['timestamp']
+                    ),
                     labels=BilbyJob.objects.get(id=job['job']['id']).labels.all(),
                     timestamp=job['history'][0]['timestamp'],
                     id=to_global_id("BilbyJobNode", job['job']['id'])
@@ -301,7 +305,7 @@ class Query(object):
 
         # Nb. The perform_db_search function currently requests one extra record than kwargs['first'].
         # This triggers the ArrayConnection used by returning the result array to correctly set
-        # hasNextPage correctly, such that infinite scroll works as expected
+        # hasNextPage correctly, such that infinite scroll works as expected.
         return result
 
     @login_required
