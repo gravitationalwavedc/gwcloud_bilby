@@ -15,7 +15,7 @@ const DataForm = ({formik, handlePageChange}) =>
         <Row>
             <Col>
                 <FormCard title="Data">
-                    <Row className="mb-4">
+                    <Row>
                         <Col>
                             <RadioGroup 
                                 title="Types of data" 
@@ -67,14 +67,14 @@ const DataForm = ({formik, handlePageChange}) =>
                 </FormCard>
             </Col>
         </Row>
-        <CardDeck>
+        <CardDeck className="mb-3">
             <DetectorCard channelOptions={hanford} title="Hanford" image={hanfordImg} formik={formik} />
             <DetectorCard channelOptions={livingston} title="Livingston" image={livingstonImg} formik={formik} />
             <DetectorCard channelOptions={virgo} title="Virgo" image={virgoImg} formik={formik}/>
         </CardDeck>
-        <Row className="mt-4">
+        <Row>
             <Col>
-                <Button size="lg" onClick={() => handlePageChange('signal')}>Save and continue</Button>
+                <Button onClick={() => handlePageChange('signal')}>Save and continue</Button>
             </Col>
         </Row>
     </React.Fragment>;

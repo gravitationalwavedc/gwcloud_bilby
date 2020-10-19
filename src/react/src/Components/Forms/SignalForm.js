@@ -72,9 +72,9 @@ const SignalForm = ({formik, handlePageChange}) =>
                 </FormCard>
             </Col>
         </Row>
-        <Row className="mt-4">
+        <Row>
             <Col>
-                <Button size="lg" onClick={() => handlePageChange('priorsAndSampler')}>Save and continue</Button>
+                <Button onClick={() => handlePageChange('priorsAndSampler')}>Save and continue</Button>
             </Col>
         </Row>
     </React.Fragment>;

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Redirect } from 'found';
 import {commitMutation} from 'relay-runtime';
 import {graphql} from 'react-relay';
 import {harnessApi} from '../index';
@@ -29,7 +28,7 @@ const NewJob = ({initialValues, router}) => {
     const formik = useFormik({
         initialValues: initialValues,
         onSubmit: values => handleJobSubmission(values),
-        validationSchema: validationSchema
+        validationSchema: validationSchema,
     });
 
     const handleJobSubmission = (values) => {
@@ -105,7 +104,7 @@ const NewJob = ({initialValues, router}) => {
 
     return (
         <Container fluid>
-            <Row className="mb-3">
+            <Row>
                 <Col md={2}/>
                 <Col md={8} style={{minHeight: '110px'}}>
                     <JobTitle formik={formik} />
@@ -153,7 +152,10 @@ const NewJob = ({initialValues, router}) => {
                                 <PriorsForm formik={formik} handlePageChange={setKey}/>
                             </Tab.Pane>
                             <Tab.Pane eventKey="review">
-                                <ReviewJob values={formik.values} handleSubmit={formik.handleSubmit}/>
+                                <ReviewJob 
+                                    formik={formik} 
+                                    values={formik.values} 
+                                    handleSubmit={formik.handleSubmit}/>
                             </Tab.Pane>
                         </Tab.Content>
                     </Col>

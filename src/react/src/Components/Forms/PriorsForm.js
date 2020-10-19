@@ -7,7 +7,7 @@ const PriorsForm = ({formik, handlePageChange}) =>
     <Row>
         <Col>
             <FormCard title="Priors & Sampler">
-                <Row className="mb-4">
+                <Row>
                     <Col md={6}>
                         <Form.Group controlId="priorChoice">
                             <Form.Label>Priors</Form.Label>
@@ -29,7 +29,7 @@ const PriorsForm = ({formik, handlePageChange}) =>
                         </Form.Group>
                     </Col>
                 </Row>
-                <Row className="mb-4">
+                <Row>
                     <Col md={6}>
                         <Form.Group controlId="sampler">
                             <Form.Label>Sampler</Form.Label>
@@ -48,7 +48,7 @@ const PriorsForm = ({formik, handlePageChange}) =>
                 </Row>
             </FormCard>
             <FormCard title="Sampler Parameters">
-                <Row className="mb-4">
+                <Row>
                     <Col>
                         <Input formik={formik} name="nlive" title="Live points" type="number" min="100"/>
                     </Col>
@@ -56,7 +56,7 @@ const PriorsForm = ({formik, handlePageChange}) =>
                         <Input formik={formik} name="nact" title="Auto-correlation steps" type="number"/>
                     </Col>
                 </Row>
-                <Row className="mb-4">
+                <Row>
                     <Col>
                         <Input formik={formik} name="maxmcmc" title="Maximum steps" type="number"/>
                     </Col>
@@ -64,15 +64,15 @@ const PriorsForm = ({formik, handlePageChange}) =>
                         <Input formik={formik} name="walks" title="Minimum walks" type="number"/>
                     </Col>
                 </Row>
-                <Row className="mb-4">
+                <Row>
                     <Col md={6}>
                         <Input formik={formik} name="dlogz" title="Stopping criteria" type="number"/>
                     </Col>
                 </Row>
             </FormCard>
-            <Row className="mt-4">
+            <Row>
                 <Col>
-                    <Button size="lg" onClick={() => handlePageChange('review')}>Save and continue</Button>
+                    <Button onClick={() => handlePageChange('review')}>Save and continue</Button>
                 </Col>
             </Row>
         </Col>

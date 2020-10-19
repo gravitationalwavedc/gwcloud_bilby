@@ -3,21 +3,6 @@ import { Button, Card, Form } from 'react-bootstrap';
 import CreatableSelect from 'react-select/creatable';
 import Input from './Atoms/Input';
 
-const activeDetectorStyle = {
-    borderLeft: 'none', 
-    borderRight: 'none', 
-    borderBottom: 'none', 
-    borderRadius: 0, 
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)'
-};
-
-const deactiveDetectorStyle = {
-    borderLeft: 'none', 
-    borderRight: 'none', 
-    borderBottom: 'none', 
-    borderRadius: 0
-};
-
 const DetectorCard = ({image, title, formik, channelOptions}) => {
     const [options, setOptions] = useState(channelOptions);
 
@@ -40,8 +25,8 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
     };
 
     return (
-        <Card style={isActive ? activeDetectorStyle: deactiveDetectorStyle}>
-            <Card.Img variant="top" src={image} style={{height: '60px', objectFit: 'cover', borderRadius: 0}}/>
+        <Card className={isActive ? 'gw-detector-card active' : 'gw-detector-card'}>
+            <Card.Img variant="top" src={image} />
             <Card.Header className="h4">
                 {title}
                 <Button 
@@ -57,13 +42,26 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
                 <Form.Group controlId={channelId}>
                     <Form.Label>Channel</Form.Label>
                     <CreatableSelect 
+                        className="gw-select"
+                        classNamePrefix="gw-select"
+                        isDisabled={!isActive}
                         onChange={handleChange}
                         options={options}
                         value={{value:formik.values[channelId], label: formik.values[channelId]}}
                     />
                 </Form.Group>
-                <Input formik={formik} title="Minimum frequency" name={minimumFrequencyId} type="number" />
-                <Input formik={formik} title="Maximum frequency" name={maximumFrequencyId} type="number" />
+                <Input 
+                    formik={formik} 
+                    title="Minimum frequency" 
+                    name={minimumFrequencyId} 
+                    type="number" 
+                    disabled={!isActive}/>
+                <Input 
+                    formik={formik} 
+                    title="Maximum frequency" 
+                    name={maximumFrequencyId} 
+                    type="number" 
+                    disabled={!isActive}/>
             </Card.Body>
         </Card>
     );

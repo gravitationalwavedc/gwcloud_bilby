@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { HiOutlinePencil, HiOutlineCheck, HiOutlineX} from 'react-icons/hi';
-import { Form } from 'react-bootstrap';
-import validationSchema from './validationSchema';
 import EdiText from 'react-editext';
 
 const EditButton = () => <React.Fragment><HiOutlinePencil /> edit</React.Fragment>;
