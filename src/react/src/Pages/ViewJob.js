@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import { graphql, createFragmentContainer } from 'react-relay';
 import { Row, Nav, Col, Button, Container, Tab, Toast } from 'react-bootstrap';
+import moment from 'moment';
 import Files from '../Components/Results/Files';
 import Parameters from '../Components/Results/Parameters';
 import Link from 'found/lib/Link';
@@ -17,10 +18,8 @@ const ViewJob = (props) => {
     };
 
     const { start, lastUpdated, userId } = props.data.bilbyJob;
-    const formatDate = (date) => {
-        const dateObject = new Date(date);
-        return dateObject.toLocaleString({hour12: false});
-    };
+
+    const updated = moment.utc(lastUpdated, 'YYYY-MM-DD HH:mm:ss UTC').local().format('llll');
 
     return (
         <Container className="pt-5" fluid>
@@ -40,7 +39,7 @@ const ViewJob = (props) => {
                 <Col md={8}>
                     <h1>{start.name}</h1>
                     <p>{start.description}</p>
-                    <p>Updated on {formatDate(lastUpdated)}</p>
+                    <p>Updated on {updated}</p>
                     <p>{props.data.bilbyJob.jobStatus.name}</p>
                     <LabelDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} />
                     <Link as={Button} to={{

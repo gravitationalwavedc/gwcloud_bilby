@@ -75,7 +75,7 @@ const PublicJobs = ({data, match, router, relay}) => {
                                     </InputGroup.Text>
                                 </InputGroup.Prepend>
                                 <Form.Control 
-                                    placeholder="GW190425" 
+                                    placeholder="Find a job..." 
                                     value={search} 
                                     onChange={({target}) => setSearch(target.value)} />
                             </InputGroup>
