@@ -49,6 +49,7 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
                         options={options}
                         value={{value:formik.values[channelId], label: formik.values[channelId]}}
                     />
+                    <Form.Text id={channelId + 'Help'}>Start typing for a custom channel.</Form.Text>
                 </Form.Group>
                 <Input 
                     formik={formik} 
