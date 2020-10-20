@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Col, Row, Table, Toast } from 'react-bootstrap';
+import { Button, Col, Row, Table, } from 'react-bootstrap';
 import FormCard from './FormCard';
 
 const ReviewJob = ({values, handleSubmit, formik}) => {
@@ -12,6 +12,12 @@ const ReviewJob = ({values, handleSubmit, formik}) => {
         if(Object.keys(errors).length === 0 && errors.constructor === Object) {
             handleSubmit();
         }
+    };
+
+    const signalTitles = {
+        skip: 'No signal injected', 
+        binaryBlackHole: 'Binary black hole', 
+        binaryNeutronStar: 'Binary neutron star'
     };
 
     return (
@@ -77,7 +83,8 @@ const ReviewJob = ({values, handleSubmit, formik}) => {
                         </Table>
                     </FormCard>
                     <FormCard title="Signal & Parameters">
-                        <h5>{values.signalInjection}</h5>
+                        <h5>{signalTitles[values.signalChoice]}</h5>
+                        {values.signalChoice !== 'skip' &&
                         <Table>
                             <tbody>
                                 <tr>
@@ -117,7 +124,7 @@ const ReviewJob = ({values, handleSubmit, formik}) => {
                                     <td className="text-right">{values.dec}</td>
                                 </tr>
                             </tbody>
-                        </Table>
+                        </Table>}
                     </FormCard>
                     <FormCard title="Priors">
                         <h2>{values.priorChoice}</h2>

@@ -25,7 +25,7 @@ const initialValues = {
     livingstonMaximumFrequency: 1024,
 
     // Signal Page
-    signalChoice: 'binaryBlackHole',
+    signalChoice: 'skip',
     mass1: 30,
     mass2: 25,
     luminosityDistance: 2000,
