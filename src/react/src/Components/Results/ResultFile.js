@@ -18,7 +18,7 @@ const ResultFile = ({file}) =>
             }
         </td>
         <td>{file.isDir ? 'Directory' : 'File'}</td>
-        <td>{filesize(file.fileSize, {round: 0})}</td>
+        <td>{typeof(file.fileSize) === 'number' ? filesize(file.fileSize, {round: 0}) : file.fileSize}</td>
     </tr>;
 
 export default createFragmentContainer(ResultFile, {

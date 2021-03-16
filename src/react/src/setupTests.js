@@ -27,18 +27,6 @@ setHarnessApi({
     getEnvironment: () => environment,
     currentUser: {
         userId: 1
-    },
-    reactHooks: {
-        useState: useState,
-        useEffect: useEffect,
-        useContext: useContext,
-        useReducer: useReducer,
-        useCallback: useCallback,
-        useMemo: useMemo,
-        useRef: useRef,
-        useImperativeHandle: useImperativeHandle,
-        useLayoutEffect: useLayoutEffect,
-        useDebugValue: useDebugValue
     }
 });
 
@@ -74,7 +62,8 @@ global.router = {
         isActive: jest.fn(),
         format: jest.fn()
     },
-    addTransitionHook: jest.fn()
+    addTransitionHook: jest.fn(),
+    addNavigationListener: jest.fn()
 };
 
 global.environment = environment;

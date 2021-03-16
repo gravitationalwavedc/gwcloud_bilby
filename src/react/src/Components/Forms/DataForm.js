@@ -20,7 +20,7 @@ const DataForm = ({formik, handlePageChange}) =>
                             <RadioGroup 
                                 title="Types of data" 
                                 formik={formik} 
-                                name="dataChoice" 
+                                name="dataChoice"
                                 options={[{label:'Open', value: 'open'},{label:'Simulated', value: 'simulated'}]} />
                         </Col>
                         <Col>

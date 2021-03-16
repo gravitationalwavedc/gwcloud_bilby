@@ -1,7 +1,8 @@
 const webpack = require('webpack');
-const ModuleReplaceWebpackPlugin = require('module-replace-webpack-plugin');
 const UnusedWebpackPlugin = require('unused-webpack-plugin');
 const path = require('path');
+const {ModuleFederationPlugin} = require('webpack').container;
+const deps = require('./package.json').dependencies;
 
 module.exports = {
     module: {
@@ -57,20 +58,17 @@ module.exports = {
                     }
                 ]
             },
-            // fixes https://github.com/graphql/graphql-js/issues/1272
             {
-                test: /\.mjs$/,
-                include: /node_modules/,
-                type: 'javascript/auto'
+                test: /\.m?jsx?$/,
+                resolve: {
+                    fullySpecified: false
+                },
             }
         ]
     },
     output: {
-        publicPath: '/',
-        globalObject: 'this',
+        publicPath: 'auto',
         path: path.resolve(__dirname, '../static/'),
-        library: 'RemoteModule',
-        libraryTarget: 'this'
     },
     // Server Configuration options
     devServer: {
@@ -91,25 +89,16 @@ module.exports = {
                 NODE_ENV: JSON.stringify(process.env.NODE_ENV || 'development')
             }
         }),
-        new ModuleReplaceWebpackPlugin({
-            modules: [
-                {
-                    test: /^react-relay$/,
-                    replace: './src/Lib/react-relay/index.js'
-                },
-                {
-                    test: /^React$/,
-                    replace: './src/Lib/ReactShim.js'
-                },
-                {
-                    test: /^react$/,
-                    replace: './src/Lib/ReactShim.js'
-                }
-            ],
-            exclude: [
-                /ReactShim.js$/,
-                /node_modules\/react\/index.js$/
-            ]
+        new ModuleFederationPlugin({
+            name: 'bilby',
+            library: { type: 'var', name: 'bilby' },
+            filename: 'remoteEntry.js',
+            exposes: {
+                index: './src/index',
+            },
+            shared: {
+                ...deps
+            }
         }),
         new UnusedWebpackPlugin({
             directories: [path.join(__dirname, 'src')],

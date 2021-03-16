@@ -2,6 +2,7 @@ import React from 'react';
 import { MockPayloadGenerator } from 'relay-test-utils';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import NewJob from '../NewJob';
+import 'regenerator-runtime/runtime';
 
 /* global router, environment */
 

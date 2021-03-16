@@ -4,7 +4,7 @@ import { Row, Nav, Col, Button, Container, Tab, Toast } from 'react-bootstrap';
 import moment from 'moment';
 import Files from '../Components/Results/Files';
 import Parameters from '../Components/Results/Parameters';
-import Link from 'found/lib/Link';
+import Link from 'found/Link';
 import LabelDropdown from '../Components/Results/LabelDropdown';
 import PrivacyToggle from '../Components/Results/PrivacyToggle';
 

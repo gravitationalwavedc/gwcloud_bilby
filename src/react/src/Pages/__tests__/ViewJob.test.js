@@ -3,6 +3,7 @@ import { QueryRenderer, graphql } from 'react-relay';
 import { MockPayloadGenerator } from 'relay-test-utils';
 import { render, waitFor } from '@testing-library/react';
 import ViewJob from '../ViewJob';
+import 'regenerator-runtime/runtime';
 
 /* global environment, router */
 
@@ -102,27 +103,15 @@ describe('view job page', () => {
                 }]
             };
         },
+    };
+
+    const mockBilbyJobResultsFiles = {
         BilbyResultFile() {
             return {
                 path: 'a_cool_path',
                 isDir: false,
                 fileSize: 1234,
                 downloadId: 'anDownloadId'
-            };
-        },
-        BilbyJobResultsFiles() {
-            return {
-                id: '123123',
-                files: [
-                    {BilbyResultFile() {
-                        return {
-                            path: 'a_cool_path',
-                            isDir: false,
-                            fileSize: 1234,
-                            downloadId: 'anDownloadId'
-                        };
-                    }}
-                ]
             };
         }
     };
@@ -138,7 +127,10 @@ describe('view job page', () => {
         const { getByText, getAllByText } = render(<TestRenderer />);
         await waitFor(() => environment.mock.resolveMostRecentOperation(operation =>
             MockPayloadGenerator.generate(operation, mockBilbyJobReturn)
-        ));   
+        ));
+        await waitFor(() => environment.mock.resolveMostRecentOperation(operation =>
+            MockPayloadGenerator.generate(operation, mockBilbyJobResultsFiles)
+        ));
         expect(getByText('GW-Sim-test32')).toBeInTheDocument();
         expect(getAllByText('a_cool_path')[0]).toBeInTheDocument();
     });

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {createPaginationContainer, graphql} from 'react-relay';
 import { Button, Container, Col, Form, InputGroup, Row } from 'react-bootstrap';
 import { HiOutlineSearch, HiOutlinePlus } from 'react-icons/hi';
-import Link from 'found/lib/Link';
+import Link from 'found/Link';
 import JobTable from '../Components/JobTable';
 
 const RECORDS_PER_PAGE = 100;
