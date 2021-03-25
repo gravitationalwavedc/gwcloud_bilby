@@ -21,7 +21,10 @@ const DataForm = ({formik, handlePageChange}) =>
                                 title="Types of data" 
                                 formik={formik} 
                                 name="dataChoice"
-                                options={[{label:'Open', value: 'open'},{label:'Simulated', value: 'simulated'}]} />
+                                options={[
+                                    {label:'Real', value: 'real'},
+                                    {label:'Simulated', value: 'simulated'}
+                                ]}/>
                         </Col>
                         <Col>
                             <Input formik={formik} title="Trigger time (GPS)" name="triggerTime" type="number"/>
@@ -70,7 +73,7 @@ const DataForm = ({formik, handlePageChange}) =>
         <CardDeck className="mb-3">
             <DetectorCard channelOptions={hanford} title="Hanford" image={hanfordImg} formik={formik} />
             <DetectorCard channelOptions={livingston} title="Livingston" image={livingstonImg} formik={formik} />
-            <DetectorCard channelOptions={virgo} title="Virgo" image={virgoImg} formik={formik}/>
+            <DetectorCard channelOptions={virgo} title="Virgo" image={virgoImg} formik={formik} />
         </CardDeck>
         <Row>
             <Col>

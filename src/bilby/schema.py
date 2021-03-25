@@ -96,7 +96,11 @@ class BilbyJobNode(DjangoObjectType):
     def get_queryset(parent, queryset, info):
         if info.context.user.is_anonymous:
             raise Exception("You must be logged in to perform this action.")
-        return queryset
+        # Users may not view ligo jobs if they are not a ligo user
+        if info.context.user.is_ligo:
+            return queryset
+        else:
+            return queryset.exclude(is_ligo_job=True)
 
     def resolve_last_updated(parent, info):
         return parent.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -280,7 +284,7 @@ class Query(object):
     @login_required
     def resolve_public_bilby_jobs(self, info, **kwargs):
         # Perform the database search
-        success, jobs = perform_db_search(info.context.user.user_id, kwargs)
+        success, jobs = perform_db_search(info.context.user, kwargs)
         if not success:
             return []
 
@@ -319,6 +323,10 @@ class Query(object):
 
         # Try to look up the job with the id provided
         job = BilbyJob.objects.get(id=job_id)
+
+        # Ligo jobs may only be accessed by ligo users
+        if job.is_ligo_job and not info.context.user.is_ligo:
+            raise Exception("Permission Denied")
 
         # Can only get the file list if the job is public or the user owns the job
         if not job.private or info.context.user.user_id == job.user_id:
@@ -393,7 +401,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
     @classmethod
     def mutate_and_get_payload(cls, root, info, start, data, signal, prior, sampler):
         # Create the bilby job
-        job_id = create_bilby_job(info.context.user.user_id, start, data, signal, prior, sampler)
+        job_id = create_bilby_job(info.context.user, start, data, signal, prior, sampler)
 
         # Convert the bilby job id to a global id
         job_id = to_global_id("BilbyJobNode", job_id)

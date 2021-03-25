@@ -3,7 +3,7 @@ from types import SimpleNamespace
 bilby_parameters = SimpleNamespace()
 
 bilby_parameters.SIMULATED = ["simulated", "Simulated"]
-bilby_parameters.OPEN = ["open", "Open"]
+bilby_parameters.REAL = ["real", "Real"]
 
 bilby_parameters.HANFORD = ["hanford", "Hanford"]
 bilby_parameters.LIVINGSTON = ["livingston", "Livingston"]

@@ -4,7 +4,7 @@ const initialValues = {
     description: 'A good description is specific, unique, and memorable.',
     private: true,
     // Data Page
-    dataChoice: 'open',
+    dataChoice: 'real',
     triggerTime: 1126259462.391,
     samplingFrequency: '512',
     signalDuration: '4',

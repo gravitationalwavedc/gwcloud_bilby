@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, Card, Form } from 'react-bootstrap';
 import CreatableSelect from 'react-select/creatable';
 import Input from './Atoms/Input';
+import {isLigoUser} from '../../Utils/UserUtils';
 
 const DetectorCard = ({image, title, formik, channelOptions}) => {
     const [options, setOptions] = useState(channelOptions);
@@ -16,6 +17,15 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
     const toggleActive = () => {
         formik.setFieldValue(identifier, !isActive);
     };
+
+    const channelSelectValue = isLigoUser() ?
+        {
+            value: formik.values[channelId],
+            label: formik.values[channelId]
+        } : {
+            value: 'GWOSC',
+            label: 'GWOSC'
+        };
     
     const handleChange = (newValue, actionMeta) => {
         if(actionMeta.action === 'create-option'){
@@ -44,10 +54,10 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
                     <CreatableSelect 
                         className="gw-select"
                         classNamePrefix="gw-select"
-                        isDisabled={!isActive}
+                        isDisabled={!isActive || !isLigoUser()}
                         onChange={handleChange}
                         options={options}
-                        value={{value:formik.values[channelId], label: formik.values[channelId]}}
+                        value={channelSelectValue}
                     />
                     <Form.Text id={channelId + 'Help'}>Start typing for a custom channel.</Form.Text>
                 </Form.Group>
