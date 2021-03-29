@@ -22,7 +22,7 @@ def jwt_get_user_by_payload(payload):
 
     # Next extract any other fields from the payload that we need
     user.user_id = payload.get("userId")
-    user.is_ligo = payload.get("isLigo")
+    user.is_ligo = payload.get("isLigo", False)
 
     # All done
     return user

@@ -85,12 +85,12 @@ def create_bilby_job(user, start, data, signal, prior, sampler):
         return bilby_job.id
 
 
-def update_bilby_job(job_id, user_id, private=None, labels=None):
-    bilby_job = BilbyJob.objects.get(id=job_id)
+def update_bilby_job(job_id, user, private=None, labels=None):
+    bilby_job = BilbyJob.get_by_id(job_id, user)
 
-    if user_id == bilby_job.user_id:
+    if user.user_id == bilby_job.user_id:
         if labels is not None:
-            bilby_job.labels.set(Label.objects.filter(name__in=labels))
+            bilby_job.labels.set(Label.filter_by_name(labels))
 
         if private is not None:
             bilby_job.private = private

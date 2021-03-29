@@ -3,6 +3,7 @@ from django.test import TestCase
 from bilby.models import BilbyJob, Data, Label
 from bilby.variables import bilby_parameters
 from bilby.views import update_bilby_job
+from gw_bilby.jwt_tools import GWCloudUser
 
 
 class TestBilbyJobModel(TestCase):
@@ -22,7 +23,10 @@ class TestBilbyJobModel(TestCase):
         """
         self.assertEqual(self.job.private, False)
 
-        update_bilby_job(self.job.id, 1, True, [])
+        user = GWCloudUser('bill')
+        user.user_id = 1
+
+        update_bilby_job(self.job.id, user, True, [])
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.private, True)
@@ -34,7 +38,10 @@ class TestBilbyJobModel(TestCase):
 
         self.assertFalse(self.job.labels.exists())
 
-        update_bilby_job(self.job.id, 1, False, ['Bad Run', 'Review Requested'])
+        user = GWCloudUser('bill')
+        user.user_id = 1
+
+        update_bilby_job(self.job.id, user, False, ['Bad Run', 'Review Requested'])
 
         self.job.refresh_from_db()
         self.assertQuerysetEqual(

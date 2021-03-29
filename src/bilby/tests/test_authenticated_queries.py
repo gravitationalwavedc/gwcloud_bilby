@@ -60,7 +60,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
 
     def test_bilby_job_query(self):
         """
-        bilbyJob node query should return a single job for an autheniticated user."
+        bilbyJob node query should return a single job for an authenticated user."
         """
         job = BilbyJob.objects.create(user_id=self.user.id)
         global_id = to_global_id("BilbyJobNode", job.id)
@@ -102,18 +102,27 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
 
     def test_bilby_jobs_query(self):
         """
-        bilbyJobs query should return a list of personal jobs for an autheniticated user.
+        bilbyJobs query should return a list of personal jobs for an authenticated user.
         """
-        BilbyJob.objects.create(user_id=self.user.id, name="Test1", job_id=2)
         BilbyJob.objects.create(
-            user_id=self.user.id, name="Test2", job_id=1, description="A test job"
+            user_id=self.user.id,
+            name="Test1",
+            job_id=2,
+            is_ligo_job=False
+        )
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Test2",
+            job_id=1,
+            description="A test job",
+            is_ligo_job=False
         )
         # This job shouldn't appear in the list because it belongs to another user.
         BilbyJob.objects.create(user_id=4, name="Test3", job_id=3)
         response = self.client.execute(
             """
             query {
-                bilbyJobs{
+                bilbyJobs {
                     edges {
                         node {
                             userId
@@ -128,7 +137,13 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         expected = {
             "bilbyJobs": {
                 "edges": [
-                    {"node": {"userId": 1, "name": "Test1", "description": None}},
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "Test1",
+                            "description": None
+                        }
+                    },
                     {
                         "node": {
                             "userId": 1,

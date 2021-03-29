@@ -13,6 +13,25 @@ class Label(models.Model):
     def __str__(self):
         return f"Label: {self.name}"
 
+    @classmethod
+    def all(cls):
+        """
+        Retrieves all labels
+
+        :return: QuerySet of all Labels
+        """
+        return cls.objects.all()
+
+    @classmethod
+    def filter_by_name(cls, labels):
+        """
+        Filter all Labels by name in the provided labels
+
+        :param labels: A list of strings representing the label names to match
+        :return: QuerySet of filtered Labels
+        """
+        return cls.objects.filter(name__in=labels)
+
 
 class BilbyJob(models.Model):
     user_id = models.IntegerField()
@@ -101,6 +120,74 @@ class BilbyJob(models.Model):
             priors=prior,
             sampler=sampler
         )
+
+    @classmethod
+    def get_by_id(cls, bid, user):
+        """
+        Get BilbyJob by the provided id
+
+        This function will raise an exception if:-
+        * the job requested is a ligo job, but the user is not a ligo user
+        * the job requested is private an not owned by the requesting user
+
+        :param bid: The id of the BilbyJob to return
+        :param user: The GWCloudUser instance making the request
+        :return: BilbyJob
+        """
+        job = cls.objects.get(id=bid)
+
+        # Ligo jobs may only be accessed by ligo users
+        if job.is_ligo_job and not user.is_ligo:
+            raise Exception("Permission Denied")
+
+        # Users can only access the job if it is public or the user owns the job
+        if job.private and user.user_id != job.user_id:
+            raise Exception("Permission Denied")
+
+        return job
+
+    @classmethod
+    def user_bilby_job_filter(cls, qs, user_job_filter):
+        """
+        Used by UserBilbyJobFilter to filter only jobs owned by the requesting user
+
+        :param qs: The UserBilbyJobFilter queryset
+        :param user_job_filter: The UserBilbyJobFilter instance
+        :return: The queryset filtered by the requesting user
+        """
+        return qs.filter(user_id=user_job_filter.request.user.user_id)
+
+    @classmethod
+    def public_bilby_job_filter(cls, qs, public_job_filter):
+        """
+        Used by PublicBilbyJobFilter to filter only public jobs
+
+        :param qs: The PublicBilbyJobFilter queryset
+        :param public_job_filter: The PublicBilbyJobFilter instance
+        :return: The queryset filtered by public jobs only
+        """
+        return qs.filter(private=False)
+
+    @classmethod
+    def bilby_job_filter(cls, queryset, info):
+        """
+        Used by BilbyJobNode to filter which jobs are visible to the requesting user.
+
+        A user must be logged in to view any bilby jobs
+        A user who is not a ligo user can not view ligo jobs
+
+        :param queryset: The BilbyJobNode queryset
+        :param info: The BilbyJobNode queryset info object
+        :return: queryset filtered by ligo jobs if required
+        """
+        if info.context.user.is_anonymous:
+            raise Exception("You must be logged in to perform this action.")
+
+        # Users may not view ligo jobs if they are not a ligo user
+        if info.context.user.is_ligo:
+            return queryset
+        else:
+            return queryset.exclude(is_ligo_job=True)
 
 
 class Data(models.Model):

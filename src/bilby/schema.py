@@ -59,7 +59,7 @@ class UserBilbyJobFilter(FilterSet):
 
     @property
     def qs(self):
-        return super(UserBilbyJobFilter, self).qs.filter(user_id=self.request.user.user_id)
+        return BilbyJob.user_bilby_job_filter(super(UserBilbyJobFilter, self).qs, self)
 
 
 class PublicBilbyJobFilter(FilterSet):
@@ -76,7 +76,7 @@ class PublicBilbyJobFilter(FilterSet):
 
     @property
     def qs(self):
-        return super(PublicBilbyJobFilter, self).qs.filter(private=False)
+        return BilbyJob.public_bilby_job_filter(super(PublicBilbyJobFilter, self).qs, self)
 
 
 class BilbyJobNode(DjangoObjectType):
@@ -94,13 +94,7 @@ class BilbyJobNode(DjangoObjectType):
 
     @classmethod
     def get_queryset(parent, queryset, info):
-        if info.context.user.is_anonymous:
-            raise Exception("You must be logged in to perform this action.")
-        # Users may not view ligo jobs if they are not a ligo user
-        if info.context.user.is_ligo:
-            return queryset
-        else:
-            return queryset.exclude(is_ligo_job=True)
+        return BilbyJob.bilby_job_filter(queryset, info)
 
     def resolve_last_updated(parent, info):
         return parent.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -279,7 +273,7 @@ class Query(object):
 
     @login_required
     def resolve_all_labels(self, info, **kwargs):
-        return Label.objects.all()
+        return Label.all()
 
     @login_required
     def resolve_public_bilby_jobs(self, info, **kwargs):
@@ -301,7 +295,7 @@ class Query(object):
                         number=job['history'][0]['state'],
                         date=job['history'][0]['timestamp']
                     ),
-                    labels=BilbyJob.objects.get(id=job['job']['id']).labels.all(),
+                    labels=BilbyJob.get_by_id(job['job']['id'], info.context.user).labels.all(),
                     timestamp=job['history'][0]['timestamp'],
                     id=to_global_id("BilbyJobNode", job['job']['id'])
                 )
@@ -322,43 +316,35 @@ class Query(object):
         _, job_id = from_global_id(kwargs.get("job_id"))
 
         # Try to look up the job with the id provided
-        job = BilbyJob.objects.get(id=job_id)
+        job = BilbyJob.get_by_id(job_id, info.context.user)
 
-        # Ligo jobs may only be accessed by ligo users
-        if job.is_ligo_job and not info.context.user.is_ligo:
-            raise Exception("Permission Denied")
+        # Fetch the file list from the job controller
+        success, files = job.get_file_list()
+        if not success:
+            raise Exception("Error getting file list. " + str(files))
 
-        # Can only get the file list if the job is public or the user owns the job
-        if not job.private or info.context.user.user_id == job.user_id:
-            # Fetch the file list from the job controller
-            success, files = job.get_file_list()
-            if not success:
-                raise Exception("Error getting file list. " + str(files))
+        # Build the resulting file list and send it back to the client
+        result = []
+        for f in files:
+            download_id = ""
+            if not f["isDir"]:
+                # todo: Optimize how file download ids are generated. An id for every file every time
+                # todo: the page is loaded is not effective at all
+                # Create a file download id for this file
+                success, download_id = job.get_file_download_id(f["path"])
+                if not success:
+                    raise Exception("Error creating file download url. " + str(download_id))
 
-            # Build the resulting file list and send it back to the client
-            result = []
-            for f in files:
-                download_id = ""
-                if not f["isDir"]:
-                    # todo: Optimize how file download ids are generated. An id for every file every time
-                    # todo: the page is loaded is not effective at all
-                    # Create a file download id for this file
-                    success, download_id = job.get_file_download_id(f["path"])
-                    if not success:
-                        raise Exception("Error creating file download url. " + str(download_id))
-
-                result.append(
-                    BilbyResultFile(
-                        path=f["path"],
-                        is_dir=f["isDir"],
-                        file_size=f["fileSize"],
-                        download_id=download_id
-                    )
+            result.append(
+                BilbyResultFile(
+                    path=f["path"],
+                    is_dir=f["isDir"],
+                    file_size=f["fileSize"],
+                    download_id=download_id
                 )
+            )
 
-            return BilbyResultFiles(files=result)
-
-        raise Exception("Permission Denied")
+        return BilbyResultFiles(files=result)
 
 
 class StartInput(graphene.InputObjectType):
@@ -425,7 +411,7 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         job_id = kwargs.pop("job_id")
 
         # Update privacy of bilby job
-        message = update_bilby_job(from_global_id(job_id)[1], info.context.user.user_id, **kwargs)
+        message = update_bilby_job(from_global_id(job_id)[1], info.context.user, **kwargs)
 
         # Return the bilby job id to the client
         return UpdateBilbyJobMutation(
