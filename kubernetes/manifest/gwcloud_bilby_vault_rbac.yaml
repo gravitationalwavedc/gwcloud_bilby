@@ -1,0 +1,36 @@
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    app: vault-agent
+  name: bilby-role
+rules:
+  - apiGroups: ["*"]
+    #
+    # at the HTTP level, the name of the resource for accessing Secret
+    # objects is "secrets"
+    resources: ["secrets"]
+    verbs: ["*"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: bilby-rolebinding
+  labels:
+    app: vault-agent
+subjects:
+  - kind: ServiceAccount
+    name: bilby 
+    namespace: gwcloud
+roleRef:
+  kind: Role
+  name: bilby-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bilby
+  namespace: gwcloud
