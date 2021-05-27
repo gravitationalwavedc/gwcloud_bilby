@@ -5,6 +5,7 @@ from graphene_django.filter import DjangoFilterConnectionField
 from graphene_django.types import DjangoObjectType
 from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
+from graphql import GraphQLError
 
 from .models import BilbyJob, Data, Signal, Prior, Sampler, Label
 from .status import JobStatus
@@ -12,7 +13,7 @@ from .types import OutputStartType, AbstractDataType, AbstractSignalType, Abstra
 from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
 from .utils.jobs.request_job_filter import request_job_filter
-from .views import create_bilby_job, update_bilby_job
+from .views import create_bilby_job, update_bilby_job, create_bilby_job_from_ini_string
 
 
 def parameter_resolvers(name):
@@ -386,8 +387,14 @@ class BilbyJobMutation(relay.ClientIDMutation):
 
     @classmethod
     def mutate_and_get_payload(cls, root, info, start, data, signal, prior, sampler):
+        user = info.context.user
+
+        # Check user is authenticated
+        if not user.is_authenticated:
+            raise GraphQLError('You do not have permission to perform this action')
+
         # Create the bilby job
-        job_id = create_bilby_job(info.context.user, start, data, signal, prior, sampler)
+        job_id = create_bilby_job(user, start, data, signal, prior, sampler)
 
         # Convert the bilby job id to a global id
         job_id = to_global_id("BilbyJobNode", job_id)
@@ -395,6 +402,33 @@ class BilbyJobMutation(relay.ClientIDMutation):
         # Return the bilby job id to the client
         return BilbyJobMutation(
             result=BilbyJobCreationResult(job_id=job_id)
+        )
+
+
+class BilbyJobFromIniStringMutation(relay.ClientIDMutation):
+    class Input:
+        start = StartInput()
+        ini_string = graphene.String()
+
+    result = graphene.String()
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, start, ini_string):
+        user = info.context.user
+
+        # Check user is authenticated
+        if not user.is_authenticated:
+            raise GraphQLError('You do not have permission to perform this action')
+
+        # Create the bilby job
+        job_id = create_bilby_job_from_ini_string(user, start, ini_string)
+
+        # Convert the bilby job id to a global id
+        job_id = to_global_id("BilbyJobNode", job_id)
+
+        # Return the bilby job id to the client
+        return BilbyJobFromIniStringMutation(
+            result=job_id
         )
 
 
@@ -408,10 +442,16 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
 
     @classmethod
     def mutate_and_get_payload(cls, root, info, **kwargs):
+        user = info.context.user
+
+        # Check user is authenticated
+        if not user.is_authenticated:
+            raise GraphQLError('You do not have permission to perform this action')
+
         job_id = kwargs.pop("job_id")
 
         # Update privacy of bilby job
-        message = update_bilby_job(from_global_id(job_id)[1], info.context.user, **kwargs)
+        message = update_bilby_job(from_global_id(job_id)[1], user, **kwargs)
 
         # Return the bilby job id to the client
         return UpdateBilbyJobMutation(
@@ -419,19 +459,7 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         )
 
 
-class UniqueNameMutation(relay.ClientIDMutation):
-    class Input:
-        name = graphene.String()
-
-    result = graphene.String()
-
-    @classmethod
-    def mutate_and_get_payload(cls, root, info, name):
-
-        return UniqueNameMutation(result=name)
-
-
 class Mutation(graphene.ObjectType):
     new_bilby_job = BilbyJobMutation.Field()
+    new_bilby_job_from_ini_string = BilbyJobFromIniStringMutation.Field()
     update_bilby_job = UpdateBilbyJobMutation.Field()
-    is_name_unique = UniqueNameMutation.Field()

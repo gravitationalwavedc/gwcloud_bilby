@@ -85,6 +85,31 @@ def create_bilby_job(user, start, data, signal, prior, sampler):
         return bilby_job.id
 
 
+def create_bilby_job_from_ini_string(user, start, ini_string):
+    with transaction.atomic():
+        bilby_job = BilbyJob(
+            user_id=user.user_id,
+            name=start.name,
+            description=start.description,
+            private=start.private,
+            ini_string=ini_string
+        )
+        bilby_job.save()
+
+        # Submit the job to the job controller
+
+        # Create the parameter json
+        params = bilby_job.as_json()
+
+        result = submit_job(user, params)
+
+        # Save the job id
+        bilby_job.job_id = result["jobId"]
+        bilby_job.save()
+
+        return bilby_job.id
+
+
 def update_bilby_job(job_id, user, private=None, labels=None):
     bilby_job = BilbyJob.get_by_id(job_id, user)
 

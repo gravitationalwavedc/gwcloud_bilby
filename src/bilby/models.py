@@ -48,6 +48,8 @@ class BilbyJob(models.Model):
 
     private = models.BooleanField(default=False)
 
+    ini_string = models.TextField(blank=True, null=True)
+
     job_id = models.IntegerField(default=None, blank=True, null=True)
 
     labels = models.ManyToManyField(Label)
@@ -74,57 +76,51 @@ class BilbyJob(models.Model):
         return request_file_download_id(self, path)
 
     def as_json(self):
-        # Get the data container type for this job
-        data = {
-            "type": self.data.data_choice
-        }
+        if self.ini_string is not None:
+            return dict(
+                name=self.name,
+                description=self.description,
+                ini_string=self.ini_string
+            )
+        else:
+            # Get the data container type for this job
+            data = {
+                "type": self.data.data_choice
+            }
 
-        # Iterate over the data parameters
-        for d in self.data_parameter.all():
-            data[d.name] = d.value
+            # Iterate over the data parameters
+            for d in self.data_parameter.all():
+                data[d.name] = d.value
 
-        # Get the signal data
-        signal = {
-            'model': self.signal.signal_model
-        }
-        for s in self.signal_parameter.all():
-            signal[s.name] = s.value
+            # Get the signal data
+            signal = {
+                'model': self.signal.signal_model
+            }
+            for s in self.signal_parameter.all():
+                signal[s.name] = s.value
 
-        # Get the prior data
-        prior = {
-            "default": self.prior.prior_choice
-        }
+            # Get the prior data
+            prior = {
+                "default": self.prior.prior_choice
+            }
 
-        # for p in self.prior.all():
-        # if p.prior_choice in FIXED:
-        #     prior[p.name] = {
-        #         "type": "fixed",
-        #         "value": p.fixed_value
-        #     }
-        # elif p.prior_choice in UNIFORM:
-        #     prior[p.name] = {
-        #         "type": "uniform",
-        #         "min": p.uniform_min_value,
-        #         "max": p.uniform_max_value
-        #     }
+            # Get the sampler type
+            sampler = {
+                "type": self.sampler.sampler_choice
+            }
 
-        # Get the sampler type
-        sampler = {
-            "type": self.sampler.sampler_choice
-        }
+            # Iterate over the sampler parameters
+            for s in self.sampler_parameter.all():
+                sampler[s.name] = s.value
 
-        # Iterate over the sampler parameters
-        for s in self.sampler_parameter.all():
-            sampler[s.name] = s.value
-
-        return dict(
-            name=self.name,
-            description=self.description,
-            data=data,
-            signal=signal,
-            priors=prior,
-            sampler=sampler
-        )
+            return dict(
+                name=self.name,
+                description=self.description,
+                data=data,
+                signal=signal,
+                priors=prior,
+                sampler=sampler
+            )
 
     @classmethod
     def get_by_id(cls, bid, user):

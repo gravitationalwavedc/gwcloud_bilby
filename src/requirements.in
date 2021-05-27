@@ -1,5 +1,6 @@
 django<3
 graphene-django
+graphene-file-upload
 pip-tools
 django-filter
 django-cors-headers
