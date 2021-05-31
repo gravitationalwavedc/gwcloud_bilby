@@ -10,6 +10,10 @@ class Label(models.Model):
     name = models.CharField(max_length=50, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
 
+    # Protected indicates that the label can not be set by a normal user. Down the track we'll use this flag to
+    # determine if only a user with a specific permission may apply this tag to a job
+    protected = models.BooleanField(default=False)
+
     def __str__(self):
         return f"Label: {self.name}"
 
@@ -23,14 +27,15 @@ class Label(models.Model):
         return cls.objects.all()
 
     @classmethod
-    def filter_by_name(cls, labels):
+    def filter_by_name(cls, labels, include_protected=False):
         """
         Filter all Labels by name in the provided labels
 
         :param labels: A list of strings representing the label names to match
+        :param include_protected: If protected labels should be included
         :return: QuerySet of filtered Labels
         """
-        return cls.objects.filter(name__in=labels)
+        return cls.objects.filter(name__in=labels, protected__in=[False, include_protected])
 
 
 class BilbyJob(models.Model):

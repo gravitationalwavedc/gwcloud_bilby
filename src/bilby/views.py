@@ -90,7 +90,9 @@ def update_bilby_job(job_id, user, private=None, labels=None):
 
     if user.user_id == bilby_job.user_id:
         if labels is not None:
-            bilby_job.labels.set(Label.filter_by_name(labels))
+            # Preserve protected labels
+            protected_labels = bilby_job.labels.filter(protected=True)
+            bilby_job.labels.set(Label.filter_by_name(labels) | protected_labels)
 
         if private is not None:
             bilby_job.private = private

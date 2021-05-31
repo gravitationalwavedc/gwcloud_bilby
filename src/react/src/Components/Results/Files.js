@@ -55,10 +55,10 @@ const Files = (props) => {
                     variables={{jobId: props.data.bilbyJob.id }}
                     render={({error, props}) => {
                         if(error) {
-                            return <div>{error.message}</div>;
-                        } else if (props) {
+                            return <tr><td colSpan={3}><div>{error.message}</div></td></tr>;
+                        } else if (props && props.bilbyResultFiles) {
                             return <React.Fragment>
-                                {props.bilbyResultFiles.files.map((e, i) => 
+                                {props.bilbyResultFiles.files.map((e, i) =>
                                     <ResultFile
                                         key={i} 
                                         file={e} {...props}/>)}

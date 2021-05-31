@@ -23,15 +23,15 @@ const LabelDropdown = (props) => {
         }
     }, [labels]);
 
-    const labelChoices = props.data.allLabels.filter(({name}) => !labels.includes(name));
+    const labelChoices = props.data.allLabels.filter((l) => (!labels.includes(l.name) && !l.protected));
     return (
         <Row className="mb-3">
             {labels.map(name => <Col key={name}>
-                <Alert 
+                <Alert
                     variant={getBadgeType(name)} 
                     key={name} 
                     onClose={() => setLabels(labels.filter(label => label !== name))} 
-                    dismissible 
+                    dismissible={!props.data.allLabels.filter((l) => name === l.name)[0].protected}
                     className="mr-1">
                     {name}
                 </Alert>
@@ -95,6 +95,7 @@ export default createFragmentContainer(LabelDropdown, {
             allLabels {
                 name
                 description
+                protected
             }
         }
     `
