@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import graphene
 from django_filters import FilterSet, OrderingFilter
 from graphene import relay
@@ -228,7 +230,7 @@ class UserDetails(graphene.ObjectType):
 class BilbyResultFile(graphene.ObjectType):
     path = graphene.String()
     is_dir = graphene.Boolean()
-    file_size = graphene.Int()
+    file_size = graphene.Decimal()
     download_id = graphene.String()
 
 
@@ -340,7 +342,7 @@ class Query(object):
                 BilbyResultFile(
                     path=f["path"],
                     is_dir=f["isDir"],
-                    file_size=f["fileSize"],
+                    file_size=Decimal(f["fileSize"]),
                     download_id=download_id
                 )
             )

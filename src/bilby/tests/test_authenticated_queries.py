@@ -242,7 +242,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         expected = {
             'bilbyResultFiles': {
                 'files': [
-                    {'path': '/a/path/here', 'isDir': False, 'fileSize': 123, 'downloadId': '26'}
+                    {'path': '/a/path/here', 'isDir': False, 'fileSize': "123", 'downloadId': '26'}
                 ]
             }
         }
