@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'bilby.apps.BilbyConfig',
+    'bilbyui.apps.BilbyUiConfig',
     'graphene_django',
     'django_jenkins'
 ]

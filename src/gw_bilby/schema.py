@@ -1,12 +1,12 @@
 import graphene
-import bilby.schema
+import bilbyui.schema
 
 
-class Query(bilby.schema.Query, graphene.ObjectType):
+class Query(bilbyui.schema.Query, graphene.ObjectType):
     pass
 
 
-class Mutation(bilby.schema.Mutation, graphene.ObjectType):
+class Mutation(bilbyui.schema.Mutation, graphene.ObjectType):
     pass
 
 
