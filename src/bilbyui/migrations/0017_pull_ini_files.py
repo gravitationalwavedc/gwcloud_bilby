@@ -43,6 +43,10 @@ def pull_ini_files(apps, schema_editor):
             print(f"Unable to fetch ini file for {job} reason unknown - job server did not return 200.")
 
 
+def reverse_pull_ini_files(apps, schema_editor):
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -50,5 +54,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(pull_ini_files),
+        migrations.RunPython(pull_ini_files, reverse_code=reverse_pull_ini_files),
     ]

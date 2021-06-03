@@ -191,6 +191,21 @@ class BilbyJob(models.Model):
             return queryset.exclude(is_ligo_job=True)
 
 
+class IniKeyValue(models.Model):
+    class Meta:
+        unique_together = ('job', 'key', 'value')
+
+    # The job this ini record is for
+    job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE, db_index=True)
+    # The ini key
+    key = models.TextField(db_index=True)
+    # The ini value - this is stored as a json dumped value to keep the original type information for the field
+    # Generally this will be bool, int/float, str - get the value/type back by using json.loads
+    value = models.TextField(db_index=True)
+    # The index from the ini file this k/v was generated from (allows forward engineering the ini file from these k/v's)
+    index = models.IntegerField()
+
+
 class Data(models.Model):
     job = models.OneToOneField(BilbyJob, related_name='data', on_delete=models.CASCADE)
 
