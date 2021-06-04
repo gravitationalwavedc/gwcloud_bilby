@@ -8,11 +8,11 @@ from graphql_jwt.settings import jwt_settings
 class BilbyJSONWebTokenClient(JSONWebTokenClient):
     """Bilby test client with a custom authentication method."""
 
-    def authenticate(self, user):
+    def authenticate(self, user, is_ligo=False):
         """Payload for authentication in bilby requires a special userID parameter."""
         self._credentials = {
             jwt_settings.JWT_AUTH_HEADER_NAME: "{0} {1}".format(
-                jwt_settings.JWT_AUTH_HEADER_PREFIX, get_token(user, userId=user.id)
+                jwt_settings.JWT_AUTH_HEADER_PREFIX, get_token(user, userId=user.id, isLigo=is_ligo)
             ),
         }
 

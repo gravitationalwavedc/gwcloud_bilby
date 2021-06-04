@@ -350,45 +350,101 @@ class Query(object):
         return BilbyResultFiles(files=result)
 
 
-class StartInput(graphene.InputObjectType):
+class BilbyJobCreationResult(graphene.ObjectType):
+    job_id = graphene.String()
+
+
+class CalibrationInput(graphene.InputObjectType):
+    pass
+
+
+class ChannelsInput(graphene.InputObjectType):
+    hanford_channel = graphene.String()
+    livingston_channel = graphene.String()
+    virgo_channel = graphene.String()
+
+
+class DataInput(graphene.InputObjectType):
+    data_choice = graphene.String()
+    trigger_time = graphene.Decimal()
+    channels = ChannelsInput()
+
+
+class DetectorInput(graphene.InputObjectType):
+    hanford = graphene.Boolean()
+    hanford_minimum_frequency = graphene.Decimal()
+    hanford_maximum_frequency = graphene.Decimal()
+
+    livingston = graphene.Boolean()
+    livingston_minimum_frequency = graphene.Decimal()
+    livingston_maximum_frequency = graphene.Decimal()
+
+    virgo = graphene.Boolean()
+    virgo_minimum_frequency = graphene.Decimal()
+    virgo_maximum_frequency = graphene.Decimal()
+
+    duration = graphene.Decimal()
+    sampling_frequency = graphene.Decimal()
+
+
+class InjectionInput(graphene.InputObjectType):
+    pass
+
+
+class LikelihoodInput(graphene.InputObjectType):
+    pass
+
+
+class PriorInput(graphene.InputObjectType):
+    prior_default = graphene.String()
+
+
+class PostProcessingInput(graphene.InputObjectType):
+    pass
+
+
+class SamplerInput(graphene.InputObjectType):
+    nlive = graphene.Decimal()
+    nact = graphene.Decimal()
+    maxmcmc = graphene.Decimal()
+    walks = graphene.Decimal()
+    dlogz = graphene.Decimal()
+    cpus = graphene.Int()
+    sampler_choice = graphene.String()
+
+
+class WaveformInput(graphene.InputObjectType):
+    model = graphene.String()
+
+
+class JobDetailsInput(graphene.InputObjectType):
     name = graphene.String()
     description = graphene.String()
     private = graphene.Boolean()
 
 
-class DataInput(graphene.InputObjectType, AbstractDataType):
-    data_choice = graphene.String()
+class ParameterInput(graphene.InputObjectType):
+    details = JobDetailsInput()
 
-
-class SignalInput(graphene.InputObjectType, AbstractSignalType):
-    signal_choice = graphene.String()
-    signal_model = graphene.String()
-
-
-class PriorInput(graphene.InputObjectType):
-    prior_choice = graphene.String()
-
-
-class SamplerInput(graphene.InputObjectType, AbstractSamplerType):
-    sampler_choice = graphene.String()
-
-
-class BilbyJobCreationResult(graphene.ObjectType):
-    job_id = graphene.String()
+    # calibration = CalibrationInput()
+    data = DataInput()
+    detector = DetectorInput()
+    # injection = InjectionInput()
+    # likelihood = LikelihoodInput()
+    prior = PriorInput()
+    # post_processing = PostProcessingInput()
+    sampler = SamplerInput()
+    waveform = WaveformInput()
 
 
 class BilbyJobMutation(relay.ClientIDMutation):
     class Input:
-        start = StartInput()
-        data = DataInput()
-        signal = SignalInput()
-        prior = PriorInput()
-        sampler = SamplerInput()
+        params = ParameterInput()
 
     result = graphene.Field(BilbyJobCreationResult)
 
     @classmethod
-    def mutate_and_get_payload(cls, root, info, start, data, signal, prior, sampler):
+    def mutate_and_get_payload(cls, root, info, params):
         user = info.context.user
 
         # Check user is authenticated
@@ -396,7 +452,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
             raise GraphQLError('You do not have permission to perform this action')
 
         # Create the bilby job
-        job_id = create_bilby_job(user, start, data, signal, prior, sampler)
+        job_id = create_bilby_job(user, params)
 
         # Convert the bilby job id to a global id
         job_id = to_global_id("BilbyJobNode", job_id)
@@ -409,7 +465,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
 
 class BilbyJobFromIniStringMutation(relay.ClientIDMutation):
     class Input:
-        start = StartInput()
+        # start = StartInput()
         ini_string = graphene.String()
 
     result = graphene.String()

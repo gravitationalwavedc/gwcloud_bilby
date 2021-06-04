@@ -3,7 +3,7 @@ import {commitMutation} from 'relay-runtime';
 import {graphql} from 'react-relay';
 import {harnessApi} from '../index';
 import { Container, Col, Row, Tab, Nav } from 'react-bootstrap';
-import { useFormik } from 'formik'; 
+import { useFormik } from 'formik';
 import JobTitle from '../Components/Forms/JobTitle';
 import DataForm from '../Components/Forms/DataForm';
 import SignalForm from '../Components/Forms/SignalForm';
@@ -32,62 +32,87 @@ const NewJob = ({initialValues, router}) => {
     });
 
     const handleJobSubmission = (values) => {
-    // The mutation requires all number values to be strings. 
+    // The mutation requires all number values to be strings.
         Object.entries(values)
             .filter(([key, value]) => typeof(value) === 'number')
             .map(([key, value]) => values[key] = value.toString());
 
         const variables = {
             input: {
-                start: {
-                    name: values.name,
-                    description: values.description,
-                    private: false, 
-                },
-                data: {
-                    dataType: values.dataChoice,
-                    dataChoice: values.dataChoice,
-                    signalDuration: values.signalDuration,
-                    samplingFrequency: values.samplingFrequency,
-                    triggerTime: values.triggerTime,
-                    hanford: values.hanford,
-                    hanfordMinimumFrequency: values.hanfordMinimumFrequency,
-                    hanfordMaximumFrequency: values.hanfordMaximumFrequency,
-                    hanfordChannel: values.hanfordChannel,
-                    livingston: values.livingston,
-                    livingstonMinimumFrequency: values.livingstonMinimumFrequency,
-                    livingstonMaximumFrequency: values.livingstonMaximumFrequency,
-                    livingstonChannel: values.livingstonChannel,
-                    virgo: values.virgo,
-                    virgoMinimumFrequency: values.virgoMinimumFrequency,
-                    virgoMaximumFrequency: values.virgoMaximumFrequency,
-                    virgoChannel: values.virgoChannel,
-                },
-                signal: {
-                    mass1: values.mass1,
-                    mass2: values.mass2,
-                    luminosityDistance: values.luminosityDistance,
-                    psi: values.psi,
-                    iota: values.iota,
-                    phase: values.phase,
-                    mergerTime: values.mergerTime,
-                    ra: values.ra,
-                    dec: values.dec,
-                    signalChoice: values.signalChoice,
-                    signalModel: 'none',
-                },
-                sampler: {
-                    nlive: values.nlive,
-                    nact: values.nact,
-                    maxmcmc: values.maxmcmc,
-                    walks: values.walks,
-                    dlogz: values.dlogz,
-                    cpus: '1',
-                    samplerChoice: 'dynesty',
-                },
-                prior: {
-                    priorChoice: values.priorChoice
-                },
+                params: {
+                    details: {
+                        name: values.name,
+                        description: values.description,
+                        private: false,
+                    },
+
+                    //calibration: {},
+
+                    data: {
+                        dataChoice: values.dataChoice,
+
+                        triggerTime: values.triggerTime,
+
+                        channels: {
+                            hanfordChannel: values.hanfordChannel,
+                            livingstonChannel: values.livingstonChannel,
+                            virgoChannel: values.virgoChannel,
+                        }
+                    },
+
+                    detector: {
+                        hanford: values.hanford,
+                        hanfordMinimumFrequency: values.hanfordMinimumFrequency,
+                        hanfordMaximumFrequency: values.hanfordMaximumFrequency,
+
+                        livingston: values.livingston,
+                        livingstonMinimumFrequency: values.livingstonMinimumFrequency,
+                        livingstonMaximumFrequency: values.livingstonMaximumFrequency,
+
+                        virgo: values.virgo,
+                        virgoMinimumFrequency: values.virgoMinimumFrequency,
+                        virgoMaximumFrequency: values.virgoMaximumFrequency,
+
+                        duration: values.signalDuration,
+                        samplingFrequency: values.samplingFrequency,
+                    },
+
+                    // injection: {
+                    //     mass1: values.mass1,
+                    //     mass2: values.mass2,
+                    //     luminosityDistance: values.luminosityDistance,
+                    //     psi: values.psi,
+                    //     iota: values.iota,
+                    //     phase: values.phase,
+                    //     mergerTime: values.mergerTime,
+                    //     ra: values.ra,
+                    //     dec: values.dec,
+                    //     signalChoice: values.signalChoice,
+                    //     signalModel: 'none',
+                    // },
+
+                    //likelihood: {},
+
+                    prior: {
+                        priorDefault: values.priorChoice
+                    },
+
+                    //postProcessing: {},
+
+                    sampler: {
+                        nlive: values.nlive,
+                        nact: values.nact,
+                        maxmcmc: values.maxmcmc,
+                        walks: values.walks,
+                        dlogz: values.dlogz,
+                        cpus: '1',
+                        samplerChoice: 'dynesty',
+                    },
+
+                    waveform: {
+                        model: null
+                    },
+                }
             }
         };
 
@@ -152,9 +177,9 @@ const NewJob = ({initialValues, router}) => {
                                 <PriorsForm formik={formik} handlePageChange={setKey}/>
                             </Tab.Pane>
                             <Tab.Pane eventKey="review">
-                                <ReviewJob 
-                                    formik={formik} 
-                                    values={formik.values} 
+                                <ReviewJob
+                                    formik={formik}
+                                    values={formik.values}
                                     handleSubmit={formik.handleSubmit}/>
                             </Tab.Pane>
                         </Tab.Content>

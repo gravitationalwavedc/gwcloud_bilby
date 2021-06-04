@@ -13,7 +13,8 @@ class TestBilbyJobModel(TestCase):
             user_id=1,
             name='Test Job',
             description='Test job description',
-            private=False
+            private=False,
+            ini_string='test-config=12345'
         )
         cls.job.save()
 
@@ -49,6 +50,13 @@ class TestBilbyJobModel(TestCase):
             list(map(repr, Label.objects.filter(name__in=['Bad Run', 'Review Requested']))),
             ordered=False
         )
+
+    def test_as_json(self):
+        params = self.job.as_json()
+
+        self.assertEqual(params['name'], self.job.name)
+        self.assertEqual(params['description'], self.job.description)
+        self.assertEqual(params['ini_string'], self.job.ini_string)
 
 
 class TestModels(TestCase):

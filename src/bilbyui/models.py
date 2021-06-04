@@ -3,6 +3,7 @@ from django.db import models
 from bilbyui.utils.jobs.request_file_download_id import request_file_download_id
 from bilbyui.utils.jobs.request_file_list import request_file_list
 from bilbyui.utils.jobs.request_job_status import request_job_status
+from .utils.parse_ini_file import parse_ini_file
 from .variables import bilby_parameters
 
 
@@ -48,8 +49,10 @@ class BilbyJob(models.Model):
 
     private = models.BooleanField(default=False)
 
-    ini_string = models.TextField(blank=True, null=True)
+    # The job ini string *should* be the full ini file for the job minus any client specific parameters
+    ini_string = models.TextField(blank=False, null=False)
 
+    # The job id is the id given by the job controller at submission
     job_id = models.IntegerField(default=None, blank=True, null=True)
 
     labels = models.ManyToManyField(Label)
@@ -65,6 +68,12 @@ class BilbyJob(models.Model):
     def __str__(self):
         return f"Bilby Job: {self.name}"
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        # Whenever a job is saved, we need to regenerate the ini k/v pairs
+        parse_ini_file(self)
+
     @property
     def job_status(self):
         return request_job_status(self)
@@ -76,51 +85,11 @@ class BilbyJob(models.Model):
         return request_file_download_id(self, path)
 
     def as_json(self):
-        if self.ini_string is not None:
-            return dict(
-                name=self.name,
-                description=self.description,
-                ini_string=self.ini_string
-            )
-        else:
-            # Get the data container type for this job
-            data = {
-                "type": self.data.data_choice
-            }
-
-            # Iterate over the data parameters
-            for d in self.data_parameter.all():
-                data[d.name] = d.value
-
-            # Get the signal data
-            signal = {
-                'model': self.signal.signal_model
-            }
-            for s in self.signal_parameter.all():
-                signal[s.name] = s.value
-
-            # Get the prior data
-            prior = {
-                "default": self.prior.prior_choice
-            }
-
-            # Get the sampler type
-            sampler = {
-                "type": self.sampler.sampler_choice
-            }
-
-            # Iterate over the sampler parameters
-            for s in self.sampler_parameter.all():
-                sampler[s.name] = s.value
-
-            return dict(
-                name=self.name,
-                description=self.description,
-                data=data,
-                signal=signal,
-                priors=prior,
-                sampler=sampler
-            )
+        return dict(
+            name=self.name,
+            description=self.description,
+            ini_string=self.ini_string
+        )
 
     @classmethod
     def get_by_id(cls, bid, user):

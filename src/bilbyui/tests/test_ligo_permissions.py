@@ -1,127 +1,225 @@
+import logging
 from unittest.mock import patch
 
-from django.test import TestCase
-from munch import DefaultMunch
+from django.contrib.auth import get_user_model
+from graphql_relay.node.node import from_global_id
 
 from bilbyui.models import BilbyJob
-from bilbyui.views import create_bilby_job
-from gw_bilby.jwt_tools import GWCloudUser
+from bilbyui.tests.testcases import BilbyTestCase
+
+User = get_user_model()
 
 
-class TestBilbyLigoPermissions(TestCase):
+class TestBilbyLigoPermissions(BilbyTestCase):
+    def setUp(self):
+        self.maxDiff = 9999
+
+        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
+
     @patch("bilbyui.views.submit_job")
     def test_gwosc_channel_permissions(self, mock_api_call):
-        mock_api_call.return_value = {'jobId': 4321}
+        try:
+            logging.disable(logging.ERROR)
 
-        payload = {
-            "start": {
-                "name": "Untitled",
-                "description": "A good description is specific, unique, and memorable.",
-                "private": False
-            },
-            "data": {
-                "data_type": "real",
-                "data_choice": "real",
-                "signal_duration": "4",
-                "sampling_frequency": "512",
-                "trigger_time": "1126259462.391",
-                "hanford": True,
-                "hanford_minimum_frequency": "20",
-                "hanford_maximum_frequency": "1024",
-                "hanford_channel": "GWOSC",
-                "livingston": False,
-                "livingston_minimum_frequency": "20",
-                "livingston_maximum_frequency": "1024",
-                "livingston_channel": "GWOSC",
-                "virgo": False,
-                "virgo_minimum_frequency": "20",
-                "virgo_maximum_frequency": "1024",
-                "virgo_channel": "GWOSC"
-            },
-            "signal": {
-                "mass1": "30",
-                "mass2": "25",
-                "luminosity_distance": "2000",
-                "psi": "0.4",
-                "iota": "2.659",
-                "phase": "1.3",
-                "merger_time": "1126259642.413",
-                "ra": "1.375",
-                "dec": "-1.2108",
-                "signal_choice": "skip",
-                "signal_model": "none"
-            },
-            "sampler": {
-                "nlive": "1000",
-                "nact": "10",
-                "maxmcmc": "5000",
-                "walks": "1000",
-                "dlogz": "0.1",
-                "cpus": "1",
-                "sampler_choice": "dynesty"
-            },
-            "prior": {
-                "prior_choice": "4s"
+            self.client.authenticate(self.user, is_ligo=True)
+
+            mock_api_call.return_value = {'jobId': 4321}
+
+            params = {
+                "input": {
+                    "params": {
+                        "details": {
+                            "name": "test job for GW12345",
+                            "description": "Test description 1234",
+                            "private": True,
+                        },
+                        # "calibration": None,
+                        "data": {
+                            "dataChoice": "real",
+                            "triggerTime": "1126259462.391",
+                            "channels": {
+                                "hanfordChannel": "GWOSC",
+                                "livingstonChannel": "GWOSC",
+                                "virgoChannel": "GWOSC"
+                            }
+                        },
+                        "detector": {
+                            "hanford": True,
+                            "hanfordMinimumFrequency": "20",
+                            "hanfordMaximumFrequency": "1024",
+                            "livingston": True,
+                            "livingstonMinimumFrequency": "20",
+                            "livingstonMaximumFrequency": "1024",
+                            "virgo": False,
+                            "virgoMinimumFrequency": "20",
+                            "virgoMaximumFrequency": "1024",
+                            "duration": "4",
+                            "samplingFrequency": "512"
+                        },
+                        # "injection": {},
+                        # "likelihood": {},
+                        "prior": {
+                            "priorDefault": "4s"
+                        },
+                        # "postProcessing": {},
+                        "sampler": {
+                            "nlive": "1000.0",
+                            "nact": "10.0",
+                            "maxmcmc": "5000.0",
+                            "walks": "1000.0",
+                            "dlogz": "0.1",
+                            "cpus": "1",
+                            "samplerChoice": "dynesty"
+                        },
+                        "waveform": {
+                            "model": None
+                        }
+                    }
+                }
             }
-        }
 
-        payload = DefaultMunch.fromDict(payload)
+            response = self.client.execute(
+                """
+                mutation NewJobMutation($input: BilbyJobMutationInput!) {
+                  newBilbyJob(input: $input) {
+                    result {
+                      jobId
+                    }
+                  }
+                }
+                """,
+                params
+            )
 
-        user = GWCloudUser('billy')
-        user.user_id = 1234
-        user.is_ligo = True
+            expected = {
+                'newBilbyJob': {
+                    'result': {
+                        'jobId': 'QmlsYnlKb2JOb2RlOjE='
+                    }
+                }
+            }
 
-        # First call should be successful for all users, since we're using GWOSC channels
-        job_id = create_bilby_job(
-            user, payload.start, payload.data, payload.signal, payload.prior, payload.sampler
-        )
-        # Check that the job is marked as public
-        self.assertFalse(BilbyJob.objects.get(id=job_id).is_ligo_job)
+            self.assertDictEqual(
+                expected, response.data, "create bilbyJob mutation returned unexpected data."
+            )
 
-        BilbyJob.objects.all().delete()
-        user.is_ligo = False
-        job_id = create_bilby_job(
-            user, payload.start, payload.data, payload.signal, payload.prior, payload.sampler
-        )
-        # Check that the job is marked as public
-        self.assertFalse(BilbyJob.objects.get(id=job_id).is_ligo_job)
+            _, job_id = from_global_id(response.data['newBilbyJob']['result']['jobId'])
 
-        # Now if the channels are proprietary, the non-ligo user should not be able to create jobs
-        for detector in [
-            ('hanford_channel', 'GDS-CALIB_STRAIN'),
-            ('livingston_channel', 'GDS-CALIB_STRAIN'),
-            ('virgo_channel', 'Hrec_hoft_16384Hz'),
-            # Also check invalid (Non GWOSC channels)
-            ('hanford_channel', 'testchannel1'),
-            ('livingston_channel', 'imnotarealchannel'),
-            ('virgo_channel', 'GWOSc'),
-        ]:
-            payload.data[detector[0]] = detector[1]
-            with self.assertRaises(Exception):
+            # Check that the job is marked as public
+            self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
+
+            BilbyJob.objects.all().delete()
+            self.client.authenticate(self.user, is_ligo=False)
+
+            response = self.client.execute(
+                """
+                mutation NewJobMutation($input: BilbyJobMutationInput!) {
+                  newBilbyJob(input: $input) {
+                    result {
+                      jobId
+                    }
+                  }
+                }
+                """,
+                params
+            )
+
+            expected = {
+                'newBilbyJob': {
+                    'result': {
+                        'jobId': 'QmlsYnlKb2JOb2RlOjI='
+                    }
+                }
+            }
+
+            self.assertDictEqual(
+                expected, response.data, "create bilbyJob mutation returned unexpected data."
+            )
+
+            _, job_id = from_global_id(response.data['newBilbyJob']['result']['jobId'])
+
+            # Check that the job is marked as public
+            self.assertFalse(BilbyJob.objects.get(id=job_id).is_ligo_job)
+
+            # Now if the channels are proprietary, the non-ligo user should not be able to create jobs
+            for detector in [
+                ('hanfordChannel', 'GDS-CALIB_STRAIN'),
+                ('livingstonChannel', 'GDS-CALIB_STRAIN'),
+                ('virgoChannel', 'Hrec_hoft_16384Hz'),
+                # Also check invalid (Non GWOSC channels)
+                ('hanfordChannel', 'testchannel1'),
+                ('livingstonChannel', 'imnotarealchannel'),
+                ('virgoChannel', 'GWOSc'),
+            ]:
+                params['input']['params']['data']['channels'][detector[0]] = detector[1]
+
                 BilbyJob.objects.all().delete()
-                create_bilby_job(
-                    user, payload.start, payload.data, payload.signal, payload.prior, payload.sampler
+
+                response = self.client.execute(
+                    """
+                    mutation NewJobMutation($input: BilbyJobMutationInput!) {
+                      newBilbyJob(input: $input) {
+                        result {
+                          jobId
+                        }
+                      }
+                    }
+                    """,
+                    params
                 )
 
-            payload.data[detector[0]] = "GWOSC"
+                expected = {
+                    'newBilbyJob': None
+                }
 
-        BilbyJob.objects.all().delete()
+                self.assertDictEqual(
+                    expected, response.data, "create bilbyJob mutation returned unexpected data."
+                )
 
-        # Now if the channels are proprietary, the ligo user should be able to create jobs
-        user.is_ligo = True
-        for detector in [
-            ('hanford_channel', 'GDS-CALIB_STRAIN'),
-            ('livingston_channel', 'GDS-CALIB_STRAIN'),
-            ('virgo_channel', 'Hrec_hoft_16384Hz')
-        ]:
-            payload.data[detector[0]] = detector[1]
+                self.assertEqual(
+                    response.errors[0].message,
+                    'Non-LIGO members may only run real jobs on GWOSC channels'
+                )
+
+                self.assertFalse(BilbyJob.objects.all().exists())
+
+                params['input']['params']['data']['channels'][detector[0]] = "GWOSC"
+
             BilbyJob.objects.all().delete()
-            job_id = create_bilby_job(
-                user, payload.start, payload.data, payload.signal, payload.prior, payload.sampler
-            )
-            # Check that the job is marked as proprietary
-            self.assertTrue(BilbyJob.objects.get(id=job_id).is_ligo_job)
 
-            payload.data[detector[0]] = "GWOSC"
+            # Now if the channels are proprietary, the ligo user should be able to create jobs
+            self.client.authenticate(self.user, is_ligo=True)
 
-        BilbyJob.objects.all().delete()
+            for detector in [
+                ('hanfordChannel', 'GDS-CALIB_STRAIN'),
+                ('livingstonChannel', 'GDS-CALIB_STRAIN'),
+                ('virgoChannel', 'Hrec_hoft_16384Hz')
+            ]:
+                params['input']['params']['data']['channels'][detector[0]] = detector[1]
+                BilbyJob.objects.all().delete()
+
+                response = self.client.execute(
+                    """
+                            mutation NewJobMutation($input: BilbyJobMutationInput!) {
+                              newBilbyJob(input: $input) {
+                                result {
+                                  jobId
+                                }
+                              }
+                            }
+                            """,
+                    params
+                )
+
+                self.assertTrue('jobId' in response.data['newBilbyJob']['result'])
+
+                _, job_id = from_global_id(response.data['newBilbyJob']['result']['jobId'])
+
+                # Check that the job is marked as proprietary
+                self.assertTrue(BilbyJob.objects.get(id=job_id).is_ligo_job)
+
+                params['input']['params']['data']['channels'][detector[0]] = "GWOSC"
+
+            BilbyJob.objects.all().delete()
+        finally:
+            logging.disable(logging.NOTSET)
