@@ -1,7 +1,6 @@
 from django.test import TestCase
 
-from bilbyui.models import BilbyJob, Data, Label
-from bilbyui.variables import bilby_parameters
+from bilbyui.models import BilbyJob, Label
 from bilbyui.views import update_bilby_job
 from gw_bilby.jwt_tools import GWCloudUser
 
@@ -57,24 +56,3 @@ class TestBilbyJobModel(TestCase):
         self.assertEqual(params['name'], self.job.name)
         self.assertEqual(params['description'], self.job.description)
         self.assertEqual(params['ini_string'], self.job.ini_string)
-
-
-class TestModels(TestCase):
-    def test_data_to_json(self):
-        """
-        Check that a Data object can be successfully converted to json
-        """
-
-        job = BilbyJob(user_id=1)
-        job.save()
-
-        data = Data(job=job, data_choice=bilby_parameters.SIMULATED)
-        data.save()
-
-        self.assertDictEqual(data.as_json(), {
-            "id": data.id,
-            "value": {
-                "job": job.id,
-                "choice": bilby_parameters.SIMULATED
-            }
-        })

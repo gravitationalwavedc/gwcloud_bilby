@@ -110,7 +110,7 @@ export default createFragmentContainer(ViewJob,
                       number
                       date
                     }
-                    ...Parameters_jobData
+		#    ...Parameters_jobData
                 }
                 ...LabelDropdown_data @arguments(jobId: $jobId)
             }

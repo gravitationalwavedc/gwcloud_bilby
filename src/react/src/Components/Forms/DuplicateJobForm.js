@@ -17,60 +17,12 @@ const DuplicateJobForm = (props) => {
 
 export default createFragmentContainer(DuplicateJobForm,
     {
-        data: graphql`
-        fragment DuplicateJobForm_data on Query @argumentDefinitions(
-            jobId: {type: "ID!"}
-        ){
-            bilbyJob (id: $jobId){
-              data {
-                  dataChoice
-                  hanford
-                  livingston
-                  virgo
-                  signalDuration
-                  samplingFrequency
-                  triggerTime
-                  hanfordMinimumFrequency
-                  hanfordMaximumFrequency
-                  hanfordChannel
-                  livingstonMinimumFrequency
-                  livingstonMaximumFrequency
-                  livingstonChannel
-                  virgoMinimumFrequency
-                  virgoMaximumFrequency
-                  virgoChannel
-              }
-              start {
-                  name
-                  description
-                  private
-              }
-              signal {
-                  signalChoice
-                  signalModel
-                  mass1
-                  mass2
-                  luminosityDistance
-                  psi
-                  iota
-                  phase
-                  mergerTime
-                  ra
-                  dec
-              }
-              sampler {
-                  samplerChoice
-                  nlive
-                  nact
-                  maxmcmc
-                  walks
-                  dlogz
-                  cpus
-              }
-              prior {
-                  priorChoice
-              }
-           }
-        }`
+ //       data: graphql`
+ //       fragment DuplicateJobForm_data on Query @argumentDefinitions(
+ //           jobId: {type: "ID!"}
+ //       ){
+ //           bilbyJob (id: $jobId){
+ //          }
+ //       }`
     }
 );

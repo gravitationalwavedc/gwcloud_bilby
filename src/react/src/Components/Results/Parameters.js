@@ -18,51 +18,8 @@ const Parameters = (props) => {
 };
 
 export default createFragmentContainer(Parameters, {
-    jobData: graphql`
-        fragment Parameters_jobData on BilbyJobNode {
-            data {
-                dataChoice
-                hanford
-                livingston
-                virgo
-                signalDuration
-                samplingFrequency
-                triggerTime
-                hanfordMinimumFrequency
-                hanfordMaximumFrequency
-                hanfordChannel
-                livingstonMinimumFrequency
-                livingstonMaximumFrequency
-                livingstonChannel
-                virgoMinimumFrequency
-                virgoMaximumFrequency
-                virgoChannel
-            }
-            signal {
-                signalChoice
-                signalModel
-                mass1
-                mass2
-                luminosityDistance
-                psi
-                iota
-                phase
-                mergerTime
-                ra
-                dec
-            }
-            prior {
-                priorChoice
-            }
-            sampler {
-                samplerChoice
-                nlive
-                nact
-                maxmcmc
-                walks
-                dlogz
-                cpus
-            }
-        }
-    `
+    //jobData: graphql`
+    //    fragment Parameters_jobData on BilbyJobNode {
+    //    }
+    //`
 });

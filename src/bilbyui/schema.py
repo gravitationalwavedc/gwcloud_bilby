@@ -9,37 +9,13 @@ from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
 from graphql import GraphQLError
 
-from .models import BilbyJob, Data, Signal, Prior, Sampler, Label
+from .models import BilbyJob, Label
 from .status import JobStatus
-from .types import OutputStartType, AbstractDataType, AbstractSignalType, AbstractSamplerType, JobStatusType
+from .types import OutputStartType, JobStatusType
 from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
 from .utils.jobs.request_job_filter import request_job_filter
 from .views import create_bilby_job, update_bilby_job, create_bilby_job_from_ini_string
-
-
-def parameter_resolvers(name):
-    def func(parent, info):
-        try:
-            param = parent.parameter.get(name=name)
-            if param.value in ['true', 'True']:
-                return True
-            elif param.value in ['false', 'False']:
-                return False
-            else:
-                return param.value
-
-        except parent.parameter.model.DoesNotExist:
-            return None
-
-    return func
-
-
-# Used to give values to fields in a DjangoObjectType, if the fields were not present in the Django model
-# Specifically used here to get values from the parameter models
-def populate_fields(object_to_modify, field_list, resolver_func):
-    for name in field_list:
-        setattr(object_to_modify, 'resolve_{}'.format(name), staticmethod(resolver_func(name)))
 
 
 class LabelType(DjangoObjectType):
@@ -133,91 +109,6 @@ class BilbyJobNode(DjangoObjectType):
                 "number": 0,
                 "data": "Unknown"
             }
-
-
-class DataType(DjangoObjectType, AbstractDataType):
-    class Meta:
-        model = Data
-        interfaces = (relay.Node,)
-        convert_choices_to_enum = False
-
-
-populate_fields(
-    DataType,
-    [
-        'hanford',
-        'livingston',
-        'virgo',
-        'signal_duration',
-        'sampling_frequency',
-        'trigger_time',
-        'hanford_minimum_frequency',
-        'hanford_maximum_frequency',
-        'hanford_channel',
-        'livingston_minimum_frequency',
-        'livingston_maximum_frequency',
-        'livingston_channel',
-        'virgo_minimum_frequency',
-        'virgo_maximum_frequency',
-        'virgo_channel',
-    ],
-    parameter_resolvers
-)
-
-
-class SignalType(DjangoObjectType, AbstractSignalType):
-    class Meta:
-        model = Signal
-        interfaces = (relay.Node,)
-        convert_choices_to_enum = False
-
-
-populate_fields(
-    SignalType,
-    [
-        'mass1',
-        'mass2',
-        'luminosity_distance',
-        'psi',
-        'iota',
-        'phase',
-        'merger_time',
-        'ra',
-        'dec'
-    ],
-    parameter_resolvers
-)
-
-
-class PriorType(DjangoObjectType):
-    class Meta:
-        model = Prior
-        interfaces = (relay.Node,)
-        convert_choices_to_enum = False
-
-    def resolve_prior_choice(parent, info):
-        return parent.prior_choice
-
-
-class SamplerType(DjangoObjectType, AbstractSamplerType):
-    class Meta:
-        model = Sampler
-        interfaces = (relay.Node,)
-        convert_choices_to_enum = False
-
-
-populate_fields(
-    SamplerType,
-    [
-           'nlive',
-           'nact',
-           'maxmcmc',
-           'walks',
-           'dlogz',
-           'cpus',
-    ],
-    parameter_resolvers
-)
 
 
 class UserDetails(graphene.ObjectType):
