@@ -16,7 +16,7 @@ def request_file_download_id(job, path, user_id=None):
     """
 
     # Make sure that the job was actually submitted (Might be in a draft state?)
-    if not job.job_id:
+    if not job.job_controller_id:
         return False, "Job not submitted"
 
     # Create the jwt token
@@ -31,7 +31,7 @@ def request_file_download_id(job, path, user_id=None):
 
     # Generate the post payload
     data = {
-        'jobId': job.job_id,
+        'jobId': job.job_controller_id,
         'path': path
     }
 

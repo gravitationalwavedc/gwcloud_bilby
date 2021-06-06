@@ -1,25 +1,60 @@
 import React from 'react';
 import {createFragmentContainer, graphql} from 'react-relay';
 import ReviewJob from '../Forms/ReviewJob';
+import parseJobParams from '../../Utils/ParseJobParams';
 
 const Parameters = (props) => {
-    const jobData = props.jobData ? props.jobData : props.parameters;
-    const values = Object.keys(jobData).reduce((result, key) => {
-        if (!jobData[key])
-            return {};
+    const params = props.params;
 
-        Object.keys(jobData[key]).map((item) => {
-            result[item] = jobData[key][item];
-        });
-        return result;
-    }, {});
+    const result = parseJobParams(params);
 
-    return <ReviewJob values={values}/>;
+    return <ReviewJob values={result}/>;
 };
 
 export default createFragmentContainer(Parameters, {
-    //jobData: graphql`
-    //    fragment Parameters_jobData on BilbyJobNode {
-    //    }
-    //`
+    params: graphql`
+        fragment Parameters_params on JobParameterOutput {
+            details {
+                name
+                description
+                private
+            }
+            data {
+                dataChoice
+                triggerTime
+                channels {
+                    hanfordChannel
+                    livingstonChannel
+                    virgoChannel
+                }
+            }
+            detector {
+                hanford
+                hanfordMinimumFrequency
+                hanfordMaximumFrequency
+                livingston
+                livingstonMinimumFrequency
+                livingstonMaximumFrequency
+                virgo
+                virgoMinimumFrequency
+                virgoMaximumFrequency
+                duration
+                samplingFrequency
+            }
+            prior {
+                priorDefault
+            }
+            sampler {
+                nlive
+                nact
+                maxmcmc
+                walks
+                dlogz
+                cpus
+                samplerChoice
+            }
+            waveform {
+                model
+            }
+        }`
 });

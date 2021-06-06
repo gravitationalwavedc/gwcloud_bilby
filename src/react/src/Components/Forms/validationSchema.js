@@ -13,30 +13,30 @@ let validationSchema = Yup.object().shape({
     hanfordMaximumFrequency: Yup.number()
         .min(Yup.ref('hanfordMinimumFrequency'), 'This should be greater than minimum frequency.')
         .required(),
-    hanfordChannel: Yup.string().required(),
+    hanfordChannel: Yup.string().nullable(),
     virgoMinimumFrequency: Yup.number()
         .max(Yup.ref('virgoMaximumFrequency'), 'This should be less than maximum frequency.').required(),
     virgoMaximumFrequency: Yup.number()
         .min(Yup.ref('virgoMinimumFrequency'),  'This should be greater than minimum frequency.').required(),
-    virgoChannel: Yup.string().required(),
+    virgoChannel: Yup.string().nullable(),
     livingstonMinimumFrequency: Yup.number()
         .max(Yup.ref('livingstonMaximumFrequency'), 'This should be less than maximum frequency.').required(),
     livingstonMaximumFrequency: Yup.number()
         .min(Yup.ref('livingstonMinimumFrequency'), 'This should be greater than minimum frequency.').required(),
-    livingstonChannel: Yup.string().required(),
-    mass1: Yup.number().min(Yup.ref('mass2')).required(),
-    mass2: Yup.number().max(Yup.ref('mass1')).required(),
-    luminosityDistance: Yup.number().required(),
-    psi: Yup.number().required(),
-    iota: Yup.number().required(),
-    phase: Yup.number().required(),
-    mergerTime: Yup.number().required(),
-    ra: Yup.number().required(),
-    dec: Yup.number().required(),
+    livingstonChannel: Yup.string().nullable(),
+    mass1: Yup.number().min(Yup.ref('mass2')),
+    mass2: Yup.number().max(Yup.ref('mass1')),
+    luminosityDistance: Yup.number(),
+    psi: Yup.number(),
+    iota: Yup.number(),
+    phase: Yup.number(),
+    mergerTime: Yup.number(),
+    ra: Yup.number(),
+    dec: Yup.number(),
     nlive: Yup.number().min(100).integer().required(),
-    nact: Yup.number().positive().required(),
-    maxmcmc: Yup.number().positive().required(),
-    walks: Yup.number().positive().required(),
+    nact: Yup.number().positive().integer().required(),
+    maxmcmc: Yup.number().positive().integer().required(),
+    walks: Yup.number().positive().integer().required(),
     dlogz: Yup.number().positive().required(),
 });
 
@@ -53,6 +53,38 @@ validationSchema = validationSchema.test(
             null,
             'activeDetectorTest'
         );
+    }
+);
+
+validationSchema = validationSchema.test(
+    'activeDetectorChannelTest',
+    null,
+    (obj) => {
+        if ( obj.hanford && !obj.hanfordChannel) {
+            return new Yup.ValidationError(
+                'Please choose a hanford detector channel.',
+                null,
+                'activeDetectorChannelTest'
+            );
+        }
+
+        if ( obj.livingston && !obj.livingstonChannel) {
+            return new Yup.ValidationError(
+                'Please choose a livingston detector channel.',
+                null,
+                'activeDetectorChannelTest'
+            );
+        }
+
+        if ( obj.virgo && !obj.virgoChannel) {
+            return new Yup.ValidationError(
+                'Please choose a virgo detector channel.',
+                null,
+                'activeDetectorChannelTest'
+            );
+        }
+
+        return true;
     }
 );
 

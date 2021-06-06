@@ -5,15 +5,16 @@ from django_filters import FilterSet, OrderingFilter
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 from graphene_django.types import DjangoObjectType
+from graphql import GraphQLError
 from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
-from graphql import GraphQLError
 
 from .models import BilbyJob, Label
 from .status import JobStatus
-from .types import OutputStartType, JobStatusType
+from .types import JobStatusType, BilbyJobCreationResult, JobParameterInput, JobParameterOutput
 from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
+from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_job_filter import request_job_filter
 from .views import create_bilby_job, update_bilby_job, create_bilby_job_from_ini_string
 
@@ -66,10 +67,8 @@ class BilbyJobNode(DjangoObjectType):
 
     job_status = graphene.Field(JobStatusType)
     last_updated = graphene.String()
-    start = graphene.Field(OutputStartType)
+    params = graphene.Field(JobParameterOutput)
     labels = graphene.List(LabelType)
-
-    # priors = graphene.Field(OutputPriorType)
 
     @classmethod
     def get_queryset(parent, queryset, info):
@@ -78,12 +77,8 @@ class BilbyJobNode(DjangoObjectType):
     def resolve_last_updated(parent, info):
         return parent.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    def resolve_start(parent, info):
-        return {
-            "name": parent.name,
-            "description": parent.description,
-            "private": parent.private
-        }
+    def resolve_params(parent, info):
+        return generate_parameter_output(parent)
 
     def resolve_labels(parent, info):
         return parent.labels.all()
@@ -93,7 +88,7 @@ class BilbyJobNode(DjangoObjectType):
             # Get job details from the job controller
             _, jc_jobs = request_job_filter(
                 info.context.user.user_id,
-                ids=[parent.job_id]
+                ids=[parent.job_controller_id]
             )
 
             status_number, status_name, status_date = derive_job_status(jc_jobs[0]["history"])
@@ -241,96 +236,9 @@ class Query(object):
         return BilbyResultFiles(files=result)
 
 
-class BilbyJobCreationResult(graphene.ObjectType):
-    job_id = graphene.String()
-
-
-class CalibrationInput(graphene.InputObjectType):
-    pass
-
-
-class ChannelsInput(graphene.InputObjectType):
-    hanford_channel = graphene.String()
-    livingston_channel = graphene.String()
-    virgo_channel = graphene.String()
-
-
-class DataInput(graphene.InputObjectType):
-    data_choice = graphene.String()
-    trigger_time = graphene.Decimal()
-    channels = ChannelsInput()
-
-
-class DetectorInput(graphene.InputObjectType):
-    hanford = graphene.Boolean()
-    hanford_minimum_frequency = graphene.Decimal()
-    hanford_maximum_frequency = graphene.Decimal()
-
-    livingston = graphene.Boolean()
-    livingston_minimum_frequency = graphene.Decimal()
-    livingston_maximum_frequency = graphene.Decimal()
-
-    virgo = graphene.Boolean()
-    virgo_minimum_frequency = graphene.Decimal()
-    virgo_maximum_frequency = graphene.Decimal()
-
-    duration = graphene.Decimal()
-    sampling_frequency = graphene.Decimal()
-
-
-class InjectionInput(graphene.InputObjectType):
-    pass
-
-
-class LikelihoodInput(graphene.InputObjectType):
-    pass
-
-
-class PriorInput(graphene.InputObjectType):
-    prior_default = graphene.String()
-
-
-class PostProcessingInput(graphene.InputObjectType):
-    pass
-
-
-class SamplerInput(graphene.InputObjectType):
-    nlive = graphene.Decimal()
-    nact = graphene.Decimal()
-    maxmcmc = graphene.Decimal()
-    walks = graphene.Decimal()
-    dlogz = graphene.Decimal()
-    cpus = graphene.Int()
-    sampler_choice = graphene.String()
-
-
-class WaveformInput(graphene.InputObjectType):
-    model = graphene.String()
-
-
-class JobDetailsInput(graphene.InputObjectType):
-    name = graphene.String()
-    description = graphene.String()
-    private = graphene.Boolean()
-
-
-class ParameterInput(graphene.InputObjectType):
-    details = JobDetailsInput()
-
-    # calibration = CalibrationInput()
-    data = DataInput()
-    detector = DetectorInput()
-    # injection = InjectionInput()
-    # likelihood = LikelihoodInput()
-    prior = PriorInput()
-    # post_processing = PostProcessingInput()
-    sampler = SamplerInput()
-    waveform = WaveformInput()
-
-
 class BilbyJobMutation(relay.ClientIDMutation):
     class Input:
-        params = ParameterInput()
+        params = JobParameterInput()
 
     result = graphene.Field(BilbyJobCreationResult)
 
@@ -343,10 +251,10 @@ class BilbyJobMutation(relay.ClientIDMutation):
             raise GraphQLError('You do not have permission to perform this action')
 
         # Create the bilby job
-        job_id = create_bilby_job(user, params)
+        bilby_job = create_bilby_job(user, params)
 
         # Convert the bilby job id to a global id
-        job_id = to_global_id("BilbyJobNode", job_id)
+        job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
         # Return the bilby job id to the client
         return BilbyJobMutation(
@@ -370,10 +278,10 @@ class BilbyJobFromIniStringMutation(relay.ClientIDMutation):
             raise GraphQLError('You do not have permission to perform this action')
 
         # Create the bilby job
-        job_id = create_bilby_job_from_ini_string(user, start, ini_string)
+        bilby_job = create_bilby_job_from_ini_string(user, start, ini_string)
 
         # Convert the bilby job id to a global id
-        job_id = to_global_id("BilbyJobNode", job_id)
+        job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
         # Return the bilby job id to the client
         return BilbyJobFromIniStringMutation(

@@ -15,9 +15,7 @@ describe('the privacy toggle component', () => {
             query PrivacyToggleTestQuery ($jobId: ID!)
               @relay_test_operation {
                 bilbyJob(id: $jobId) {
-                  start {
-                    ...PrivacyToggle_data
-                  }
+                  ...PrivacyToggle_data
                }
              }
           `}
@@ -26,7 +24,7 @@ describe('the privacy toggle component', () => {
             }}
             render={({ error, props }) => {
                 if (props) {
-                    return <PrivacyToggle data={props.bilbyJob.start} match={{}} router={router}/>;
+                    return <PrivacyToggle data={props.bilbyJob} match={{}} router={router}/>;
                 } else if (error) {
                     return error.message;
                 }
@@ -38,9 +36,7 @@ describe('the privacy toggle component', () => {
     const mockReturn = {
         BilbyJobNode() {
             return {
-                start: {
-                    private: true
-                }
+                private: true
             };
         }
     };

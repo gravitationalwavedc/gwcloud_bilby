@@ -110,7 +110,7 @@ const NewJob = ({initialValues, router}) => {
                     },
 
                     waveform: {
-                        model: null
+                        model: values.signalChoice
                     },
                 }
             }

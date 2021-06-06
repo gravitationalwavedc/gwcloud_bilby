@@ -1,4 +1,5 @@
 import json
+from ast import literal_eval
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -126,7 +127,7 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertDictEqual(
-            eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict").value)),
             {'H1': 'GWOSC', 'L1': 'GWOSC'}
         )
 
@@ -146,12 +147,12 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertDictEqual(
-            eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency").value)),
             {'H1': '1024', 'L1': '1024'}
         )
 
         self.assertDictEqual(
-            eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency").value)),
             {'H1': '20', 'L1': '20'}
         )
 
@@ -284,7 +285,7 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertDictEqual(
-            eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict").value)),
             {'H1': 'GWOSC', 'L1': 'GWOSC'}
         )
 
@@ -304,12 +305,12 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertDictEqual(
-            eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency").value)),
             {'H1': '1024', 'L1': '1024'}
         )
 
         self.assertDictEqual(
-            eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency").value)),
             {'H1': '20', 'L1': '20'}
         )
 

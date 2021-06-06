@@ -17,7 +17,7 @@ def request_file_list(job, path, recursive, user_id=None):
     """
 
     # Make sure that the job was actually submitted (Might be in a draft state?)
-    if not job.job_id:
+    if not job.job_controller_id:
         return False, "Job has not been submitted"
 
     # Create the jwt token
@@ -32,7 +32,7 @@ def request_file_list(job, path, recursive, user_id=None):
 
     # Build the data object
     data = {
-        'jobId': job.job_id,
+        'jobId': job.job_controller_id,
         'recursive': recursive,
         'path': path
     }

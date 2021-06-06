@@ -16,9 +16,9 @@ def create_bilby_job(user, params):
     # explicitly checks for `if input_params["data"]["type"] == "simulated":`, so any value other than
     # `simulation` would result in a real data job
     if params.data.data_choice != "simulated" and (
-        params.data.channels.hanford_channel != "GWOSC" or
-        params.data.channels.livingston_channel != "GWOSC" or
-        params.data.channels.virgo_channel != "GWOSC"
+            params.data.channels.hanford_channel != "GWOSC" or
+            params.data.channels.livingston_channel != "GWOSC" or
+            params.data.channels.virgo_channel != "GWOSC"
     ):
         # This is a real job, with a channel that is not GWOSC
         if not user.is_ligo:
@@ -28,6 +28,8 @@ def create_bilby_job(user, params):
             # User is a ligo user, so they may submit the job, but we need to track that the job is a
             # ligo "proprietary" job
             is_ligo_job = True
+
+    # todo: request_cpus
 
     # Generate the detector choice
     detectors = []
@@ -56,6 +58,14 @@ def create_bilby_job(user, params):
     frequency_domain_source_model = "lal_binary_black_hole"
     if params.waveform.model == "binaryNeutronStar":
         frequency_domain_source_model = "lal_binary_neutron_star"
+
+    sampler_kwargs = {
+        'nlive': params.sampler.nlive,
+        'nact': params.sampler.nact,
+        'maxmcmc': params.sampler.maxmcmc,
+        'walks': params.sampler.walks,
+        'dlogz': str(params.sampler.dlogz)
+    }
 
     # Parse the input parameters in to an argument dict
     data = {
@@ -121,6 +131,11 @@ def create_bilby_job(user, params):
         # Output label
         "label": params.details.name,
 
+        # Use multi-processing. This options sets the number of cores to request. To use a pool of 8 threads on an
+        # 8-core CPU, set request-cpus=8. For the dynesty, ptemcee, cpnest, and bilby_mcmc samplers, no additional
+        # sampler-kwargs are required
+        "request-cpus": params.sampler.cpus,
+
         # Some parameters set by job controller client
 
         ################################################################################
@@ -155,6 +170,10 @@ def create_bilby_job(user, params):
 
         # Sampler to use
         "sampler": params.sampler.sampler_choice,
+
+        # Dictionary of sampler-kwargs to pass in, e.g., {nlive: 1000} OR pass pre-defined set of sampler-kwargs
+        # {Default, FastTest}
+        "sampler-kwargs": repr(sampler_kwargs),
 
         ################################################################################
         # Waveform arguments
@@ -234,10 +253,10 @@ def create_bilby_job(user, params):
     result = submit_job(user, params)
 
     # Save the job id
-    bilby_job.job_id = result["jobId"]
+    bilby_job.job_controller_id = result["jobId"]
     bilby_job.save()
 
-    return bilby_job.id
+    return bilby_job
 
 
 def create_bilby_job_from_ini_string(user, start, ini_string):
@@ -259,10 +278,10 @@ def create_bilby_job_from_ini_string(user, start, ini_string):
         result = submit_job(user, params)
 
         # Save the job id
-        bilby_job.job_id = result["jobId"]
+        bilby_job.job_controller_id = result["jobId"]
         bilby_job.save()
 
-        return bilby_job.id
+        return bilby_job
 
 
 def update_bilby_job(job_id, user, private=None, labels=None):

@@ -1,8 +1,10 @@
+from unittest import mock
+
 from django.contrib.auth import get_user_model
 from graphql_relay.node.node import to_global_id
+
 from bilbyui.models import BilbyJob
 from bilbyui.tests.testcases import BilbyTestCase
-from unittest import mock
 
 User = get_user_model()
 
@@ -63,6 +65,8 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         bilbyJob node query should return a single job for an authenticated user."
         """
         job = BilbyJob.objects.create(user_id=self.user.id)
+        job.ini_string = """detectors=['H1']"""
+        job.save()
         global_id = to_global_id("BilbyJobNode", job.id)
         response = self.client.execute(
             f"""
@@ -72,13 +76,15 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                     name
                     userId
                     description
-                    jobId
+                    jobControllerId
                     private
                     lastUpdated
-                    start {{
-                        name
-                        description
-                        private
+                    params {{
+                        details {{
+                            name
+                            description
+                            private
+                        }}
                     }}
                 }}
             }}
@@ -90,10 +96,12 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                 "name": "",
                 "userId": 1,
                 "description": None,
-                "jobId": None,
+                "jobControllerId": None,
                 "private": False,
                 "lastUpdated": job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"),
-                "start": {"name": "", "description": None, "private": False},
+                "params": {
+                    "details": {"name": "", "description": None, "private": False}
+                }
             }
         }
         self.assertDictEqual(
@@ -107,18 +115,18 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         BilbyJob.objects.create(
             user_id=self.user.id,
             name="Test1",
-            job_id=2,
+            job_controller_id=2,
             is_ligo_job=False
         )
         BilbyJob.objects.create(
             user_id=self.user.id,
             name="Test2",
-            job_id=1,
+            job_controller_id=1,
             description="A test job",
             is_ligo_job=False
         )
         # This job shouldn't appear in the list because it belongs to another user.
-        BilbyJob.objects.create(user_id=4, name="Test3", job_id=3)
+        BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=3)
         response = self.client.execute(
             """
             query {
@@ -160,35 +168,39 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
 
     @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
     def test_public_bilby_jobs_query(self, perform_db_search):
-        BilbyJob.objects.create(user_id=self.user.id, name="Test1", description="first job", job_id=2, private=False)
         BilbyJob.objects.create(
-            user_id=self.user.id, name="Test2", job_id=1, description="A test job", private=False
+            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False
+        )
+        BilbyJob.objects.create(
+            user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False
         )
         # This job shouldn't appear in the list because it's private.
-        BilbyJob.objects.create(user_id=4, name="Test3", job_id=3, private=True)
+        BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=3, private=True)
         response = self.client.execute(
-           """
-           query {
-               publicBilbyJobs(search:"", timeRange:"all") {
-                   edges {
-                       node {
-                           user
-                           description
-                           name
-                           jobStatus {
-                            name
-                           }
-                           timestamp
-                           id
-                       }
-                    }
-                }
-            }
             """
+            query {
+                publicBilbyJobs(search:"", timeRange:"all") {
+                    edges {
+                        node {
+                            user
+                            description
+                            name
+                            jobStatus {
+                             name
+                            }
+                            timestamp
+                            id
+                        }
+                     }
+                 }
+             }
+             """
         )
-        expected = {'publicBilbyJobs':
-                    {'edges': [
-                        {'node': {
+        expected = {
+            'publicBilbyJobs': {
+                'edges': [
+                    {
+                        'node': {
                             'description': 'A test job',
                             'id': 'QmlsYnlKb2JOb2RlOjE=',
                             'name': 'Test1',
@@ -197,8 +209,10 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                             },
                             'timestamp': '2020-01-01 12:00:00 UTC',
                             'user': 'buffy summers'
-                        }},
-                        {'node': {
+                        }
+                    },
+                    {
+                        'node': {
                             'description': '',
                             'id': 'QmlsYnlKb2JOb2RlOjI=',
                             'name': 'Test2',
@@ -207,8 +221,11 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                             },
                             'timestamp': '2020-01-01 12:00:00 UTC',
                             'user': 'buffy summers'
-                        }}
-                    ]}}
+                        }
+                    }
+                ]
+            }
+        }
         self.assertDictEqual(response.data, expected, "publicBilbyJobs query returned unexpected data.")
 
     @mock.patch('bilbyui.models.request_file_list', side_effect=request_file_list_mock)
@@ -221,7 +238,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
             user_id=self.user.id,
             name="Test1",
             description="first job",
-            job_id=2,
+            job_controller_id=2,
             private=False
         )
         global_id = to_global_id("BilbyJobNode", job.id)

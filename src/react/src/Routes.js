@@ -50,11 +50,11 @@ function getRoutes() {
                 render={handleRender}/>
             <Route
                 path="job-form/duplicate/"
-                //query={graphql`
-                //    query Routes_JobForm_Query ($jobId: ID!){
-                //      ...DuplicateJobForm_data @arguments(jobId: $jobId)
-                //    }
-                //`}
+                query={graphql`
+                   query Routes_JobForm_Query ($jobId: ID!){
+                     ...DuplicateJobForm_data @arguments(jobId: $jobId)
+                   }
+                `}
                 prepareVariables={(params, {location}) => ({
                     jobId: location.state && location.state.jobId ? location.state.jobId : ''
                 })}

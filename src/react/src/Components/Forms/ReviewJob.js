@@ -133,6 +133,10 @@ const ReviewJob = ({values, handleSubmit, formik}) => {
                         <Table>
                             <tbody>
                                 <tr>
+                                    <th>Sampler</th>
+                                    <td className="text-right">{values.samplerChoice}</td>
+                                </tr>
+                                <tr>
                                     <th>Live points</th>
                                     <td className="text-right">{values.nlive}</td>
                                 </tr>

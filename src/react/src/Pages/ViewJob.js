@@ -17,7 +17,8 @@ const ViewJob = (props) => {
         setShowNotification(true);
     };
 
-    const { start, lastUpdated, userId } = props.data.bilbyJob;
+    const { params, lastUpdated, userId } = props.data.bilbyJob;
+    const { details } = params;
 
     const updated = moment.utc(lastUpdated, 'YYYY-MM-DD HH:mm:ss UTC').local().format('llll');
 
@@ -37,8 +38,8 @@ const ViewJob = (props) => {
             <Row className="mb-3">
                 <Col md={2} />
                 <Col md={8}>
-                    <h1>{start.name}</h1>
-                    <p>{start.description}</p>
+                    <h1>{details.name}</h1>
+                    <p>{details.description}</p>
                     <p>Updated on {updated}</p>
                     <p>{props.data.bilbyJob.jobStatus.name}</p>
                     <LabelDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} />
@@ -53,7 +54,7 @@ const ViewJob = (props) => {
                     <PrivacyToggle 
                         userId={userId} 
                         jobId={props.match.params.jobId} 
-                        data={props.data.bilbyJob.start} 
+                        data={props.data.bilbyJob}
                         onUpdate={onSave} />
                 </Col>
             </Row>
@@ -76,7 +77,7 @@ const ViewJob = (props) => {
                     <Col md={8}>
                         <Tab.Content>
                             <Tab.Pane eventKey="parameters">
-                                <Parameters jobData={props.data.bilbyJob} {...props}/>
+                                <Parameters params={params} {...props}/>
                             </Tab.Pane>
                             <Tab.Pane eventKey="results">
                                 <Files {...props}/>
@@ -100,17 +101,20 @@ export default createFragmentContainer(ViewJob,
                     id
                     userId
                     lastUpdated
-                    start {
-                        name
-                        description
-                        ...PrivacyToggle_data
-                    }
+                    ...PrivacyToggle_data
                     jobStatus {
-                      name
-                      number
-                      date
+                        name
+                        number
+                        date
                     }
-		#    ...Parameters_jobData
+                    params {
+                        details {
+                            name
+                            description
+                            private
+                        }
+                        ...Parameters_params
+                    }
                 }
                 ...LabelDropdown_data @arguments(jobId: $jobId)
             }

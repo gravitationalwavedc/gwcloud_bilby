@@ -15,7 +15,7 @@ def request_job_status(job, user_id=None):
     """
 
     # Make sure that the job was actually submitted (Might be in a draft state?)
-    if not job.job_id:
+    if not job.job_controller_id:
         return "UNKNOWN", "Job not submitted"
 
     # Create the jwt token
@@ -31,7 +31,7 @@ def request_job_status(job, user_id=None):
     try:
         # Initiate the request to the job controller
         result = requests.request(
-            "GET", f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?jobIds={job.job_id}",
+            "GET", f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?jobIds={job.job_controller_id}",
             headers={
                 "Authorization": jwt_enc
             }

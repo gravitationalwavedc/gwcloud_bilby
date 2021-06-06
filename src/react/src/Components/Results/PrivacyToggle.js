@@ -54,7 +54,7 @@ const updateJob = (variables, callback) => commitMutation(harnessApi.getEnvironm
 
 export default createFragmentContainer(PrivacyToggle, {
     data: graphql`
-        fragment PrivacyToggle_data on OutputStartType{
+        fragment PrivacyToggle_data on BilbyJobNode {
             private
         }
     `

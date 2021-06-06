@@ -51,8 +51,8 @@ class BilbyJob(models.Model):
     # The job ini string *should* be the full ini file for the job minus any client specific parameters
     ini_string = models.TextField(blank=False, null=False)
 
-    # The job id is the id given by the job controller at submission
-    job_id = models.IntegerField(default=None, blank=True, null=True)
+    # The job controller id is the id given by the job controller at submission
+    job_controller_id = models.IntegerField(default=None, blank=True, null=True)
 
     labels = models.ManyToManyField(Label)
     # is_ligo_job indicates if the job has been run using proprietary data. If running a real job with GWOSC, this will
@@ -161,7 +161,7 @@ class BilbyJob(models.Model):
 
 class IniKeyValue(models.Model):
     class Meta:
-        unique_together = ('job', 'key', 'value')
+        unique_together = ('job', 'key')
 
     # The job this ini record is for
     job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE, db_index=True)

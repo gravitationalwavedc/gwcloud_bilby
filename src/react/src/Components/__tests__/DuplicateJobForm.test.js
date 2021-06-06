@@ -35,9 +35,11 @@ describe('duplicate a job and create a new form', () => {
     const mockReturn = {
         BilbyJobNode() {
             return {
-                start: {
-                    name: 'TestJob-1',
-                    description: 'A test job.',
+                params: {
+                    details: {
+                        name: 'TestJob-1',
+                        description: 'A test job.',
+                    }
                 }
             };
         }

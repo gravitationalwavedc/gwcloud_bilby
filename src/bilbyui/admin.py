@@ -10,6 +10,6 @@ class LabelAdmin(admin.ModelAdmin):
 
 @admin.register(BilbyJob)
 class BilbyJobAdmin(admin.ModelAdmin):
-    fields = ['name', 'description', 'private', 'job_id', 'labels', 'ini_string']
+    fields = ['name', 'description', 'private', 'job_controller_id', 'labels', 'ini_string']
     filter_horizontal = ('labels',)
     readonly_fields = ('creation_time', 'last_updated')
