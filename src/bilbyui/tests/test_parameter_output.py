@@ -6,6 +6,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.gen_parameter_output import to_dec
 
 User = get_user_model()
 
@@ -46,7 +47,7 @@ class TestJobSubmission(BilbyTestCase):
                         # "calibration": None,
                         "data": {
                             "dataChoice": random.choice(["real", "simulated"]),
-                            "triggerTime": str(rand_float(1126200000, 118200000)),
+                            "triggerTime": str(to_dec(float(rand_float(1126200000, 118200000)))),
                             "channels": {
                                 "hanfordChannel": random.choice(["GWOSC", "GDS-CALIB_STRAIN"]),
                                 "livingstonChannel": random.choice(["GWOSC", "GDS-CALIB_STRAIN"]),
@@ -55,14 +56,14 @@ class TestJobSubmission(BilbyTestCase):
                         },
                         "detector": {
                             "hanford": True,
-                            "hanfordMinimumFrequency": str(rand_float(10, 900)),
-                            "hanfordMaximumFrequency": str(rand_float(1000, 20000)),
+                            "hanfordMinimumFrequency": str(to_dec(float(rand_float(10, 900)))),
+                            "hanfordMaximumFrequency": str(to_dec(float(rand_float(1000, 20000)))),
                             "livingston": random.choice([True, False]),
-                            "livingstonMinimumFrequency": str(rand_float(10, 900)),
-                            "livingstonMaximumFrequency": str(rand_float(1000, 20000)),
+                            "livingstonMinimumFrequency": str(to_dec(float(rand_float(10, 900)))),
+                            "livingstonMaximumFrequency": str(to_dec(float(rand_float(1000, 20000)))),
                             "virgo": random.choice([True, False]),
-                            "virgoMinimumFrequency": str(rand_float(10, 900)),
-                            "virgoMaximumFrequency": str(rand_float(1000, 20000)),
+                            "virgoMinimumFrequency": str(to_dec(float(rand_float(10, 900)))),
+                            "virgoMaximumFrequency": str(to_dec(float(rand_float(1000, 20000)))),
                             "duration": random.choice(["4", "8", "16", "32", "64", "128"]),
                             "samplingFrequency": random.choice(["512", "1024", "2048", "4096", "8192", "16384"])
                         },
@@ -77,7 +78,7 @@ class TestJobSubmission(BilbyTestCase):
                             "nact": rand_int(1, 100),
                             "maxmcmc": rand_int(1000, 10000),
                             "walks": rand_int(100, 10000),
-                            "dlogz": str(rand_float(0.1, 1)),
+                            "dlogz": str(to_dec(float(rand_float(0.1, 1)))),
                             "cpus": rand_int(1, 32),
                             "samplerChoice": "dynesty"
                         },

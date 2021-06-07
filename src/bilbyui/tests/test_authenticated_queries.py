@@ -196,6 +196,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
              }
              """
         )
+
         expected = {
             'publicBilbyJobs': {
                 'edges': [

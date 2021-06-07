@@ -5,4 +5,4 @@ job_directory = "/fred/oz988/gwcloud/jobs/"
 scheduler = "slurm"
 
 # Environment scheduler sources during runtime
-scheduler_env = "/fred/oz988/gwcloud/gwcloud_job_client/bundles/unpacked/fbc9f7c0815f1a83b0de36f957351c93797b2049/venv/bin/activate"
+scheduler_env = "/fred/oz988/gwcloud_job_client/bundles/unpacked/fbc9f7c0815f1a83b0de36f957351c93797b2049/env.sh"
