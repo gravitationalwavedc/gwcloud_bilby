@@ -49,7 +49,7 @@ def perform_db_search(user, kwargs):
           creationTime
           lastUpdated
           private
-          jobId
+          jobControllerId
         }}
         history {{
           id
