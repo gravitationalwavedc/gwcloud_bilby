@@ -50,7 +50,7 @@ def reverse_pull_ini_files(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bilbyui', '0016_merge_20210601_0127'),
+        ('bilbyui', '0024_rename_job_id_bilbyjob_job_controller_id'),
     ]
 
     operations = [

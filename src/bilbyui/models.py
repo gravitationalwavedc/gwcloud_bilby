@@ -49,7 +49,7 @@ class BilbyJob(models.Model):
     private = models.BooleanField(default=False)
 
     # The job ini string *should* be the full ini file for the job minus any client specific parameters
-    ini_string = models.TextField(blank=False, null=False)
+    ini_string = models.TextField(blank=True, null=True)
 
     # The job controller id is the id given by the job controller at submission
     job_controller_id = models.IntegerField(default=None, blank=True, null=True)
