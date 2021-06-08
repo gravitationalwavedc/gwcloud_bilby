@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bilbyui', '0023_alter_inikeyvalue_unique_together'),
+        ('bilbyui', '0022_auto_20210606_0521'),
     ]
 
     operations = [

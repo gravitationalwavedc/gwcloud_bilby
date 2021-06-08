@@ -160,9 +160,6 @@ class BilbyJob(models.Model):
 
 
 class IniKeyValue(models.Model):
-    class Meta:
-        unique_together = ('job', 'key')
-
     # The job this ini record is for
     job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE, db_index=True)
     # The ini key
