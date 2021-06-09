@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 from tempfile import TemporaryDirectory
@@ -80,7 +81,13 @@ class TestSubmit(TestCase):
             slurm_submit_mock_return = 1234
             get_unique_job_id_mock_return = 4321
 
-            result = submit(details, ini)
+            params = dict(
+                name='test-real',
+                description='Some description',
+                ini_string=ini
+            )
+
+            result = submit(details, json.dumps(params))
 
             # Check that the return value (The internal bundle submission id) is correct
             self.assertEqual(result, get_unique_job_id_mock_return)
@@ -180,7 +187,13 @@ echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
             slurm_submit_mock_return = 12345
             get_unique_job_id_mock_return = 54321
 
-            result = submit(details, ini)
+            params = dict(
+                name='test-simulated',
+                description='Some description',
+                ini_string=ini
+            )
+
+            result = submit(details, json.dumps(params))
 
             # Check that the return value (The internal bundle submission id) is correct
             self.assertEqual(result, get_unique_job_id_mock_return)
@@ -283,7 +296,13 @@ echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
 
             slurm_submit_mock_return = None
 
-            result = submit(details, ini)
+            params = dict(
+                name='test-simulated-submission-failure',
+                description='Some description',
+                ini_string=ini
+            )
+
+            result = submit(details, json.dumps(params))
 
             # Check that the return value (The internal bundle submission id) is correct
             self.assertEqual(result, None)
