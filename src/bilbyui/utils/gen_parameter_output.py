@@ -1,3 +1,4 @@
+import decimal
 from decimal import Decimal
 from math import floor
 
@@ -20,9 +21,14 @@ def to_dec(val):
     if val is None:
         return None
 
-    # If the value is a string, just return it as a Decimal
-    if type(val) is str:
-        return Decimal(val)
+    try:
+        # If the value is a string, just return it as a Decimal
+        if type(val) is str:
+            return Decimal(val)
+    except decimal.InvalidOperation:
+        # If the string is not able to be converted, simply assume it's a string type not representing a decimal
+        # and return the original value
+        return val
 
     # It's a numeric type, if there is a remainder, convert the value to a string and parse it with Decimal
     if val - floor(val):
@@ -44,6 +50,10 @@ def generate_parameter_output(job):
     args = bilby_ini_to_args(job.ini_string.encode('utf-8'))
     args.idx = None
     args.ini = None
+
+    # Sanitize the output directory
+    if args.outdir == '.':
+        args.outdir = "./"
 
     parser = DataGenerationInput(args, [], create_data=False)
 

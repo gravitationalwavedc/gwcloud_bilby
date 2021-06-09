@@ -5,8 +5,9 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 
+from bilbyui.models import BilbyJob
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.gen_parameter_output import to_dec
+from bilbyui.utils.gen_parameter_output import to_dec, generate_parameter_output
 
 User = get_user_model()
 
@@ -208,3 +209,38 @@ class TestJobSubmission(BilbyTestCase):
             self.assertDictEqual(
                 expected, response.data, "bilbyJob query returned unexpected data."
             )
+
+    def test_invalid_outdir_output(self):
+        # There are invalid outdirs which can crash the viewing of jobs, so we need to check that the outdir is
+        # correctly sanitized
+
+        # Start with creating a job with an invalid outdir (".")
+        job = BilbyJob.objects.create(user_id=self.user.id)
+        job.ini_string = """detectors=['H1']
+trigger-time=12345678
+outdir=."""
+        job.save()
+
+        # Generate the output params - bilby will raise an exception if outdir=. is not sanitized
+        generate_parameter_output(job)
+
+    def test_sampler_parsing_output(self):
+        # There is a case where parsing of sampler arguments broke because some dict values were strings representing a
+        # word rather than a parsable decimal number. We need to check that that case can successfully be parsed.
+
+        # Case: sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100, 'n_check_point': 2000,
+        # 'nact': 10, 'npool': 4}
+        # Because "'sample': 'rwalk'" isn't parsable as a decimal
+
+        # Start with creating a job with the test case
+        job = BilbyJob.objects.create(user_id=self.user.id)
+        job.ini_string = """detectors=['H1']
+trigger-time=12345678
+outdir=./
+sampler=dynesty
+sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100, 'n_check_point': 2000, 'nact': 10, 'npool': 4}""" # noqa
+        job.save()
+
+        # Generate the output params - bilby will raise an exception if the decimal parser isn't updated to handle the
+        # case of 'sample': 'rwalk'
+        generate_parameter_output(job)
