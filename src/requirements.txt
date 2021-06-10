@@ -57,7 +57,7 @@ django-graphql-jwt==0.3.1
     # via -r requirements.in
 django-jenkins==0.110.0
     # via -r requirements.in
-django==3.2.3
+django==3.2.4
     # via
     #   -r requirements.in
     #   django-cors-headers
