@@ -1,9 +1,13 @@
+import logging
+import uuid
 from unittest import mock
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from graphql_relay.node.node import to_global_id
 
-from bilbyui.models import BilbyJob
+from bilbyui.models import BilbyJob, FileDownloadToken
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
@@ -47,10 +51,16 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         ]
 
     def request_file_list_mock(*args, **kwargs):
-        return True, [{'path': '/a/path/here', 'isDir': False, 'fileSize': 123, 'downloadId': 1}]
+        return True, [
+            {'path': '/a', 'isDir': True, 'fileSize': 0},
+            {'path': '/a/path', 'isDir': True, 'fileSize': 0},
+            {'path': '/a/path/here2.txt', 'isDir': False, 'fileSize': 12345},
+            {'path': '/a/path/here3.txt', 'isDir': False, 'fileSize': 123456},
+            {'path': '/a/path/here4.txt', 'isDir': False, 'fileSize': 1234567}
+        ]
 
-    def request_file_download_id_mock(*args, **kwargs):
-        return True, 26
+    def request_file_download_ids_mock(*args, **kwargs):
+        return True, [uuid.uuid4() for _ in args[1]]
 
     def request_lookup_users_mock(*args, **kwargs):
         return '', [{
@@ -230,8 +240,9 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         self.assertDictEqual(response.data, expected, "publicBilbyJobs query returned unexpected data.")
 
     @mock.patch('bilbyui.models.request_file_list', side_effect=request_file_list_mock)
-    @mock.patch('bilbyui.models.request_file_download_id', side_effect=request_file_download_id_mock)
-    def test_bilby_result_files(self, request_file_list, request_file_download_id_mock):
+    @mock.patch('bilbyui.schema.request_file_download_ids',
+                side_effect=request_file_download_ids_mock)
+    def test_bilby_result_files_and_generate_file_download_ids(self, request_file_list, request_file_download_id_mock):
         """
         BilbyResultFiles query should return a file object.
         """
@@ -243,6 +254,34 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
             private=False
         )
         global_id = to_global_id("BilbyJobNode", job.id)
+
+        try:
+            logging.disable(logging.ERROR)
+
+            # Check user must be authenticated
+            self.client.authenticate(None)
+            response = self.client.execute(
+                f"""
+                query {{
+                    bilbyResultFiles (jobId: "{global_id}") {{
+                        files {{
+                            path
+                            isDir
+                            fileSize
+                            downloadToken
+                        }}
+                    }}
+                }}
+                """
+            )
+
+            self.assertEqual(response.data['bilbyResultFiles'], None)
+            self.assertEqual(str(response.errors[0]), "You do not have permission to perform this action")
+        finally:
+            logging.disable(logging.NOTSET)
+
+        # Check authenticated user
+        self.client.authenticate(self.user)
         response = self.client.execute(
             f"""
             query {{
@@ -251,17 +290,130 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                         path
                         isDir
                         fileSize
-                        downloadId
+                        downloadToken
                     }}
                 }}
             }}
             """
         )
+
+        files = [
+            {'path': '/a', 'isDir': True, 'fileSize': "0"},
+            {'path': '/a/path', 'isDir': True, 'fileSize': "0"},
+            {'path': '/a/path/here2.txt', 'isDir': False, 'fileSize': "12345"},
+            {'path': '/a/path/here3.txt', 'isDir': False, 'fileSize': "123456"},
+            {'path': '/a/path/here4.txt', 'isDir': False, 'fileSize': "1234567"}
+        ]
+
+        for i, f in enumerate(files):
+            if f['isDir']:
+                files[i]['downloadToken'] = None
+            else:
+                files[i]['downloadToken'] = str(FileDownloadToken.objects.get(job=job, path=f['path']).token)
+
         expected = {
             'bilbyResultFiles': {
-                'files': [
-                    {'path': '/a/path/here', 'isDir': False, 'fileSize': "123", 'downloadId': '26'}
-                ]
+                'files': files
             }
         }
         self.assertDictEqual(response.data, expected)
+
+        download_tokens = [f['downloadToken'] for f in filter(lambda x: not x['isDir'], files)]
+
+        # Check user must be authenticated
+        self.client.authenticate(None)
+        try:
+            logging.disable(logging.ERROR)
+
+            response = self.client.execute(
+                """
+                    mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
+                        generateFileDownloadIds(input: $input) {
+                            result
+                        }
+                    }
+                """,
+                {
+                    'input': {
+                        'jobId': global_id,
+                        'downloadTokens': [download_tokens[0]]
+                    }
+                }
+            )
+
+            self.assertEqual(response.data['generateFileDownloadIds'], None)
+            self.assertEqual(str(response.errors[0]), "You do not have permission to perform this action")
+        finally:
+            logging.disable(logging.NOTSET)
+
+        # Check authenticated user
+        self.client.authenticate(self.user)
+        response = self.client.execute(
+            """
+                mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
+                    generateFileDownloadIds(input: $input) {
+                        result
+                    }
+                }
+            """,
+            {
+                'input': {
+                    'jobId': global_id,
+                    'downloadTokens': [download_tokens[0]]
+                }
+            }
+        )
+
+        # Make sure the regex is parsable
+        self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 1)
+        uuid.UUID(response.data['generateFileDownloadIds']['result'][0], version=4)
+
+        response = self.client.execute(
+            """
+                mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
+                    generateFileDownloadIds(input: $input) {
+                        result
+                    }
+                }
+            """,
+            {
+                'input': {
+                    'jobId': global_id,
+                    'downloadTokens': download_tokens
+                }
+            }
+        )
+
+        # Make sure the regex is parsable
+        self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 3)
+        uuid.UUID(response.data['generateFileDownloadIds']['result'][0], version=4)
+        uuid.UUID(response.data['generateFileDownloadIds']['result'][1], version=4)
+        uuid.UUID(response.data['generateFileDownloadIds']['result'][2], version=4)
+
+        # Expire one of the FileDownloadTokens
+        tk = FileDownloadToken.objects.all()[1]
+        tk.created = timezone.now() - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1)
+        tk.save()
+
+        try:
+            logging.disable(logging.ERROR)
+            response = self.client.execute(
+                """
+                            mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
+                                generateFileDownloadIds(input: $input) {
+                                    result
+                                }
+                            }
+                        """,
+                {
+                    'input': {
+                        'jobId': global_id,
+                        'downloadTokens': download_tokens
+                    }
+                }
+            )
+
+            self.assertEqual(response.data['generateFileDownloadIds'], None)
+            self.assertEqual(str(response.errors[0]), "At least one token was invalid or expired.")
+        finally:
+            logging.disable(logging.NOTSET)

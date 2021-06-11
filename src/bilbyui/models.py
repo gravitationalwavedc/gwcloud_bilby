@@ -1,6 +1,10 @@
-from django.db import models
+import datetime
+import uuid
 
-from bilbyui.utils.jobs.request_file_download_id import request_file_download_id
+from django.conf import settings
+from django.db import models
+from django.utils import timezone
+
 from bilbyui.utils.jobs.request_file_list import request_file_list
 from bilbyui.utils.jobs.request_job_status import request_job_status
 from .utils.parse_ini_file import parse_ini_file
@@ -79,9 +83,6 @@ class BilbyJob(models.Model):
 
     def get_file_list(self, path='', recursive=True):
         return request_file_list(self, path, recursive)
-
-    def get_file_download_id(self, path):
-        return request_file_download_id(self, path)
 
     def as_json(self):
         return dict(
@@ -169,3 +170,62 @@ class IniKeyValue(models.Model):
     value = models.TextField(db_index=True)
     # The index from the ini file this k/v was generated from (allows forward engineering the ini file from these k/v's)
     index = models.IntegerField()
+
+
+class FileDownloadToken(models.Model):
+    """
+    This model tracks files from job file lists which can be used to generate file download tokens from the job
+    controller
+    """
+    # The job this token is for
+    job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE, db_index=True)
+    # The token sent to the client and used by the client to generate a file download token
+    token = models.UUIDField(unique=True, default=uuid.uuid4, db_index=True)
+    # The file path this token is for
+    path = models.TextField()
+    # When the token was created
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    @classmethod
+    def create(cls, job, paths):
+        """
+        Creates a bulk number of FileDownloadToken objects for a specific job and list of paths, and returns the
+        created objects
+        """
+        data = [
+            cls(
+                job=job,
+                path=p
+            ) for p in paths
+        ]
+
+        return cls.objects.bulk_create(data)
+
+    @classmethod
+    def prune(cls):
+        """
+        Removes any expired tokens from the database
+        """
+        cls.objects.filter(
+            created__lt=timezone.now() - datetime.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY)
+        ).delete()
+
+    @classmethod
+    def get_paths(cls, job, tokens):
+        """
+        Returns a list of paths from a list of tokens, any token that isn't found will have a path of None
+
+        The resulting list, will have identical size and ordering to the provided list of tokens
+        """
+        # First prune any old tokens which may have expired
+        cls.prune()
+
+        # Get all objects matching the list of tokens
+        objects = {
+            str(rec.token): rec.path for rec in cls.objects.filter(job=job, token__in=tokens)
+        }
+
+        # Generate the list and return
+        return [
+            objects[str(tok)] if str(tok) in objects else None for tok in tokens
+        ]

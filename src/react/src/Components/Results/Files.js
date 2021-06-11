@@ -12,28 +12,28 @@ const Files = (props) => {
         // This is very inelegant
         if (order !== clickedColumn) {
             setOrder(clickedColumn);
-            setDirection('ascending');        
+            setDirection('ascending');
         } else {
             setOrder(order);
             setDirection(direction === 'ascending' ? 'descending' : 'ascending');
         }
     };
-    
+
     return <React.Fragment>
         <Table style={props.hidden ? { display: 'none'} : {}}>
             <thead>
                 <tr>
-                    <th 
+                    <th
                         sorted={order === 'path' ? direction : null}
                         onClick={() => handleSort('path')}>
                             File Path
                     </th>
-                    <th 
+                    <th
                         sorted={order === 'isDir' ? direction : null}
                         onClick={() => handleSort('isDir')}>
                           Type
                     </th>
-                    <th 
+                    <th
                         sorted={order === 'fileSize' ? direction : null}
                         onClick={() => handleSort('fileSize')}>
                           File Size
@@ -53,15 +53,23 @@ const Files = (props) => {
                           }
                         `}
                     variables={{jobId: props.data.bilbyJob.id }}
-                    render={({error, props}) => {
-                        if(error) {
-                            return <tr><td colSpan={3}><div>{error.message}</div></td></tr>;
-                        } else if (props && props.bilbyResultFiles) {
+                    render={(_result) => {
+                        const _error = _result.error;
+                        const _props = _result.props;
+
+                        if(_error) {
+                            return <tr><td colSpan={3}><div>{_error.message}</div></td></tr>;
+                        } else if (_props && _props.bilbyResultFiles) {
                             return <React.Fragment>
-                                {props.bilbyResultFiles.files.map((e, i) =>
-                                    <ResultFile
-                                        key={i} 
-                                        file={e} {...props}/>)}
+                                {
+                                    _props.bilbyResultFiles.files.map(
+                                        (e, i) =>
+                                            <ResultFile
+                                                key={i}
+                                                file={e} {..._props} {...props}
+                                            />
+                                    )
+                                }
                             </React.Fragment>;
                         }
 

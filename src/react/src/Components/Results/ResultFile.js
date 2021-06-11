@@ -1,17 +1,56 @@
 import React from 'react';
-import {createFragmentContainer, graphql} from 'react-relay';
+import {commitMutation, createFragmentContainer, graphql} from 'react-relay';
 import filesize from 'filesize';
+import {harnessApi} from '../../index';
 
 const downloadUrl = 'https://gwcloud.org.au/job/apiv1/file/?fileId=';
 
-const ResultFile = ({file}) => 
+const getFileDownloadIdMutation = graphql`
+  mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
+    generateFileDownloadIds(input: $input) {
+      result
+    }
+  }
+`;
+
+const performFileDownload = (e, jobId, token) => {
+    commitMutation(harnessApi.getEnvironment('bilby'), {
+        mutation: getFileDownloadIdMutation,
+        variables: {
+            input: {
+                jobId: jobId,
+                downloadTokens: [token]
+            }
+        },
+        onCompleted: (response, errors) => {
+            if (errors) {
+                // eslint-disable-next-line no-alert
+                alert('Unable to download file.');
+            }
+            else {
+                // Generate a file download link and click it to download the file
+                const link = document.createElement('a');
+                link.href = downloadUrl + response.generateFileDownloadIds.result[0];
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        },
+    });
+
+    e.preventDefault();
+};
+
+const ResultFile = ({file, data}) =>
     <tr>
         <td>
             {
                 file.isDir ? file.path : (
                     <a 
-                        href={downloadUrl + file.downloadId}
-                        target="_blank" rel="noreferrer">
+                        href="#"
+                        onClick={e => performFileDownload(e, data.bilbyJob.id, file.downloadToken)}
+                    >
                         {file.path}
                     </a>
                 )
@@ -27,7 +66,7 @@ export default createFragmentContainer(ResultFile, {
             path
             isDir
             fileSize
-            downloadId
+            downloadToken
         }
     `
 });

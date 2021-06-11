@@ -10,11 +10,15 @@ class BilbyJSONWebTokenClient(JSONWebTokenClient):
 
     def authenticate(self, user, is_ligo=False):
         """Payload for authentication in bilby requires a special userID parameter."""
-        self._credentials = {
-            jwt_settings.JWT_AUTH_HEADER_NAME: "{0} {1}".format(
-                jwt_settings.JWT_AUTH_HEADER_PREFIX, get_token(user, userId=user.id, isLigo=is_ligo)
-            ),
-        }
+
+        if user:
+            self._credentials = {
+                jwt_settings.JWT_AUTH_HEADER_NAME: "{0} {1}".format(
+                    jwt_settings.JWT_AUTH_HEADER_PREFIX, get_token(user, userId=user.id, isLigo=is_ligo)
+                ),
+            }
+        else:
+            self._credentials = {}
 
 
 class BilbyTestCase(testcases.TestCase):
