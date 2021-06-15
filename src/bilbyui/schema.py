@@ -11,7 +11,7 @@ from graphql_relay.node.node import from_global_id, to_global_id
 
 from .models import BilbyJob, Label, FileDownloadToken
 from .status import JobStatus
-from .types import JobStatusType, BilbyJobCreationResult, JobParameterInput, JobParameterOutput
+from .types import JobStatusType, BilbyJobCreationResult, JobParameterInput, JobParameterOutput, JobIniInput
 from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
@@ -259,25 +259,24 @@ class BilbyJobMutation(relay.ClientIDMutation):
 
 class BilbyJobFromIniStringMutation(relay.ClientIDMutation):
     class Input:
-        # start = StartInput()
-        ini_string = graphene.String()
+        params = JobIniInput()
 
-    result = graphene.String()
+    result = graphene.Field(BilbyJobCreationResult)
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, start, ini_string):
+    def mutate_and_get_payload(cls, root, info, params):
         user = info.context.user
 
         # Create the bilby job
-        bilby_job = create_bilby_job_from_ini_string(user, start, ini_string)
+        bilby_job = create_bilby_job_from_ini_string(user, params)
 
         # Convert the bilby job id to a global id
         job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
         # Return the bilby job id to the client
         return BilbyJobFromIniStringMutation(
-            result=job_id
+            result=BilbyJobCreationResult(job_id=job_id)
         )
 
 

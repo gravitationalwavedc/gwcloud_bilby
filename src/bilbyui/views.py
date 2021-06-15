@@ -1,10 +1,11 @@
 from tempfile import NamedTemporaryFile
 
 from bilby_pipe.parser import create_parser
-from django.db import transaction
+from bilby_pipe.data_generation import DataGenerationInput
 
 from .models import BilbyJob, Label
 from .utils.jobs.submit_job import submit_job
+from .utils.parse_ini_file import bilby_ini_to_args
 
 
 def create_bilby_job(user, params):
@@ -259,29 +260,49 @@ def create_bilby_job(user, params):
     return bilby_job
 
 
-def create_bilby_job_from_ini_string(user, start, ini_string):
-    with transaction.atomic():
-        bilby_job = BilbyJob(
-            user_id=user.user_id,
-            name=start.name,
-            description=start.description,
-            private=start.private,
-            ini_string=ini_string
-        )
-        bilby_job.save()
+def create_bilby_job_from_ini_string(user, params):
+    # Parse the job ini file and create a bilby input class that can be used to read values from the ini
+    args = bilby_ini_to_args(params.ini_string.ini_string.encode('utf-8'))
+    args.idx = None
+    args.ini = None
 
-        # Submit the job to the job controller
+    if args.outdir == '.':
+        args.outdir = "./"
 
-        # Create the parameter json
-        params = bilby_job.as_json()
+    parser = DataGenerationInput(args, [], create_data=False)
 
-        result = submit_job(user, params)
+    if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in parser.channel_dict.values()])):
+        # This is a real job, with a channel that is not GWOSC
+        if not user.is_ligo:
+            # User is not a ligo user, so they may not submit this job
+            raise Exception("Non-LIGO members may only run real jobs on GWOSC channels")
+        else:
+            is_ligo_job = True
+    else:
+        is_ligo_job = False
 
-        # Save the job id
-        bilby_job.job_controller_id = result["jobId"]
-        bilby_job.save()
+    bilby_job = BilbyJob(
+        user_id=user.user_id,
+        name=params.details.name,
+        description=params.details.description,
+        private=params.details.private,
+        ini_string=params.ini_string.ini_string,
+        is_ligo_job=is_ligo_job
+    )
+    bilby_job.save()
 
-        return bilby_job
+    # Submit the job to the job controller
+
+    # Create the parameter json
+    params = bilby_job.as_json()
+
+    result = submit_job(user, params)
+
+    # Save the job id
+    bilby_job.job_controller_id = result["jobId"]
+    bilby_job.save()
+
+    return bilby_job
 
 
 def update_bilby_job(job_id, user, private=None, labels=None):

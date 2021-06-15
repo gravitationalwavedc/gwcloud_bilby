@@ -79,6 +79,18 @@ class InjectionOutput(InjectionCommon, graphene.ObjectType):
     pass
 
 
+class IniCommon:
+    ini_string = graphene.String()
+
+
+class IniInput(IniCommon, graphene.InputObjectType):
+    pass
+
+
+class IniOutput(IniCommon, graphene.ObjectType):
+    pass
+
+
 class LikelihoodCommon:
     pass
 
@@ -185,3 +197,13 @@ class JobParameterOutput(graphene.ObjectType):
     # post_processing = graphene.Field(PostProcessingOutput)
     sampler = graphene.Field(SamplerOutput)
     waveform = graphene.Field(WaveformOutput)
+
+
+class JobIniInput(graphene.InputObjectType):
+    details = JobDetailsInput()
+    ini_string = IniInput()
+
+
+class JobIniOutput(graphene.ObjectType):
+    details = graphene.Field(JobDetailsOutput)
+    ini_string = graphene.Field(IniOutput)
