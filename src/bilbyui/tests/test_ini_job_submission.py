@@ -35,7 +35,12 @@ class TestIniJobSubmission(BilbyTestCase):
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string()
+        test_ini_string = create_test_ini_string(
+            {
+                'label': test_name,
+                'detectors': "['H1']"
+            }
+        )
 
         test_input = {
                 "input": {
@@ -69,6 +74,52 @@ class TestIniJobSubmission(BilbyTestCase):
         # And should create all k/v's with default values
         job = BilbyJob.objects.all().last()
         compare_ini_kvs(self, job, test_ini_string)
+
+        self.assertEqual(job.name, test_name)
+        self.assertEqual(job.description, test_description)
+        self.assertEqual(job.private, test_private)
+
+        # Check that ini labels are correctly set to the job name passed to the job details
+        test_name = "Test Name1"
+        test_ini_string = create_test_ini_string(
+            {
+                'label': "Not the real job name",
+                'detectors': "['H1']"
+            }
+        )
+
+        test_input = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": test_name,
+                        "description": test_description,
+                        "private": test_private
+                    },
+                    "iniString": {
+                        "iniString": test_ini_string
+                    }
+                }
+            }
+        }
+
+        response = self.client.execute(self.mutation, test_input)
+
+        expected = {
+            'newBilbyJobFromIniString': {
+                'result': {
+                    'jobId': 'QmlsYnlKb2JOb2RlOjI='
+                }
+            }
+        }
+
+        self.assertDictEqual(
+            expected, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        # And should create all k/v's with default values
+        job = BilbyJob.objects.all().last()
+        compare_ini_kvs(self, job, job.ini_string)
 
         self.assertEqual(job.name, test_name)
         self.assertEqual(job.description, test_description)

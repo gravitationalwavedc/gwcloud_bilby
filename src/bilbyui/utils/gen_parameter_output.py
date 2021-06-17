@@ -7,7 +7,7 @@ from bilby_pipe.utils import logger
 
 from bilbyui.types import JobParameterOutput, JobDetailsOutput, ChannelsOutput, DataOutput, DetectorOutput, \
     PriorOutput, SamplerOutput, WaveformOutput
-from bilbyui.utils.parse_ini_file import bilby_ini_to_args
+from bilbyui.utils.ini_utils import bilby_ini_string_to_args
 
 # Override the log level so it's silent
 logger.setLevel('CRITICAL')
@@ -47,7 +47,7 @@ def generate_parameter_output(job):
     """
 
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
-    args = bilby_ini_to_args(job.ini_string.encode('utf-8'))
+    args = bilby_ini_string_to_args(job.ini_string.encode('utf-8'))
     args.idx = None
     args.ini = None
 

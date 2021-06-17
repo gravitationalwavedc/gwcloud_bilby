@@ -14,5 +14,6 @@ pyflakes
 flake8
 coverage<5
 munch
-bilby_pipe
+#bilby_pipe
+git+https://git.ligo.org/lewis.lakerink/bilby_pipe.git@649b0ff4f2fc6be92ca2af4880bd535f99eb916d
 responses

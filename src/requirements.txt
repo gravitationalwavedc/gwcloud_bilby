@@ -13,7 +13,7 @@ astropy==4.2.1
     #   bilby
     #   gwpy
     #   pesummary
-bilby-pipe==1.0.4
+git+https://git.ligo.org/lewis.lakerink/bilby_pipe.git@649b0ff4f2fc6be92ca2af4880bd535f99eb916d
     # via -r requirements.in
 bilby[gw]==1.1.2
     # via bilby-pipe
@@ -47,7 +47,7 @@ deepdish==0.3.6
     # via pesummary
 deprecated==1.2.12
     # via jwcrypto
-dill==0.3.3
+dill==0.3.4
     # via bilby
 django-cors-headers==3.7.0
     # via -r requirements.in

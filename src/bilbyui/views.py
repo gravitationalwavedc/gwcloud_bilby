@@ -4,8 +4,8 @@ from bilby_pipe.parser import create_parser
 from bilby_pipe.data_generation import DataGenerationInput
 
 from .models import BilbyJob, Label
+from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 from .utils.jobs.submit_job import submit_job
-from .utils.parse_ini_file import bilby_ini_to_args
 
 
 def create_bilby_job(user, params):
@@ -262,7 +262,7 @@ def create_bilby_job(user, params):
 
 def create_bilby_job_from_ini_string(user, params):
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
-    args = bilby_ini_to_args(params.ini_string.ini_string.encode('utf-8'))
+    args = bilby_ini_string_to_args(params.ini_string.ini_string.encode('utf-8'))
     args.idx = None
     args.ini = None
 
@@ -271,7 +271,7 @@ def create_bilby_job_from_ini_string(user, params):
 
     parser = DataGenerationInput(args, [], create_data=False)
 
-    if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in parser.channel_dict.values()])):
+    if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in (parser.channel_dict or {}).values()])):
         # This is a real job, with a channel that is not GWOSC
         if not user.is_ligo:
             # User is not a ligo user, so they may not submit this job
@@ -281,12 +281,18 @@ def create_bilby_job_from_ini_string(user, params):
     else:
         is_ligo_job = False
 
+    # Override any required fields
+    args.label = params.details.name
+
+    # Convert the modified arguments back to an ini string
+    ini_string = bilby_args_to_ini_string(args)
+
     bilby_job = BilbyJob(
         user_id=user.user_id,
         name=params.details.name,
         description=params.details.description,
         private=params.details.private,
-        ini_string=params.ini_string.ini_string,
+        ini_string=ini_string,
         is_ligo_job=is_ligo_job
     )
     bilby_job.save()

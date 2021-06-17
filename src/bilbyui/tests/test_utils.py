@@ -2,12 +2,12 @@ import json
 from collections import OrderedDict
 
 from bilbyui.models import IniKeyValue
-from bilbyui.utils.parse_ini_file import bilby_ini_to_args
+from bilbyui.utils.ini_utils import bilby_ini_string_to_args
 
 
 def parse_test_ini(ini):
     # Get the args from the ini
-    args = bilby_ini_to_args(ini.encode('utf-8'))
+    args = bilby_ini_string_to_args(ini.encode('utf-8'))
 
     # Iterate over the parsed ini configuration and generate a result dict
     result = {}
@@ -24,9 +24,14 @@ def compare_ini_kvs(test, job, ini):
             IniKeyValue.objects.filter(
                 job=job,
                 key=k,
-                value=json.dumps(v['value']),
+                value__in=[
+                    json.dumps([v['value']]),
+                    json.dumps(v['value']),
+                    json.dumps(float(v['value']) if type(v['value']) is int else v['value'])
+                ],
                 index=v['index']
-            ).exists()
+            ).exists(),
+            f"ini k/v didn't exist when it should: {k}, {json.dumps(v['value'])} ({v['index']})"
         )
 
 
