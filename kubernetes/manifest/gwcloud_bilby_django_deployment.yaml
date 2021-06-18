@@ -29,7 +29,7 @@ spec:
             - secretRef:
                 name: common
           name: gwcloud-bilby-django
-          image: nexus.gwdc.org.au/docker/gwcloud_bilby_django:0.33
+          image: nexus.gwdc.org.au/docker/gwcloud_bilby_django:0.34
           ports:
             - name: http
               containerPort: 8000
