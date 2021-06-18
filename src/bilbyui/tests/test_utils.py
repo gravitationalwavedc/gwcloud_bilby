@@ -1,4 +1,6 @@
 import json
+import functools
+import logging
 from collections import OrderedDict
 
 from bilbyui.models import IniKeyValue
@@ -208,3 +210,14 @@ def create_test_ini_string(config_dict={}, complete=False):
         config_dict = complete_config_dict(config_dict)
 
     return construct_ini_string_from_dict(config_dict)
+
+
+def silence_errors(func):
+    @functools.wraps(func)
+    def wrapper_silence_errors(*args, **kwargs):
+        try:
+            logging.disable(logging.ERROR)
+            func(*args, **kwargs)
+        finally:
+            logging.disable(logging.NOTSET)
+    return wrapper_silence_errors
