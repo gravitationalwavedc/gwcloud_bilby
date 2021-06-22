@@ -7,3 +7,5 @@ resources:
   - gwcloud_bilby_static_service.yaml
   - gwcloud_bilby_vault_rbac.yaml
   - gwcloud_bilby_vault_secrets_integrator.yaml
+  - gwcloud_bilby_django_job_data_pv.yaml
+  - gwcloud_bilby_django_job_data_pvc.yaml

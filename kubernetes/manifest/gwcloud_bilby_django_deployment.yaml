@@ -35,6 +35,13 @@ spec:
               containerPort: 8000
           resources: {}
           tty: true
+          volumeMounts:
+            - name: gwcloud-bilby-nfs-job-data
+              mountPath: "/job_data/"
       imagePullSecrets:
-      - name: regcred
+        - name: regcred
+      volumes:
+        - name: gwcloud-bilby-nfs-job-data
+          persistentVolumeClaim:
+            claimName: gwcloud-bilby-nfs-job-data-pvc
 ... 

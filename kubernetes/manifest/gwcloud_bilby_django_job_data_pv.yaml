@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gwcloud-bilby-nfs-job-data-pv
+  namespace: gwcloud
+  labels:
+    volume: gwcloud-bilby-nfs-job-data-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 256Gi
+  nfs:
+    server: 10.8.0.37
+    path: "/mnt/sharedfolder/gwcloud/bilby/job_data"
