@@ -11,5 +11,5 @@ spec:
   capacity:
     storage: 256Gi
   nfs:
-    server: 10.8.0.37
+    server: nfs1.private.loc
     path: "/mnt/sharedfolder/gwcloud/bilby/job_data"
