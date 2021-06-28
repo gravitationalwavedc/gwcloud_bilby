@@ -1,23 +1,26 @@
 from decimal import Decimal
 
 import graphene
+from django.conf import settings
 from django_filters import FilterSet, OrderingFilter
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 from graphene_django.types import DjangoObjectType
+from graphene_file_upload.scalars import Upload
 from graphql import GraphQLError
 from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
 
 from .models import BilbyJob, Label, FileDownloadToken
 from .status import JobStatus
-from .types import JobStatusType, BilbyJobCreationResult, JobParameterInput, JobParameterOutput, JobIniInput
+from .types import JobStatusType, BilbyJobCreationResult, JobParameterInput, JobParameterOutput, JobIniInput, \
+    JobDetailsInput
 from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
-from .views import create_bilby_job, update_bilby_job, create_bilby_job_from_ini_string
+from .views import create_bilby_job, update_bilby_job, create_bilby_job_from_ini_string, upload_bilby_job
 
 
 class LabelType(DjangoObjectType):
@@ -343,8 +346,36 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
         )
 
 
+class UploadBilbyJobMutation(relay.ClientIDMutation):
+    class Input:
+        details = JobDetailsInput()
+        job_file = Upload(required=True)
+
+    result = graphene.Field(BilbyJobCreationResult)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, details, job_file):
+        user = info.context.user
+
+        if user.user_id not in settings.PERMITTED_UPLOAD_USER_IDS:
+            raise Exception("User is not permitted to upload jobs")
+
+        # Try uploading the bilby job
+        bilby_job = upload_bilby_job(user, details, job_file)
+
+        # Convert the bilby job id to a global id
+        job_id = to_global_id("BilbyJobNode", bilby_job.id)
+
+        # Return the bilby job id to the client
+        return BilbyJobMutation(
+            result=BilbyJobCreationResult(job_id=job_id)
+        )
+
+
 class Mutation(graphene.ObjectType):
     new_bilby_job = BilbyJobMutation.Field()
     new_bilby_job_from_ini_string = BilbyJobFromIniStringMutation.Field()
     update_bilby_job = UpdateBilbyJobMutation.Field()
     generate_file_download_ids = GenerateFileDownloadIds.Field()
+    upload_bilby_job = UploadBilbyJobMutation.Field()

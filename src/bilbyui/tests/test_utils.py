@@ -1,7 +1,10 @@
 import json
 import functools
 import logging
+import os
+import tarfile
 from collections import OrderedDict
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 
 from bilbyui.models import IniKeyValue
 from bilbyui.utils.ini_utils import bilby_ini_string_to_args
@@ -221,3 +224,55 @@ def silence_errors(func):
         finally:
             logging.disable(logging.NOTSET)
     return wrapper_silence_errors
+
+
+def create_test_upload_data(ini_content, job_label, include_result=True, include_results_page=True,
+                            include_data=True, multiple_ini_files=False, no_ini_file=False):
+    # Create a temporary directory to add job data to
+    with TemporaryDirectory() as d:
+        if ini_content and not no_ini_file:
+            with open(os.path.join(d, f'{job_label}_config_complete.ini'), 'w') as ini:
+                ini.write(ini_content)
+
+            with open(os.path.join(d, 'unrelated.ini'), 'w') as ini:
+                ini.write(ini_content)
+
+            if multiple_ini_files:
+                with open(os.path.join(d, f'{job_label}2_config_complete.ini'), 'w') as ini:
+                    ini.write(ini_content)
+
+                with open(os.path.join(d, f'{job_label}3_config_complete.ini'), 'w') as ini:
+                    ini.write(ini_content)
+
+        if include_result:
+            os.makedirs(os.path.join(d, 'result'))
+            open(os.path.join(d, 'result', f'{job_label}_intrinsic_corner.png'), 'a').close()
+            open(os.path.join(d, 'result', f'{job_label}_extrinsic_corner.png'), 'a').close()
+            open(os.path.join(d, 'result', f'{job_label}_test.png'), 'a').close()
+
+        if include_results_page:
+            os.makedirs(os.path.join(d, 'results_page'))
+            open(os.path.join(d, 'results_page', 'overview.html'), 'a').close()
+
+        if include_data:
+            os.makedirs(os.path.join(d, 'data'))
+            open(os.path.join(d, 'data', f'H1_{job_label}_generation_frequency_domain_data.png'), 'a').close()
+            open(os.path.join(d, 'data', f'L1_{job_label}_generation_frequency_domain_data.png'), 'a').close()
+
+        # Create a temporary tar.gz file to write the directory contents to
+        with NamedTemporaryFile(suffix='.tar.gz') as tgz:
+            with tarfile.open(tgz.name, "w:gz") as tar_handle:
+                # Change the working directory to the temporary directory so we don't have full paths in the tar.gz
+                wd = os.getcwd()
+                os.chdir(d)
+
+                # Walk the temporary directory and write the files to the archive
+                for root, dirs, files in os.walk('.'):
+                    for file in files:
+                        tar_handle.add(os.path.join(root, file))
+
+            # Return to the original working directory
+            os.chdir(wd)
+
+            # Return the contents of the tarfile
+            return tgz.read()

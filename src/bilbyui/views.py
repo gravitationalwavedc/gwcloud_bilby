@@ -1,7 +1,13 @@
-from tempfile import NamedTemporaryFile
+import os
+import shutil
+import tarfile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-from bilby_pipe.parser import create_parser
 from bilby_pipe.data_generation import DataGenerationInput
+from bilby_pipe.parser import create_parser
+from django.conf import settings
+from django.core.files.uploadedfile import UploadedFile
+from django.db import transaction
 
 from .models import BilbyJob, Label
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
@@ -328,3 +334,115 @@ def update_bilby_job(job_id, user, private=None, labels=None):
         return 'Job saved!'
     else:
         raise Exception('You must own the job to change the privacy!')
+
+
+def upload_bilby_job(user, details, job_file):
+    # Check that the uploaded file is a tar.gz file
+    if not job_file.name.endswith('tar.gz'):
+        raise Exception("Job upload should be a tar.gz file")
+
+    # Check that the job upload directory exists
+    os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
+
+    # Write out the uploaded job to disk and unpack the archive to a temporary staging directory
+    with TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir, \
+            NamedTemporaryFile(dir=settings.JOB_UPLOAD_STAGING_DIR, suffix='.tar.gz') as job_upload_file, \
+            UploadedFile(job_file) as django_job_file:
+
+        # Write the uploaded file to the temporary file
+        for c in django_job_file.chunks():
+            job_upload_file.write(c)
+        job_upload_file.flush()
+
+        # Unpack the archive to the temporary directory
+        try:
+            shutil.unpack_archive(job_upload_file.name, job_staging_dir, 'gztar')
+        except (ValueError, shutil.ReadError):
+            raise Exception("Invalid or corrupt tar.gz file")
+
+        # Validate the directory structure, this should include 'data', 'result', and 'results_page' at minimum
+        for directory in [
+            'data',
+            'result',
+            'results_page'
+        ]:
+            if not os.path.isdir(os.path.join(job_staging_dir, directory)):
+                raise Exception(f"Invalid directory structure, expected directory ./{directory} to exist.")
+
+        # Find the config complete ini
+        ini_file = list(filter(
+            lambda x: os.path.isfile(os.path.join(job_staging_dir, x)) and x.endswith("_config_complete.ini"),
+            os.listdir(job_staging_dir)
+        ))
+
+        if len(ini_file) != 1:
+            raise Exception(
+                "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one."
+            )
+
+        ini_file = ini_file[0]
+
+        # Read the ini file
+        with open(os.path.join(job_staging_dir, ini_file), 'r') as f:
+            ini_content = f.read()
+
+        # Parse the ini file to check it's validity
+        args = bilby_ini_string_to_args(ini_content.encode('utf-8'))
+        args.idx = None
+        args.ini = None
+
+        # Override the output directory - since in the supported directory structure the output is always relative to
+        # the current working directory (root of the job)
+        args.outdir = "./"
+
+        parser = DataGenerationInput(args, [], create_data=False)
+
+        # Verify that a non-ligo user can't upload a ligo job, and check if this job is a ligo job or not
+        if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in (parser.channel_dict or {}).values()])):
+            # This is a real job, with a channel that is not GWOSC
+            if not user.is_ligo:
+                # User is not a ligo user, so they may not submit this job
+                raise Exception("Non-LIGO members may only upload real jobs on GWOSC channels")
+            else:
+                is_ligo_job = True
+        else:
+            is_ligo_job = False
+
+        # Convert the modified arguments back to an ini string
+        ini_string = bilby_args_to_ini_string(args)
+
+        with transaction.atomic():
+            # This is in an atomic block in case:-
+            # * The ini file somehow ends up broken
+            # * The final move of the staging directory to the job directory raises an exception (Disk full etc)
+            # * The generation of the archive.tar.gz file fails (Disk full etc)
+
+            # Create the bilby job
+            bilby_job = BilbyJob(
+                user_id=user.user_id,
+                name=args.label,
+                description=details.description,
+                private=details.private,
+                ini_string=ini_string,
+                is_ligo_job=is_ligo_job,
+                is_uploaded_job=True
+            )
+            bilby_job.save()
+
+            # Now we have the bilby job id, we can move the staging directory to the actual job directory
+            job_dir = os.path.join(settings.JOB_UPLOAD_DIR, str(bilby_job.id))
+            shutil.move(job_staging_dir, job_dir)
+
+            # Finally generate the archive.tar.gz file
+            cwd = os.getcwd()
+
+            os.chdir(job_dir)
+            with tarfile.open("archive.tar.gz", "w:gz") as tar_handle:
+                for root, dirs, files in os.walk("."):
+                    for file in files:
+                        tar_handle.add(os.path.join(root, file))
+
+            os.chdir(cwd)
+
+        # Job is validated and uploaded, return the job
+        return bilby_job

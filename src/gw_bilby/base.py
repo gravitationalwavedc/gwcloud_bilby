@@ -169,3 +169,18 @@ GWCLOUD_DB_SEARCH_API_URL = "http://localhost:8002/graphql"
 
 # The expiry of FileDownloadTokens (in seconds)
 FILE_DOWNLOAD_TOKEN_EXPIRY = 60*60*24
+
+# The ID's of users who are permitted to upload jobs
+PERMITTED_UPLOAD_USER_IDS = []
+
+# The path to where external storage is mounted
+EXTERNAL_STORAGE_PATH = "/job_data"
+
+# Where uploaded jobs are staged (unpacked) for checking validity of uploaded jobs
+JOB_UPLOAD_STAGING_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'staging')
+
+# Where valid jobs are permanently stored
+JOB_UPLOAD_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'jobs')
+
+# Where django should store temporary file uploads on disk
+FILE_UPLOAD_TEMP_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'upload')
