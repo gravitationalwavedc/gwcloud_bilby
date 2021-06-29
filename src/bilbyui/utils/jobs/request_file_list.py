@@ -19,7 +19,7 @@ def request_file_list(job, path, recursive, user_id=None):
     """
     # Check if the job is uploaded, and fetch the files off local storage
     if job.is_uploaded_job:
-        job_dir = os.path.join(settings.JOB_UPLOAD_DIR, str(job.id))
+        job_dir = job.get_upload_directory()
 
         # Get the absolute path to the requested path
         dir_path = os.path.abspath(os.path.join(job_dir, path))

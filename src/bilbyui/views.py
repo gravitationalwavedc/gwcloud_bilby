@@ -6,10 +6,13 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.files import File
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
+from django.http import Http404, StreamingHttpResponse
 
-from .models import BilbyJob, Label
+from .models import BilbyJob, Label, FileDownloadToken
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 from .utils.jobs.submit_job import submit_job
 
@@ -430,7 +433,7 @@ def upload_bilby_job(user, details, job_file):
             bilby_job.save()
 
             # Now we have the bilby job id, we can move the staging directory to the actual job directory
-            job_dir = os.path.join(settings.JOB_UPLOAD_DIR, str(bilby_job.id))
+            job_dir = bilby_job.get_upload_directory()
             shutil.move(job_staging_dir, job_dir)
 
             # Finally generate the archive.tar.gz file
@@ -446,3 +449,47 @@ def upload_bilby_job(user, details, job_file):
 
         # Job is validated and uploaded, return the job
         return bilby_job
+
+
+def file_download(request):
+    # Get the file token from the request and make sure it's real
+    token = request.GET.get('fileId', None)
+    if not token:
+        raise Http404
+
+    # Try to get the file path object with the specified token
+    try:
+        fdl = FileDownloadToken.get_by_token(token)
+    except ValidationError:
+        raise Http404
+
+    # Check that a FileDownloadToken object was actually found
+    if not fdl:
+        raise Http404
+
+    # Get the job path
+    job_dir = fdl.job.get_upload_directory()
+
+    # Make sure that there is no leading slash on the file path
+    file_path = fdl.path
+    while len(file_path) and file_path[0] == '/':
+        file_path = file_path[1:]
+
+    # Get the full file path
+    file_path = os.path.join(job_dir, file_path)
+
+    # Use a django file wrapper to simplify sending the file to the client
+    file_wrapper = File(open(file_path, 'rb'))
+
+    # Create the streaming response and set the file size
+    response = StreamingHttpResponse(streaming_content=file_wrapper, content_type='application/octet-stream')
+    response['Content-Length'] = file_wrapper.size
+
+    # Check if the download should be forced
+    if 'forceDownload' in request.GET:
+        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_wrapper.name)}"'
+    else:
+        response['Content-Disposition'] = f'filename="{os.path.basename(file_wrapper.name)}"'
+
+    # Done, return the response and let django worry about chunking and streaming
+    return response

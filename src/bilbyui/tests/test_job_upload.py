@@ -2,7 +2,6 @@ import json
 import os.path
 from tempfile import TemporaryDirectory
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
@@ -134,7 +133,7 @@ class TestJobUpload(BilbyTestCase):
         self.assertEqual(job.private, test_private)
 
         # Check that the output directories and ini file were correctly created
-        job_dir = os.path.join(settings.JOB_UPLOAD_DIR, str(job.id))
+        job_dir = job.get_upload_directory()
         self.assertTrue(os.path.isdir(job_dir))
         self.assertTrue(os.path.isdir(os.path.join(job_dir, 'data')))
         self.assertTrue(os.path.isdir(os.path.join(job_dir, 'result')))
@@ -206,7 +205,7 @@ class TestJobUpload(BilbyTestCase):
         self.assertEqual(job.private, test_private)
 
         # Check that the output directories and ini file were correctly created
-        job_dir = os.path.join(settings.JOB_UPLOAD_DIR, str(job.id))
+        job_dir = job.get_upload_directory()
         self.assertTrue(os.path.isdir(job_dir))
         self.assertTrue(os.path.isdir(os.path.join(job_dir, 'data')))
         self.assertTrue(os.path.isdir(os.path.join(job_dir, 'result')))

@@ -276,3 +276,23 @@ def create_test_upload_data(ini_content, job_label, include_result=True, include
 
             # Return the contents of the tarfile
             return tgz.read()
+
+
+def get_file_download_tokens(response):
+    # Returns all downloadTokens for a bilbyResultFiles response where the file is not a directory
+
+    download_tokens = [
+        f['downloadToken']
+        for f in filter(lambda x: not x['isDir'], response.data['bilbyResultFiles']['files'])
+    ]
+    return download_tokens
+
+
+def get_files(response):
+    # Returns all files for a bilbyResultFiles response where the file is not a directory
+
+    files = [
+        f
+        for f in filter(lambda x: not x['isDir'], response.data['bilbyResultFiles']['files'])
+    ]
+    return files

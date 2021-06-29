@@ -1,4 +1,5 @@
 import datetime
+import os
 import uuid
 
 from django.conf import settings
@@ -163,6 +164,12 @@ class BilbyJob(models.Model):
         else:
             return queryset.exclude(is_ligo_job=True)
 
+    def get_upload_directory(self):
+        """
+        Returns the upload directory of the job - only relevant to uploaded jobs.
+        """
+        return os.path.join(settings.JOB_UPLOAD_DIR, str(self.id))
+
 
 class IniKeyValue(models.Model):
     # The job this ini record is for
@@ -189,6 +196,21 @@ class FileDownloadToken(models.Model):
     path = models.TextField()
     # When the token was created
     created = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    @classmethod
+    def get_by_token(cls, token):
+        """
+        Returns the instance matching the specified token, or None if expired or not found
+        """
+        # First prune any old tokens which may have expired
+        cls.prune()
+
+        # Next try to find the instance matching the specified token
+        inst = cls.objects.filter(token=token)
+        if not inst.exists():
+            return None
+
+        return inst.first()
 
     @classmethod
     def create(cls, job, paths):
