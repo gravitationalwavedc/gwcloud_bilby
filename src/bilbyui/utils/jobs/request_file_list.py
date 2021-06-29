@@ -1,5 +1,7 @@
 import datetime
 import json
+import logging
+import os
 
 import jwt
 import requests
@@ -15,10 +17,71 @@ def request_file_list(job, path, recursive, user_id=None):
     :param path: The relative path to the job to fetch the file list for
     :param recursive: If the file list should be recursive or not
     """
+    # Check if the job is uploaded, and fetch the files off local storage
+    if job.is_uploaded_job:
+        job_dir = os.path.join(settings.JOB_UPLOAD_DIR, str(job.id))
+
+        # Get the absolute path to the requested path
+        dir_path = os.path.abspath(os.path.join(job_dir, path))
+
+        # Verify that:-
+        # * this file really sits under the working directory
+        # * the path exists
+        # * the path is a directory
+        if not dir_path.startswith(job_dir) \
+                or not os.path.exists(dir_path) \
+                or not os.path.isdir(dir_path):
+            return False, "Files do not exist"
+
+        # Get the list of files requested
+        file_list = []
+        if recursive:
+            # This is a recursive searh
+            for root, dirnames, filenames in os.walk(dir_path):
+                # Iterate over the directories
+                for item in dirnames:
+                    # Construct the real path to this directory
+                    real_file_name = os.path.join(root, item)
+                    # Add the file entry
+                    file_list.append({
+                        # Remove the leading working directory
+                        'path': real_file_name[len(job_dir):],
+                        'isDir': True,
+                        'fileSize': os.path.getsize(real_file_name)
+                    })
+
+                for item in filenames:
+                    # Construct the real path to this file
+                    real_file_name = os.path.join(root, item)
+                    # Add the file entry
+                    try:
+                        file_list.append({
+                            # Remove the leading working directory
+                            'path': real_file_name[len(job_dir):],
+                            'isDir': False,
+                            'fileSize': os.path.getsize(real_file_name)
+                        })
+                    except FileNotFoundError:
+                        # Happens when trying to stat a symlink
+                        pass
+        else:
+            # Not a recursive search
+            for item in os.listdir(dir_path):
+                # Construct the real path to this file/directory
+                real_file_name = os.path.join(dir_path, item)
+                # Add the file entry
+                file_list.append({
+                    # Remove the leading slash
+                    'path': real_file_name[len(job_dir):],
+                    'isDir': os.path.isdir(real_file_name),
+                    'fileSize': os.path.getsize(real_file_name),
+                })
+
+        return True, file_list
 
     # Make sure that the job was actually submitted (Might be in a draft state?)
     if not job.job_controller_id:
-        return False, "Job has not been submitted"
+        return False, "Job not submitted"
 
     # Create the jwt token
     jwt_enc = jwt.encode(
@@ -49,10 +112,11 @@ def request_file_list(job, path, recursive, user_id=None):
 
         # Check that the request was successful
         if result.status_code != 200:
+            # todo: Spruce the exception handling up a bit
             # Oops
             msg = f"Error getting job file list, got error code: " \
                   f"{result.status_code}\n\n{result.headers}\n\n{result.content}"
-            print(msg)
+            logging.error(msg)
             raise Exception(msg)
 
         # Parse the response from the job controller

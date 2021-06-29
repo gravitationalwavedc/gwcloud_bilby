@@ -132,6 +132,7 @@ class BilbyResultFiles(graphene.ObjectType):
         job_id = graphene.ID()
 
     files = graphene.List(BilbyResultFile)
+    is_uploaded_job = graphene.Boolean()
 
 
 class BilbyPublicJobNode(graphene.ObjectType):
@@ -234,7 +235,10 @@ class Query(object):
             for f in files
         ]
 
-        return BilbyResultFiles(files=result)
+        return BilbyResultFiles(
+            files=result,
+            is_uploaded_job=job.is_uploaded_job
+        )
 
 
 class BilbyJobMutation(relay.ClientIDMutation):
@@ -328,6 +332,13 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
         # Check that all tokens were found
         if None in paths:
             raise GraphQLError("At least one token was invalid or expired.")
+
+        # For uploaded jobs, we can just return the exact some download tokens - this function is basically a no-op
+        # for uploaded jobs
+        if job.is_uploaded_job:
+            return GenerateFileDownloadIds(
+                result=download_tokens
+            )
 
         # Request the list of file download ids from the list of paths
         # Only the original job author may generate a file download id
