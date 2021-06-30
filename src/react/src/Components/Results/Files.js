@@ -49,6 +49,7 @@ const Files = (props) => {
                               files {
                                 ...ResultFile_file
                               }
+                              isUploadedJob
                             } 
                           }
                         `}
@@ -66,7 +67,9 @@ const Files = (props) => {
                                         (e, i) =>
                                             <ResultFile
                                                 key={i}
-                                                file={e} {..._props} {...props}
+                                                file={e}
+                                                {..._props}
+                                                {...props}
                                             />
                                     )
                                 }

@@ -88,6 +88,14 @@ class BilbyJobNode(DjangoObjectType):
         return parent.labels.all()
 
     def resolve_job_status(parent, info):
+        # Uploaded jobs are always complete
+        if parent.is_uploaded_job:
+            return {
+                "name": JobStatus.display_name(JobStatus.COMPLETED),
+                "number": JobStatus.COMPLETED,
+                "date": parent.creation_time
+            }
+
         try:
             # Get job details from the job controller
             _, jc_jobs = request_job_filter(

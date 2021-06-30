@@ -2,8 +2,11 @@ import React from 'react';
 import {commitMutation, createFragmentContainer, graphql} from 'react-relay';
 import filesize from 'filesize';
 import {harnessApi} from '../../index';
+import {IS_DEV} from '../../Utils/misc';
 
 const downloadUrl = 'https://gwcloud.org.au/job/apiv1/file/?fileId=';
+const uploadedJobDownloadUrl =
+    IS_DEV ? 'http://localhost:8001/file_download/?fileId=' : 'https://gwcloud.org.au/bilby/file_download/?fileId=';
 
 const getFileDownloadIdMutation = graphql`
   mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
@@ -13,7 +16,25 @@ const getFileDownloadIdMutation = graphql`
   }
 `;
 
-const performFileDownload = (e, jobId, token) => {
+const generateDownload = (url) => {
+    // Generate a file download link and click it to download the file
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+const performFileDownload = (e, jobId, isUploadedJob, token) => {
+    e.preventDefault();
+
+    if (isUploadedJob) {
+        // For uploaded jobs, we can optionally skip the need to generate a download id
+        generateDownload(uploadedJobDownloadUrl + token);
+        return;
+    }
+
     commitMutation(harnessApi.getEnvironment('bilby'), {
         mutation: getFileDownloadIdMutation,
         variables: {
@@ -28,28 +49,27 @@ const performFileDownload = (e, jobId, token) => {
                 alert('Unable to download file.');
             }
             else {
-                // Generate a file download link and click it to download the file
-                const link = document.createElement('a');
-                link.href = downloadUrl + response.generateFileDownloadIds.result[0];
-                link.target = '_blank';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                generateDownload(downloadUrl + response.generateFileDownloadIds.result[0]);
             }
         },
     });
-
-    e.preventDefault();
 };
 
-const ResultFile = ({file, data}) =>
+const ResultFile = ({file, data, bilbyResultFiles}) =>
     <tr>
         <td>
             {
                 file.isDir ? file.path : (
                     <a 
                         href="#"
-                        onClick={e => performFileDownload(e, data.bilbyJob.id, file.downloadToken)}
+                        onClick={
+                            e => performFileDownload(
+                                e,
+                                data.bilbyJob.id,
+                                bilbyResultFiles.isUploadedJob,
+                                file.downloadToken
+                            )
+                        }
                     >
                         {file.path}
                     </a>

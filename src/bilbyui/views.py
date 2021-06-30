@@ -440,7 +440,7 @@ def upload_bilby_job(user, details, job_file):
             cwd = os.getcwd()
 
             os.chdir(job_dir)
-            with tarfile.open("archive.tar.gz", "w:gz") as tar_handle:
+            with tarfile.open("archive.tar.gz", "w:gz", compresslevel=6) as tar_handle:
                 for root, dirs, files in os.walk("."):
                     for file in files:
                         tar_handle.add(os.path.join(root, file))
