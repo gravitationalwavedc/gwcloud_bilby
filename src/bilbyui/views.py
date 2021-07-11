@@ -1,6 +1,8 @@
 import os
 import shutil
+import sys
 import tarfile
+import traceback
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from bilby_pipe.data_generation import DataGenerationInput
@@ -349,7 +351,7 @@ def upload_bilby_job(user, details, job_file):
 
     # Write out the uploaded job to disk and unpack the archive to a temporary staging directory
     with TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir, \
-            NamedTemporaryFile(dir=settings.JOB_UPLOAD_STAGING_DIR, suffix='.tar.gz') as job_upload_file, \
+            NamedTemporaryFile(dir=settings.JOB_UPLOAD_STAGING_DIR, suffix='.tar.gz', delete=False) as job_upload_file,\
             UploadedFile(job_file) as django_job_file:
 
         # Write the uploaded file to the temporary file
@@ -360,7 +362,17 @@ def upload_bilby_job(user, details, job_file):
         # Unpack the archive to the temporary directory
         try:
             shutil.unpack_archive(job_upload_file.name, job_staging_dir, 'gztar')
-        except (ValueError, shutil.ReadError):
+        except (ValueError, shutil.ReadError) as e:
+            # An exception occurred, log the exception to the log
+            print(f"Error extracting tar.gz file {job_upload_file.name}")
+            print(type(e))
+            print(e.args)
+            print(e)
+
+            # Also log the stack trace
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+            print(''.join('!! ' + line for line in lines))
             raise Exception("Invalid or corrupt tar.gz file")
 
         # Validate the directory structure, this should include 'data', 'result', and 'results_page' at minimum
