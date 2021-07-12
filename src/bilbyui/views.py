@@ -10,7 +10,6 @@ from bilby_pipe.parser import create_parser
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files import File
-from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import Http404, StreamingHttpResponse
 
@@ -351,13 +350,18 @@ def upload_bilby_job(user, details, job_file):
 
     # Write out the uploaded job to disk and unpack the archive to a temporary staging directory
     with TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir, \
-            NamedTemporaryFile(dir=settings.JOB_UPLOAD_STAGING_DIR, suffix='.tar.gz', delete=False) as job_upload_file,\
-            UploadedFile(job_file) as django_job_file:
+            NamedTemporaryFile(dir=settings.JOB_UPLOAD_STAGING_DIR, suffix='.tar.gz', delete=False) as job_upload_file:
 
         # Write the uploaded file to the temporary file
-        for c in django_job_file.chunks():
+        i = 0
+        ttl = 0
+        for c in job_file.chunks():
+            i += 1
+            ttl += len(c)
             job_upload_file.write(c)
         job_upload_file.flush()
+
+        print(f"Chunks {i}, total bytes: {ttl}")
 
         # Unpack the archive to the temporary directory
         try:
