@@ -9,6 +9,7 @@ from django.test import TestCase
 from django.test import override_settings
 
 from bilbyui.models import BilbyJob
+from bilbyui.tests.test_job_upload import get_upload_token
 from bilbyui.tests.test_utils import silence_errors, create_test_ini_string, create_test_upload_data
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.jobs.request_file_list import request_file_list
@@ -84,6 +85,9 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user)
 
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+
         # Create a new uploaded bilby job
         test_name = "myjob"
         test_description = "Test Description"
@@ -106,6 +110,7 @@ class TestRequestFileListUploaded(BilbyTestCase):
 
         test_input = {
             "input": {
+                "uploadToken": token,
                 "details": {
                     "description": test_description,
                     "private": test_private
@@ -114,19 +119,18 @@ class TestRequestFileListUploaded(BilbyTestCase):
             }
         }
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-            self.client.execute(
-                """
-                    mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
-                      uploadBilbyJob(input: $input) {
-                        result {
-                          jobId
-                        }
-                      }
+        self.client.execute(
+            """
+                mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
+                  uploadBilbyJob(input: $input) {
+                    result {
+                      jobId
                     }
-                """,
-                test_input
-            )
+                  }
+                }
+            """,
+            test_input
+        )
 
         self.job = BilbyJob.objects.all().last()
 

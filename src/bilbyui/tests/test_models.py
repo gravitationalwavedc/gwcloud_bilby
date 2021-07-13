@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.utils import timezone
 from django.conf import settings
 
-from bilbyui.models import BilbyJob, Label, FileDownloadToken
+from bilbyui.models import BilbyJob, Label, FileDownloadToken, BilbyJobUploadToken
 from bilbyui.views import update_bilby_job
 from gw_bilby.jwt_tools import GWCloudUser
 
@@ -200,3 +200,101 @@ class TestFileDownloadToken(TestCase):
 
         # No records should exist in the database anymore
         self.assertFalse(FileDownloadToken.objects.all().exists())
+
+
+class TestBilbyJobUploadToken(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        class TestUser:
+            def __init__(self):
+                self.is_ligo = False
+                self.user_id = 1234
+
+        cls.user = TestUser()
+
+    def test_create(self):
+        # Test that a token can correctly be created for uploading a bilby job
+
+        before = timezone.now()
+        result = BilbyJobUploadToken.create(self.user)
+        after = timezone.now()
+
+        self.assertEqual(result.user_id, self.user.user_id)
+        self.assertEqual(result.is_ligo, self.user.is_ligo)
+        self.assertTrue(result.token)
+        self.assertTrue(before < result.created < after)
+
+        self.assertEqual(BilbyJobUploadToken.objects.count(), 1)
+
+        result = BilbyJobUploadToken.objects.last()
+        self.assertEqual(result.user_id, self.user.user_id)
+        self.assertEqual(result.is_ligo, self.user.is_ligo)
+        self.assertTrue(result.token)
+        self.assertTrue(before < result.created < after)
+
+    def test_prune(self):
+        # Test that BilbyJobUploadToken objects older than settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY are correctly removed
+        # from the database
+
+        # Test that objects created now are not removed
+        BilbyJobUploadToken.create(self.user)
+        after = timezone.now()
+
+        BilbyJobUploadToken.prune()
+
+        self.assertEqual(BilbyJobUploadToken.objects.all().count(), 1)
+
+        # Check objects just inside the deletion time are not deleted
+        r = BilbyJobUploadToken.objects.last()
+        r.created = after - timezone.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY-1)
+        r.save()
+
+        BilbyJobUploadToken.prune()
+
+        self.assertEqual(BilbyJobUploadToken.objects.all().count(), 1)
+
+        # Check objects just outside the deletion time are deleted
+        r.created = after - timezone.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY+1)
+        r.save()
+
+        BilbyJobUploadToken.prune()
+
+        self.assertEqual(BilbyJobUploadToken.objects.all().count(), 0)
+
+    def test_get_by_token(self):
+        before = timezone.now()
+        ju_token = BilbyJobUploadToken.create(self.user)
+        after = timezone.now()
+
+        token = ju_token.token
+
+        result = BilbyJobUploadToken.get_by_token(token)
+
+        self.assertEqual(result.user_id, self.user.user_id)
+        self.assertEqual(result.is_ligo, self.user.is_ligo)
+        self.assertTrue(result.token)
+        self.assertTrue(before < result.created < after)
+
+        # Check that prune works as expected
+        # Check objects just inside the deletion time are not deleted
+        r = BilbyJobUploadToken.objects.last()
+        r.created = after - timezone.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY - 1)
+        r.save()
+
+        result = BilbyJobUploadToken.get_by_token(token)
+
+        self.assertEqual(result.user_id, self.user.user_id)
+        self.assertEqual(result.is_ligo, self.user.is_ligo)
+        self.assertTrue(result.token)
+
+        # Set the object outside the expiry window
+        r = BilbyJobUploadToken.objects.last()
+        r.created = after - timezone.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY + 1)
+        r.save()
+
+        result = BilbyJobUploadToken.get_by_token(token)
+
+        self.assertEqual(result, None)
+
+        # No records should exist in the database anymore
+        self.assertFalse(BilbyJobUploadToken.objects.all().exists())

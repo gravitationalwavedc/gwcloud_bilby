@@ -255,3 +255,53 @@ class FileDownloadToken(models.Model):
         return [
             objects[str(tok)] if str(tok) in objects else None for tok in tokens
         ]
+
+
+class BilbyJobUploadToken(models.Model):
+    """
+    This model tracks file upload tokens that can be used to upload bilby jobs rather than using traditional JWT
+    authentication
+    """
+    # The job upload token
+    token = models.UUIDField(unique=True, default=uuid.uuid4, db_index=True)
+    # The ID of the user the upload token was created for (Used to provide the user of the uploaded job)
+    user_id = models.IntegerField()
+    # If the user creating the upload token was a ligo user or not
+    is_ligo = models.BooleanField()
+    # When the token was created
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    @classmethod
+    def get_by_token(cls, token):
+        """
+        Returns the instance matching the specified token, or None if expired or not found
+        """
+        # First prune any old tokens which may have expired
+        cls.prune()
+
+        # Next try to find the instance matching the specified token
+        inst = cls.objects.filter(token=token)
+        if not inst.exists():
+            return None
+
+        return inst.first()
+
+    @classmethod
+    def create(cls, user):
+        """
+        Creates a BilbyJobUploadToken object
+        """
+        # First prune any old tokens which may have expired
+        cls.prune()
+
+        # Next create and return a new token instance
+        return cls.objects.create(user_id=user.user_id, is_ligo=user.is_ligo)
+
+    @classmethod
+    def prune(cls):
+        """
+        Removes any expired tokens from the database
+        """
+        cls.objects.filter(
+            created__lt=timezone.now() - datetime.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY)
+        ).delete()

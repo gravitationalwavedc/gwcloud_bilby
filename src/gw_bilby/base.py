@@ -167,6 +167,9 @@ GWCLOUD_JOB_CONTROLLER_API_URL = "https://gwcloud.org.au/job/apiv1"
 GWCLOUD_AUTH_API_URL = "http://localhost:8000/graphql"
 GWCLOUD_DB_SEARCH_API_URL = "http://localhost:8002/graphql"
 
+# The expiry of BilbyJobUploadTokens (in seconds)
+BILBY_JOB_UPLOAD_TOKEN_EXPIRY = 60*60*24
+
 # The expiry of FileDownloadTokens (in seconds)
 FILE_DOWNLOAD_TOKEN_EXPIRY = 60*60*24
 

@@ -11,7 +11,7 @@ from graphql import GraphQLError
 from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
 
-from .models import BilbyJob, Label, FileDownloadToken
+from .models import BilbyJob, Label, FileDownloadToken, BilbyJobUploadToken
 from .status import JobStatus
 from .types import JobStatusType, BilbyJobCreationResult, JobParameterInput, JobParameterOutput, JobIniInput, \
     JobDetailsInput
@@ -158,6 +158,10 @@ class BilbyPublicJobConnection(relay.Connection):
         node = BilbyPublicJobNode
 
 
+class GenerateBilbyJobUploadToken(graphene.ObjectType):
+    token = graphene.String()
+
+
 class Query(object):
     bilby_job = relay.Node.Field(BilbyJobNode)
     bilby_jobs = DjangoFilterConnectionField(BilbyJobNode, filterset_class=UserBilbyJobFilter)
@@ -172,6 +176,21 @@ class Query(object):
     bilby_result_files = graphene.Field(BilbyResultFiles, job_id=graphene.ID(required=True))
 
     gwclouduser = graphene.Field(UserDetails)
+
+    generate_bilby_job_upload_token = graphene.Field(GenerateBilbyJobUploadToken)
+
+    @login_required
+    def resolve_generate_bilby_job_upload_token(self, info, **kwargs):
+        user = info.context.user
+
+        if user.user_id not in settings.PERMITTED_UPLOAD_USER_IDS:
+            raise Exception("User is not permitted to upload jobs")
+
+        # Create a job upload token
+        token = BilbyJobUploadToken.create(user)
+
+        # Return the generated token
+        return GenerateBilbyJobUploadToken(token=str(token.token))
 
     @login_required
     def resolve_all_labels(self, info, **kwargs):
@@ -367,21 +386,22 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
 
 class UploadBilbyJobMutation(relay.ClientIDMutation):
     class Input:
+        upload_token = graphene.String()
         details = JobDetailsInput()
         job_file = Upload(required=True)
 
     result = graphene.Field(BilbyJobCreationResult)
 
     @classmethod
-    @login_required
-    def mutate_and_get_payload(cls, root, info, details, job_file):
-        user = info.context.user
-
-        if user.user_id not in settings.PERMITTED_UPLOAD_USER_IDS:
-            raise Exception("User is not permitted to upload jobs")
+    def mutate_and_get_payload(cls, root, info, upload_token, details, job_file):
+        # Get the token being used to perform the upload - this will return None if the token doesn't exist or
+        # is expired
+        token = BilbyJobUploadToken.get_by_token(upload_token)
+        if not token:
+            raise GraphQLError("Job upload token is invalid or expired.")
 
         # Try uploading the bilby job
-        bilby_job = upload_bilby_job(user, details, job_file)
+        bilby_job = upload_bilby_job(token, details, job_file)
 
         # Convert the bilby job id to a global id
         job_id = to_global_id("BilbyJobNode", bilby_job.id)

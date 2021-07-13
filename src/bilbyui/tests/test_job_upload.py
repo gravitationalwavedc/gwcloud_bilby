@@ -1,5 +1,6 @@
 import json
 import os.path
+import uuid
 from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
@@ -11,6 +12,22 @@ from bilbyui.tests.test_utils import create_test_ini_string, compare_ini_kvs, si
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
+
+
+def get_upload_token(client):
+    generate_job_upload_token_mutation = """
+        query GenerateBilbyJobUploadToken {
+          generateBilbyJobUploadToken {
+            token
+          }
+        }
+    """
+
+    response = client.execute(
+        generate_job_upload_token_mutation
+    )
+
+    return response
 
 
 class TestJobUpload(BilbyTestCase):
@@ -33,6 +50,18 @@ class TestJobUpload(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_upload_unauthorised_user(self):
+        # Test user not logged in
+        self.client.authenticate(None)
+
+        response = get_upload_token(self.client)
+        self.assertEqual(response.errors[0].message, 'You do not have permission to perform this action')
+
+        self.client.authenticate(self.user, is_ligo=True)
+
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id + 1]):
+            response = get_upload_token(self.client)
+            self.assertEqual(response.errors[0].message, 'User is not permitted to upload jobs')
+
         test_name = "Test Name"
         test_description = "Test Description"
         test_private = False
@@ -51,6 +80,7 @@ class TestJobUpload(BilbyTestCase):
 
         test_input = {
             "input": {
+                "uploadToken": uuid.uuid4(),
                 "details": {
                     "name": test_name,
                     "description": test_description,
@@ -60,13 +90,12 @@ class TestJobUpload(BilbyTestCase):
             }
         }
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id+1]):
-            response = self.client.execute(
-                self.mutation,
-                test_input
-            )
+        response = self.client.execute(
+            self.mutation,
+            test_input
+        )
 
-        self.assertEqual(response.errors[0].message, 'User is not permitted to upload jobs')
+        self.assertEqual(response.errors[0].message, 'Job upload token is invalid or expired.')
 
         self.assertDictEqual(
             {'uploadBilbyJob': None},
@@ -77,6 +106,9 @@ class TestJobUpload(BilbyTestCase):
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_success(self):
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+
         test_name = "myjob"
         test_description = "Test Description"
         test_private = False
@@ -97,6 +129,7 @@ class TestJobUpload(BilbyTestCase):
 
         test_input = {
             "input": {
+                "uploadToken": token,
                 "details": {
                     "description": test_description,
                     "private": test_private
@@ -105,11 +138,10 @@ class TestJobUpload(BilbyTestCase):
             }
         }
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-            response = self.client.execute(
-                self.mutation,
-                test_input
-            )
+        response = self.client.execute(
+            self.mutation,
+            test_input
+        )
 
         expected = {
             'uploadBilbyJob': {
@@ -144,6 +176,9 @@ class TestJobUpload(BilbyTestCase):
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_success_outdir_replace(self):
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+
         test_name = "another_job"
         test_description = "Another Description"
         test_private = True
@@ -164,6 +199,7 @@ class TestJobUpload(BilbyTestCase):
 
         test_input = {
             "input": {
+                "uploadToken": token,
                 "details": {
                     "description": test_description,
                     "private": test_private
@@ -172,11 +208,10 @@ class TestJobUpload(BilbyTestCase):
             }
         }
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-            response = self.client.execute(
-                self.mutation,
-                test_input
-            )
+        response = self.client.execute(
+            self.mutation,
+            test_input
+        )
 
         expected = {
             'uploadBilbyJob': {
@@ -218,6 +253,9 @@ class TestJobUpload(BilbyTestCase):
     @silence_errors
     def test_job_upload_missing_data(self):
         for missing_dir in ['data', 'result', 'results_page']:
+            with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+                token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+
             test_name = missing_dir
             test_description = f"{missing_dir} Description"
             test_private = False
@@ -237,6 +275,7 @@ class TestJobUpload(BilbyTestCase):
 
             test_input = {
                 "input": {
+                    "uploadToken": token,
                     "details": {
                         "description": test_description,
                         "private": test_private
@@ -245,11 +284,10 @@ class TestJobUpload(BilbyTestCase):
                 }
             }
 
-            with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-                response = self.client.execute(
-                    self.mutation,
-                    test_input
-                )
+            response = self.client.execute(
+                self.mutation,
+                test_input
+            )
 
             self.assertEqual(
                 f"Invalid directory structure, expected directory ./{missing_dir} to exist.",
@@ -261,6 +299,9 @@ class TestJobUpload(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_upload_missing_ini(self):
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+
         test_name = "missing_ini"
         test_description = "Missing Ini Description"
         test_private = False
@@ -280,6 +321,7 @@ class TestJobUpload(BilbyTestCase):
 
         test_input = {
             "input": {
+                "uploadToken": token,
                 "details": {
                     "description": test_description,
                     "private": test_private
@@ -288,11 +330,10 @@ class TestJobUpload(BilbyTestCase):
             }
         }
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-            response = self.client.execute(
-                self.mutation,
-                test_input
-            )
+        response = self.client.execute(
+            self.mutation,
+            test_input
+        )
 
         self.assertEqual(
             "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one.",
@@ -304,6 +345,9 @@ class TestJobUpload(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_upload_many_ini(self):
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+
         test_name = "missing_ini"
         test_description = "Missing Ini Description"
         test_private = False
@@ -323,6 +367,7 @@ class TestJobUpload(BilbyTestCase):
 
         test_input = {
             "input": {
+                "uploadToken": token,
                 "details": {
                     "description": test_description,
                     "private": test_private
@@ -331,11 +376,10 @@ class TestJobUpload(BilbyTestCase):
             }
         }
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-            response = self.client.execute(
-                self.mutation,
-                test_input
-            )
+        response = self.client.execute(
+            self.mutation,
+            test_input
+        )
 
         self.assertEqual(
             "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one.",
@@ -347,6 +391,9 @@ class TestJobUpload(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_invalid_tar_gz_name(self):
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+
         test_name = "invalid_tar_gz_name"
         test_description = "Invalid .tar.gz Name Description"
         test_private = False
@@ -366,6 +413,7 @@ class TestJobUpload(BilbyTestCase):
 
         test_input = {
             "input": {
+                "uploadToken": token,
                 "details": {
                     "description": test_description,
                     "private": test_private
@@ -374,11 +422,10 @@ class TestJobUpload(BilbyTestCase):
             }
         }
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-            response = self.client.execute(
-                self.mutation,
-                test_input
-            )
+        response = self.client.execute(
+            self.mutation,
+            test_input
+        )
 
         self.assertEqual(
             "Job upload should be a tar.gz file",
@@ -390,6 +437,9 @@ class TestJobUpload(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_corrupt_tar_gz(self):
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+
         test_description = "Corrupt .tar.gz Description"
         test_private = False
 
@@ -401,6 +451,7 @@ class TestJobUpload(BilbyTestCase):
 
         test_input = {
             "input": {
+                "uploadToken": token,
                 "details": {
                     "description": test_description,
                     "private": test_private
@@ -409,11 +460,10 @@ class TestJobUpload(BilbyTestCase):
             }
         }
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-            response = self.client.execute(
-                self.mutation,
-                test_input
-            )
+        response = self.client.execute(
+            self.mutation,
+            test_input
+        )
 
         self.assertEqual(
             "Invalid or corrupt tar.gz file",
@@ -466,6 +516,10 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
         # Test checks that a LIGO user does not create a LIGO job if the data is real and channels are GWOSC
         self.client.authenticate(self.user, is_ligo=False)
 
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+            self.params['input']['uploadToken'] = token
+
         ini_string = create_test_ini_string(config_dict={
             'label': 'testjob',
             "n-simulation": 0,
@@ -478,8 +532,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
             content_type='application/gzip'
         )
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-            response = self.client.execute(self.mutation, self.params)
+        response = self.client.execute(self.mutation, self.params)
 
         self.assertDictEqual(
             self.expected_one, response.data, "create bilbyJob mutation returned unexpected data."
@@ -493,6 +546,10 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
         # This test checks that a non LIGO user can still create non LIGO jobs
         self.client.authenticate(self.user, is_ligo=True)
 
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+            self.params['input']['uploadToken'] = token
+
         ini_string = create_test_ini_string(config_dict={
             'label': 'testjob',
             "n-simulation": 0,
@@ -505,8 +562,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
             content_type='application/gzip'
         )
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-            response = self.client.execute(self.mutation, self.params)
+        response = self.client.execute(self.mutation, self.params)
 
         self.assertDictEqual(
             self.expected_one, response.data, "create bilbyJob mutation returned unexpected data."
@@ -520,6 +576,10 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
         # Test checks that non-LIGO user cannot create real jobs with non-GWOSC channels, nor with invalid channels
         # Now if the channels are proprietary, the non-ligo user should not be able to create jobs
         self.client.authenticate(self.user, is_ligo=False)
+
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+            self.params['input']['uploadToken'] = token
 
         for channel_dict in [
             {'H1': 'GDS-CALIB_STRAIN', 'L1': 'GWOSC', 'V1': 'GWOSC'},
@@ -542,8 +602,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
                 content_type='application/gzip'
             )
 
-            with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-                response = self.client.execute(self.mutation, self.params)
+            response = self.client.execute(self.mutation, self.params)
 
             self.assertDictEqual(
                 self.expected_none, response.data, "create bilbyJob mutation returned unexpected data."
@@ -562,6 +621,10 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
         # Now if the channels are proprietary, the ligo user should be able to create jobs
         self.client.authenticate(self.user, is_ligo=True)
 
+        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
+            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+            self.params['input']['uploadToken'] = token
+
         for channel_dict in [
             {'H1': 'GDS-CALIB_STRAIN', 'L1': 'GWOSC', 'V1': 'GWOSC'},
             {'H1': 'GWOSC', 'L1': 'GDS-CALIB_STRAIN', 'V1': 'GWOSC'},
@@ -579,8 +642,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
                 content_type='application/gzip'
             )
 
-            with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-                response = self.client.execute(self.mutation, self.params)
+            response = self.client.execute(self.mutation, self.params)
 
             self.assertTrue('jobId' in response.data['uploadBilbyJob']['result'])
 

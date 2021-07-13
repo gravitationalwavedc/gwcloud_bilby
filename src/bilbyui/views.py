@@ -339,7 +339,7 @@ def update_bilby_job(job_id, user, private=None, labels=None):
         raise Exception('You must own the job to change the privacy!')
 
 
-def upload_bilby_job(user, details, job_file):
+def upload_bilby_job(upload_token, details, job_file):
     # Check that the uploaded file is a tar.gz file
     if not job_file.name.endswith('tar.gz'):
         raise Exception("Job upload should be a tar.gz file")
@@ -403,7 +403,7 @@ def upload_bilby_job(user, details, job_file):
         # Verify that a non-ligo user can't upload a ligo job, and check if this job is a ligo job or not
         if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in (parser.channel_dict or {}).values()])):
             # This is a real job, with a channel that is not GWOSC
-            if not user.is_ligo:
+            if not upload_token.is_ligo:
                 # User is not a ligo user, so they may not submit this job
                 raise Exception("Non-LIGO members may only upload real jobs on GWOSC channels")
             else:
@@ -422,7 +422,7 @@ def upload_bilby_job(user, details, job_file):
 
             # Create the bilby job
             bilby_job = BilbyJob(
-                user_id=user.user_id,
+                user_id=upload_token.user_id,
                 name=args.label,
                 description=details.description,
                 private=details.private,
