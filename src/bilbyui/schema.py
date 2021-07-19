@@ -206,18 +206,21 @@ class Query(object):
         # Parse the result in to graphql objects
         result = []
         for job in jobs:
+            bilby_job = BilbyJob.get_by_id(job['job']['id'], info.context.user)
             result.append(
                 BilbyPublicJobNode(
                     user=f"{job['user']['firstName']} {job['user']['lastName']}",
                     name=job['job']['name'],
                     description=job['job']['description'],
                     job_status=JobStatusType(
-                        name=JobStatus.display_name(job['history'][0]['state']),
-                        number=job['history'][0]['state'],
-                        date=job['history'][0]['timestamp']
+                        name=JobStatus.display_name(
+                            JobStatus.COMPLETED if bilby_job.is_uploaded_job else job['history'][0]['state']
+                        ),
+                        number=JobStatus.COMPLETED if bilby_job.is_uploaded_job else job['history'][0]['state'],
+                        date=bilby_job.creation_time if bilby_job.is_uploaded_job else job['history'][0]['timestamp']
                     ),
-                    labels=BilbyJob.get_by_id(job['job']['id'], info.context.user).labels.all(),
-                    timestamp=job['history'][0]['timestamp'],
+                    labels=bilby_job.labels.all(),
+                    timestamp=bilby_job.creation_time if bilby_job.is_uploaded_job else job['history'][0]['timestamp'],
                     id=to_global_id("BilbyJobNode", job['job']['id'])
                 )
             )

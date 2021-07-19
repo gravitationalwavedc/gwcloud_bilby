@@ -7,7 +7,7 @@ import getBadgeType from './getBadgeType';
 
 const JobTable = ({data, match, router, hasMore, loadMore, myJobs}) => (
     <InfiniteScroll
-        dataLength={data.edges.length}
+        dataLength={data && data.edges.length || 0}
         next={loadMore}
         hasMore={hasMore}
         loader='Scroll to load more...'
@@ -24,7 +24,7 @@ const JobTable = ({data, match, router, hasMore, loadMore, myJobs}) => (
                 </tr>
             </thead>
             <tbody>
-                {data.edges.length > 0 ? data.edges.map(({node}) => <tr key={node.id}>
+                {data && data.edges.length > 0 ? data.edges.map(({node}) => <tr key={node.id}>
                     {!myJobs && <td>{node.user}</td>}
                     <td>{node.name}</td>
                     <td>{node.description}</td>
