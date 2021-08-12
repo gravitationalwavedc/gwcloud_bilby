@@ -46,13 +46,14 @@ class TestSubmit(TestCase):
     @patch('db.update_job', side_effect=update_job_mock)
     @patch("db.get_unique_job_id", side_effect=get_unique_job_id_mock_fn)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
-    @patch("scheduler.slurm.slurm_submit", side_effect=slurm_submit_mock_fn)
+    @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=slurm_submit_mock_fn)
     def test_submit_real_data_job(self, *args, **kwargs):
         # Generate a minimal ini file
         ini = args_to_bilby_ini({
             'label': 'test-real',
             'detectors': ['H1'],
-            'trigger-time': '12345678'
+            'trigger-time': '12345678',
+            'injection-numbers': []
         }).decode('utf-8')
 
         details = {
@@ -148,9 +149,9 @@ echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
 
     @patch('db.update_job', side_effect=update_job_mock)
-    @patch("db.get_unique_job_id")
-    @patch("core.misc.working_directory")
-    @patch("scheduler.slurm.slurm_submit")
+    @patch("db.get_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=slurm_submit_mock_fn)
     def test_submit_simulated_data_job(self, *args, **kwargs):
         # Generate a minimal ini file
         ini = args_to_bilby_ini({
@@ -158,7 +159,8 @@ echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
             'detectors': ['H1', 'V1'],
             'trigger-time': '87654321',
             'n-simulation': 1,
-            'gaussian_noise': True
+            'gaussian_noise': True,
+            'injection-numbers': []
         }).decode('utf-8')
 
         details = {
@@ -258,9 +260,9 @@ echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
 
     @patch('db.update_job', side_effect=update_job_mock)
-    @patch("db.get_unique_job_id")
-    @patch("core.misc.working_directory")
-    @patch("scheduler.slurm.slurm_submit")
+    @patch("db.get_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=slurm_submit_mock_fn)
     def test_submit_simulated_data_job_submission_error(self, *args, **kwargs):
         # Generate a minimal ini file
         ini = args_to_bilby_ini({
@@ -268,7 +270,8 @@ echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
             'detectors': ['V1', 'L1'],
             'trigger-time': '11111111',
             'n-simulation': 1,
-            'gaussian_noise': True
+            'gaussian_noise': True,
+            'injection-numbers': []
         }).decode('utf-8')
 
         details = {

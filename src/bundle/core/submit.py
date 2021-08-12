@@ -10,9 +10,8 @@ from bilby_pipe.main import MainInput, generate_dag
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import parse_args
 
-from core.misc import working_directory
+from core.misc import working_directory, get_scheduler
 from db import get_unique_job_id, update_job
-from scheduler.slurm import slurm_submit
 from settings import scheduler_env, scheduler
 
 
@@ -317,7 +316,8 @@ def submit(details, ini_string):
         run_data_generation(data_gen_command, wk_dir)
 
     # Actually submit the job
-    submit_bash_id = slurm_submit(slurm_script, wk_dir)
+    sched = get_scheduler()
+    submit_bash_id = sched.submit(slurm_script, wk_dir)
 
     # If the job was not submitted, simply return. When the job controller does a status update, we'll detect that
     # the job doesn't exist and report an error

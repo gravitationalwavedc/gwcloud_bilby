@@ -1,13 +1,15 @@
 import os
 
+from core.misc import get_scheduler
 from db import get_job_by_id, update_job, delete_job
-from scheduler.slurm import slurm_status, SLURM_STATUS
 from scheduler.status import JobStatus
 
 
 def get_submit_status(job):
+    sched = get_scheduler()
+
     if 'submit_id' in job:
-        _status, info = slurm_status(job['submit_id'])
+        _status, info = sched.status(job['submit_id'])
 
         # If the job is a state less than or equal to running, return it's state
         if _status <= JobStatus.RUNNING:
@@ -79,11 +81,12 @@ def status(details, job_data):
         slurm_ids = [line.strip() for line in f.readlines()]
 
     # Iterate over each job id and record it's status
+    sched = get_scheduler()
     for _sid in slurm_ids:
         what = _sid.split(' ')[0]
         sid = _sid.split(' ')[1]
 
-        _status, info = slurm_status(sid)
+        _status, info = sched.status(sid)
 
         status.append({
             'what': what,
