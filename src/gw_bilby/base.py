@@ -187,3 +187,6 @@ JOB_UPLOAD_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'jobs')
 
 # Where django should store temporary file uploads on disk
 FILE_UPLOAD_TEMP_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'upload')
+
+# Which clusters are able to be submitted to
+CLUSTERS = ['ozstar']

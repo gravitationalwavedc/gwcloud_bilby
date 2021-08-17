@@ -258,9 +258,9 @@ def create_bilby_job(user, params):
     # Submit the job to the job controller
 
     # Create the parameter json
-    params = bilby_job.as_json()
+    job_params = bilby_job.as_json()
 
-    result = submit_job(user, params)
+    result = submit_job(user, job_params, params.details.cluster)
 
     # Save the job id
     bilby_job.job_controller_id = result["jobId"]
@@ -309,9 +309,9 @@ def create_bilby_job_from_ini_string(user, params):
     # Submit the job to the job controller
 
     # Create the parameter json
-    params = bilby_job.as_json()
+    job_params = bilby_job.as_json()
 
-    result = submit_job(user, params)
+    result = submit_job(user, job_params, params.details.cluster)
 
     # Save the job id
     bilby_job.job_controller_id = result["jobId"]

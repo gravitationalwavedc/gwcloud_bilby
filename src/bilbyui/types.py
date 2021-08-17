@@ -164,7 +164,7 @@ class JobDetailsCommon:
 
 
 class JobDetailsInput(JobDetailsCommon, graphene.InputObjectType):
-    pass
+    cluster = graphene.String()
 
 
 class JobDetailsOutput(graphene.ObjectType, JobDetailsCommon):

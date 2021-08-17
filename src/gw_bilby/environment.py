@@ -14,6 +14,7 @@ DB_SEARCH_SERVICE_JWT_SECRET = os.getenv('DB_SEARCH_JWT_SECRET_KEY')
 
 PERMITTED_UPLOAD_USER_IDS = json.loads(os.getenv('PERMITTED_UPLOAD_USER_IDS'))
 
+CLUSTERS = json.loads(os.getenv('CLUSTERS'))
 
 DATABASES = {
     'default': {

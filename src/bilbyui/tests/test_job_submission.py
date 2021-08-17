@@ -2,10 +2,13 @@ import json
 from ast import literal_eval
 from unittest.mock import patch
 
+import responses
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.test.utils import override_settings
 
 from bilbyui.models import IniKeyValue, BilbyJob
-from bilbyui.tests.test_utils import compare_ini_kvs
+from bilbyui.tests.test_utils import compare_ini_kvs, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
@@ -17,6 +20,12 @@ class TestJobSubmission(BilbyTestCase):
 
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user)
+
+        self.responses = responses.RequestsMock()
+        self.responses.start()
+
+        self.addCleanup(self.responses.stop)
+        self.addCleanup(self.responses.reset)
 
     @patch("bilbyui.views.submit_job")
     def test_simulated_job(self, mock_api_call):
@@ -332,4 +341,156 @@ class TestJobSubmission(BilbyTestCase):
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="frequency_domain_source_model").value,
             json.dumps("lal_binary_black_hole")
+        )
+
+    @silence_errors
+    @override_settings(CLUSTERS=['default', 'another'])
+    def test_cluster_submission(self):
+        return_result = {'jobId': 1122}
+
+        self.responses.add(
+            responses.POST,
+            f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/",
+            body=json.dumps(return_result),
+            status=200
+        )
+
+        params = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": "test job for GW12345",
+                        "description": "Test description 1122",
+                        "private": True,
+                    },
+                    # "calibration": None,
+                    "data": {
+                        "dataChoice": "simulated",
+                        "triggerTime": "1126259462.391",
+                        "channels": {
+                            "hanfordChannel": "GWOSC",
+                            "livingstonChannel": "GWOSC",
+                            "virgoChannel": "GWOSC"
+                        }
+                    },
+                    "detector": {
+                        "hanford": True,
+                        "hanfordMinimumFrequency": "20",
+                        "hanfordMaximumFrequency": "1024",
+                        "livingston": True,
+                        "livingstonMinimumFrequency": "20",
+                        "livingstonMaximumFrequency": "1024",
+                        "virgo": False,
+                        "virgoMinimumFrequency": "20",
+                        "virgoMaximumFrequency": "1024",
+                        "duration": "4",
+                        "samplingFrequency": "512"
+                    },
+                    # "injection": {},
+                    # "likelihood": {},
+                    "prior": {
+                        "priorDefault": "4s"
+                    },
+                    # "postProcessing": {},
+                    "sampler": {
+                        "nlive": "1000.0",
+                        "nact": "10.0",
+                        "maxmcmc": "5000.0",
+                        "walks": "1000.0",
+                        "dlogz": "0.1",
+                        "cpus": "1",
+                        "samplerChoice": "dynesty"
+                    },
+                    "waveform": {
+                        "model": None
+                    }
+                }
+            }
+        }
+
+        mut = """
+            mutation NewJobMutation($input: BilbyJobMutationInput!) {
+              newBilbyJob(input: $input) {
+                result {
+                  jobId
+                }
+              }
+            }
+            """
+
+        # First test no cluster - this should default to 'default'
+        response = self.client.execute(mut, params)
+
+        expected = {
+            'newBilbyJob': {
+                'result': {
+                    'jobId': 'QmlsYnlKb2JOb2RlOjE='
+                }
+            }
+        }
+
+        self.assertDictEqual(
+            expected, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        # Check the job controller id was set as expected
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.job_controller_id, 1122)
+
+        # Check that the correct cluster was used in the request
+        r = json.loads(self.responses.calls[0].request.body)
+        self.assertEqual(r['cluster'], 'default')
+
+        job.delete()
+
+        # Next test default cluster uses the default cluster
+        params['input']['params']['details']['cluster'] = 'default'
+        response = self.client.execute(mut, params)
+
+        expected = {
+            'newBilbyJob': {
+                'result': {
+                    'jobId': 'QmlsYnlKb2JOb2RlOjI='
+                }
+            }
+        }
+
+        self.assertDictEqual(
+            expected, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        # Check that the correct cluster was used in the request
+        r = json.loads(self.responses.calls[1].request.body)
+        self.assertEqual(r['cluster'], 'default')
+
+        BilbyJob.objects.all().last().delete()
+
+        # Next test "another" cluster
+        params['input']['params']['details']['cluster'] = 'another'
+        response = self.client.execute(mut, params)
+
+        expected = {
+            'newBilbyJob': {
+                'result': {
+                    'jobId': 'QmlsYnlKb2JOb2RlOjM='
+                }
+            }
+        }
+
+        self.assertDictEqual(
+            expected, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        # Check that the correct cluster was used in the request
+        r = json.loads(self.responses.calls[2].request.body)
+        self.assertEqual(r['cluster'], 'another')
+
+        BilbyJob.objects.all().last().delete()
+
+        # Finally test invalid clusters are rejected cluster
+        params['input']['params']['details']['cluster'] = 'not_real'
+        response = self.client.execute(mut, params)
+
+        self.assertEqual(
+            response.errors[0].message, "Error submitting job, cluster 'not_real' is not one of [default another]"
         )
