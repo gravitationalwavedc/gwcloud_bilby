@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import sys
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
@@ -42,6 +43,16 @@ class TestSubmit(TestCase):
         self.r = Replacer()
         self.r.replace('subprocess.Popen', self.popen)
         self.addCleanup(self.r.restore)
+
+        # Wild hack to remove any trailing parameters which can influence bilby/condor job creation
+        sys.argv = sys.argv[:1]
+
+        # Remember the working directory
+        self.cwd = os.getcwd()
+
+    def tearDown(self):
+        # Restore the working directory
+        os.chdir(self.cwd)
 
     @patch('db.update_job', side_effect=update_job_mock)
     @patch("db.get_unique_job_id", side_effect=get_unique_job_id_mock_fn)
