@@ -1,12 +1,14 @@
 import os
 
 import settings
+from scheduler.condor import CondorScheduler
+from scheduler.scheduler import EScheduler
 from scheduler.slurm import SlurmScheduler
 from settings import job_directory
 
 
 def working_directory(details, *args, **kwargs):
-    return os.path.join(job_directory + str(details['job_id']))
+    return os.path.join(job_directory, str(details['job_id']), 'job')
 
 
 def get_scheduler():
@@ -15,7 +17,10 @@ def get_scheduler():
 
     :return: The scheduler class
     """
-    if settings.scheduler == "slurm":
+    if settings.scheduler == EScheduler.SLURM:
         return SlurmScheduler()
+
+    if settings.scheduler == EScheduler.CONDOR:
+        return CondorScheduler()
 
     return None

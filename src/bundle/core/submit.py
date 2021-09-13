@@ -2,17 +2,18 @@ import json
 import os
 import re
 import subprocess
+from scheduler.scheduler import EScheduler
 from tempfile import NamedTemporaryFile
 
+import settings
 from bilby_pipe.job_creation.dag import Dag
 from bilby_pipe.job_creation.slurm import SubmitSLURM
 from bilby_pipe.main import MainInput, generate_dag
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import parse_args
-
-from core.misc import working_directory, get_scheduler
 from db import get_unique_job_id, update_job
-from settings import scheduler_env, scheduler
+
+from core.misc import get_scheduler, working_directory
 
 
 def bilby_ini_to_args(ini):
@@ -65,8 +66,15 @@ def prepare_ini_data(params, wk_dir):
     # How the jobs should be formatted, e.g., which job scheduler to use.
     ################################################################################
 
+    if settings.scheduler == EScheduler.CONDOR:
+        # Accounting group to use (see, https://accounting.ligo.org/user)
+        args.accounting = settings.condor_accounting_group
+
+        # Accounting group user to use (see, https://accounting.ligo.org/user)
+        args.accounting_user = settings.condor_accounting_user
+
     # Output directory
-    args.outdir = wk_dir
+    args.outdir = os.path.join(wk_dir, "job")
 
     # Ignore transfer files because we're not using condor. This resolves the problem with relpath of the CWD path
     # being ".", which bilby_pipe refuses to use as a valid output directory
@@ -74,13 +82,19 @@ def prepare_ini_data(params, wk_dir):
 
     # Time after which the job will be self-evicted. After this, condor will restart the job. Default is 28800.
     # This is used to decrease the chance of HTCondor hard evictions
-    args.periodic_restart_time = 2147483647
+    if settings.scheduler == EScheduler.SLURM:
+        args.periodic_restart_time = 2147483647
+    else:
+        args.periodic_restart_time = 28800
 
-    # Format submission script for specified scheduler. Currently implemented: SLURM
-    args.scheduler = scheduler
+    # Format submission script for specified scheduler. Currently implemented: SLURM, CONDOR
+    args.scheduler = settings.scheduler.value
 
     # Environment scheduler sources during runtime
-    args.scheduler_env = scheduler_env
+    args.scheduler_env = settings.scheduler_env
+
+    # Attempt to submit the job after the build - we submit the job as part of the scheduler functionality
+    args.submit = False
 
     ################################################################################
     # Output arguments
@@ -154,11 +168,11 @@ def run_data_generation(data_gen_command, wk_dir):
     # Run the data generation
     os.sync()
     with subprocess.Popen(
-        f"/bin/bash {os.path.abspath(os.path.join(wk_dir, data_gen_command))}",
-        cwd=wk_dir,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=True
+            f"/bin/bash {os.path.abspath(os.path.join(wk_dir, data_gen_command))}",
+            cwd=wk_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=True
     ) as p:
         p.wait()
 
@@ -227,18 +241,27 @@ def refactor_slurm_data_generation_step(slurm_script):
 
 def write_submission_scripts(inputs):
     """
-    Writes the slurm submission scripts using the MainInput inputs, and returns the slurm master script path
+    Writes the submission scripts using the MainInput inputs, and returns the slurm master script path
 
     :param inputs: The MainInput object with the complete input information for the job
-    :return: The path to the slurm master script
+    :return: The path to the master submit script
     """
     # Generate the submission scripts
     generate_dag(inputs)
-    # Get the name of the slurm script
     dag = Dag(inputs)
-    _slurm = SubmitSLURM(dag)
-    slurm_script = _slurm.slurm_master_bash
-    return slurm_script
+
+    # Return the slurm submit script if the scheduler is slurm
+    if settings.scheduler == EScheduler.SLURM:
+        _slurm = SubmitSLURM(dag)
+        slurm_script = _slurm.slurm_master_bash
+        return slurm_script
+
+    # Return the path to the dag script if the scheduler is condor
+    if settings.scheduler == EScheduler.CONDOR:
+        # Adapted from https://github.com/jrbourbeau/pycondor/blob/master/pycondor/dagman.py#L286
+        return os.path.join(dag.submit_directory, f'{dag.dag_name}.submit')
+
+    return None
 
 
 def write_ini_file(args):
@@ -285,13 +308,17 @@ def create_working_directory(details):
     # Create the working directory
     os.makedirs(wk_dir, exist_ok=True)
 
+    # Since working_directory includes the /job/ postfix, we need to trim it from the end so that our working
+    # directory is really the parent directory.
+    wk_dir = os.path.abspath(os.path.join(wk_dir, '..'))
+
     # Change to the working directory
     os.chdir(wk_dir)
 
     return wk_dir
 
 
-def submit(details, ini_string):
+def submit_impl(details, ini_string):
     print("Submitting new job...")
 
     # Create and enter the working directory
@@ -304,20 +331,20 @@ def submit(details, ini_string):
     args, inputs = write_ini_file(args)
 
     # Generate the submission scripts
-    slurm_script = write_submission_scripts(inputs)
+    submission_script = write_submission_scripts(inputs)
 
     # If the job is open, we need to run the data generation step on the head nodes (ozstar specific) because compute
-    # nodes do not have internet access.
-    if not args.gaussian_noise or args.n_simulation == 0:
+    # nodes do not have internet access. This is only applicable for slurm on ozstar
+    if (not args.gaussian_noise or args.n_simulation == 0) and settings.scheduler == EScheduler.SLURM:
         # Process the slurm scripts to remove the data generation step
-        data_gen_command = refactor_slurm_data_generation_step(slurm_script)
+        data_gen_command = refactor_slurm_data_generation_step(submission_script)
 
         # Run the data generation step now
         run_data_generation(data_gen_command, wk_dir)
 
     # Actually submit the job
     sched = get_scheduler()
-    submit_bash_id = sched.submit(slurm_script, wk_dir)
+    submit_bash_id = sched.submit(submission_script, wk_dir)
 
     # If the job was not submitted, simply return. When the job controller does a status update, we'll detect that
     # the job doesn't exist and report an error
@@ -337,3 +364,23 @@ def submit(details, ini_string):
 
     # return the job id
     return job['job_id']
+
+
+def submit(details, ini_string):
+    """
+    Entry point of the submit function called to sanitize the bilby ini file, prepare the job, and then submit the job
+    with the configured scheduler
+
+    This function acts as a wrapper around submit_impl so that the working directory can be correctly preserved - this
+    mostly matters for tests, but is also generally good practice
+
+    :param details: The job details object from the client
+    :param ini_string: The ini string representing the bilby ini file to submit the job for
+    :return: The internal job id representing the job, otherwise None on failure
+    """
+
+    cwd = os.getcwd()
+    try:
+        return submit_impl(details, ini_string)
+    finally:
+        os.chdir(cwd)

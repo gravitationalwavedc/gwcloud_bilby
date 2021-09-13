@@ -1,0 +1,69 @@
+000 (235634566.000.000) 2021-09-06 00:37:08 Job submitted from host: <10.14.0.12:9618?addrs=10.14.0.12-9618&alias=ldas-grid.ligo.caltech.edu&noUDP&sock=schedd_159174_b3f4>
+    DAG Node: condor_real2_data0_1253509434-066406_generation_arg_0
+...
+001 (235634566.000.000) 2021-09-06 00:39:14 Job executing on host: <10.14.8.203:9618?addrs=10.14.8.203-9618&alias=node1953.cluster.ldas.cit&noUDP&sock=startd_3052289_f437>
+...
+005 (235634566.000.000) 2021-09-06 00:44:14 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:01:30, Sys 0 00:00:21  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:01:30, Sys 0 00:00:21  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.98        1         1 
+	   Disk (KB)            :     1           1     51130 
+	   GPUs                 :                           0 
+	   Memory (MB)          :    38        8192      8192 
+
+	Job terminated of its own accord at 2021-09-06T07:44:14Z.
+...
+000 (235634573.000.000) 2021-09-06 00:44:23 Job submitted from host: <10.14.0.12:9618?addrs=10.14.0.12-9618&alias=ldas-grid.ligo.caltech.edu&noUDP&sock=schedd_159174_b3f4>
+    DAG Node: condor_real2_data0_1253509434-066406_analysis_H1L1_dynesty_arg_0
+...
+001 (235634573.000.000) 2021-09-06 00:44:25 Job executing on host: <10.14.8.203:9618?addrs=10.14.8.203-9618&alias=node1953.cluster.ldas.cit&noUDP&sock=startd_3052289_f437>
+...
+005 (235634573.000.000) 2021-09-06 05:34:39 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 04:46:02, Sys 0 00:00:57  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 04:46:02, Sys 0 00:00:57  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	79700112  -  Run Bytes Sent By Job
+	13909386  -  Run Bytes Received By Job
+	79700112  -  Total Bytes Sent By Job
+	13909386  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     1.00        1         1 
+	   Disk (KB)            : 91444       15000     51130 
+	   GPUs                 :                           0 
+	   Memory (MB)          :   319        4096      8192 
+
+	Job terminated of its own accord at 2021-09-06T12:34:37Z.
+...
+000 (235650198.000.000) 2021-09-06 05:34:47 Job submitted from host: <10.14.0.12:9618?addrs=10.14.0.12-9618&alias=ldas-grid.ligo.caltech.edu&noUDP&sock=schedd_159174_b3f4>
+    DAG Node: condor_real2_data0_1253509434-066406_analysis_H1L1_dynesty_plot_arg_0
+...
+001 (235650198.000.000) 2021-09-06 05:39:36 Job executing on host: <10.14.4.26:9618?addrs=10.14.4.26-9618&alias=node776.cluster.ldas.cit&noUDP&sock=startd_2830_b91c>
+...
+005 (235650198.000.000) 2021-09-06 05:47:50 Job terminated.
+	(1) Normal termination (return value 1)
+		Usr 0 00:00:03, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:00:03, Sys 0 00:00:00  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.10        1         1 
+	   Disk (KB)            :     1           1    101503 
+	   GPUs                 :                           0 
+	   Memory (MB)          :    59       32768     32768 
+
+	Job terminated of its own accord at 2021-09-06T12:47:50Z.
+...

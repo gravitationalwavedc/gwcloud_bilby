@@ -46,7 +46,7 @@ class SlurmScheduler(Scheduler):
         stdout = None
         try:
             stdout = subprocess.check_output(command, shell=True)
-        except:
+        except Exception:
             # Record the command and the output
             print("Error: Command `{}` returned `{}`".format(command, stdout))
             return None
@@ -58,14 +58,15 @@ class SlurmScheduler(Scheduler):
         # todo: Handle errors
         try:
             return int(stdout.strip().split()[-1])
-        except:
+        except Exception:
             return None
 
-    def status(self, job_id):
+    def status(self, job_id, details):
         """
         Get the status of a job by scheduler id
 
         :param job_id: The scheduler job id to check the status of
+        :param details: The internal job details object
         :return: A tuple with JobStatus, additional info as a string. None if no job status could be obtained
         """
         print("Trying to get status of job {}...".format(job_id))
@@ -90,7 +91,7 @@ class SlurmScheduler(Scheduler):
                 if int(bits[0]) == int(job_id):
                     _status = bits[1].decode("utf-8")
                     break
-            except:
+            except Exception:
                 continue
 
         print("Got job status {} for job {}".format(_status, job_id))
@@ -130,11 +131,12 @@ class SlurmScheduler(Scheduler):
         print("Got unknown Slurm job state {} for job {}".format(_status, job_id))
         return None, None
 
-    def cancel(self, job_id):
+    def cancel(self, job_id, details):
         """
         Cancel a running job
 
         :param job_id: The id of the job to cancel
+        :param details: The internal job details object
         :return: True if the job was cancelled otherwise False
         """
         print("Trying to terminate job {}...".format(job_id))

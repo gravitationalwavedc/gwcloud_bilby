@@ -1,0 +1,43 @@
+000 (235795404.000.000) 2021-09-07 12:58:38 Job submitted from host: <10.14.0.12:9618?addrs=10.14.0.12-9618&alias=ldas-grid.ligo.caltech.edu&noUDP&sock=schedd_159174_b3f4>
+    DAG Node: SimTest8_data0_1128678900-4_generation_arg_0
+...
+001 (235795404.000.000) 2021-09-07 13:04:44 Job executing on host: <10.14.8.177:9618?addrs=10.14.8.177-9618&alias=node1927.cluster.ldas.cit&noUDP&sock=startd_1538585_ea1a>
+...
+005 (235795404.000.000) 2021-09-07 13:06:09 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:00:02, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:00:02, Sys 0 00:00:00  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :                 1         1 
+	   Disk (KB)            :        1        1     51110 
+	   GPUs                 :                           0 
+	   Memory (MB)          :       17     8192      8192 
+
+	Job terminated of its own accord at 2021-09-07T20:06:09Z.
+...
+000 (235796323.000.000) 2021-09-07 13:06:16 Job submitted from host: <10.14.0.12:9618?addrs=10.14.0.12-9618&alias=ldas-grid.ligo.caltech.edu&noUDP&sock=schedd_159174_b3f4>
+    DAG Node: SimTest8_data0_1128678900-4_analysis_H1L1_dynesty_arg_0
+...
+001 (235796323.000.000) 2021-09-07 13:06:22 Job executing on host: <10.14.8.177:9618?addrs=10.14.8.177-9618&alias=node1927.cluster.ldas.cit&noUDP&sock=startd_1538585_ea1a>
+...
+004 (235796323.000.000) 2021-09-07 13:47:23 Job was evicted.
+	(0) CPU times
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     1.00        1         1 
+	   Disk (KB)            :     1           1     51110 
+	   GPUs                 :                           0 
+	   Memory (MB)          :   221        4096      8192 
+...
+009 (235796323.000.000) 2021-09-07 13:47:23 Job was aborted.
+	via condor_rm (by user bilby.ui)
+...

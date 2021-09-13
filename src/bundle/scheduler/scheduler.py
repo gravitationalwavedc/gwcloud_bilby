@@ -1,4 +1,10 @@
 from abc import ABC, abstractmethod
+from enum import Enum
+
+
+class EScheduler(Enum):
+    CONDOR = "condor"
+    SLURM = "slurm"
 
 
 class Scheduler(ABC):
@@ -14,21 +20,23 @@ class Scheduler(ABC):
         pass
 
     @abstractmethod
-    def status(self, job_id):
+    def status(self, job_id, details):
         """
         Get the status of a job by scheduler id
 
         :param job_id: The scheduler job id to check the status of
+        :param details: The internal job details object
         :return: A tuple with JobStatus, additional info as a string. None if no job status could be obtained
         """
         pass
 
     @abstractmethod
-    def cancel(self, job_id):
+    def cancel(self, job_id, details):
         """
         Cancel a running job by scheduler id
 
         :param job_id: The scheduler id of the job to cancel
+        :param details: The internal job details object
         :return: True if the job was cancelled otherwise False
         """
         pass
