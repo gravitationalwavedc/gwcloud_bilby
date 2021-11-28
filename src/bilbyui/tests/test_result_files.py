@@ -181,8 +181,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user)
 
-        with override_settings(PERMITTED_UPLOAD_USER_IDS=[self.user.id]):
-            token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+        token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
 
         # Create a new uploaded bilby job
         test_name = "myjob"

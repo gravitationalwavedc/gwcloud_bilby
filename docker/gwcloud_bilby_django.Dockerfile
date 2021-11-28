@@ -3,7 +3,7 @@ ENV PYTHONUNBUFFERED 1
 
 # Update the container and install the required packages
 RUN apt-get update
-RUN apt-get -y install python-virtualenv default-libmysqlclient-dev python3-dev build-essential curl
+RUN apt-get -y install python3-virtualenv default-libmysqlclient-dev python3-dev build-essential curl
 
 # Copy the source code in to the container
 COPY src /src

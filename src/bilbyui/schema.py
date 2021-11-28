@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 import graphene
-from django.conf import settings
 from django_filters import FilterSet, OrderingFilter
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
@@ -182,9 +181,6 @@ class Query(object):
     @login_required
     def resolve_generate_bilby_job_upload_token(self, info, **kwargs):
         user = info.context.user
-
-        if user.user_id not in settings.PERMITTED_UPLOAD_USER_IDS:
-            raise Exception("User is not permitted to upload jobs")
 
         # Create a job upload token
         token = BilbyJobUploadToken.create(user)

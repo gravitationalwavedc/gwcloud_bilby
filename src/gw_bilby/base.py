@@ -173,9 +173,6 @@ BILBY_JOB_UPLOAD_TOKEN_EXPIRY = 60*60*24
 # The expiry of FileDownloadTokens (in seconds)
 FILE_DOWNLOAD_TOKEN_EXPIRY = 60*60*24
 
-# The ID's of users who are permitted to upload jobs
-PERMITTED_UPLOAD_USER_IDS = []
-
 # The path to where external storage is mounted
 EXTERNAL_STORAGE_PATH = "/job_data"
 

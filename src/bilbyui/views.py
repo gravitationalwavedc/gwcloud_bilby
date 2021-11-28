@@ -1,6 +1,7 @@
+import logging
 import os
 import shutil
-import tarfile
+import subprocess
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from bilby_pipe.data_generation import DataGenerationInput
@@ -358,9 +359,19 @@ def upload_bilby_job(upload_token, details, job_file):
         job_upload_file.flush()
 
         # Unpack the archive to the temporary directory
-        try:
-            shutil.unpack_archive(job_upload_file.name, job_staging_dir, 'gztar')
-        except (ValueError, shutil.ReadError):
+        p = subprocess.Popen(
+            ['tar', '-xvf', job_upload_file.name, '.'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=job_staging_dir
+        )
+        out, err = p.communicate()
+
+        logging.info(f"Unpacking uploaded job archive {job_file.name} had return code {p.returncode}")
+        logging.info(f"stdout: {out}")
+        logging.info(f"stderr: {err}")
+
+        if p.returncode != 0:
             raise Exception("Invalid or corrupt tar.gz file")
 
         # Validate the directory structure, this should include 'data', 'result', and 'results_page' at minimum
@@ -437,15 +448,20 @@ def upload_bilby_job(upload_token, details, job_file):
             shutil.move(job_staging_dir, job_dir)
 
             # Finally generate the archive.tar.gz file
-            cwd = os.getcwd()
+            p = subprocess.Popen(
+                ['tar', '-cvf', 'archive.tar.gz', '.'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=job_dir
+            )
+            out, err = p.communicate()
 
-            os.chdir(job_dir)
-            with tarfile.open("archive.tar.gz", "w:gz", compresslevel=6) as tar_handle:
-                for root, dirs, files in os.walk("."):
-                    for file in files:
-                        tar_handle.add(os.path.join(root, file))
+            logging.info(f"Packing uploaded job archive for {job_file.name} had return code {p.returncode}")
+            logging.info(f"stdout: {out}")
+            logging.info(f"stderr: {err}")
 
-            os.chdir(cwd)
+            if p.returncode != 0:
+                raise Exception("Unable to repack the uploaded job")
 
         # Job is validated and uploaded, return the job
         return bilby_job
