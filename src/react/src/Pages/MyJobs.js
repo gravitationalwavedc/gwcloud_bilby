@@ -61,7 +61,7 @@ const MyJobs = ({data, match, router,relay}) => {
                     </Link>
                 </span>
             </h1>
-            <Form>
+            <Form onSubmit={e => e.preventDefault()}>
                 <Form.Row>
                     <Col lg={3}>
                         <Form.Group controlId="searchJobs">
