@@ -2,7 +2,7 @@ FROM nginx:latest
 
 # Install needed packages
 RUN apt-get update
-RUN apt-get install -y curl git python3 python-virtualenv rsync gcc python3-dev
+RUN apt-get install -y curl git python3 python3-virtualenv rsync gcc python3-dev
 
 # Copy the bilby source code in to the container
 COPY src /src
