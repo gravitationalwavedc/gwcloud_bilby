@@ -157,7 +157,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             self.assertEqual(response.headers['Content-Type'], 'application/octet-stream')
             self.assertEqual(
                 response.headers['Content-Disposition'],
-                f'filename="{os.path.basename(files[idx]["path"][1:])}"'
+                f'inline; filename="{os.path.basename(files[idx]["path"][1:])}"'
             )
 
             content = b''.join(list(response))

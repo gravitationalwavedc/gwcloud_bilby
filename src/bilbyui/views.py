@@ -8,10 +8,9 @@ from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.files import File
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
-from django.http import Http404, StreamingHttpResponse
+from django.http import Http404, FileResponse
 
 from .models import BilbyJob, Label, FileDownloadToken
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
@@ -494,18 +493,10 @@ def file_download(request):
     # Get the full file path
     file_path = os.path.join(job_dir, file_path)
 
-    # Use a django file wrapper to simplify sending the file to the client
-    file_wrapper = File(open(file_path, 'rb'))
-
-    # Create the streaming response and set the file size
-    response = StreamingHttpResponse(streaming_content=file_wrapper, content_type='application/octet-stream')
-    response['Content-Length'] = file_wrapper.size
-
-    # Check if the download should be forced
-    if 'forceDownload' in request.GET:
-        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_wrapper.name)}"'
-    else:
-        response['Content-Disposition'] = f'filename="{os.path.basename(file_wrapper.name)}"'
-
-    # Done, return the response and let django worry about chunking and streaming
-    return response
+    # Use a django file response object to stream the file back to the client
+    return FileResponse(
+        open(file_path, 'rb'),
+        as_attachment='forceDownload' in request.GET,
+        filename=os.path.basename(file_path),
+        content_type='application/octet-stream'
+    )
