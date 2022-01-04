@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import graphene
+from django.conf import settings
 from django_filters import FilterSet, OrderingFilter
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
@@ -10,7 +11,7 @@ from graphql import GraphQLError
 from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
 
-from .models import BilbyJob, Label, FileDownloadToken, BilbyJobUploadToken
+from .models import BilbyJob, EventID, Label, FileDownloadToken, BilbyJobUploadToken
 from .status import JobStatus
 from .types import JobStatusType, BilbyJobCreationResult, JobParameterInput, JobParameterOutput, JobIniInput, \
     JobDetailsInput
@@ -19,12 +20,19 @@ from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
-from .views import create_bilby_job, update_bilby_job, create_bilby_job_from_ini_string, upload_bilby_job
+from .views import create_bilby_job, update_bilby_job, create_bilby_job_from_ini_string, upload_bilby_job, \
+    create_event_id, delete_event_id
 
 
 class LabelType(DjangoObjectType):
     class Meta:
         model = Label
+        interfaces = (relay.Node,)
+
+
+class EventIDType(DjangoObjectType):
+    class Meta:
+        model = EventID
         interfaces = (relay.Node,)
 
 
@@ -72,6 +80,7 @@ class BilbyJobNode(DjangoObjectType):
     last_updated = graphene.String()
     params = graphene.Field(JobParameterOutput)
     labels = graphene.List(LabelType)
+    event_id = graphene.Field(EventIDType)
 
     @classmethod
     def get_queryset(parent, queryset, info):
@@ -85,6 +94,9 @@ class BilbyJobNode(DjangoObjectType):
 
     def resolve_labels(parent, info):
         return parent.labels.all()
+
+    def resolve_event_id(parent, info):
+        return parent.event_id
 
     def resolve_job_status(parent, info):
         # Uploaded jobs are always complete
@@ -171,6 +183,7 @@ class Query(object):
     )
 
     all_labels = graphene.List(LabelType)
+    all_event_ids = graphene.List(EventIDType)
 
     bilby_result_files = graphene.Field(BilbyResultFiles, job_id=graphene.ID(required=True))
 
@@ -191,6 +204,10 @@ class Query(object):
     @login_required
     def resolve_all_labels(self, info, **kwargs):
         return Label.all()
+
+    @login_required
+    def resolve_all_event_ids(self, info, **kwargs):
+        return EventID.all()
 
     @login_required
     def resolve_public_bilby_jobs(self, info, **kwargs):
@@ -267,6 +284,50 @@ class Query(object):
         )
 
 
+class EventIDMutation(relay.ClientIDMutation):
+    class Input:
+        event_id = graphene.String(required=True)
+        trigger_id = graphene.String()
+        nickname = graphene.String()
+
+    result = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, event_id, trigger_id, nickname):
+        user = info.context.user
+
+        if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
+            raise Exception('User is not permitted to create EventIDs')
+
+        msg = create_event_id(user, event_id, trigger_id, nickname)
+
+        return EventIDMutation(
+            result=msg
+        )
+
+
+class DeleteEventIDMutation(relay.ClientIDMutation):
+    class Input:
+        event_id = graphene.String(required=True)
+
+    result = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, event_id):
+        user = info.context.user
+
+        if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
+            raise Exception('User is not permitted to create EventIDs')
+
+        msg = delete_event_id(user, event_id)
+
+        return EventIDMutation(
+            result=msg
+        )
+
+
 class BilbyJobMutation(relay.ClientIDMutation):
     class Input:
         params = JobParameterInput()
@@ -318,6 +379,7 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         job_id = graphene.ID(required=True)
         private = graphene.Boolean(required=False)
         labels = graphene.List(graphene.String, required=False)
+        event_id = graphene.String(required=False)
 
     result = graphene.String()
 
@@ -417,3 +479,5 @@ class Mutation(graphene.ObjectType):
     update_bilby_job = UpdateBilbyJobMutation.Field()
     generate_file_download_ids = GenerateFileDownloadIds.Field()
     upload_bilby_job = UploadBilbyJobMutation.Field()
+    new_event_id = EventIDMutation.Field()
+    delete_event_id = DeleteEventIDMutation.Field()

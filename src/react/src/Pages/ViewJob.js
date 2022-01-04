@@ -6,6 +6,7 @@ import Files from '../Components/Results/Files';
 import Parameters from '../Components/Results/Parameters';
 import Link from 'found/Link';
 import LabelDropdown from '../Components/Results/LabelDropdown';
+import EventIDDropdown from '../Components/Results/EventIDDropdown';
 import PrivacyToggle from '../Components/Results/PrivacyToggle';
 
 const ViewJob = (props) => {
@@ -43,6 +44,7 @@ const ViewJob = (props) => {
                     <p>Updated on {updated}</p>
                     <p>{props.data.bilbyJob.jobStatus.name}</p>
                     <LabelDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} />
+                    <EventIDDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} />
                     <Link as={Button} to={{
                         pathname: '/bilby/job-form/duplicate/',
                         state: {
@@ -117,6 +119,7 @@ export default createFragmentContainer(ViewJob,
                     }
                 }
                 ...LabelDropdown_data @arguments(jobId: $jobId)
+                ...EventIDDropdown_data @arguments(jobId: $jobId)
             }
         `,
     },

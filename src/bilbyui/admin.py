@@ -1,11 +1,16 @@
 from django.contrib import admin
 
-from .models import BilbyJob, Label, IniKeyValue
+from .models import BilbyJob, EventID, Label, IniKeyValue
 
 
 @admin.register(Label)
 class LabelAdmin(admin.ModelAdmin):
     fields = ['name', 'description']
+
+
+@admin.register(EventID)
+class EventIDAdmin(admin.ModelAdmin):
+    fields = ['event_id', 'trigger_id', 'nickname']
 
 
 class IniKeyValueAdmin(admin.TabularInline):

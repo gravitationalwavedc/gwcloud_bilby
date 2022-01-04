@@ -12,7 +12,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import Http404, FileResponse
 
-from .models import BilbyJob, Label, FileDownloadToken
+from .models import BilbyJob, Label, EventID, FileDownloadToken
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 from .utils.jobs.submit_job import submit_job
 
@@ -320,7 +320,7 @@ def create_bilby_job_from_ini_string(user, params):
     return bilby_job
 
 
-def update_bilby_job(job_id, user, private=None, labels=None):
+def update_bilby_job(job_id, user, private=None, labels=None, event_id=None):
     bilby_job = BilbyJob.get_by_id(job_id, user)
 
     if user.user_id == bilby_job.user_id:
@@ -329,6 +329,9 @@ def update_bilby_job(job_id, user, private=None, labels=None):
             protected_labels = bilby_job.labels.filter(protected=True)
             bilby_job.labels.set(Label.filter_by_name(labels) | protected_labels)
 
+        if event_id is not None:
+            bilby_job.event_id = None if event_id == '' else EventID.objects.get(event_id=event_id)
+
         if private is not None:
             bilby_job.private = private
 
@@ -336,7 +339,7 @@ def update_bilby_job(job_id, user, private=None, labels=None):
 
         return 'Job saved!'
     else:
-        raise Exception('You must own the job to change the privacy!')
+        raise Exception('You must own the job to change it!')
 
 
 def upload_bilby_job(upload_token, details, job_file):
@@ -500,3 +503,31 @@ def file_download(request):
         filename=os.path.basename(file_path),
         content_type='application/octet-stream'
     )
+
+
+def create_event_id(user, event_id, trigger_id=None, nickname=None):
+    try:
+        event = EventID(
+            event_id=event_id,
+            trigger_id=trigger_id,
+            nickname=nickname
+        )
+        event.clean_fields()  # Validate IDs
+        event.save()
+        return f'Event ID {event.event_id} created'
+
+    except ValidationError as e:
+        err_list = "\n".join([
+            f"{field}: {', '.join([msg.messages[0] for msg in messages])}" for field, messages in e.error_dict.items()
+        ])
+
+        # f-strings can't have newline chars, so I am using format instead
+        return "Event ID was unable to be created due to errors in the following parameters: \n{}".format(err_list)
+
+
+def delete_event_id(user, event_id):
+    event = EventID.objects.get(event_id=event_id)
+    if not event:
+        return f'Event ID {event.event_id} not found'
+    event.delete()
+    return f'Event ID {event_id} deleted'

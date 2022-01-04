@@ -3,6 +3,7 @@ import os
 import uuid
 
 from django.conf import settings
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 
@@ -43,6 +44,35 @@ class Label(models.Model):
         return cls.objects.filter(name__in=labels, protected__in=[False, include_protected])
 
 
+class EventID(models.Model):
+    event_id = models.CharField(
+        max_length=15,
+        blank=False,
+        null=False,
+        unique=True,
+        validators=[RegexValidator(regex=r'^GW\d{6}_\d{6}$', message='Must be of the form GW123456_123456')]
+    )
+    trigger_id = models.CharField(
+        max_length=15,
+        blank=True,
+        null=True,
+        validators=[RegexValidator(regex=r'^S\d{6}[a-z]{1,2}$', message='Must be of the form S123456a')]
+    )
+    nickname = models.CharField(max_length=20, blank=True, null=True)
+
+    def __str__(self):
+        return f"EventID: {self.event_id}"
+
+    @classmethod
+    def all(cls):
+        """
+        Retrieves all labels
+
+        :return: QuerySet of all Labels
+        """
+        return cls.objects.all()
+
+
 class BilbyJob(models.Model):
     user_id = models.IntegerField()
     name = models.CharField(max_length=255, blank=False, null=False)
@@ -60,6 +90,7 @@ class BilbyJob(models.Model):
     job_controller_id = models.IntegerField(default=None, blank=True, null=True)
 
     labels = models.ManyToManyField(Label)
+    event_id = models.ForeignKey(EventID, default=None, null=True, on_delete=models.SET_NULL)
     # is_ligo_job indicates if the job has been run using proprietary data. If running a real job with GWOSC, this will
     # be set to False, otherwise a real data job using channels other than GWOSC will result in this value being True
     is_ligo_job = models.BooleanField(default=False)
