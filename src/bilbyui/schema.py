@@ -21,7 +21,7 @@ from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
 from .views import create_bilby_job, update_bilby_job, create_bilby_job_from_ini_string, upload_bilby_job, \
-    create_event_id, delete_event_id
+    create_event_id, update_event_id, delete_event_id
 
 
 class LabelType(DjangoObjectType):
@@ -34,6 +34,11 @@ class EventIDType(DjangoObjectType):
     class Meta:
         model = EventID
         interfaces = (relay.Node,)
+
+
+class EventIDResult(graphene.ObjectType):
+    success = graphene.Boolean()
+    message = graphene.String()
 
 
 class UserBilbyJobFilter(FilterSet):
@@ -207,7 +212,7 @@ class Query(object):
 
     @login_required
     def resolve_all_event_ids(self, info, **kwargs):
-        return EventID.all()
+        return EventID.filter_by_ligo(is_ligo=info.context.user.is_ligo)
 
     @login_required
     def resolve_public_bilby_jobs(self, info, **kwargs):
@@ -289,21 +294,46 @@ class EventIDMutation(relay.ClientIDMutation):
         event_id = graphene.String(required=True)
         trigger_id = graphene.String()
         nickname = graphene.String()
+        is_ligo_event = graphene.Boolean()
 
-    result = graphene.String()
+    result = graphene.Field(EventIDResult)
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, event_id, trigger_id, nickname):
+    def mutate_and_get_payload(cls, root, info, **kwargs):
         user = info.context.user
 
         if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
             raise Exception('User is not permitted to create EventIDs')
 
-        msg = create_event_id(user, event_id, trigger_id, nickname)
+        success, message = create_event_id(user, **kwargs)
 
         return EventIDMutation(
-            result=msg
+            result=EventIDResult(success=success, message=message)
+        )
+
+
+class UpdateEventIDMutation(relay.ClientIDMutation):
+    class Input:
+        event_id = graphene.String(required=True)
+        trigger_id = graphene.String()
+        nickname = graphene.String()
+        is_ligo_event = graphene.Boolean()
+
+    result = graphene.Field(EventIDResult)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **kwargs):
+        user = info.context.user
+
+        if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
+            raise Exception('User is not permitted to modify EventIDs')
+
+        success, message = update_event_id(user, **kwargs)
+
+        return EventIDMutation(
+            result=EventIDResult(success=success, message=message)
         )
 
 
@@ -311,7 +341,7 @@ class DeleteEventIDMutation(relay.ClientIDMutation):
     class Input:
         event_id = graphene.String(required=True)
 
-    result = graphene.String()
+    result = graphene.Field(EventIDResult)
 
     @classmethod
     @login_required
@@ -319,12 +349,12 @@ class DeleteEventIDMutation(relay.ClientIDMutation):
         user = info.context.user
 
         if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
-            raise Exception('User is not permitted to create EventIDs')
+            raise Exception('User is not permitted to delete EventIDs')
 
-        msg = delete_event_id(user, event_id)
+        success, message = delete_event_id(user, event_id)
 
         return EventIDMutation(
-            result=msg
+            result=EventIDResult(success=success, message=message)
         )
 
 
@@ -479,5 +509,6 @@ class Mutation(graphene.ObjectType):
     update_bilby_job = UpdateBilbyJobMutation.Field()
     generate_file_download_ids = GenerateFileDownloadIds.Field()
     upload_bilby_job = UploadBilbyJobMutation.Field()
-    new_event_id = EventIDMutation.Field()
+    create_event_id = EventIDMutation.Field()
+    update_event_id = UpdateEventIDMutation.Field()
     delete_event_id = DeleteEventIDMutation.Field()

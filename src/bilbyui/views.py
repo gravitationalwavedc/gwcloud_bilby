@@ -505,16 +505,18 @@ def file_download(request):
     )
 
 
-def create_event_id(user, event_id, trigger_id=None, nickname=None):
+def create_event_id(user, event_id, trigger_id=None, nickname=None, is_ligo_event=False):
     try:
-        event = EventID(
+        event = EventID.create(
             event_id=event_id,
             trigger_id=trigger_id,
-            nickname=nickname
+            nickname=nickname,
+            is_ligo_event=is_ligo_event
         )
-        event.clean_fields()  # Validate IDs
-        event.save()
-        return f'Event ID {event.event_id} created'
+        return (
+            True,
+            f"Event ID {event.event_id} created"
+        )
 
     except ValidationError as e:
         err_list = "\n".join([
@@ -522,12 +524,40 @@ def create_event_id(user, event_id, trigger_id=None, nickname=None):
         ])
 
         # f-strings can't have newline chars, so I am using format instead
-        return "Event ID was unable to be created due to errors in the following parameters: \n{}".format(err_list)
+        return (
+            False,
+            "Event ID was unable to be created due to errors in the following parameters: \n{}".format(err_list)
+        )
+
+
+def update_event_id(user, event_id, trigger_id=None, nickname=None, is_ligo_event=None):
+    event = EventID.get_by_event_id(event_id)
+    try:
+        event.update(
+            trigger_id=trigger_id,
+            nickname=nickname,
+            is_ligo_event=is_ligo_event
+        )
+        return (
+            True,
+            f"Event ID {event.event_id} updated"
+        )
+
+    except ValidationError as e:
+        err_list = "\n".join([
+            f"{field}: {', '.join([msg.messages[0] for msg in messages])}" for field, messages in e.error_dict.items()
+        ])
+
+        # f-strings can't have newline chars, so I am using format instead
+        return (
+            False,
+            "Event ID was unable to be updated due to errors in the following parameters: \n{}".format(err_list)
+        )
 
 
 def delete_event_id(user, event_id):
-    event = EventID.objects.get(event_id=event_id)
+    event = EventID.get_by_event_id(event_id)
     if not event:
-        return f'Event ID {event.event_id} not found'
+        return False, f'Event ID {event.event_id} not found'
     event.delete()
-    return f'Event ID {event_id} deleted'
+    return True, f'Event ID {event_id} deleted'

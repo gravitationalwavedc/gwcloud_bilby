@@ -59,18 +59,44 @@ class EventID(models.Model):
         validators=[RegexValidator(regex=r'^S\d{6}[a-z]{1,2}$', message='Must be of the form S123456a')]
     )
     nickname = models.CharField(max_length=20, blank=True, null=True)
+    is_ligo_event = models.BooleanField(default=False)
 
     def __str__(self):
         return f"EventID: {self.event_id}"
 
     @classmethod
-    def all(cls):
-        """
-        Retrieves all labels
+    def get_by_event_id(cls, event_id):
+        return cls.objects.get(event_id=event_id)
 
-        :return: QuerySet of all Labels
-        """
-        return cls.objects.all()
+    @classmethod
+    def filter_by_ligo(cls, is_ligo):
+        # Users may not view ligo IDs if they are not a ligo user
+        if is_ligo:
+            return cls.objects.all()
+        else:
+            return cls.objects.exclude(is_ligo_event=True)
+
+    @classmethod
+    def create(cls, event_id, trigger_id=None, nickname=None, is_ligo_event=False):
+        event = cls(
+            event_id=event_id,
+            trigger_id=trigger_id,
+            nickname=nickname,
+            is_ligo_event=is_ligo_event
+        )
+        event.clean_fields()  # Validate IDs
+        event.save()
+        return event
+
+    def update(self, trigger_id=None, nickname=None, is_ligo_event=False):
+        if trigger_id is not None:
+            self.trigger_id = trigger_id
+        if nickname is not None:
+            self.nickname = nickname
+        if is_ligo_event is not None:
+            self.is_ligo_event = is_ligo_event
+        self.clean_fields()  # Validate IDs
+        self.save()
 
 
 class BilbyJob(models.Model):
