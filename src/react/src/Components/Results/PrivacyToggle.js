@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import {harnessApi} from '../../index';
+import { harnessApi } from '../../index';
 import { commitMutation, createFragmentContainer, graphql } from 'react-relay';
 import { Form } from 'react-bootstrap';
 
@@ -14,16 +14,15 @@ const PrivacyToggle = (props) => {
                 jobId: props.jobId,
                 private: newValue,
             },
-            () => {}
+            props.onUpdate
         );
     };
     
-    return <Form.Group className="mt-3" controlId="privateToggle">
+    return props.modifiable && <Form.Group controlId="privateToggle">
         <Form.Check
             type="checkbox"
             label="Share with LIGO collaborators"
             onChange={handleChange} 
-            disabled={harnessApi.currentUser.userId !== props.userId} 
             checked={!isPrivate}/>
     </Form.Group>;
 };
@@ -47,7 +46,7 @@ const updateJob = (variables, callback) => commitMutation(harnessApi.getEnvironm
             callback(false, errors);
         }
         else {
-            callback(true, response.updateBilbyJob.result);
+            callback(true, 'Job privacy updated!');
         }
     },
 });

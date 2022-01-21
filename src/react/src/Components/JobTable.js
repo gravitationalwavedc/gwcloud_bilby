@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'found/Link';
 import { Table, Badge } from 'react-bootstrap';
 import InfiniteScroll from 'react-infinite-scroll-component';
-import getBadgeType from './getBadgeType';
+import {getBadgeType} from './getVariants';
 
 
 const JobTable = ({data, match, router, hasMore, loadMore, myJobs}) => (

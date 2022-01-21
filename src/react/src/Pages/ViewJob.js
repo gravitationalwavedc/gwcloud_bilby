@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import { harnessApi } from '../index';
 import { graphql, createFragmentContainer } from 'react-relay';
 import { Row, Nav, Col, Button, Container, Tab, Toast } from 'react-bootstrap';
 import moment from 'moment';
@@ -8,13 +9,17 @@ import Link from 'found/Link';
 import LabelDropdown from '../Components/Results/LabelDropdown';
 import EventIDDropdown from '../Components/Results/EventIDDropdown';
 import PrivacyToggle from '../Components/Results/PrivacyToggle';
+import StatusDisplay from '../Components/Results/StatusDisplay';
+import SaveToast from '../Components/Results/SaveToast';
 
 const ViewJob = (props) => {
-    const [saved, setSaved] = useState(false); 
+    const [saved, setSaved] = useState(false);
     const [showNotification, setShowNotification] = useState(false);
+    const [toastMessage, setToastMessage] = useState(null);
 
     const onSave = (saved, message) => {
-        setSaved(saved);
+        setSaved(saved)
+        setToastMessage(message)
         setShowNotification(true);
     };
 
@@ -23,41 +28,51 @@ const ViewJob = (props) => {
 
     const updated = moment.utc(lastUpdated, 'YYYY-MM-DD HH:mm:ss UTC').local().format('llll');
 
+    const modifiable = harnessApi.currentUser.userId == userId
+
     return (
         <Container className="pt-5" fluid>
-            {showNotification && 
-              <Toast 
-                  style={{position: 'absolute', top: '56px', right:'50px'}} 
-                  onClose={() => setShowNotification(false)} 
-                  show={showNotification} 
-                  delay={3000} 
-                  autohide>
-                  <Toast.Header>Saved</Toast.Header>
-                  <Toast.Body>Updated job labels.</Toast.Body>
-              </Toast>
-            }
+            <SaveToast
+                saved={saved}
+                show={showNotification} 
+                message={toastMessage} 
+                onClose={() => setShowNotification(false)}
+            />
             <Row className="mb-3">
                 <Col md={2} />
-                <Col md={8}>
+                <Col md={6}>
                     <h1>{details.name}</h1>
-                    <p>{details.description}</p>
-                    <p>Updated on {updated}</p>
-                    <p>{props.data.bilbyJob.jobStatus.name}</p>
-                    <LabelDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} />
-                    <EventIDDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} />
+                    <LabelDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} modifiable={modifiable}/>
+                    <StatusDisplay name={props.data.bilbyJob.jobStatus.name} date={updated}/>
+                </Col>
+                <Col md={2}>
                     <Link as={Button} to={{
                         pathname: '/bilby/job-form/duplicate/',
                         state: {
                             jobId: props.match.params.jobId
                         }
-                    }} activeClassName="selected" exact match={props.match} router={props.router}>
+                    }} className="float-right" activeClassName="selected" exact match={props.match} router={props.router}>
                       Duplicate job
                     </Link>
+                </Col>
+            </Row>
+            <Row className="mb-3">
+                <Col md={2} />
+                <Col md={8}>
+                    <p className="mb-0">{details.description}</p>
+                    <EventIDDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} modifiable={modifiable}/>
+
+                </Col>
+            </Row>
+            <Row className="mb-3">
+                <Col md={2} />
+                <Col md={8}>
                     <PrivacyToggle 
-                        userId={userId} 
                         jobId={props.match.params.jobId} 
                         data={props.data.bilbyJob}
-                        onUpdate={onSave} />
+                        onUpdate={onSave}
+                        modifiable={modifiable}
+                    />
                 </Col>
             </Row>
             <Tab.Container id="jobResultsTabs" defaultActiveKey="parameters">

@@ -36,11 +36,6 @@ class EventIDType(DjangoObjectType):
         interfaces = (relay.Node,)
 
 
-class EventIDResult(graphene.ObjectType):
-    success = graphene.Boolean()
-    message = graphene.String()
-
-
 class UserBilbyJobFilter(FilterSet):
     class Meta:
         model = BilbyJob
@@ -188,6 +183,8 @@ class Query(object):
     )
 
     all_labels = graphene.List(LabelType)
+
+    event_id = graphene.Field(EventIDType, event_id=graphene.String(required=True))
     all_event_ids = graphene.List(EventIDType)
 
     bilby_result_files = graphene.Field(BilbyResultFiles, job_id=graphene.ID(required=True))
@@ -209,6 +206,10 @@ class Query(object):
     @login_required
     def resolve_all_labels(self, info, **kwargs):
         return Label.all()
+
+    @login_required
+    def resolve_event_id(self, info, event_id):
+        return EventID.get_by_event_id(event_id=event_id, user=info.context.user)
 
     @login_required
     def resolve_all_event_ids(self, info, **kwargs):
@@ -296,7 +297,7 @@ class EventIDMutation(relay.ClientIDMutation):
         nickname = graphene.String()
         is_ligo_event = graphene.Boolean()
 
-    result = graphene.Field(EventIDResult)
+    result = graphene.String()
 
     @classmethod
     @login_required
@@ -306,10 +307,10 @@ class EventIDMutation(relay.ClientIDMutation):
         if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
             raise Exception('User is not permitted to create EventIDs')
 
-        success, message = create_event_id(user, **kwargs)
+        message = create_event_id(user, **kwargs)
 
         return EventIDMutation(
-            result=EventIDResult(success=success, message=message)
+            result=message
         )
 
 
@@ -320,7 +321,7 @@ class UpdateEventIDMutation(relay.ClientIDMutation):
         nickname = graphene.String()
         is_ligo_event = graphene.Boolean()
 
-    result = graphene.Field(EventIDResult)
+    result = graphene.String()
 
     @classmethod
     @login_required
@@ -330,10 +331,10 @@ class UpdateEventIDMutation(relay.ClientIDMutation):
         if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
             raise Exception('User is not permitted to modify EventIDs')
 
-        success, message = update_event_id(user, **kwargs)
+        message = update_event_id(user, **kwargs)
 
-        return EventIDMutation(
-            result=EventIDResult(success=success, message=message)
+        return UpdateEventIDMutation(
+            result=message
         )
 
 
@@ -341,7 +342,7 @@ class DeleteEventIDMutation(relay.ClientIDMutation):
     class Input:
         event_id = graphene.String(required=True)
 
-    result = graphene.Field(EventIDResult)
+    result = graphene.String()
 
     @classmethod
     @login_required
@@ -351,10 +352,10 @@ class DeleteEventIDMutation(relay.ClientIDMutation):
         if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
             raise Exception('User is not permitted to delete EventIDs')
 
-        success, message = delete_event_id(user, event_id)
+        message = delete_event_id(user, event_id)
 
-        return EventIDMutation(
-            result=EventIDResult(success=success, message=message)
+        return DeleteEventIDMutation(
+            result=message
         )
 
 

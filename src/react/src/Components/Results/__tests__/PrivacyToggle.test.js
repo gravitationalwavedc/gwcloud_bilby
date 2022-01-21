@@ -24,7 +24,7 @@ describe('the privacy toggle component', () => {
             }}
             render={({ error, props }) => {
                 if (props) {
-                    return <PrivacyToggle data={props.bilbyJob} match={{}} router={router}/>;
+                    return <PrivacyToggle data={props.bilbyJob} match={{}} router={router} onUpdate={()=>{}} modifiable/>;
                 } else if (error) {
                     return error.message;
                 }

@@ -1,15 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createFragmentContainer, commitMutation, graphql } from 'react-relay';
-import { Row, Col, DropdownButton, Dropdown, Alert, Form, Button, Modal } from 'react-bootstrap';
-import {Typeahead} from 'react-bootstrap-typeahead'
+import { HiOutlinePlus } from 'react-icons/hi';
+import { Form, Button, Modal, Row, Col, Card } from 'react-bootstrap';
+import { Typeahead, Highlighter } from 'react-bootstrap-typeahead'
 import 'react-bootstrap-typeahead/css/Typeahead.css';
 import { harnessApi } from '../../index';
+
+const EventIDDisplay = ({eventId, triggerId, nickname}) => {
+    return <React.Fragment>
+        {eventId && <Col md='auto'>{`Event ID: ${eventId}`}</Col>}
+        {triggerId && <Col md='auto'>{`Trigger ID: ${triggerId}`}</Col>}
+        {nickname && <Col md='auto'>{`Nickname: ${nickname}`}</Col>}
+    </React.Fragment>
+}
+
+const EventIDMenuDisplay = ({eventId, triggerId, nickname, props}) => {
+    return <React.Fragment>
+        <h5><Highlighter search={props.text}>{`Event ID: ${eventId}`}</Highlighter></h5>
+        <Highlighter search={props.text}>{`Trigger ID: ${triggerId}; Nickname: ${nickname}`}</Highlighter>
+        <hr className="m-0 p-0"/>
+    </React.Fragment>
+}
 
 const EventIDDropdown = (props) => {
     const initialEventId = props.data.bilbyJob.eventId
     const [show, setShow] = useState(false)
-    const [eventId, setEventId] = useState(initialEventId ? initialEventId : {eventId: ''});
-    
+    const [eventId, setEventId] = useState(initialEventId);
     const isMounted = useRef();
 
     useEffect(() => {
@@ -17,7 +33,7 @@ const EventIDDropdown = (props) => {
             updateJob(
                 {
                     jobId: props.jobId,
-                    eventId: eventId.eventId
+                    eventId: (eventId && eventId.eventId) || ""
                 },
                 props.onUpdate
             );
@@ -26,8 +42,17 @@ const EventIDDropdown = (props) => {
         }
     }, [eventId]);
 
-    return <React.Fragment>
-        <Button onClick={() => setShow(true)}>Add Event ID</Button>
+    return <Row className='align-items-center'>
+        {eventId && <EventIDDisplay {...eventId}/>}
+        {
+            props.modifiable && <Button 
+                variant="link" 
+                className="py-0" 
+                onClick={() => setShow(true)}
+            >
+                {(eventId && eventId.eventId === '') ? <>Add Event ID<HiOutlinePlus/></> : 'Change Event ID'}
+            </Button>
+        }
         <Modal
             show={show}
             onHide={() => setShow(false)}
@@ -41,17 +66,21 @@ const EventIDDropdown = (props) => {
                 <Form.Group>
                     <Typeahead
                         id='event-id-select'
-                        onChange={(event) => setEventId(event[0] ? event[0] : {eventId: ''})}
-                        selected={[eventId.eventId]}
+                        onChange={(event) => {
+                            setEventId(event[0])
+                        }}
+                        selected={eventId ? [eventId] : []}
                         options={props.data.allEventIds}
                         labelKey='eventId'
+                        filterBy={['eventId', 'triggerId', 'nickname']}
                         clearButton
                         placeholder=''
+                        renderMenuItemChildren={(option, props) => <EventIDMenuDisplay {...option} props={props}/>}
                     />
                 </Form.Group>
             </Modal.Body>
         </Modal>
-    </React.Fragment>
+    </Row>
     
 };
 
@@ -74,7 +103,7 @@ const updateJob = (variables, callback) => commitMutation(harnessApi.getEnvironm
             callback(false, errors);
         }
         else {
-            callback(true, response.updateBilbyJob.result);
+            callback(true, 'Job Event ID updated!');
         }
     },
 });

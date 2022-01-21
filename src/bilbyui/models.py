@@ -65,8 +65,13 @@ class EventID(models.Model):
         return f"EventID: {self.event_id}"
 
     @classmethod
-    def get_by_event_id(cls, event_id):
-        return cls.objects.get(event_id=event_id)
+    def get_by_event_id(cls, event_id, user):
+        event = cls.objects.get(event_id=event_id)
+
+        if event.is_ligo_event and not user.is_ligo:
+            raise Exception("Permission Denied")
+
+        return event
 
     @classmethod
     def filter_by_ligo(cls, is_ligo):

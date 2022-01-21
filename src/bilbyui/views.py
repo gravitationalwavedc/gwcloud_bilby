@@ -506,58 +506,28 @@ def file_download(request):
 
 
 def create_event_id(user, event_id, trigger_id=None, nickname=None, is_ligo_event=False):
-    try:
-        event = EventID.create(
-            event_id=event_id,
-            trigger_id=trigger_id,
-            nickname=nickname,
-            is_ligo_event=is_ligo_event
-        )
-        return (
-            True,
-            f"Event ID {event.event_id} created"
-        )
+    EventID.create(
+        event_id=event_id,
+        trigger_id=trigger_id,
+        nickname=nickname,
+        is_ligo_event=is_ligo_event
+    )
 
-    except ValidationError as e:
-        err_list = "\n".join([
-            f"{field}: {', '.join([msg.messages[0] for msg in messages])}" for field, messages in e.error_dict.items()
-        ])
-
-        # f-strings can't have newline chars, so I am using format instead
-        return (
-            False,
-            "Event ID was unable to be created due to errors in the following parameters: \n{}".format(err_list)
-        )
+    return f'EventID {event_id} succesfully created!'
 
 
 def update_event_id(user, event_id, trigger_id=None, nickname=None, is_ligo_event=None):
-    event = EventID.get_by_event_id(event_id)
-    try:
-        event.update(
-            trigger_id=trigger_id,
-            nickname=nickname,
-            is_ligo_event=is_ligo_event
-        )
-        return (
-            True,
-            f"Event ID {event.event_id} updated"
-        )
+    event = EventID.get_by_event_id(event_id, user)
+    event.update(
+        trigger_id=trigger_id,
+        nickname=nickname,
+        is_ligo_event=is_ligo_event
+    )
 
-    except ValidationError as e:
-        err_list = "\n".join([
-            f"{field}: {', '.join([msg.messages[0] for msg in messages])}" for field, messages in e.error_dict.items()
-        ])
-
-        # f-strings can't have newline chars, so I am using format instead
-        return (
-            False,
-            "Event ID was unable to be updated due to errors in the following parameters: \n{}".format(err_list)
-        )
+    return f'EventID {event_id} succesfully updated!'
 
 
 def delete_event_id(user, event_id):
-    event = EventID.get_by_event_id(event_id)
-    if not event:
-        return False, f'Event ID {event.event_id} not found'
+    event = EventID.get_by_event_id(event_id, user)
     event.delete()
-    return True, f'Event ID {event_id} deleted'
+    return f'EventID {event_id} succesfully deleted!'
