@@ -1,0 +1,90 @@
+default:
+  image:
+    name: ubuntu:20.04
+    entrypoint: ["/usr/bin/env"]
+
+  before_script:
+    - apt -y update
+    - apt -y install apt-utils
+    - apt -y install net-tools python3.8 python3-pip git curl wget
+    - apt -y upgrade
+    - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$HOME/miniconda.sh"
+    - bash "$HOME/miniconda.sh" -b -p "$HOME/miniconda"
+    - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+
+
+django-tests:
+  stage: test
+  script:
+    - cd src/
+    - pip3 install -r requirements.txt
+    - python3 development-manage.py jenkins --enable-coverage --coverage-rcfile=.coveragerc
+
+  artifacts:
+    reports:
+      cobertura: src/reports/coverage.xml
+      junit: src/reports/junit.xml
+
+
+npm-tests:
+  stage: test
+  script:
+    - cd src/
+    - pip3 install -r requirements.txt
+    - python3 development-manage.py graphql_schema
+    - cd react/
+    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
+    - eval "[ -f .nvmrc ] && nvm install && nvm use && nvm install-latest-npm"
+    - npm install
+    - npm run relay
+    - npm run test-ci
+
+  artifacts:
+    reports:
+      cobertura: src/react/coverage/cobertura-coverage.xml
+      junit: src/react/junit.xml
+
+
+bundle-tests:
+  stage: test
+  script:
+    - cd src/bundle/
+    - $HOME/miniconda/bin/conda env create -f conda-environment.yml -p venv || true
+    - $HOME/miniconda/bin/conda env update --file conda-environment.yml --prune -p venv
+    - source ./venv/bin/activate
+    - coverage run -m xmlrunner discover --output-file ./junit.xml || true
+    - coverage xml
+
+  artifacts:
+    reports:
+      cobertura: src/bundle/coverage.xml
+      junit: src/bundle/junit.xml
+
+
+code-quality:
+  image: docker:stable
+  variables:
+    DOCKER_DRIVER: overlay2
+    SP_VERSION: 0.85.26
+  allow_failure: true
+  services:
+    - docker:stable-dind
+  before_script: []
+  script:
+    - docker run
+        --env SOURCE_CODE="$PWD"
+        --volume "$PWD":/code
+        --volume /var/run/docker.sock:/var/run/docker.sock
+        "registry.gitlab.com/gitlab-org/ci-cd/codequality:$SP_VERSION" /code
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+
+
+flake8:
+  script:
+    - pip3 install flake8-gl-codeclimate
+    - flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json src/
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
