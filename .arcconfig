@@ -1,9 +1,0 @@
-{
-	"load": ["arcutils"],
-	"unit.engine": "DjangoJestUnitTestEngine",
-	"unit.engine.django.manage_py_dir": "src",
-	"unit.engine.django.manage_py_file": "development-manage.py",
-	"unit.engine.django.coverage": true,
-	"unit.engine.jest.root_dir": "src/react",
-	"unit.engine.jest.jest_binary": "./node_modules/.bin/jest"
-}
