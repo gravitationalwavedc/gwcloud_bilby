@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactGA from 'react-ga';
 import {Route} from 'found';
 import MyJobs from './Pages/MyJobs';
 import PublicJobs from './Pages/PublicJobs';
@@ -10,6 +11,17 @@ import ViewJob from './Pages/ViewJob';
 import Loading from './Components/Loading';
 import {RedirectException} from 'found';
 
+//Initialise Google Analytics
+const trackingID = 'UA-219714075-1';
+//If you experiencing issues with Google Analytics uncomment out the following line.
+// ReactGA.initialize(trackingID, { debug: true });
+ReactGA.initialize(trackingID, { testMode: process.env.NODE_ENV === 'test' });
+
+const renderTrackingRoute = (Component, props) => {
+    ReactGA.pageview(props.match.location.pathname);
+    return <Component data={props} {...props} />;
+};
+
 const handleRender = ({Component, props}) => {
     if (!Component || !props)
         return <Loading/>;
@@ -17,7 +29,7 @@ const handleRender = ({Component, props}) => {
     if (!harnessApi.hasAuthToken())
         throw new RedirectException('/auth/?next=' + props.match.location.pathname, 401);
   
-    return <Component data={props} {...props}/>;
+    return renderTrackingRoute(Component, props);
 };
 
 function getRoutes() {
