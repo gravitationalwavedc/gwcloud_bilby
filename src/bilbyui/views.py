@@ -362,7 +362,7 @@ def upload_bilby_job(upload_token, details, job_file):
 
         # Unpack the archive to the temporary directory
         p = subprocess.Popen(
-            ['tar', '-xvf', job_upload_file.name, '.'],
+            ['gtar', '-xvf', job_upload_file.name, '.'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=job_staging_dir

@@ -26,8 +26,6 @@ def rand_string(num_chars):
 
 class TestJobSubmission(BilbyTestCase):
     def setUp(self):
-        self.maxDiff = 9999
-
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user, True)
 
