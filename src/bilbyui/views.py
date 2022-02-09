@@ -320,10 +320,11 @@ def create_bilby_job_from_ini_string(user, params):
     return bilby_job
 
 
-def update_bilby_job(job_id, user, private=None, labels=None, event_id=None):
+def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, name=None, description=None):
     bilby_job = BilbyJob.get_by_id(job_id, user)
 
     if user.user_id == bilby_job.user_id:
+
         if labels is not None:
             # Preserve protected labels
             protected_labels = bilby_job.labels.filter(protected=True)
@@ -334,6 +335,12 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None):
 
         if private is not None:
             bilby_job.private = private
+
+        if name is not None:
+            bilby_job.name = name
+
+        if description is not None:
+            bilby_job.description = description
 
         bilby_job.save()
 
@@ -362,7 +369,7 @@ def upload_bilby_job(upload_token, details, job_file):
 
         # Unpack the archive to the temporary directory
         p = subprocess.Popen(
-            ['gtar', '-xvf', job_upload_file.name, '.'],
+            ['tar', '-xvf', job_upload_file.name, '.'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=job_staging_dir
