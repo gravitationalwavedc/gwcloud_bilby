@@ -17,11 +17,13 @@ const PrivacyToggle = (props) => {
             props.onUpdate
         );
     };
+
+    const label = props.data.isLigoJob ? 'Share with LVK collaborators' : 'Share publicly';
     
     return props.modifiable && <Form.Group controlId="privateToggle">
         <Form.Check
             type="checkbox"
-            label="Share with LIGO collaborators"
+            label={label}
             onChange={handleChange} 
             checked={!isPrivate}/>
     </Form.Group>;
@@ -55,6 +57,7 @@ export default createFragmentContainer(PrivacyToggle, {
     data: graphql`
         fragment PrivacyToggle_data on BilbyJobNode {
             private
+            isLigoJob
         }
     `
 });
