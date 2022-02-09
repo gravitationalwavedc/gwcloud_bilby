@@ -32,8 +32,6 @@ def get_upload_token(client):
 
 class TestJobUpload(BilbyTestCase):
     def setUp(self):
-        self.maxDiff = 9999
-
         self.user = User.objects.create(username="bill", first_name="bill", last_name="nye")
         self.client.authenticate(self.user, is_ligo=True)
 
