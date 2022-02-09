@@ -40,9 +40,6 @@ def update_job_mock(job):
 
 
 class TestSubmit(TestCase):
-
-    maxDiff = 99999
-
     def setUp(self):
         self.popen = MockPopen()
         self.r = Replacer()
