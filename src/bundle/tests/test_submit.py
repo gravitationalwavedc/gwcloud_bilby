@@ -138,9 +138,13 @@ jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-n
 
 echo "jid1 ${jid1[-1]}" >> job/submit/slurm_ids
 
-jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-real_data0_12345678-0_analysis_H1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_plot.out --error=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_plot.err job/submit/test-real_data0_12345678-0_analysis_H1_dynesty_plot.sh))
+jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=1:00:00 --job-name=test-real_data0_12345678-0_analysis_H1_dynesty_final_result --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.out --error=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.err job/submit/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.sh))
 
 echo "jid2 ${jid2[-1]}" >> job/submit/slurm_ids
+
+jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-real_data0_12345678-0_analysis_H1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_plot.out --error=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_plot.err job/submit/test-real_data0_12345678-0_analysis_H1_dynesty_plot.sh))
+
+echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
 """  # noqa
                 )
 
@@ -249,9 +253,13 @@ jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-n
 
 echo "jid1 ${jid1[-1]}" >> job/submit/slurm_ids
 
-jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.out --error=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.err job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.sh))
+jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=1:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.out --error=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.err job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.sh))
 
 echo "jid2 ${jid2[-1]}" >> job/submit/slurm_ids
+
+jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.out --error=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.err job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.sh))
+
+echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
 """  # noqa
                 )
 
@@ -358,9 +366,13 @@ jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-n
 
 echo "jid1 ${jid1[-1]}" >> job/submit/slurm_ids
 
-jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.out --error=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.err job/submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.sh))
+jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=1:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result.out --error=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result.err job/submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result.sh))
 
 echo "jid2 ${jid2[-1]}" >> job/submit/slurm_ids
+
+jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.out --error=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.err job/submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.sh))
+
+echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
 """  # noqa
                 )
 
@@ -437,11 +449,14 @@ echo "jid2 ${jid2[-1]}" >> job/submit/slurm_ids
 VARS test-real_data0_12345678-0_generation_arg_0 ARGS="job/test-real_config_complete.ini --label test-real_data0_12345678-0_generation --idx 0 --trigger-time 12345678.0"
 JOB test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 job/submit/test-real_data0_12345678-0_analysis_H1_dynesty.submit
 VARS test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 ARGS="job/test-real_config_complete.ini --detectors H1 --label test-real_data0_12345678-0_analysis_H1_dynesty --data-dump-file job/data/test-real_data0_12345678-0_generation_data_dump.pickle --sampler dynesty"
+JOB test-real_data0_12345678-0_analysis_H1_dynesty_final_result_arg_0 job/submit/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.submit
+VARS test-real_data0_12345678-0_analysis_H1_dynesty_final_result_arg_0 ARGS="--result job/result/test-real_data0_12345678-0_analysis_H1_dynesty_result.json --outdir job/final_result --extension json --max-samples 20000 --lightweight --save"
 JOB test-real_data0_12345678-0_analysis_H1_dynesty_plot_arg_0 job/submit/test-real_data0_12345678-0_analysis_H1_dynesty_plot.submit
 VARS test-real_data0_12345678-0_analysis_H1_dynesty_plot_arg_0 ARGS="--result job/result/test-real_data0_12345678-0_analysis_H1_dynesty_result.json --outdir job/result --corner --marginal --skymap --waveform --format png"
 
 #Inter-job dependencies
 Parent test-real_data0_12345678-0_generation_arg_0 Child test-real_data0_12345678-0_analysis_H1_dynesty_arg_0
+Parent test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 Child test-real_data0_12345678-0_analysis_H1_dynesty_final_result_arg_0
 Parent test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 Child test-real_data0_12345678-0_analysis_H1_dynesty_plot_arg_0""" # noqa
                 )
 
@@ -519,11 +534,14 @@ Parent test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 Child test-real_data
 VARS test-simulated_data0_87654321-0_generation_arg_0 ARGS="job/test-simulated_config_complete.ini --label test-simulated_data0_87654321-0_generation --idx 0 --trigger-time 87654321.0"
 JOB test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0 job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty.submit
 VARS test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0 ARGS="job/test-simulated_config_complete.ini --detectors H1 --detectors V1 --label test-simulated_data0_87654321-0_analysis_H1V1_dynesty --data-dump-file job/data/test-simulated_data0_87654321-0_generation_data_dump.pickle --sampler dynesty"
+JOB test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result_arg_0 job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.submit
+VARS test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result_arg_0 ARGS="--result job/result/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_result.json --outdir job/final_result --extension json --max-samples 20000 --lightweight --save"
 JOB test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot_arg_0 job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.submit
 VARS test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot_arg_0 ARGS="--result job/result/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_result.json --outdir job/result --corner --marginal --skymap --waveform --format png"
 
 #Inter-job dependencies
 Parent test-simulated_data0_87654321-0_generation_arg_0 Child test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0
+Parent test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0 Child test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result_arg_0
 Parent test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0 Child test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot_arg_0""" # noqa
                 )
 
