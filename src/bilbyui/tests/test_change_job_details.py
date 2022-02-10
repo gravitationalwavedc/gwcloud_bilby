@@ -49,13 +49,13 @@ class TestChangeJobDetails(BilbyTestCase):
             }
         }
 
-        updated_job = BilbyJob.objects.get(id=job.id)
+        job.refresh_from_db()
 
         self.assertIsNone(response.errors, f"Mutation returned errors: {response.errors}")
         self.assertIsNotNone(response.data, "Mutation query returned nothing.")
         self.assertDictEqual(
             expected, response.data, "Change Job Details mutation returned the wrong jobid or threw an error."
         )
-        self.assertEqual(updated_job.description, "New job description")
-        self.assertEqual(updated_job.name, "New job name")
+        self.assertEqual(job.description, "New job description")
+        self.assertEqual(job.name, "New job name")
         

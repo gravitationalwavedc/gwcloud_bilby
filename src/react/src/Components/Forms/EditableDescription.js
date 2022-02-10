@@ -13,35 +13,34 @@ const mutation = graphql`
     }
 `;
 
-const handleSaveDescription = (value, jobId) => {
-    const variables = {
-        input: {
-            jobId: jobId,
-            description: value 
-        }
+
+const EditableDescription = ({modifiable, value, jobId}) => {
+
+    const handleSaveDescription = (newValue) => {
+        const variables = {
+            input: {
+                jobId: jobId,
+                description: newValue 
+            }
+        };
+
+        commitMutation(harnessApi.getEnvironment('bilby'), {
+            mutation: mutation,
+            variables: variables,
+        });
     };
 
-    commitMutation(harnessApi.getEnvironment('bilby'), {
-        mutation: mutation,
-        variables: variables,
-        onCompleted: (response, errors) => {
-            if (!errors) {
-                console.log('saved!');
-            }
-        }
-    });
+    return <React.Fragment>
+        {modifiable ? 
+            <EditableText 
+                name="description" 
+                type="textarea"
+                value={value} 
+                onSave={(value) => handleSaveDescription(value)} 
+                viewProps={{className: 'p'}}
+            /> 
+            : <p>{value}</p>}
+    </React.Fragment>;
 };
-
-const EditableDescription = ({modifiable, value, jobId}) => <React.Fragment>
-    {modifiable ? 
-        <EditableText 
-            name="description" 
-            type="textarea"
-            value={value} 
-            onSave={(value) => handleSaveDescription(value, jobId)} 
-            viewProps={{className: 'p'}}
-        /> 
-        : <p>{value}</p>}
-</React.Fragment>;
 
 export default EditableDescription;

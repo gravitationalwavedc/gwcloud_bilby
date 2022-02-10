@@ -18,9 +18,9 @@ const mutation = graphql`
 const EditableJobName = ({modifiable, value, jobId}) => {
     const [errors, setErrors] = useState();
 
-    const handleSaveJobName = async (value, jobId) => {
+    const handleSaveJobName = async (newValue) => {
         try {
-            await validationSchema.validateAt('name', {name: value});
+            await validationSchema.validateAt('name', {name: newValue});
         } catch(error) {
             setErrors(error.message);
             return;
@@ -29,7 +29,7 @@ const EditableJobName = ({modifiable, value, jobId}) => {
         const variables = {
             input: {
                 jobId: jobId,
-                name: value 
+                name: newValue 
             }
         };
 
@@ -49,7 +49,7 @@ const EditableJobName = ({modifiable, value, jobId}) => {
             <EditableText 
                 name="job-name" 
                 value={value} 
-                onSave={(value) => handleSaveJobName(value, jobId)} 
+                onSave={(value) => handleSaveJobName(value)} 
                 viewProps={{className: 'h1'}}
                 hint="You can only use letters, numbers, underscores, and hyphens."
                 errors={errors}
