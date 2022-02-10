@@ -18,7 +18,13 @@ const trackingID = 'UA-219714075-1';
 ReactGA.initialize(trackingID, { testMode: process.env.NODE_ENV === 'test' });
 
 const renderTrackingRoute = (Component, props) => {
-    ReactGA.pageview(props.match.location.pathname);
+
+    if (props.location !== undefined) {
+        ReactGA.pageview(props.location.pathname);
+    } else {
+        ReactGA.pageview(props.match.location.pathname);
+    }
+
     return <Component data={props} {...props} />;
 };
 
@@ -27,7 +33,7 @@ const handleRender = ({Component, props}) => {
         return <Loading/>;
 
     if (!harnessApi.hasAuthToken())
-        throw new RedirectException('/auth/?next=' + props.match.location.pathname, 401);
+        throw new RedirectException('/auth/?next=' + props.location.pathname, 401);
   
     return renderTrackingRoute(Component, props);
 };

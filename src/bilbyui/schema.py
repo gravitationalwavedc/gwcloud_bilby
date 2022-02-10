@@ -411,8 +411,11 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         private = graphene.Boolean(required=False)
         labels = graphene.List(graphene.String, required=False)
         event_id = graphene.String(required=False)
+        description = graphene.String(required=False)
+        name = graphene.String(required=False)
 
     result = graphene.String()
+    job_id = graphene.ID()
 
     @classmethod
     @login_required
@@ -426,7 +429,7 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
 
         # Return the bilby job id to the client
         return UpdateBilbyJobMutation(
-            result=message
+            result=message, job_id=job_id
         )
 
 

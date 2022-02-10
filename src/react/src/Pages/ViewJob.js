@@ -1,12 +1,13 @@
 import React, {useState} from 'react';
 import { harnessApi } from '../index';
 import { graphql, createFragmentContainer } from 'react-relay';
-import { Row, Nav, Col, Button, Container, Tab, Toast } from 'react-bootstrap';
+import { Row, Nav, Col, Button, Container, Tab } from 'react-bootstrap';
 import moment from 'moment';
 import Files from '../Components/Results/Files';
 import Parameters from '../Components/Results/Parameters';
 import Link from 'found/Link';
-import LabelDropdown from '../Components/Results/LabelDropdown';
+import EditableJobName from '../Components/Forms/EditableJobName';
+import EditableDescription from '../Components/Forms/EditableDescription';
 import EventIDDropdown from '../Components/Results/EventIDDropdown';
 import PrivacyToggle from '../Components/Results/PrivacyToggle';
 import StatusDisplay from '../Components/Results/StatusDisplay';
@@ -18,8 +19,8 @@ const ViewJob = (props) => {
     const [toastMessage, setToastMessage] = useState(null);
 
     const onSave = (saved, message) => {
-        setSaved(saved)
-        setToastMessage(message)
+        setSaved(saved);
+        setToastMessage(message);
         setShowNotification(true);
     };
 
@@ -28,7 +29,7 @@ const ViewJob = (props) => {
 
     const updated = moment.utc(lastUpdated, 'YYYY-MM-DD HH:mm:ss UTC').local().format('llll');
 
-    const modifiable = harnessApi.currentUser.userId == userId
+    const modifiable = harnessApi.currentUser.userId == userId;
 
     return (
         <Container className="pt-5" fluid>
@@ -39,34 +40,42 @@ const ViewJob = (props) => {
                 onClose={() => setShowNotification(false)}
             />
             <Row className="mb-3">
-                <Col md={2} />
-                <Col md={6}>
-                    <h1>{details.name}</h1>
-                    <LabelDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} modifiable={modifiable}/>
+                <Col md={{span:6, offset: 2}}>
+                    <EditableJobName modifiable={modifiable} jobId={props.data.bilbyJob.id} value={details.name} />
                     <StatusDisplay name={props.data.bilbyJob.jobStatus.name} date={updated}/>
                 </Col>
                 <Col md={2}>
-                    <Link as={Button} to={{
-                        pathname: '/bilby/job-form/duplicate/',
-                        state: {
-                            jobId: props.match.params.jobId
-                        }
-                    }} className="float-right" activeClassName="selected" exact match={props.match} router={props.router}>
+                    <Link 
+                        as={Button} 
+                        to={{
+                            pathname: '/bilby/job-form/duplicate/',
+                            state: { jobId: props.match.params.jobId}
+                        }} 
+                        className="float-right" 
+                        activeClassName="selected" 
+                        match={props.match} 
+                        router={props.router}
+                        exact>
                       Duplicate job
                     </Link>
                 </Col>
             </Row>
             <Row className="mb-3">
-                <Col md={2} />
-                <Col md={8}>
-                    <p className="mb-0">{details.description}</p>
-                    <EventIDDropdown jobId={props.match.params.jobId} data={props.data} onUpdate={onSave} modifiable={modifiable}/>
+                <Col md={{span:8, offset: 2}}>
+                    <EditableDescription 
+                        modifiable={modifiable} 
+                        value={details.description} 
+                        jobId={props.data.bilbyJob.id} />
+                    <EventIDDropdown 
+                        jobId={props.match.params.jobId} 
+                        data={props.data} 
+                        onUpdate={onSave} 
+                        modifiable={modifiable}/>
 
                 </Col>
             </Row>
             <Row className="mb-3">
-                <Col md={2} />
-                <Col md={8}>
+                <Col md={{span:8, offset: 2}}>
                     <PrivacyToggle 
                         jobId={props.match.params.jobId} 
                         data={props.data.bilbyJob}

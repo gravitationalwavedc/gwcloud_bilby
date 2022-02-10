@@ -48,4 +48,5 @@ const JobTitle = ({formik}) => (
         />
     </React.Fragment>
 );
+
 export default JobTitle;

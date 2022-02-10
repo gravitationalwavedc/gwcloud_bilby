@@ -55,8 +55,6 @@ get_all_event_ids_query = """
 @override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])
 class TestEventIDCreation(BilbyTestCase):
     def setUp(self):
-        self.maxDiff = 9999
-
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user)
 
