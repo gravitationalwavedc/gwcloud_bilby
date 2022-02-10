@@ -15,7 +15,7 @@ const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (
         {children}
         <HiOutlinePlus/>
     </Button>
-  ));
+));
 
 const LabelDropdown = (props) => {
     const [labels, setLabels] = useState(props.data.bilbyJob.labels.map(label => label.name));
