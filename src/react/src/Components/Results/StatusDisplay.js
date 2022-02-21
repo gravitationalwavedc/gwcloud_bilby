@@ -2,12 +2,11 @@ import React from 'react';
 import { getStatusType } from '../getVariants';
 import { Row, Col } from 'react-bootstrap';
 
-const StatusDisplay = ({ name, date }) => {
-    return <Row>
-        <Col md='auto' className={"text-uppercase " + getStatusType(name)}>{name}</Col>
+const StatusDisplay = ({ name, date }) => 
+    <Row>
+        <Col md='auto' className={'text-uppercase ' + getStatusType(name)}>{name}</Col>
         <Col md='auto' className="px-0"> - </Col>
         <Col md='auto'>{date}</Col>
-    </Row>
-}
+    </Row>;
 
-export default StatusDisplay
+export default StatusDisplay;

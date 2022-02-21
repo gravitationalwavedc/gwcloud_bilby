@@ -1,7 +1,7 @@
 import React from 'react';
 import {graphql, QueryRenderer} from 'react-relay';
 import {MockPayloadGenerator} from 'relay-test-utils';
-import {render, waitFor} from '@testing-library/react';
+import {act, render, wait, waitFor, fireEvent, screen} from '@testing-library/react';
 import ViewJob from '../ViewJob';
 import 'regenerator-runtime/runtime';
 
@@ -31,6 +31,13 @@ describe('view job page', () => {
     );
 
     const mockBilbyJobReturn = {
+        EventIDType() {
+            return {
+                eventId: 'test-1',
+                triggerId: 'trigger-1',
+                nickname: 'slayer'
+            };
+        },
         BilbyJobNode() {
             return {
                 id: 'QmlsYnlKb2JOb2RlOjY=',
@@ -93,7 +100,8 @@ describe('view job page', () => {
                             id: 'TGFiZWxUeXBlOjM='
                         };
                     }
-                }]
+                }],
+                eventId: null 
             };
         },
     };
@@ -108,6 +116,7 @@ describe('view job page', () => {
             };
         }
     };
+
 
     it('should render a loading page', () => {
         expect.hasAssertions();
@@ -126,6 +135,24 @@ describe('view job page', () => {
         ));
         expect(getByText('GW-Sim-test32')).toBeInTheDocument();
         expect(getAllByText('a_cool_path')[0]).toBeInTheDocument();
+    });
+
+    it('should change event id when using the Event ID modal', async () => {
+        expect.hasAssertions();
+        render(<TestRenderer />);
+        await waitFor(() => environment.mock.resolveMostRecentOperation(operation =>
+            MockPayloadGenerator.generate(operation, mockBilbyJobReturn)
+        ));
+        
+        expect(screen.queryByText('Event ID: test-1')).not.toBeInTheDocument();
+
+        const changeEventIdBtn = screen.getByText('Change Event ID');
+        fireEvent.click(changeEventIdBtn);
+        const modalInput = screen.getByRole('combobox');
+        fireEvent.click(modalInput);
+        const idSelection = screen.getByLabelText('test-1');
+        fireEvent.click(idSelection);
+        expect(screen.queryByText('Event ID: test-1')).toBeInTheDocument();
     });
 
 });
