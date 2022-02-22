@@ -8,7 +8,9 @@ import CustomToggle from './CustomToggle';
 const LabelDropdown = ({data, jobId, onUpdate, modifiable}) => {
     const [labels, setLabels] = useState(data.bilbyJob.labels.map(label => label.name));
     const isMounted = useRef();
-    const labelChoices = data.allLabels.filter((l) => (!labels.includes(l.name) && !l.protected));
+    const labelChoices = data.allLabels.edges.filter(
+        ({node}) => (!labels.includes(node.name) && !node.protected)
+    );
 
     useEffect(() => {
         if (isMounted.current) {
@@ -51,7 +53,7 @@ const LabelDropdown = ({data, jobId, onUpdate, modifiable}) => {
                     </Dropdown.Toggle>
                     <Dropdown.Menu>
                         {labelChoices.map(
-                            ({name, description}) => 
+                            ({ node: {name, description}}) => 
                                 <Dropdown.Item 
                                     key={name} 
                                     value={name} 
@@ -105,9 +107,13 @@ export default createFragmentContainer(LabelDropdown, {
             }
 
             allLabels {
-                name
-                description
-                protected
+                edges {
+                    node {
+                        name
+                        description
+                        protected
+                    }
+                }
             }
         }
     `

@@ -168,6 +168,9 @@ class BilbyPublicJobConnection(relay.Connection):
     class Meta:
         node = BilbyPublicJobNode
 
+class AllLabelsConnection(relay.Connection):
+    class Meta:
+        node = LabelType
 
 class GenerateBilbyJobUploadToken(graphene.ObjectType):
     token = graphene.String()
@@ -182,7 +185,9 @@ class Query(object):
         time_range=graphene.String()
     )
 
-    all_labels = graphene.List(LabelType)
+    all_labels = relay.ConnectionField(
+       AllLabelsConnection 
+    )
 
     event_id = graphene.Field(EventIDType, event_id=graphene.String(required=True))
     all_event_ids = graphene.List(EventIDType)
