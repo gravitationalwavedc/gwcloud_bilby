@@ -14,6 +14,10 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='prior',
             name='job',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='prior', to='bilbyui.BilbyJob'),
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name='prior',
+                to='bilbyui.BilbyJob'
+            ),
         ),
     ]

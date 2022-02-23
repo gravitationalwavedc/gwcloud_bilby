@@ -29,22 +29,55 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='prior',
             name='prior',
-            field=models.CharField(choices=[['4s', '4s'], ['8s', '8s'], ['16s', '16s'], ['32s', '32s'], ['64s', '64s'], ['128s', '128s']], default=0, max_length=4),
+            field=models.CharField(
+                choices=[
+                    ['4s', '4s'],
+                    ['8s', '8s'],
+                    ['16s', '16s'],
+                    ['32s', '32s'],
+                    ['64s', '64s'],
+                    ['128s', '128s']
+                ],
+                default=0,
+                max_length=4
+            ),
             preserve_default=False,
         ),
         migrations.AlterField(
             model_name='dataparameter',
             name='name',
-            field=models.CharField(choices=[['hanford', 'Hanford'], ['livingston', 'Livingston'], ['virgo', 'Virgo'], ['signal_duration', 'Signal Duration (s)'], ['sampling_frequency', 'Sampling Frequency (Hz)'], ['trigger_time', 'Trigger Time'], ['hanfordChannel', 'Hanford Channel']], max_length=20),
+            field=models.CharField(choices=[
+                ['hanford', 'Hanford'],
+                ['livingston', 'Livingston'],
+                ['virgo', 'Virgo'],
+                ['signal_duration', 'Signal Duration (s)'],
+                ['sampling_frequency', 'Sampling Frequency (Hz)'],
+                ['trigger_time', 'Trigger Time'],
+                ['hanfordChannel', 'Hanford Channel']],
+                max_length=20),
         ),
         migrations.AlterField(
             model_name='signal',
             name='signal_choice',
-            field=models.CharField(choices=[['skip', 'None'], ['binaryBlackHole', 'Binary Black Hole'], ['binaryNeutronStar', 'Binary Neutron Star']], default='skip', max_length=50),
+            field=models.CharField(
+                choices=[
+                    ['skip', 'None'],
+                    ['binaryBlackHole', 'Binary Black Hole'],
+                    ['binaryNeutronStar', 'Binary Neutron Star']
+                ],
+                default='skip',
+                max_length=50
+            ),
         ),
         migrations.AlterField(
             model_name='signal',
             name='signal_model',
-            field=models.CharField(choices=[['binaryBlackHole', 'Binary Black Hole'], ['binaryNeutronStar', 'Binary Neutron Star']], max_length=50),
+            field=models.CharField(
+                choices=[
+                    ['binaryBlackHole', 'Binary Black Hole'],
+                    ['binaryNeutronStar', 'Binary Neutron Star']
+                ],
+                max_length=50
+            ),
         ),
     ]

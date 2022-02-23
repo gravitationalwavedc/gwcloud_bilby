@@ -159,4 +159,3 @@ def delete_job(job):
 
         # Save the database
         _write_db(db)
-
