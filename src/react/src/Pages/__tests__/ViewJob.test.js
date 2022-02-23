@@ -1,7 +1,7 @@
 import React from 'react';
 import {graphql, QueryRenderer} from 'react-relay';
 import {MockPayloadGenerator} from 'relay-test-utils';
-import {act, render, wait, waitFor, fireEvent, screen} from '@testing-library/react';
+import {render, waitFor, fireEvent, screen} from '@testing-library/react';
 import ViewJob from '../ViewJob';
 import 'regenerator-runtime/runtime';
 
