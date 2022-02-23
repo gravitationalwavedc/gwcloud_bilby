@@ -18,6 +18,13 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='data',
             name='data_choice',
-            field=models.CharField(choices=[['simulated', 'Simulated'], ['real', 'Real']], default='simulated', max_length=20),
+            field=models.CharField(
+                choices=[
+                    ['simulated', 'Simulated'],
+                    ['real', 'Real']
+                ],
+                default='simulated',
+                max_length=20
+            ),
         ),
     ]

@@ -2,29 +2,25 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createFragmentContainer, commitMutation, graphql } from 'react-relay';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { Form, Button, Modal, Row, Col, Card } from 'react-bootstrap';
-import { Typeahead, Highlighter } from 'react-bootstrap-typeahead'
+import { Typeahead, Highlighter } from 'react-bootstrap-typeahead';
 import 'react-bootstrap-typeahead/css/Typeahead.css';
 import { harnessApi } from '../../index';
 
-const EventIDDisplay = ({eventId, triggerId, nickname}) => {
-    return <React.Fragment>
-        {eventId && <Col md='auto'>{`Event ID: ${eventId}`}</Col>}
-        {triggerId && <Col md='auto'>{`Trigger ID: ${triggerId}`}</Col>}
-        {nickname && <Col md='auto'>{`Nickname: ${nickname}`}</Col>}
-    </React.Fragment>
-}
+const EventIDDisplay = ({eventId, triggerId, nickname}) => <React.Fragment>
+    {eventId && <Col md='auto'>{`Event ID: ${eventId}`}</Col>}
+    {triggerId && <Col md='auto'>{`Trigger ID: ${triggerId}`}</Col>}
+    {nickname && <Col md='auto'>{`Nickname: ${nickname}`}</Col>}
+</React.Fragment>;
 
-const EventIDMenuDisplay = ({eventId, triggerId, nickname, props}) => {
-    return <React.Fragment>
-        <h5><Highlighter search={props.text}>{`Event ID: ${eventId}`}</Highlighter></h5>
-        <Highlighter search={props.text}>{`Trigger ID: ${triggerId}; Nickname: ${nickname}`}</Highlighter>
-        <hr className="m-0 p-0"/>
-    </React.Fragment>
-}
+const EventIDMenuDisplay = ({eventId, triggerId, nickname, props}) => <React.Fragment>
+    <h5><Highlighter search={props.text}>{`Event ID: ${eventId}`}</Highlighter></h5>
+    <Highlighter search={props.text}>{`Trigger ID: ${triggerId}; Nickname: ${nickname}`}</Highlighter>
+    <hr className="m-0 p-0"/>
+</React.Fragment>;
 
 const EventIDDropdown = (props) => {
-    const initialEventId = props.data.bilbyJob.eventId
-    const [show, setShow] = useState(false)
+    const initialEventId = props.data.bilbyJob.eventId;
+    const [show, setShow] = useState(false);
     const [eventId, setEventId] = useState(initialEventId);
     const isMounted = useRef();
 
@@ -33,7 +29,7 @@ const EventIDDropdown = (props) => {
             updateJob(
                 {
                     jobId: props.jobId,
-                    eventId: (eventId && eventId.eventId) || ""
+                    eventId: (eventId && eventId.eventId) || ''
                 },
                 props.onUpdate
             );
@@ -67,7 +63,7 @@ const EventIDDropdown = (props) => {
                     <Typeahead
                         id='event-id-select'
                         onChange={(event) => {
-                            setEventId(event[0])
+                            setEventId(event[0]);
                         }}
                         selected={eventId ? [eventId] : []}
                         options={props.data.allEventIds}
@@ -80,7 +76,7 @@ const EventIDDropdown = (props) => {
                 </Form.Group>
             </Modal.Body>
         </Modal>
-    </Row>
+    </Row>;
     
 };
 

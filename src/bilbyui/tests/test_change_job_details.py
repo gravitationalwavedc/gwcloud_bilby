@@ -5,15 +5,15 @@ from bilbyui.models import BilbyJob
 
 User = get_user_model()
 
+
 class TestChangeJobDetails(BilbyTestCase):
     def setUp(self):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user)
 
-
     def test_change_details_mutation(self):
         """
-        Change details mutation should set a new jobname and or a new description if the authenticated user is the 
+        Change details mutation should set a new jobname and or a new description if the authenticated user is the
         owner of the job.
         """
         job = BilbyJob.objects.create(
@@ -34,7 +34,7 @@ class TestChangeJobDetails(BilbyTestCase):
             """
             mutation UpdateBilbyJobMutation($input: UpdateBilbyJobMutationInput!) {
                 updateBilbyJob(input: $input) {
-                    result 
+                    result
                     jobId
                 }
             }
@@ -58,4 +58,3 @@ class TestChangeJobDetails(BilbyTestCase):
         )
         self.assertEqual(job.description, "New job description")
         self.assertEqual(job.name, "New job name")
-        

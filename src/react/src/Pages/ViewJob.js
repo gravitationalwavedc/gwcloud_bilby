@@ -9,6 +9,7 @@ import Link from 'found/Link';
 import EditableJobName from '../Components/Forms/EditableJobName';
 import EditableDescription from '../Components/Forms/EditableDescription';
 import EventIDDropdown from '../Components/Results/EventIDDropdown';
+import LabelDropdown from '../Components/Results/LabelDropdown';
 import PrivacyToggle from '../Components/Results/PrivacyToggle';
 import StatusDisplay from '../Components/Results/StatusDisplay';
 import SaveToast from '../Components/Results/SaveToast';
@@ -42,6 +43,11 @@ const ViewJob = (props) => {
             <Row className="mb-3">
                 <Col md={{span:6, offset: 2}}>
                     <EditableJobName modifiable={modifiable} jobId={props.data.bilbyJob.id} value={details.name} />
+                    <LabelDropdown 
+                        jobId={props.match.params.jobId} 
+                        data={props.data} 
+                        onUpdate={onSave} 
+                        modifiable={modifiable}/>
                     <StatusDisplay name={props.data.bilbyJob.jobStatus.name} date={updated}/>
                 </Col>
                 <Col md={2}>

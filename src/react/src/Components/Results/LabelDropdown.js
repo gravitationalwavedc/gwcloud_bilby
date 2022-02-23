@@ -1,42 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createFragmentContainer, commitMutation, graphql } from 'react-relay';
-import { HiOutlinePlus } from 'react-icons/hi';
-import { Row, Col, Dropdown, Button } from 'react-bootstrap';
+import { Row, Col, Dropdown } from 'react-bootstrap';
 import { harnessApi } from '../../index';
 import LabelBadge from './LabelBadge';
+import CustomToggle from './CustomToggle';
 
-const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (
-    <Button 
-        variant="link"
-        className="p-0"
-        ref={ref}
-        onClick={e => onClick(e)}
-    >
-        {children}
-        <HiOutlinePlus/>
-    </Button>
-));
-
-const LabelDropdown = (props) => {
-    const [labels, setLabels] = useState(props.data.bilbyJob.labels.map(label => label.name));
-    
+const LabelDropdown = ({data, jobId, onUpdate, modifiable}) => {
+    const [labels, setLabels] = useState(data.bilbyJob.labels.map(label => label.name));
     const isMounted = useRef();
+    const labelChoices = data.allLabels.edges.filter(
+        ({node}) => (!labels.includes(node.name) && !node.protected)
+    );
 
     useEffect(() => {
         if (isMounted.current) {
             updateJob(
                 {
-                    jobId: props.jobId,
+                    jobId: jobId,
                     labels: labels
                 },
-                props.onUpdate
+                onUpdate
             );
         } else {
             isMounted.current = true;
         }
     }, [labels]);
 
-    const labelChoices = props.data.allLabels.filter((l) => (!labels.includes(l.name) && !l.protected));
+
     return (
         <Row className="mb-1">
             {
@@ -48,14 +38,14 @@ const LabelDropdown = (props) => {
                                 <LabelBadge 
                                     key={name}
                                     name={name}
-                                    dismissable={props.modifiable}
+                                    dismissable={modifiable}
                                     onDismiss={() => setLabels(labels.filter(label => label !== name))}
                                 />
                         )
                     }
                 </Col>
             }
-            {(labelChoices.length > 0 && props.modifiable) &&
+            {(labelChoices.length > 0 && modifiable) &&
             <Col className="my-auto">
                 <Dropdown>
                     <Dropdown.Toggle as={CustomToggle} id="labelControl">
@@ -63,7 +53,7 @@ const LabelDropdown = (props) => {
                     </Dropdown.Toggle>
                     <Dropdown.Menu>
                         {labelChoices.map(
-                            ({name, description}) => 
+                            ({ node: {name, description}}) => 
                                 <Dropdown.Item 
                                     key={name} 
                                     value={name} 
@@ -117,9 +107,13 @@ export default createFragmentContainer(LabelDropdown, {
             }
 
             allLabels {
-                name
-                description
-                protected
+                edges {
+                    node {
+                        name
+                        description
+                        protected
+                    }
+                }
             }
         }
     `

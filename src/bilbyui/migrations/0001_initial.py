@@ -62,8 +62,20 @@ class Migration(migrations.Migration):
             name='Data',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('data_choice', models.CharField(choices=[['simulated', 'Simulated'], ['open', 'Open']], default='simulated', max_length=20)),
-                ('job', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='data', to='bilbyui.BilbyJob')),
+                ('data_choice', models.CharField(
+                    choices=[
+                        ['simulated', 'Simulated'],
+                        ['open', 'Open']
+                    ],
+                    default='simulated',
+                    max_length=20)
+                 ),
+                ('job',
+                 models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='data', to='bilbyui.BilbyJob'
+                     )
+                 ),
             ],
             options={
                 'db_table': 'bilby_data',
@@ -73,8 +85,16 @@ class Migration(migrations.Migration):
             name='Sampler',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('sampler_choice', models.CharField(choices=[['dynesty', 'Dynesty'], ['nestle', 'Nestle'], ['emcee', 'Emcee']], default='dynesty', max_length=15)),
-                ('job', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='sampler', to='bilbyui.BilbyJob')),
+                ('sampler_choice', models.CharField(
+                    choices=[['dynesty', 'Dynesty'], ['nestle', 'Nestle'], ['emcee', 'Emcee']],
+                    default='dynesty',
+                    max_length=15)
+                 ),
+                ('job', models.OneToOneField(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name='sampler',
+                    to='bilbyui.BilbyJob')
+                 ),
             ],
             options={
                 'db_table': 'bilby_sampler',
@@ -84,9 +104,17 @@ class Migration(migrations.Migration):
             name='Signal',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('signal_choice', models.CharField(choices=[['skip', 'None'], ['binaryBlackHole', 'Binary Black Hole']], default='skip', max_length=50)),
+                ('signal_choice', models.CharField(
+                    choices=[['skip', 'None'], ['binaryBlackHole', 'Binary Black Hole']],
+                    default='skip',
+                    max_length=50)
+                 ),
                 ('signal_model', models.CharField(choices=[['binaryBlackHole', 'Binary Black Hole']], max_length=50)),
-                ('job', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='signal', to='bilbyui.BilbyJob')),
+                ('job', models.OneToOneField(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name='signal',
+                    to='bilbyui.BilbyJob')
+                 ),
             ],
             options={
                 'db_table': 'bilby_signal',
@@ -96,10 +124,31 @@ class Migration(migrations.Migration):
             name='SignalParameter',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(choices=[['mass1', 'Mass 1'], ['mass2', 'Mass 2'], ['luminosity_distance', 'Luminosity Distance (Mpc)'], ['iota', 'iota'], ['psi', 'psi'], ['phase', 'Phase'], ['merger_time', 'Merger Time (GPS Time)'], ['ra', 'Right Ascension (Radians)'], ['dec', 'Declination (Degrees)']], max_length=20)),
+                ('name', models.CharField(
+                    choices=[
+                        ['mass1', 'Mass 1'],
+                        ['mass2', 'Mass 2'],
+                        ['luminosity_distance', 'Luminosity Distance (Mpc)'],
+                        ['iota', 'iota'],
+                        ['psi', 'psi'],
+                        ['phase', 'Phase'],
+                        ['merger_time', 'Merger Time (GPS Time)'],
+                        ['ra', 'Right Ascension (Radians)'],
+                        ['dec', 'Declination (Degrees)']
+                    ],
+                    max_length=20)
+                 ),
                 ('value', models.FloatField(blank=True, null=True)),
-                ('job', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='signal_parameter', to='bilbyui.BilbyJob')),
-                ('signal', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='parameter', to='bilbyui.Signal')),
+                ('job', models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name='signal_parameter',
+                    to='bilbyui.BilbyJob')
+                 ),
+                ('signal', models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name='parameter',
+                    to='bilbyui.Signal')
+                 ),
             ],
             options={
                 'db_table': 'bilby_signalparameter',
@@ -111,8 +160,16 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=50)),
                 ('value', models.CharField(blank=True, max_length=50, null=True)),
-                ('job', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='sampler_parameter', to='bilbyui.BilbyJob')),
-                ('sampler', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='parameter', to='bilbyui.Sampler')),
+                ('job', models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name='sampler_parameter',
+                    to='bilbyui.BilbyJob')
+                 ),
+                ('sampler', models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name='parameter',
+                    to='bilbyui.Sampler')
+                 ),
             ],
             options={
                 'db_table': 'bilby_samplerparameter',
@@ -122,10 +179,28 @@ class Migration(migrations.Migration):
             name='DataParameter',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(choices=[['hanford', 'Hanford'], ['livingston', 'Livingston'], ['virgo', 'Virgo'], ['signal_duration', 'Signal Duration (s)'], ['sampling_frequency', 'Sampling Frequency (Hz)'], ['start_time', 'Start Time']], max_length=20)),
+                ('name', models.CharField(
+                    choices=[
+                        ['hanford', 'Hanford'],
+                        ['livingston', 'Livingston'],
+                        ['virgo', 'Virgo'],
+                        ['signal_duration', 'Signal Duration (s)'],
+                        ['sampling_frequency', 'Sampling Frequency (Hz)'],
+                        ['start_time', 'Start Time']
+                    ],
+                    max_length=20)
+                 ),
                 ('value', models.CharField(blank=True, max_length=1000, null=True)),
-                ('data', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='parameter', to='bilbyui.Data')),
-                ('job', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='data_parameter', to='bilbyui.BilbyJob')),
+                ('data', models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name='parameter',
+                    to='bilbyui.Data')
+                 ),
+                ('job', models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name='data_parameter',
+                    to='bilbyui.BilbyJob')
+                 ),
             ],
             options={
                 'db_table': 'bilby_dataparameter',
@@ -136,11 +211,22 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=50)),
-                ('prior_choice', models.CharField(choices=[['fixed', 'Fixed'], ['uniform', 'Uniform']], default='fixed', max_length=20)),
+                ('prior_choice', models.CharField(
+                    choices=[
+                        ['fixed', 'Fixed'],
+                        ['uniform', 'Uniform']
+                    ],
+                    default='fixed',
+                    max_length=20)
+                 ),
                 ('fixed_value', models.FloatField(blank=True, null=True)),
                 ('uniform_min_value', models.FloatField(blank=True, null=True)),
                 ('uniform_max_value', models.FloatField(blank=True, null=True)),
-                ('job', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='job_prior', to='bilbyui.BilbyJob')),
+                ('job', models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name='job_prior',
+                    to='bilbyui.BilbyJob')
+                 ),
             ],
             options={
                 'db_table': 'bilby_prior',

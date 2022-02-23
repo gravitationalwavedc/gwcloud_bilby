@@ -1,8 +1,8 @@
 from decimal import Decimal
 
-import graphene
 from django.conf import settings
 from django_filters import FilterSet, OrderingFilter
+import graphene
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 from graphene_django.types import DjangoObjectType
@@ -11,17 +11,30 @@ from graphql import GraphQLError
 from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
 
-from .models import BilbyJob, EventID, Label, FileDownloadToken, BilbyJobUploadToken
+from .models import BilbyJob, BilbyJobUploadToken, EventID, FileDownloadToken, Label
 from .status import JobStatus
-from .types import JobStatusType, BilbyJobCreationResult, JobParameterInput, JobParameterOutput, JobIniInput, \
-    JobDetailsInput
+from .types import (
+    BilbyJobCreationResult,
+    JobDetailsInput,
+    JobIniInput,
+    JobParameterInput,
+    JobParameterOutput,
+    JobStatusType,
+)
 from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
-from .views import create_bilby_job, update_bilby_job, create_bilby_job_from_ini_string, upload_bilby_job, \
-    create_event_id, update_event_id, delete_event_id
+from .views import (
+    create_bilby_job,
+    create_bilby_job_from_ini_string,
+    create_event_id,
+    delete_event_id,
+    update_bilby_job,
+    update_event_id,
+    upload_bilby_job,
+)
 
 
 class LabelType(DjangoObjectType):
@@ -169,6 +182,11 @@ class BilbyPublicJobConnection(relay.Connection):
         node = BilbyPublicJobNode
 
 
+class AllLabelsConnection(relay.Connection):
+    class Meta:
+        node = LabelType
+
+
 class GenerateBilbyJobUploadToken(graphene.ObjectType):
     token = graphene.String()
 
@@ -182,7 +200,9 @@ class Query(object):
         time_range=graphene.String()
     )
 
-    all_labels = graphene.List(LabelType)
+    all_labels = relay.ConnectionField(
+       AllLabelsConnection
+    )
 
     event_id = graphene.Field(EventIDType, event_id=graphene.String(required=True))
     all_event_ids = graphene.List(EventIDType)

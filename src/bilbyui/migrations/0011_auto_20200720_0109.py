@@ -24,7 +24,16 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='samplerparameter',
             name='name',
-            field=models.CharField(choices=[['nlive', 'Number of live points'], ['nact', 'Number of auto-correlation steps'], ['maxmcmc', 'Maximum number of steps'], ['walks', 'Minimum number of walks'], ['dlogz', 'Stopping criteria'], ['cpus', 'Number of CPUs to use for parallelisation']], max_length=50),
+            field=models.CharField(
+                choices=[
+                    ['nlive', 'Number of live points'],
+                    ['nact', 'Number of auto-correlation steps'],
+                    ['maxmcmc', 'Maximum number of steps'],
+                    ['walks', 'Minimum number of walks'],
+                    ['dlogz', 'Stopping criteria'],
+                    ['cpus', 'Number of CPUs to use for parallelisation']
+                ],
+                max_length=50),
         ),
         migrations.AlterField(
             model_name='samplerparameter',
