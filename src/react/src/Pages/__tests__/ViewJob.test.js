@@ -1,7 +1,8 @@
 import React from 'react';
 import {graphql, QueryRenderer} from 'react-relay';
 import {MockPayloadGenerator} from 'relay-test-utils';
-import {render, waitFor, fireEvent, screen} from '@testing-library/react';
+import {render, waitFor, screen} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import ViewJob from '../ViewJob';
 import 'regenerator-runtime/runtime';
 
@@ -147,11 +148,11 @@ describe('view job page', () => {
         expect(screen.queryByText('Event ID: test-1')).not.toBeInTheDocument();
 
         const changeEventIdBtn = screen.getByText('Change Event ID');
-        fireEvent.click(changeEventIdBtn);
+        userEvent.click(changeEventIdBtn);
         const modalInput = screen.getByRole('combobox');
-        fireEvent.click(modalInput);
+        userEvent.click(modalInput);
         const idSelection = screen.getByLabelText('test-1');
-        fireEvent.click(idSelection);
+        userEvent.click(idSelection);
         expect(screen.queryByText('Event ID: test-1')).toBeInTheDocument();
     });
 

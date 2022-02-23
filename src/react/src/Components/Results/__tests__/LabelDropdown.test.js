@@ -2,7 +2,8 @@ import React from 'react';
 import LabelDropdown from '../LabelDropdown';
 import {graphql, QueryRenderer} from 'react-relay';
 import {MockPayloadGenerator} from 'relay-test-utils';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import 'regenerator-runtime/runtime';
 
 /* global environment */
@@ -105,10 +106,10 @@ describe('the label dropdown component', () => {
             )
         ));
         const addLabelButton = screen.queryByText('Add label');
-        await waitFor(() => fireEvent.click(addLabelButton));
+        await waitFor(() => userEvent.click(addLabelButton));
         expect(await screen.findByText('test-label-2')).toBeInTheDocument();
         const addLabelLink = screen.queryByText('test-label-2');
-        await waitFor(() => fireEvent.click(addLabelLink));
+        await waitFor(() => userEvent.click(addLabelLink));
         expect(await screen.findByText('test-label-2')).toBeInTheDocument();
     });
 
@@ -123,7 +124,7 @@ describe('the label dropdown component', () => {
         ));
         expect(screen.queryByText('test-label')).toBeInTheDocument();
         const dismissableLink = screen.queryByTestId('dismissable-link');
-        await waitFor(() => fireEvent.click(dismissableLink));
+        await waitFor(() => userEvent.click(dismissableLink));
         expect(screen.queryByText('test-label')).not.toBeInTheDocument();
         await waitFor(() => environment.mock.resolveMostRecentOperation(operation => 
             MockPayloadGenerator.generate(operation)
@@ -143,7 +144,7 @@ describe('the label dropdown component', () => {
         ));
         expect(screen.queryByText('test-label')).toBeInTheDocument();
         const dismissableLink = screen.queryByTestId('dismissable-link');
-        await waitFor(() => fireEvent.click(dismissableLink));
+        await waitFor(() => userEvent.click(dismissableLink));
         expect(screen.queryByText('test-label')).not.toBeInTheDocument();
         await waitFor(() => environment.mock.resolveMostRecentOperation(
             () => (
