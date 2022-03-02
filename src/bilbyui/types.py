@@ -8,8 +8,8 @@ class JobStatusType(graphene.ObjectType):
 
 
 class BilbyJobSupportingFile(graphene.ObjectType):
-    file_path=graphene.String()
-    token=graphene.String()
+    file_path = graphene.String()
+    token = graphene.String()
 
 
 class BilbyJobCreationResult(graphene.ObjectType):

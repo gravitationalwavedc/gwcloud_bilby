@@ -1,5 +1,3 @@
-import json
-import os
 import secrets
 import shutil
 import string
@@ -10,10 +8,9 @@ import responses
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test.utils import override_settings
 
 from bilbyui.models import BilbyJob, SupportingFile
-from bilbyui.tests.test_utils import compare_ini_kvs, create_test_ini_string, silence_errors
+from bilbyui.tests.test_utils import compare_ini_kvs, create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()

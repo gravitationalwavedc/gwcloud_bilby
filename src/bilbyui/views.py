@@ -250,7 +250,6 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
     if injection_file:
         supporting_files[SupportingFile.INJECTION] = injection_file
 
-
     for supporting_file_type, config_name in {
         SupportingFile.PSD: 'psd_dict',
         SupportingFile.CALIBRATION: 'spline_calibration_envelope_dict',

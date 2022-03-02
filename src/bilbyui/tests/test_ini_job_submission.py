@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test.utils import override_settings
 
-from bilbyui.models import BilbyJob, SupportingFile
+from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import compare_ini_kvs, create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 
