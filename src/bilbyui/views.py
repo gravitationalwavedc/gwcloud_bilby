@@ -585,7 +585,7 @@ def upload_supporting_file(upload_token, uploaded_supporting_file):
         supporting_file.flush()
 
     # Clear the token to indicate the file is uploaded
-    upload_token.token = None
+    upload_token.upload_token = None
     upload_token.save()
 
     # Check if there are any supporting uploads left for this job and submit the job if required

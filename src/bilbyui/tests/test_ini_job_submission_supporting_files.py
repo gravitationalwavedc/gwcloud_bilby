@@ -90,7 +90,7 @@ class TestIniJobSubmission(BilbyTestCase):
             self.assertTrue(sf.exists())
             expected_supporting_files.append({
                 'filePath': v[1],
-                'token': str(sf.first().token)
+                'token': str(sf.first().upload_token)
             }),
 
         expected = {
@@ -130,7 +130,7 @@ class TestIniJobSubmission(BilbyTestCase):
 
             file_input = {
                 "input": {
-                    "fileToken": token.token,
+                    "fileToken": token.upload_token,
                     "supportingFile": f
                 }
             }

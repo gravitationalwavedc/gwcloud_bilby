@@ -254,7 +254,7 @@ class BilbyJob(models.Model):
 
         expired_supporting_file_job_ids = SupportingFile.objects.filter(
             job__creation_time__lt=removal_time,
-            token__isnull=False
+            upload_token__isnull=False
         )
 
         cls.objects.filter(id__in=expired_supporting_file_job_ids).delete()
@@ -296,7 +296,7 @@ class SupportingFile(models.Model):
     # The original file name
     file_name = models.TextField()
     # The file upload token
-    token = models.UUIDField(unique=True, null=True, default=uuid.uuid4, db_index=True)
+    upload_token = models.UUIDField(unique=True, null=True, default=uuid.uuid4, db_index=True)
 
     @classmethod
     def save_from_parsed(cls, bilby_job, supporting_files):
@@ -339,7 +339,7 @@ class SupportingFile(models.Model):
 
         # Map the tokens for the created files to the returned supporting files details
         for i, v in enumerate(created):
-            result_files[i]['token'] = created[i].token
+            result_files[i]['token'] = created[i].upload_token
 
         return result_files
 
@@ -351,7 +351,7 @@ class SupportingFile(models.Model):
         """
         BilbyJob.prune_supporting_files_jobs()
 
-        inst = cls.objects.filter(token=file_token)
+        inst = cls.objects.filter(upload_token=file_token)
         if not inst.exists():
             return None
 
@@ -362,7 +362,7 @@ class SupportingFile(models.Model):
         """
         Retrieves all supporting files that have not yet been uploaded for the specified job
         """
-        return SupportingFile.objects.filter(job=job, token__isnull=False)
+        return SupportingFile.objects.filter(job=job, upload_token__isnull=False)
 
 
 class IniKeyValue(models.Model):

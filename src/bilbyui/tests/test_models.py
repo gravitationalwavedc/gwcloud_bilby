@@ -332,7 +332,7 @@ class TestSupportingFile(TestCase):
 
         for token in supporting_file_tokens:
             self.assertTrue(
-                SupportingFile.objects.filter(token=token['token'], file_name=Path(token['file_path']).name).exists()
+                SupportingFile.objects.filter(upload_token=token['token'], file_name=Path(token['file_path']).name).exists()
             )
 
     def test_pruning(self):
@@ -383,7 +383,7 @@ class TestSupportingFile(TestCase):
         self.assertEqual(SupportingFile.objects.count(), 3)
 
         for sf in SupportingFile.objects.all():
-            sf.token = None
+            sf.upload_token = None
             sf.save()
 
         after = timezone.now()
@@ -453,7 +453,7 @@ class TestSupportingFile(TestCase):
         self.assertEqual(SupportingFile.objects.count(), 3)
 
         for sf in SupportingFile.objects.all():
-            sf.token = None
+            sf.upload_token = None
             sf.save()
 
         for t in tokens:
