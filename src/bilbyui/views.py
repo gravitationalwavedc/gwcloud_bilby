@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 import subprocess
+from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from bilby_pipe.data_generation import DataGenerationInput
@@ -12,9 +13,8 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import Http404, FileResponse
 
-from .models import BilbyJob, Label, EventID, FileDownloadToken
+from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
-from .utils.jobs.submit_job import submit_job
 
 
 def create_bilby_job(user, params):
@@ -199,38 +199,6 @@ def create_bilby_job(user, params):
         "frequency-domain-source-model": frequency_domain_source_model
     }
 
-    # Sets up some default parameters
-    # injection_parameters = dict(
-    #     chirp_mass=35, mass_ratio=1, a_1=0.0, a_2=0.0, tilt_1=0.0, tilt_2=0.0,
-    #     phi_12=0.0, phi_jl=0.0, luminosity_distance=2000., theta_jn=0.5, psi=0.24,
-    #     phase=1.3, geocent_time=0, ra=1.375, dec=-1.2108)
-
-    # Overwrite the defaults with those from the job (eventually should just use the input)
-    # injection_parameters.update(input_params['signal'])
-
-    # Set the injection dict
-    # data['injection'] = True
-    # data['injection-dict'] = repr(injection_parameters)
-
-    # priors = ""
-    # for k, v in input_params["priors"].items():
-    #     if v["type"] == "fixed":
-    #         priors += f"{k} = {v['value']}\n" # f"{k} =
-    #         Constraint(name='{k}', minimum={v['value']}, maximum={v['value']}),\n"
-    #     elif v["type"] == "uniform":
-    #         if "boundary" in v:
-    #             priors += f"{k} =
-    #             Uniform(name='{k}', minimum={v['min']}, maximum={v['max']}, boundary=\"{v['boundary']}\")\n"
-    #         else:
-    #             priors += f"{k} = Uniform(name='{k}', minimum={v['min']}, maximum={v['max']})\n"
-    #     elif v["type"] == "sine":
-    #         if "boundary" in v:
-    #             priors += f"{k} = Sine(name='{k}', boundary=\"{v['boundary']}\")\n"
-    #         else:
-    #             priors += f"{k} = Sine(name='{k}')\n"
-    #     else:
-    #         print("Got unknown prior type", k, v)
-
     # Create an argument parser
     parser = create_parser()
 
@@ -252,21 +220,73 @@ def create_bilby_job(user, params):
         description=params.details.description,
         private=params.details.private,
         is_ligo_job=is_ligo_job,
-        ini_string=ini_string
+        ini_string=ini_string,
+        cluster=params.details.cluster
     )
 
     # Submit the job to the job controller
-
-    # Create the parameter json
-    job_params = bilby_job.as_json()
-
-    result = submit_job(user, job_params, params.details.cluster)
-
-    # Save the job id
-    bilby_job.job_controller_id = result["jobId"]
-    bilby_job.save()
+    bilby_job.submit()
 
     return bilby_job
+
+
+def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file):
+    """
+    Given a DataGenerationInput object, parser, this function will generate a dictionary representing any supporting
+    files from the input, and then remove those supporting files from the parser. The other parameter is a
+    BilbyArgParser instance which will also have the supporting file removed from.
+    """
+    supporting_files = {}
+
+    if prior_file:
+        supporting_files[SupportingFile.PRIOR] = prior_file
+
+    if gps_file:
+        supporting_files[SupportingFile.GPS] = gps_file
+
+    if timeslide_file:
+        supporting_files[SupportingFile.TIME_SLIDE] = timeslide_file
+
+    if injection_file:
+        supporting_files[SupportingFile.INJECTION] = injection_file
+
+
+    for supporting_file_type, config_name in {
+        SupportingFile.PSD: 'psd_dict',
+        SupportingFile.CALIBRATION: 'spline_calibration_envelope_dict',
+        SupportingFile.NUMERICAL_RELATIVITY: 'numerical_relativity_file'
+    }.items():
+        # Check if this configuration parameter is set in the parser
+        if not hasattr(parser, config_name):
+            continue
+
+        config = getattr(parser, config_name)
+        if config is None:
+            continue
+
+        if type(config) is dict:
+            # Handle this configuration item as a dictionary of files
+            # ie. {'L1': './supporting_files/psd/L1-psd.dat', 'V1': './supporting_files/psd/V1-psd.dat'}
+            supporting_files.setdefault(supporting_file_type, [])
+            for k, f in config.items():
+                supporting_files[supporting_file_type].append({k: f})
+
+            # Clear this configuration item from the parser
+            setattr(parser, config_name, None)
+            setattr(args, config_name, None)
+
+        elif type(config) is str:
+            # This config item is a single file
+            supporting_files.setdefault(supporting_file_type, config)
+
+            # Clear this configuration item from the parser
+            setattr(parser, config_name, None)
+            setattr(args, config_name, None)
+
+        else:
+            logging.error(f"Got unknown supporting file type for {config_name}: {str(config)}")
+
+    return supporting_files
 
 
 def create_bilby_job_from_ini_string(user, params):
@@ -278,7 +298,24 @@ def create_bilby_job_from_ini_string(user, params):
     if args.outdir == '.':
         args.outdir = "./"
 
+    # Strip the prior, gps, timeslide, and injection file
+    # as DataGenerationInput has trouble without the actual file existing
+    prior_file = args.prior_file
+    args.prior_file = None
+
+    gps_file = args.gps_file
+    args.gps_file = None
+
+    timeslide_file = args.timeslide_file
+    args.timeslide_file = None
+
+    injection_file = args.injection_file
+    args.injection_file = None
+
     parser = DataGenerationInput(args, [], create_data=False)
+
+    # Parse any supporting files
+    supporting_files = parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file)
 
     if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in (parser.channel_dict or {}).values()])):
         # This is a real job, with a channel that is not GWOSC
@@ -302,22 +339,19 @@ def create_bilby_job_from_ini_string(user, params):
         description=params.details.description,
         private=params.details.private,
         ini_string=ini_string,
-        is_ligo_job=is_ligo_job
+        is_ligo_job=is_ligo_job,
+        cluster=params.details.cluster
     )
     bilby_job.save()
 
-    # Submit the job to the job controller
+    # Save any supporting file records
+    supporting_file_details = SupportingFile.save_from_parsed(bilby_job, supporting_files)
 
-    # Create the parameter json
-    job_params = bilby_job.as_json()
+    # Submit the job to the job controller if there are no supporting files
+    if not bilby_job.has_supporting_files():
+        bilby_job.submit()
 
-    result = submit_job(user, job_params, params.details.cluster)
-
-    # Save the job id
-    bilby_job.job_controller_id = result["jobId"]
-    bilby_job.save()
-
-    return bilby_job
+    return bilby_job, supporting_file_details
 
 
 def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, name=None, description=None):
@@ -538,3 +572,26 @@ def delete_event_id(user, event_id):
     event = EventID.get_by_event_id(event_id, user)
     event.delete()
     return f'EventID {event_id} succesfully deleted!'
+
+
+def upload_supporting_file(upload_token, uploaded_supporting_file):
+    # Check that the job directory exists for this supporting file
+    job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(upload_token.job.id)
+    os.makedirs(job_dir, exist_ok=True)
+
+    with open(job_dir / str(upload_token.id), 'wb') as supporting_file:
+        # Write the uploaded file to the temporary file
+        for c in uploaded_supporting_file.chunks():
+            supporting_file.write(c)
+        supporting_file.flush()
+
+    # Clear the token to indicate the file is uploaded
+    upload_token.token = None
+    upload_token.save()
+
+    # Check if there are any supporting uploads left for this job and submit the job if required
+    if not SupportingFile.get_unuploaded_support_files(upload_token.job).exists():
+        # All supporting files have been uploaded, now launch the job
+        upload_token.job.submit()
+
+    return True

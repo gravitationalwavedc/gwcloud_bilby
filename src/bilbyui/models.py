@@ -1,6 +1,7 @@
 import datetime
 import os
 import uuid
+from pathlib import Path
 
 from django.conf import settings
 from django.core.validators import RegexValidator
@@ -9,6 +10,7 @@ from django.utils import timezone
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
 from bilbyui.utils.jobs.request_job_status import request_job_status
+from .utils.jobs.submit_job import submit_job
 from .utils.parse_ini_file import parse_ini_file
 
 
@@ -130,6 +132,10 @@ class BilbyJob(models.Model):
     # mutation, otherwise it was created by either new job or new ini job
     is_uploaded_job = models.BooleanField(default=False)
 
+    # The cluster (as a string) that this job was submitted to. This is mainly used to track the cluster that the job
+    # should be uploaded to once the supporting files are uploaded
+    cluster = models.TextField(null=True)
+
     class Meta:
         unique_together = (
             ('user_id', 'name'),
@@ -231,6 +237,132 @@ class BilbyJob(models.Model):
         Returns the upload directory of the job - only relevant to uploaded jobs.
         """
         return os.path.join(settings.JOB_UPLOAD_DIR, str(self.id))
+
+    def has_supporting_files(self):
+        """
+        Checks if this job has any supporting files
+        """
+        return self.supportingfile_set.exists()
+
+    @classmethod
+    def prune_supporting_files_jobs(cls):
+        """
+        This function removes any jobs that have supporting files that have not been uploaded within the time specified
+        by UPLOAD_SUPPORTING_FILE_EXPIRY
+        """
+        removal_time = timezone.now() - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY)
+
+        expired_supporting_file_job_ids = SupportingFile.objects.filter(
+            job__creation_time__lt=removal_time,
+            token__isnull=False
+        )
+
+        cls.objects.filter(id__in=expired_supporting_file_job_ids).delete()
+
+    def submit(self):
+        # Create the parameter json
+        job_params = self.as_json()
+
+        # Ask the job controller to submit the job
+        result = submit_job(self.user_id, job_params, self.cluster)
+
+        # Save the job id
+        self.job_controller_id = result["jobId"]
+        self.save()
+
+
+class SupportingFile(models.Model):
+    """
+    This model stores information about supporting files for bilby jobs. This can include PSD, Calibration, Prior, GPS,
+    Time Slide and Injection files. Doesn't include a timestamp, as these records will be created at the same time as a
+    BilbyJob is.
+    """
+    PSD = "psd"
+    CALIBRATION = "cal"
+    PRIOR = "pri"
+    GPS = "gps"
+    TIME_SLIDE = "tsl"
+    INJECTION = "inj"
+    NUMERICAL_RELATIVITY = 'nmr'
+
+    # The job this supporting file is for
+    job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE, db_index=True)
+    # What type of supporting file this is
+    file_type = models.CharField(max_length=3)
+    # The dictionary key of the supporting file if one is specified (ie, L1, V1 etc). If this is null then the config
+    # option is a single file. ie gps-file = <some path>. If the key is set then it's part of a config dictionary
+    # ie psd-file = {<key>: <some path>}
+    key = models.TextField(null=True)
+    # The original file name
+    file_name = models.TextField()
+    # The file upload token
+    token = models.UUIDField(unique=True, null=True, default=uuid.uuid4, db_index=True)
+
+    @classmethod
+    def save_from_parsed(cls, bilby_job, supporting_files):
+        """
+        Takes the output from parse_supporting_files and generates the relevant SupportingFile records
+
+        param bilby_job: The BilbyJob instance that the supporting files belongs to
+        param supporting_files: Dictionary of supporting files returned from parse_supporting_files function
+        """
+        bulk_items = []
+        result_files = []
+        for supporting_file_type, details in supporting_files.items():
+            if type(details) is list:
+                for element in details:
+                    for k, f in element.items():
+                        result_files.append({'file_path': f})
+
+                        bulk_items.append(
+                            cls(
+                                job=bilby_job,
+                                file_type=supporting_file_type,
+                                key=k,
+                                file_name=Path(f).name
+                            )
+                        )
+
+            elif type(details) is str:
+                result_files.append({'file_path': details})
+
+                bulk_items.append(
+                    cls(
+                        job=bilby_job,
+                        file_type=supporting_file_type,
+                        key=None,
+                        file_name=Path(details).name
+                    )
+                )
+
+        created = cls.objects.bulk_create(bulk_items)
+
+        # Map the tokens for the created files to the returned supporting files details
+        for i, v in enumerate(created):
+            result_files[i]['token'] = created[i].token
+
+        return result_files
+
+    @classmethod
+    def get_by_token(cls, file_token):
+        """
+        Retrieves the SupportingFile object matching the provided token. Returns None if the token doesn't exist or
+        the bilby job's file uploads have expired.
+        """
+        BilbyJob.prune_supporting_files_jobs()
+
+        inst = cls.objects.filter(token=file_token)
+        if not inst.exists():
+            return None
+
+        return inst.first()
+
+    @classmethod
+    def get_unuploaded_support_files(cls, job):
+        """
+        Retrieves all supporting files that have not yet been uploaded for the specified job
+        """
+        return SupportingFile.objects.filter(job=job, token__isnull=False)
 
 
 class IniKeyValue(models.Model):

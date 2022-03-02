@@ -7,8 +7,14 @@ class JobStatusType(graphene.ObjectType):
     date = graphene.String()
 
 
+class BilbyJobSupportingFile(graphene.ObjectType):
+    file_path=graphene.String()
+    token=graphene.String()
+
+
 class BilbyJobCreationResult(graphene.ObjectType):
     job_id = graphene.String()
+    supporting_files = graphene.List(BilbyJobSupportingFile)
 
 
 class CalibrationCommon:
@@ -207,3 +213,7 @@ class JobIniInput(graphene.InputObjectType):
 class JobIniOutput(graphene.ObjectType):
     details = graphene.Field(JobDetailsOutput)
     ini_string = graphene.Field(IniOutput)
+
+
+class SupportingFileUploadResult(graphene.ObjectType):
+    result = graphene.Boolean()

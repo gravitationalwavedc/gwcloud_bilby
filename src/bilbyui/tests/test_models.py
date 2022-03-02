@@ -1,8 +1,10 @@
+from pathlib import Path
+
 from django.test import TestCase
 from django.utils import timezone
 from django.conf import settings
 
-from bilbyui.models import BilbyJob, Label, FileDownloadToken, BilbyJobUploadToken
+from bilbyui.models import BilbyJob, Label, FileDownloadToken, BilbyJobUploadToken, SupportingFile
 from bilbyui.views import update_bilby_job
 from gw_bilby.jwt_tools import GWCloudUser
 
@@ -298,3 +300,181 @@ class TestBilbyJobUploadToken(TestCase):
 
         # No records should exist in the database anymore
         self.assertFalse(BilbyJobUploadToken.objects.all().exists())
+
+
+class TestSupportingFile(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        class TestUser:
+            def __init__(self):
+                self.is_ligo = False
+                self.user_id = 1234
+
+        cls.user = TestUser()
+
+    def test_save_from_parsed(self):
+        # Test that parsed supporting files are correctly entered in to the database
+        job = BilbyJob.objects.create(user_id=self.user.user_id)
+
+        parsed = {
+            SupportingFile.PSD: [
+                {
+                    'H1': '/my/test/path/psd_h1.file',
+                    'V1': '/my/test/path/psd_v1.file',
+                }
+            ],
+            SupportingFile.GPS: '/another/test/path/gps.file'
+        }
+
+        supporting_file_tokens = SupportingFile.save_from_parsed(job, parsed)
+
+        self.assertEqual(SupportingFile.objects.count(), 3)
+
+        for token in supporting_file_tokens:
+            self.assertTrue(
+                SupportingFile.objects.filter(token=token['token'], file_name=Path(token['file_path']).name).exists()
+            )
+
+    def test_pruning(self):
+        # Test that BilbyJob's objects older than settings.UPLOAD_SUPPORTING_FILE_EXPIRY are correctly removed
+        # from the database if there are any SupportingFile's that are not uploaded
+
+        job = BilbyJob.objects.create(user_id=self.user.user_id)
+
+        # Test that objects created now are not removed
+        parsed = {
+            SupportingFile.PSD: [
+                {
+                    'H1': '/my/test/path/psd_h1.file',
+                    'V1': '/my/test/path/psd_v1.file',
+                }
+            ],
+            SupportingFile.GPS: '/another/test/path/gps.file'
+        }
+
+        SupportingFile.save_from_parsed(job, parsed)
+
+        after = timezone.now()
+
+        BilbyJob.prune_supporting_files_jobs()
+
+        self.assertEqual(BilbyJob.objects.all().count(), 1)
+
+        # Check objects just inside the deletion time are not deleted
+        job.creation_time = after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY-1)
+        job.save()
+
+        BilbyJob.prune_supporting_files_jobs()
+
+        self.assertEqual(BilbyJob.objects.all().count(), 1)
+
+        # Check objects just outside the deletion time are deleted
+        job.creation_time = after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY+1)
+        job.save()
+
+        BilbyJob.prune_supporting_files_jobs()
+
+        self.assertEqual(BilbyJob.objects.all().count(), 0)
+
+        # Finally check that if all supporting files are uploaded, the job is not deleted
+        job = BilbyJob.objects.create(user_id=self.user.user_id)
+        SupportingFile.save_from_parsed(job, parsed)
+
+        self.assertEqual(SupportingFile.objects.count(), 3)
+
+        for sf in SupportingFile.objects.all():
+            sf.token = None
+            sf.save()
+
+        after = timezone.now()
+
+        BilbyJob.prune_supporting_files_jobs()
+
+        self.assertEqual(BilbyJob.objects.all().count(), 1)
+
+        # Check objects just inside the deletion time are not deleted
+        job.creation_time = after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
+        job.save()
+
+        BilbyJob.prune_supporting_files_jobs()
+
+        self.assertEqual(BilbyJob.objects.all().count(), 1)
+
+        # Check objects just outside the deletion time are not deleted if all supporting files are uploaded
+        job.creation_time = after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
+        job.save()
+
+        BilbyJob.prune_supporting_files_jobs()
+
+        self.assertEqual(BilbyJob.objects.all().count(), 1)
+
+    def test_get_by_token(self):
+        job = BilbyJob.objects.create(user_id=self.user.user_id)
+        after = timezone.now()
+
+        # Test that objects created now are not removed
+        parsed = {
+            SupportingFile.PSD: [
+                {
+                    'H1': '/my/test/path/psd_h1.file',
+                    'V1': '/my/test/path/psd_v1.file',
+                }
+            ],
+            SupportingFile.GPS: '/another/test/path/gps.file'
+        }
+
+        tokens = [t['token'] for t in SupportingFile.save_from_parsed(job, parsed)]
+
+        for t in tokens:
+            self.assertIsNotNone(SupportingFile.get_by_token(t))
+
+        # Check objects just inside the deletion time are not deleted
+        job.creation_time = after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
+        job.save()
+
+        for t in tokens:
+            self.assertIsNotNone(SupportingFile.get_by_token(t))
+
+        # Check objects just outside the deletion time are deleted
+        job.creation_time = after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
+        job.save()
+
+        for t in tokens:
+            self.assertIsNone(SupportingFile.get_by_token(t))
+
+        self.assertFalse(BilbyJob.objects.filter(id=job.id).exists())
+
+        # Finally check that if all supporting files are uploaded, the job is not deleted
+        job = BilbyJob.objects.create(user_id=self.user.user_id)
+        after = timezone.now()
+
+        tokens = [t['token'] for t in SupportingFile.save_from_parsed(job, parsed)]
+
+        self.assertEqual(SupportingFile.objects.count(), 3)
+
+        for sf in SupportingFile.objects.all():
+            sf.token = None
+            sf.save()
+
+        for t in tokens:
+            self.assertIsNone(SupportingFile.get_by_token(t))
+
+        self.assertTrue(BilbyJob.objects.filter(id=job.id).exists())
+
+        # Check objects just inside the deletion time are not deleted
+        job.creation_time = after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
+        job.save()
+
+        for t in tokens:
+            self.assertIsNone(SupportingFile.get_by_token(t))
+
+        self.assertTrue(BilbyJob.objects.filter(id=job.id).exists())
+
+        # Check objects just outside the deletion time are not deleted if all supporting files are uploaded
+        job.creation_time = after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
+        job.save()
+
+        for t in tokens:
+            self.assertIsNone(SupportingFile.get_by_token(t))
+
+        self.assertTrue(BilbyJob.objects.filter(id=job.id).exists())
