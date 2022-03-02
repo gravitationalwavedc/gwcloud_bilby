@@ -37,8 +37,8 @@ const EditableJobName = ({modifiable, value, jobId}) => {
             mutation: mutation,
             variables: variables,
             onCompleted: (response, errors) => {
-                if (!errors) {
-                    setErrors();
+                if (errors) {
+                    setErrors(errors.map((error) => error.message));
                 }
             }
         });

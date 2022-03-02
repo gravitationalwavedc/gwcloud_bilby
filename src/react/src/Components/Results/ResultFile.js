@@ -28,6 +28,7 @@ const generateDownload = (url) => {
 
 const performFileDownload = (e, jobId, isUploadedJob, token) => {
     e.preventDefault();
+    e.target.classList.add('link-visited');
 
     if (isUploadedJob) {
         // For uploaded jobs, we can optionally skip the need to generate a download id
