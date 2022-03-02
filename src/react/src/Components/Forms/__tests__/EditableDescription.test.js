@@ -18,7 +18,7 @@ describe('editable description component', () => {
         expect.hasAssertions();
         const { container } = render(<EditableDescription modifiable={true} value="Testing" jobId={1} />);
         userEvent.click(screen.getByText('edit'));
-        userEvent.type(container.querySelector('textarea'), '-new-value');
+        userEvent.type(screen.getByDisplayValue('Testing'), '-new-value');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));
         await waitFor(() => environment.mock.resolveMostRecentOperation(operation => 
             MockPayloadGenerator.generate(operation)

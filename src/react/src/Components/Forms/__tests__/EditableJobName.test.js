@@ -18,7 +18,7 @@ describe('editable job name component', () => {
         expect.hasAssertions();
         const { container } = render(<EditableJobName modifiable={true} value="Testing" jobId={1} />);
         userEvent.click(screen.getByText('edit'));
-        userEvent.type(container.querySelector('input[value="Testing"]'), '-new-value');
+        userEvent.type(screen.getByDisplayValue('Testing'), '-new-value');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));
         await waitFor(() => environment.mock.resolveMostRecentOperation(operation => 
             MockPayloadGenerator.generate(operation)
@@ -30,7 +30,7 @@ describe('editable job name component', () => {
         expect.hasAssertions();
         const { container } = render(<EditableJobName modifiable={true} value="Testing" jobId={1} />);
         userEvent.click(screen.getByText('edit'));
-        userEvent.type(container.querySelector('input[value="Testing"]'), ' bad v@!u3');
+        userEvent.type(screen.getByDisplayValue('Testing'), ' bad v@!u3');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));
         expect(screen.getByText('Remove any spaces or special characters.')).toBeInTheDocument();
     });
