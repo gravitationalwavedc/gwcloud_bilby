@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {QueryRenderer, graphql} from 'react-relay';
 import {harnessApi} from '../../index';
 import Table from 'react-bootstrap/Table';

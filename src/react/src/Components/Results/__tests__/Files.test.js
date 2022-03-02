@@ -2,7 +2,6 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import {MockPayloadGenerator} from 'relay-test-utils';
 import Files from '../Files';
-import userEvent from '@testing-library/user-event';
 
 /* global environment */
 
