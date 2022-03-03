@@ -34,7 +34,7 @@ class TestIniJobSubmission(BilbyTestCase):
         self.addCleanup(self.responses.stop)
         self.addCleanup(self.responses.reset)
 
-    @patch("bilbyui.views.submit_job")
+    @patch("bilbyui.models.submit_job")
     def test_ini_job_submission(self, mock_api_call):
         self.client.authenticate(self.user, is_ligo=True)
 

@@ -16,6 +16,7 @@ EXTERNAL_STORAGE_PATH = os.path.join(BASE_DIR, "job_uploads")
 JOB_UPLOAD_STAGING_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'staging')
 JOB_UPLOAD_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'jobs')
 FILE_UPLOAD_TEMP_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'upload')
+SUPPORTING_FILE_UPLOAD_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'supporting_files')
 
 try:
     from .local import *

@@ -89,7 +89,7 @@ class TestBilbyLigoPermissions(BilbyTestCase):
             'newBilbyJob': None
         }
 
-        patcher = patch("bilbyui.views.submit_job")
+        patcher = patch("bilbyui.models.submit_job")
         self.addCleanup(patcher.stop)
         self.mock_api_call = patcher.start()
         self.mock_api_call.return_value = {'jobId': 4321}
@@ -220,7 +220,7 @@ class TestIniBilbyLigoPermissions(BilbyTestCase):
             'newBilbyJobFromIniString': None
         }
 
-        patcher = patch("bilbyui.views.submit_job")
+        patcher = patch("bilbyui.models.submit_job")
         self.addCleanup(patcher.stop)
         self.mock_api_call = patcher.start()
         self.mock_api_call.return_value = {'jobId': 4321}

@@ -29,7 +29,7 @@ class TestJobSubmission(BilbyTestCase):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user, True)
 
-    @patch("bilbyui.views.submit_job")
+    @patch("bilbyui.models.submit_job")
     def test_generate_parameter_output(self, mock_api_call):
         # Try randomly generating 100 jobs
         for job_index in range(100):

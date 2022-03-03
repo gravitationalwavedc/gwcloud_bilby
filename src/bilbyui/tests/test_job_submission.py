@@ -25,7 +25,7 @@ class TestJobSubmission(BilbyTestCase):
         self.addCleanup(self.responses.stop)
         self.addCleanup(self.responses.reset)
 
-    @patch("bilbyui.views.submit_job")
+    @patch("bilbyui.models.submit_job")
     def test_simulated_job(self, mock_api_call):
         mock_api_call.return_value = {'jobId': 4321}
 
@@ -183,7 +183,7 @@ class TestJobSubmission(BilbyTestCase):
             json.dumps("lal_binary_black_hole")
         )
 
-    @patch("bilbyui.views.submit_job")
+    @patch("bilbyui.models.submit_job")
     def test_real_job(self, mock_api_call):
         mock_api_call.return_value = {'jobId': 4321}
 

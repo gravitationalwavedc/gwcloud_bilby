@@ -11,7 +11,7 @@ from graphql import GraphQLError
 from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
 
-from .models import BilbyJob, BilbyJobUploadToken, EventID, FileDownloadToken, Label
+from .models import BilbyJob, BilbyJobUploadToken, EventID, FileDownloadToken, Label, SupportingFile
 from .status import JobStatus
 from .types import (
     BilbyJobCreationResult,
@@ -19,7 +19,7 @@ from .types import (
     JobIniInput,
     JobParameterInput,
     JobParameterOutput,
-    JobStatusType,
+    JobStatusType, BilbyJobSupportingFile, SupportingFileUploadResult,
 )
 from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
@@ -33,7 +33,7 @@ from .views import (
     delete_event_id,
     update_bilby_job,
     update_event_id,
-    upload_bilby_job,
+    upload_bilby_job, upload_supporting_file,
 )
 
 
@@ -414,14 +414,24 @@ class BilbyJobFromIniStringMutation(relay.ClientIDMutation):
         user = info.context.user
 
         # Create the bilby job
-        bilby_job = create_bilby_job_from_ini_string(user, params)
+        bilby_job, supporting_file_details = create_bilby_job_from_ini_string(user, params)
 
         # Convert the bilby job id to a global id
         job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
+        files = [
+            BilbyJobSupportingFile(
+                file_path=f['file_path'],
+                token=f['token']
+            ) for f in supporting_file_details
+        ]
+
         # Return the bilby job id to the client
         return BilbyJobFromIniStringMutation(
-            result=BilbyJobCreationResult(job_id=job_id)
+            result=BilbyJobCreationResult(
+                job_id=job_id,
+                supporting_files=files
+            )
         )
 
 
@@ -527,6 +537,32 @@ class UploadBilbyJobMutation(relay.ClientIDMutation):
         )
 
 
+class UploadSupportingFileMutation(relay.ClientIDMutation):
+    class Input:
+        file_token = graphene.String()
+        supporting_file = Upload(required=True)
+
+    result = graphene.Field(SupportingFileUploadResult)
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, file_token, supporting_file):
+        # Get the token being used to perform the upload - this will return None if the token doesn't exist or
+        # if the bilby job is expired
+        token = SupportingFile.get_by_token(file_token)
+        if not token:
+            raise GraphQLError("Supporting file upload token is invalid or expired.")
+
+        # Try uploading the bilby job supporting file
+        success = upload_supporting_file(token, supporting_file)
+
+        # Return the success state job id to the client
+        return UploadSupportingFileMutation(
+            result=SupportingFileUploadResult(
+                result=success
+            )
+        )
+
+
 class Mutation(graphene.ObjectType):
     new_bilby_job = BilbyJobMutation.Field()
     new_bilby_job_from_ini_string = BilbyJobFromIniStringMutation.Field()
@@ -536,3 +572,4 @@ class Mutation(graphene.ObjectType):
     create_event_id = EventIDMutation.Field()
     update_event_id = UpdateEventIDMutation.Field()
     delete_event_id = DeleteEventIDMutation.Field()
+    upload_supporting_file = UploadSupportingFileMutation.Field()

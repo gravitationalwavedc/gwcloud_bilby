@@ -22,9 +22,15 @@ def parse_test_ini(ini):
     return result
 
 
-def compare_ini_kvs(test, job, ini):
+def compare_ini_kvs(test, job, ini, ignored=None):
+    if ignored is None:
+        ignored = []
+
     args = parse_test_ini(ini)
     for k, v in args.items():
+        if k in ignored:
+            continue
+
         test.assertTrue(
             IniKeyValue.objects.filter(
                 job=job,

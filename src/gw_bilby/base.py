@@ -173,6 +173,9 @@ PERMITTED_EVENT_CREATION_USER_IDS = []
 # The expiry of BilbyJobUploadTokens (in seconds)
 BILBY_JOB_UPLOAD_TOKEN_EXPIRY = 60*60*24
 
+# The number of seconds before a BilbyJob, with supporting files that are not uploaded, is deleted
+UPLOAD_SUPPORTING_FILE_EXPIRY = 60*60*24
+
 # The expiry of FileDownloadTokens (in seconds)
 FILE_DOWNLOAD_TOKEN_EXPIRY = 60*60*24
 
@@ -187,6 +190,9 @@ JOB_UPLOAD_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'jobs')
 
 # Where django should store temporary file uploads on disk
 FILE_UPLOAD_TEMP_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'upload')
+
+# Where supporting files are permanently stored
+SUPPORTING_FILE_UPLOAD_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'supporting_files')
 
 # Which clusters are able to be submitted to
 CLUSTERS = ['ozstar']

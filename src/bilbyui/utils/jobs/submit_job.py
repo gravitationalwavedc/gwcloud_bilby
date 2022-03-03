@@ -7,11 +7,11 @@ import requests
 from django.conf import settings
 
 
-def submit_job(user, params, cluster):
+def submit_job(user_id, params, cluster):
     """
     Submits a new job with `params` to the job controller
 
-    :param user: The user who is making the request
+    :param user_id: The id of the user who is making the request
     :param params: The dictionary object to dump to json and submit as the parameters
     :param cluster: The cluster to submit the job to
 
@@ -37,7 +37,7 @@ def submit_job(user, params, cluster):
     # Create the jwt token
     jwt_enc = jwt.encode(
         {
-            'userId': user.user_id,
+            'userId': user_id,
             'exp': datetime.datetime.now() + datetime.timedelta(days=30)
         },
         settings.JOB_CONTROLLER_JWT_SECRET,
