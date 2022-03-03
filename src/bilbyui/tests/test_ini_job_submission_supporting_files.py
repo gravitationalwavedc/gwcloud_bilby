@@ -45,37 +45,53 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         """
 
+        self.test_name = "Test Name"
+        self.test_description = "Test Description"
+        self.test_private = False
+
+        self.test_input = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": self.test_name,
+                        "description": self.test_description,
+                        "private": self.test_private
+                    },
+                    "iniString": {
+                        "iniString": None
+                    }
+                }
+            }
+        }
+
         self.responses = responses.RequestsMock()
         self.responses.start()
 
         self.addCleanup(self.responses.stop)
         self.addCleanup(self.responses.reset)
 
-    @patch("bilbyui.models.submit_job")
-    def run_test_ini_job_submission_supporting_files(self, test_ini_string, file_names, config_names, mock_api_call):
         self.client.authenticate(self.user, is_ligo=True)
 
+    @patch("bilbyui.models.submit_job")
+    def mock_ini_job_submission_with_supporting_files(self, test_ini_string, file_names, config_names, mock_api_call):
+        """
+        This function is called by subsequent tests and performs the bulk of the actual testing and asserting. It's
+        main flow is basically the following:
+        * Submit the provided ini file to create a new bilby job
+        * Verify that the created job details are correct
+        * Supporting files should be created and returned from the new bilby job call
+        * Verify that the supporting file records were correctly created and returned
+        * Check that the ini details were correctly saved in the database
+        * Upload each supporting file and verify that it was created on disk
+        * Verify that the job is not submitted until the last supporting file is uploaded, then the job should be
+          submitted
+        """
+
+        self.test_input['input']['params']['iniString']['iniString'] = test_ini_string
+
         mock_api_call.return_value = {'jobId': 4321}
-        test_name = "Test Name"
-        test_description = "Test Description"
-        test_private = False
 
-        test_input = {
-            "input": {
-                "params": {
-                    "details": {
-                        "name": test_name,
-                        "description": test_description,
-                        "private": test_private
-                    },
-                    "iniString": {
-                        "iniString": test_ini_string
-                    }
-                }
-            }
-        }
-
-        response = self.client.execute(self.mutation, test_input)
+        response = self.client.execute(self.mutation, self.test_input)
 
         job = BilbyJob.objects.all().last()
 
@@ -112,14 +128,14 @@ class TestIniJobSubmission(BilbyTestCase):
         # And should create all k/v's with default values
         compare_ini_kvs(self, job, test_ini_string, config_names)
 
-        self.assertEqual(job.name, test_name)
-        self.assertEqual(job.description, test_description)
-        self.assertEqual(job.private, test_private)
+        self.assertEqual(job.name, self.test_name)
+        self.assertEqual(job.description, self.test_description)
+        self.assertEqual(job.private, self.test_private)
 
         # Job should not have been submitted as there is a supporting file
         self.assertIsNone(job.job_controller_id)
 
-        # Now upload both files, checking that the job is only submitted once the last file upload has completed.
+        # Now all files, checking that the job is only submitted once the last file upload has completed.
         def upload_supporting_file(token):
             content = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(128))
 
@@ -168,7 +184,7 @@ class TestIniJobSubmission(BilbyTestCase):
             },
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 ['V1', './supporting_files/psd/V1-psd.dat', SupportingFile.PSD]
@@ -185,7 +201,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 ['L1', './supporting_files/psd/L1-psd.dat', SupportingFile.PSD],
@@ -204,7 +220,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 ['L1', './supporting_files/psd/L1-psd.dat', SupportingFile.PSD],
@@ -223,7 +239,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 ['L1', './supporting_files/calib/L1-calib.dat', SupportingFile.CALIBRATION]
@@ -241,7 +257,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 ['L1', './supporting_files/calib/L1-calib.dat', SupportingFile.CALIBRATION],
@@ -261,7 +277,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 ['L1', './supporting_files/calib/L1-calib.dat', SupportingFile.CALIBRATION],
@@ -280,7 +296,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 [None, './supporting_files/prior/myprior.prior', SupportingFile.PRIOR]
@@ -297,7 +313,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 [None, './supporting_files/gps/gps.dat', SupportingFile.GPS]
@@ -314,7 +330,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 [None, './supporting_files/timeslide/timeslide.dat', SupportingFile.TIME_SLIDE]
@@ -331,7 +347,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 [None, './supporting_files/injection/injection.dat', SupportingFile.INJECTION]
@@ -348,7 +364,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 [None, './supporting_files/nrf/nrf.dat', SupportingFile.NUMERICAL_RELATIVITY]
@@ -374,7 +390,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.run_test_ini_job_submission_supporting_files(
+        self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
                 ['L1', './supporting_files/psd/L1-psd.dat', SupportingFile.PSD],

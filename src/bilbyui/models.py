@@ -22,9 +22,6 @@ class Label(models.Model):
     # determine if only a user with a specific permission may apply this tag to a job
     protected = models.BooleanField(default=False)
 
-    def __str__(self):
-        return f"Label: {self.name}"
-
     @classmethod
     def all(cls):
         """
@@ -45,6 +42,9 @@ class Label(models.Model):
         """
         return cls.objects.filter(name__in=labels, protected__in=[False, include_protected])
 
+    def __str__(self):
+        return f"Label: {self.name}"
+
 
 class EventID(models.Model):
     event_id = models.CharField(
@@ -62,9 +62,6 @@ class EventID(models.Model):
     )
     nickname = models.CharField(max_length=20, blank=True, null=True)
     is_ligo_event = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"EventID: {self.event_id}"
 
     @classmethod
     def get_by_event_id(cls, event_id, user):
@@ -105,8 +102,16 @@ class EventID(models.Model):
         self.clean_fields()  # Validate IDs
         self.save()
 
+    def __str__(self):
+        return f"EventID: {self.event_id}"
+
 
 class BilbyJob(models.Model):
+    class Meta:
+        unique_together = (
+            ('user_id', 'name'),
+        )
+
     user_id = models.IntegerField()
     name = models.CharField(max_length=255, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
@@ -136,33 +141,9 @@ class BilbyJob(models.Model):
     # should be uploaded to once the supporting files are uploaded
     cluster = models.TextField(null=True)
 
-    class Meta:
-        unique_together = (
-            ('user_id', 'name'),
-        )
-
-    def __str__(self):
-        return f"Bilby Job: {self.name}"
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        # Whenever a job is saved, we need to regenerate the ini k/v pairs
-        parse_ini_file(self)
-
     @property
     def job_status(self):
         return request_job_status(self)
-
-    def get_file_list(self, path='', recursive=True):
-        return request_file_list(self, path, recursive)
-
-    def as_json(self):
-        return dict(
-            name=self.name,
-            description=self.description,
-            ini_string=self.ini_string
-        )
 
     @classmethod
     def get_by_id(cls, bid, user):
@@ -232,18 +213,6 @@ class BilbyJob(models.Model):
         else:
             return queryset.exclude(is_ligo_job=True)
 
-    def get_upload_directory(self):
-        """
-        Returns the upload directory of the job - only relevant to uploaded jobs.
-        """
-        return os.path.join(settings.JOB_UPLOAD_DIR, str(self.id))
-
-    def has_supporting_files(self):
-        """
-        Checks if this job has any supporting files
-        """
-        return self.supportingfile_set.exists()
-
     @classmethod
     def prune_supporting_files_jobs(cls):
         """
@@ -259,6 +228,18 @@ class BilbyJob(models.Model):
 
         cls.objects.filter(id__in=expired_supporting_file_job_ids).delete()
 
+    def get_upload_directory(self):
+        """
+        Returns the upload directory of the job - only relevant to uploaded jobs.
+        """
+        return os.path.join(settings.JOB_UPLOAD_DIR, str(self.id))
+
+    def has_supporting_files(self):
+        """
+        Checks if this job has any supporting files
+        """
+        return self.supportingfile_set.exists()
+
     def submit(self):
         # Create the parameter json
         job_params = self.as_json()
@@ -269,6 +250,25 @@ class BilbyJob(models.Model):
         # Save the job id
         self.job_controller_id = result["jobId"]
         self.save()
+
+    def __str__(self):
+        return f"Bilby Job: {self.name}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        # Whenever a job is saved, we need to regenerate the ini k/v pairs
+        parse_ini_file(self)
+
+    def get_file_list(self, path='', recursive=True):
+        return request_file_list(self, path, recursive)
+
+    def as_json(self):
+        return dict(
+            name=self.name,
+            description=self.description,
+            ini_string=self.ini_string
+        )
 
 
 class SupportingFile(models.Model):
@@ -285,7 +285,6 @@ class SupportingFile(models.Model):
     INJECTION = "inj"
     NUMERICAL_RELATIVITY = 'nmr'
 
-    # The job this supporting file is for
     job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE, db_index=True)
     # What type of supporting file this is
     file_type = models.CharField(max_length=3)
@@ -293,7 +292,7 @@ class SupportingFile(models.Model):
     # option is a single file. ie gps-file = <some path>. If the key is set then it's part of a config dictionary
     # ie psd-file = {<key>: <some path>}
     key = models.TextField(null=True)
-    # The original file name
+    # The original file name (WITHOUT A PATH)
     file_name = models.TextField()
     # The file upload token
     upload_token = models.UUIDField(unique=True, null=True, default=uuid.uuid4, db_index=True)
