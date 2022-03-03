@@ -56,38 +56,38 @@ validationSchema = validationSchema.test(
     }
 );
 
+const detectorChannelError = (object) => new Yup.ValidationError(
+    `Please choose a ${object} detector channel.`,
+    null,
+    'activeDetectorChannelTest'
+); 
+
 validationSchema = validationSchema.test(
     'activeDetectorChannelTest',
     null,
     (obj) => {
-        if ( obj.hanford && !obj.hanfordChannel) {
-            return new Yup.ValidationError(
-                'Please choose a hanford detector channel.',
-                null,
-                'activeDetectorChannelTest'
-            );
-        }
+        const detectorChannelErrors = [
+            { 
+                name: 'hanford',
+                on: obj.hanford,
+                channel: obj.hanfordChannel
+            },
+            { 
+                name: 'livingston',
+                on: obj.livingston,
+                channel: obj.livingstonChannel
+            },
+            { 
+                name: 'virgo',
+                on: obj.virgo,
+                channel: obj.virgoChannel
+            },
+        ]
+            .filter((detector) => detector.on && !detector.channel)
+            .map((detector) => detectorChannelError(detector.name));
 
-        if ( obj.livingston && !obj.livingstonChannel) {
-            return new Yup.ValidationError(
-                'Please choose a livingston detector channel.',
-                null,
-                'activeDetectorChannelTest'
-            );
-        }
-
-        if ( obj.virgo && !obj.virgoChannel) {
-            return new Yup.ValidationError(
-                'Please choose a virgo detector channel.',
-                null,
-                'activeDetectorChannelTest'
-            );
-        }
-
-        return true;
+        return detectorChannelErrors.length > 0 ? detectorChannelErrors[0] : true;
     }
 );
-
-
 
 export default validationSchema;

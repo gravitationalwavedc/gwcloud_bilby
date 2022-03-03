@@ -3,7 +3,6 @@ import { MockPayloadGenerator } from 'relay-test-utils';
 import { QueryRenderer, graphql } from 'react-relay';
 import { render } from '@testing-library/react';
 import DuplicateJobForm from '../Forms/DuplicateJobForm';
-import 'regenerator-runtime/runtime';
 
 /* global environment, router */
 
