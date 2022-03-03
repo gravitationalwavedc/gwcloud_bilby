@@ -39,6 +39,9 @@ const EditableJobName = ({modifiable, value, jobId}) => {
             onCompleted: (response, errors) => {
                 if (errors) {
                     setErrors(errors.map((error) => error.message));
+                } else {
+                    // clear errors if everything worked.
+                    setErrors();
                 }
             }
         });
