@@ -1,6 +1,7 @@
 import secrets
 import shutil
 import string
+import uuid
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,9 +9,11 @@ import responses
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client
+from django.urls import reverse
 
 from bilbyui.models import BilbyJob, SupportingFile
-from bilbyui.tests.test_utils import compare_ini_kvs, create_test_ini_string
+from bilbyui.tests.test_utils import compare_ini_kvs, create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
@@ -71,6 +74,8 @@ class TestIniJobSubmission(BilbyTestCase):
         self.addCleanup(self.responses.reset)
 
         self.client.authenticate(self.user, is_ligo=True)
+
+        self.http_client = Client()
 
     @patch("bilbyui.models.submit_job")
     def mock_ini_job_submission_with_supporting_files(self, test_ini_string, file_names, config_names, mock_api_call):
@@ -421,3 +426,83 @@ class TestIniJobSubmission(BilbyTestCase):
                 'numerical_relativity_file'
             ]
         )
+
+    @silence_errors
+    def test_download_supporting_files_invalid_token(self):
+        # Test that using an invalid token raises an error
+        response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={str(uuid.uuid4())}')
+        self.assertEqual(response.status_code, 404)
+
+    def test_download_supporting_files_valid_token_force_download(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': "Test Name",
+                'detectors': "['H1']",
+                'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat}'
+            },
+        )
+
+        self.mock_ini_job_submission_with_supporting_files(
+            test_ini_string,
+            [
+                ['V1', './supporting_files/psd/V1-psd.dat', SupportingFile.PSD]
+            ],
+            'psd_dict'
+        )
+
+        supporting_file = SupportingFile.objects.last()
+
+        response = self.http_client.get(
+            f'{reverse(viewname="file_download")}?fileId={supporting_file.download_token}&forceDownload'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['Content-Type'], 'application/octet-stream')
+        self.assertEqual(
+            response.headers['Content-Disposition'],
+            'attachment; filename="V1-psd.dat"'
+        )
+
+        content = b''.join(list(response))
+
+        # Get the supporting file path
+        file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)
+
+        with open(str(file_path), 'rb') as f:
+            self.assertEqual(content, f.read())
+
+    def test_download_supporting_files_valid_token(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': "Test Name",
+                'detectors': "['H1']",
+                'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat}'
+            },
+        )
+
+        self.mock_ini_job_submission_with_supporting_files(
+            test_ini_string,
+            [
+                ['V1', './supporting_files/psd/V1-psd.dat', SupportingFile.PSD]
+            ],
+            'psd_dict'
+        )
+
+        supporting_file = SupportingFile.objects.last()
+
+        response = self.http_client.get(
+            f'{reverse(viewname="file_download")}?fileId={supporting_file.download_token}'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['Content-Type'], 'application/octet-stream')
+        self.assertEqual(
+            response.headers['Content-Disposition'],
+            'inline; filename="V1-psd.dat"'
+        )
+
+        content = b''.join(list(response))
+
+        # Get the supporting file path
+        file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)
+
+        with open(str(file_path), 'rb') as f:
+            self.assertEqual(content, f.read())

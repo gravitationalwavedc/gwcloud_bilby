@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 
 from django.test import TestCase
@@ -407,21 +408,21 @@ class TestSupportingFile(TestCase):
         tokens = [t['token'] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
 
         for t in tokens:
-            self.assertIsNotNone(SupportingFile.get_by_token(t))
+            self.assertIsNotNone(SupportingFile.get_by_upload_token(t))
 
         # Check objects just inside the deletion time are not deleted
         self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
         self.job.save()
 
         for t in tokens:
-            self.assertIsNotNone(SupportingFile.get_by_token(t))
+            self.assertIsNotNone(SupportingFile.get_by_upload_token(t))
 
         # Check objects just outside the deletion time are deleted
         self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
         self.job.save()
 
         for t in tokens:
-            self.assertIsNone(SupportingFile.get_by_token(t))
+            self.assertIsNone(SupportingFile.get_by_upload_token(t))
 
         self.assertFalse(BilbyJob.objects.filter(id=self.job.id).exists())
 
@@ -439,7 +440,7 @@ class TestSupportingFile(TestCase):
             sf.save()
 
         for t in tokens:
-            self.assertIsNone(SupportingFile.get_by_token(t))
+            self.assertIsNone(SupportingFile.get_by_upload_token(t))
 
         self.assertTrue(BilbyJob.objects.filter(id=self.job.id).exists())
 
@@ -448,7 +449,7 @@ class TestSupportingFile(TestCase):
         self.job.save()
 
         for t in tokens:
-            self.assertIsNone(SupportingFile.get_by_token(t))
+            self.assertIsNone(SupportingFile.get_by_upload_token(t))
 
         self.assertTrue(BilbyJob.objects.filter(id=self.job.id).exists())
 
@@ -457,6 +458,33 @@ class TestSupportingFile(TestCase):
         self.job.save()
 
         for t in tokens:
-            self.assertIsNone(SupportingFile.get_by_token(t))
+            self.assertIsNone(SupportingFile.get_by_upload_token(t))
 
         self.assertTrue(BilbyJob.objects.filter(id=self.job.id).exists())
+
+    def test_get_by_upload_token_invalid(self):
+        # Test that a supporting file can't be fetched by an invalid token
+        SupportingFile.save_from_parsed(self.job, self.parsed)
+        self.assertIsNone(SupportingFile.get_by_upload_token(str(uuid.uuid4())))
+
+    def test_get_by_download_token_invalid(self):
+        # Test that a supporting file can't be fetched by an invalid token
+        SupportingFile.save_from_parsed(self.job, self.parsed)
+        self.assertIsNone(SupportingFile.get_by_download_token(str(uuid.uuid4())))
+
+    def test_get_by_download_token(self):
+        # Test that it's possible to get a SupportingFile object by the download token.
+        SupportingFile.save_from_parsed(self.job, self.parsed)
+
+        # Get the last inserted SupportingFile
+        sf = SupportingFile.objects.last()
+
+        # This file is not uploaded so get_by_download_token should return None
+        self.assertIsNone(SupportingFile.get_by_download_token(sf.download_token))
+
+        # Mark the supporting file as uploaded
+        sf.upload_token = None
+        sf.save()
+
+        # Now the supporting file should be returned by get_by_download_token
+        self.assertEquals(SupportingFile.get_by_download_token(sf.download_token).id, sf.id)
