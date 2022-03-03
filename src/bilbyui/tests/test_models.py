@@ -332,7 +332,10 @@ class TestSupportingFile(TestCase):
 
         for token in supporting_file_tokens:
             self.assertTrue(
-                SupportingFile.objects.filter(upload_token=token['token'], file_name=Path(token['file_path']).name).exists()
+                SupportingFile.objects.filter(
+                    upload_token=token['token'],
+                    file_name=Path(token['file_path']).name
+                ).exists()
             )
 
     def test_pruning(self):
