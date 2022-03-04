@@ -65,7 +65,7 @@
     "url-loader": "^4.1.1",
     "webpack": "^5.25.1",
     "webpack-cli": "^4.5.0",
-    "webpack-dev-server": "^4.7.4",
+    "webpack-dev-server": "^3.11.2",
     "yup": "^0.32.9"
   }
 }
