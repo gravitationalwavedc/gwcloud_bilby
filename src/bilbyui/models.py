@@ -294,8 +294,10 @@ class SupportingFile(models.Model):
     key = models.TextField(null=True)
     # The original file name (WITHOUT A PATH)
     file_name = models.TextField()
-    # The file upload token
+    # The file upload token. This token is set to None once the supporting file has been uploaded
     upload_token = models.UUIDField(unique=True, null=True, default=uuid.uuid4, db_index=True)
+    # The file download token
+    download_token = models.UUIDField(unique=True, default=uuid.uuid4, db_index=True)
 
     @classmethod
     def save_from_parsed(cls, bilby_job, supporting_files):
@@ -343,25 +345,37 @@ class SupportingFile(models.Model):
         return result_files
 
     @classmethod
-    def get_by_token(cls, file_token):
+    def get_by_upload_token(cls, token):
         """
-        Retrieves the SupportingFile object matching the provided token. Returns None if the token doesn't exist or
-        the bilby job's file uploads have expired.
+        Retrieves the SupportingFile object matching the provided upload token. Returns None if the token doesn't
+        exist or the bilby job's file uploads have expired.
         """
         BilbyJob.prune_supporting_files_jobs()
 
-        inst = cls.objects.filter(upload_token=file_token)
+        inst = cls.objects.filter(upload_token=token)
         if not inst.exists():
             return None
 
         return inst.first()
 
     @classmethod
-    def get_unuploaded_support_files(cls, job):
+    def get_unuploaded_supporting_files(cls, job):
         """
         Retrieves all supporting files that have not yet been uploaded for the specified job
         """
         return SupportingFile.objects.filter(job=job, upload_token__isnull=False)
+
+    @classmethod
+    def get_by_download_token(cls, token):
+        """
+        Retrieves the SupportingFile object matching the provided download token. Returns None if the token doesn't
+        exist or the file is not yet uploaded.
+        """
+        inst = cls.objects.filter(download_token=token, upload_token__isnull=True)
+        if not inst.exists():
+            return None
+
+        return inst.first()
 
 
 class IniKeyValue(models.Model):

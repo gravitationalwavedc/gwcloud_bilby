@@ -509,22 +509,7 @@ def upload_bilby_job(upload_token, details, job_file):
         return bilby_job
 
 
-def file_download(request):
-    # Get the file token from the request and make sure it's real
-    token = request.GET.get('fileId', None)
-    if not token:
-        raise Http404
-
-    # Try to get the file path object with the specified token
-    try:
-        fdl = FileDownloadToken.get_by_token(token)
-    except ValidationError:
-        raise Http404
-
-    # Check that a FileDownloadToken object was actually found
-    if not fdl:
-        raise Http404
-
+def file_download_job_file(request, fdl):
     # Get the job path
     job_dir = fdl.job.get_upload_directory()
 
@@ -543,6 +528,48 @@ def file_download(request):
         filename=os.path.basename(file_path),
         content_type='application/octet-stream'
     )
+
+
+def file_download_supporting_file(request, supporting_file):
+    # Get the supporting file path
+    job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id)
+
+    # Make sure that there is no leading slash on the file path
+    file_path = job_dir / str(supporting_file.id)
+
+    # Use a django file response object to stream the file back to the client
+    return FileResponse(
+        open(file_path, 'rb'),
+        as_attachment='forceDownload' in request.GET,
+        filename=supporting_file.file_name,
+        content_type='application/octet-stream'
+    )
+
+
+def file_download(request):
+    # Get the file token from the request and make sure it's real
+    token = request.GET.get('fileId', None)
+    if not token:
+        raise Http404
+
+    try:
+        # First try the token as a file download token
+        fdl = FileDownloadToken.get_by_token(token)
+
+        # Was a file found with this token?
+        if fdl:
+            return file_download_job_file(request, fdl)
+
+        # Next try the token as a supporting file token
+        supporting_file = SupportingFile.get_by_download_token(token)
+
+        # Was a file found with this token?
+        if supporting_file:
+            return file_download_supporting_file(request, supporting_file)
+
+        raise Http404
+    except ValidationError:
+        raise Http404
 
 
 def create_event_id(user, event_id, trigger_id=None, nickname=None, is_ligo_event=False):
@@ -589,7 +616,7 @@ def upload_supporting_file(upload_token, uploaded_supporting_file):
     upload_token.save()
 
     # Check if there are any supporting uploads left for this job and submit the job if required
-    if not SupportingFile.get_unuploaded_support_files(upload_token.job).exists():
+    if not SupportingFile.get_unuploaded_supporting_files(upload_token.job).exists():
         # All supporting files have been uploaded, now launch the job
         upload_token.job.submit()
 

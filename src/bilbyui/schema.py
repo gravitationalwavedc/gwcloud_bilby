@@ -548,7 +548,7 @@ class UploadSupportingFileMutation(relay.ClientIDMutation):
     def mutate_and_get_payload(cls, root, info, file_token, supporting_file):
         # Get the token being used to perform the upload - this will return None if the token doesn't exist or
         # if the bilby job is expired
-        token = SupportingFile.get_by_token(file_token)
+        token = SupportingFile.get_by_upload_token(file_token)
         if not token:
             raise GraphQLError("Supporting file upload token is invalid or expired.")
 
