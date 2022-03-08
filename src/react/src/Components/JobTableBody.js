@@ -30,7 +30,7 @@ const JobTableBody = ({data, myJobs, match, router}) =>
                     </Col>
                 </Row>) : 
             <Row>
-                <Col>Create a new job or try searching `&apos`Any time`&apos`.</Col>
+                <Col>Create a new job or try searching &apos;Any time&apos;.</Col>
             </Row>
         }
     </>;
