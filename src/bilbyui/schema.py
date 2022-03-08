@@ -1,3 +1,4 @@
+from django.utils import timezone
 from decimal import Decimal
 
 from django.conf import settings
@@ -171,6 +172,7 @@ class BilbyPublicJobNode(graphene.ObjectType):
     user = graphene.String()
     name = graphene.String()
     job_status = graphene.Field(JobStatusType)
+    event_id = graphene.Field(EventIDType)
     labels = graphene.List(LabelType)
     description = graphene.String()
     timestamp = graphene.String()
@@ -239,13 +241,16 @@ class Query(object):
     def resolve_public_bilby_jobs(self, info, **kwargs):
         # Perform the database search
         success, jobs = perform_db_search(info.context.user, kwargs)
+
         if not success:
-            return []
+           return []
 
         # Parse the result in to graphql objects
         result = []
+
         for job in jobs:
             bilby_job = BilbyJob.get_by_id(job['job']['id'], info.context.user)
+            
             result.append(
                 BilbyPublicJobNode(
                     user=f"{job['user']['firstName']} {job['user']['lastName']}",
@@ -258,6 +263,7 @@ class Query(object):
                         number=JobStatus.COMPLETED if bilby_job.is_uploaded_job else job['history'][0]['state'],
                         date=bilby_job.creation_time if bilby_job.is_uploaded_job else job['history'][0]['timestamp']
                     ),
+                    event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
                     labels=bilby_job.labels.all(),
                     timestamp=bilby_job.creation_time if bilby_job.is_uploaded_job else job['history'][0]['timestamp'],
                     id=to_global_id("BilbyJobNode", job['job']['id'])
