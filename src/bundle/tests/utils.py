@@ -1,3 +1,5 @@
+import contextlib
+import os
 from tempfile import NamedTemporaryFile
 
 from bilby_pipe.parser import create_parser
@@ -26,3 +28,13 @@ def args_to_bilby_ini(args):
         ini_string = f.read()
 
     return ini_string
+
+
+@contextlib.contextmanager
+def cd(path):
+    cwd = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(cwd)
