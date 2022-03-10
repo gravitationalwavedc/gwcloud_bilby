@@ -49,7 +49,7 @@ class TestSupportingFiles(TestCase):
         self.responses.add(
             responses.GET,
             f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
-            body=open(Path().resolve() / 'data/psd.txt', 'rb').read(),
+            body=open(Path(__file__).parent.resolve() / 'data/psd.txt', 'rb').read(),
             status=200
         )
 
@@ -85,7 +85,7 @@ class TestSupportingFiles(TestCase):
         self.responses.add(
             responses.GET,
             f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
-            body=open(Path().resolve() / 'data/psd.txt', 'rb').read(),
+            body=open(Path(__file__).parent.resolve() / 'data/psd.txt', 'rb').read(),
             status=200
         )
 
@@ -93,7 +93,7 @@ class TestSupportingFiles(TestCase):
         self.responses.add(
             responses.GET,
             f"https://gwcloud.org.au/bilby/file_download/?fileId={token2}",
-            body=open(Path().resolve() / 'data/psd.txt', 'rb').read(),
+            body=open(Path(__file__).parent.resolve() / 'data/psd.txt', 'rb').read(),
             status=200
         )
 
@@ -141,7 +141,7 @@ class TestSupportingFiles(TestCase):
         self.responses.add(
             responses.GET,
             f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
-            body=open(Path().resolve() / 'data/psd.txt', 'rb').read(),
+            body=open(Path(__file__).parent.resolve() / 'data/psd.txt', 'rb').read(),
             status=200
         )
 
@@ -149,7 +149,7 @@ class TestSupportingFiles(TestCase):
         self.responses.add(
             responses.GET,
             f"https://gwcloud.org.au/bilby/file_download/?fileId={token2}",
-            body=open(Path().resolve() / 'data/psd.txt', 'rb').read(),
+            body=open(Path(__file__).parent.resolve() / 'data/psd.txt', 'rb').read(),
             status=200
         )
 
@@ -157,7 +157,7 @@ class TestSupportingFiles(TestCase):
         self.responses.add(
             responses.GET,
             f"https://gwcloud.org.au/bilby/file_download/?fileId={token3}",
-            body=open(Path().resolve() / 'data/psd.txt', 'rb').read(),
+            body=open(Path(__file__).parent.resolve() / 'data/psd.txt', 'rb').read(),
             status=200
         )
 
@@ -411,7 +411,7 @@ class TestSupportingFiles(TestCase):
         self.responses.add(
             responses.GET,
             f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
-            body=open(Path().resolve() / 'data/gps_file_for_timeslides.txt', 'rb').read(),
+            body=open(Path(__file__).parent.resolve() / 'data/gps_file_for_timeslides.txt', 'rb').read(),
             status=200
         )
 
@@ -419,7 +419,7 @@ class TestSupportingFiles(TestCase):
         self.responses.add(
             responses.GET,
             f"https://gwcloud.org.au/bilby/file_download/?fileId={token2}",
-            body=open(Path().resolve() / 'data/timeslides.txt', 'rb').read(),
+            body=open(Path(__file__).parent.resolve() / 'data/timeslides.txt', 'rb').read(),
             status=200
         )
 
@@ -462,7 +462,7 @@ class TestSupportingFiles(TestCase):
         self.responses.add(
             responses.GET,
             f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
-            body=open(Path().resolve() / 'data/test_injection.json', 'rb').read(),
+            body=open(Path(__file__).parent.resolve() / 'data/test_injection.json', 'rb').read(),
             status=200
         )
 
