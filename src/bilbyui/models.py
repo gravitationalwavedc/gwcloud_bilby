@@ -264,10 +264,24 @@ class BilbyJob(models.Model):
         return request_file_list(self, path, recursive)
 
     def as_json(self):
+        """
+        Converts this job in to a json blob that can be submitted to the bundle for submission
+        """
+        # Iterate over any supporting files and generate the supporting file details
+        supporting_file_details = []
+        for supporting_file in self.supportingfile_set.all():
+            supporting_file_details.append({
+                'type': supporting_file.file_type,
+                'key': supporting_file.key,
+                'file_name': supporting_file.file_name,
+                'token': supporting_file.download_token
+            })
+
         return dict(
             name=self.name,
             description=self.description,
-            ini_string=self.ini_string
+            ini_string=self.ini_string,
+            supporting_files=supporting_file_details
         )
 
 
@@ -283,7 +297,7 @@ class SupportingFile(models.Model):
     GPS = "gps"
     TIME_SLIDE = "tsl"
     INJECTION = "inj"
-    NUMERICAL_RELATIVITY = 'nmr'
+    NUMERICAL_RELATIVITY = "nmr"
 
     job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE, db_index=True)
     # What type of supporting file this is
