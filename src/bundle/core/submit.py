@@ -56,14 +56,13 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
     for supporting_file in supporting_files:
         # Make sure that the output directory exists for the supporting file type
         supporting_file_dir = Path(working_directory) / 'supporting_files' / supporting_file['type']
-        os.makedirs(str(supporting_file_dir), exist_ok=True)
+        supporting_file_dir.mkdir(exist_ok=True, parents=True)
 
         # Request the file from the GWCloud and write it to disk
         file_download_url = f"https://gwcloud.org.au/bilby/file_download/?fileId={supporting_file['token']}"
         response = requests.get(file_download_url, allow_redirects=True)
         supporting_file_path = supporting_file_dir / supporting_file['file_name']
-        with open(supporting_file_path, 'wb') as f:
-            f.write(response.content)
+        supporting_file_path.write_bytes(response.content)
 
         # Finally prepare the bilby args
         file_type_map = {
