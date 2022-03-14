@@ -1,3 +1,4 @@
+import json
 import uuid
 from pathlib import Path
 
@@ -55,15 +56,15 @@ class TestBilbyJobModel(TestCase):
             ordered=False
         )
 
-    def test_as_json_no_supporting_files(self):
-        params = self.job.as_json()
+    def test_as_dict_no_supporting_files(self):
+        params = self.job.as_dict()
 
         self.assertEqual(params['name'], self.job.name)
         self.assertEqual(params['description'], self.job.description)
         self.assertEqual(params['ini_string'], self.job.ini_string)
         self.assertEqual(params['supporting_files'], [])
 
-    def test_as_json_supporting_files(self):
+    def test_as_dict_supporting_files(self):
         supporting_file = SupportingFile.objects.create(
             job=self.job,
             file_type=SupportingFile.PRIOR,
@@ -71,7 +72,10 @@ class TestBilbyJobModel(TestCase):
             file_name='test.prior'
         )
 
-        params = self.job.as_json()
+        params = self.job.as_dict()
+
+        # Make sure the params can be encoded as json
+        json.dumps(params)
 
         self.assertEqual(params['name'], self.job.name)
         self.assertEqual(params['description'], self.job.description)
@@ -80,7 +84,7 @@ class TestBilbyJobModel(TestCase):
             'type': supporting_file.file_type,
             'key': supporting_file.key,
             'file_name': supporting_file.file_name,
-            'token': supporting_file.download_token
+            'token': str(supporting_file.download_token)
         })
 
         supporting_file2 = SupportingFile.objects.create(
@@ -90,7 +94,8 @@ class TestBilbyJobModel(TestCase):
             file_name='test.calib'
         )
 
-        params = self.job.as_json()
+        params = self.job.as_dict()
+        json.dumps(params)
 
         self.assertEqual(params['name'], self.job.name)
         self.assertEqual(params['description'], self.job.description)
@@ -99,13 +104,13 @@ class TestBilbyJobModel(TestCase):
             'type': supporting_file.file_type,
             'key': supporting_file.key,
             'file_name': supporting_file.file_name,
-            'token': supporting_file.download_token
+            'token': str(supporting_file.download_token)
         })
         self.assertDictEqual(params['supporting_files'][1], {
             'type': supporting_file2.file_type,
             'key': supporting_file2.key,
             'file_name': supporting_file2.file_name,
-            'token': supporting_file2.download_token
+            'token': str(supporting_file2.download_token)
         })
 
 

@@ -242,7 +242,7 @@ class BilbyJob(models.Model):
 
     def submit(self):
         # Create the parameter json
-        job_params = self.as_json()
+        job_params = self.as_dict()
 
         # Ask the job controller to submit the job
         result = submit_job(self.user_id, job_params, self.cluster)
@@ -263,9 +263,9 @@ class BilbyJob(models.Model):
     def get_file_list(self, path='', recursive=True):
         return request_file_list(self, path, recursive)
 
-    def as_json(self):
+    def as_dict(self):
         """
-        Converts this job in to a json blob that can be submitted to the bundle for submission
+        Converts this job in to a dictionary that can be submitted to the bundle for submission
         """
         # Iterate over any supporting files and generate the supporting file details
         supporting_file_details = []
@@ -274,7 +274,7 @@ class BilbyJob(models.Model):
                 'type': supporting_file.file_type,
                 'key': supporting_file.key,
                 'file_name': supporting_file.file_name,
-                'token': supporting_file.download_token
+                'token': str(supporting_file.download_token)
             })
 
         return dict(
