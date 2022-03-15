@@ -1,12 +1,12 @@
 import React from 'react';
 import JobBadges from './JobBadges';
-import { Row, Col, Badge } from 'react-bootstrap';
+import { Row, Container, Col, Badge } from 'react-bootstrap';
 import Link from 'found/Link';
 import EventIDCell from './EventIDCell';
 import JobNameCell from './JobNameCell';
 
 const JobTableBody = ({data, myJobs, match, router}) => 
-    <>
+    <Container fluid>
         {data && data.edges.length > 0 ? 
             data.edges.map(({node}) => 
                 <Row key={node.id} className="mb-4 align-items-center">
@@ -33,6 +33,6 @@ const JobTableBody = ({data, myJobs, match, router}) =>
                 <Col>Create a new job or try searching &apos;Any time&apos;.</Col>
             </Row>
         }
-    </>;
+    </Container>;
 
 export default JobTableBody;

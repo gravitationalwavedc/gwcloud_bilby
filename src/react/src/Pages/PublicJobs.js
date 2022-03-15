@@ -43,8 +43,12 @@ const PublicJobs = ({data, match, router, relay}) => {
 
     return (
         <Container fluid>
-            <Col md={{offset: 1, span:10}}>
-                <JobsHeading  match={match} router={router}/>
+            <Col md={{offset: 1, span:10}} className="mb-5">
+                <JobsHeading 
+                    heading="Public Jobs"
+                    link={{text: 'Swith to my jobs', path: '/bilby/job-list/'}}
+                    match={match}
+                    router={router}/>
                 <Card className="gw-form-card">
                     <Card.Body>
                         <Form onSubmit={e => e.preventDefault()}>
@@ -89,21 +93,18 @@ const PublicJobs = ({data, match, router, relay}) => {
                                 </Col>
                             </Form.Row>
                         </Form>
-                        <Row className="mt-4">
-                            <Col>
-                                <JobTable
-                                    data={data.publicBilbyJobs} 
-                                    setOrder={setOrder} 
-                                    order={order} 
-                                    setDirection={setDirection} 
-                                    direction={direction}
-                                    match={match}
-                                    router={router}
-                                    hasMore={relay.hasMore()}
-                                    loadMore={loadMore}
-                                />
-                            </Col>
-                        </Row>
+                        <JobTable
+                            data={data.publicBilbyJobs} 
+                            setOrder={setOrder} 
+                            order={order} 
+                            setDirection={setDirection} 
+                            direction={direction}
+                            match={match}
+                            router={router}
+                            hasMore={relay.hasMore()}
+                            loadMore={loadMore}
+                            className="mt-4"
+                        />
                     </Card.Body>
                 </Card>
             </Col>

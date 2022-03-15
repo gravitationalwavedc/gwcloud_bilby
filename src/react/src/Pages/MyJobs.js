@@ -41,10 +41,10 @@ const MyJobs = ({data, match, router,relay}) => {
     ];
 
     return (
-        <Container fluid>
+        <Container fluid className="pb-3">
             <Col md={{offset: 1, span: 10}}>
                 <h1 className="pt-5 mb-4">
-            My Jobs
+                    My Jobs
                     <span className="float-right">
                         <Link 
                             as={Button}
@@ -54,11 +54,11 @@ const MyJobs = ({data, match, router,relay}) => {
                             match={match}
                             router={router}
                             className="mr-1">
-                Switch to public jobs
+                                Switch to public jobs
                         </Link>
                         <Link as={Button} to='/bilby/job-form/' exact match={match} router={router}>
                             <HiOutlinePlus size={18} className="mb-1 mr-1"/>
-                Start a new job 
+                                Start a new job 
                         </Link>
                     </span>
                 </h1>
@@ -69,7 +69,7 @@ const MyJobs = ({data, match, router,relay}) => {
                                 <Col lg={3}>
                                     <Form.Group controlId="searchJobs" className="form-initial-height">
                                         <Form.Label srOnly>
-                    Search
+                                            Search
                                         </Form.Label>
                                         <InputGroup>
                                             <InputGroup.Prepend>
@@ -87,7 +87,7 @@ const MyJobs = ({data, match, router,relay}) => {
                                 <Col lg={2}>
                                     <Form.Group controlId="timeRange" className="form-initial-height">
                                         <Form.Label srOnly>
-                    Time
+                                            Time
                                         </Form.Label>
                                         <Form.Control 
                                             as="select" 
@@ -147,6 +147,11 @@ export default createPaginationContainer(MyJobs,
                             }
                             labels {
                                 name
+                            }
+                            eventId {
+                                triggerId
+                                eventId
+                                nickname
                             }
                         }
                     }
