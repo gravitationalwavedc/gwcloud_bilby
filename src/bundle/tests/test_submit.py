@@ -73,10 +73,10 @@ class TestSubmit(TestCase):
 
             update_job_result = None
 
-            working_directory_mock_return = os.path.join(td, 'job')
+            working_directory_mock_return = td
 
             # Configure the popen data generation mock
-            popen_command = f'/bin/bash {td}/job/submit/test-real_data0_12345678-0_generation.sh'
+            popen_command = f'/bin/bash {td}/submit/test-real_data0_12345678-0_generation.sh'
             self.popen.set_command(
                 popen_command,
                 stdout=b'stdout test',
@@ -104,7 +104,7 @@ class TestSubmit(TestCase):
             self.assertEqual(update_job_result['job_id'], get_unique_job_id_mock_return)
             self.assertEqual(update_job_result['submit_id'], submit_mock_return)
             self.assertEqual(update_job_result['working_directory'], td)
-            self.assertEqual(update_job_result['submit_directory'], 'job/submit')
+            self.assertEqual(update_job_result['submit_directory'], './submit')
 
             # Check that the job script generation successfully called the the popen command
             process = call.Popen(popen_command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, cwd=td, shell=True)
@@ -117,46 +117,46 @@ class TestSubmit(TestCase):
 
             # Check the stdout and stderr logs for the data generation step are correctly written to their respective
             # log files
-            with open(os.path.join(td, 'job', 'log_data_generation', 'test-real_data0_12345678-0_generation.out'),
+            with open(os.path.join(td, 'log_data_generation', 'test-real_data0_12345678-0_generation.out'),
                       'rb') as f:
                 self.assertEqual(f.read(), b'stdout test')
 
-            with open(os.path.join(td, 'job', 'log_data_generation', 'test-real_data0_12345678-0_generation.err'),
+            with open(os.path.join(td, 'log_data_generation', 'test-real_data0_12345678-0_generation.err'),
                       'rb') as f:
                 self.assertEqual(f.read(), b'stderr test')
 
             # Check that the master slurm script was correctly modified
-            with open(os.path.join(td, 'job', 'submit', 'slurm_test-real_master.sh'), 'r') as f:
+            with open(os.path.join(td, 'submit', 'slurm_test-real_master.sh'), 'r') as f:
                 self.assertEqual(
                     f.read(),
                     """#!/bin/bash
 #SBATCH --time=00:10:00
-#SBATCH --output=job/submit/test-real_master_slurm.out
-#SBATCH --error=job/submit/test-real_master_slurm.err
+#SBATCH --output=./submit/test-real_master_slurm.out
+#SBATCH --error=./submit/test-real_master_slurm.err
 
-jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-name=test-real_data0_12345678-0_analysis_H1_dynesty  --output=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty.out --error=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty.err job/submit/test-real_data0_12345678-0_analysis_H1_dynesty.sh))
+jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-name=test-real_data0_12345678-0_analysis_H1_dynesty  --output=log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty.out --error=log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty.err ./submit/test-real_data0_12345678-0_analysis_H1_dynesty.sh))
 
-echo "jid1 ${jid1[-1]}" >> job/submit/slurm_ids
+echo "jid1 ${jid1[-1]}" >> ./submit/slurm_ids
 
-jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=1:00:00 --job-name=test-real_data0_12345678-0_analysis_H1_dynesty_final_result --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.out --error=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.err job/submit/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.sh))
+jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=1:00:00 --job-name=test-real_data0_12345678-0_analysis_H1_dynesty_final_result --dependency=afterok:${jid1[-1]} --output=log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.out --error=log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.err ./submit/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.sh))
 
-echo "jid2 ${jid2[-1]}" >> job/submit/slurm_ids
+echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
 
-jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-real_data0_12345678-0_analysis_H1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_plot.out --error=job/log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_plot.err job/submit/test-real_data0_12345678-0_analysis_H1_dynesty_plot.sh))
+jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-real_data0_12345678-0_analysis_H1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_plot.out --error=log_data_analysis/test-real_data0_12345678-0_analysis_H1_dynesty_plot.err ./submit/test-real_data0_12345678-0_analysis_H1_dynesty_plot.sh))
 
-echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
+echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
 """  # noqa
                 )
 
                 # Check that the ini file was correctly updated
-                with open(os.path.join(td, 'job', 'test-real_config_complete.ini'), 'r') as f:
+                with open(os.path.join(td, 'test-real_config_complete.ini'), 'r') as f:
                     from core.submit import bilby_ini_to_args
                     args = bilby_ini_to_args(f.read())
 
                 self.assertEqual(args.label, 'test-real')
                 self.assertEqual(args.detectors, ["'H1'"])
                 self.assertEqual(args.trigger_time, '12345678')
-                self.assertEqual(args.outdir, os.path.join(td, 'job'))
+                self.assertEqual(args.outdir, td)
                 self.assertEqual(args.periodic_restart_time, 2147483647)
                 self.assertEqual(args.scheduler, settings.scheduler.value)
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
@@ -188,10 +188,10 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
 
             update_job_result = None
 
-            working_directory_mock_return = os.path.join(td, 'job')
+            working_directory_mock_return = td
 
             # Configure the popen data generation mock
-            popen_command = f'/bin/bash {td}/job/submit/test-simulated_data0_12345678-0_generation.sh'
+            popen_command = f'/bin/bash {td}/submit/test-simulated_data0_12345678-0_generation.sh'
             self.popen.set_command(
                 popen_command,
                 stdout=b'stdout test',
@@ -219,7 +219,7 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
             self.assertEqual(update_job_result['job_id'], get_unique_job_id_mock_return)
             self.assertEqual(update_job_result['submit_id'], submit_mock_return)
             self.assertEqual(update_job_result['working_directory'], td)
-            self.assertEqual(update_job_result['submit_directory'], 'job/submit')
+            self.assertEqual(update_job_result['submit_directory'], './submit')
 
             # Check that the job script generation did not call the the popen command
             compare(self.popen.all_calls, expected=[])
@@ -237,34 +237,34 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
             )
 
             # Check that the master slurm script was correctly modified
-            with open(os.path.join(td, 'job', 'submit', 'slurm_test-simulated_master.sh'), 'r') as f:
+            with open(os.path.join(td, 'submit', 'slurm_test-simulated_master.sh'), 'r') as f:
                 self.assertEqual(
                     f.read(),
                     """#!/bin/bash
 #SBATCH --time=00:10:00
-#SBATCH --output=job/submit/test-simulated_master_slurm.out
-#SBATCH --error=job/submit/test-simulated_master_slurm.err
+#SBATCH --output=./submit/test-simulated_master_slurm.out
+#SBATCH --error=./submit/test-simulated_master_slurm.err
 
-jid0=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=8G --time=1:00:00 --job-name=test-simulated_data0_87654321-0_generation  --output=job/log_data_generation/test-simulated_data0_87654321-0_generation.out --error=job/log_data_generation/test-simulated_data0_87654321-0_generation.err job/submit/test-simulated_data0_87654321-0_generation.sh))
+jid0=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=8G --time=1:00:00 --job-name=test-simulated_data0_87654321-0_generation  --output=log_data_generation/test-simulated_data0_87654321-0_generation.out --error=log_data_generation/test-simulated_data0_87654321-0_generation.err ./submit/test-simulated_data0_87654321-0_generation.sh))
 
-echo "jid0 ${jid0[-1]}" >> job/submit/slurm_ids
+echo "jid0 ${jid0[-1]}" >> ./submit/slurm_ids
 
-jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1_dynesty --dependency=afterok:${jid0[-1]} --output=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty.out --error=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty.err job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty.sh))
+jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1_dynesty --dependency=afterok:${jid0[-1]} --output=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty.out --error=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty.err ./submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty.sh))
 
-echo "jid1 ${jid1[-1]}" >> job/submit/slurm_ids
+echo "jid1 ${jid1[-1]}" >> ./submit/slurm_ids
 
-jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=1:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.out --error=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.err job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.sh))
+jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=1:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result --dependency=afterok:${jid1[-1]} --output=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.out --error=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.err ./submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.sh))
 
-echo "jid2 ${jid2[-1]}" >> job/submit/slurm_ids
+echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
 
-jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.out --error=job/log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.err job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.sh))
+jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.out --error=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.err ./submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.sh))
 
-echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
+echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
 """  # noqa
                 )
 
                 # Check that the ini file was correctly updated
-                with open(os.path.join(td, 'job', 'test-simulated_config_complete.ini'), 'r') as f:
+                with open(os.path.join(td, 'test-simulated_config_complete.ini'), 'r') as f:
                     from core.submit import bilby_ini_to_args
                     args = bilby_ini_to_args(f.read())
 
@@ -273,7 +273,7 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
                 self.assertEqual(args.trigger_time, '87654321')
                 self.assertEqual(args.n_simulation, 1)
                 self.assertEqual(args.gaussian_noise, True)
-                self.assertEqual(args.outdir, os.path.join(td, 'job'))
+                self.assertEqual(args.outdir, td)
                 self.assertEqual(args.periodic_restart_time, 2147483647)
                 self.assertEqual(args.scheduler, settings.scheduler.value)
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
@@ -305,7 +305,7 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
 
             update_job_result = None
 
-            working_directory_mock_return = os.path.join(td, 'job')
+            working_directory_mock_return = td
 
             # Configure the popen data generation mock
             popen_command = f'/bin/bash {td}/submit/test-simulated_data0_12345678-0_generation.sh'
@@ -350,34 +350,34 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
             )
 
             # Check that the master slurm script was correctly modified
-            with open(os.path.join(td, 'job', 'submit', 'slurm_test-simulated-submission-failure_master.sh'), 'r') as f:
+            with open(os.path.join(td, 'submit', 'slurm_test-simulated-submission-failure_master.sh'), 'r') as f:
                 self.assertEqual(
                     f.read(),
                     """#!/bin/bash
 #SBATCH --time=00:10:00
-#SBATCH --output=job/submit/test-simulated-submission-failure_master_slurm.out
-#SBATCH --error=job/submit/test-simulated-submission-failure_master_slurm.err
+#SBATCH --output=./submit/test-simulated-submission-failure_master_slurm.out
+#SBATCH --error=./submit/test-simulated-submission-failure_master_slurm.err
 
-jid0=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=8G --time=1:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_generation  --output=job/log_data_generation/test-simulated-submission-failure_data0_11111111-0_generation.out --error=job/log_data_generation/test-simulated-submission-failure_data0_11111111-0_generation.err job/submit/test-simulated-submission-failure_data0_11111111-0_generation.sh))
+jid0=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=8G --time=1:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_generation  --output=log_data_generation/test-simulated-submission-failure_data0_11111111-0_generation.out --error=log_data_generation/test-simulated-submission-failure_data0_11111111-0_generation.err ./submit/test-simulated-submission-failure_data0_11111111-0_generation.sh))
 
-echo "jid0 ${jid0[-1]}" >> job/submit/slurm_ids
+echo "jid0 ${jid0[-1]}" >> ./submit/slurm_ids
 
-jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty --dependency=afterok:${jid0[-1]} --output=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty.out --error=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty.err job/submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty.sh))
+jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty --dependency=afterok:${jid0[-1]} --output=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty.out --error=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty.err ./submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty.sh))
 
-echo "jid1 ${jid1[-1]}" >> job/submit/slurm_ids
+echo "jid1 ${jid1[-1]}" >> ./submit/slurm_ids
 
-jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=1:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result.out --error=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result.err job/submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result.sh))
+jid2=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=1:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result --dependency=afterok:${jid1[-1]} --output=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result.out --error=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result.err ./submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_final_result.sh))
 
-echo "jid2 ${jid2[-1]}" >> job/submit/slurm_ids
+echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
 
-jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.out --error=job/log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.err job/submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.sh))
+jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot --dependency=afterok:${jid1[-1]} --output=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.out --error=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.err ./submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_dynesty_plot.sh))
 
-echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
+echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
 """  # noqa
                 )
 
                 # Check that the ini file was correctly updated
-                with open(os.path.join(td, 'job', 'test-simulated-submission-failure_config_complete.ini'), 'r') as f:
+                with open(os.path.join(td, 'test-simulated-submission-failure_config_complete.ini'), 'r') as f:
                     from core.submit import bilby_ini_to_args
                     args = bilby_ini_to_args(f.read())
 
@@ -386,7 +386,7 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
                 self.assertEqual(args.trigger_time, '11111111')
                 self.assertEqual(args.n_simulation, 1)
                 self.assertEqual(args.gaussian_noise, True)
-                self.assertEqual(args.outdir, os.path.join(td, 'job'))
+                self.assertEqual(args.outdir, td)
                 self.assertEqual(args.periodic_restart_time, 2147483647)
                 self.assertEqual(args.scheduler, settings.scheduler.value)
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
@@ -416,7 +416,7 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
 
             update_job_result = None
 
-            working_directory_mock_return = os.path.join(td, 'job')
+            working_directory_mock_return = td
 
             # Local imports so that the mocks work as expected
             from core.submit import submit
@@ -439,20 +439,20 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
             self.assertEqual(update_job_result['job_id'], get_unique_job_id_mock_return)
             self.assertEqual(update_job_result['submit_id'], submit_mock_return)
             self.assertEqual(update_job_result['working_directory'], td)
-            self.assertEqual(update_job_result['submit_directory'], 'job/submit')
+            self.assertEqual(update_job_result['submit_directory'], './submit')
 
             # Check that the master slurm script was correctly modified
-            with open(os.path.join(td, 'job', 'submit', 'dag_test-real.submit'), 'r') as f:
+            with open(os.path.join(td, 'submit', 'dag_test-real.submit'), 'r') as f:
                 self.assertEqual(
                     f.read(),
-                    """JOB test-real_data0_12345678-0_generation_arg_0 job/submit/test-real_data0_12345678-0_generation.submit
-VARS test-real_data0_12345678-0_generation_arg_0 ARGS="job/test-real_config_complete.ini --label test-real_data0_12345678-0_generation --idx 0 --trigger-time 12345678.0"
-JOB test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 job/submit/test-real_data0_12345678-0_analysis_H1_dynesty.submit
-VARS test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 ARGS="job/test-real_config_complete.ini --detectors H1 --label test-real_data0_12345678-0_analysis_H1_dynesty --data-dump-file job/data/test-real_data0_12345678-0_generation_data_dump.pickle --sampler dynesty"
-JOB test-real_data0_12345678-0_analysis_H1_dynesty_final_result_arg_0 job/submit/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.submit
-VARS test-real_data0_12345678-0_analysis_H1_dynesty_final_result_arg_0 ARGS="--result job/result/test-real_data0_12345678-0_analysis_H1_dynesty_result.json --outdir job/final_result --extension json --max-samples 20000 --lightweight --save"
-JOB test-real_data0_12345678-0_analysis_H1_dynesty_plot_arg_0 job/submit/test-real_data0_12345678-0_analysis_H1_dynesty_plot.submit
-VARS test-real_data0_12345678-0_analysis_H1_dynesty_plot_arg_0 ARGS="--result job/result/test-real_data0_12345678-0_analysis_H1_dynesty_result.json --outdir job/result --corner --marginal --skymap --waveform --format png"
+                    """JOB test-real_data0_12345678-0_generation_arg_0 ./submit/test-real_data0_12345678-0_generation.submit
+VARS test-real_data0_12345678-0_generation_arg_0 ARGS="./test-real_config_complete.ini --label test-real_data0_12345678-0_generation --idx 0 --trigger-time 12345678.0"
+JOB test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 ./submit/test-real_data0_12345678-0_analysis_H1_dynesty.submit
+VARS test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 ARGS="./test-real_config_complete.ini --detectors H1 --label test-real_data0_12345678-0_analysis_H1_dynesty --data-dump-file ./data/test-real_data0_12345678-0_generation_data_dump.pickle --sampler dynesty"
+JOB test-real_data0_12345678-0_analysis_H1_dynesty_final_result_arg_0 ./submit/test-real_data0_12345678-0_analysis_H1_dynesty_final_result.submit
+VARS test-real_data0_12345678-0_analysis_H1_dynesty_final_result_arg_0 ARGS="--result ./result/test-real_data0_12345678-0_analysis_H1_dynesty_result.json --outdir ./final_result --extension json --max-samples 20000 --lightweight --save"
+JOB test-real_data0_12345678-0_analysis_H1_dynesty_plot_arg_0 ./submit/test-real_data0_12345678-0_analysis_H1_dynesty_plot.submit
+VARS test-real_data0_12345678-0_analysis_H1_dynesty_plot_arg_0 ARGS="--result ./result/test-real_data0_12345678-0_analysis_H1_dynesty_result.json --outdir ./result --corner --marginal --skymap --waveform --format png"
 
 #Inter-job dependencies
 Parent test-real_data0_12345678-0_generation_arg_0 Child test-real_data0_12345678-0_analysis_H1_dynesty_arg_0
@@ -461,14 +461,14 @@ Parent test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 Child test-real_data
                 )
 
                 # Check that the ini file was correctly updated
-                with open(os.path.join(td, 'job', 'test-real_config_complete.ini'), 'r') as f:
+                with open(os.path.join(td, 'test-real_config_complete.ini'), 'r') as f:
                     from core.submit import bilby_ini_to_args
                     args = bilby_ini_to_args(f.read())
 
                 self.assertEqual(args.label, 'test-real')
                 self.assertEqual(args.detectors, ["'H1'"])
                 self.assertEqual(args.trigger_time, '12345678')
-                self.assertEqual(args.outdir, os.path.join(td, 'job'))
+                self.assertEqual(args.outdir, td)
                 self.assertEqual(args.periodic_restart_time, 28800)
                 self.assertEqual(args.scheduler, settings.scheduler.value)
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
@@ -501,7 +501,7 @@ Parent test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 Child test-real_data
 
             update_job_result = None
 
-            working_directory_mock_return = os.path.join(td, 'job')
+            working_directory_mock_return = td
 
             # Local imports so that the mocks work as expected
             from core.submit import submit
@@ -524,20 +524,20 @@ Parent test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 Child test-real_data
             self.assertEqual(update_job_result['job_id'], get_unique_job_id_mock_return)
             self.assertEqual(update_job_result['submit_id'], submit_mock_return)
             self.assertEqual(update_job_result['working_directory'], td)
-            self.assertEqual(update_job_result['submit_directory'], 'job/submit')
+            self.assertEqual(update_job_result['submit_directory'], './submit')
 
             # Check that the master slurm script was correctly modified
-            with open(os.path.join(td, 'job', 'submit', 'dag_test-simulated.submit'), 'r') as f:
+            with open(os.path.join(td, 'submit', 'dag_test-simulated.submit'), 'r') as f:
                 self.assertEqual(
                     f.read(),
-                    """JOB test-simulated_data0_87654321-0_generation_arg_0 job/submit/test-simulated_data0_87654321-0_generation.submit
-VARS test-simulated_data0_87654321-0_generation_arg_0 ARGS="job/test-simulated_config_complete.ini --label test-simulated_data0_87654321-0_generation --idx 0 --trigger-time 87654321.0"
-JOB test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0 job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty.submit
-VARS test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0 ARGS="job/test-simulated_config_complete.ini --detectors H1 --detectors V1 --label test-simulated_data0_87654321-0_analysis_H1V1_dynesty --data-dump-file job/data/test-simulated_data0_87654321-0_generation_data_dump.pickle --sampler dynesty"
-JOB test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result_arg_0 job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.submit
-VARS test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result_arg_0 ARGS="--result job/result/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_result.json --outdir job/final_result --extension json --max-samples 20000 --lightweight --save"
-JOB test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot_arg_0 job/submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.submit
-VARS test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot_arg_0 ARGS="--result job/result/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_result.json --outdir job/result --corner --marginal --skymap --waveform --format png"
+                    """JOB test-simulated_data0_87654321-0_generation_arg_0 ./submit/test-simulated_data0_87654321-0_generation.submit
+VARS test-simulated_data0_87654321-0_generation_arg_0 ARGS="./test-simulated_config_complete.ini --label test-simulated_data0_87654321-0_generation --idx 0 --trigger-time 87654321.0"
+JOB test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0 ./submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty.submit
+VARS test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0 ARGS="./test-simulated_config_complete.ini --detectors H1 --detectors V1 --label test-simulated_data0_87654321-0_analysis_H1V1_dynesty --data-dump-file ./data/test-simulated_data0_87654321-0_generation_data_dump.pickle --sampler dynesty"
+JOB test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result_arg_0 ./submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result.submit
+VARS test-simulated_data0_87654321-0_analysis_H1V1_dynesty_final_result_arg_0 ARGS="--result ./result/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_result.json --outdir ./final_result --extension json --max-samples 20000 --lightweight --save"
+JOB test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot_arg_0 ./submit/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot.submit
+VARS test-simulated_data0_87654321-0_analysis_H1V1_dynesty_plot_arg_0 ARGS="--result ./result/test-simulated_data0_87654321-0_analysis_H1V1_dynesty_result.json --outdir ./result --corner --marginal --skymap --waveform --format png"
 
 #Inter-job dependencies
 Parent test-simulated_data0_87654321-0_generation_arg_0 Child test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0
@@ -546,7 +546,7 @@ Parent test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0 Child test-si
                 )
 
                 # Check that the ini file was correctly updated
-                with open(os.path.join(td, 'job', 'test-simulated_config_complete.ini'), 'r') as f:
+                with open(os.path.join(td, 'test-simulated_config_complete.ini'), 'r') as f:
                     from core.submit import bilby_ini_to_args
                     args = bilby_ini_to_args(f.read())
 
@@ -555,7 +555,7 @@ Parent test-simulated_data0_87654321-0_analysis_H1V1_dynesty_arg_0 Child test-si
                 self.assertEqual(args.trigger_time, '87654321')
                 self.assertEqual(args.n_simulation, 1)
                 self.assertEqual(args.gaussian_noise, True)
-                self.assertEqual(args.outdir, os.path.join(td, 'job'))
+                self.assertEqual(args.outdir, td)
                 self.assertEqual(args.periodic_restart_time, 28800)
                 self.assertEqual(args.scheduler, settings.scheduler.value)
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)

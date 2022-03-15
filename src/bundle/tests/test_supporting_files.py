@@ -71,8 +71,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -121,8 +121,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -191,8 +191,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -234,8 +234,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -284,8 +284,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -354,8 +354,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -397,8 +397,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -447,8 +447,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -484,8 +484,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -520,8 +520,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
