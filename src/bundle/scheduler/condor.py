@@ -80,9 +80,9 @@ class CondorScheduler(Scheduler):
         stage = stage[0]
 
         # Get the most recent event and determine the job state
-        event = events[0]
+        latest_event = events[0]
 
-        if event.type == htcondor.JobEventType.SUBMIT:
+        if latest_event.type == htcondor.JobEventType.SUBMIT:
             # The only time a job can be queued is when the most recent job that was submitted was the
             # generation stage, otherwise SUBMIT indicates the job is running
             if stage.endswith('_generation_arg_0'):
@@ -90,30 +90,13 @@ class CondorScheduler(Scheduler):
             else:
                 return JobStatus.RUNNING, "Job is running"
 
-        if event.type == htcondor.JobEventType.EXECUTE:
+        if latest_event.type == htcondor.JobEventType.EXECUTE:
             # EXECUTE is self explanitory.
             return JobStatus.RUNNING, "Job is running"
 
-        if event.type == htcondor.JobEventType.JOB_TERMINATED:
-            # Jobs that terminate normally and have a return value of 0 completed successfully, otherwise
-            # some error has occurred
-            if (event["TerminatedNormally"]):
-                if event['ReturnValue'] != 0:
-                    return JobStatus.ERROR, f"Job terminated with return value {event['ReturnValue']}"
-
-                # Completion status can only be reported if the current job stage is plotting, otherwise
-                # job should continue in running state
-                if stage.endswith('_plot_arg_0'):
-                    return JobStatus.COMPLETED, "All job stages finished successfully"
-                else:
-                    return JobStatus.RUNNING, "Job is running"
-            else:
-                # ???
-                return JobStatus.ERROR, "Job terminated abnormally"
-
         # Bilby jobs may be evicted, which is ok. Bilby jobs which are evicted will resubmit via signal
         # and continue. Held/released jobs are also part of the internal eviction/resubmit process
-        if event.type in [
+        if latest_event.type in [
             htcondor.JobEventType.JOB_EVICTED,
             htcondor.JobEventType.JOB_HELD,
             htcondor.JobEventType.JOB_RELEASED
@@ -121,12 +104,41 @@ class CondorScheduler(Scheduler):
             return JobStatus.RUNNING, "Job is running"
 
         # If the job has been aborted, it's probably been cancelled - mark it as such
-        if event.type == htcondor.JobEventType.JOB_ABORTED:
+        if latest_event.type == htcondor.JobEventType.JOB_ABORTED:
             return JobStatus.CANCELLED, "Job has been aborted"
 
-        print(f"Unexpected job event {event.type}! for working directory {details['working_directory']}")
+        # The only remaining event type we can handle is JOB_TERMINATED, otherwise condor has done something weird
+        if latest_event.type != htcondor.JobEventType.JOB_TERMINATED:
+            print(f"Unexpected job event {latest_event.type}! for working directory {details['working_directory']}")
+            return None, None
 
-        return None, None
+        # Iterate over all submit events in order and find all stages that have been run
+        submitted_stages = {}
+        for event in filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events):
+            notes = event['LogNotes']
+            submitted_stages[event.cluster] = list(filter(lambda x: x.startswith("DAG Node:"), notes.splitlines()))[0]
+
+        plot_started = any(filter(lambda x: x.endswith('_plot_arg_0'), submitted_stages.values()))
+
+        # Remove any stages that have finished, and verify their return codes
+        for event in filter(lambda x: x.type == htcondor.JobEventType.JOB_TERMINATED, events):
+            # Jobs that terminate normally and have a return value of 0 completed successfully, otherwise
+            # some error has occurred
+            if (event["TerminatedNormally"]):
+                if event['ReturnValue'] != 0:
+                    return JobStatus.ERROR, f"Job terminated with return value {latest_event['ReturnValue']}"
+            else:
+                # ???
+                return JobStatus.ERROR, "Job terminated abnormally"
+
+            del submitted_stages[event.cluster]
+
+        # If all submitted stages have finished, and the plotting stage has been submitted, then the job has finished
+        if not len(submitted_stages) and plot_started:
+            return JobStatus.COMPLETED, "All job stages finished successfully"
+
+        # Job is not yet complete
+        return JobStatus.RUNNING, "Job is running"
 
     def cancel(self, job_id, details):
         """
