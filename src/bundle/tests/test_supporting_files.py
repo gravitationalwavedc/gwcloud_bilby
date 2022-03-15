@@ -71,14 +71,14 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'job' / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
             args = self.perform_ini_save_load_cycle(args)
 
-            self.assertDictEqual(args.psd_dict, {'V1': './supporting_files/psd/test.psd'})
+            self.assertDictEqual(args.psd_dict, {'V1': './job/supporting_files/psd/test.psd'})
 
     def test_psd2(self):
         token = str(uuid.uuid4())
@@ -121,8 +121,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'job' / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -131,8 +131,8 @@ class TestSupportingFiles(TestCase):
             self.assertDictEqual(
                 args.psd_dict,
                 {
-                    'V1': './supporting_files/psd/v1.psd',
-                    'H1': './supporting_files/psd/h1.psd'
+                    'V1': './job/supporting_files/psd/v1.psd',
+                    'H1': './job/supporting_files/psd/h1.psd'
                 }
             )
 
@@ -191,8 +191,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'job' / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -201,9 +201,9 @@ class TestSupportingFiles(TestCase):
             self.assertDictEqual(
                 args.psd_dict,
                 {
-                    'V1': './supporting_files/psd/v1.psd',
-                    'H1': './supporting_files/psd/h1.psd',
-                    'L1': './supporting_files/psd/l1.psd',
+                    'V1': './job/supporting_files/psd/v1.psd',
+                    'H1': './job/supporting_files/psd/h1.psd',
+                    'L1': './job/supporting_files/psd/l1.psd',
                 }
             )
 
@@ -234,14 +234,14 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'job' / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
             args = self.perform_ini_save_load_cycle(args)
 
-            self.assertDictEqual(args.spline_calibration_envelope_dict, {'V1': './supporting_files/cal/test.cal'})
+            self.assertDictEqual(args.spline_calibration_envelope_dict, {'V1': './job/supporting_files/cal/test.cal'})
 
     def test_cal2(self):
         token = str(uuid.uuid4())
@@ -284,8 +284,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'job' / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -294,8 +294,8 @@ class TestSupportingFiles(TestCase):
             self.assertDictEqual(
                 args.spline_calibration_envelope_dict,
                 {
-                    'V1': './supporting_files/cal/v1.cal',
-                    'H1': './supporting_files/cal/h1.cal'
+                    'V1': './job/supporting_files/cal/v1.cal',
+                    'H1': './job/supporting_files/cal/h1.cal'
                 }
             )
 
@@ -354,8 +354,8 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'job' / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
@@ -364,9 +364,9 @@ class TestSupportingFiles(TestCase):
             self.assertDictEqual(
                 args.spline_calibration_envelope_dict,
                 {
-                    'V1': './supporting_files/cal/v1.cal',
-                    'H1': './supporting_files/cal/h1.cal',
-                    'L1': './supporting_files/cal/l1.cal',
+                    'V1': './job/supporting_files/cal/v1.cal',
+                    'H1': './job/supporting_files/cal/h1.cal',
+                    'L1': './job/supporting_files/cal/l1.cal',
                 }
             )
 
@@ -397,14 +397,14 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'job' / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
             args = self.perform_ini_save_load_cycle(args)
 
-            self.assertEqual(args.prior_file, './supporting_files/pri/test.prior')
+            self.assertEqual(args.prior_file, './job/supporting_files/pri/test.prior')
 
     def test_timeslide_gps_file(self):
         token = str(uuid.uuid4())
@@ -447,15 +447,15 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'job' / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
             args = self.perform_ini_save_load_cycle(args)
 
-            self.assertTrue(args.gps_file.endswith('supporting_files/gps/test.gps'))
-            self.assertTrue(args.timeslide_file.endswith('supporting_files/tsl/test.timeslide'))
+            self.assertTrue(args.gps_file.endswith('job/supporting_files/gps/test.gps'))
+            self.assertTrue(args.timeslide_file.endswith('job/supporting_files/tsl/test.timeslide'))
 
     def test_injection_file(self):
         token = str(uuid.uuid4())
@@ -484,14 +484,14 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'job' / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
             args = self.perform_ini_save_load_cycle(args)
 
-            self.assertTrue(args.injection_file.endswith('supporting_files/inj/test_injection.json'))
+            self.assertTrue(args.injection_file.endswith('job/supporting_files/inj/test_injection.json'))
 
     def test_numerical_relativity_file(self):
         token = str(uuid.uuid4())
@@ -520,11 +520,11 @@ class TestSupportingFiles(TestCase):
             for supporting_file in supporting_files:
                 self.assertTrue(
                     (
-                            Path(working_directory)
-                            / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                            Path(working_directory) /
+                            'job' / 'supporting_files' / supporting_file['type'] / supporting_file['file_name']
                     ).is_file()
                 )
 
             args = self.perform_ini_save_load_cycle(args)
 
-            self.assertEqual(args.numerical_relativity_file, './supporting_files/nmr/test.nmr')
+            self.assertEqual(args.numerical_relativity_file, './job/supporting_files/nmr/test.nmr')

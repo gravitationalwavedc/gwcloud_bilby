@@ -55,7 +55,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
     """
     for supporting_file in supporting_files:
         # Make sure that the output directory exists for the supporting file type
-        supporting_file_dir = Path(working_directory) / 'supporting_files' / supporting_file['type']
+        supporting_file_dir = Path(working_directory) / 'job'/ 'supporting_files' / supporting_file['type']
         supporting_file_dir.mkdir(exist_ok=True, parents=True)
 
         # Request the file from the GWCloud and write it to disk
@@ -365,14 +365,14 @@ def create_working_directory(details):
     :return: The working (output) directory for the job
     """
     # Get the working directory
-    wk_dir = working_directory(details)
+    wk_dir = Path(working_directory(details)) / 'job'
 
     # Create the working directory
-    os.makedirs(wk_dir, exist_ok=True)
+    wk_dir.mkdir(parents=True)
 
     # Since working_directory includes the /job/ postfix, we need to trim it from the end so that our working
     # directory is really the parent directory.
-    wk_dir = os.path.abspath(os.path.join(wk_dir, '..'))
+    wk_dir = str(wk_dir.parent)
 
     # Change to the working directory
     os.chdir(wk_dir)

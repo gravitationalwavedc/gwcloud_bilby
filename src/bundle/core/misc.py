@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import settings
 from scheduler.condor import CondorScheduler
@@ -8,7 +9,7 @@ from settings import job_directory
 
 
 def working_directory(details, *args, **kwargs):
-    return os.path.join(job_directory, str(details['job_id']), 'job')
+    str(Path(job_directory, str(details['job_id'])))
 
 
 def get_scheduler():

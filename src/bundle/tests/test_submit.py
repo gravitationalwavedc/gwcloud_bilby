@@ -73,7 +73,7 @@ class TestSubmit(TestCase):
 
             update_job_result = None
 
-            working_directory_mock_return = os.path.join(td, 'job')
+            working_directory_mock_return = td
 
             # Configure the popen data generation mock
             popen_command = f'/bin/bash {td}/job/submit/test-real_data0_12345678-0_generation.sh'
@@ -188,7 +188,7 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
 
             update_job_result = None
 
-            working_directory_mock_return = os.path.join(td, 'job')
+            working_directory_mock_return = td
 
             # Configure the popen data generation mock
             popen_command = f'/bin/bash {td}/job/submit/test-simulated_data0_12345678-0_generation.sh'
@@ -305,7 +305,7 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
 
             update_job_result = None
 
-            working_directory_mock_return = os.path.join(td, 'job')
+            working_directory_mock_return = td
 
             # Configure the popen data generation mock
             popen_command = f'/bin/bash {td}/submit/test-simulated_data0_12345678-0_generation.sh'
@@ -416,7 +416,7 @@ echo "jid3 ${jid3[-1]}" >> job/submit/slurm_ids
 
             update_job_result = None
 
-            working_directory_mock_return = os.path.join(td, 'job')
+            working_directory_mock_return = td
 
             # Local imports so that the mocks work as expected
             from core.submit import submit
@@ -501,7 +501,7 @@ Parent test-real_data0_12345678-0_analysis_H1_dynesty_arg_0 Child test-real_data
 
             update_job_result = None
 
-            working_directory_mock_return = os.path.join(td, 'job')
+            working_directory_mock_return = td
 
             # Local imports so that the mocks work as expected
             from core.submit import submit
