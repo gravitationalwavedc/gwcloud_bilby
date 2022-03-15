@@ -37,10 +37,10 @@ const Files = (props) => <React.Fragment>
                         return <React.Fragment>
                             {
                                 _props.bilbyResultFiles.files.map(
-                                    (e, i) =>
+                                    (file) =>
                                         <ResultFile
-                                            key={i}
-                                            file={e}
+                                            key={file.path}
+                                            file={file}
                                             {..._props}
                                             {...props}
                                         />

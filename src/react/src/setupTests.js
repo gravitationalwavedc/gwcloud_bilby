@@ -4,9 +4,6 @@ import { render } from '@testing-library/react';
 import { createMockEnvironment } from 'relay-test-utils';
 import { QueryRenderer } from 'react-relay';
 
-// This ignores the jest global variable from eslint errors.
-/* global global */
-
 // Global imports for tests
 import '@testing-library/jest-dom/extend-expect';
 

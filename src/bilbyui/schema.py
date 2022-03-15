@@ -249,7 +249,7 @@ class Query(object):
 
         for job in jobs:
             bilby_job = BilbyJob.get_by_id(job['job']['id'], info.context.user)
-            
+
             result.append(
                 BilbyPublicJobNode(
                     user=f"{job['user']['firstName']} {job['user']['lastName']}",

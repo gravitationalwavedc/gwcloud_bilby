@@ -1,5 +1,4 @@
 import React from 'react';
-import { Table } from 'react-bootstrap';
 import JobTableBody from './JobTableBody';
 import InfiniteScroll from 'react-infinite-scroll-component';
 

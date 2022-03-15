@@ -1,11 +1,11 @@
 import React from 'react';
 import JobBadges from './JobBadges';
-import { Row, Container, Col, Badge } from 'react-bootstrap';
+import { Row, Container, Col } from 'react-bootstrap';
 import Link from 'found/Link';
 import EventIDCell from './EventIDCell';
 import JobNameCell from './JobNameCell';
 
-const JobTableBody = ({data, myJobs, match, router}) => 
+const JobTableBody = ({data, match, router}) => 
     <Container fluid>
         {data && data.edges.length > 0 ? 
             data.edges.map(({node}) => 

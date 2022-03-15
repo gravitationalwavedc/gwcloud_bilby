@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {createPaginationContainer, graphql} from 'react-relay';
-import { Button, Card, Container, Col, Form, InputGroup, Row } from 'react-bootstrap';
-import { HiOutlineSearch, HiOutlinePlus } from 'react-icons/hi';
-import Link from 'found/Link';
+import { Card, Container, Col, Form, InputGroup } from 'react-bootstrap';
+import { HiOutlineSearch } from 'react-icons/hi';
 import JobTable from '../Components/JobTable';
 import JobsHeading from '../Components/JobsHeading';
 
