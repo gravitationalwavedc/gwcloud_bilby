@@ -55,7 +55,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
     """
     for supporting_file in supporting_files:
         # Make sure that the output directory exists for the supporting file type
-        supporting_file_dir = Path(working_directory) / 'job' / 'supporting_files' / supporting_file['type']
+        supporting_file_dir = Path(working_directory) / 'supporting_files' / supporting_file['type']
         supporting_file_dir.mkdir(exist_ok=True, parents=True)
 
         # Request the file from the GWCloud and write it to disk
@@ -132,7 +132,7 @@ def prepare_ini_data(job_parameters, working_directory):
         args.accounting_user = settings.condor_accounting_user
 
     # Output directory
-    args.outdir = os.path.join(working_directory, "job")
+    args.outdir = working_directory
 
     # Ignore transfer files because we're not using condor. This resolves the problem with relpath of the CWD path
     # being ".", which bilby_pipe refuses to use as a valid output directory
@@ -365,19 +365,15 @@ def create_working_directory(details):
     :return: The working (output) directory for the job
     """
     # Get the working directory
-    wk_dir = Path(working_directory(details)) / 'job'
+    wk_dir = Path(working_directory(details))
 
     # Create the working directory
-    wk_dir.mkdir(parents=True)
-
-    # Since working_directory includes the /job/ postfix, we need to trim it from the end so that our working
-    # directory is really the parent directory.
-    wk_dir = str(wk_dir.parent)
+    wk_dir.mkdir(parents=True, exist_ok=True)
 
     # Change to the working directory
     os.chdir(wk_dir)
 
-    return wk_dir
+    return str(wk_dir)
 
 
 def submit_impl(details, job_parameters):
