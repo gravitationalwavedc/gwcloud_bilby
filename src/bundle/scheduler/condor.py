@@ -114,14 +114,14 @@ class CondorScheduler(Scheduler):
 
         # Iterate over all submit events in order and find all stages that have been run
         submitted_stages = {}
-        for event in list(filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events)):
+        for event in filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events):
             notes = event['LogNotes']
             submitted_stages[event.cluster] = list(filter(lambda x: x.startswith("DAG Node:"), notes.splitlines()))[0]
 
-        plot_started = any(list(filter(lambda x: x.endswith('_plot_arg_0'), submitted_stages.values())))
+        plot_started = any(filter(lambda x: x.endswith('_plot_arg_0'), submitted_stages.values()))
 
         # Remove any stages that have finished, and verify their return codes
-        for event in list(filter(lambda x: x.type == htcondor.JobEventType.JOB_TERMINATED, events)):
+        for event in filter(lambda x: x.type == htcondor.JobEventType.JOB_TERMINATED, events):
             # Jobs that terminate normally and have a return value of 0 completed successfully, otherwise
             # some error has occurred
             if (event["TerminatedNormally"]):
