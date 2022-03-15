@@ -1,4 +1,3 @@
-from django.utils import timezone
 from decimal import Decimal
 
 from django.conf import settings
@@ -243,7 +242,7 @@ class Query(object):
         success, jobs = perform_db_search(info.context.user, kwargs)
 
         if not success:
-           return []
+            return []
 
         # Parse the result in to graphql objects
         result = []
