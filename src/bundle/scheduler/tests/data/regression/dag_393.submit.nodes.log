@@ -1,0 +1,92 @@
+000 (273712527.000.000) 2022-03-10 18:47:43 Job submitted from host: <10.14.0.12:9618?addrs=10.14.0.12-9618&alias=ldas-grid.ligo.caltech.edu&noUDP&sock=schedd_2688_52a9>
+    DAG Node: injection3_data0_1126259462-4_generation_arg_0
+...
+001 (273712527.000.000) 2022-03-10 18:49:27 Job executing on host: <10.14.5.230:9618?addrs=10.14.5.230-9618&alias=node1230.cluster.ldas.cit&noUDP&sock=startd_2133_a399>
+...
+005 (273712527.000.000) 2022-03-10 18:52:34 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:00:52, Sys 0 00:00:03  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:00:52, Sys 0 00:00:03  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.06        1         1 
+	   Disk (KB)            :     1           1     50241 
+	   GPUs                 :                           0 
+	   Memory (MB)          :    18        8192      8192 
+
+	Job terminated of its own accord at 2022-03-11T02:52:34Z.
+...
+000 (273712978.000.000) 2022-03-10 18:52:43 Job submitted from host: <10.14.0.12:9618?addrs=10.14.0.12-9618&alias=ldas-grid.ligo.caltech.edu&noUDP&sock=schedd_2688_52a9>
+    DAG Node: injection3_data0_1126259462-4_analysis_H1L1_dynesty_arg_0
+...
+001 (273712978.000.000) 2022-03-10 18:52:43 Job executing on host: <10.14.5.230:9618?addrs=10.14.5.230-9618&alias=node1230.cluster.ldas.cit&noUDP&sock=startd_2133_a399>
+...
+005 (273712978.000.000) 2022-03-10 19:44:49 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:49:37, Sys 0 00:00:25  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:49:37, Sys 0 00:00:25  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     0.94        1         1 
+	   Disk (KB)            :     1           1     50241 
+	   GPUs                 :                           0 
+	   Memory (MB)          :   219        4096      8192 
+
+	Job terminated of its own accord at 2022-03-11T03:44:49Z.
+...
+000 (273713183.000.000) 2022-03-10 19:44:58 Job submitted from host: <10.14.0.12:9618?addrs=10.14.0.12-9618&alias=ldas-grid.ligo.caltech.edu&noUDP&sock=schedd_2688_52a9>
+    DAG Node: injection3_data0_1126259462-4_analysis_H1L1_dynesty_plot_arg_0
+...
+000 (273713184.000.000) 2022-03-10 19:44:59 Job submitted from host: <10.14.0.12:9618?addrs=10.14.0.12-9618&alias=ldas-grid.ligo.caltech.edu&noUDP&sock=schedd_2688_52a9>
+    DAG Node: injection3_data0_1126259462-4_analysis_H1L1_dynesty_final_result_arg_0
+...
+001 (273713183.000.000) 2022-03-10 19:48:58 Job executing on host: <10.14.9.109:9618?addrs=10.14.9.109-9618&alias=node2109.cluster.ldas.cit&noUDP&sock=startd_3019_5c82>
+...
+001 (273713184.000.000) 2022-03-10 19:48:58 Job executing on host: <10.14.4.91:9618?addrs=10.14.4.91-9618&alias=node841.cluster.ldas.cit&noUDP&sock=startd_3762_ff60>
+...
+005 (273713184.000.000) 2022-03-10 19:49:05 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:00:04, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:00:04, Sys 0 00:00:00  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :                 1         1 
+	   Disk (KB)            :        1        1    100343 
+	   GPUs                 :                           0 
+	   Memory (MB)          :        0     4096      4096 
+
+	Job terminated of its own accord at 2022-03-11T03:49:05Z.
+...
+005 (273713183.000.000) 2022-03-10 19:50:14 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:01:03, Sys 0 00:00:04  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:01:03, Sys 0 00:00:04  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :                 1         1 
+	   Disk (KB)            :        1        1    102039 
+	   GPUs                 :                           0 
+	   Memory (MB)          :      174    32768     32768 
+
+	Job terminated of its own accord at 2022-03-11T03:50:14Z.
+...

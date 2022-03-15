@@ -103,7 +103,7 @@ class CondorScheduler(Scheduler):
 
                 # Completion status can only be reported if the current job stage is plotting, otherwise
                 # job should continue in running state
-                if stage.endswith('_plot_arg_0'):
+                if stage.endswith('_plot_arg_0') or stage.endswith('_final_result_arg_0'):
                     return JobStatus.COMPLETED, "All job stages finished successfully"
                 else:
                     return JobStatus.RUNNING, "Job is running"
