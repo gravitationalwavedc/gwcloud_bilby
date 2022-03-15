@@ -55,7 +55,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
     """
     for supporting_file in supporting_files:
         # Make sure that the output directory exists for the supporting file type
-        supporting_file_dir = Path(working_directory) / 'job'/ 'supporting_files' / supporting_file['type']
+        supporting_file_dir = Path(working_directory) / 'job' / 'supporting_files' / supporting_file['type']
         supporting_file_dir.mkdir(exist_ok=True, parents=True)
 
         # Request the file from the GWCloud and write it to disk
