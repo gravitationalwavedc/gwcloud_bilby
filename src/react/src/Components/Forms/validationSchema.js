@@ -4,6 +4,7 @@ let validationSchema = Yup.object().shape({
     name: Yup.string()
         .min(5, 'Make the title longer than 5 characters.')
         .max(30, 'Make the title less than 30 characters.')
+        // eslint-disable-next-line no-useless-escape
         .matches(/^[0-9a-z\_\-]+$/i, 'Remove any spaces or special characters.')
         .required(),
     triggerTime: Yup.number().required(),

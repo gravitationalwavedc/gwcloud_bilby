@@ -6,15 +6,22 @@ const newApi = {
     getEnvironment: () => createMockEnvironment()
 };
 
-beforeAll(() => setHarnessApi(null));
+function setupHarnessApi() {
+    setHarnessApi(null);
+}
 
-test('setHarnessApi works correctly', () => {
-    // Check that harnessApi is initially null
-    expect(harnessApi).toBe(null);
+describe('app base route in index', () => {
 
-    // Set the harness api to our test api
-    setHarnessApi(newApi);
+    it('should set the harnessApi correctly', () => {
+        expect.hasAssertions();
+        setupHarnessApi();
+        
+        // harnessApi initial value should be null
+        expect(harnessApi).toBeNull();
 
-    // Confirm that the harnessApi is now correct
-    expect(harnessApi).toBe(newApi);
+        // Set the harness api to our test api
+        setHarnessApi(newApi);
+
+        expect(harnessApi).toBe(newApi);
+    });
 });

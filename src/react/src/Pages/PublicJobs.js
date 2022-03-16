@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {createPaginationContainer, graphql} from 'react-relay';
-import { Button, Container, Col, Form, InputGroup, Row } from 'react-bootstrap';
-import { HiOutlineSearch, HiOutlinePlus } from 'react-icons/hi';
-import Link from 'found/Link';
+import { Card, Container, Col } from 'react-bootstrap';
 import JobTable from '../Components/JobTable';
+import JobsHeading from '../Components/JobsHeading';
+import JobSearchForm from '../Components/JobSearchForm';
 
 const RECORDS_PER_PAGE = 100;
 
@@ -32,92 +32,37 @@ const PublicJobs = ({data, match, router, relay}) => {
         }
     };
 
-    const timeOptions = [
-        {text: 'Any time', value: 'all'},
-        {text: 'Past 24 hours', value: '1d'},
-        {text: 'Past week', value: '1w'},
-        {text: 'Past month', value: '1m'},
-        {text: 'Past year', value: '1y'},
-    ];
-
     return (
-        <Container >
-            <h1 className="pt-5 mb-4">
-            Public Jobs
-                <span className="float-right">
-                    <Link 
-                        as={Button}
-                        variant="outline-primary"
-                        to='/bilby/job-list/' 
-                        exact 
-                        match={match} 
-                        router={router} 
-                        className="mr-1">
-                          Switch to my jobs
-                    </Link>
-                    <Link as={Button} to='/bilby/job-form/' exact match={match} router={router}>
-                        <HiOutlinePlus size={18} className="mb-1 mr-1"/>
-                        Start a new job 
-                    </Link>
-                </span>
-            </h1>
-            <Form onSubmit={e => e.preventDefault()}>
-                <Form.Row>
-                    <Col lg={3}>
-                        <Form.Group controlId="searchJobs">
-                            <Form.Label srOnly>
-                              Search
-                            </Form.Label>
-                            <InputGroup>
-                                <InputGroup.Prepend>
-                                    <InputGroup.Text>
-                                        <HiOutlineSearch />
-                                    </InputGroup.Text>
-                                </InputGroup.Prepend>
-                                <Form.Control 
-                                    placeholder="Find a job..." 
-                                    value={search} 
-                                    onChange={({target}) => setSearch(target.value)} />
-                            </InputGroup>
-                        </Form.Group>
-                    </Col>
-                    <Col lg={3}>
-                        <Form.Group controlId="timeRange">
-                            <Form.Label srOnly>
-                              Time
-                            </Form.Label>
-                            <Form.Control 
-                                as="select" 
-                                value={timeRange} 
-                                onChange={({target}) => setTimeRange(target.value)} 
-                                custom>
-                                {timeOptions.map(option => 
-                                    <option 
-                                        key={option.value} 
-                                        value={option.value}>
-                                        {option.text}
-                                    </option>
-                                )}
-                            </Form.Control>
-                        </Form.Group>
-                    </Col>
-                </Form.Row>
-            </Form>
-            <Row>
-                <Col>
-                    <JobTable
-                        data={data.publicBilbyJobs} 
-                        setOrder={setOrder} 
-                        order={order} 
-                        setDirection={setDirection} 
-                        direction={direction}
-                        match={match}
-                        router={router}
-                        hasMore={relay.hasMore()}
-                        loadMore={loadMore}
-                    />
-                </Col>
-            </Row>
+        <Container fluid>
+            <Col md={{offset: 1, span:10}} className="mb-5">
+                <JobsHeading 
+                    heading="Public Jobs"
+                    link={{text: 'Swith to my jobs', path: '/bilby/job-list/'}}
+                    match={match}
+                    router={router}/>
+                <Card className="gw-form-card">
+                    <Card.Body>
+                        <JobSearchForm
+                            search={search}
+                            setSearch={setSearch}
+                            timeRange={timeRange}
+                            setTimeRange={setTimeRange}
+                        />
+                        <JobTable
+                            data={data.publicBilbyJobs} 
+                            setOrder={setOrder} 
+                            order={order} 
+                            setDirection={setDirection} 
+                            direction={direction}
+                            match={match}
+                            router={router}
+                            hasMore={relay.hasMore()}
+                            loadMore={loadMore}
+                            className="mt-4"
+                        />
+                    </Card.Body>
+                </Card>
+            </Col>
         </Container>
     );
 };
@@ -147,6 +92,11 @@ export default createPaginationContainer(PublicJobs,
                             }
                             labels {
                                 name
+                            }
+                            eventId {
+                                triggerId
+                                eventId
+                                nickname
                             }
                         }
                     }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createFragmentContainer, commitMutation, graphql } from 'react-relay';
 import { HiOutlinePlus } from 'react-icons/hi';
-import { Form, Button, Modal, Row, Col, Card } from 'react-bootstrap';
+import { Form, Button, Modal, Row, Col } from 'react-bootstrap';
 import { Typeahead, Highlighter } from 'react-bootstrap-typeahead';
 import 'react-bootstrap-typeahead/css/Typeahead.css';
 import { harnessApi } from '../../index';
@@ -94,7 +94,7 @@ const updateJob = (variables, callback) => commitMutation(harnessApi.getEnvironm
         }
     },
     variables: variables,
-    onCompleted: (response, errors) => {
+    onCompleted: (_response, errors) => {
         if (errors) {
             callback(false, errors);
         }

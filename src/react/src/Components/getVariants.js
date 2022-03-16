@@ -1,5 +1,9 @@
 const getBadgeType = (name) => {
     const variants = {
+        'Completed': 'primary',
+        'Error': 'danger',
+        'Running': 'info',
+        'Unknown': 'dark',
         'Production Run': 'success',
         'Bad Run': 'danger',
         'Review Requested': 'secondary',
@@ -16,10 +20,10 @@ const getStatusType = (name) => {
         'Error': 'text-danger',
         'Running': 'text-info',
         'Unknown': 'text-muted'
-    }
+    };
 
-    return variants[name]
-}
+    return variants[name];
+};
 
 export {
     getBadgeType,

@@ -34,7 +34,7 @@ const NewJob = ({initialValues, router}) => {
     const handleJobSubmission = (values) => {
     // The mutation requires all number values to be strings.
         Object.entries(values)
-            .filter(([key, value]) => typeof(value) === 'number')
+            .filter(([key, value]) => typeof(value) === 'number') // eslint-disable-line no-unused-vars
             .map(([key, value]) => values[key] = value.toString());
 
         const variables = {
@@ -45,8 +45,6 @@ const NewJob = ({initialValues, router}) => {
                         description: values.description,
                         private: false,
                     },
-
-                    //calibration: {},
 
                     data: {
                         dataChoice: values.dataChoice,
@@ -77,27 +75,9 @@ const NewJob = ({initialValues, router}) => {
                         samplingFrequency: values.samplingFrequency,
                     },
 
-                    // injection: {
-                    //     mass1: values.mass1,
-                    //     mass2: values.mass2,
-                    //     luminosityDistance: values.luminosityDistance,
-                    //     psi: values.psi,
-                    //     iota: values.iota,
-                    //     phase: values.phase,
-                    //     mergerTime: values.mergerTime,
-                    //     ra: values.ra,
-                    //     dec: values.dec,
-                    //     signalChoice: values.signalChoice,
-                    //     signalModel: 'none',
-                    // },
-
-                    //likelihood: {},
-
                     prior: {
                         priorDefault: values.priorChoice
                     },
-
-                    //postProcessing: {},
 
                     sampler: {
                         nlive: values.nlive,
