@@ -314,13 +314,18 @@ class SupportingFile(models.Model):
     download_token = models.UUIDField(unique=True, default=uuid.uuid4, db_index=True)
 
     @classmethod
-    def save_from_parsed(cls, bilby_job, supporting_files):
+    def save_from_parsed(cls, bilby_job, supporting_files, uploaded=False):
         """
         Takes the output from parse_supporting_files and generates the relevant SupportingFile records
 
         param bilby_job: The BilbyJob instance that the supporting files belongs to
         param supporting_files: Dictionary of supporting files returned from parse_supporting_files function
+        param uploaded: If this is true, the supporting file will be marked as uploaded (No upload token set)
         """
+        extra = {}
+        if uploaded:
+            extra['upload_token'] = None
+
         bulk_items = []
         result_files = []
         for supporting_file_type, details in supporting_files.items():
@@ -334,7 +339,8 @@ class SupportingFile(models.Model):
                                 job=bilby_job,
                                 file_type=supporting_file_type,
                                 key=k,
-                                file_name=Path(f).name
+                                file_name=Path(f).name,
+                                **extra
                             )
                         )
 
@@ -346,7 +352,8 @@ class SupportingFile(models.Model):
                         job=bilby_job,
                         file_type=supporting_file_type,
                         key=None,
-                        file_name=Path(details).name
+                        file_name=Path(details).name,
+                        **extra
                     )
                 )
 
@@ -355,6 +362,7 @@ class SupportingFile(models.Model):
         # Map the tokens for the created files to the returned supporting files details
         for i, v in enumerate(created):
             result_files[i]['token'] = created[i].upload_token
+            result_files[i]['download_token'] = created[i].download_token
 
         return result_files
 

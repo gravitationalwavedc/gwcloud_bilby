@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
+import bilby_pipe
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
 from django.conf import settings
@@ -299,8 +300,12 @@ def create_bilby_job_from_ini_string(user, params):
 
     # Strip the prior, gps, timeslide, and injection file
     # as DataGenerationInput has trouble without the actual file existing
-    prior_file = args.prior_file
-    args.prior_file = None
+
+    # Don't change the prior file if it's one of the defaults
+    prior_file = None
+    if args.prior_file not in bilby_pipe.main.Input().default_prior_files:
+        prior_file = args.prior_file
+        args.prior_file = None
 
     gps_file = args.gps_file
     args.gps_file = None
@@ -451,7 +456,28 @@ def upload_bilby_job(upload_token, details, job_file):
         # the current working directory (root of the job)
         args.outdir = "./"
 
+        # Strip the prior, gps, timeslide, and injection file
+        # as DataGenerationInput has trouble without the actual file existing
+
+        # Don't change the prior file if it's one of the defaults
+        prior_file = None
+        if args.prior_file not in bilby_pipe.main.Input().default_prior_files:
+            prior_file = args.prior_file
+            args.prior_file = None
+
+        gps_file = args.gps_file
+        args.gps_file = None
+
+        timeslide_file = args.timeslide_file
+        args.timeslide_file = None
+
+        injection_file = args.injection_file
+        args.injection_file = None
+
         parser = DataGenerationInput(args, [], create_data=False)
+
+        # Parse any supporting files
+        supporting_files = parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file)
 
         # Verify that a non-ligo user can't upload a ligo job, and check if this job is a ligo job or not
         if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in (parser.channel_dict or {}).values()])):
@@ -484,6 +510,25 @@ def upload_bilby_job(upload_token, details, job_file):
                 is_uploaded_job=True
             )
             bilby_job.save()
+
+            # Save any supporting file records
+            supporting_file_details = SupportingFile.save_from_parsed(bilby_job, supporting_files, uploaded=True)
+
+            # Check that the job directory exists for this supporting file
+            supporting_file_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(bilby_job.id)
+            supporting_file_dir.mkdir(exist_ok=True, parents=True)
+
+            # Make sure the source supporting file exists
+            for supporting_file in supporting_file_details:
+                source_file = Path(job_staging_dir) / supporting_file['file_path']
+                if not source_file.is_file():
+                    raise Exception(f"Supporting file {supporting_file['file_path']} does not exist.")
+
+                # Because we're in a transaction here, the bulk_create in `SupportingFile.save_from_parsed` isn't saved
+                # so we need to fetch it again from the database to get the inserted ID
+                supporting_file_instance = SupportingFile.objects.get(download_token=supporting_file['download_token'])
+                source_file = Path(job_staging_dir) / supporting_file['file_path']
+                shutil.copyfile(source_file, supporting_file_dir / str(supporting_file_instance.id))
 
             # Now we have the bilby job id, we can move the staging directory to the actual job directory
             job_dir = bilby_job.get_upload_directory()

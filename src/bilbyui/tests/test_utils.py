@@ -1,9 +1,10 @@
-import json
 import functools
+import json
 import logging
 import os
 import tarfile
 from collections import OrderedDict
+from pathlib import Path
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 
 from bilbyui.models import IniKeyValue
@@ -229,11 +230,16 @@ def silence_errors(func):
             func(*args, **kwargs)
         finally:
             logging.disable(logging.NOTSET)
+
     return wrapper_silence_errors
 
 
 def create_test_upload_data(ini_content, job_label, include_result=True, include_results_page=True,
-                            include_data=True, multiple_ini_files=False, no_ini_file=False):
+                            include_data=True, multiple_ini_files=False, no_ini_file=False,
+                            supporting_files=None):
+    if supporting_files is None:
+        supporting_files = []
+
     # Create a temporary directory to add job data to
     with TemporaryDirectory() as d:
         if ini_content and not no_ini_file:
@@ -264,6 +270,11 @@ def create_test_upload_data(ini_content, job_label, include_result=True, include
             os.makedirs(os.path.join(d, 'data'))
             open(os.path.join(d, 'data', f'H1_{job_label}_generation_frequency_domain_data.png'), 'a').close()
             open(os.path.join(d, 'data', f'L1_{job_label}_generation_frequency_domain_data.png'), 'a').close()
+
+        for archive_path in supporting_files:
+            file_path = Path(d) / Path(archive_path)
+            file_path.parent.mkdir(exist_ok=True, parents=True)
+            open(file_path, 'a').close()
 
         # Create a temporary tar.gz file to write the directory contents to
         with NamedTemporaryFile(suffix='.tar.gz') as tgz:
