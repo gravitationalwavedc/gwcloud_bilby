@@ -497,6 +497,111 @@ class TestJobSubmission(BilbyTestCase):
         )
 
 
+class TestJobSubmissionNameValidation(BilbyTestCase):
+    def setUp(self):
+        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
+        self.client.authenticate(self.user)
+
+        self.params = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": None,
+                        "description": "Test description 1234",
+                        "private": True,
+                    },
+                    # "calibration": None,
+                    "data": {
+                        "dataChoice": "simulated",
+                        "triggerTime": "1126259462.391",
+                        "channels": {
+                            "hanfordChannel": "GWOSC",
+                            "livingstonChannel": "GWOSC",
+                            "virgoChannel": "GWOSC"
+                        }
+                    },
+                    "detector": {
+                        "hanford": True,
+                        "hanfordMinimumFrequency": "20",
+                        "hanfordMaximumFrequency": "1024",
+                        "livingston": True,
+                        "livingstonMinimumFrequency": "20",
+                        "livingstonMaximumFrequency": "1024",
+                        "virgo": False,
+                        "virgoMinimumFrequency": "20",
+                        "virgoMaximumFrequency": "1024",
+                        "duration": "4",
+                        "samplingFrequency": "512"
+                    },
+                    # "injection": {},
+                    # "likelihood": {},
+                    "prior": {
+                        "priorDefault": "4s"
+                    },
+                    # "postProcessing": {},
+                    "sampler": {
+                        "nlive": "1000.0",
+                        "nact": "10.0",
+                        "maxmcmc": "5000.0",
+                        "walks": "1000.0",
+                        "dlogz": "0.1",
+                        "cpus": "1",
+                        "samplerChoice": "dynesty"
+                    },
+                    "waveform": {
+                        "model": None
+                    }
+                }
+            }
+        }
+
+        self.mutation = """
+            mutation NewJobMutation($input: BilbyJobMutationInput!) {
+              newBilbyJob(input: $input) {
+                result {
+                  jobId
+                }
+              }
+            }
+            """
+
+    @silence_errors
+    def test_invalid_job_name_symbols(self):
+        self.params['input']['params']['details']['name'] = "test_job_for_GW12345$"
+
+        response = self.client.execute(self.mutation, self.params)
+
+        self.assertDictEqual(
+            {'newBilbyJob': None}, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertEqual(response.errors[0].message, "Job name must not contain any spaces or special characters.")
+
+    @silence_errors
+    def test_invalid_job_name_too_long(self):
+        self.params['input']['params']['details']['name'] = 'a'*50
+
+        response = self.client.execute(self.mutation, self.params)
+
+        self.assertDictEqual(
+            {'newBilbyJob': None}, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertEqual(response.errors[0].message, "Job name must be less than 30 characters long.")
+
+    @silence_errors
+    def test_invalid_job_name_too_short(self):
+        self.params['input']['params']['details']['name'] = 'a'
+
+        response = self.client.execute(self.mutation, self.params)
+
+        self.assertDictEqual(
+            {'newBilbyJob': None}, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertEqual(response.errors[0].message, "Job name must be at least 5 characters long.")
+
+
 class TestJobNameValidation(testcases.TestCase):
     def test_length(self):
         # Test name too short
