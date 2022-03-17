@@ -274,7 +274,7 @@ def create_test_upload_data(ini_content, job_label, include_result=True, include
         for archive_path in supporting_files:
             file_path = Path(d) / Path(archive_path)
             file_path.parent.mkdir(exist_ok=True, parents=True)
-            open(file_path, 'a').close()
+            file_path.touch()
 
         # Create a temporary tar.gz file to write the directory contents to
         with NamedTemporaryFile(suffix='.tar.gz') as tgz:
