@@ -18,7 +18,7 @@ class TestBilbyLigoPermissions(BilbyTestCase):
             "input": {
                 "params": {
                     "details": {
-                        "name": "test job for GW12345",
+                        "name": "test_job_for_GW12345",
                         "description": "Test description 1234",
                         "private": True,
                     },
@@ -187,7 +187,7 @@ class TestIniBilbyLigoPermissions(BilbyTestCase):
             "input": {
                 "params": {
                     "details": {
-                        "name": "test job for GW12345",
+                        "name": "test_job_for_GW12345",
                         "description": "Test description 1234",
                         "private": True,
                     },
@@ -311,7 +311,7 @@ class TestIniBilbyLigoPermissions(BilbyTestCase):
         ]:
             ini_string = create_test_ini_string({'n-simulation': 0, 'channel-dict': channel_dict}, True)
             self.params['input']['params']['iniString']['iniString'] = ini_string
-
+            print(ini_string)
             response = self.client.execute(self.query, self.params)
 
             self.assertTrue('jobId' in response.data['newBilbyJobFromIniString']['result'])
