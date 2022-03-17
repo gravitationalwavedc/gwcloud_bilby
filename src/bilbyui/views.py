@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -18,8 +19,20 @@ from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 
 
+def validate_job_name(name):
+    if len(name) < 5:
+        raise Exception('Job name must be at least 5 characters long.')
+
+    if len(name) > 30:
+        raise Exception('Job name must be less than 30 characters long.')
+
+    pattern = re.compile(r"^[0-9a-z_-]+\Z", flags=re.IGNORECASE | re.ASCII)
+    if not pattern.match(name):
+        raise Exception('Job name must not contain any spaces or special characters.')
+
+
 def create_bilby_job(user, params):
-    # First check the ligo permissions and ligo job status
+    # Check the ligo permissions and ligo job status
     is_ligo_job = False
 
     # Check that non-ligo users only have access to GWOSC channels for real data

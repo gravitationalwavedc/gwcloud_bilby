@@ -1,15 +1,18 @@
 import json
+import string
 from ast import literal_eval
 from unittest.mock import patch
 
 import responses
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.test import testcases
 from django.test.utils import override_settings
 
 from bilbyui.models import IniKeyValue, BilbyJob
 from bilbyui.tests.test_utils import compare_ini_kvs, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.views import validate_job_name
 
 User = get_user_model()
 
@@ -492,3 +495,52 @@ class TestJobSubmission(BilbyTestCase):
         self.assertEqual(
             response.errors[0].message, "Error submitting job, cluster 'not_real' is not one of [default another]"
         )
+
+
+class TestJobNameValidation(testcases.TestCase):
+    def test_length(self):
+        # Test name too short
+        with self.assertRaises(Exception) as ex:
+            validate_job_name('')
+
+        self.assertEqual(str(ex.exception), "Job name must be at least 5 characters long.")
+
+        with self.assertRaises(Exception) as ex:
+            validate_job_name('1234')
+
+        self.assertEqual(str(ex.exception), "Job name must be at least 5 characters long.")
+
+        # Test name too long
+        with self.assertRaises(Exception) as ex:
+            validate_job_name('a'*31)
+
+        self.assertEqual(str(ex.exception), "Job name must be less than 30 characters long.")
+
+        with self.assertRaises(Exception) as ex:
+            validate_job_name('a'*3000)
+
+        self.assertEqual(str(ex.exception), "Job name must be less than 30 characters long.")
+
+        # Test valid name length
+        for i in range(5, 30):
+            validate_job_name('a' * i)
+
+    def test_invalid_characters(self):
+        # Generate a list of valid characters for a job
+        valid_characters = string.digits + string.ascii_letters + '_-'
+
+        # Try every possible character, including all unicode characters.
+        # Refer to https://www.rfc-editor.org/rfc/rfc3629 as to why the upper range is 0x10FFFF
+        for i in range(0x10FFFF):
+            char = chr(i)
+
+            # If the current character code is valid, no exception should be raised
+            if char in valid_characters:
+                validate_job_name('a'*10 + char)
+
+            else:
+                # Any invalid character code should raise an exception
+                with self.assertRaises(Exception) as ex:
+                    validate_job_name('a' * 10 + char)
+
+                self.assertEqual(str(ex.exception), "Job name must not contain any spaces or special characters.")
