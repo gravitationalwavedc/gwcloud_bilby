@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django_filters import FilterSet, OrderingFilter
 import graphene
 from graphene import relay
