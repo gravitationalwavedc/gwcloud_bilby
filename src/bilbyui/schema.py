@@ -22,6 +22,7 @@ from .types import (
     JobParameterOutput,
     JobStatusType, BilbyJobSupportingFile, SupportingFileUploadResult,
 )
+from .utils.auth.lookup_users import request_lookup_users
 from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
@@ -102,12 +103,10 @@ class BilbyJobNode(DjangoObjectType):
         return BilbyJob.bilby_job_filter(queryset, info)
 
     def resolve_user(parent, info):
-        User = get_user_model()
-        try:
-            job_user = User.objects.get(id=parent.user_id)
-            return f"{job_user.first_name} {job_user.last_name}"
-        except User.DoesNotExist:
-            return "Unknown User"
+        success, users = request_lookup_users([2], info.context.user.user_id)
+        if success and users:
+            return f"{users[0]['firstName']} {users[0]['lastName']}"
+        return "Unknown User"
 
     def resolve_last_updated(parent, info):
         return parent.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
