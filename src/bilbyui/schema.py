@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django_filters import FilterSet, OrderingFilter
 import graphene
 from graphene import relay
@@ -89,6 +90,7 @@ class BilbyJobNode(DjangoObjectType):
         convert_choices_to_enum = False
         interfaces = (relay.Node,)
 
+    user = graphene.String()
     job_status = graphene.Field(JobStatusType)
     last_updated = graphene.String()
     params = graphene.Field(JobParameterOutput)
@@ -98,6 +100,14 @@ class BilbyJobNode(DjangoObjectType):
     @classmethod
     def get_queryset(parent, queryset, info):
         return BilbyJob.bilby_job_filter(queryset, info)
+
+    def resolve_user(parent, info):
+        User = get_user_model()
+        try:
+            job_user = User.objects.get(id=parent.user_id)
+            return f"{job_user.first_name} {job_user.last_name}"
+        except User.DoesNotExist:
+            return "Unknown User"
 
     def resolve_last_updated(parent, info):
         return parent.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
