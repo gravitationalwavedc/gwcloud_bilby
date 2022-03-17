@@ -1,13 +1,15 @@
 import json
 import os.path
 import uuid
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 
-from bilbyui.models import BilbyJob, IniKeyValue
+from bilbyui.models import BilbyJob, IniKeyValue, SupportingFile
 from bilbyui.tests.test_utils import create_test_ini_string, compare_ini_kvs, silence_errors, create_test_upload_data
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -633,3 +635,580 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
             job = BilbyJob.objects.all().last()
             self.assertTrue(job.is_ligo_job)
             job.delete()
+
+
+class TestJobUploadSupportingFiles(BilbyTestCase):
+    def setUp(self):
+        self.user = User.objects.create(username="bill", first_name="bill", last_name="nye")
+        self.client.authenticate(self.user, is_ligo=True)
+
+        self.mutation = """
+            mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
+              uploadBilbyJob(input: $input) {
+                result {
+                  jobId
+                }
+              }
+            }
+        """
+
+        self.token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+
+        self.test_name = "myjob"
+        self.test_description = "Test Description"
+        self.test_private = False
+
+    def perform_upload(self, supporting_files, test_ini_string, ignored):
+        test_file = SimpleUploadedFile(
+            name='test.tar.gz',
+            content=create_test_upload_data(
+                test_ini_string,
+                self.test_name,
+                supporting_files=supporting_files
+            ),
+            content_type='application/gzip'
+        )
+
+        test_input = {
+            "input": {
+                "uploadToken": self.token,
+                "details": {
+                    "description": self.test_description,
+                    "private": self.test_private
+                },
+                "jobFile": test_file
+            }
+        }
+
+        response = self.client.execute(
+            self.mutation,
+            test_input
+        )
+
+        expected = {
+            'uploadBilbyJob': {
+                'result': {
+                    'jobId': 'QmlsYnlKb2JOb2RlOjE='
+                }
+            }
+        }
+
+        self.assertDictEqual(
+            expected,
+            response.data
+        )
+
+        # And should create all k/v's with default values
+        job = BilbyJob.objects.all().last()
+        compare_ini_kvs(self, job, test_ini_string, ignored=ignored)
+
+        self.assertEqual(job.name, self.test_name)
+        self.assertEqual(job.description, self.test_description)
+        self.assertEqual(job.private, self.test_private)
+
+        # Check that the output directories and ini file were correctly created
+        job_dir = job.get_upload_directory()
+        self.assertTrue(os.path.isdir(job_dir))
+        self.assertTrue(os.path.isdir(os.path.join(job_dir, 'data')))
+        self.assertTrue(os.path.isdir(os.path.join(job_dir, 'result')))
+        self.assertTrue(os.path.isdir(os.path.join(job_dir, 'results_page')))
+        self.assertTrue(os.path.isfile(os.path.join(job_dir, 'myjob_config_complete.ini')))
+
+        self.assertTrue(os.path.isfile(os.path.join(job_dir, 'archive.tar.gz')))
+
+        return job, job_dir
+
+    @silence_errors
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_failure_file_not_exists(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat}'
+            },
+            True
+        )
+
+        supporting_files = [
+            'supporting_files/psd/V1-psd.dat1'
+        ]
+
+        test_file = SimpleUploadedFile(
+            name='test.tar.gz',
+            content=create_test_upload_data(
+                test_ini_string,
+                self.test_name,
+                supporting_files=supporting_files
+            ),
+            content_type='application/gzip'
+        )
+
+        test_input = {
+            "input": {
+                "uploadToken": self.token,
+                "details": {
+                    "description": self.test_description,
+                    "private": self.test_private
+                },
+                "jobFile": test_file
+            }
+        }
+
+        response = self.client.execute(
+            self.mutation,
+            test_input
+        )
+
+        expected = {
+            'uploadBilbyJob': None
+        }
+
+        self.assertDictEqual(
+            expected,
+            response.data
+        )
+
+        self.assertEqual(BilbyJob.objects.count(), 0)
+        self.assertEqual(SupportingFile.objects.count(), 0)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_psd1(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat}'
+            },
+            True
+        )
+
+        supporting_files = [
+            'supporting_files/psd/V1-psd.dat'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['psd_dict'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.PSD)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_psd2(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat, H1:./supporting_files/psd/H1-psd.dat}'
+            },
+            True
+        )
+
+        supporting_files = [
+            'supporting_files/psd/V1-psd.dat',
+            'supporting_files/psd/H1-psd.dat'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['psd_dict'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.PSD)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_psd3(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'psd-dict':
+                    '{V1:./supporting_files/psd/V1-psd.dat, H1:./psd/H1-psd.dat, L1:L1-psd.dat}'
+            },
+            True
+        )
+
+        supporting_files = [
+            'supporting_files/psd/V1-psd.dat',
+            'psd/H1-psd.dat',
+            'L1-psd.dat'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['psd_dict'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.PSD)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_calibration1(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat}'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/calib/L1-calib.dat'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['spline_calibration_envelope_dict'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.CALIBRATION)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_calibration2(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat, '
+                                                    'V1:./supporting_files/calib/V1-calib.dat}'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/calib/L1-calib.dat',
+            './supporting_files/calib/V1-calib.dat'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['spline_calibration_envelope_dict'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.CALIBRATION)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_calibration3(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat, '
+                                                    'V1:./supporting_files/calib/V1-calib.dat, '
+                                                    'H1:./supporting_files/calib/H1-calib.dat}'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/calib/L1-calib.dat',
+            './supporting_files/calib/V1-calib.dat',
+            './supporting_files/calib/H1-calib.dat'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['spline_calibration_envelope_dict'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.CALIBRATION)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_prior(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'prior-file': './supporting_files/prior/myprior.prior'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/prior/myprior.prior'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['prior_file'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.PRIOR)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_gps(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'gps-file': './supporting_files/gps/gps.dat'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/gps/gps.dat'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['gps_file'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.GPS)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_timeslide(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'timeslide-file': './supporting_files/timeslide/timeslide.dat'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/timeslide/timeslide.dat'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['timeslide_file'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.TIME_SLIDE)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_injection(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'injection-file': './supporting_files/injection/injection.dat'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/injection/injection.dat'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['injection_file'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.INJECTION)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_numerical_relativity(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'numerical-relativity-file': './supporting_files/nrf/nrf.dat'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/nrf/nrf.dat'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['numerical_relativity_file'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.NUMERICAL_RELATIVITY)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_all(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'psd-dict': '{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat, '
+                            'H1:./supporting_files/psd/H1-psd.dat}',
+                'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat, '
+                                                    'V1:./supporting_files/calib/V1-calib.dat, '
+                                                    'H1:./supporting_files/calib/H1-calib.dat}',
+                'prior-file': './supporting_files/prior/myprior.prior',
+                'gps-file': './supporting_files/gps/gps.dat',
+                'timeslide-file': './supporting_files/timeslide/timeslide.dat',
+                'injection-file': './supporting_files/injection/injection.dat',
+                'numerical-relativity-file': './supporting_files/nrf/nrf.dat'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/psd/L1-psd.dat',
+            './supporting_files/psd/V1-psd.dat',
+            './supporting_files/psd/H1-psd.dat',
+
+            './supporting_files/calib/L1-calib.dat',
+            './supporting_files/calib/V1-calib.dat',
+            './supporting_files/calib/H1-calib.dat',
+
+            './supporting_files/prior/myprior.prior',
+
+            './supporting_files/gps/gps.dat',
+
+            './supporting_files/timeslide/timeslide.dat',
+
+            './supporting_files/injection/injection.dat',
+
+            './supporting_files/nrf/nrf.dat'
+        ]
+
+        job, job_dir = self.perform_upload(
+            supporting_files,
+            test_ini_string,
+            [
+                'psd_dict',
+                'spline_calibration_envelope_dict',
+                'prior_file',
+                'gps_file',
+                'timeslide_file',
+                'injection_file',
+                'numerical_relativity_file'
+            ]
+        )
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
