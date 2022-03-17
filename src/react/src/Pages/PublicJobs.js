@@ -37,7 +37,7 @@ const PublicJobs = ({data, match, router, relay}) => {
             <Col md={{offset: 1, span:10}} className="mb-5">
                 <JobsHeading 
                     heading="Public Jobs"
-                    link={{text: 'Swith to my jobs', path: '/bilby/job-list/'}}
+                    link={{text: 'Switch to my jobs', path: '/bilby/job-list/'}}
                     match={match}
                     router={router}/>
                 <Card className="gw-form-card">
