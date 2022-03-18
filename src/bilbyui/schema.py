@@ -21,6 +21,7 @@ from .types import (
     JobParameterOutput,
     JobStatusType, BilbyJobSupportingFile, SupportingFileUploadResult,
 )
+from .utils.auth.lookup_users import request_lookup_users
 from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
@@ -89,6 +90,7 @@ class BilbyJobNode(DjangoObjectType):
         convert_choices_to_enum = False
         interfaces = (relay.Node,)
 
+    user = graphene.String()
     job_status = graphene.Field(JobStatusType)
     last_updated = graphene.String()
     params = graphene.Field(JobParameterOutput)
@@ -98,6 +100,12 @@ class BilbyJobNode(DjangoObjectType):
     @classmethod
     def get_queryset(parent, queryset, info):
         return BilbyJob.bilby_job_filter(queryset, info)
+
+    def resolve_user(parent, info):
+        success, users = request_lookup_users([parent.user_id], info.context.user.user_id)
+        if success and users:
+            return f"{users[0]['firstName']} {users[0]['lastName']}"
+        return "Unknown User"
 
     def resolve_last_updated(parent, info):
         return parent.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
