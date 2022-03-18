@@ -249,3 +249,121 @@ class TestIniJobSubmission(BilbyTestCase):
         self.assertEqual(
             response.errors[0].message, "Error submitting job, cluster 'not_real' is not one of [default another]"
         )
+
+
+class TestIniJobSubmissionNameValidation(BilbyTestCase):
+    def setUp(self):
+        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
+        self.client.authenticate(self.user)
+
+        self.mutation = """
+            mutation NewIniJobMutation($input: BilbyJobFromIniStringMutationInput!) {
+              newBilbyJobFromIniString(input: $input) {
+                result {
+                  jobId
+                }
+              }
+            }
+        """
+
+    @silence_errors
+    def test_invalid_job_name_symbols(self):
+        test_name = "Test_Name$"
+
+        test_ini_string = create_test_ini_string(
+            {
+                'label': test_name,
+                'detectors': "['H1']"
+            }
+        )
+
+        test_input = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": test_name,
+                        "description": "a description",
+                        "private": True
+                    },
+                    "iniString": {
+                        "iniString": test_ini_string
+                    }
+                }
+            }
+        }
+
+        response = self.client.execute(self.mutation, test_input)
+
+        self.assertDictEqual(
+            {'newBilbyJobFromIniString': None}, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertEqual(response.errors[0].message, "Job name must not contain any spaces or special characters.")
+
+    @silence_errors
+    def test_invalid_job_name_too_long(self):
+        test_name = "a" * 50
+
+        test_ini_string = create_test_ini_string(
+            {
+                'label': test_name,
+                'detectors': "['H1']"
+            }
+        )
+
+        test_input = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": test_name,
+                        "description": "a description",
+                        "private": True
+                    },
+                    "iniString": {
+                        "iniString": test_ini_string
+                    }
+                }
+            }
+        }
+
+        response = self.client.execute(self.mutation, test_input)
+
+        self.assertDictEqual(
+            {'newBilbyJobFromIniString': None}, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertEqual(response.errors[0].message, "Job name must be less than 30 characters long.")
+
+    @silence_errors
+    def test_invalid_job_name_too_short(self):
+        test_name = "a"
+
+        test_ini_string = create_test_ini_string(
+            {
+                'label': test_name,
+                'detectors': "['H1']"
+            }
+        )
+
+        test_input = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": test_name,
+                        "description": "a description",
+                        "private": True
+                    },
+                    "iniString": {
+                        "iniString": test_ini_string
+                    }
+                }
+            }
+        }
+
+        response = self.client.execute(self.mutation, test_input)
+
+        self.assertDictEqual(
+            {'newBilbyJobFromIniString': None}, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertEqual(response.errors[0].message, "Job name must be at least 5 characters long.")
