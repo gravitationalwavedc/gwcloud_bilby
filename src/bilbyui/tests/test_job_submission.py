@@ -522,8 +522,11 @@ class TestJobNameValidation(testcases.TestCase):
         self.assertEqual(str(ex.exception), "Job name must be less than 30 characters long.")
 
         # Test valid name length
-        for i in range(5, 30):
-            validate_job_name('a' * i)
+        try:
+            for i in range(5, 30):
+                validate_job_name('a' * i)
+        except Exception:
+            self.fail("validate_job_name raised an exception when it should not have")
 
     def test_invalid_characters(self):
         # Generate a list of valid characters for a job
@@ -536,7 +539,10 @@ class TestJobNameValidation(testcases.TestCase):
 
             # If the current character code is valid, no exception should be raised
             if char in valid_characters:
-                validate_job_name('a'*10 + char)
+                try:
+                    validate_job_name('a'*10 + char)
+                except Exception:
+                    self.fail("validate_job_name raised an exception when it should not have")
 
             else:
                 # Any invalid character code should raise an exception
