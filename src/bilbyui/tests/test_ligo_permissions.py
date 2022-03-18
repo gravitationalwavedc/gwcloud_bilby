@@ -311,7 +311,7 @@ class TestIniBilbyLigoPermissions(BilbyTestCase):
         ]:
             ini_string = create_test_ini_string({'n-simulation': 0, 'channel-dict': channel_dict}, True)
             self.params['input']['params']['iniString']['iniString'] = ini_string
-            print(ini_string)
+
             response = self.client.execute(self.query, self.params)
 
             self.assertTrue('jobId' in response.data['newBilbyJobFromIniString']['result'])
