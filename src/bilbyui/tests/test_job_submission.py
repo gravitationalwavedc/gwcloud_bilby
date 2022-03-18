@@ -36,7 +36,7 @@ class TestJobSubmission(BilbyTestCase):
             "input": {
                 "params": {
                     "details": {
-                        "name": "test job for GW12345",
+                        "name": "test_job_for_GW12345",
                         "description": "Test description 1234",
                         "private": True,
                     },
@@ -194,7 +194,7 @@ class TestJobSubmission(BilbyTestCase):
             "input": {
                 "params": {
                     "details": {
-                        "name": "real test job for GW12345",
+                        "name": "real_test_job_for_GW12345",
                         "description": "real Test description 1234",
                         "private": True,
                     },
@@ -360,7 +360,7 @@ class TestJobSubmission(BilbyTestCase):
             "input": {
                 "params": {
                     "details": {
-                        "name": "test job for GW12345",
+                        "name": "test_job_for_GW12345",
                         "description": "Test description 1122",
                         "private": True,
                     },

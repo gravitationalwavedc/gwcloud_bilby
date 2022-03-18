@@ -48,7 +48,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         """
 
-        self.test_name = "Test Name"
+        self.test_name = "Test_Name"
         self.test_description = "Test Description"
         self.test_private = False
 
@@ -183,7 +183,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_psd1(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat}'
             },
@@ -200,7 +200,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_psd2(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'psd-dict': '{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat}'
             }
@@ -218,7 +218,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_psd3(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'psd-dict': '{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat, '
                             'H1:./supporting_files/psd/H1-psd.dat}'
@@ -238,7 +238,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_calibration1(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat}'
             }
@@ -255,7 +255,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_calibration2(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat, '
                                                     'V1:./supporting_files/calib/V1-calib.dat}'
@@ -274,7 +274,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_calibration3(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat, '
                                                     'V1:./supporting_files/calib/V1-calib.dat, '
@@ -295,7 +295,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_prior(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'prior-file': './supporting_files/prior/myprior.prior'
             }
@@ -312,7 +312,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_gps(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'gps-file': './supporting_files/gps/gps.dat'
             }
@@ -329,7 +329,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_timeslide(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'timeslide-file': './supporting_files/timeslide/timeslide.dat'
             }
@@ -346,7 +346,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_injection(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'injection-file': './supporting_files/injection/injection.dat'
             }
@@ -363,7 +363,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_numerical_relativity_file(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'numerical-relativity-file': './supporting_files/nrf/nrf.dat'
             }
@@ -380,7 +380,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_ini_job_submission_supporting_file_all(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'psd-dict': '{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat, '
                             'H1:./supporting_files/psd/H1-psd.dat}',
@@ -436,7 +436,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_download_supporting_files_valid_token_force_download(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat}'
             },
@@ -473,7 +473,7 @@ class TestIniJobSubmission(BilbyTestCase):
     def test_download_supporting_files_valid_token(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test Name",
+                'label': "Test_Name",
                 'detectors': "['H1']",
                 'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat}'
             },

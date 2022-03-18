@@ -32,6 +32,8 @@ def validate_job_name(name):
 
 
 def create_bilby_job(user, params):
+    validate_job_name(params.details.name)
+
     # Check the ligo permissions and ligo job status
     is_ligo_job = False
 
@@ -345,6 +347,7 @@ def create_bilby_job_from_ini_string(user, params):
         is_ligo_job = False
 
     # Override any required fields
+    validate_job_name(params.details.name)
     args.label = params.details.name
 
     # Convert the modified arguments back to an ini string
@@ -388,6 +391,7 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
             bilby_job.private = private
 
         if name is not None:
+            validate_job_name(name)
             bilby_job.name = name
 
         if description is not None:
@@ -462,6 +466,8 @@ def upload_bilby_job(upload_token, details, job_file):
 
         # Parse the ini file to check it's validity
         args = bilby_ini_string_to_args(ini_content.encode('utf-8'))
+        validate_job_name(args.label)
+
         args.idx = None
         args.ini = None
 

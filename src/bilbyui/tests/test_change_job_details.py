@@ -25,7 +25,7 @@ class TestChangeJobDetails(BilbyTestCase):
         change_job_input = {
             "input": {
                 "jobId": global_job_id,
-                "name": "New job name",
+                "name": "New_job_name",
                 "description": "New job description"
             }
         }
@@ -57,4 +57,4 @@ class TestChangeJobDetails(BilbyTestCase):
             expected, response.data, "Change Job Details mutation returned the wrong jobid or threw an error."
         )
         self.assertEqual(job.description, "New job description")
-        self.assertEqual(job.name, "New job name")
+        self.assertEqual(job.name, "New_job_name")

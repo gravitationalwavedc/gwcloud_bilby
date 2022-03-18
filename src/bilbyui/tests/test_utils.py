@@ -215,7 +215,10 @@ def construct_ini_string_from_dict(config_dict):
     return '\n'.join(config_line_list)
 
 
-def create_test_ini_string(config_dict={}, complete=False):
+def create_test_ini_string(config_dict=None, complete=False):
+    if config_dict is None:
+        config_dict = {}
+
     if complete or (config_dict == {}):
         config_dict = complete_config_dict(config_dict)
 
