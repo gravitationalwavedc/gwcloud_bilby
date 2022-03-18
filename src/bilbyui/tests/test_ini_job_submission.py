@@ -39,7 +39,7 @@ class TestIniJobSubmission(BilbyTestCase):
         self.client.authenticate(self.user, is_ligo=True)
 
         mock_api_call.return_value = {'jobId': 4321}
-        test_name = "Test Name"
+        test_name = "Test_Name"
         test_description = "Test Description"
         test_private = False
 
@@ -88,7 +88,7 @@ class TestIniJobSubmission(BilbyTestCase):
         self.assertEqual(job.private, test_private)
 
         # Check that ini labels are correctly set to the job name passed to the job details
-        test_name = "Test Name1"
+        test_name = "Test_Name1"
         test_ini_string = create_test_ini_string(
             {
                 'label': "Not the real job name",
@@ -147,7 +147,7 @@ class TestIniJobSubmission(BilbyTestCase):
             status=200
         )
 
-        test_name = "Test Name"
+        test_name = "Test_Name"
         test_description = "Test Description"
         test_private = False
 

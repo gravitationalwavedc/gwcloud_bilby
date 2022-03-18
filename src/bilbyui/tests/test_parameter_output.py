@@ -39,7 +39,7 @@ class TestJobSubmission(BilbyTestCase):
                 "input": {
                     "params": {
                         "details": {
-                            "name": rand_string(64),
+                            "name": rand_string(20),
                             "description": rand_string(128),
                             "private": True,
                         },
