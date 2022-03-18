@@ -1340,5 +1340,5 @@ class TestJobUploadNameValidation(BilbyTestCase):
         response = self.client.execute(self.mutation, test_input)
 
         self.assertDictEqual({'uploadBilbyJob': None}, response.data)
-        
+
         self.assertEqual(response.errors[0].message, "Job name must be at least 5 characters long.")
