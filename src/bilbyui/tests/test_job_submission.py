@@ -1,15 +1,18 @@
 import json
+import string
 from ast import literal_eval
 from unittest.mock import patch
 
 import responses
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.test import testcases
 from django.test.utils import override_settings
 
 from bilbyui.models import IniKeyValue, BilbyJob
 from bilbyui.tests.test_utils import compare_ini_kvs, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.views import validate_job_name
 
 User = get_user_model()
 
@@ -33,7 +36,7 @@ class TestJobSubmission(BilbyTestCase):
             "input": {
                 "params": {
                     "details": {
-                        "name": "test job for GW12345",
+                        "name": "test_job_for_GW12345",
                         "description": "Test description 1234",
                         "private": True,
                     },
@@ -191,7 +194,7 @@ class TestJobSubmission(BilbyTestCase):
             "input": {
                 "params": {
                     "details": {
-                        "name": "real test job for GW12345",
+                        "name": "real_test_job_for_GW12345",
                         "description": "real Test description 1234",
                         "private": True,
                     },
@@ -357,7 +360,7 @@ class TestJobSubmission(BilbyTestCase):
             "input": {
                 "params": {
                     "details": {
-                        "name": "test job for GW12345",
+                        "name": "test_job_for_GW12345",
                         "description": "Test description 1122",
                         "private": True,
                     },
@@ -492,3 +495,163 @@ class TestJobSubmission(BilbyTestCase):
         self.assertEqual(
             response.errors[0].message, "Error submitting job, cluster 'not_real' is not one of [default another]"
         )
+
+
+class TestJobSubmissionNameValidation(BilbyTestCase):
+    def setUp(self):
+        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
+        self.client.authenticate(self.user)
+
+        self.params = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": None,
+                        "description": "Test description 1234",
+                        "private": True,
+                    },
+                    # "calibration": None,
+                    "data": {
+                        "dataChoice": "simulated",
+                        "triggerTime": "1126259462.391",
+                        "channels": {
+                            "hanfordChannel": "GWOSC",
+                            "livingstonChannel": "GWOSC",
+                            "virgoChannel": "GWOSC"
+                        }
+                    },
+                    "detector": {
+                        "hanford": True,
+                        "hanfordMinimumFrequency": "20",
+                        "hanfordMaximumFrequency": "1024",
+                        "livingston": True,
+                        "livingstonMinimumFrequency": "20",
+                        "livingstonMaximumFrequency": "1024",
+                        "virgo": False,
+                        "virgoMinimumFrequency": "20",
+                        "virgoMaximumFrequency": "1024",
+                        "duration": "4",
+                        "samplingFrequency": "512"
+                    },
+                    # "injection": {},
+                    # "likelihood": {},
+                    "prior": {
+                        "priorDefault": "4s"
+                    },
+                    # "postProcessing": {},
+                    "sampler": {
+                        "nlive": "1000.0",
+                        "nact": "10.0",
+                        "maxmcmc": "5000.0",
+                        "walks": "1000.0",
+                        "dlogz": "0.1",
+                        "cpus": "1",
+                        "samplerChoice": "dynesty"
+                    },
+                    "waveform": {
+                        "model": None
+                    }
+                }
+            }
+        }
+
+        self.mutation = """
+            mutation NewJobMutation($input: BilbyJobMutationInput!) {
+              newBilbyJob(input: $input) {
+                result {
+                  jobId
+                }
+              }
+            }
+            """
+
+    @silence_errors
+    def test_invalid_job_name_symbols(self):
+        self.params['input']['params']['details']['name'] = "test_job_for_GW12345$"
+
+        response = self.client.execute(self.mutation, self.params)
+
+        self.assertDictEqual(
+            {'newBilbyJob': None}, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertEqual(response.errors[0].message, "Job name must not contain any spaces or special characters.")
+
+    @silence_errors
+    def test_invalid_job_name_too_long(self):
+        self.params['input']['params']['details']['name'] = 'a'*50
+
+        response = self.client.execute(self.mutation, self.params)
+
+        self.assertDictEqual(
+            {'newBilbyJob': None}, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertEqual(response.errors[0].message, "Job name must be less than 30 characters long.")
+
+    @silence_errors
+    def test_invalid_job_name_too_short(self):
+        self.params['input']['params']['details']['name'] = 'a'
+
+        response = self.client.execute(self.mutation, self.params)
+
+        self.assertDictEqual(
+            {'newBilbyJob': None}, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertEqual(response.errors[0].message, "Job name must be at least 5 characters long.")
+
+
+class TestJobNameValidation(testcases.TestCase):
+    def test_length(self):
+        # Test name too short
+        with self.assertRaises(Exception) as ex:
+            validate_job_name('')
+
+        self.assertEqual(str(ex.exception), "Job name must be at least 5 characters long.")
+
+        with self.assertRaises(Exception) as ex:
+            validate_job_name('1234')
+
+        self.assertEqual(str(ex.exception), "Job name must be at least 5 characters long.")
+
+        # Test name too long
+        with self.assertRaises(Exception) as ex:
+            validate_job_name('a'*31)
+
+        self.assertEqual(str(ex.exception), "Job name must be less than 30 characters long.")
+
+        with self.assertRaises(Exception) as ex:
+            validate_job_name('a'*3000)
+
+        self.assertEqual(str(ex.exception), "Job name must be less than 30 characters long.")
+
+        # Test valid name length
+        try:
+            for i in range(5, 30):
+                validate_job_name('a' * i)
+        except Exception:
+            self.fail("validate_job_name raised an exception when it should not have")
+
+    def test_invalid_characters(self):
+        # Generate a list of valid characters for a job
+        valid_characters = string.digits + string.ascii_letters + '_-'
+
+        # Try every possible character, including all unicode characters.
+        # Refer to https://www.rfc-editor.org/rfc/rfc3629 as to why the upper range is 0x10FFFF
+        for i in range(0x10FFFF):
+            char = chr(i)
+
+            # If the current character code is valid, no exception should be raised
+            if char in valid_characters:
+                try:
+                    validate_job_name('a'*10 + char)
+                except Exception:
+                    self.fail("validate_job_name raised an exception when it should not have")
+
+            else:
+                # Any invalid character code should raise an exception
+                with self.assertRaises(Exception) as ex:
+                    validate_job_name('a' * 10 + char)
+
+                self.assertEqual(str(ex.exception), "Job name must not contain any spaces or special characters.")
