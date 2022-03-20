@@ -9,7 +9,7 @@ const RECORDS_PER_PAGE = 100;
 
 const PublicJobs = ({data, match, router, relay}) => {
     const [search, setSearch] = useState('');
-    const [timeRange, setTimeRange] = useState('All');
+    const [timeRange, setTimeRange] = useState('all');
     const [order, setOrder] = useState();
     const [direction, setDirection] = useState('descending');
 
