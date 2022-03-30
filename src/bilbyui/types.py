@@ -1,4 +1,5 @@
 import graphene
+from graphene_file_upload.scalars import Upload
 
 
 class JobStatusType(graphene.ObjectType):
@@ -213,6 +214,11 @@ class JobIniInput(graphene.InputObjectType):
 class JobIniOutput(graphene.ObjectType):
     details = graphene.Field(JobDetailsOutput)
     ini_string = graphene.Field(IniOutput)
+
+
+class SupportingFileUploadInput(graphene.InputObjectType):
+    file_token = graphene.String()
+    supporting_file = Upload(required=True)
 
 
 class SupportingFileUploadResult(graphene.ObjectType):

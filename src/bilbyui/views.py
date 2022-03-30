@@ -664,20 +664,21 @@ def delete_event_id(user, event_id):
     return f'EventID {event_id} succesfully deleted!'
 
 
-def upload_supporting_file(upload_token, uploaded_supporting_file):
+def upload_supporting_files(upload_tokens, uploaded_supporting_files):
     # Check that the job directory exists for this supporting file
-    job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(upload_token.job.id)
-    os.makedirs(job_dir, exist_ok=True)
+    for upload_token, uploaded_supporting_file in zip(upload_tokens, uploaded_supporting_files):
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(upload_token.job.id)
+        os.makedirs(job_dir, exist_ok=True)
 
-    with open(job_dir / str(upload_token.id), 'wb') as supporting_file:
-        # Write the uploaded file to the temporary file
-        for c in uploaded_supporting_file.chunks():
-            supporting_file.write(c)
-        supporting_file.flush()
+        with open(job_dir / str(upload_token.id), 'wb') as supporting_file:
+            # Write the uploaded file to the temporary file
+            for c in uploaded_supporting_file.chunks():
+                supporting_file.write(c)
+            supporting_file.flush()
 
-    # Clear the token to indicate the file is uploaded
-    upload_token.upload_token = None
-    upload_token.save()
+        # Clear the token to indicate the file is uploaded
+        upload_token.upload_token = None
+        upload_token.save()
 
     # Check if there are any supporting uploads left for this job and submit the job if required
     if not SupportingFile.get_unuploaded_supporting_files(upload_token.job).exists():

@@ -381,6 +381,14 @@ class SupportingFile(models.Model):
         return inst.first()
 
     @classmethod
+    def get_by_upload_tokens(cls, tokens):
+        """
+        Retrieves the SupportingFile objects matching the provided upload tokens. Returns None for any
+        specific SupportingFile if the token doesn't exist or the bilby job's file uploads have expired.
+        """
+        return [cls.get_by_upload_token(token) for token in tokens]
+
+    @classmethod
     def get_unuploaded_supporting_files(cls, job):
         """
         Retrieves all supporting files that have not yet been uploaded for the specified job
