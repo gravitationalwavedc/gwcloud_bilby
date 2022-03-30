@@ -19,7 +19,10 @@ from .types import (
     JobIniInput,
     JobParameterInput,
     JobParameterOutput,
-    JobStatusType, BilbyJobSupportingFile, SupportingFileUploadResult,
+    JobStatusType,
+    BilbyJobSupportingFile,
+    SupportingFileUploadInput,
+    SupportingFileUploadResult,
 )
 from .utils.auth.lookup_users import request_lookup_users
 from .utils.db_search.db_search import perform_db_search
@@ -34,7 +37,8 @@ from .views import (
     delete_event_id,
     update_bilby_job,
     update_event_id,
-    upload_bilby_job, upload_supporting_file,
+    upload_bilby_job,
+    upload_supporting_files,
 )
 
 
@@ -550,26 +554,30 @@ class UploadBilbyJobMutation(relay.ClientIDMutation):
         )
 
 
-class UploadSupportingFileMutation(relay.ClientIDMutation):
+class UploadSupportingFilesMutation(relay.ClientIDMutation):
     class Input:
-        file_token = graphene.String()
-        supporting_file = Upload(required=True)
+        supporting_files = graphene.List(SupportingFileUploadInput)
 
     result = graphene.Field(SupportingFileUploadResult)
 
     @classmethod
-    def mutate_and_get_payload(cls, root, info, file_token, supporting_file):
-        # Get the token being used to perform the upload - this will return None if the token doesn't exist or
+    def mutate_and_get_payload(cls, root, info, supporting_files):
+        file_tokens, uploaded_files = [], []
+        for f in supporting_files:
+            file_tokens.append(f.file_token)
+            uploaded_files.append(f.supporting_file)
+
+        # Get the tokens being used to perform the upload - this will return None if the token doesn't exist or
         # if the bilby job is expired
-        token = SupportingFile.get_by_upload_token(file_token)
-        if not token:
-            raise GraphQLError("Supporting file upload token is invalid or expired.")
+        tokens = SupportingFile.get_by_upload_tokens(file_tokens)
+        if not all(tokens):
+            raise GraphQLError("At least one supporting file upload token is invalid or expired.")
 
         # Try uploading the bilby job supporting file
-        success = upload_supporting_file(token, supporting_file)
+        success = upload_supporting_files(tokens, uploaded_files)
 
         # Return the success state job id to the client
-        return UploadSupportingFileMutation(
+        return UploadSupportingFilesMutation(
             result=SupportingFileUploadResult(
                 result=success
             )
@@ -585,4 +593,4 @@ class Mutation(graphene.ObjectType):
     create_event_id = EventIDMutation.Field()
     update_event_id = UpdateEventIDMutation.Field()
     delete_event_id = DeleteEventIDMutation.Field()
-    upload_supporting_file = UploadSupportingFileMutation.Field()
+    upload_supporting_files = UploadSupportingFilesMutation.Field()

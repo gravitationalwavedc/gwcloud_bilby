@@ -4,6 +4,7 @@ import string
 import uuid
 from pathlib import Path
 from unittest.mock import patch
+from math import ceil
 
 import responses
 from django.conf import settings
@@ -39,8 +40,8 @@ class TestIniJobSubmission(BilbyTestCase):
         """
 
         self.supporting_file_mutation = """
-            mutation SupportingFileUploadMutation($input: UploadSupportingFileMutationInput!) {
-              uploadSupportingFile(input: $input) {
+            mutation SupportingFileUploadMutation($input: UploadSupportingFilesMutationInput!) {
+              uploadSupportingFiles(input: $input) {
                 result {
                   result
                 }
@@ -141,18 +142,20 @@ class TestIniJobSubmission(BilbyTestCase):
         self.assertIsNone(job.job_controller_id)
 
         # Now all files, checking that the job is only submitted once the last file upload has completed.
-        def upload_supporting_file(token):
+        def upload_supporting_files(tokens):
             content = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(128))
-
-            f = SimpleUploadedFile(
-                name='test.tar.gz',
-                content=content.encode('utf-8')
-            )
 
             file_input = {
                 "input": {
-                    "fileToken": token.upload_token,
-                    "supportingFile": f
+                    "supportingFiles": [
+                        {
+                            "fileToken": token,
+                            "supportingFile": SimpleUploadedFile(
+                                name='test.tar.gz',
+                                content=content.encode('utf-8')
+                            )
+                        } for token in tokens
+                    ]
                 }
             }
 
@@ -161,7 +164,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 file_input
             )
 
-            self.assertTrue(response.data['uploadSupportingFile']['result']['result'])
+            self.assertTrue(response.data['uploadSupportingFiles']['result']['result'])
 
         job.refresh_from_db()
         self.assertIsNone(job.job_controller_id)
@@ -170,12 +173,19 @@ class TestIniJobSubmission(BilbyTestCase):
         if job_dir.is_dir():
             shutil.rmtree(job_dir)
 
-        for sf in supporting_files:
+        # Breaks the supporting file list in half and uses the halves as batches to upload.
+        # This makes sure that we can handle uploading lists of files, as well as not uploading all files at once.
+        batch_size = ceil(len(supporting_files) / 2)
+        for i in range(0, len(supporting_files), batch_size):
             job.refresh_from_db()
             self.assertIsNone(job.job_controller_id)
 
-            upload_supporting_file(sf)
-            self.assertTrue((Path(job_dir) / str(sf.id)).is_file())
+            supporting_files_subset = supporting_files[i:i+batch_size]
+            upload_tokens = [sf.upload_token for sf in supporting_files_subset]
+            upload_supporting_files(upload_tokens)
+
+            for sf in supporting_files_subset:
+                self.assertTrue((Path(job_dir) / str(sf.id)).is_file())
 
         job.refresh_from_db()
         self.assertEqual(job.job_controller_id, 4321)
