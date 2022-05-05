@@ -5,6 +5,7 @@ from graphql_relay.node.node import to_global_id
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.tests.test_utils import silence_errors
 
 User = get_user_model()
 
@@ -12,7 +13,6 @@ User = get_user_model()
 class TestQueriesWithAuthenticatedUser(BilbyTestCase):
     def setUp(self):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user)
 
     def perform_db_search_mock(*args, **kwargs):
         return True, [
@@ -44,6 +44,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
             }
         ]
 
+    @silence_errors
     def test_bilby_job_query(self):
         """
         bilbyJob node query should return a single job for an authenticated user."
@@ -52,8 +53,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         job.ini_string = """detectors=['H1']"""
         job.save()
         global_id = to_global_id("BilbyJobNode", job.id)
-        response = self.client.execute(
-            f"""
+        query = f"""
             query {{
                 bilbyJob(id:"{global_id}"){{
                     id
@@ -72,8 +72,14 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                     }}
                 }}
             }}
-            """
-        )
+        """
+        # Check fails without authenticated user
+        response = self.client.execute(query)
+        self.assertResponseHasErrors(response, "Query returned no errors even though user was not authenticated")
+
+        # Try again with authenticated user
+        self.client.authenticate(self.user)
+        response = self.client.execute(query)
         expected = {
             "bilbyJob": {
                 "id": "QmlsYnlKb2JOb2RlOjE=",
@@ -92,6 +98,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
             expected, response.data, "bilbyJob query returned unexpected data."
         )
 
+    @silence_errors
     def test_bilby_jobs_query(self):
         """
         bilbyJobs query should return a list of personal jobs for an authenticated user.
@@ -111,8 +118,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         )
         # This job shouldn't appear in the list because it belongs to another user.
         BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=3)
-        response = self.client.execute(
-            """
+        query = """
             query {
                 bilbyJobs {
                     edges {
@@ -124,8 +130,15 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                     }
                 }
             }
-            """
-        )
+        """
+
+        # Check fails without authenticated user
+        response = self.client.execute(query)
+        self.assertResponseHasErrors(response, "Query returned no errors even though user was not authenticated")
+
+        # Try again with authenticated user
+        self.client.authenticate(self.user)
+        response = self.client.execute(query)
         expected = {
             "bilbyJobs": {
                 "edges": [
@@ -150,6 +163,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
             response.data, expected, "bilbyJobs query returned unexpected data."
         )
 
+    @silence_errors
     @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
     def test_public_bilby_jobs_query(self, perform_db_search):
         BilbyJob.objects.create(
@@ -160,8 +174,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         )
         # This job shouldn't appear in the list because it's private.
         BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=3, private=True)
-        response = self.client.execute(
-            """
+        query = """
             query {
                 publicBilbyJobs(search:"", timeRange:"all") {
                     edges {
@@ -170,17 +183,22 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                             description
                             name
                             jobStatus {
-                             name
+                                name
                             }
                             timestamp
                             id
                         }
-                     }
-                 }
-             }
-             """
-        )
+                    }
+                }
+            }
+        """
+        # Check fails without authenticated user
+        response = self.client.execute(query)
+        self.assertResponseHasErrors(response, "Query returned no errors even though user was not authenticated")
 
+        # Try again with authenticated user
+        self.client.authenticate(self.user)
+        response = self.client.execute(query)
         expected = {
             'publicBilbyJobs': {
                 'edges': [
