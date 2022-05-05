@@ -34,7 +34,7 @@ npm-tests:
     - python3 development-manage.py graphql_schema
     - cd react/
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
-    - eval "[ -f .nvmrc ] && nvm install && nvm use && nvm install-latest-npm"
+    - eval "[ -f .nvmrc ] && nvm install && nvm use && npm install npm@8.5.5"
     - npm install
     - npm run relay
     - npm run test-ci
