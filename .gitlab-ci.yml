@@ -52,6 +52,7 @@ bundle-tests:
     - $HOME/miniconda/bin/conda env create -f conda-environment.yml -p venv || true
     - $HOME/miniconda/bin/conda env update --file conda-environment.yml --prune -p venv
     - $HOME/miniconda/bin/conda init bash
+    - source ~/.bashrc
     - $HOME/miniconda/bin/conda activate ./venv
     - coverage run -m xmlrunner discover --output-file ./junit.xml || true
     - coverage xml
