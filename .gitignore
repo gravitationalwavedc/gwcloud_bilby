@@ -14,3 +14,5 @@ src/react/data/schema.json
 src/job_uploads/
 src/bundle/coverage.xml
 src/bundle/junit.xml
+outdir/
+*.npz

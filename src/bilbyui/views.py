@@ -16,6 +16,7 @@ from django.db import transaction
 from django.http import Http404, FileResponse
 
 from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile
+from .utils.bilby_input import get_patched_bilby_input
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 
 
@@ -318,7 +319,7 @@ def create_bilby_job_from_ini_string(user, params):
 
     # Don't change the prior file if it's one of the defaults
     prior_file = None
-    if args.prior_file not in bilby_pipe.main.Input().default_prior_files:
+    if args.prior_file not in get_patched_bilby_input(bilby_pipe.main.Input, [], []).default_prior_files:
         prior_file = args.prior_file
         args.prior_file = None
 
@@ -331,7 +332,7 @@ def create_bilby_job_from_ini_string(user, params):
     injection_file = args.injection_file
     args.injection_file = None
 
-    parser = DataGenerationInput(args, [], create_data=False)
+    parser = get_patched_bilby_input(DataGenerationInput, args, [], create_data=False)
 
     # Parse any supporting files
     supporting_files = parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file)
@@ -480,7 +481,7 @@ def upload_bilby_job(upload_token, details, job_file):
 
         # Don't change the prior file if it's one of the defaults
         prior_file = None
-        if args.prior_file not in bilby_pipe.main.Input().default_prior_files:
+        if args.prior_file not in get_patched_bilby_input(bilby_pipe.main.Input, [], []).default_prior_files:
             prior_file = args.prior_file
             args.prior_file = None
 
@@ -493,7 +494,7 @@ def upload_bilby_job(upload_token, details, job_file):
         injection_file = args.injection_file
         args.injection_file = None
 
-        parser = DataGenerationInput(args, [], create_data=False)
+        parser = get_patched_bilby_input(DataGenerationInput, args, [], create_data=False)
 
         # Parse any supporting files
         supporting_files = parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file)
