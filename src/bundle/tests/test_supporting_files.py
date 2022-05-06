@@ -8,6 +8,7 @@ from unittest.case import TestCase
 import responses
 
 from tests.utils import cd, args_to_bilby_ini
+from utils.bilby_input import get_patched_bilby_input
 
 
 class TestSupportingFiles(TestCase):
@@ -39,7 +40,7 @@ class TestSupportingFiles(TestCase):
         args.idx = 1
         args.ini = None
 
-        input_args = DataGenerationInput(args, [], create_data=False)
+        input_args = get_patched_bilby_input(DataGenerationInput, args, [], create_data=False)
         input_args.create_data(args)
 
         return input_args
