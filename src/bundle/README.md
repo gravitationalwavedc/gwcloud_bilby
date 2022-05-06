@@ -31,4 +31,5 @@ htcondor
 filelock
 testfixtures
 responses
+unittest-xml-reporting
 ```

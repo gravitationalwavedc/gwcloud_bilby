@@ -83,6 +83,7 @@ dependencies:
     - ligo-segments==1.4.0
     - ligotimegps==2.0.1
     - lscsoft-glue==3.0.1
+    - lxml==4.8.0
     - markupsafe==2.1.1
     - matplotlib==3.5.2
     - mock==4.0.3
@@ -117,5 +118,6 @@ dependencies:
     - tenacity==8.0.1
     - testfixtures==6.18.5
     - tqdm==4.64.0
+    - unittest-xml-reporting==3.2.0
     - urllib3==1.26.9
 prefix: /home/lewis/Projects/gwdc/gwcloud-bilby/src/bundle/venv
