@@ -22,7 +22,9 @@ django-tests:
 
   artifacts:
     reports:
-      cobertura: src/reports/coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: src/reports/coverage.xml
       junit: src/reports/junit.xml
 
 
