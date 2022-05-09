@@ -22,7 +22,9 @@ django-tests:
 
   artifacts:
     reports:
-      cobertura: src/reports/coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: src/reports/coverage.xml
       junit: src/reports/junit.xml
 
 
@@ -41,7 +43,9 @@ npm-tests:
 
   artifacts:
     reports:
-      cobertura: src/react/coverage/cobertura-coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: src/react/coverage/cobertura-coverage.xml
       junit: src/react/junit.xml
 
 
@@ -56,7 +60,9 @@ bundle-tests:
 
   artifacts:
     reports:
-      cobertura: src/bundle/coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: src/bundle/coverage.xml
       junit: src/bundle/junit.xml
 
 
