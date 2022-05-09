@@ -695,7 +695,10 @@ def delete_event_id(user, event_id):
 
 def upload_supporting_files(upload_tokens, uploaded_supporting_files):
     # Check that the job directory exists for this supporting file
+    job = None
     for upload_token, uploaded_supporting_file in zip(upload_tokens, uploaded_supporting_files):
+        job = upload_token.job
+
         job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(upload_token.job.id)
         os.makedirs(job_dir, exist_ok=True)
 
@@ -709,9 +712,9 @@ def upload_supporting_files(upload_tokens, uploaded_supporting_files):
         upload_token.upload_token = None
         upload_token.save()
 
-        # Check if there are any supporting uploads left for this job and submit the job if required
-        if not SupportingFile.get_unuploaded_supporting_files(upload_token.job).exists():
-            # All supporting files have been uploaded, now launch the job
-            upload_token.job.submit()
+    # Check if there are any supporting uploads left for this job and submit the job if required
+    if job and not SupportingFile.get_unuploaded_supporting_files(job).exists():
+        # All supporting files have been uploaded, now launch the job
+        job.submit()
 
     return True
