@@ -534,3 +534,39 @@ class TestSupportingFiles(TestCase):
             args = self.perform_ini_save_load_cycle(args)
 
             self.assertEqual(args.numerical_relativity_file, './supporting_files/nmr/test.nmr')
+
+    def test_distance_marginalization_lookup_table(self):
+        token = str(uuid.uuid4())
+        self.responses.add(
+            responses.GET,
+            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            body=self.content.encode('utf-8'),
+            status=200
+        )
+
+        supporting_files = [
+            {
+                'type': 'dml',
+                'key': None,
+                'file_name': 'test.dml',
+                'token': token
+            }
+        ]
+
+        from core.submit import bilby_ini_to_args, prepare_supporting_files
+
+        with TemporaryDirectory() as working_directory, cd(working_directory):
+            args = bilby_ini_to_args(self.ini_file_v1_l1)
+            prepare_supporting_files(args, supporting_files, working_directory)
+
+            for supporting_file in supporting_files:
+                self.assertTrue(
+                    (
+                            Path(working_directory) /
+                            'supporting_files' / supporting_file['type'] / supporting_file['file_name']
+                    ).is_file()
+                )
+
+            args = self.perform_ini_save_load_cycle(args)
+
+            self.assertEqual(args.distance_marginalization_lookup_table, './supporting_files/dml/test.dml')

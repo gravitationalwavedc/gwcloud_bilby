@@ -72,7 +72,8 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
             "gps": "gps_file",
             "tsl": "timeslide_file",
             "inj": "injection_file",
-            "nmr": "numerical_relativity_file"
+            "nmr": "numerical_relativity_file",
+            "dml": "distance_marginalization_lookup_table"
         }
 
         # Need the path to the supporting file relative to the working directory
