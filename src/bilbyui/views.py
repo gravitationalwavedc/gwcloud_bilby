@@ -709,9 +709,9 @@ def upload_supporting_files(upload_tokens, uploaded_supporting_files):
         upload_token.upload_token = None
         upload_token.save()
 
-    # Check if there are any supporting uploads left for this job and submit the job if required
-    if not SupportingFile.get_unuploaded_supporting_files(upload_token.job).exists():
-        # All supporting files have been uploaded, now launch the job
-        upload_token.job.submit()
+        # Check if there are any supporting uploads left for this job and submit the job if required
+        if not SupportingFile.get_unuploaded_supporting_files(upload_token.job).exists():
+            # All supporting files have been uploaded, now launch the job
+            upload_token.job.submit()
 
     return True
