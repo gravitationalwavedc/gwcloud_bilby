@@ -387,6 +387,23 @@ class TestIniJobSubmission(BilbyTestCase):
             'numerical_relativity_file'
         )
 
+    def test_ini_job_submission_supporting_file_distance_marginalization_lookup_table(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': "Test_Name",
+                'detectors': "['H1']",
+                'distance-marginalization-lookup-table': './supporting_files/dml/dml.npz'
+            }
+        )
+
+        self.mock_ini_job_submission_with_supporting_files(
+            test_ini_string,
+            [
+                [None, './supporting_files/dml/dml.npz', SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE]
+            ],
+            'distance_marginalization_lookup_table'
+        )
+
     def test_ini_job_submission_supporting_file_all(self):
         test_ini_string = create_test_ini_string(
             {
@@ -401,7 +418,8 @@ class TestIniJobSubmission(BilbyTestCase):
                 'gps-file': './supporting_files/gps/gps.dat',
                 'timeslide-file': './supporting_files/timeslide/timeslide.dat',
                 'injection-file': './supporting_files/injection/injection.dat',
-                'numerical-relativity-file': './supporting_files/nrf/nrf.dat'
+                'numerical-relativity-file': './supporting_files/nrf/nrf.dat',
+                'distance-marginalization-lookup-table': './supporting_files/dml/dml.npz'
             }
         )
 
@@ -424,7 +442,9 @@ class TestIniJobSubmission(BilbyTestCase):
 
                 [None, './supporting_files/injection/injection.dat', SupportingFile.INJECTION],
 
-                [None, './supporting_files/nrf/nrf.dat', SupportingFile.NUMERICAL_RELATIVITY]
+                [None, './supporting_files/nrf/nrf.dat', SupportingFile.NUMERICAL_RELATIVITY],
+
+                [None, './supporting_files/dml/dml.npz', SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE]
             ],
             [
                 'psd_dict',
@@ -433,7 +453,8 @@ class TestIniJobSubmission(BilbyTestCase):
                 'gps_file',
                 'timeslide_file',
                 'injection_file',
-                'numerical_relativity_file'
+                'numerical_relativity_file',
+                'distance_marginalization_lookup_table'
             ]
         )
 

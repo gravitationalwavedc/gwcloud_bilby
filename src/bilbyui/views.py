@@ -270,7 +270,8 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
     for supporting_file_type, config_name in {
         SupportingFile.PSD: 'psd_dict',
         SupportingFile.CALIBRATION: 'spline_calibration_envelope_dict',
-        SupportingFile.NUMERICAL_RELATIVITY: 'numerical_relativity_file'
+        SupportingFile.NUMERICAL_RELATIVITY: 'numerical_relativity_file',
+        SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE: 'distance_marginalization_lookup_table'
     }.items():
         if config_name == 'psd_dict':
             if not psd_dict:

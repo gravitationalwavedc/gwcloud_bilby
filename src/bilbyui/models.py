@@ -298,6 +298,7 @@ class SupportingFile(models.Model):
     TIME_SLIDE = "tsl"
     INJECTION = "inj"
     NUMERICAL_RELATIVITY = "nmr"
+    DISTANCE_MARGINALIZATION_LOOKUP_TABLE = "dml"
 
     job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE, db_index=True)
     # What type of supporting file this is
