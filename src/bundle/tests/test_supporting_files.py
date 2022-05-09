@@ -8,7 +8,6 @@ from unittest.case import TestCase
 import responses
 
 from tests.utils import cd, args_to_bilby_ini
-from utils.bilby_input import get_patched_bilby_input
 
 
 class TestSupportingFiles(TestCase):
@@ -21,11 +20,17 @@ class TestSupportingFiles(TestCase):
 
         self.content = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(128))
 
-        self.ini_file = """detectors=[V1, L1]\n""" \
-                        """trigger-time=11111111\n""" \
-                        """channel-dict={H1:GWOSC, L1:GWOSC}\n""" \
-                        """gaussian-noise=True\n""" \
-                        """n-simulation=1"""
+        self.ini_file_v1_l1 = """detectors=[V1, L1]\n""" \
+                              """trigger-time=11111111\n""" \
+                              """channel-dict={H1:GWOSC, L1:GWOSC}\n""" \
+                              """gaussian-noise=True\n""" \
+                              """n-simulation=1"""
+
+        self.ini_file_v1 = """detectors=[V1]\n""" \
+                           """trigger-time=11111111\n""" \
+                           """channel-dict={H1:GWOSC, L1:GWOSC}\n""" \
+                           """gaussian-noise=True\n""" \
+                           """n-simulation=1"""
 
     def perform_ini_save_load_cycle(self, args):
         """
@@ -40,7 +45,7 @@ class TestSupportingFiles(TestCase):
         args.idx = 1
         args.ini = None
 
-        input_args = get_patched_bilby_input(DataGenerationInput, args, [], create_data=False)
+        input_args = DataGenerationInput(args, [], create_data=False)
         input_args.create_data(args)
 
         return input_args
@@ -66,7 +71,7 @@ class TestSupportingFiles(TestCase):
         from core.submit import bilby_ini_to_args, prepare_supporting_files
 
         with TemporaryDirectory() as working_directory, cd(working_directory):
-            args = bilby_ini_to_args(self.ini_file)
+            args = bilby_ini_to_args(self.ini_file_v1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
             for supporting_file in supporting_files:
@@ -107,8 +112,8 @@ class TestSupportingFiles(TestCase):
             },
             {
                 'type': 'psd',
-                'key': 'H1',
-                'file_name': 'h1.psd',
+                'key': 'L1',
+                'file_name': 'l1.psd',
                 'token': token2
             }
         ]
@@ -116,7 +121,7 @@ class TestSupportingFiles(TestCase):
         from core.submit import bilby_ini_to_args, prepare_supporting_files
 
         with TemporaryDirectory() as working_directory, cd(working_directory):
-            args = bilby_ini_to_args(self.ini_file)
+            args = bilby_ini_to_args(self.ini_file_v1_l1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
             for supporting_file in supporting_files:
@@ -133,7 +138,7 @@ class TestSupportingFiles(TestCase):
                 args.psd_dict,
                 {
                     'V1': './supporting_files/psd/v1.psd',
-                    'H1': './supporting_files/psd/h1.psd'
+                    'L1': './supporting_files/psd/l1.psd'
                 }
             )
 
@@ -186,7 +191,7 @@ class TestSupportingFiles(TestCase):
         from core.submit import bilby_ini_to_args, prepare_supporting_files
 
         with TemporaryDirectory() as working_directory, cd(working_directory):
-            args = bilby_ini_to_args(self.ini_file)
+            args = bilby_ini_to_args(self.ini_file_v1_l1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
             for supporting_file in supporting_files:
@@ -229,7 +234,7 @@ class TestSupportingFiles(TestCase):
         from core.submit import bilby_ini_to_args, prepare_supporting_files
 
         with TemporaryDirectory() as working_directory, cd(working_directory):
-            args = bilby_ini_to_args(self.ini_file)
+            args = bilby_ini_to_args(self.ini_file_v1_l1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
             for supporting_file in supporting_files:
@@ -279,7 +284,7 @@ class TestSupportingFiles(TestCase):
         from core.submit import bilby_ini_to_args, prepare_supporting_files
 
         with TemporaryDirectory() as working_directory, cd(working_directory):
-            args = bilby_ini_to_args(self.ini_file)
+            args = bilby_ini_to_args(self.ini_file_v1_l1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
             for supporting_file in supporting_files:
@@ -349,7 +354,7 @@ class TestSupportingFiles(TestCase):
         from core.submit import bilby_ini_to_args, prepare_supporting_files
 
         with TemporaryDirectory() as working_directory, cd(working_directory):
-            args = bilby_ini_to_args(self.ini_file)
+            args = bilby_ini_to_args(self.ini_file_v1_l1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
             for supporting_file in supporting_files:
@@ -392,7 +397,7 @@ class TestSupportingFiles(TestCase):
         from core.submit import bilby_ini_to_args, prepare_supporting_files
 
         with TemporaryDirectory() as working_directory, cd(working_directory):
-            args = bilby_ini_to_args(self.ini_file)
+            args = bilby_ini_to_args(self.ini_file_v1_l1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
             for supporting_file in supporting_files:
@@ -442,7 +447,7 @@ class TestSupportingFiles(TestCase):
         from core.submit import bilby_ini_to_args, prepare_supporting_files
 
         with TemporaryDirectory() as working_directory, cd(working_directory):
-            args = bilby_ini_to_args(self.ini_file)
+            args = bilby_ini_to_args(self.ini_file_v1_l1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
             for supporting_file in supporting_files:
@@ -479,7 +484,7 @@ class TestSupportingFiles(TestCase):
         from core.submit import bilby_ini_to_args, prepare_supporting_files
 
         with TemporaryDirectory() as working_directory, cd(working_directory):
-            args = bilby_ini_to_args(self.ini_file)
+            args = bilby_ini_to_args(self.ini_file_v1_l1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
             for supporting_file in supporting_files:
@@ -515,7 +520,7 @@ class TestSupportingFiles(TestCase):
         from core.submit import bilby_ini_to_args, prepare_supporting_files
 
         with TemporaryDirectory() as working_directory, cd(working_directory):
-            args = bilby_ini_to_args(self.ini_file)
+            args = bilby_ini_to_args(self.ini_file_v1_l1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
             for supporting_file in supporting_files:

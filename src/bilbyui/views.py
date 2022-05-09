@@ -9,6 +9,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 import bilby_pipe
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
+from bilby_pipe.utils import convert_string_to_dict
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
@@ -16,7 +17,6 @@ from django.db import transaction
 from django.http import Http404, FileResponse
 
 from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile
-from .utils.bilby_input import get_patched_bilby_input
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 
 
@@ -247,7 +247,7 @@ def create_bilby_job(user, params):
     return bilby_job
 
 
-def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file):
+def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict):
     """
     Given a DataGenerationInput object, parser, this function will generate a dictionary representing any supporting
     files from the input, and then remove those supporting files from the parser. The other parameter is a
@@ -272,13 +272,19 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
         SupportingFile.CALIBRATION: 'spline_calibration_envelope_dict',
         SupportingFile.NUMERICAL_RELATIVITY: 'numerical_relativity_file'
     }.items():
-        # Check if this configuration parameter is set in the parser
-        if not hasattr(parser, config_name):
-            continue
+        if config_name == 'psd_dict':
+            if not psd_dict:
+                continue
 
-        config = getattr(parser, config_name)
-        if config is None:
-            continue
+            config = convert_string_to_dict(psd_dict, "psd-dict")
+        else:
+            # Check if this configuration parameter is set in the parser
+            if not hasattr(parser, config_name):
+                continue
+
+            config = getattr(parser, config_name)
+            if config is None:
+                continue
 
         if type(config) is dict:
             # Handle this configuration item as a dictionary of files
@@ -319,7 +325,7 @@ def create_bilby_job_from_ini_string(user, params):
 
     # Don't change the prior file if it's one of the defaults
     prior_file = None
-    if args.prior_file not in get_patched_bilby_input(bilby_pipe.main.Input, [], []).default_prior_files:
+    if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
         prior_file = args.prior_file
         args.prior_file = None
 
@@ -332,10 +338,21 @@ def create_bilby_job_from_ini_string(user, params):
     injection_file = args.injection_file
     args.injection_file = None
 
-    parser = get_patched_bilby_input(DataGenerationInput, args, [], create_data=False)
+    psd_dict = args.psd_dict
+    args.psd_dict = None
+
+    parser = DataGenerationInput(args, [], create_data=False)
 
     # Parse any supporting files
-    supporting_files = parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file)
+    supporting_files = parse_supporting_files(
+        parser,
+        args,
+        prior_file,
+        gps_file,
+        timeslide_file,
+        injection_file,
+        psd_dict
+    )
 
     if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in (parser.channel_dict or {}).values()])):
         # This is a real job, with a channel that is not GWOSC
@@ -481,7 +498,7 @@ def upload_bilby_job(upload_token, details, job_file):
 
         # Don't change the prior file if it's one of the defaults
         prior_file = None
-        if args.prior_file not in get_patched_bilby_input(bilby_pipe.main.Input, [], []).default_prior_files:
+        if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
             prior_file = args.prior_file
             args.prior_file = None
 
@@ -494,10 +511,21 @@ def upload_bilby_job(upload_token, details, job_file):
         injection_file = args.injection_file
         args.injection_file = None
 
-        parser = get_patched_bilby_input(DataGenerationInput, args, [], create_data=False)
+        psd_dict = args.psd_dict
+        args.psd_dict = None
+
+        parser = DataGenerationInput(args, [], create_data=False)
 
         # Parse any supporting files
-        supporting_files = parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file)
+        supporting_files = parse_supporting_files(
+            parser,
+            args,
+            prior_file,
+            gps_file,
+            timeslide_file,
+            injection_file,
+            psd_dict
+        )
 
         # Verify that a non-ligo user can't upload a ligo job, and check if this job is a ligo job or not
         if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in (parser.channel_dict or {}).values()])):
