@@ -278,6 +278,26 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
                 continue
 
             config = convert_string_to_dict(psd_dict, "psd-dict")
+        elif config_name == 'distance_marginalization_lookup_table':
+            # Bilby pipe has a weird way to deal with default distance marginalisation tables. If the distance
+            # marginalisation lookup table is None, then bilby_pipe will copy a default one for the specified prior
+            # in to the current working directory. Then upon our code trying to check if that file exists, we get an
+            # error. Instead, we need to check if the provided marginalisation lookup table is one of the defaults, and
+            # ignore it if it is. See get_distance_file_lookup_table() in
+            # https://git.ligo.org/lscsoft/bilby_pipe/-/blob/master/bilby_pipe/input.py#L781
+
+            config = getattr(parser, config_name)
+            if config is None:
+                continue
+
+            # Get the path to the marginalisation file, if it's "./", and the filename begins with ".", then assume that
+            # the distance marginalisation isn't provided and is a default. For a default marginalisation file, the path
+            # will be something like `./.4s_distance_marginalization_lookup.npz`
+            path = Path(config)
+            if str(path.parent) == "." and path.name[0] == ".":
+                # Here we continue, since there is no reason to create a SupportingFile record for default
+                # marginalisation files.
+                continue
         else:
             # Check if this configuration parameter is set in the parser
             if not hasattr(parser, config_name):
