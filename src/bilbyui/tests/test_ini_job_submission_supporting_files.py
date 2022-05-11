@@ -404,6 +404,41 @@ class TestIniJobSubmission(BilbyTestCase):
             'distance_marginalization_lookup_table'
         )
 
+    def test_ini_job_submission_supporting_file_data_dict_1(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': "Test_Name",
+                'detectors': "['H1']",
+                'data-dict': '{H1: ./supporting_files/dat/h1.gwf}'
+            }
+        )
+
+        self.mock_ini_job_submission_with_supporting_files(
+            test_ini_string,
+            [
+                ['H1', './supporting_files/dat/h1.gwf', SupportingFile.DATA]
+            ],
+            'data_dict'
+        )
+
+    def test_ini_job_submission_supporting_file_data_dict_2(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': "Test_Name",
+                'detectors': "['H1', 'L1']",
+                'data-dict': '{H1: ./supporting_files/dat/h1.gwf, L1: ./supporting_files/dat/l1.gwf}'
+            }
+        )
+
+        self.mock_ini_job_submission_with_supporting_files(
+            test_ini_string,
+            [
+                ['H1', './supporting_files/dat/h1.gwf', SupportingFile.DATA],
+                ['L1', './supporting_files/dat/l1.gwf', SupportingFile.DATA]
+            ],
+            'data_dict'
+        )
+
     def test_ini_job_submission_supporting_file_all(self):
         test_ini_string = create_test_ini_string(
             {
@@ -419,7 +454,9 @@ class TestIniJobSubmission(BilbyTestCase):
                 'timeslide-file': './supporting_files/timeslide/timeslide.dat',
                 'injection-file': './supporting_files/injection/injection.dat',
                 'numerical-relativity-file': './supporting_files/nrf/nrf.dat',
-                'distance-marginalization-lookup-table': './supporting_files/dml/dml.npz'
+                'distance-marginalization-lookup-table': './supporting_files/dml/dml.npz',
+                'data-dict': '{H1: ./supporting_files/dat/h1.gwf, L1: ./supporting_files/dat/l1.gwf, '
+                             'V1: ./supporting_files/dat/v1.gwf}'
             }
         )
 
@@ -444,7 +481,11 @@ class TestIniJobSubmission(BilbyTestCase):
 
                 [None, './supporting_files/nrf/nrf.dat', SupportingFile.NUMERICAL_RELATIVITY],
 
-                [None, './supporting_files/dml/dml.npz', SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE]
+                [None, './supporting_files/dml/dml.npz', SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE],
+
+                ['H1', './supporting_files/dat/h1.gwf', SupportingFile.DATA],
+                ['L1', './supporting_files/dat/l1.gwf', SupportingFile.DATA],
+                ['V1', './supporting_files/dat/v1.gwf', SupportingFile.DATA]
             ],
             [
                 'psd_dict',
@@ -454,7 +495,8 @@ class TestIniJobSubmission(BilbyTestCase):
                 'timeslide_file',
                 'injection_file',
                 'numerical_relativity_file',
-                'distance_marginalization_lookup_table'
+                'distance_marginalization_lookup_table',
+                'data_dict'
             ]
         )
 

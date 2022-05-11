@@ -1179,6 +1179,73 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
             self.assertEqual(supporting_file.file_type, SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE)
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_data_dict_1(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'data-dict': '{H1: ./supporting_files/dat/h1.gwf}'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/dat/h1.gwf'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['data_dict'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.DATA)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_data_dict_2(self):
+        test_ini_string = create_test_ini_string(
+            {
+                'label': self.test_name,
+                'outdir': './',
+                'data-dict': '{H1: ./supporting_files/dat/h1.gwf, L1: ./supporting_files/dat/l1.gwf}'
+            },
+            True
+        )
+
+        supporting_files = [
+            './supporting_files/dat/h1.gwf',
+            './supporting_files/dat/l1.gwf'
+        ]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ['data_dict'])
+
+        # There should be a supporting file record for each supporting file
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        # File should exist in the unpacked archive
+        for supporting_file in supporting_files:
+            self.assertTrue((Path(job_dir) / supporting_file).is_file())
+
+        # File should exist in the supporting files for this job
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue(
+                (job_dir / str(supporting_file.id)).is_file()
+            )
+
+            self.assertEqual(supporting_file.file_type, SupportingFile.DATA)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_all(self):
         test_ini_string = create_test_ini_string(
             {
@@ -1194,7 +1261,9 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
                 'timeslide-file': './supporting_files/timeslide/timeslide.dat',
                 'injection-file': './supporting_files/injection/injection.dat',
                 'numerical-relativity-file': './supporting_files/nrf/nrf.dat',
-                'distance-marginalization-lookup-table': './supporting_files/dml/dml.npz'
+                'distance-marginalization-lookup-table': './supporting_files/dml/dml.npz',
+                'data-dict': '{H1: ./supporting_files/dat/h1.gwf, L1: ./supporting_files/dat/l1.gwf, '
+                             'V1: ./supporting_files/dat/v1.gwf}'
             },
             True
         )
@@ -1218,7 +1287,11 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             './supporting_files/nrf/nrf.dat',
 
-            './supporting_files/dml/dml.npz'
+            './supporting_files/dml/dml.npz',
+
+            './supporting_files/dat/h1.gwf',
+            './supporting_files/dat/l1.gwf',
+            './supporting_files/dat/v1.gwf'
         ]
 
         job, job_dir = self.perform_upload(
@@ -1232,7 +1305,8 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
                 'timeslide_file',
                 'injection_file',
                 'numerical_relativity_file',
-                'distance_marginalization_lookup_table'
+                'distance_marginalization_lookup_table',
+                'data_dict'
             ]
         )
 
