@@ -3,6 +3,7 @@ from decimal import Decimal
 from math import floor
 
 from bilby_pipe.data_generation import DataGenerationInput
+from bilby_pipe.input import Input
 from bilby_pipe.utils import logger
 
 from bilbyui.types import JobParameterOutput, JobDetailsOutput, ChannelsOutput, DataOutput, DetectorOutput, \
@@ -54,6 +55,28 @@ def generate_parameter_output(job):
     # Sanitize the output directory
     if args.outdir == '.':
         args.outdir = "./"
+
+    # Sanitize supporting files for the DataGenerationInput step. None of the supporting files are required for the
+    # parameter generation when querying a job.
+    sanitized_fields = [
+        'psd_dict',
+        'spline_calibration_envelope_dict',
+        'gps_file',
+        'timeslide_file',
+        'injection_file',
+        'numerical_relativity_file',
+        'distance_marginalization_lookup_table',
+        'data_dict'
+    ]
+
+    # Prior files can be defaults (like 4s, 32s etc), if it's one of the defaults - then the prior file is valid, so
+    # leave the prior file as is.
+    if args.prior_file not in Input([], []).get_default_prior_files():
+        sanitized_fields.append('prior_file')
+
+    for field in sanitized_fields:
+        if hasattr(args, field):
+            setattr(args, field, None)
 
     parser = DataGenerationInput(args, [], create_data=False)
 
