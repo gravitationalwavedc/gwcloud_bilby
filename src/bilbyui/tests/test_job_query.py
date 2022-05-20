@@ -181,3 +181,53 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.assertDictEqual(
             expected, response.data, "bilbyJob query returned unexpected data."
         )
+
+    def test_bilby_job_supporting_files_dont_exist(self):
+        self.job_data['name'] = 'another test job'
+        self.job_data['ini_string'] = open('bilbyui/tests/regression_data/psd_dict_ini.ini').read()
+        del self.job_data['id']
+        self.job = BilbyJob.objects.create(**self.job_data)
+
+        global_id = to_global_id("BilbyJobNode", self.job.id)
+        query = f"""
+            query {{
+                bilbyJob(id:"{global_id}"){{
+                    id
+                    name
+                    userId
+                    description
+                    jobControllerId
+                    private
+                    lastUpdated
+                    params {{
+                        details {{
+                            name
+                            description
+                            private
+                        }}
+                    }}
+                }}
+            }}
+        """
+
+        response = self.client.execute(query)
+
+        self.assertEqual(response.errors, None)
+
+        expected = {
+            "bilbyJob": {
+                "id": "QmlsYnlKb2JOb2RlOjI=",
+                "name": "another test job",
+                "userId": 1,
+                "description": "Test description",
+                "jobControllerId": 1,
+                "private": False,
+                "lastUpdated": self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "params": {
+                    "details": {"name": "another test job", "description": "Test description", "private": False}
+                }
+            }
+        }
+        self.assertDictEqual(
+            expected, response.data, "bilbyJob query returned unexpected data."
+        )
