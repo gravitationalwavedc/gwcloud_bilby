@@ -243,7 +243,7 @@ pygments==2.12.0
     # via pesummary
 pyhumps==3.5.3
     # via -r requirements.in
-pyjwt==1.7.1
+pyjwt==2.4.0
     # via
     #   -r requirements.in
     #   django-graphql-jwt
