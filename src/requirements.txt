@@ -216,7 +216,7 @@ pep8==1.7.1
     # via -r requirements.in
 pesummary==0.13.3
     # via bilby-pipe
-pillow==9.1.0
+pillow==9.1.1
     # via matplotlib
 pip-tools==6.6.0
     # via -r requirements.in
