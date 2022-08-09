@@ -1,6 +1,5 @@
 import json
 from tempfile import TemporaryDirectory
-from unittest import mock
 
 import responses
 from django.conf import settings
