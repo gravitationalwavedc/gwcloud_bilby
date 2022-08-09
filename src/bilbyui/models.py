@@ -141,10 +141,6 @@ class BilbyJob(models.Model):
     # should be uploaded to once the supporting files are uploaded
     cluster = models.TextField(null=True)
 
-    @property
-    def job_status(self):
-        return request_job_status(self)
-
     @classmethod
     def get_by_id(cls, bid, user):
         """
