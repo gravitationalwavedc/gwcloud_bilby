@@ -346,6 +346,7 @@ class TestJobSubmission(BilbyTestCase):
 
     @silence_errors
     @override_settings(CLUSTERS=['default', 'another'])
+    @override_settings(ALLOW_HTTP_LEAKS=True)
     def test_cluster_submission(self):
         return_result = {'jobId': 1122}
 

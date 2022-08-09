@@ -5,7 +5,10 @@ import jwt
 import requests
 from django.conf import settings
 
+from bilbyui.utils.misc import check_request_leak_decorator
 
+
+@check_request_leak_decorator
 def request_lookup_users(ids, user_id):
     """
     Requests a list of users from the id's provided

@@ -5,7 +5,10 @@ import jwt
 import requests
 from django.conf import settings
 
+from bilbyui.utils.misc import check_request_leak
 
+
+@check_request_leak
 def request_filter_users(search, user_id):
     """
     Requests a filter of users based on search from the auth service

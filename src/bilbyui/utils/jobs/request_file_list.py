@@ -7,6 +7,8 @@ import jwt
 import requests
 from django.conf import settings
 
+from bilbyui.utils.misc import check_request_leak
+
 
 def request_file_list(job, path, recursive, user_id=None):
     """
@@ -102,6 +104,7 @@ def request_file_list(job, path, recursive, user_id=None):
 
     try:
         # Initiate the request to the job controller
+        check_request_leak()
         result = requests.request(
             "PATCH", f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
             data=json.dumps(data),

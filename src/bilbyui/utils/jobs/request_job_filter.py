@@ -5,7 +5,10 @@ import jwt
 import requests
 from django.conf import settings
 
+from bilbyui.utils.misc import check_request_leak_decorator
 
+
+@check_request_leak_decorator
 def request_job_filter(user_id, ids=None, end_time_gt=None):
     """
     Requests a filtered list of jobs from the job controller
