@@ -69,7 +69,7 @@ dependencies:
     - filelock==3.6.0
     - fonttools==4.33.3
     - future==0.18.2
-    - gwdatafind==1.1.0
+    - gwdatafind==1.1.1
     - gwosc==0.6.1
     - gwpy==2.1.3
     - h5py==3.6.0
