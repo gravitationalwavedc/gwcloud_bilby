@@ -103,12 +103,24 @@ class BilbyJobNode(DjangoObjectType):
 
     @classmethod
     def get_queryset(parent, queryset, info):
-        return BilbyJob.bilby_job_filter(queryset, info)
+        qs = BilbyJob.bilby_job_filter(queryset, info)
+
+        # Query any users from this queryset in one go
+        user_ids = set(qs.values_list('user_id', flat=True))
+        _, users = request_lookup_users(list(user_ids), info.context.user.user_id)
+        info.context.users = dict(zip([user['userId'] for user in users], [user for user in users]))
+
+        # Query any job controller information in one go
+        job_controller_ids = set(qs.values_list('job_controller_id', flat=True))
+        _, jc_jobs = request_job_filter(info.context.user.user_id, ids=list(job_controller_ids))
+        info.context.job_controller_jobs = dict(zip([job['id'] for job in jc_jobs], [job for job in jc_jobs]))
+
+        return qs
 
     def resolve_user(parent, info):
-        success, users = request_lookup_users([parent.user_id], info.context.user.user_id)
-        if success and users:
-            return f"{users[0]['firstName']} {users[0]['lastName']}"
+        user = info.context.users.get(parent.user_id, None)
+        if user:
+            return f"{user['firstName']} {user['lastName']}"
         return "Unknown User"
 
     def resolve_last_updated(parent, info):
@@ -133,13 +145,9 @@ class BilbyJobNode(DjangoObjectType):
             }
 
         try:
-            # Get job details from the job controller
-            _, jc_jobs = request_job_filter(
-                info.context.user.user_id,
-                ids=[parent.job_controller_id]
+            status_number, status_name, status_date = derive_job_status(
+                info.context.job_controller_jobs.get(parent.job_controller_id, None)["history"]
             )
-
-            status_number, status_name, status_date = derive_job_status(jc_jobs[0]["history"])
 
             return {
                 "name": status_name,

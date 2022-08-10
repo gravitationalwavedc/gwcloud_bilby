@@ -9,7 +9,6 @@ from django.db import models
 from django.utils import timezone
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
-from bilbyui.utils.jobs.request_job_status import request_job_status
 from .utils.jobs.submit_job import submit_job
 from .utils.parse_ini_file import parse_ini_file
 
@@ -140,10 +139,6 @@ class BilbyJob(models.Model):
     # The cluster (as a string) that this job was submitted to. This is mainly used to track the cluster that the job
     # should be uploaded to once the supporting files are uploaded
     cluster = models.TextField(null=True)
-
-    @property
-    def job_status(self):
-        return request_job_status(self)
 
     @classmethod
     def get_by_id(cls, bid, user):

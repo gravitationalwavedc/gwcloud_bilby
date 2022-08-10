@@ -29,10 +29,24 @@ class TestJobSubmission(BilbyTestCase):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user, True)
 
+    def request_lookup_users_mock(*args, **kwargs):
+        user = User.objects.first()
+        if user:
+            return True, [{
+                'userId': user.id,
+                'username': user.username,
+                'firstName': user.first_name,
+                'lastName': user.last_name
+            }]
+        return False, []
+
+    @patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
+    @patch('bilbyui.schema.request_job_filter')
     @patch("bilbyui.models.submit_job")
-    def test_generate_parameter_output(self, mock_api_call):
+    def test_generate_parameter_output(self, mock_api_call, mock_request_job_filter, *args):
         # Try randomly generating 100 jobs
         for job_index in range(100):
+            mock_request_job_filter.return_value = (None, [{"id": 10, "history": None}])
             mock_api_call.return_value = {'jobId': job_index + 10}
 
             params = {

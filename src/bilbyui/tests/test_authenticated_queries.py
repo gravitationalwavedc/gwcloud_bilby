@@ -44,8 +44,21 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
             }
         ]
 
+    def request_lookup_users_mock(*args, **kwargs):
+        user = User.objects.first()
+        if user:
+            return True, [{
+                'userId': user.id,
+                'username': user.username,
+                'firstName': user.first_name,
+                'lastName': user.last_name
+            }]
+        return False, []
+
     @silence_errors
-    def test_bilby_job_query(self):
+    @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
+    def test_bilby_job_query(self, *args):
         """
         bilbyJob node query should return a single job for an authenticated user."
         """
@@ -99,7 +112,9 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         )
 
     @silence_errors
-    def test_bilby_jobs_query(self):
+    @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
+    def test_bilby_jobs_query(self, *args):
         """
         bilbyJobs query should return a list of personal jobs for an authenticated user.
         """
