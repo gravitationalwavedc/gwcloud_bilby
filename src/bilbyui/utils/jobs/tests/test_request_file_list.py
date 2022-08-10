@@ -17,6 +17,7 @@ from bilbyui.utils.jobs.request_file_list import request_file_list
 User = get_user_model()
 
 
+@override_settings(ALLOW_HTTP_LEAKS=True)
 class TestRequestFileListNotUploaded(TestCase):
     def setUp(self):
         self.responses = responses.RequestsMock()

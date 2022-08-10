@@ -6,7 +6,10 @@ import jwt
 import requests
 from django.conf import settings
 
+from bilbyui.utils.misc import check_request_leak_decorator
 
+
+@check_request_leak_decorator
 def request_file_download_ids(job, paths, user_id=None):
     """
     Requests a list of file download ids from the job controller for the provided list of file paths

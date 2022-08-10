@@ -112,7 +112,7 @@ class TestBilbyJobQueries(BilbyTestCase):
 
     @mock.patch('bilbyui.schema.request_job_filter', return_value=(None, [{"history": None}]))
     @mock.patch('bilbyui.schema.derive_job_status', side_effect=derive_job_status_mock)
-    def test_bilby_job_status_query(self, request_job_filter_mock, derive_job_status_mock):
+    def test_bilby_job_status_query(self, *args):
         """
         bilbyJob node query should allow querying of job status field"
         """
@@ -144,7 +144,7 @@ class TestBilbyJobQueries(BilbyTestCase):
             expected, response.data, "bilbyJob query returned unexpected data."
         )
 
-    def test_bilby_job_labels_query(self):
+    def test_bilby_job_labels_query(self, *args):
         """
         bilbyJob node query should allow querying of labels field"
         """
@@ -182,7 +182,7 @@ class TestBilbyJobQueries(BilbyTestCase):
             expected, response.data, "bilbyJob query returned unexpected data."
         )
 
-    def test_bilby_job_supporting_files_dont_exist(self):
+    def test_bilby_job_supporting_files_dont_exist(self, *args):
         self.job_data['name'] = 'another test job'
         self.job_data['ini_string'] = open('bilbyui/tests/regression_data/psd_dict_ini.ini').read()
         del self.job_data['id']

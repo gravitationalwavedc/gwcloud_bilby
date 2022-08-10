@@ -5,7 +5,10 @@ import jwt
 import requests
 from django.conf import settings
 
+from bilbyui.utils.misc import check_request_leak_decorator
 
+
+@check_request_leak_decorator
 def perform_db_search(user, kwargs):
     """
     Perform a db job search based on parameters provided in kwargs

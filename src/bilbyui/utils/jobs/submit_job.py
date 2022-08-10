@@ -6,7 +6,10 @@ import jwt
 import requests
 from django.conf import settings
 
+from bilbyui.utils.misc import check_request_leak_decorator
 
+
+@check_request_leak_decorator
 def submit_job(user_id, params, cluster):
     """
     Submits a new job with `params` to the job controller

@@ -135,6 +135,7 @@ class TestIniJobSubmission(BilbyTestCase):
 
     @silence_errors
     @override_settings(CLUSTERS=['default', 'another'])
+    @override_settings(ALLOW_HTTP_LEAKS=True)
     def test_cluster_submission(self):
         self.client.authenticate(self.user, is_ligo=True)
 

@@ -5,7 +5,10 @@ import jwt
 import requests
 from django.conf import settings
 
+from bilbyui.utils.misc import check_request_leak_decorator
 
+
+@check_request_leak_decorator
 def request_job_status(job, user_id=None):
     """
     Requests and calculates the current job status for the provided job
