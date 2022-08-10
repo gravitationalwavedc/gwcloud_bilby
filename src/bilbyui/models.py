@@ -111,12 +111,14 @@ class BilbyJob(models.Model):
             ('user_id', 'name'),
         )
 
+        ordering = ('-last_updated', 'name')
+
     user_id = models.IntegerField()
     name = models.CharField(max_length=255, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
 
     creation_time = models.DateTimeField(auto_now_add=True)
-    last_updated = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
 
     private = models.BooleanField(default=False)
 

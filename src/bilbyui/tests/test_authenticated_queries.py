@@ -118,7 +118,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         """
         bilbyJobs query should return a list of personal jobs for an authenticated user.
         """
-        BilbyJob.objects.create(
+        job = BilbyJob.objects.create(
             user_id=self.user.id,
             name="Test1",
             job_controller_id=2,
@@ -131,8 +131,15 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
             description="A test job",
             is_ligo_job=False
         )
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="aaafirst",
+            job_controller_id=3,
+            description="A test job",
+            is_ligo_job=False
+        )
         # This job shouldn't appear in the list because it belongs to another user.
-        BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=3)
+        BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=4)
         query = """
             query {
                 bilbyJobs {
@@ -160,8 +167,8 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                     {
                         "node": {
                             "userId": 1,
-                            "name": "Test1",
-                            "description": None
+                            "name": "aaafirst",
+                            "description": "A test job"
                         }
                     },
                     {
@@ -171,6 +178,49 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
                             "description": "A test job",
                         }
                     },
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "Test1",
+                            "description": None
+                        }
+                    }
+                ]
+            }
+        }
+        self.assertDictEqual(
+            response.data, expected, "bilbyJobs query returned unexpected data."
+        )
+
+        # Update the first test job and check that the order changes correctly
+        job.description = "Test job description"
+        job.save()
+
+        response = self.client.execute(query)
+        expected = {
+            "bilbyJobs": {
+                "edges": [
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "Test1",
+                            "description": "Test job description"
+                        }
+                    },
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "aaafirst",
+                            "description": "A test job"
+                        }
+                    },
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "Test2",
+                            "description": "A test job",
+                        }
+                    }
                 ]
             }
         }

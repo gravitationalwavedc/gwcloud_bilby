@@ -126,7 +126,7 @@ class TestIniJobSubmission(BilbyTestCase):
         )
 
         # And should create all k/v's with default values
-        job = BilbyJob.objects.all().last()
+        job = BilbyJob.objects.all().first()
         compare_ini_kvs(self, job, job.ini_string)
 
         self.assertEqual(job.name, test_name)
