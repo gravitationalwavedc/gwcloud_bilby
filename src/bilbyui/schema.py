@@ -110,8 +110,8 @@ class BilbyJobNode(DjangoObjectType):
         _, users = request_lookup_users(list(user_ids), info.context.user.user_id)
         info.context.users = dict(zip([user['userId'] for user in users], [user for user in users]))
 
-        # Query any job controller information in one go
-        job_controller_ids = set(qs.values_list('job_controller_id', flat=True))
+        # Query any job controller information in one go - exclude any job controller ids that are not set
+        job_controller_ids = set(qs.exclude(job_controller_id=None).values_list('job_controller_id', flat=True))
         _, jc_jobs = request_job_filter(info.context.user.user_id, ids=list(job_controller_ids))
         info.context.job_controller_jobs = dict(zip([job['id'] for job in jc_jobs], [job for job in jc_jobs]))
 

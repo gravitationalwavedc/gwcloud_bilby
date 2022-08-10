@@ -5,7 +5,7 @@ services:
     build:
       dockerfile: ./docker/gwcloud_bilby_django.Dockerfile
       context: .
-    image: nexus.gwdc.org.au/docker/gwcloud_bilby_django:0.57
+    image: nexus.gwdc.org.au/docker/gwcloud_bilby_django:0.58
     container_name: gwcloud_bilby_django
     environment:
       MYSQL_ROOT_PASSWORD: 76vcqmGKP19Z1AEx
