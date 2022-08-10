@@ -9,7 +9,6 @@ from django.db import models
 from django.utils import timezone
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
-from bilbyui.utils.jobs.request_job_status import request_job_status
 from .utils.jobs.submit_job import submit_job
 from .utils.parse_ini_file import parse_ini_file
 
