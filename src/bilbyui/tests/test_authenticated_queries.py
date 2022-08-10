@@ -114,7 +114,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
     @silence_errors
     @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
     @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
-    def test_bilby_jobs_query(self, *args):
+    def test_bilby_jobs_query(self, request_job_filter_mock, *args):
         """
         bilbyJobs query should return a list of personal jobs for an authenticated user.
         """
@@ -134,7 +134,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         BilbyJob.objects.create(
             user_id=self.user.id,
             name="aaafirst",
-            job_controller_id=3,
+            job_controller_id=None,
             description="A test job",
             is_ligo_job=False
         )
@@ -227,6 +227,9 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
         self.assertDictEqual(
             response.data, expected, "bilbyJobs query returned unexpected data."
         )
+
+        # Check that all ids provided to request_job_filter_mock were integers
+        self.assertTrue(all(map(lambda x: isinstance(x, int), request_job_filter_mock.call_args[1]['ids'])))
 
     @silence_errors
     @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
