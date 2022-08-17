@@ -1,4 +1,4 @@
-name: /home/lewis/Projects/gwdc/gwcloud-bilby/src/bundle/venv
+name: /fred/oz988/gwcloud_bilby/src/bundle/venv
 channels:
   - conda-forge
   - defaults
@@ -49,9 +49,13 @@ dependencies:
   - zlib=1.2.12=h7f8727e_2
   - zstd=1.4.9=ha95c52a_0
   - pip:
+    - aiohttp==3.8.1
+    - aiohttp-xmlrpc==1.5.0
+    - aiosignal==1.2.0
     - astropy==5.0.4
+    - async-timeout==4.0.2
     - attrs==21.4.0
-    - bilby==1.1.5
+    - bilby==1.2.0
     - bilby-pipe==1.0.6
     - cffi==1.15.0
     - charset-normalizer==2.0.12
@@ -68,6 +72,7 @@ dependencies:
     - emcee==3.1.1
     - filelock==3.6.0
     - fonttools==4.33.3
+    - frozenlist==1.3.1
     - future==0.18.2
     - gwdatafind==1.1.1
     - gwosc==0.6.1
@@ -87,11 +92,12 @@ dependencies:
     - markupsafe==2.1.1
     - matplotlib==3.5.2
     - mock==4.0.3
+    - multidict==6.0.2
     - numexpr==2.8.1
     - packaging==21.3
     - pandas==1.4.2
     - patsy==0.5.2
-    - pesummary==0.13.3
+    - pesummary==0.13.7
     - pillow==9.1.0
     - plotly==5.7.0
     - pycondor==0.5.0
@@ -103,7 +109,7 @@ dependencies:
     - pyparsing==3.0.8
     - pyrxp==3.0.1
     - python-dateutil==2.8.2
-    - python-ligo-lw==1.7.1
+    - python-ligo-lw==1.8.3
     - pytz==2022.1
     - pyyaml==6.0
     - requests==2.27.1
@@ -120,4 +126,5 @@ dependencies:
     - tqdm==4.64.0
     - unittest-xml-reporting==3.2.0
     - urllib3==1.26.9
-prefix: /home/lewis/Projects/gwdc/gwcloud-bilby/src/bundle/venv
+    - yarl==1.8.1
+prefix: /fred/oz988/gwcloud_bilby/src/bundle/venv
