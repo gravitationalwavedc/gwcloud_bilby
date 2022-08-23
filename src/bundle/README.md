@@ -18,18 +18,24 @@ python-ldas-tools-al
 python-ldas-tools-framecpp
 python-nds2-client
 pip
+bilby-pipe
+coverage
+htcondor
+testfixtures
+responses
+unittest-xml-reporting
+diskcache
+aiohttp
+aiosignal
+async-timeout
+frozenlist
+lxml
+multidict
+yarl
 ```
-
-
 
 Pip packages:
 
 ```
-bilby-pipe
-coverage
-htcondor
-filelock
-testfixtures
-responses
-unittest-xml-reporting
+aiohttp-xmlrpc
 ```
