@@ -81,6 +81,8 @@ class TestStatus(TestCase):
             # Add one since the first unique job id will always be 1
             self.assertEqual(result[index], index+1)
 
+        self.assertEqual(call_unique_job_id(None), self.BATCH_SIZE+1)
+
     def test_get_all_jobs(self):
         with multiprocessing.Pool(4) as p:
             result = list(p.imap(call_get_all_jobs, range(self.BATCH_SIZE)))
@@ -91,6 +93,9 @@ class TestStatus(TestCase):
             self.assertEqual(len(item), 1)
             self.assertDictEqual(item[0], result[index][1])
 
+        result = call_get_all_jobs(None)
+        self.assertDictEqual(result[0][-1], result[1])
+
     def test_get_job_by_id(self):
         with multiprocessing.Pool(self.POOL_SIZE) as p:
             result = list(p.imap(call_get_job_by_id, range(self.BATCH_SIZE)))
@@ -98,6 +103,10 @@ class TestStatus(TestCase):
         self.assertEqual(len(result), self.BATCH_SIZE)
         for index in range(self.BATCH_SIZE):
             self.assertDictEqual(result[index][0], result[index][1])
+
+        result = call_get_job_by_id(None)
+
+        self.assertDictEqual(result[0], result[1])
 
     def test_update_job(self):
         with multiprocessing.Pool(self.POOL_SIZE) as p:
@@ -107,6 +116,10 @@ class TestStatus(TestCase):
         for index in range(self.BATCH_SIZE):
             self.assertDictEqual(result[index][0], result[index][1])
 
+        result = call_update_job(1)
+
+        self.assertDictEqual(result[0], result[1])
+
     def test_delete_job(self):
         with multiprocessing.Pool(self.POOL_SIZE) as p:
             result = list(p.imap(call_delete_job, range(self.BATCH_SIZE)))
@@ -114,5 +127,9 @@ class TestStatus(TestCase):
         self.assertEqual(len(result), self.BATCH_SIZE)
         for index in range(self.BATCH_SIZE):
             self.assertEqual(result[index], None)
+
+        self.assertEqual(get_all_jobs(), [])
+
+        call_delete_job(None)
 
         self.assertEqual(get_all_jobs(), [])
