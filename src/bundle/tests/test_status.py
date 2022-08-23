@@ -28,7 +28,7 @@ class TestStatus(TestCase):
         )
         self.assertEqual(result['complete'], True)
 
-    @patch('db.update_job')
+    @patch('db.create_or_update_job')
     @patch("db.get_job_by_id")
     @patch("os.path.exists")
     @patch("scheduler.slurm.SlurmScheduler.status")
@@ -70,7 +70,7 @@ class TestStatus(TestCase):
         self.assertEqual(update_job_mock.call_count, 0)
 
     @patch('db.delete_job')
-    @patch('db.update_job')
+    @patch('db.create_or_update_job')
     @patch("db.get_job_by_id")
     @patch("os.path.exists")
     @patch("scheduler.slurm.SlurmScheduler.status")
@@ -105,7 +105,7 @@ class TestStatus(TestCase):
         self.assertEqual(delete_job_mock.call_count, 1)
         self.assertEqual(update_job_mock.call_count, 0)
 
-    @patch('db.update_job')
+    @patch('db.create_or_update_job')
     @patch("db.get_job_by_id")
     @patch("os.path.exists")
     @patch("scheduler.slurm.SlurmScheduler.status")

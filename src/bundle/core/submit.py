@@ -13,7 +13,7 @@ from bilby_pipe.job_creation.slurm import SubmitSLURM
 from bilby_pipe.main import MainInput, generate_dag
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import parse_args
-from db import get_unique_job_id, update_job
+from db import get_next_unique_job_id, create_or_update_job
 
 from core.misc import get_scheduler, working_directory
 import requests
@@ -412,14 +412,14 @@ def submit_impl(details, job_parameters):
 
     # Create a new job to store details
     job = {
-        'job_id': get_unique_job_id(),
+        'job_id': get_next_unique_job_id(),
         'submit_id': submit_bash_id,
         'working_directory': wk_dir,
         'submit_directory': inputs.submit_directory
     }
 
     # Save the job in the database
-    update_job(job)
+    create_or_update_job(job)
 
     # return the job id
     return job['job_id']
