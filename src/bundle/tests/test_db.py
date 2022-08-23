@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from db import get_unique_job_id, update_job, get_job_by_id, get_all_jobs, delete_job
+from db import get_next_unique_job_id, create_or_update_job, get_job_by_id, get_all_jobs, delete_job
 
 
 class TestCacheDir(TestCase):
@@ -17,7 +17,7 @@ class TestCacheDir(TestCase):
 
 def generate_random_job_details(job_id=None):
     return {
-        'job_id': job_id or get_unique_job_id(),
+        'job_id': job_id or get_next_unique_job_id(),
         'details': {
             'data': ''.join((random.choice(string.ascii_lowercase) for _ in range(random.randint(10, 100))))
         }
@@ -25,33 +25,33 @@ def generate_random_job_details(job_id=None):
 
 
 def call_unique_job_id(_):
-    return get_unique_job_id()
+    return get_next_unique_job_id()
 
 
 def call_get_all_jobs(_):
     job = generate_random_job_details()
-    update_job(job)
+    create_or_update_job(job)
     return get_all_jobs(), job
 
 
 def call_get_job_by_id(_):
     job = generate_random_job_details()
-    update_job(job)
+    create_or_update_job(job)
     return get_job_by_id(job['job_id']), job
 
 
 def call_update_job(job_id):
     # +1 since job ids begin from 1, not 0
     job = generate_random_job_details(job_id+1)
-    update_job(job)
+    create_or_update_job(job)
     job = generate_random_job_details(job_id+1)
-    update_job(job)
+    create_or_update_job(job)
     return get_job_by_id(job['job_id']), job
 
 
 def call_delete_job(_):
     job = generate_random_job_details()
-    update_job(job)
+    create_or_update_job(job)
     delete_job(job)
     return get_job_by_id(job['job_id'])
 
@@ -133,3 +133,7 @@ class TestStatus(TestCase):
         call_delete_job(None)
 
         self.assertEqual(get_all_jobs(), [])
+
+        with self.assertRaises(Exception):
+            job = generate_random_job_details()
+            delete_job(job)

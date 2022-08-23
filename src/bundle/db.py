@@ -3,12 +3,16 @@ from pathlib import Path
 
 import diskcache
 
+
+# Declared here so that it can be overridden in tests
 CACHE_FOLDER = str(Path(__file__).resolve().parent / '.cache')
+
+# Global constants
 JOB_COUNTER_IDENTIFIER = 'job_counter'
 JOBS_IDENTIFIER = 'jobs'
 
 
-def get_unique_job_id():
+def get_next_unique_job_id():
     """
     Gets a new unique job id
 
@@ -47,7 +51,7 @@ def get_job_by_id(job_id):
     return None
 
 
-def update_job(new_job):
+def create_or_update_job(new_job):
     """
     Updates a job record in the database if one already exists, otherwise inserts the job in to the database
 
@@ -79,6 +83,8 @@ def delete_job(job):
     """
     Deletes a job record from the database
 
+    Raises an exception if the job is not found in the database
+
     :param job: The job to delete
     :return: None
     """
@@ -87,12 +93,17 @@ def delete_job(job):
         jobs = json.loads(cache[JOBS_IDENTIFIER])
 
         # Iterate over the jobs in the database
+        found = False
         for idx in range(len(jobs)):
             # Check if this job matches the job being deleted
             if jobs[idx]['job_id'] == job['job_id']:
                 # Found the job, delete it
                 del jobs[idx]
+                found = True
                 break
+
+        if not found:
+            raise Exception(f"Job {job['job_id']} was not found in the database.")
 
         # Save the database
         cache.set(JOBS_IDENTIFIER, json.dumps(jobs))

@@ -46,7 +46,7 @@ def get_submit_status(job):
 
         # The batch submission was successful, remove the submit id from the job
         del job['submit_id']
-        db.update_job(job)
+        db.create_or_update_job(job)
 
     result = {
         'what': 'submit',

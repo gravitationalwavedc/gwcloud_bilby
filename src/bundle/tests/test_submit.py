@@ -49,8 +49,8 @@ class TestSubmit(TestCase):
         # Wild hack to remove any trailing parameters which can influence bilby/condor job creation
         sys.argv = sys.argv[:1]
 
-    @patch('db.update_job', side_effect=update_job_mock)
-    @patch("db.get_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch('db.create_or_update_job', side_effect=update_job_mock)
+    @patch("db.get_next_unique_job_id", side_effect=get_unique_job_id_mock_fn)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.SLURM)
@@ -162,8 +162,8 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.transfer_files, False)
 
-    @patch('db.update_job', side_effect=update_job_mock)
-    @patch("db.get_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch('db.create_or_update_job', side_effect=update_job_mock)
+    @patch("db.get_next_unique_job_id", side_effect=get_unique_job_id_mock_fn)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.SLURM)
@@ -279,8 +279,8 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.transfer_files, False)
 
-    @patch('db.update_job', side_effect=update_job_mock)
-    @patch("db.get_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch('db.create_or_update_job', side_effect=update_job_mock)
+    @patch("db.get_next_unique_job_id", side_effect=get_unique_job_id_mock_fn)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.SLURM)
@@ -392,8 +392,8 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.transfer_files, False)
 
-    @patch('db.update_job', side_effect=update_job_mock)
-    @patch("db.get_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch('db.create_or_update_job', side_effect=update_job_mock)
+    @patch("db.get_next_unique_job_id", side_effect=get_unique_job_id_mock_fn)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.condor.CondorScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
@@ -475,8 +475,8 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
                 self.assertEqual(args.accounting, 'no.group')
                 self.assertEqual(args.transfer_files, False)
 
-    @patch('db.update_job', side_effect=update_job_mock)
-    @patch("db.get_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch('db.create_or_update_job', side_effect=update_job_mock)
+    @patch("db.get_next_unique_job_id", side_effect=get_unique_job_id_mock_fn)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.condor.CondorScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
