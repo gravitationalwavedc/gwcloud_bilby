@@ -11,7 +11,7 @@ FLUFL_LOCK_FILE = str(Path(CACHE_FOLDER) / '.db.lock')
 
 # Make sure the cache directory exists so that we can create locks inside
 if not Path(CACHE_FOLDER).exists():
-    Path(CACHE_FOLDER).mkdir(parents=True)
+    Path(CACHE_FOLDER).mkdir(parents=True, exist_ok=True)
 
 # Global constants
 JOB_COUNTER_IDENTIFIER = 'job_counter'
