@@ -1,3 +1,4 @@
+import json
 import multiprocessing
 import random
 import shutil
@@ -6,13 +7,16 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from db import get_next_unique_job_id, create_or_update_job, get_job_by_id, get_all_jobs, delete_job
+import diskcache
+
+from db import get_next_unique_job_id, create_or_update_job, get_job_by_id, delete_job
 
 
 class TestCacheDir(TestCase):
     def test_cache_dir(self):
-        from db import CACHE_FOLDER
+        from db import CACHE_FOLDER, FLUFL_LOCK_FILE
         self.assertEqual(str(Path(__file__).resolve().parent.parent / '.cache'), CACHE_FOLDER)
+        self.assertEqual(str(Path(CACHE_FOLDER) / '.db.lock'), FLUFL_LOCK_FILE)
 
 
 def generate_random_job_details(job_id=None):
@@ -26,12 +30,6 @@ def generate_random_job_details(job_id=None):
 
 def call_unique_job_id(_):
     return get_next_unique_job_id()
-
-
-def call_get_all_jobs(_):
-    job = generate_random_job_details()
-    create_or_update_job(job)
-    return get_all_jobs(), job
 
 
 def call_get_job_by_id(_):
@@ -57,19 +55,21 @@ def call_delete_job(_):
 
 
 @patch('db.CACHE_FOLDER', '.cache.test')
+@patch('db.FLUFL_LOCK_FILE', '.cache.test/.db.lock')
 class TestStatus(TestCase):
     def setUp(self):
         self.clean_cache()
         self.manager = multiprocessing.Manager()
         self.return_list = self.manager.list()
-        self.BATCH_SIZE = 500
-        self.POOL_SIZE = 8
+        self.BATCH_SIZE = 100
+        self.POOL_SIZE = 4
 
     def tearDown(self):
         self.clean_cache()
 
     def clean_cache(self):
         shutil.rmtree('.cache.test', ignore_errors=True)
+        Path('.cache.test').mkdir(parents=True)
 
     def test_get_unique_job_id(self):
         with multiprocessing.Pool(self.POOL_SIZE) as p:
@@ -82,19 +82,6 @@ class TestStatus(TestCase):
             self.assertEqual(result[index], index+1)
 
         self.assertEqual(call_unique_job_id(None), self.BATCH_SIZE+1)
-
-    def test_get_all_jobs(self):
-        with multiprocessing.Pool(4) as p:
-            result = list(p.imap(call_get_all_jobs, range(self.BATCH_SIZE)))
-
-        self.assertEqual(len(result), self.BATCH_SIZE)
-        for index in range(self.BATCH_SIZE):
-            item = list(filter(lambda x: x['job_id'] == result[index][1]['job_id'], result[index][0]))
-            self.assertEqual(len(item), 1)
-            self.assertDictEqual(item[0], result[index][1])
-
-        result = call_get_all_jobs(None)
-        self.assertDictEqual(result[0][-1], result[1])
 
     def test_get_job_by_id(self):
         with multiprocessing.Pool(self.POOL_SIZE) as p:
@@ -128,11 +115,12 @@ class TestStatus(TestCase):
         for index in range(self.BATCH_SIZE):
             self.assertEqual(result[index], None)
 
-        self.assertEqual(get_all_jobs(), [])
+        cache = diskcache.Cache('.cache.test')
+        self.assertEqual(json.loads(cache['jobs']), [])
 
         call_delete_job(None)
 
-        self.assertEqual(get_all_jobs(), [])
+        self.assertEqual(json.loads(cache['jobs']), [])
 
         with self.assertRaises(Exception):
             job = generate_random_job_details()

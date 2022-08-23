@@ -1,11 +1,17 @@
 import json
 from pathlib import Path
-
+import flufl.lock
 import diskcache
 
 
-# Declared here so that it can be overridden in tests
+# Declared here so that it can be overridden in tests. The configuration here is such that
+# the database and lock files will always sit in a directory below this script
 CACHE_FOLDER = str(Path(__file__).resolve().parent / '.cache')
+FLUFL_LOCK_FILE = str(Path(CACHE_FOLDER) / '.db.lock')
+
+# Make sure the cache directory exists so that we can create locks inside
+if not Path(CACHE_FOLDER).exists():
+    Path(CACHE_FOLDER).mkdir(parents=True)
 
 # Global constants
 JOB_COUNTER_IDENTIFIER = 'job_counter'
@@ -18,20 +24,9 @@ def get_next_unique_job_id():
 
     :return: The new job id
     """
-    with diskcache.Cache(CACHE_FOLDER) as cache, cache.transact():
+    with flufl.lock.Lock(FLUFL_LOCK_FILE), diskcache.Cache(CACHE_FOLDER) as cache:
         cache.add(JOB_COUNTER_IDENTIFIER, 0)
         return cache.incr(JOB_COUNTER_IDENTIFIER)
-
-
-def get_all_jobs():
-    """
-    Gets all job records for jobs in the database
-
-    :return: An array of all current jobs in the database
-    """
-    with diskcache.Cache(CACHE_FOLDER) as cache, cache.transact():
-        cache.add(JOBS_IDENTIFIER, json.dumps([]))
-        return json.loads(cache[JOBS_IDENTIFIER])
 
 
 def get_job_by_id(job_id):
@@ -41,7 +36,7 @@ def get_job_by_id(job_id):
     :param job_id: The id of the job to look up
     :return: The job details if the job was found otherwise None
     """
-    with diskcache.Cache(CACHE_FOLDER) as cache, cache.transact():
+    with flufl.lock.Lock(FLUFL_LOCK_FILE), diskcache.Cache(CACHE_FOLDER) as cache:
         cache.add(JOBS_IDENTIFIER, json.dumps([]))
         jobs = json.loads(cache[JOBS_IDENTIFIER])
         for job in jobs:
@@ -58,7 +53,7 @@ def create_or_update_job(new_job):
     :param new_job: The job to update
     :return: None
     """
-    with diskcache.Cache(CACHE_FOLDER) as cache, cache.transact():
+    with flufl.lock.Lock(FLUFL_LOCK_FILE), diskcache.Cache(CACHE_FOLDER) as cache:
         cache.add(JOBS_IDENTIFIER, json.dumps([]))
         jobs = json.loads(cache[JOBS_IDENTIFIER])
 
@@ -88,7 +83,7 @@ def delete_job(job):
     :param job: The job to delete
     :return: None
     """
-    with diskcache.Cache(CACHE_FOLDER) as cache, cache.transact():
+    with flufl.lock.Lock(FLUFL_LOCK_FILE), diskcache.Cache(CACHE_FOLDER) as cache:
         cache.add(JOBS_IDENTIFIER, json.dumps([]))
         jobs = json.loads(cache[JOBS_IDENTIFIER])
 
