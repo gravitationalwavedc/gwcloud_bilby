@@ -14,10 +14,9 @@ def get_unique_job_id():
 
     :return: The new job id
     """
-    with diskcache.Cache(CACHE_FOLDER) as cache:
-        with cache.transact():
-            cache.add(JOB_COUNTER_IDENTIFIER, 0)
-            return cache.incr(JOB_COUNTER_IDENTIFIER)
+    with diskcache.Cache(CACHE_FOLDER) as cache, cache.transact():
+        cache.add(JOB_COUNTER_IDENTIFIER, 0)
+        return cache.incr(JOB_COUNTER_IDENTIFIER)
 
 
 def get_all_jobs():
@@ -26,10 +25,9 @@ def get_all_jobs():
 
     :return: An array of all current jobs in the database
     """
-    with diskcache.Cache(CACHE_FOLDER) as cache:
-        with cache.transact():
-            cache.add(JOBS_IDENTIFIER, json.dumps([]))
-            return json.loads(cache[JOBS_IDENTIFIER])
+    with diskcache.Cache(CACHE_FOLDER) as cache, cache.transact():
+        cache.add(JOBS_IDENTIFIER, json.dumps([]))
+        return json.loads(cache[JOBS_IDENTIFIER])
 
 
 def get_job_by_id(job_id):
@@ -39,13 +37,12 @@ def get_job_by_id(job_id):
     :param job_id: The id of the job to look up
     :return: The job details if the job was found otherwise None
     """
-    with diskcache.Cache(CACHE_FOLDER) as cache:
-        with cache.transact():
-            cache.add(JOBS_IDENTIFIER, json.dumps([]))
-            jobs = json.loads(cache[JOBS_IDENTIFIER])
-            for job in jobs:
-                if job['job_id'] == job_id:
-                    return job
+    with diskcache.Cache(CACHE_FOLDER) as cache, cache.transact():
+        cache.add(JOBS_IDENTIFIER, json.dumps([]))
+        jobs = json.loads(cache[JOBS_IDENTIFIER])
+        for job in jobs:
+            if job['job_id'] == job_id:
+                return job
 
     return None
 
@@ -57,25 +54,25 @@ def update_job(new_job):
     :param new_job: The job to update
     :return: None
     """
-    with diskcache.Cache(CACHE_FOLDER) as cache:
-        with cache.transact():
-            cache.add(JOBS_IDENTIFIER, json.dumps([]))
-            jobs = json.loads(cache[JOBS_IDENTIFIER])
+    with diskcache.Cache(CACHE_FOLDER) as cache, cache.transact():
+        cache.add(JOBS_IDENTIFIER, json.dumps([]))
+        jobs = json.loads(cache[JOBS_IDENTIFIER])
 
-            # Iterate over the jobs in the database
-            found = False
-            for job in jobs:
-                # Check if this job matches the job being updated
-                if job['job_id'] == new_job['job_id']:
-                    # Found the job, update it
-                    found = True
-                    job.update(new_job)
+        # Iterate over the jobs in the database
+        found = False
+        for job in jobs:
+            # Check if this job matches the job being updated
+            if job['job_id'] == new_job['job_id']:
+                # Found the job, update it
+                found = True
+                job.update(new_job)
+                break
 
-            # If no record was found, insert the job
-            if not found:
-                jobs.append(new_job)
+        # If no record was found, insert the job
+        if not found:
+            jobs.append(new_job)
 
-            cache.set(JOBS_IDENTIFIER, json.dumps(jobs))
+        cache.set(JOBS_IDENTIFIER, json.dumps(jobs))
 
 
 def delete_job(job):
@@ -85,18 +82,17 @@ def delete_job(job):
     :param job: The job to delete
     :return: None
     """
-    with diskcache.Cache(CACHE_FOLDER) as cache:
-        with cache.transact():
-            cache.add(JOBS_IDENTIFIER, json.dumps([]))
-            jobs = json.loads(cache[JOBS_IDENTIFIER])
+    with diskcache.Cache(CACHE_FOLDER) as cache, cache.transact():
+        cache.add(JOBS_IDENTIFIER, json.dumps([]))
+        jobs = json.loads(cache[JOBS_IDENTIFIER])
 
-            # Iterate over the jobs in the database
-            for idx in range(len(jobs)):
-                # Check if this job matches the job being deleted
-                if jobs[idx]['job_id'] == job['job_id']:
-                    # Found the job, delete it
-                    del jobs[idx]
-                    break
+        # Iterate over the jobs in the database
+        for idx in range(len(jobs)):
+            # Check if this job matches the job being deleted
+            if jobs[idx]['job_id'] == job['job_id']:
+                # Found the job, delete it
+                del jobs[idx]
+                break
 
-            # Save the database
-            cache.set(JOBS_IDENTIFIER, json.dumps(jobs))
+        # Save the database
+        cache.set(JOBS_IDENTIFIER, json.dumps(jobs))
