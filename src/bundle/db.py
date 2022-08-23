@@ -1,35 +1,11 @@
-import os
+import json
+from pathlib import Path
 
-import filelock
-import pickle
+import diskcache
 
-# Create the Lock
-lock = filelock.FileLock(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'db.lock'))
-database_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'db.pickle')
-
-
-def _read_db():
-    """
-    Read the pickle and return the database
-
-    :return: The read database, or an empty dict
-    """
-    try:
-        with open(database_filename, 'rb') as f:
-            return pickle.load(f)
-    except:
-        return {}
-
-
-def _write_db(db):
-    """
-    Writes the database file as a pickle
-
-    :param db: The dict to write to the database file
-    :return: Nothing
-    """
-    with open(database_filename, 'wb') as f:
-        pickle.dump(db, f)
+CACHE_FOLDER = str(Path(__file__).resolve().parent / '.cache')
+JOB_COUNTER_IDENTIFIER = 'job_counter'
+JOBS_IDENTIFIER = 'jobs'
 
 
 def get_unique_job_id():
@@ -38,22 +14,10 @@ def get_unique_job_id():
 
     :return: The new job id
     """
-    # Acquire the lock
-    with lock:
-        # Read the database
-        db = _read_db()
-
-        # Increment the job counter
-        if 'job_counter' not in db:
-            db['job_counter'] = 1
-        else:
-            db['job_counter'] += 1
-
-        # Save the new job counter
-        _write_db(db)
-
-        # Return the new job counter
-        return db['job_counter']
+    with diskcache.Cache(CACHE_FOLDER) as cache:
+        with cache.transact():
+            cache.add(JOB_COUNTER_IDENTIFIER, 0)
+            return cache.incr(JOB_COUNTER_IDENTIFIER)
 
 
 def get_all_jobs():
@@ -62,18 +26,10 @@ def get_all_jobs():
 
     :return: An array of all current jobs in the database
     """
-    # Acquire the lock
-    with lock:
-        # Read the database
-        db = _read_db()
-
-        # Make sure the database has a jobs entry already
-        if 'jobs' not in db:
-            # Create a new job array
-            db['jobs'] = []
-
-        # Return the jobs
-        return db['jobs']
+    with diskcache.Cache(CACHE_FOLDER) as cache:
+        with cache.transact():
+            cache.add(JOBS_IDENTIFIER, json.dumps([]))
+            return json.loads(cache[JOBS_IDENTIFIER])
 
 
 def get_job_by_id(job_id):
@@ -83,20 +39,15 @@ def get_job_by_id(job_id):
     :param job_id: The id of the job to look up
     :return: The job details if the job was found otherwise None
     """
-    # Acquire the lock
-    with lock:
-        # Read the database
-        db = _read_db()
-
-        # Check if the job exists in the database
-        if 'jobs' in db:
-            for job in db['jobs']:
+    with diskcache.Cache(CACHE_FOLDER) as cache:
+        with cache.transact():
+            cache.add(JOBS_IDENTIFIER, json.dumps([]))
+            jobs = json.loads(cache[JOBS_IDENTIFIER])
+            for job in jobs:
                 if job['job_id'] == job_id:
-                    # Found the job, return it
                     return job
 
-        # No job matching the criteria was in the database
-        return None
+    return None
 
 
 def update_job(new_job):
@@ -106,31 +57,25 @@ def update_job(new_job):
     :param new_job: The job to update
     :return: None
     """
-    # Acquire the lock
-    with lock:
-        # Read the database
-        db = _read_db()
+    with diskcache.Cache(CACHE_FOLDER) as cache:
+        with cache.transact():
+            cache.add(JOBS_IDENTIFIER, json.dumps([]))
+            jobs = json.loads(cache[JOBS_IDENTIFIER])
 
-        # Make sure the database has a jobs entry already
-        if 'jobs' not in db:
-            # Create a new job array
-            db['jobs'] = []
+            # Iterate over the jobs in the database
+            found = False
+            for job in jobs:
+                # Check if this job matches the job being updated
+                if job['job_id'] == new_job['job_id']:
+                    # Found the job, update it
+                    found = True
+                    job.update(new_job)
 
-        # Iterate over the jobs in the database
-        found = False
-        for job in db['jobs']:
-            # Check if this job matches the job being updated
-            if job['job_id'] == new_job['job_id']:
-                # Found the job, update it
-                found = True
-                job.update(new_job)
+            # If no record was found, insert the job
+            if not found:
+                jobs.append(new_job)
 
-        # If no record was found, insert the job
-        if not found:
-            db['jobs'].append(new_job)
-
-        # Save the database
-        _write_db(db)
+            cache.set(JOBS_IDENTIFIER, json.dumps(jobs))
 
 
 def delete_job(job):
@@ -140,22 +85,18 @@ def delete_job(job):
     :param job: The job to delete
     :return: None
     """
-    # Acquire the lock
-    with lock:
-        # Read the database
-        db = _read_db()
+    with diskcache.Cache(CACHE_FOLDER) as cache:
+        with cache.transact():
+            cache.add(JOBS_IDENTIFIER, json.dumps([]))
+            jobs = json.loads(cache[JOBS_IDENTIFIER])
 
-        # Make sure the database has a jobs entry already
-        if 'jobs' not in db:
-            return
+            # Iterate over the jobs in the database
+            for idx in range(len(jobs)):
+                # Check if this job matches the job being deleted
+                if jobs[idx]['job_id'] == job['job_id']:
+                    # Found the job, delete it
+                    del jobs[idx]
+                    break
 
-        # Iterate over the jobs in the database
-        for idx in range(len(db['jobs'])):
-            # Check if this job matches the job being deleted
-            if db['jobs'][idx]['job_id'] == job['job_id']:
-                # Found the job, delete it
-                del db['jobs'][idx]
-                break
-
-        # Save the database
-        _write_db(db)
+            # Save the database
+            cache.set(JOBS_IDENTIFIER, json.dumps(jobs))
