@@ -1,6 +1,6 @@
-# The directory where jobs are stored
 from scheduler.scheduler import EScheduler
 
+# The directory where jobs are stored
 job_directory = "/jobs/"
 
 # Which scheduler to use
