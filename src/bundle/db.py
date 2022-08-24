@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
-import flufl.lock
+
 import diskcache
+import flufl.lock
 
 import settings
 

@@ -2,13 +2,13 @@ import json
 import multiprocessing
 import random
 import shutil
-import flufl.lock
 import string
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
 import diskcache
+import flufl.lock
 
 from db import get_next_unique_job_id, create_or_update_job, get_job_by_id, delete_job, use_diskcache
 
