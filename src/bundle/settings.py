@@ -13,6 +13,9 @@ scheduler_env = "/bundle/env.sh"
 condor_accounting_group = "no.group"
 condor_accounting_user = "no.one"
 
+# If the database should use flufl for NFS locking
+use_nfs_locking = False
+
 try:
     from local import *
 except Exception:
