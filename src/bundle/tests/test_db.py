@@ -8,8 +8,9 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import diskcache
+import flufl.lock
 
-from db import get_next_unique_job_id, create_or_update_job, get_job_by_id, delete_job
+from db import get_next_unique_job_id, create_or_update_job, get_job_by_id, delete_job, use_diskcache
 
 
 class TestCacheDir(TestCase):
@@ -56,12 +57,12 @@ def call_delete_job(_):
 
 @patch('db.CACHE_FOLDER', '.cache.test')
 @patch('db.FLUFL_LOCK_FILE', '.cache.test/.db.lock')
-class TestStatus(TestCase):
+class TestDatabase(TestCase):
     def setUp(self):
         self.clean_cache()
         self.manager = multiprocessing.Manager()
         self.return_list = self.manager.list()
-        self.BATCH_SIZE = 100
+        self.BATCH_SIZE = 500
         self.POOL_SIZE = 4
 
     def tearDown(self):
@@ -125,3 +126,47 @@ class TestStatus(TestCase):
         with self.assertRaises(Exception):
             job = generate_random_job_details()
             delete_job(job)
+
+    @patch('settings.use_nfs_locking', False)
+    def test_no_flufl_locking(self):
+        @use_diskcache()
+        def test_no_transaction(cache):
+            from db import FLUFL_LOCK_FILE
+            lock = flufl.lock.Lock(FLUFL_LOCK_FILE)
+            lock.lock(timeout=1)
+            lock.unlock()
+
+            self.assertTrue(cache._txn_id is None)
+
+        @use_diskcache(transact=True)
+        def test_transaction(cache):
+            from db import FLUFL_LOCK_FILE
+            lock = flufl.lock.Lock(FLUFL_LOCK_FILE)
+            lock.lock(timeout=1)
+            lock.unlock()
+
+            self.assertTrue(cache._txn_id is not None)
+
+        test_no_transaction()
+        test_transaction()
+
+    @patch('settings.use_nfs_locking', True)
+    def test_flufl_locking(self):
+        @use_diskcache()
+        def test_no_transaction(cache):
+            from db import FLUFL_LOCK_FILE
+            with self.assertRaises(flufl.lock.TimeOutError):
+                flufl.lock.Lock(FLUFL_LOCK_FILE).lock(timeout=1)
+
+            self.assertTrue(cache._txn_id is None)
+
+        @use_diskcache(transact=True)
+        def test_transaction(cache):
+            from db import FLUFL_LOCK_FILE
+            with self.assertRaises(flufl.lock.TimeOutError):
+                flufl.lock.Lock(FLUFL_LOCK_FILE).lock(timeout=1)
+
+            self.assertTrue(cache._txn_id is not None)
+
+        test_no_transaction()
+        test_transaction()
