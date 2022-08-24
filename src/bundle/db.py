@@ -1,3 +1,4 @@
+import contextlib
 import json
 from pathlib import Path
 
@@ -30,20 +31,15 @@ def use_diskcache(transact=False):
             if not Path(CACHE_FOLDER).exists():
                 Path(CACHE_FOLDER).mkdir(parents=True, exist_ok=True)
 
-            if settings.use_nfs_locking:
-                with flufl.lock.Lock(FLUFL_LOCK_FILE), diskcache.Cache(CACHE_FOLDER) as cache:
-                    if transact:
-                        with cache.transact():
-                            return fn(cache, *args, **kwargs)
-                    else:
-                        return fn(cache, *args, **kwargs)
-            else:
-                with diskcache.Cache(CACHE_FOLDER) as cache:
-                    if transact:
-                        with cache.transact():
-                            return fn(cache, *args, **kwargs)
-                    else:
-                        return fn(cache, *args, **kwargs)
+            # If we need to use nfs, create a flufl lock context manager, otherwise fall back on a null context to
+            # reduce code complexity
+            lock = flufl.lock.Lock(FLUFL_LOCK_FILE) if settings.use_nfs_locking else contextlib.nullcontext()
+            with lock, diskcache.Cache(CACHE_FOLDER) as cache:
+                # Do a similar context manager assignment here if we also need to use a transaction
+                transact_ctx = cache.transact() if transact else contextlib.nullcontext()
+                with transact_ctx:
+                    return fn(cache, *args, **kwargs)
+
         return impl
     return wrapper
 
