@@ -2,21 +2,43 @@ import json
 import os
 import re
 import subprocess
+import threading
+from contextlib import contextmanager
 from pathlib import Path
-
-from scheduler.scheduler import EScheduler
 from tempfile import NamedTemporaryFile
 
-import settings
+import requests
 from bilby_pipe.job_creation.dag import Dag
 from bilby_pipe.job_creation.slurm import SubmitSLURM
 from bilby_pipe.main import MainInput, generate_dag
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import parse_args
-from db import get_next_unique_job_id, create_or_update_job
 
+import settings
 from core.misc import get_scheduler, working_directory
-import requests
+from db import get_next_unique_job_id, create_or_update_job
+from scheduler.scheduler import EScheduler
+
+chdir_lock = threading.Lock()
+
+
+@contextmanager
+def set_directory(path: Path):
+    """Sets the cwd within the context
+
+    Args:
+        path (Path): The path to the cwd
+
+    Yields:
+        None
+    """
+
+    origin = Path().absolute()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(origin)
 
 
 def bilby_ini_to_args(ini):
@@ -243,9 +265,9 @@ def run_data_generation(data_gen_command, wk_dir):
         stdout, stderr = p.communicate()
 
         # Write the data generation output to output files
-        with open(output_file, "w") as f:
+        with open(Path(wk_dir) / output_file, "w") as f:
             f.write(stdout.decode())
-        with open(error_file, "w") as f:
+        with open(Path(wk_dir) / error_file, "w") as f:
             f.write(stderr.decode())
 
 
@@ -302,7 +324,7 @@ def refactor_slurm_data_generation_step(slurm_script):
     return data_gen_command
 
 
-def write_submission_scripts(inputs):
+def write_submission_scripts(inputs, wk_dir):
     """
     Writes the submission scripts using the MainInput inputs, and returns the slurm master script path
 
@@ -310,24 +332,27 @@ def write_submission_scripts(inputs):
     :return: The path to the master submit script
     """
     # Generate the submission scripts
-    generate_dag(inputs)
+    # Working directory changes need to be synchronous
+    with chdir_lock, set_directory(wk_dir):
+        generate_dag(inputs)
+
     dag = Dag(inputs)
 
     # Return the slurm submit script if the scheduler is slurm
     if settings.scheduler == EScheduler.SLURM:
         _slurm = SubmitSLURM(dag)
-        slurm_script = _slurm.slurm_master_bash
+        slurm_script = str(Path(wk_dir) / _slurm.slurm_master_bash)
         return slurm_script
 
     # Return the path to the dag script if the scheduler is condor
     if settings.scheduler == EScheduler.CONDOR:
         # Adapted from https://github.com/jrbourbeau/pycondor/blob/master/pycondor/dagman.py#L286
-        return os.path.join(dag.submit_directory, f'{dag.dag_name}.submit')
+        return os.path.join(str(Path(wk_dir) / dag.submit_directory), f'{dag.dag_name}.submit')
 
     return None
 
 
-def write_ini_file(args):
+def write_ini_file(args, wk_dir):
     """
     Takes the parser args and writes the complete ini file in the job output directory
 
@@ -351,17 +376,19 @@ def write_ini_file(args):
         args, unknown_args = parse_args([f.name], parser)
 
         # Generate the Input object so that we can determine the correct ini file
-        inputs = MainInput(args, unknown_args)
+        # Working directory changes need to be synchronous
+        with chdir_lock, set_directory(wk_dir):
+            inputs = MainInput(args, unknown_args)
 
     # Write the real ini file
-    parser.write_to_file(inputs.complete_ini_file, args, overwrite=True)
+    parser.write_to_file(str(Path(wk_dir) / inputs.complete_ini_file), args, overwrite=True)
 
     return args, inputs
 
 
 def create_working_directory(details):
     """
-    Creates and enters (chdir) the working directory for the job. ie the output directory
+    Creates the working directory for the job. ie the output directory
     :param details: The job details provided by the client
     :return: The working (output) directory for the job
     """
@@ -371,13 +398,19 @@ def create_working_directory(details):
     # Create the working directory
     wk_dir.mkdir(parents=True, exist_ok=True)
 
-    # Change to the working directory
-    os.chdir(wk_dir)
-
     return str(wk_dir)
 
 
-def submit_impl(details, job_parameters):
+def submit(details, job_parameters):
+    """
+    Entry point of the submit function called to sanitize the bilby ini file, prepare the job, and then submit the job
+    with the configured scheduler
+
+    :param details: The job details object from the client
+    :param job_parameters: The ini string representing the bilby ini file to submit the job for
+    :return: The internal job id representing the job, otherwise None on failure
+    """
+
     print("Submitting new job...")
 
     # Create and enter the working directory
@@ -387,10 +420,10 @@ def submit_impl(details, job_parameters):
     args = prepare_ini_data(job_parameters, wk_dir)
 
     # Write the updated ini file
-    args, inputs = write_ini_file(args)
+    args, inputs = write_ini_file(args, wk_dir)
 
     # Generate the submission scripts
-    submission_script = write_submission_scripts(inputs)
+    submission_script = write_submission_scripts(inputs, wk_dir)
 
     # If the job is open, we need to run the data generation step on the head nodes (ozstar specific) because compute
     # nodes do not have internet access. This is only applicable for slurm on ozstar
@@ -403,7 +436,10 @@ def submit_impl(details, job_parameters):
 
     # Actually submit the job
     sched = get_scheduler()
-    submit_bash_id = sched.submit(submission_script, wk_dir)
+
+    # Working directory changes need to be synchronous
+    with chdir_lock, set_directory(wk_dir):
+        submit_bash_id = sched.submit(submission_script, wk_dir)
 
     # If the job was not submitted, simply return. When the job controller does a status update, we'll detect that
     # the job doesn't exist and report an error
@@ -423,23 +459,3 @@ def submit_impl(details, job_parameters):
 
     # return the job id
     return job['job_id']
-
-
-def submit(details, job_parameters):
-    """
-    Entry point of the submit function called to sanitize the bilby ini file, prepare the job, and then submit the job
-    with the configured scheduler
-
-    This function acts as a wrapper around submit_impl so that the working directory can be correctly preserved - this
-    mostly matters for tests, but is also generally good practice
-
-    :param details: The job details object from the client
-    :param job_parameters: The ini string representing the bilby ini file to submit the job for
-    :return: The internal job id representing the job, otherwise None on failure
-    """
-
-    cwd = os.getcwd()
-    try:
-        return submit_impl(details, job_parameters)
-    finally:
-        os.chdir(cwd)
