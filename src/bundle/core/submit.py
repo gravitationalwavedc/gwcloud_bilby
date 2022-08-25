@@ -99,7 +99,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
         }
 
         # Need the path to the supporting file relative to the working directory
-        relative_supporting_file_path = f'./{Path(supporting_file_path).relative_to(os.getcwd())}'
+        relative_supporting_file_path = f'./{Path(supporting_file_path).relative_to(working_directory)}'
 
         # If this supporting file has a key, then the file is part of a dictionary, otherwise it's a single file
         if supporting_file['key']:
