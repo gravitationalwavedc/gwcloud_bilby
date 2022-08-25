@@ -377,7 +377,6 @@ def write_ini_file(args, wk_dir):
 
         # Generate the Input object so that we can determine the correct ini file
         # Working directory changes need to be synchronous
-        # Working directory changes need to be synchronous
         with chdir_lock, set_directory(wk_dir):
             inputs = MainInput(args, unknown_args)
 
