@@ -402,6 +402,15 @@ def create_working_directory(details):
 
 
 def submit(details, job_parameters):
+    """
+    Entry point of the submit function called to sanitize the bilby ini file, prepare the job, and then submit the job
+    with the configured scheduler
+
+    :param details: The job details object from the client
+    :param job_parameters: The ini string representing the bilby ini file to submit the job for
+    :return: The internal job id representing the job, otherwise None on failure
+    """
+
     print("Submitting new job...")
 
     # Create and enter the working directory
