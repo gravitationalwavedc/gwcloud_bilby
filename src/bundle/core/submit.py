@@ -2,23 +2,22 @@ import json
 import os
 import re
 import subprocess
+import threading
 from contextlib import contextmanager
 from pathlib import Path
-
-from scheduler.scheduler import EScheduler
 from tempfile import NamedTemporaryFile
 
-import settings
+import requests
 from bilby_pipe.job_creation.dag import Dag
 from bilby_pipe.job_creation.slurm import SubmitSLURM
 from bilby_pipe.main import MainInput, generate_dag
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import parse_args
-from db import get_next_unique_job_id, create_or_update_job
 
+import settings
 from core.misc import get_scheduler, working_directory
-import requests
-import threading
+from db import get_next_unique_job_id, create_or_update_job
+from scheduler.scheduler import EScheduler
 
 chdir_lock = threading.Lock()
 
