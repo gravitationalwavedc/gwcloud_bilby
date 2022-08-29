@@ -1,5 +1,5 @@
 import json
-from urllib.parse import unquote, urlencode
+from urllib.parse import urlencode
 
 import responses
 from django.conf import settings
