@@ -103,7 +103,7 @@ class TestDbSearch(TestCase):
 
         self.assertEqual(
             self.responses.calls[0].request.body,
-            urlencode(self.get_query('search: "", timeRange: "", count: 1, excludeLigoJobs: false'))
+            urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 1, excludeLigoJobs: false'))
         )
 
     def test_perform_db_search_success_no_args(self):
@@ -120,7 +120,7 @@ class TestDbSearch(TestCase):
 
         self.assertEqual(
             self.responses.calls[0].request.body,
-            urlencode(self.get_query('search: "", timeRange: "", count: 1, excludeLigoJobs: false'))
+            urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 1, excludeLigoJobs: false'))
         )
 
     def test_perform_db_search_success_search_terms(self):
@@ -138,7 +138,8 @@ class TestDbSearch(TestCase):
         self.assertEqual(
             self.responses.calls[0].request.body,
             urlencode(
-                self.get_query('search: "hello bill nye not quoted", timeRange: "", count: 1, excludeLigoJobs: false')
+                self.get_query(
+                    'search: "hello bill nye not quoted", timeRange: "", first: 0, count: 1, excludeLigoJobs: false')
             )
         )
 
@@ -156,10 +157,10 @@ class TestDbSearch(TestCase):
 
         self.assertEqual(
             self.responses.calls[0].request.body,
-            urlencode(self.get_query('search: "", timeRange: "10 years", count: 1, excludeLigoJobs: false'))
+            urlencode(self.get_query('search: "", timeRange: "10 years", first: 0, count: 1, excludeLigoJobs: false'))
         )
 
-    def test_perform_db_search_success_count(self):
+    def test_perform_db_search_success_first(self):
         self.responses.add(
             responses.POST,
             f"{settings.GWCLOUD_DB_SEARCH_API_URL}",
@@ -171,10 +172,27 @@ class TestDbSearch(TestCase):
         result = perform_db_search(self.user, {"first": 4321})
         self.assertEqual(result[1], self.mock_data)
 
+        self.assertEqual(
+            self.responses.calls[0].request.body,
+            urlencode(self.get_query('search: "", timeRange: "", first: 4321, count: 1, excludeLigoJobs: false'))
+        )
+
+    def test_perform_db_search_success_count(self):
+        self.responses.add(
+            responses.POST,
+            f"{settings.GWCLOUD_DB_SEARCH_API_URL}",
+            body=json.dumps({"data": {"publicBilbyJobs": self.mock_data}}),
+            status=200
+        )
+
+        # Test working search with first argument
+        result = perform_db_search(self.user, {"count": 4321})
+        self.assertEqual(result[1], self.mock_data)
+
         # One extra record is added to the search so that hasNextPage works as expected in pagination
         self.assertEqual(
             self.responses.calls[0].request.body,
-            urlencode(self.get_query('search: "", timeRange: "", count: 4322, excludeLigoJobs: false'))
+            urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 4322, excludeLigoJobs: false'))
         )
 
     def test_perform_db_search_success_exclude_ligo_jobs(self):
@@ -193,7 +211,7 @@ class TestDbSearch(TestCase):
 
         self.assertEqual(
             self.responses.calls[0].request.body,
-            urlencode(self.get_query('search: "", timeRange: "", count: 1, excludeLigoJobs: true'))
+            urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 1, excludeLigoJobs: true'))
         )
 
     def test_perform_db_search_success_all_args(self):
@@ -208,7 +226,7 @@ class TestDbSearch(TestCase):
 
         # Test working search without any arguments
         result = perform_db_search(self.user, {
-            "search": "hello \"bill nye\" 'not quoted'", "time_range": "10 years", "first": 4321
+            "search": "hello \"bill nye\" 'not quoted'", "time_range": "10 years", "first": 4321, "count": 1234
         })
         self.assertEqual(result[1], self.mock_data)
 
@@ -216,7 +234,8 @@ class TestDbSearch(TestCase):
             self.responses.calls[0].request.body,
             urlencode(
                 self.get_query(
-                    'search: "hello bill nye not quoted", timeRange: "10 years", count: 4322, excludeLigoJobs: true'
+                    'search: "hello bill nye not quoted", timeRange: "10 years", first: 4321, count: 1235, '
+                    'excludeLigoJobs: true'
                 )
             )
         )

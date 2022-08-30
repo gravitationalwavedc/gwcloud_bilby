@@ -233,7 +233,7 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
 
     @silence_errors
     @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
-    def test_public_bilby_jobs_query(self, perform_db_search):
+    def test_public_bilby_jobs_query_no_cursor_count(self, perform_db_search):
         BilbyJob.objects.create(
             user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False
         )
@@ -298,3 +298,71 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
             }
         }
         self.assertDictEqual(response.data, expected, "publicBilbyJobs query returned unexpected data.")
+
+    @silence_errors
+    @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
+    def test_public_bilby_jobs_query_test_cursor_count(self, perform_db_search):
+        BilbyJob.objects.create(
+            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False
+        )
+        BilbyJob.objects.create(
+            user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False
+        )
+
+        query = """
+                query {
+                    publicBilbyJobs(search:"", timeRange:"all", cursor:"YXJyYXljb25uZWN0aW9uOjk5", count: 50) {
+                        edges {
+                            node {
+                                user
+                                description
+                                name
+                                jobStatus {
+                                    name
+                                }
+                                timestamp
+                                id
+                            }
+                        }
+                    }
+                }
+            """
+
+        # Check that providing a cursor works as expected
+        self.client.authenticate(self.user)
+        response = self.client.execute(query)
+        expected = {
+            'publicBilbyJobs': {
+                'edges': [
+                    {
+                        'node': {
+                            'description': 'A test job',
+                            'id': 'QmlsYnlKb2JOb2RlOjE=',
+                            'name': 'Test1',
+                            'jobStatus': {
+                                'name': 'Completed'
+                            },
+                            'timestamp': '2020-01-01 12:00:00 UTC',
+                            'user': 'buffy summers'
+                        }
+                    },
+                    {
+                        'node': {
+                            'description': '',
+                            'id': 'QmlsYnlKb2JOb2RlOjI=',
+                            'name': 'Test2',
+                            'jobStatus': {
+                                'name': 'Completed',
+                            },
+                            'timestamp': '2020-01-01 12:00:00 UTC',
+                            'user': 'buffy summers'
+                        }
+                    }
+                ]
+            }
+        }
+        self.assertDictEqual(response.data, expected, "publicBilbyJobs query returned unexpected data.")
+
+        # Verify that the "first" and "count" arguments were passed to the database search function
+        self.assertTrue(perform_db_search.call_args[0][1]['first'], 99)
+        self.assertTrue(perform_db_search.call_args[0][1]['count'], 50)

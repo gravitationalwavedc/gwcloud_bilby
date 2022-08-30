@@ -5,8 +5,7 @@ import { HiOutlinePlus } from 'react-icons/hi';
 import Link from 'found/Link';
 import JobTable from '../Components/JobTable';
 import JobSearchForm from '../Components/JobSearchForm';
-
-const RECORDS_PER_PAGE = 100;
+import {INFINITE_SCROLL_CHUNK_SIZE} from '../constants';
 
 const MyJobs = ({data, match, router,relay}) => {
     const [search, setSearch] = useState('');
@@ -18,7 +17,7 @@ const MyJobs = ({data, match, router,relay}) => {
 
     const handleSearchChange = () => {
         const refetchVariables = {
-            count: RECORDS_PER_PAGE,
+            count: INFINITE_SCROLL_CHUNK_SIZE,
             search: search,
             timeRange: timeRange,
             orderBy: order,
@@ -29,7 +28,7 @@ const MyJobs = ({data, match, router,relay}) => {
 
     const loadMore = () => {
         if (relay.hasMore()) {
-            relay.loadMore(RECORDS_PER_PAGE);
+            relay.loadMore(INFINITE_SCROLL_CHUNK_SIZE);
         }
     };
 
