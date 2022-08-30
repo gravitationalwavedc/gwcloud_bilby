@@ -10,6 +10,7 @@ import DuplicateJobForm from './Components/Forms/DuplicateJobForm';
 import ViewJob from './Pages/ViewJob';
 import Loading from './Components/Loading';
 import {RedirectException} from 'found';
+import {INFINITE_SCROLL_CHUNK_SIZE} from './constants';
 
 //Initialise Google Analytics
 const trackingID = 'UA-219714075-1';
@@ -44,21 +45,21 @@ function getRoutes() {
             <Route
                 Component={PublicJobs}
                 query={graphql`
-                query Routes_HomePage_Query (
-                  $count: Int!,
-                  $cursor: String,
-                  $search: String,
-                  $timeRange: String,
-                ) {
-                    gwclouduser {
-                      username
+                    query Routes_HomePage_Query (
+                      $count: Int!,
+                      $cursor: String,
+                      $search: String,
+                      $timeRange: String,
+                    ) {
+                        gwclouduser {
+                          username
+                        }
+                        ...PublicJobs_data
                     }
-                    ...PublicJobs_data
-                }
-              `}
+                `}
                 prepareVariables={() => ({
                     timeRange: 'all',
-                    count: 100
+                    count: INFINITE_SCROLL_CHUNK_SIZE
                 })}
                 environment={harnessApi.getEnvironment('bilby')}
                 render={handleRender}/>
@@ -91,7 +92,7 @@ function getRoutes() {
                     }
                 `}
                 prepareVariables={() => ({
-                    count: 100,
+                    count: INFINITE_SCROLL_CHUNK_SIZE,
                     timeRange: 'all',
                 })}
                 environment={harnessApi.getEnvironment('bilby')}

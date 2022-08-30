@@ -4,8 +4,7 @@ import { Card, Container, Col } from 'react-bootstrap';
 import JobTable from '../Components/JobTable';
 import JobsHeading from '../Components/JobsHeading';
 import JobSearchForm from '../Components/JobSearchForm';
-
-const RECORDS_PER_PAGE = 100;
+import {INFINITE_SCROLL_CHUNK_SIZE} from '../constants';
 
 const PublicJobs = ({data, match, router, relay}) => {
     const [search, setSearch] = useState('');
@@ -17,7 +16,7 @@ const PublicJobs = ({data, match, router, relay}) => {
 
     const handleSearchChange = () => {
         const refetchVariables = {
-            count: RECORDS_PER_PAGE,
+            count: INFINITE_SCROLL_CHUNK_SIZE,
             search: search,
             timeRange: timeRange,
             orderBy: order,
@@ -28,7 +27,7 @@ const PublicJobs = ({data, match, router, relay}) => {
 
     const loadMore = () => {
         if (relay.hasMore()) {
-            relay.loadMore(RECORDS_PER_PAGE);
+            relay.loadMore(INFINITE_SCROLL_CHUNK_SIZE);
         }
     };
 

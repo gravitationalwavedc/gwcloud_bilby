@@ -218,7 +218,9 @@ class Query(object):
     public_bilby_jobs = relay.ConnectionField(
         BilbyPublicJobConnection,
         search=graphene.String(),
-        time_range=graphene.String()
+        time_range=graphene.String(),
+        cursor=graphene.Argument(graphene.ID),
+        count=graphene.Int()
     )
 
     all_labels = relay.ConnectionField(
@@ -258,6 +260,10 @@ class Query(object):
 
     @login_required
     def resolve_public_bilby_jobs(self, info, **kwargs):
+        # Parse the cursor if it was provided and set the first offset to be used by the database search
+        if 'cursor' in kwargs:
+            kwargs['first'] = from_global_id(kwargs['cursor'])[1]
+
         # Perform the database search
         success, jobs = perform_db_search(info.context.user, kwargs)
 
