@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 
 import jwt
 import requests
@@ -27,7 +28,10 @@ def perform_db_search(user, kwargs):
         algorithm='HS256'
     )
 
-    search_params = f"search: \"{kwargs.get('search', '')}\""
+    # Strip all quotes and double quotes from the search term
+    search_terms = kwargs.get('search', '').replace("\"", '').replace("\'", '')
+
+    search_params = f"search: \"{search_terms}\""
     search_params += f", timeRange: \"{kwargs.get('time_range', '')}\""
     # Fetch one extra record to trigger "hasNextPage"
     search_params += f", count: {kwargs.get('first', 0) + 1}"
@@ -79,12 +83,12 @@ def perform_db_search(user, kwargs):
         if result.status_code != 200:
             # Oops
             msg = f"Error searching for jobs: {result.status_code}\n\n{result.headers}\n\n{result.content}"
-            print(msg)
             raise Exception(msg)
 
         # Parse the response from the job controller
         result = json.loads(result.content)
 
         return True, result["data"]["publicBilbyJobs"]
-    except Exception:
+    except Exception as exception:
+        logging.error(str(exception))
         return False, "Error searching for jobs"
