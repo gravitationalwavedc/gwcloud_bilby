@@ -344,6 +344,7 @@ class Query(object):
 class EventIDMutation(relay.ClientIDMutation):
     class Input:
         event_id = graphene.String(required=True)
+        gps_time = graphene.Decimal(required=True)
         trigger_id = graphene.String()
         nickname = graphene.String()
         is_ligo_event = graphene.Boolean()
@@ -368,6 +369,7 @@ class EventIDMutation(relay.ClientIDMutation):
 class UpdateEventIDMutation(relay.ClientIDMutation):
     class Input:
         event_id = graphene.String(required=True)
+        gps_time = graphene.Float()
         trigger_id = graphene.String()
         nickname = graphene.String()
         is_ligo_event = graphene.Boolean()
