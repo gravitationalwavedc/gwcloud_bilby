@@ -66,7 +66,14 @@ function getRoutes() {
             <Route
                 path="job-form"
                 Component={NewJob}
-                render={handleRender}/>
+                render={handleRender}
+                query={graphql`
+                   query Routes_NewJob_Query {
+                     ...DataForm_data
+                   }
+                `}
+                environment={harnessApi.getEnvironment('bilby')}
+            />
             <Route
                 path="job-form/duplicate/"
                 query={graphql`

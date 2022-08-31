@@ -22,7 +22,7 @@ const submitMutation = graphql`
   }
 `;
 
-const NewJob = ({initialValues, router}) => {
+const NewJob = ({initialValues, router, data}) => {
     const [key, setKey] = useState('data');
 
     const formik = useFormik({
@@ -43,7 +43,7 @@ const NewJob = ({initialValues, router}) => {
                     details: {
                         name: values.name,
                         description: values.description,
-                        private: false,
+                        private: false
                     },
 
                     data: {
@@ -55,7 +55,9 @@ const NewJob = ({initialValues, router}) => {
                             hanfordChannel: values.hanfordChannel,
                             livingstonChannel: values.livingstonChannel,
                             virgoChannel: values.virgoChannel,
-                        }
+                        },
+
+                        eventId: values.eventId ? values.eventId.eventId : null
                     },
 
                     detector: {
@@ -148,7 +150,7 @@ const NewJob = ({initialValues, router}) => {
                     <Col md={8}>
                         <Tab.Content>
                             <Tab.Pane eventKey="data">
-                                <DataForm formik={formik} handlePageChange={setKey}/>
+                                <DataForm formik={formik} handlePageChange={setKey} data={data}/>
                             </Tab.Pane>
                             <Tab.Pane data-testid="signalPane" eventKey="signal">
                                 <SignalForm formik={formik} handlePageChange={setKey}/>

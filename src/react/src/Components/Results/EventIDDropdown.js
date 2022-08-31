@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { createFragmentContainer, commitMutation, graphql } from 'react-relay';
-import { HiOutlinePlus } from 'react-icons/hi';
-import { Form, Button, Modal, Row, Col } from 'react-bootstrap';
-import { Typeahead, Highlighter } from 'react-bootstrap-typeahead';
+import React, {useState} from 'react';
+import {createFragmentContainer, graphql} from 'react-relay';
+import {Button, Col, Form, Modal, Row} from 'react-bootstrap';
+import {Highlighter, Typeahead} from 'react-bootstrap-typeahead';
 import 'react-bootstrap-typeahead/css/Typeahead.css';
-import { harnessApi } from '../../index';
 
 const EventIDDisplay = ({eventId, triggerId, nickname}) => <React.Fragment>
     {eventId && <Col md='auto'>{`Event ID: ${eventId}`}</Col>}
@@ -18,35 +16,18 @@ const EventIDMenuDisplay = ({eventId, triggerId, nickname, props}) => <React.Fra
     <hr className="m-0 p-0"/>
 </React.Fragment>;
 
-const EventIDDropdown = (props) => {
-    const initialEventId = props.data.bilbyJob.eventId;
+const EventIDDropdown = ({eventId, data, setEventId, modifiable}) => {
     const [show, setShow] = useState(false);
-    const [eventId, setEventId] = useState(initialEventId);
-    const isMounted = useRef();
-
-    useEffect(() => {
-        if (isMounted.current) {
-            updateJob(
-                {
-                    jobId: props.jobId,
-                    eventId: (eventId && eventId.eventId) || ''
-                },
-                props.onUpdate
-            );
-        } else {
-            isMounted.current = true;
-        }
-    }, [eventId]);
 
     return <Row className='align-items-center'>
         {eventId && <EventIDDisplay {...eventId}/>}
         {
-            props.modifiable && <Button 
-                variant="link" 
-                className="py-0" 
+            modifiable && <Button
+                variant="link"
+                className="py-0"
                 onClick={() => setShow(true)}
             >
-                {(eventId && eventId.eventId === '') ? <>Add Event ID<HiOutlinePlus/></> : 'Change Event ID'}
+                {eventId ? <>Change Event ID</> : 'Set Event ID'}
             </Button>
         }
         <Modal
@@ -66,7 +47,7 @@ const EventIDDropdown = (props) => {
                             setEventId(event[0]);
                         }}
                         selected={eventId ? [eventId] : []}
-                        options={props.data.allEventIds}
+                        options={data.allEventIds}
                         labelKey='eventId'
                         filterBy={['eventId', 'triggerId', 'nickname']}
                         clearButton
@@ -80,48 +61,14 @@ const EventIDDropdown = (props) => {
     
 };
 
-const updateJob = (variables, callback) => commitMutation(harnessApi.getEnvironment('bilby'), {
-    mutation: graphql`mutation EventIDDropdownMutation($jobId: ID!, $eventId: String)
-            {
-              updateBilbyJob(input: {jobId: $jobId, eventId: $eventId}) 
-              {
-                result
-              }
-            }`,
-    optimisticResponse: {
-        updateBilbyJob: {
-            result: 'Job saved!'
-        }
-    },
-    variables: variables,
-    onCompleted: (_response, errors) => {
-        if (errors) {
-            callback(false, errors);
-        }
-        else {
-            callback(true, 'Job Event ID updated!');
-        }
-    },
-});
-
-
 export default createFragmentContainer(EventIDDropdown, {
     data: graphql`
-        fragment EventIDDropdown_data on Query @argumentDefinitions(
-            jobId: {type: "ID!"}
-        ) {
-            bilbyJob(id: $jobId) {
-                eventId {
-                    eventId
-                    triggerId
-                    nickname
-                }
-            }
-
+        fragment EventIDDropdown_data on Query {
             allEventIds {
                 eventId
                 triggerId
                 nickname
+                gpsTime
             }
         }
     `

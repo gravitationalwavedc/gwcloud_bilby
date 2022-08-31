@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.test import testcases
 from django.test.utils import override_settings
 
-from bilbyui.models import IniKeyValue, BilbyJob
+from bilbyui.models import IniKeyValue, BilbyJob, EventID
 from bilbyui.tests.test_utils import compare_ini_kvs, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import validate_job_name
@@ -271,6 +271,7 @@ class TestJobSubmission(BilbyTestCase):
         # And should create all k/v's with default values
         job = BilbyJob.objects.all().last()
         compare_ini_kvs(self, job, job.ini_string)
+        self.assertEqual(job.event_id, None)
 
         _params = params["input"]["params"]
 
@@ -438,6 +439,7 @@ class TestJobSubmission(BilbyTestCase):
         # Check the job controller id was set as expected
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.job_controller_id, 1122)
+        self.assertEqual(job.event_id, None)
 
         # Check that the correct cluster was used in the request
         r = json.loads(self.responses.calls[0].request.body)
@@ -497,6 +499,107 @@ class TestJobSubmission(BilbyTestCase):
             response.errors[0].message, "Error submitting job, cluster 'not_real' is not one of [default another]"
         )
 
+
+    @patch("bilbyui.models.submit_job")
+    @silence_errors
+    def test_job_submission_event_id(self, mock_api_call):
+        mock_api_call.return_value = {'jobId': 4321}
+
+        params = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": "real_test_job_for_GW12345",
+                        "description": "real Test description 1234",
+                        "private": True,
+                    },
+                    # "calibration": None,
+                    "data": {
+                        "dataChoice": "real",
+                        "triggerTime": "1126259562.391",
+                        "channels": {
+                            "hanfordChannel": "GWOSC",
+                            "livingstonChannel": "GWOSC",
+                            "virgoChannel": "GWOSC"
+                        },
+                        "eventId": "GW123456_123456"
+                    },
+                    "detector": {
+                        "hanford": True,
+                        "hanfordMinimumFrequency": "20",
+                        "hanfordMaximumFrequency": "1024",
+                        "livingston": True,
+                        "livingstonMinimumFrequency": "20",
+                        "livingstonMaximumFrequency": "1024",
+                        "virgo": False,
+                        "virgoMinimumFrequency": "20",
+                        "virgoMaximumFrequency": "1024",
+                        "duration": "4",
+                        "samplingFrequency": "512"
+                    },
+                    # "injection": {},
+                    # "likelihood": {},
+                    "prior": {
+                        "priorDefault": "4s"
+                    },
+                    # "postProcessing": {},
+                    "sampler": {
+                        "nlive": "1000.0",
+                        "nact": "10.0",
+                        "maxmcmc": "5000.0",
+                        "walks": "1000.0",
+                        "dlogz": "0.1",
+                        "cpus": "1",
+                        "samplerChoice": "dynesty"
+                    },
+                    "waveform": {
+                        "model": None
+                    }
+                }
+            }
+        }
+
+        mutation = """
+            mutation NewJobMutation($input: BilbyJobMutationInput!) {
+              newBilbyJob(input: $input) {
+                result {
+                  jobId
+                }
+              }
+            }
+        """
+
+        response = self.client.execute(
+            mutation,
+            params
+        )
+
+        # Since the event id doesn't exist, it should raise an error here
+        self.assertEqual(
+            "EventID matching query does not exist.",
+            str(response.errors[0]),
+            "create bilbyJob mutation returned unexpected data."
+        )
+
+        # Now create the event id, and check that creating the job succeeds
+        EventID.create(event_id="GW123456_123456", gps_time=1234.1234)
+
+        response = self.client.execute(
+            mutation,
+            params
+        )
+
+        expected = {
+            'newBilbyJob': {
+                'result': {
+                    'jobId': 'QmlsYnlKb2JOb2RlOjE='
+                }
+            }
+        }
+
+        self.assertEqual(
+            expected, response.data, "create bilbyJob mutation returned unexpected data."
+        )
 
 class TestJobSubmissionNameValidation(BilbyTestCase):
     def setUp(self):

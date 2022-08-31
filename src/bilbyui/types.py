@@ -43,6 +43,7 @@ class DataCommon:
 
 class DataInput(graphene.InputObjectType, DataCommon):
     channels = ChannelsInput()
+    event_id = graphene.String()
 
 
 class DataOutput(graphene.ObjectType, DataCommon):
