@@ -499,7 +499,6 @@ class TestJobSubmission(BilbyTestCase):
             response.errors[0].message, "Error submitting job, cluster 'not_real' is not one of [default another]"
         )
 
-
     @patch("bilbyui.models.submit_job")
     @silence_errors
     def test_job_submission_event_id(self, mock_api_call):
