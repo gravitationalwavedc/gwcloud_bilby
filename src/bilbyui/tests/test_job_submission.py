@@ -600,6 +600,7 @@ class TestJobSubmission(BilbyTestCase):
             expected, response.data, "create bilbyJob mutation returned unexpected data."
         )
 
+
 class TestJobSubmissionNameValidation(BilbyTestCase):
     def setUp(self):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
