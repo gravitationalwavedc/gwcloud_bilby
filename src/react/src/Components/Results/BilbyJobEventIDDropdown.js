@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {commitMutation, createFragmentContainer, graphql} from 'react-relay';
 import 'react-bootstrap-typeahead/css/Typeahead.css';
 import {harnessApi} from '../../index';
@@ -6,20 +6,15 @@ import EventIDDropdown from './EventIDDropdown';
 
 const BilbyJobEventIDDropdown = (props) => {
     const [eventId, setEventId] = useState(props.data.bilbyJob.eventId);
-    const isMounted = useRef();
 
     useEffect(() => {
-        if (isMounted.current) {
-            updateJob(
-                {
-                    jobId: props.jobId,
-                    eventId: (eventId && eventId.eventId) || null
-                },
-                props.onUpdate
-            );
-        } else {
-            isMounted.current = true;
-        }
+        updateJob(
+            {
+                jobId: props.jobId,
+                eventId: (eventId && eventId.eventId) || null
+            },
+            props.onUpdate
+        );
     }, [eventId]);
 
     return <EventIDDropdown
