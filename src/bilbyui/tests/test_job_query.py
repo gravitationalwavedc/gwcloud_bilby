@@ -33,6 +33,7 @@ class TestBilbyJobQueries(BilbyTestCase):
             trigger_id="S123456a",
             nickname="GW123456",
             is_ligo_event=False,
+            gps_time=12345678.1234
         )
         self.job = BilbyJob.objects.create(**self.job_data)
         self.job.labels.set([self.label])
@@ -177,7 +178,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         """
         bilbyJob node query should allow querying of labels field"
         """
-        response = self.job_request("eventId {eventId \n triggerId \n nickname \n isLigoEvent}")
+        response = self.job_request("eventId {eventId \n triggerId \n nickname \n isLigoEvent \n gpsTime}")
         expected = {
             "bilbyJob": {
                 "eventId": {
@@ -185,6 +186,7 @@ class TestBilbyJobQueries(BilbyTestCase):
                     "triggerId": self.event_id.trigger_id,
                     "nickname": self.event_id.nickname,
                     "isLigoEvent": self.event_id.is_ligo_event,
+                    "gpsTime": self.event_id.gps_time
                 }
             }
         }

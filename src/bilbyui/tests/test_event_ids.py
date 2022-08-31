@@ -2,8 +2,8 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 
 from bilbyui.models import EventID
-from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.tests.test_utils import silence_errors
+from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
 
@@ -38,6 +38,7 @@ get_event_id_query = """
             triggerId
             nickname
             isLigoEvent
+            gpsTime
         }
     }
 """
@@ -66,6 +67,7 @@ class TestEventIDCreation(BilbyTestCase):
                 "triggerId": "S123456a",
                 "nickname": "GW123456",
                 "isLigoEvent": False,
+                "gpsTime": 12345678.1234
             }
         }
 
@@ -81,6 +83,7 @@ class TestEventIDCreation(BilbyTestCase):
         self.assertEqual(event.trigger_id, self.params['input']['triggerId'])
         self.assertEqual(event.nickname, self.params['input']['nickname'])
         self.assertEqual(event.is_ligo_event, self.params['input']['isLigoEvent'])
+        self.assertEqual(event.gps_time, self.params['input']['gpsTime'])
 
     @silence_errors
     def test_bad_event_ids(self):
@@ -132,7 +135,8 @@ class TestEventIDUpdating(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False
+            is_ligo_event=False,
+            gps_time=1126259462.391
         )
 
     @silence_errors
@@ -143,6 +147,7 @@ class TestEventIDUpdating(BilbyTestCase):
                 "triggerId": "S234567a",
                 "nickname": "new nickname",
                 "isLigoEvent": False,
+                "gpsTime": 87654321.87654321
             }
         }
         response = self.client.execute(self.query, new_params)
@@ -155,6 +160,7 @@ class TestEventIDUpdating(BilbyTestCase):
         self.assertEqual(event.trigger_id, new_params['input']['triggerId'])
         self.assertEqual(event.nickname, new_params['input']['nickname'])
         self.assertEqual(event.is_ligo_event, new_params['input']['isLigoEvent'])
+        self.assertEqual(event.gps_time, new_params['input']['gpsTime'])
 
     @silence_errors
     def test_update_bad_trigger_ids(self):
@@ -249,6 +255,7 @@ class TestEventIDPermissions(BilbyTestCase):
         params = {
             "input": {
                 "eventId": new_event_id,
+                "gpsTime": 1126259462.391
             }
         }
 
@@ -268,7 +275,8 @@ class TestEventIDPermissions(BilbyTestCase):
         params = {
             "input": {
                 "eventId": self.event_id1.event_id,
-                "triggerId": new_trigger_id
+                "triggerId": new_trigger_id,
+                "gpsTime": 1126259462.391
             }
         }
 

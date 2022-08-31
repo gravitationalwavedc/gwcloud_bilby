@@ -61,6 +61,7 @@ class EventID(models.Model):
     )
     nickname = models.CharField(max_length=20, blank=True, null=True)
     is_ligo_event = models.BooleanField(default=False)
+    gps_time = models.FloatField(default=1126259462.391)
 
     @classmethod
     def get_by_event_id(cls, event_id, user):
@@ -80,18 +81,21 @@ class EventID(models.Model):
             return cls.objects.exclude(is_ligo_event=True)
 
     @classmethod
-    def create(cls, event_id, trigger_id=None, nickname=None, is_ligo_event=False):
+    def create(cls, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
         event = cls(
             event_id=event_id,
             trigger_id=trigger_id,
             nickname=nickname,
-            is_ligo_event=is_ligo_event
+            is_ligo_event=is_ligo_event,
+            gps_time=gps_time
         )
         event.clean_fields()  # Validate IDs
         event.save()
         return event
 
-    def update(self, trigger_id=None, nickname=None, is_ligo_event=False):
+    def update(self, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=False):
+        if gps_time is not None:
+            self.gps_time = gps_time
         if trigger_id is not None:
             self.trigger_id = trigger_id
         if nickname is not None:

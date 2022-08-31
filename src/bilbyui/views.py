@@ -687,23 +687,25 @@ def file_download(request):
         raise Http404
 
 
-def create_event_id(user, event_id, trigger_id=None, nickname=None, is_ligo_event=False):
+def create_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
     EventID.create(
         event_id=event_id,
         trigger_id=trigger_id,
         nickname=nickname,
-        is_ligo_event=is_ligo_event
+        is_ligo_event=is_ligo_event,
+        gps_time=gps_time,
     )
 
     return f'EventID {event_id} succesfully created!'
 
 
-def update_event_id(user, event_id, trigger_id=None, nickname=None, is_ligo_event=None):
+def update_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=None):
     event = EventID.get_by_event_id(event_id, user)
     event.update(
         trigger_id=trigger_id,
         nickname=nickname,
-        is_ligo_event=is_ligo_event
+        is_ligo_event=is_ligo_event,
+        gps_time=gps_time,
     )
 
     return f'EventID {event_id} succesfully updated!'

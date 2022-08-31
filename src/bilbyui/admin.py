@@ -10,7 +10,7 @@ class LabelAdmin(admin.ModelAdmin):
 
 @admin.register(EventID)
 class EventIDAdmin(admin.ModelAdmin):
-    fields = ['event_id', 'trigger_id', 'nickname']
+    fields = ['event_id', 'trigger_id', 'nickname', 'gps_time']
 
 
 class IniKeyValueAdmin(admin.TabularInline):
