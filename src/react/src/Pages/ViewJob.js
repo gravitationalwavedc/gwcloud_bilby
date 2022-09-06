@@ -8,11 +8,11 @@ import Parameters from '../Components/Results/Parameters';
 import Link from 'found/Link';
 import EditableJobName from '../Components/Forms/EditableJobName';
 import EditableDescription from '../Components/Forms/EditableDescription';
-import EventIDDropdown from '../Components/Results/EventIDDropdown';
 import LabelDropdown from '../Components/Results/LabelDropdown';
 import PrivacyToggle from '../Components/Results/PrivacyToggle';
 import StatusDisplay from '../Components/Results/StatusDisplay';
 import SaveToast from '../Components/Results/SaveToast';
+import BilbyJobEventIDDropdown from '../Components/Results/BilbyJobEventIDDropdown';
 
 const ViewJob = (props) => {
     const [saved, setSaved] = useState(false);
@@ -72,7 +72,7 @@ const ViewJob = (props) => {
                         modifiable={modifiable} 
                         value={details.description} 
                         jobId={props.data.bilbyJob.id} />
-                    <EventIDDropdown 
+                    <BilbyJobEventIDDropdown
                         jobId={props.match.params.jobId} 
                         data={props.data} 
                         onUpdate={onSave} 
@@ -149,7 +149,7 @@ export default createFragmentContainer(ViewJob,
                     }
                 }
                 ...LabelDropdown_data @arguments(jobId: $jobId)
-                ...EventIDDropdown_data @arguments(jobId: $jobId)
+                ...BilbyJobEventIDDropdown_data @arguments(jobId: $jobId)
             }
         `,
     },

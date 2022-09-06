@@ -8,6 +8,7 @@ const initialValues = {
     triggerTime: 1126259462.391,
     samplingFrequency: '512',
     signalDuration: '4',
+    eventId: null,
     // Handford Detector
     hanford: false,
     hanfordChannel: 'GWOSC',

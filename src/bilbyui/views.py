@@ -231,6 +231,8 @@ def create_bilby_job(user, params):
 
         ini_string = f.read().decode('utf-8')
 
+    event_id = EventID.get_by_event_id(params.data.event_id, user) if params.data.event_id else None
+
     bilby_job = BilbyJob.objects.create(
         user_id=user.user_id,
         name=params.details.name,
@@ -238,7 +240,8 @@ def create_bilby_job(user, params):
         private=params.details.private,
         is_ligo_job=is_ligo_job,
         ini_string=ini_string,
-        cluster=params.details.cluster
+        cluster=params.details.cluster,
+        event_id=event_id
     )
 
     # Submit the job to the job controller

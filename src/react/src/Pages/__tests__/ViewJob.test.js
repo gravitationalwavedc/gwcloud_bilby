@@ -146,13 +146,14 @@ describe('view job page', () => {
         
         expect(screen.queryByText('Event ID: test-1')).not.toBeInTheDocument();
 
-        const changeEventIdBtn = screen.getByText('Change Event ID');
+        const changeEventIdBtn = screen.getByText('Set Event ID');
         userEvent.click(changeEventIdBtn);
         const modalInput = screen.getByRole('combobox');
         userEvent.click(modalInput);
         const idSelection = screen.getByLabelText('test-1');
         userEvent.click(idSelection);
         expect(screen.queryByText('Event ID: test-1')).toBeInTheDocument();
+        expect(screen.queryByText('Change Event ID')).toBeInTheDocument();
     });
 
 });

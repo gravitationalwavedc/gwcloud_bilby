@@ -66,6 +66,8 @@ export default createFragmentContainer(DuplicateJobForm,
                     }
                 }
            }
+           
+           ...DataForm_data
         }`
     }
 );
