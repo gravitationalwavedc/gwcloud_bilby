@@ -6,6 +6,7 @@ def update_preferred_label(apps, schema_editor):
 
     for label in Label.objects.filter(name='Preferred'):
         label.name = "Official"
+        label.save()
 
 
 def rollback_preferred_label(apps, schema_editor):
@@ -13,6 +14,7 @@ def rollback_preferred_label(apps, schema_editor):
 
     for label in Label.objects.filter(name='Official'):
         label.name = "Preferred"
+        label.save()
 
 
 class Migration(migrations.Migration):
