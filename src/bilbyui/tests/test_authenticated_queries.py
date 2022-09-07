@@ -352,19 +352,29 @@ class TestQueriesWithAuthenticatedUser(BilbyTestCase):
             }
 
             # Check that providing a cursor works as expected
-            self.client.authenticate(self.user)
             response = self.client.execute(self.public_bilby_job_query, variables)
 
             # Verify that the expected results are returned, first = count, after = cursor
-            self.assertTrue(perform_db_search.call_args[0][1]['first'], 25)
-            if idx:
-                self.assertTrue(perform_db_search.call_args[0][1]['after'], idx)
-            else:
-                # Cursor/count is not passed through if it is 0
-                self.assertTrue('count' not in perform_db_search.call_args[0][1])
+            self.assertEqual(perform_db_search.call_args[0][1]['first'], 25)
+            self.assertEqual(perform_db_search.call_args[0][1]['after'], idx)
 
             self.assertDictEqual(
                 response.data,
                 self.public_bilby_job_expected,
                 "publicBilbyJobs query returned unexpected data."
             )
+
+        variables = {
+            "count": 25,
+            "cursor": None,
+            "search": None,
+            "timeRange": "all"
+        }
+
+        # Check that providing a cursor works as expected
+        self.client.authenticate(self.user)
+        response = self.client.execute(self.public_bilby_job_query, variables)
+
+        self.assertEqual(perform_db_search.call_args[0][1]['first'], 25)
+        # after is not passed through if it is None
+        self.assertTrue('after' not in perform_db_search.call_args[0][1])
