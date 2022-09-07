@@ -67,7 +67,7 @@ class TestAllLabels(BilbyTestCase):
                             'protected': False
                         }}, {
                         'node': {
-                            'name': 'Preferred',
+                            'name': 'Official',
                             'description': 'This run has been marked by GWCloud admins as preferred for analysis of this event.',  # noqa: E501
                             'protected': True
                         }}

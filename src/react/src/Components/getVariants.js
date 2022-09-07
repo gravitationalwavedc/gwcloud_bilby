@@ -8,7 +8,7 @@ const getBadgeType = (name) => {
         'Bad Run': 'danger',
         'Review Requested': 'secondary',
         'Reviewed': 'info',
-        'Preferred': 'warning'
+        'Official': 'warning'
     };
 
     return variants[name];
