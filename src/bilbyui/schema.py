@@ -261,8 +261,8 @@ class Query(object):
     @login_required
     def resolve_public_bilby_jobs(self, info, **kwargs):
         # Parse the cursor if it was provided and set the first offset to be used by the database search
-        if 'cursor' in kwargs:
-            kwargs['first'] = from_global_id(kwargs['cursor'])[1]
+        if 'after' in kwargs:
+            kwargs['after'] = int(from_global_id(kwargs['after'])[1])
 
         # Perform the database search
         success, jobs = perform_db_search(info.context.user, kwargs)
@@ -298,7 +298,21 @@ class Query(object):
         # Nb. The perform_db_search function currently requests one extra record than kwargs['first'].
         # This triggers the ArrayConnection used by returning the result array to correctly set
         # hasNextPage correctly, such that infinite scroll works as expected.
-        return result
+
+        # graphene_django's arrayconnection implementation is a bit crazy. It expects this function to return a full
+        # array that has *all* the elements in it, that is then sliced in to the expected result. Since the database
+        # only returns us what we expect, what we're doing here is reconstructing that array with the requested offset
+        # worth of empty elements at the start. We then tac on our records from the database, and the arrayconnection
+        # internally slices the correct values from the array and returns that to the client.
+
+        # Furthermore, arrayconnections with offset 0 or 1 are functionally the same, this is why we add a +1 to the
+        # value from after if it is provided, otherwise we use 0 (-1 + 1) if no after value is provided.
+
+        after_value = int(kwargs.get('after', -1)+1)
+        real_result = [None] * after_value
+        real_result.extend(result)
+
+        return real_result
 
     @login_required
     def resolve_gwclouduser(self, info, **kwargs):

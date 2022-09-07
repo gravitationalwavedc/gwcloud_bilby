@@ -169,7 +169,7 @@ class TestDbSearch(TestCase):
         )
 
         # Test working search with first argument
-        result = perform_db_search(self.user, {"first": 4321})
+        result = perform_db_search(self.user, {"after": 4321})
         self.assertEqual(result[1], self.mock_data)
 
         self.assertEqual(
@@ -186,7 +186,7 @@ class TestDbSearch(TestCase):
         )
 
         # Test working search with first argument
-        result = perform_db_search(self.user, {"count": 4321})
+        result = perform_db_search(self.user, {"first": 4321})
         self.assertEqual(result[1], self.mock_data)
 
         # One extra record is added to the search so that hasNextPage works as expected in pagination
@@ -226,7 +226,7 @@ class TestDbSearch(TestCase):
 
         # Test working search without any arguments
         result = perform_db_search(self.user, {
-            "search": "hello \"bill nye\" 'not quoted'", "time_range": "10 years", "first": 4321, "count": 1234
+            "search": "hello \"bill nye\" 'not quoted'", "time_range": "10 years", "after": 4321, "first": 1234
         })
         self.assertEqual(result[1], self.mock_data)
 
