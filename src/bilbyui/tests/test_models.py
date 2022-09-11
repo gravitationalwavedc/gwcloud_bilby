@@ -2,11 +2,11 @@ import json
 import uuid
 from pathlib import Path
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.conf import settings
 
-from bilbyui.models import BilbyJob, Label, FileDownloadToken, BilbyJobUploadToken, SupportingFile
+from bilbyui.models import BilbyJob, Label, FileDownloadToken, BilbyJobUploadToken, SupportingFile, EventID
 from bilbyui.views import update_bilby_job
 from gw_bilby.jwt_tools import GWCloudUser
 
@@ -16,12 +16,20 @@ class TestBilbyJobModel(TestCase):
     def setUpTestData(cls):
         cls.job = BilbyJob.objects.create(
             user_id=1,
-            name='Test Job',
+            name='Test_Job',
             description='Test job description',
             private=False,
             ini_string='test-config=12345'
         )
         cls.job.save()
+
+        cls.event_id = EventID.objects.create(
+            event_id="GW123456_123456",
+            trigger_id="S123456a",
+            nickname="GW123456",
+            is_ligo_event=False,
+            gps_time=1126259462.391
+        )
 
     def test_update_privacy(self):
         """
@@ -36,6 +44,71 @@ class TestBilbyJobModel(TestCase):
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.private, True)
+
+    def test_update_event_id(self):
+        """
+        Check that update_bilby_job view can update the event ID of a job
+        """
+        # A user who doesn't own the job shouldn't be able to change the event id
+        self.assertEqual(self.job.event_id, None)
+
+        user = GWCloudUser('bill')
+        user.user_id = self.job.user_id + 1
+
+        with self.assertRaises(Exception):
+            update_bilby_job(self.job.id, user, event_id=self.event_id.event_id)
+
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.event_id, None)
+
+        # If the user owns the job, they should be able to set the event id
+        user.user_id = self.job.user_id
+
+        update_bilby_job(self.job.id, user, event_id=self.event_id.event_id)
+
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.event_id, self.event_id)
+
+        # If the user is in PERMITTED_EVENT_CREATION_USER_IDS, they should be able to update someone else's job's event
+        # id
+        self.job.event_id = None
+        self.job.save()
+
+        user.user_id = self.job.user_id + 1
+
+        with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[user.user_id]):
+            update_bilby_job(self.job.id, user, event_id=self.event_id.event_id)
+
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.event_id, self.event_id)
+
+    def test_update_name(self):
+        """
+        Check that update_bilby_job view can update the name of a job
+        """
+        self.assertEqual(self.job.name, 'Test_Job')
+
+        user = GWCloudUser('bill')
+        user.user_id = 1
+
+        update_bilby_job(self.job.id, user, name='new_job')
+
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.name, 'new_job')
+
+    def test_update_description(self):
+        """
+        Check that update_bilby_job view can update the description of a job
+        """
+        self.assertEqual(self.job.description, 'Test job description')
+
+        user = GWCloudUser('bill')
+        user.user_id = 1
+
+        update_bilby_job(self.job.id, user, description='new description')
+
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.description, 'new description')
 
     def test_update_labels(self):
         """

@@ -421,7 +421,6 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
     bilby_job = BilbyJob.get_by_id(job_id, user)
 
     if user.user_id == bilby_job.user_id:
-
         if labels is not None:
             # Preserve protected labels
             protected_labels = bilby_job.labels.filter(protected=True)
@@ -443,6 +442,14 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
         bilby_job.save()
 
         return 'Job saved!'
+
+    elif user.user_id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
+        bilby_job.event_id = None if event_id == '' else EventID.objects.get(event_id=event_id)
+
+        bilby_job.save()
+
+        return 'Job saved'
+
     else:
         raise Exception('You must own the job to change it!')
 
