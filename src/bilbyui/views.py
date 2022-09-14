@@ -294,11 +294,11 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
             if config is None:
                 continue
 
-            # Get the path to the marginalisation file, if it's "./", and the filename begins with ".", then assume that
+            # Get the path to the marginalisation file. If the filename begins with ".", then assume that
             # the distance marginalisation isn't provided and is a default. For a default marginalisation file, the path
-            # will be something like `./.4s_distance_marginalization_lookup.npz`
+            # will be something like `outdir/.4s_distance_marginalization_lookup.npz`
             path = Path(config)
-            if str(path.parent) == "." and path.name[0] == ".":
+            if path.name[0] == ".":
                 # Here we continue, since there is no reason to create a SupportingFile record for default
                 # marginalisation files.
                 continue

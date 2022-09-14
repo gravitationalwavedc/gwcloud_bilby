@@ -138,6 +138,11 @@ class TestIniJobSubmission(BilbyTestCase):
         self.assertEqual(job.description, self.test_description)
         self.assertEqual(job.private, self.test_private)
 
+        # If there are no supporting files, then the job should have been submitted
+        if not supporting_files.count():
+            self.assertEqual(job.job_controller_id, 4321)
+            return
+
         # Job should not have been submitted as there is a supporting file
         self.assertIsNone(job.job_controller_id)
 
@@ -401,6 +406,24 @@ class TestIniJobSubmission(BilbyTestCase):
             [
                 [None, './supporting_files/dml/dml.npz', SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE]
             ],
+            'distance_marginalization_lookup_table'
+        )
+
+    def test_ini_job_submission_supporting_file_distance_marginalization_lookup_table_none(self):
+        # If the DML is set to None, the client shouldn't be made to try to find
+        # `.4s_distance_marginalization_lookup_phase.npz`
+        test_ini_string = create_test_ini_string(
+            {
+                'label': "Test_Name",
+                'detectors': "['H1']",
+                'prior-file': '4s',
+                'distance-marginalization-lookup-table': None
+            }
+        )
+
+        self.mock_ini_job_submission_with_supporting_files(
+            test_ini_string,
+            [],
             'distance_marginalization_lookup_table'
         )
 
