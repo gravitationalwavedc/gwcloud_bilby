@@ -126,7 +126,7 @@ igwn-auth-utils[requests]==0.2.2
     #   gwdatafind
 jinja2==3.1.2
     # via bilby-pipe
-jwcrypto==1.2
+jwcrypto==1.4
     # via python-jwt
 kiwisolver==1.4.2
     # via matplotlib
