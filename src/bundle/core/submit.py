@@ -16,11 +16,10 @@ from bilby_pipe.utils import parse_args
 
 import settings
 from core.misc import get_scheduler, working_directory
-from db import get_next_unique_job_id, create_or_update_job
+from _bundledb import create_or_update_job
 from scheduler.scheduler import EScheduler
 
 chdir_lock = threading.Lock()
-
 
 @contextmanager
 def set_directory(path: Path):
@@ -335,12 +334,13 @@ def write_submission_scripts(inputs, wk_dir):
     # Working directory changes need to be synchronous
     with chdir_lock, set_directory(wk_dir):
         generate_dag(inputs)
-
-    dag = Dag(inputs)
+        dag = Dag(inputs)
 
     # Return the slurm submit script if the scheduler is slurm
     if settings.scheduler == EScheduler.SLURM:
-        _slurm = SubmitSLURM(dag)
+        with chdir_lock, set_directory(wk_dir):
+            _slurm = SubmitSLURM(dag)
+
         slurm_script = str(Path(wk_dir) / _slurm.slurm_master_bash)
         return slurm_script
 
@@ -410,7 +410,6 @@ def submit(details, job_parameters):
     :param job_parameters: The ini string representing the bilby ini file to submit the job for
     :return: The internal job id representing the job, otherwise None on failure
     """
-
     print("Submitting new job...")
 
     # Create and enter the working directory
@@ -447,12 +446,13 @@ def submit(details, job_parameters):
         return None
 
     # Create a new job to store details
-    job = {
-        'job_id': get_next_unique_job_id(),
-        'submit_id': submit_bash_id,
-        'working_directory': wk_dir,
-        'submit_directory': inputs.submit_directory
-    }
+    with chdir_lock, set_directory(wk_dir):
+        job = {
+            'job_id': 0,
+            'submit_id': submit_bash_id,
+            'working_directory': wk_dir,
+            'submit_directory': inputs.submit_directory
+        }
 
     # Save the job in the database
     create_or_update_job(job)
