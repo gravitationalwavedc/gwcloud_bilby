@@ -21,6 +21,7 @@ from scheduler.scheduler import EScheduler
 
 chdir_lock = threading.Lock()
 
+
 @contextmanager
 def set_directory(path: Path):
     """Sets the cwd within the context

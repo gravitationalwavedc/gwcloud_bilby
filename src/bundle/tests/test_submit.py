@@ -36,6 +36,9 @@ def submit_mock_fn(*args, **kwargs):
 def update_job_mock(job):
     """Mocked"""
     global update_job_result
+    if not job["job_id"]:
+        job["job_id"] = update_job_result
+
     update_job_result = job
 
 
@@ -49,8 +52,7 @@ class TestSubmit(TestCase):
         # Wild hack to remove any trailing parameters which can influence bilby/condor job creation
         sys.argv = sys.argv[:1]
 
-    @patch('db.create_or_update_job', side_effect=update_job_mock)
-    @patch("db.get_next_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch('_bundledb.create_or_update_job', side_effect=update_job_mock)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.SLURM)
@@ -68,10 +70,10 @@ class TestSubmit(TestCase):
         }
 
         with TemporaryDirectory() as td:
-            global working_directory_mock_return, get_unique_job_id_mock_return, submit_mock_return, \
+            global working_directory_mock_return, submit_mock_return, \
                 update_job_result
 
-            update_job_result = None
+            update_job_result = 4321
 
             working_directory_mock_return = td
 
@@ -87,7 +89,6 @@ class TestSubmit(TestCase):
             from core.submit import submit
 
             submit_mock_return = 1234
-            get_unique_job_id_mock_return = 4321
 
             params = dict(
                 name='test-real',
@@ -98,10 +99,10 @@ class TestSubmit(TestCase):
             result = submit(details, json.dumps(params))
 
             # Check that the return value (The internal bundle submission id) is correct
-            self.assertEqual(result, get_unique_job_id_mock_return)
+            self.assertEqual(result, 4321)
 
             # Check that the internal job object was correctly created
-            self.assertEqual(update_job_result['job_id'], get_unique_job_id_mock_return)
+            self.assertEqual(update_job_result['job_id'], 4321)
             self.assertEqual(update_job_result['submit_id'], submit_mock_return)
             self.assertEqual(update_job_result['working_directory'], td)
             self.assertEqual(update_job_result['submit_directory'], './submit')
@@ -162,8 +163,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.transfer_files, False)
 
-    @patch('db.create_or_update_job', side_effect=update_job_mock)
-    @patch("db.get_next_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch('_bundledb.create_or_update_job', side_effect=update_job_mock)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.SLURM)
@@ -183,7 +183,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
         }
 
         with TemporaryDirectory() as td:
-            global working_directory_mock_return, get_unique_job_id_mock_return, submit_mock_return, \
+            global working_directory_mock_return, submit_mock_return, \
                 update_job_result
 
             update_job_result = None
@@ -202,7 +202,6 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
             from core.submit import submit
 
             submit_mock_return = 12345
-            get_unique_job_id_mock_return = 54321
 
             params = dict(
                 name='test-simulated',
@@ -279,8 +278,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.transfer_files, False)
 
-    @patch('db.create_or_update_job', side_effect=update_job_mock)
-    @patch("db.get_next_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch('_bundledb.create_or_update_job', side_effect=update_job_mock)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.SLURM)
@@ -392,8 +390,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.transfer_files, False)
 
-    @patch('db.create_or_update_job', side_effect=update_job_mock)
-    @patch("db.get_next_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch('_bundledb.create_or_update_job', side_effect=update_job_mock)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.condor.CondorScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
@@ -411,10 +408,8 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
         }
 
         with TemporaryDirectory() as td:
-            global working_directory_mock_return, get_unique_job_id_mock_return, submit_mock_return, \
+            global working_directory_mock_return, submit_mock_return, \
                 update_job_result
-
-            update_job_result = None
 
             working_directory_mock_return = td
 
@@ -422,7 +417,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
             from core.submit import submit
 
             submit_mock_return = 1234
-            get_unique_job_id_mock_return = 4321
+            update_job_result = 4321
 
             params = dict(
                 name='test-real',
@@ -433,10 +428,10 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
             result = submit(details, json.dumps(params))
 
             # Check that the return value (The internal bundle submission id) is correct
-            self.assertEqual(result, get_unique_job_id_mock_return)
+            self.assertEqual(result, 4321)
 
             # Check that the internal job object was correctly created
-            self.assertEqual(update_job_result['job_id'], get_unique_job_id_mock_return)
+            self.assertEqual(update_job_result['job_id'], 4321)
             self.assertEqual(update_job_result['submit_id'], submit_mock_return)
             self.assertEqual(update_job_result['working_directory'], td)
             self.assertEqual(update_job_result['submit_directory'], './submit')
@@ -475,8 +470,7 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
                 self.assertEqual(args.accounting, 'no.group')
                 self.assertEqual(args.transfer_files, False)
 
-    @patch('db.create_or_update_job', side_effect=update_job_mock)
-    @patch("db.get_next_unique_job_id", side_effect=get_unique_job_id_mock_fn)
+    @patch('_bundledb.create_or_update_job', side_effect=update_job_mock)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.condor.CondorScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
@@ -496,7 +490,7 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
         }
 
         with TemporaryDirectory() as td:
-            global working_directory_mock_return, get_unique_job_id_mock_return, submit_mock_return, \
+            global working_directory_mock_return, submit_mock_return, \
                 update_job_result
 
             update_job_result = None
@@ -507,7 +501,6 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
             from core.submit import submit
 
             submit_mock_return = 1234
-            get_unique_job_id_mock_return = 4321
 
             params = dict(
                 name='test-real',
