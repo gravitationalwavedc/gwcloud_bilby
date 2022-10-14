@@ -1,4 +1,7 @@
 import os
+import sys
+from pathlib import Path
+
 import settings
 from scheduler.scheduler import EScheduler
 from scheduler.status import JobStatus
@@ -8,7 +11,13 @@ from unittest.mock import patch, Mock
 
 
 class TestStatus(TestCase):
-    @patch("db.get_job_by_id")
+    def setUp(self):
+        sys.path.append(str(Path(__file__).parent / "misc"))
+
+    def tearDown(self):
+        sys.path = sys.path[:-1]
+
+    @patch("_bundledb.get_job_by_id")
     def test_status_job_doesnt_exist(self, get_job_by_id_mock):
         get_job_by_id_mock.side_effect = Mock(return_value=None)
 
@@ -28,8 +37,8 @@ class TestStatus(TestCase):
         )
         self.assertEqual(result['complete'], True)
 
-    @patch('db.create_or_update_job')
-    @patch("db.get_job_by_id")
+    @patch('_bundledb.create_or_update_job')
+    @patch("_bundledb.get_job_by_id")
     @patch("os.path.exists")
     @patch("scheduler.slurm.SlurmScheduler.status")
     @patch.object(settings, "scheduler", EScheduler.SLURM)
@@ -69,9 +78,9 @@ class TestStatus(TestCase):
         # Update job (To remove the submit_id) should never have been called
         self.assertEqual(update_job_mock.call_count, 0)
 
-    @patch('db.delete_job')
-    @patch('db.create_or_update_job')
-    @patch("db.get_job_by_id")
+    @patch('_bundledb.delete_job')
+    @patch('_bundledb.create_or_update_job')
+    @patch("_bundledb.get_job_by_id")
     @patch("os.path.exists")
     @patch("scheduler.slurm.SlurmScheduler.status")
     @patch.object(settings, "scheduler", EScheduler.SLURM)
@@ -105,8 +114,8 @@ class TestStatus(TestCase):
         self.assertEqual(delete_job_mock.call_count, 1)
         self.assertEqual(update_job_mock.call_count, 0)
 
-    @patch('db.create_or_update_job')
-    @patch("db.get_job_by_id")
+    @patch('_bundledb.create_or_update_job')
+    @patch("_bundledb.get_job_by_id")
     @patch("os.path.exists")
     @patch("scheduler.slurm.SlurmScheduler.status")
     @patch.object(settings, "scheduler", EScheduler.SLURM)
@@ -142,8 +151,8 @@ class TestStatus(TestCase):
             'submit_directory': "a/submit/directory/"
         })
 
-    @patch('db.delete_job')
-    @patch("db.get_job_by_id")
+    @patch('_bundledb.delete_job')
+    @patch("_bundledb.get_job_by_id")
     @patch("os.path.exists")
     @patch("scheduler.slurm.SlurmScheduler.status")
     @patch.object(settings, "scheduler", EScheduler.SLURM)
@@ -307,8 +316,8 @@ class TestStatus(TestCase):
             self.assertEqual(result['complete'], True)
             self.assertEqual(delete_job_mock.call_count, 4)
 
-    @patch('db.delete_job')
-    @patch("db.get_job_by_id")
+    @patch('_bundledb.delete_job')
+    @patch("_bundledb.get_job_by_id")
     @patch("scheduler.condor.CondorScheduler.status")
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
     def test_status_condor(self, status_mock, get_job_by_id_mock, delete_job_mock):

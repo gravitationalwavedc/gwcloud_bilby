@@ -9,8 +9,9 @@ bundle directory. Use the `conda-environment.yml` file.
 To save the environment:-
 * `conda env export > conda-environment.yml`
 
-  
 
+To update the environment exactly as is in the conda-environment.yml:-
+* `conda env update --file conda-environment.yml --prune -p venv`
 
 Conda packages:
 ```
@@ -24,18 +25,10 @@ htcondor
 testfixtures
 responses
 unittest-xml-reporting
-diskcache
-aiohttp
-aiosignal
-async-timeout
-frozenlist
-lxml
-multidict
-yarl
 ```
 
 Pip packages:
 
 ```
-aiohttp-xmlrpc
+None yet
 ```

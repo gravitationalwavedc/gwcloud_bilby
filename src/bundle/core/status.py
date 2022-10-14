@@ -1,7 +1,7 @@
 import os
 
 from core.misc import get_scheduler
-import db
+import _bundledb
 from scheduler.scheduler import EScheduler
 from scheduler.status import JobStatus
 import settings
@@ -33,7 +33,7 @@ def get_submit_status(job):
         # If the job is not completed, then some other error has occurred
         if _status != JobStatus.COMPLETED:
             # Delete the job from the database
-            db.delete_job(job)
+            _bundledb.delete_job(job)
 
             # Report the error
             result = {
@@ -46,7 +46,7 @@ def get_submit_status(job):
 
         # The batch submission was successful, remove the submit id from the job
         del job['submit_id']
-        db.create_or_update_job(job)
+        _bundledb.create_or_update_job(job)
 
     result = {
         'what': 'submit',
@@ -79,7 +79,7 @@ def condor_status(job):
         }
     else:
         # Job is completed, or an error occurred
-        db.delete_job(job)
+        _bundledb.delete_job(job)
 
         return {
             'status': result,
@@ -148,7 +148,7 @@ def slurm_status(job):
 
     # Delete the job if it's completed
     if completed:
-        db.delete_job(job)
+        _bundledb.delete_job(job)
 
     return {
         'status': result_status,
@@ -175,7 +175,7 @@ def status(details, *args, **kwargs):
     }
     """
     # Get the job
-    job = db.get_job_by_id(details['scheduler_id'])
+    job = _bundledb.get_job_by_id(details['scheduler_id'])
     if not job:
         # Job doesn't exist. Report error
         result = [{
@@ -191,8 +191,8 @@ def status(details, *args, **kwargs):
 
     # Use the relevant scheduler to obtain the job status
     if settings.scheduler == EScheduler.CONDOR:
-        return condor_status(job)
+        return dict(condor_status(job))
     elif settings.scheduler == EScheduler.SLURM:
-        return slurm_status(job)
+        return dict(slurm_status(job))
     else:
         return None
