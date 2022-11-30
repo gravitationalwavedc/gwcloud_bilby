@@ -38,24 +38,6 @@ def create_bilby_job(user, params):
     # Check the ligo permissions and ligo job status
     is_ligo_job = False
 
-    # Check that non-ligo users only have access to GWOSC channels for real data
-    # Note that we're checking for not simulated here, rather than for real, because the backend
-    # explicitly checks for `if input_params["data"]["type"] == "simulated":`, so any value other than
-    # `simulation` would result in a real data job
-    if params.data.data_choice != "simulated" and (
-            params.data.channels.hanford_channel != "GWOSC" or
-            params.data.channels.livingston_channel != "GWOSC" or
-            params.data.channels.virgo_channel != "GWOSC"
-    ):
-        # This is a real job, with a channel that is not GWOSC
-        if not user.is_ligo:
-            # User is not a ligo user, so they may not submit this job
-            raise Exception("Non-LIGO members may only run real jobs on GWOSC channels")
-        else:
-            # User is a ligo user, so they may submit the job, but we need to track that the job is a
-            # ligo "proprietary" job
-            is_ligo_job = True
-
     # todo: request_cpus
 
     # Generate the detector choice
@@ -337,6 +319,8 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
 
 
 def create_bilby_job_from_ini_string(user, params):
+    is_ligo_job = False
+
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
     args = bilby_ini_string_to_args(params.ini_string.ini_string.encode('utf-8'))
     args.idx = None
@@ -378,16 +362,6 @@ def create_bilby_job_from_ini_string(user, params):
         injection_file,
         psd_dict
     )
-
-    if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in (parser.channel_dict or {}).values()])):
-        # This is a real job, with a channel that is not GWOSC
-        if not user.is_ligo:
-            # User is not a ligo user, so they may not submit this job
-            raise Exception("Non-LIGO members may only run real jobs on GWOSC channels")
-        else:
-            is_ligo_job = True
-    else:
-        is_ligo_job = False
 
     # Override any required fields
     validate_job_name(params.details.name)
@@ -455,6 +429,8 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
 
 
 def upload_bilby_job(upload_token, details, job_file):
+    is_ligo_job = False
+
     # Check that the uploaded file is a tar.gz file
     if not job_file.name.endswith('tar.gz'):
         raise Exception("Job upload should be a tar.gz file")
@@ -558,17 +534,6 @@ def upload_bilby_job(upload_token, details, job_file):
             injection_file,
             psd_dict
         )
-
-        # Verify that a non-ligo user can't upload a ligo job, and check if this job is a ligo job or not
-        if args.n_simulation == 0 and (any([channel != 'GWOSC' for channel in (parser.channel_dict or {}).values()])):
-            # This is a real job, with a channel that is not GWOSC
-            if not upload_token.is_ligo:
-                # User is not a ligo user, so they may not submit this job
-                raise Exception("Non-LIGO members may only upload real jobs on GWOSC channels")
-            else:
-                is_ligo_job = True
-        else:
-            is_ligo_job = False
 
         # Convert the modified arguments back to an ini string
         ini_string = bilby_args_to_ini_string(args)

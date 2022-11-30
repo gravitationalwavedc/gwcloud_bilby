@@ -161,10 +161,6 @@ class BilbyJob(models.Model):
         """
         job = cls.objects.get(id=bid)
 
-        # Ligo jobs may only be accessed by ligo users
-        if job.is_ligo_job and not user.is_ligo:
-            raise Exception("Permission Denied")
-
         # Users can only access the job if it is public or the user owns the job
         if job.private and user.user_id != job.user_id:
             raise Exception("Permission Denied")
@@ -208,11 +204,7 @@ class BilbyJob(models.Model):
         if info.context.user.is_anonymous:
             raise Exception("You must be logged in to perform this action.")
 
-        # Users may not view ligo jobs if they are not a ligo user
-        if info.context.user.is_ligo:
-            return queryset
-        else:
-            return queryset.exclude(is_ligo_job=True)
+        return queryset
 
     @classmethod
     def prune_supporting_files_jobs(cls):
