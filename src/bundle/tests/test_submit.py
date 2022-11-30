@@ -43,6 +43,8 @@ def update_job_mock(job):
 
 
 class TestSubmit(TestCase):
+    maxDiff = 0
+
     def setUp(self):
         self.popen = MockPopen()
         self.r = Replacer()
@@ -135,7 +137,7 @@ class TestSubmit(TestCase):
 #SBATCH --output=./submit/test-real_master_slurm.out
 #SBATCH --error=./submit/test-real_master_slurm.err
 
-jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-name=test-real_data0_12345678-0_analysis_H1  --output=log_data_analysis/test-real_data0_12345678-0_analysis_H1.out --error=log_data_analysis/test-real_data0_12345678-0_analysis_H1.err ./submit/test-real_data0_12345678-0_analysis_H1.sh))
+jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=8G --time=7-00:00:00 --job-name=test-real_data0_12345678-0_analysis_H1  --output=log_data_analysis/test-real_data0_12345678-0_analysis_H1.out --error=log_data_analysis/test-real_data0_12345678-0_analysis_H1.err ./submit/test-real_data0_12345678-0_analysis_H1.sh))
 
 echo "jid1 ${jid1[-1]}" >> ./submit/slurm_ids
 
@@ -248,7 +250,7 @@ jid0=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=8G --time=1:00:00 --job-name
 
 echo "jid0 ${jid0[-1]}" >> ./submit/slurm_ids
 
-jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1 --dependency=afterok:${jid0[-1]} --output=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1.out --error=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1.err ./submit/test-simulated_data0_87654321-0_analysis_H1V1.sh))
+jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=8G --time=7-00:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1 --dependency=afterok:${jid0[-1]} --output=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1.out --error=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1.err ./submit/test-simulated_data0_87654321-0_analysis_H1V1.sh))
 
 echo "jid1 ${jid1[-1]}" >> ./submit/slurm_ids
 
@@ -360,7 +362,7 @@ jid0=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=8G --time=1:00:00 --job-name
 
 echo "jid0 ${jid0[-1]}" >> ./submit/slurm_ids
 
-jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=4G --time=7-00:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1 --dependency=afterok:${jid0[-1]} --output=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1.out --error=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1.err ./submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1.sh))
+jid1=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=8G --time=7-00:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1 --dependency=afterok:${jid0[-1]} --output=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1.out --error=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1.err ./submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1.sh))
 
 echo "jid1 ${jid1[-1]}" >> ./submit/slurm_ids
 
