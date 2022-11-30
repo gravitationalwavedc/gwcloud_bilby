@@ -122,36 +122,6 @@ class TestBilbyLigoPermissions(BilbyTestCase):
         self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
 
     @silence_errors
-    def test_non_ligo_user_with_non_gwosc(self):
-        self.client.authenticate(self.user, is_ligo=False)
-
-        for detector, channel in [
-            ('hanfordChannel', 'GDS-CALIB_STRAIN'),
-            ('livingstonChannel', 'GDS-CALIB_STRAIN'),
-            ('virgoChannel', 'Hrec_hoft_16384Hz'),
-            # Also check invalid (Non GWOSC channels)
-            ('hanfordChannel', 'testchannel1'),
-            ('livingstonChannel', 'imnotarealchannel'),
-            ('virgoChannel', 'GWOSc'),
-        ]:
-            self.params['input']['params']['data']['channels'][detector] = channel
-
-            response = self.client.execute(self.query, self.params)
-
-            self.assertDictEqual(
-                self.expected_none, response.data, "create bilbyJob mutation returned unexpected data."
-            )
-
-            self.assertEqual(
-                response.errors[0].message,
-                'Non-LIGO members may only run real jobs on GWOSC channels'
-            )
-
-            self.assertFalse(BilbyJob.objects.all().exists())
-
-            self.params['input']['params']['data']['channels'][detector] = "GWOSC"
-
-    @silence_errors
     def test_ligo_user_with_non_gwosc(self):
         # Now if the channels are proprietary, the ligo user should be able to create jobs
         self.client.authenticate(self.user, is_ligo=True)
@@ -171,7 +141,7 @@ class TestBilbyLigoPermissions(BilbyTestCase):
 
             # Check that the job is marked as proprietary
             job = BilbyJob.objects.all().last()
-            self.assertTrue(job.is_ligo_job)
+            self.assertFalse(job.is_ligo_job)
             job.delete()
 
             self.params['input']['params']['data']['channels'][detector] = "GWOSC"
@@ -268,37 +238,6 @@ class TestIniBilbyLigoPermissions(BilbyTestCase):
         self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
 
     @silence_errors
-    def test_non_ligo_user_with_non_gwosc(self):
-        # Test checks that non-LIGO user cannot create real jobs with non-GWOSC channels, nor with invalid channels
-        # Now if the channels are proprietary, the non-ligo user should not be able to create jobs
-        self.client.authenticate(self.user, is_ligo=False)
-
-        for channel_dict in [
-            {'H1': 'GDS-CALIB_STRAIN', 'L1': 'GWOSC', 'V1': 'GWOSC'},
-            {'H1': 'GWOSC', 'L1': 'GDS-CALIB_STRAIN', 'V1': 'GWOSC'},
-            {'H1': 'GWOSC', 'L1': 'GWOSC', 'V1': 'Hrec_hoft_16384Hz'},
-            # Also check invalid channels
-            {'H1': 'testchannel1', 'L1': 'GWOSC', 'V1': 'GWOSC'},
-            {'H1': 'GWOSC', 'L1': 'imnotarealchannel', 'V1': 'GWOSC'},
-            {'H1': 'GWOSC', 'L1': 'GWOSC', 'V1': 'GWOSc'},
-        ]:
-            ini_string = create_test_ini_string({'n-simulation': 0, 'channel-dict': channel_dict}, True)
-            self.params['input']['params']['iniString']['iniString'] = ini_string
-
-            response = self.client.execute(self.query, self.params)
-
-            self.assertDictEqual(
-                self.expected_none, response.data, "create bilbyJob mutation returned unexpected data."
-            )
-
-            self.assertEqual(
-                response.errors[0].message,
-                'Non-LIGO members may only run real jobs on GWOSC channels'
-            )
-
-            self.assertFalse(BilbyJob.objects.all().exists())
-
-    @silence_errors
     def test_ligo_user_with_non_gwosc(self):
         # Test that LIGO users can make jobs with proprietary channels
         # Now if the channels are proprietary, the ligo user should be able to create jobs
@@ -318,5 +257,5 @@ class TestIniBilbyLigoPermissions(BilbyTestCase):
 
             # Check that the job is marked as proprietary
             job = BilbyJob.objects.all().last()
-            self.assertTrue(job.is_ligo_job)
+            self.assertFalse(job.is_ligo_job)
             job.delete()

@@ -559,49 +559,6 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
         self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
 
     @silence_errors
-    def test_non_ligo_user_with_non_gwosc(self):
-        # Test checks that non-LIGO user cannot create real jobs with non-GWOSC channels, nor with invalid channels
-        # Now if the channels are proprietary, the non-ligo user should not be able to create jobs
-        self.client.authenticate(self.user, is_ligo=False)
-
-        token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
-        self.params['input']['uploadToken'] = token
-
-        for channel_dict in [
-            {'H1': 'GDS-CALIB_STRAIN', 'L1': 'GWOSC', 'V1': 'GWOSC'},
-            {'H1': 'GWOSC', 'L1': 'GDS-CALIB_STRAIN', 'V1': 'GWOSC'},
-            {'H1': 'GWOSC', 'L1': 'GWOSC', 'V1': 'Hrec_hoft_16384Hz'},
-            # Also check invalid channels
-            {'H1': 'testchannel1', 'L1': 'GWOSC', 'V1': 'GWOSC'},
-            {'H1': 'GWOSC', 'L1': 'imnotarealchannel', 'V1': 'GWOSC'},
-            {'H1': 'GWOSC', 'L1': 'GWOSC', 'V1': 'GWOSc'},
-        ]:
-            ini_string = create_test_ini_string({
-                'label': 'testjob',
-                'n-simulation': 0,
-                'channel-dict': channel_dict
-            }, complete=True)
-
-            self.params['input']['jobFile'] = SimpleUploadedFile(
-                name='test.tar.gz',
-                content=create_test_upload_data(ini_string, 'testjob'),
-                content_type='application/gzip'
-            )
-
-            response = self.client.execute(self.mutation, self.params)
-
-            self.assertDictEqual(
-                self.expected_none, response.data, "create bilbyJob mutation returned unexpected data."
-            )
-
-            self.assertEqual(
-                response.errors[0].message,
-                'Non-LIGO members may only upload real jobs on GWOSC channels'
-            )
-
-            self.assertFalse(BilbyJob.objects.all().exists())
-
-    @silence_errors
     def test_ligo_user_with_non_gwosc(self):
         # Test that LIGO users can make jobs with proprietary channels
         # Now if the channels are proprietary, the ligo user should be able to create jobs
@@ -633,7 +590,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
 
             # Check that the job is marked as proprietary
             job = BilbyJob.objects.all().last()
-            self.assertTrue(job.is_ligo_job)
+            self.assertFalse(job.is_ligo_job)
             job.delete()
 
 
