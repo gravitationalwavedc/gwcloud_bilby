@@ -52,6 +52,8 @@ npm-tests:
     
   after_script:
     - cd src/react/
+    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
+    - eval "[ -f .nvmrc ] && nvm use
     - npm run relay
     - npm run test-ci
 
