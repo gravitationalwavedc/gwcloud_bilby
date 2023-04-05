@@ -8,9 +8,6 @@ default:
     - apt -y install apt-utils
     - apt -y install net-tools python3.8 python3-pip git curl wget
     - apt -y upgrade
-    - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$HOME/miniconda.sh"
-    - bash "$HOME/miniconda.sh" -b -p "$HOME/miniconda"
-    - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
 
 
 django-tests:
@@ -18,6 +15,14 @@ django-tests:
   script:
     - cd src/
     - pip3 install -r requirements.txt
+  
+  cache:
+    key: build-cache
+    paths:
+      - src/requirements.txt
+  
+  after_script:
+    - cd src/
     - python3 development-manage.py jenkins --enable-coverage --coverage-rcfile=.coveragerc
 
   artifacts:
@@ -38,6 +43,15 @@ npm-tests:
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
     - eval "[ -f .nvmrc ] && nvm install && nvm use && npm install npm@8.5.5"
     - npm install
+
+  cache:
+    key: build-cache
+    paths:
+      - src/react/package-lock.json
+      - src/requirements.txt
+    
+  after_script:
+    - cd src/react/
     - npm run relay
     - npm run test-ci
 
@@ -52,9 +66,20 @@ npm-tests:
 bundle-tests:
   stage: test
   script:
+    - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$HOME/miniconda.sh"
+    - bash "$HOME/miniconda.sh" -b -p "$HOME/miniconda"
+    - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
     - cd src/bundle/
     - $HOME/miniconda/bin/conda env create -f conda-environment.yml -p venv || true
     - $HOME/miniconda/bin/conda env update --file conda-environment.yml --prune -p venv
+    
+  cache:
+    key: build-cache
+    paths:
+      - src/bundle/conda-environment.yml
+    
+  after_script:
+    - cd src/bundle/
     - $HOME/miniconda/bin/conda run -p venv coverage run -m xmlrunner discover --output-file ./junit.xml || true
     - $HOME/miniconda/bin/conda run -p venv coverage xml
 
