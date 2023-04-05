@@ -246,17 +246,15 @@ class Query(object):
         # Return the generated token
         return GenerateBilbyJobUploadToken(token=str(token.token))
 
-    @login_required
     def resolve_all_labels(self, info, **kwargs):
         return Label.all()
 
-    @login_required
     def resolve_event_id(self, info, event_id):
         return EventID.get_by_event_id(event_id=event_id, user=info.context.user)
 
-    @login_required
     def resolve_all_event_ids(self, info, **kwargs):
-        return EventID.filter_by_ligo(is_ligo=info.context.user.is_ligo)
+        user = info.context.user
+        return EventID.filter_by_ligo(is_ligo=not user.is_anonymous and user.is_ligo)
 
     @login_required
     def resolve_public_bilby_jobs(self, info, **kwargs):

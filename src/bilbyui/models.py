@@ -67,7 +67,7 @@ class EventID(models.Model):
     def get_by_event_id(cls, event_id, user):
         event = cls.objects.get(event_id=event_id)
 
-        if event.is_ligo_event and not user.is_ligo:
+        if event.is_ligo_event and (user.is_anonymous or not user.is_ligo):
             raise Exception("Permission Denied")
 
         return event
