@@ -3,6 +3,12 @@ default:
     name: ubuntu:20.04
     entrypoint: ["/usr/bin/env"]
 
+  cache:
+    key: build-cache
+    paths:
+      - src/react/package-lock.json
+      - src/requirements.txt
+    
   before_script:
     - apt -y update
     - apt -y install apt-utils
