@@ -47,7 +47,8 @@ class TestAllLabels(BilbyTestCase):
                         }}, {
                         'node': {
                             'name': 'Official',
-                            'description': 'This run has been marked by GWCloud admins as preferred for analysis of this event.',
+                            'description': 'This run has been marked by GWCloud admins as preferred for analysis of '
+                                           'this event.',
                             # noqa: E501
                             'protected': True
                         }}
@@ -67,4 +68,3 @@ class TestAllLabels(BilbyTestCase):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user)
         self.make_request()
-
