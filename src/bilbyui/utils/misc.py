@@ -15,3 +15,7 @@ def check_request_leak_decorator(fn):
         return fn(*args, **kwargs)
 
     return wrapper
+
+
+def is_ligo_user(user):
+    return not user.is_anonymous and user.is_ligo

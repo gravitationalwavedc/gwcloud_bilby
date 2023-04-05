@@ -3,22 +3,13 @@ default:
     name: ubuntu:20.04
     entrypoint: ["/usr/bin/env"]
 
-  cache:
-    key: build-cache
-    paths:
-      - src/react/package-lock.json
-      - src/requirements.txt
-    
-  before_script:
+django-tests:
+  stage: test
+  script:
     - apt -y update
     - apt -y install apt-utils
     - apt -y install net-tools python3.8 python3-pip git curl wget
     - apt -y upgrade
-
-
-django-tests:
-  stage: test
-  script:
     - cd src/
     - pip3 install -r requirements.txt
   
@@ -42,6 +33,10 @@ django-tests:
 npm-tests:
   stage: test
   script:
+    - apt -y update
+    - apt -y install apt-utils
+    - apt -y install net-tools python3.8 python3-pip git curl wget
+    - apt -y upgrade
     - cd src/
     - pip3 install -r requirements.txt
     - python3 development-manage.py graphql_schema
@@ -75,6 +70,10 @@ npm-tests:
 bundle-tests:
   stage: test
   script:
+    - apt -y update
+    - apt -y install apt-utils
+    - apt -y install net-tools python3.8 python3-pip git curl wget
+    - apt -y upgrade
     - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$HOME/miniconda.sh"
     - bash "$HOME/miniconda.sh" -b -p "$HOME/miniconda"
     - cd src/bundle/
@@ -121,6 +120,10 @@ code-quality:
 
 flake8:
   script:
+    - apt -y update
+    - apt -y install apt-utils
+    - apt -y install net-tools python3.8 python3-pip git curl wget
+    - apt -y upgrade
     - pip3 install flake8-gl-codeclimate
     - flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json src/
   artifacts:

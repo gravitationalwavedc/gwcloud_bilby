@@ -74,6 +74,7 @@ class TestEventIDCreation(BilbyTestCase):
     def test_create_event_id(self):
         response = self.client.execute(self.query, self.params)
         self.assertResponseHasErrors(response)
+        self.assertFalse(EventID.objects.all().exists())
 
         self.client.authenticate(self.user)
 
@@ -137,7 +138,7 @@ class TestEventIDUpdating(BilbyTestCase):
 
         self.query = update_mutation
 
-        EventID.objects.create(
+        self.original_event = EventID.objects.create(
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
@@ -158,6 +159,13 @@ class TestEventIDUpdating(BilbyTestCase):
         }
         response = self.client.execute(self.query, new_params)
         self.assertResponseHasErrors(response)
+
+        event = EventID.objects.all().last()
+        self.assertEqual(event.event_id, self.original_event.event_id)
+        self.assertEqual(event.trigger_id, self.original_event.trigger_id)
+        self.assertEqual(event.nickname, self.original_event.nickname)
+        self.assertEqual(event.is_ligo_event, self.original_event.is_ligo_event)
+        self.assertEqual(event.gps_time, self.original_event.gps_time)
 
         self.client.authenticate(self.user)
 
@@ -352,6 +360,9 @@ class TestEventIDPermissions(BilbyTestCase):
         response = self.client.execute(get_event_id_query, variables_not_ligo)
         self.assertResponseHasNoErrors(response)
         self.assertFalse(response.data['eventId']['isLigoEvent'])
+
+        response = self.client.execute(get_event_id_query, variables_ligo)
+        self.assertResponseHasErrors(response)
 
         self.client.authenticate(self.user, is_ligo=False)
         response = self.client.execute(get_event_id_query, variables_not_ligo)
