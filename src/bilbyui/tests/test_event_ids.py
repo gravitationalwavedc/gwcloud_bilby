@@ -57,7 +57,6 @@ get_all_event_ids_query = """
 class TestEventIDCreation(BilbyTestCase):
     def setUp(self):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user)
 
         self.query = create_mutation
 
@@ -74,7 +73,12 @@ class TestEventIDCreation(BilbyTestCase):
     @silence_errors
     def test_create_event_id(self):
         response = self.client.execute(self.query, self.params)
+        self.assertResponseHasErrors(response)
+        self.assertFalse(EventID.objects.all().exists())
 
+        self.client.authenticate(self.user)
+
+        response = self.client.execute(self.query, self.params)
         self.assertResponseHasNoErrors(response)
 
         # Check that the event has input params
@@ -87,6 +91,8 @@ class TestEventIDCreation(BilbyTestCase):
 
     @silence_errors
     def test_bad_event_ids(self):
+        self.client.authenticate(self.user)
+
         bad_event_ids = [
             'GW123456_1234567',  # Too many characters
             'GW123456_12345',    # Too few characters
@@ -105,6 +111,8 @@ class TestEventIDCreation(BilbyTestCase):
 
     @silence_errors
     def test_bad_trigger_ids(self):
+        self.client.authenticate(self.user)
+
         bad_trigger_ids = [
             'S123456',     # Must end with 1 or 2 letters
             'S123456abc',  # Must end with 1 or 2 letters
@@ -127,11 +135,10 @@ class TestEventIDUpdating(BilbyTestCase):
         self.maxDiff = 9999
 
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user)
 
         self.query = update_mutation
 
-        EventID.objects.create(
+        self.original_event = EventID.objects.create(
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
@@ -151,7 +158,18 @@ class TestEventIDUpdating(BilbyTestCase):
             }
         }
         response = self.client.execute(self.query, new_params)
+        self.assertResponseHasErrors(response)
 
+        event = EventID.objects.all().last()
+        self.assertEqual(event.event_id, self.original_event.event_id)
+        self.assertEqual(event.trigger_id, self.original_event.trigger_id)
+        self.assertEqual(event.nickname, self.original_event.nickname)
+        self.assertEqual(event.is_ligo_event, self.original_event.is_ligo_event)
+        self.assertEqual(event.gps_time, self.original_event.gps_time)
+
+        self.client.authenticate(self.user)
+
+        response = self.client.execute(self.query, new_params)
         self.assertResponseHasNoErrors(response)
 
         # Check that the event has input params
@@ -164,6 +182,8 @@ class TestEventIDUpdating(BilbyTestCase):
 
     @silence_errors
     def test_update_bad_trigger_ids(self):
+        self.client.authenticate(self.user)
+
         bad_trigger_ids = [
             'S123456',     # Must end with 1 or 2 letters
             'S123456abc',  # Must end with 1 or 2 letters
@@ -197,7 +217,6 @@ class TestEventIDDeletion(BilbyTestCase):
         self.maxDiff = 9999
 
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user)
 
         self.query = delete_mutation
 
@@ -210,14 +229,25 @@ class TestEventIDDeletion(BilbyTestCase):
 
     @silence_errors
     def test_delete_event_id(self):
-        self.assertTrue(EventID.objects.filter(event_id="GW123456_123456").exists())
-        response = self.client.execute(
-            self.query,
-            {
+        params = {
                 "input": {
                     "eventId": "GW123456_123456",
                 }
             }
+
+        response = self.client.execute(
+            self.query,
+            params
+        )
+
+        self.assertResponseHasErrors(response)
+
+        self.client.authenticate(self.user)
+
+        self.assertTrue(EventID.objects.filter(event_id="GW123456_123456").exists())
+        response = self.client.execute(
+            self.query,
+            params
         )
 
         self.assertResponseHasNoErrors(response)
@@ -259,11 +289,14 @@ class TestEventIDPermissions(BilbyTestCase):
             }
         }
 
-        self.client.authenticate(self.user)
-        with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[]):
-            response = self.client.execute(create_mutation, params)
-            self.assertResponseHasErrors(response)
-            self.assertFalse(EventID.objects.filter(event_id=new_event_id).exists())
+        # Run this test twice, the first time without an authenticated user, and the second with an authenticated user
+        for _ in range(2):
+            with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[]):
+                response = self.client.execute(create_mutation, params)
+                self.assertResponseHasErrors(response)
+                self.assertFalse(EventID.objects.filter(event_id=new_event_id).exists())
+
+            self.client.authenticate(self.user)
 
         response = self.client.execute(create_mutation, params)
         self.assertResponseHasNoErrors(response)
@@ -280,11 +313,14 @@ class TestEventIDPermissions(BilbyTestCase):
             }
         }
 
-        self.client.authenticate(self.user)
-        with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[]):
-            response = self.client.execute(update_mutation, params)
-            self.assertResponseHasErrors(response)
-            self.assertNotEqual(new_trigger_id, self.event_id1.trigger_id)
+        # Run this test twice, the first time without an authenticated user, and the second with an authenticated user
+        for _ in range(2):
+            with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[]):
+                response = self.client.execute(update_mutation, params)
+                self.assertResponseHasErrors(response)
+                self.assertNotEqual(new_trigger_id, self.event_id1.trigger_id)
+
+            self.client.authenticate(self.user)
 
         response = self.client.execute(update_mutation, params)
         self.assertResponseHasNoErrors(response)
@@ -298,11 +334,14 @@ class TestEventIDPermissions(BilbyTestCase):
             }
         }
 
-        self.client.authenticate(self.user)
-        with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[]):
-            response = self.client.execute(delete_mutation, params)
-            self.assertResponseHasErrors(response)
-            self.assertTrue(EventID.objects.filter(event_id=self.event_id1.event_id).exists())
+        # Run this test twice, the first time without an authenticated user, and the second with an authenticated user
+        for _ in range(2):
+            with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[]):
+                response = self.client.execute(delete_mutation, params)
+                self.assertResponseHasErrors(response)
+                self.assertTrue(EventID.objects.filter(event_id=self.event_id1.event_id).exists())
+
+            self.client.authenticate(self.user)
 
         response = self.client.execute(delete_mutation, params)
         self.assertResponseHasNoErrors(response)
@@ -317,6 +356,14 @@ class TestEventIDPermissions(BilbyTestCase):
         variables_ligo = {
             "eventId": self.event_id_ligo1.event_id
         }
+
+        response = self.client.execute(get_event_id_query, variables_not_ligo)
+        self.assertResponseHasNoErrors(response)
+        self.assertFalse(response.data['eventId']['isLigoEvent'])
+
+        response = self.client.execute(get_event_id_query, variables_ligo)
+        self.assertResponseHasErrors(response)
+
         self.client.authenticate(self.user, is_ligo=False)
         response = self.client.execute(get_event_id_query, variables_not_ligo)
         self.assertResponseHasNoErrors(response)
@@ -336,6 +383,10 @@ class TestEventIDPermissions(BilbyTestCase):
 
     @silence_errors
     def test_view_event_id_list_permissions(self):
+        response = self.client.execute(get_all_event_ids_query)
+        self.assertEqual(len(response.data['allEventIds']), 2)
+        self.assertTrue(all([not event['isLigoEvent'] for event in response.data['allEventIds']]))
+
         self.client.authenticate(self.user, is_ligo=False)
         response = self.client.execute(get_all_event_ids_query)
         self.assertEqual(len(response.data['allEventIds']), 2)

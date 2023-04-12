@@ -30,6 +30,7 @@ from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
+from .utils.misc import is_ligo_user
 from .views import (
     create_bilby_job,
     create_bilby_job_from_ini_string,
@@ -246,17 +247,14 @@ class Query(object):
         # Return the generated token
         return GenerateBilbyJobUploadToken(token=str(token.token))
 
-    @login_required
     def resolve_all_labels(self, info, **kwargs):
         return Label.all()
 
-    @login_required
     def resolve_event_id(self, info, event_id):
         return EventID.get_by_event_id(event_id=event_id, user=info.context.user)
 
-    @login_required
     def resolve_all_event_ids(self, info, **kwargs):
-        return EventID.filter_by_ligo(is_ligo=info.context.user.is_ligo)
+        return EventID.filter_by_ligo(is_ligo=is_ligo_user(info.context.user))
 
     @login_required
     def resolve_public_bilby_jobs(self, info, **kwargs):

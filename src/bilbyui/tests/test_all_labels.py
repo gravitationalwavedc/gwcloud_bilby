@@ -6,41 +6,20 @@ User = get_user_model()
 
 
 class TestAllLabels(BilbyTestCase):
-    @silence_errors
-    def test_get_all_labels_without_authentication(self):
+    def make_request(self):
         query = """
-        query {
-            allLabels {
-                edges {
-                    node {
-                        name
-                        description
-                        protected
+                query {
+                    allLabels {
+                        edges {
+                            node {
+                                name
+                                description
+                                protected
+                            }
+                        }
                     }
                 }
-            }
-        }
-        """
-        response = self.client.execute(query)
-        self.assertResponseHasErrors(response)
-        self.assertEqual(response.data, {'allLabels': None})
-
-    def test_get_all_labels(self):
-        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user)
-        query = """
-        query {
-            allLabels {
-                edges {
-                    node {
-                        name
-                        description
-                        protected
-                    }
-                }
-            }
-        }
-        """
+                """
         response = self.client.execute(query)
         expected = {
             'allLabels': {
@@ -68,7 +47,9 @@ class TestAllLabels(BilbyTestCase):
                         }}, {
                         'node': {
                             'name': 'Official',
-                            'description': 'This run has been marked by GWCloud admins as preferred for analysis of this event.',  # noqa: E501
+                            'description': 'This run has been marked by GWCloud admins as preferred for analysis of '
+                                           'this event.',
+                            # noqa: E501
                             'protected': True
                         }}
                 ]
@@ -76,3 +57,14 @@ class TestAllLabels(BilbyTestCase):
         }
         self.assertResponseHasNoErrors(response)
         self.assertDictEqual(response.data, expected)
+
+    @silence_errors
+    def test_get_all_labels_without_authentication(self):
+        # An anonymous user should be able to get all the labels
+        self.make_request()
+
+    def test_get_all_labels(self):
+        # An authenticated user should be able to get all the labels
+        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
+        self.client.authenticate(self.user)
+        self.make_request()
