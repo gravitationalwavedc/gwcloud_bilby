@@ -78,79 +78,66 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
     @mock.patch('bilbyui.schema.request_file_download_ids',
                 side_effect=request_file_download_ids_mock)
     def test_not_uploaded_job(self, request_file_list, request_file_download_id_mock):
-        # Check user must be authenticated
+
+        # Iterate twice, first is unauthenticated user, second is authenticated user
         self.client.authenticate(None)
-        response = self.client.execute(self.query)
+        for _ in range(2):
+            # Clean up any file download tokens
+            FileDownloadToken.objects.all().delete()
 
-        self.assertEqual(response.data['bilbyResultFiles'], None)
-        self.assertEqual(str(response.errors[0]), "You do not have permission to perform this action")
+            response = self.client.execute(self.query)
 
-        # Check authenticated user
-        self.client.authenticate(self.user)
-        response = self.client.execute(self.query)
+            for i, f in enumerate(self.files):
+                if f['isDir']:
+                    self.files[i]['downloadToken'] = None
+                else:
+                    self.files[i]['downloadToken'] = str(FileDownloadToken.objects.get(job=self.job, path=f['path']).token)
 
-        for i, f in enumerate(self.files):
-            if f['isDir']:
-                self.files[i]['downloadToken'] = None
-            else:
-                self.files[i]['downloadToken'] = str(FileDownloadToken.objects.get(job=self.job, path=f['path']).token)
-
-        expected = {
-            'bilbyResultFiles': {
-                'files': self.files,
-                'isUploadedJob': False
+            expected = {
+                'bilbyResultFiles': {
+                    'files': self.files,
+                    'isUploadedJob': False
+                }
             }
-        }
-        self.assertDictEqual(response.data, expected)
+            self.assertDictEqual(response.data, expected)
 
-        download_tokens = [f['downloadToken'] for f in filter(lambda x: not x['isDir'], self.files)]
+            download_tokens = [f['downloadToken'] for f in filter(lambda x: not x['isDir'], self.files)]
 
-        # Check user must be authenticated
+            self.client.authenticate(self.user)
+
         self.client.authenticate(None)
-        response = self.client.execute(
-            self.mutation,
-            {
-                'input': {
-                    'jobId': self.global_id,
-                    'downloadTokens': [download_tokens[0]]
+        for _ in range(2):
+            response = self.client.execute(
+                self.mutation,
+                {
+                    'input': {
+                        'jobId': self.global_id,
+                        'downloadTokens': [download_tokens[0]]
+                    }
                 }
-            }
-        )
+            )
 
-        self.assertEqual(response.data['generateFileDownloadIds'], None)
-        self.assertEqual(str(response.errors[0]), "You do not have permission to perform this action")
+            # Make sure the regex is parsable
+            self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 1)
+            uuid.UUID(response.data['generateFileDownloadIds']['result'][0], version=4)
 
-        # Check authenticated user
-        self.client.authenticate(self.user)
-        response = self.client.execute(
-            self.mutation,
-            {
-                'input': {
-                    'jobId': self.global_id,
-                    'downloadTokens': [download_tokens[0]]
+            response = self.client.execute(
+                self.mutation,
+                {
+                    'input': {
+                        'jobId': self.global_id,
+                        'downloadTokens': download_tokens
+                    }
                 }
-            }
-        )
+            )
 
-        # Make sure the regex is parsable
-        self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 1)
-        uuid.UUID(response.data['generateFileDownloadIds']['result'][0], version=4)
+            # Make sure that the UUID's are parsable
+            self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 3)
+            uuid.UUID(response.data['generateFileDownloadIds']['result'][0], version=4)
+            uuid.UUID(response.data['generateFileDownloadIds']['result'][1], version=4)
+            uuid.UUID(response.data['generateFileDownloadIds']['result'][2], version=4)
 
-        response = self.client.execute(
-            self.mutation,
-            {
-                'input': {
-                    'jobId': self.global_id,
-                    'downloadTokens': download_tokens
-                }
-            }
-        )
-
-        # Make sure that the UUID's are parsable
-        self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 3)
-        uuid.UUID(response.data['generateFileDownloadIds']['result'][0], version=4)
-        uuid.UUID(response.data['generateFileDownloadIds']['result'][1], version=4)
-        uuid.UUID(response.data['generateFileDownloadIds']['result'][2], version=4)
+            self.client.authenticate(self.user)
 
         # Expire one of the FileDownloadTokens
         tk = FileDownloadToken.objects.all()[1]
@@ -253,78 +240,64 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
         self.job.is_uploaded_job = True
         self.job.save()
 
-        # Check user must be authenticated
+        # Iterate twice, first iteration is anonymous user, second is authenticated user
         self.client.authenticate(None)
-        response = self.client.execute(self.query)
+        for _ in range(2):
+            # Clean up any file download tokens
+            FileDownloadToken.objects.all().delete()
 
-        self.assertEqual(response.data['bilbyResultFiles'], None)
-        self.assertEqual(str(response.errors[0]), "You do not have permission to perform this action")
+            response = self.client.execute(self.query)
 
-        # Check authenticated user
-        self.client.authenticate(self.user)
-        response = self.client.execute(self.query)
+            files = response.data['bilbyResultFiles']['files']
 
-        files = response.data['bilbyResultFiles']['files']
+            for i, f in enumerate(files):
+                if f['isDir']:
+                    files[i]['downloadToken'] = None
+                else:
+                    files[i]['downloadToken'] = str(FileDownloadToken.objects.get(job=self.job, path=f['path']).token)
 
-        for i, f in enumerate(files):
-            if f['isDir']:
-                files[i]['downloadToken'] = None
-            else:
-                files[i]['downloadToken'] = str(FileDownloadToken.objects.get(job=self.job, path=f['path']).token)
-
-        expected = {
-            'bilbyResultFiles': {
-                'files': files,
-                'isUploadedJob': True
+            expected = {
+                'bilbyResultFiles': {
+                    'files': files,
+                    'isUploadedJob': True
+                }
             }
-        }
-        self.assertDictEqual(response.data, expected)
+            self.assertDictEqual(response.data, expected)
 
-        download_tokens = [f['downloadToken'] for f in filter(lambda x: not x['isDir'], files)]
+            download_tokens = [f['downloadToken'] for f in filter(lambda x: not x['isDir'], files)]
 
-        # Check user must be authenticated
+            self.client.authenticate(self.user)
+
         self.client.authenticate(None)
-        response = self.client.execute(
-            self.mutation,
-            {
-                'input': {
-                    'jobId': self.global_id,
-                    'downloadTokens': [download_tokens[0]]
+        for _ in range(2):
+            response = self.client.execute(
+                self.mutation,
+                {
+                    'input': {
+                        'jobId': self.global_id,
+                        'downloadTokens': [download_tokens[0]]
+                    }
                 }
-            }
-        )
+            )
 
-        self.assertEqual(response.data['generateFileDownloadIds'], None)
-        self.assertEqual(str(response.errors[0]), "You do not have permission to perform this action")
+            # Make sure the result is the same as the download token
+            self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 1)
+            self.assertEqual(response.data['generateFileDownloadIds']['result'], [download_tokens[0]])
 
-        # Check authenticated user
-        self.client.authenticate(self.user)
-        response = self.client.execute(
-            self.mutation,
-            {
-                'input': {
-                    'jobId': self.global_id,
-                    'downloadTokens': [download_tokens[0]]
+            response = self.client.execute(
+                self.mutation,
+                {
+                    'input': {
+                        'jobId': self.global_id,
+                        'downloadTokens': download_tokens
+                    }
                 }
-            }
-        )
+            )
 
-        # Make sure the result is the same as the download token
-        self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 1)
-        self.assertEqual(response.data['generateFileDownloadIds']['result'], [download_tokens[0]])
+            # Make sure that the result is the same as the download tokens
+            self.assertEqual(response.data['generateFileDownloadIds']['result'], download_tokens)
 
-        response = self.client.execute(
-            self.mutation,
-            {
-                'input': {
-                    'jobId': self.global_id,
-                    'downloadTokens': download_tokens
-                }
-            }
-        )
-
-        # Make sure that the result is the same as the download tokens
-        self.assertEqual(response.data['generateFileDownloadIds']['result'], download_tokens)
+            self.client.authenticate(self.user)
 
         # Expire one of the FileDownloadTokens
         tk = FileDownloadToken.objects.all()[1]

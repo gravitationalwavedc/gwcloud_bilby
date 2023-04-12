@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 
 from graphql_relay.node.node import to_global_id
 from bilbyui.models import BilbyJob, Label, EventID
+from bilbyui.tests.test_utils import silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 from unittest import mock
 
@@ -245,3 +246,288 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.assertDictEqual(
             expected, response.data, "bilbyJob query returned unexpected data."
         )
+
+    @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
+    def test_bilby_job_query_anonymous_user(self, *args):
+        """
+        bilbyJob node query should return a single job as expected for an anonymous user"
+        """
+        request_data = list(camelize(self.job_data).keys())
+        expected_one = {"bilbyJob": camelize(self.job_data)}
+        expected_none = {"bilbyJob": None}
+
+        # Clear any logged in user
+        self.client.authenticate(None)
+
+        # Anonymous user can only see public jobs
+        response = self.job_request(*request_data)
+        self.assertDictEqual(expected_one, response.data, "bilbyJob query returned unexpected data.")
+
+        self.job.private = True
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        self.assertDictEqual(expected_none, response.data, "bilbyJob query returned unexpected data.")
+
+        # Anonymous user can't see ligo jobs
+        self.job.private = False
+        self.job.is_ligo_job = True
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        self.assertDictEqual(expected_none, response.data, "bilbyJob query returned unexpected data.")
+
+    @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
+    def test_bilby_job_query_non_ligo_user(self, *args):
+        """
+        bilbyJob node query should return a single job as expected for a user who is not a ligo user"
+        """
+        self.client.authenticate(self.user, is_ligo=False)
+
+        request_data = list(camelize(self.job_data).keys())
+        expected_none = {"bilbyJob": None}
+
+        # Non ligo users should be able to see their own private jobs
+        response = self.job_request(*request_data)
+        expected_one = {"bilbyJob": camelize(self.job_data)}
+        self.assertDictEqual(expected_one, response.data, "bilbyJob query returned unexpected data.")
+
+        self.job_data['private'] = True
+        self.job.private = True
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        expected_one = {"bilbyJob": camelize(self.job_data)}
+        self.assertDictEqual(expected_one, response.data, "bilbyJob query returned unexpected data.")
+
+        # Shouldn't be able to see jobs that we don't own that are private
+        self.job_data['private'] = False
+        self.job_data['user_id'] = self.user.id + 1
+        self.job.private = False
+        self.job.user_id = self.user.id + 1
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        expected_one = {"bilbyJob": camelize(self.job_data)}
+        self.assertDictEqual(expected_one, response.data, "bilbyJob query returned unexpected data.")
+
+        self.job_data['private'] = True
+        self.job_data['user_id'] = self.user.id + 1
+        self.job.private = True
+        self.job.user_id = self.user.id + 1
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        self.assertDictEqual(expected_none, response.data, "bilbyJob query returned unexpected data.")
+
+        # Non ligo users should not be able to see ligo jobs
+        self.job.private = False
+        self.job.is_ligo_job = True
+        self.job.user_id = self.user.id
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        self.assertDictEqual(expected_none, response.data, "bilbyJob query returned unexpected data.")
+
+    @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
+    def test_bilby_job_query_ligo_user(self, *args):
+        """
+        bilbyJob node query should return a single job as expected for a user who is a ligo user"
+        """
+        self.client.authenticate(self.user, is_ligo=True)
+
+        request_data = list(camelize(self.job_data).keys())
+        expected_none = {"bilbyJob": None}
+
+        # Ligo users should be able to see their own private jobs
+        response = self.job_request(*request_data)
+        expected_one = {"bilbyJob": camelize(self.job_data)}
+        self.assertDictEqual(expected_one, response.data, "bilbyJob query returned unexpected data.")
+
+        self.job_data['private'] = True
+        self.job.private = True
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        expected_one = {"bilbyJob": camelize(self.job_data)}
+        self.assertDictEqual(expected_one, response.data, "bilbyJob query returned unexpected data.")
+
+        # Shouldn't be able to see jobs that we don't own that are private
+        self.job_data['private'] = False
+        self.job_data['user_id'] = self.user.id + 1
+        self.job.private = False
+        self.job.user_id = self.user.id + 1
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        expected_one = {"bilbyJob": camelize(self.job_data)}
+        self.assertDictEqual(expected_one, response.data, "bilbyJob query returned unexpected data.")
+
+        self.job_data['private'] = True
+        self.job_data['user_id'] = self.user.id + 1
+        self.job.private = True
+        self.job.user_id = self.user.id + 1
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        self.assertDictEqual(expected_none, response.data, "bilbyJob query returned unexpected data.")
+
+        # ligo users should be able to see public ligo jobs from other users
+        self.job_data['private'] = False
+        self.job_data['is_ligo_job'] = True
+        self.job.private = False
+        self.job.is_ligo_job = True
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        expected_one = {"bilbyJob": camelize(self.job_data)}
+        self.assertDictEqual(expected_one, response.data, "bilbyJob query returned unexpected data.")
+
+        # ligo users should be able to see private ligo jobs from themselves
+        self.job_data['private'] = True
+        self.job_data['user_id'] = self.user.id
+        self.job.private = True
+        self.job.user_id = self.user.id
+        self.job.save()
+
+        response = self.job_request(*request_data)
+        expected_one = {"bilbyJob": camelize(self.job_data)}
+        self.assertDictEqual(expected_one, response.data, "bilbyJob query returned unexpected data.")
+
+    @silence_errors
+    @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
+    def test_bilby_jobs_query(self, request_job_filter_mock, *args):
+        """
+        bilbyJobs query should return a list of personal jobs for an authenticated user.
+        """
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Test1",
+            job_controller_id=2,
+            is_ligo_job=False
+        )
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Test2",
+            job_controller_id=1,
+            description="A test job",
+            is_ligo_job=False
+        )
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="aaafirst",
+            job_controller_id=None,
+            description="A test job",
+            is_ligo_job=False
+        )
+        # This job shouldn't appear in the list because it belongs to another user.
+        BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=4)
+        query = """
+                query {
+                    bilbyJobs {
+                        edges {
+                            node {
+                                userId
+                                name
+                                description
+                            }
+                        }
+                    }
+                }
+            """
+
+        # Check fails without authenticated user
+        self.client.authenticate(None)
+        response = self.client.execute(query)
+        self.assertResponseHasErrors(response, "Query returned no errors even though user was not authenticated")
+
+        # Try again with authenticated user
+        self.client.authenticate(self.user)
+        response = self.client.execute(query)
+        expected = {
+            "bilbyJobs": {
+                "edges": [
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "aaafirst",
+                            "description": "A test job"
+                        }
+                    },
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "Test2",
+                            "description": "A test job",
+                        }
+                    },
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "Test1",
+                            "description": None
+                        }
+                    },
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "TestName",
+                            "description": "Test description"
+                        }
+                    }
+                ]
+            }
+        }
+        self.assertDictEqual(
+            response.data, expected, "bilbyJobs query returned unexpected data."
+        )
+
+        # Update the first test job and check that the order changes correctly
+        job.description = "Test job description"
+        job.save()
+
+        response = self.client.execute(query)
+        expected = {
+            "bilbyJobs": {
+                "edges": [
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "Test1",
+                            "description": "Test job description"
+                        }
+                    },
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "aaafirst",
+                            "description": "A test job"
+                        }
+                    },
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "Test2",
+                            "description": "A test job",
+                        }
+                    },
+                    {
+                        "node": {
+                            "userId": 1,
+                            "name": "TestName",
+                            "description": "Test description"
+                        }
+                    }
+                ]
+            }
+        }
+        self.assertDictEqual(
+            response.data, expected, "bilbyJobs query returned unexpected data."
+        )
+
+        # Check that all ids provided to request_job_filter_mock were integers
+        self.assertTrue(all(map(lambda x: isinstance(x, int), request_job_filter_mock.call_args[1]['ids'])))

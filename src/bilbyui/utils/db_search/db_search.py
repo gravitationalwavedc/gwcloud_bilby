@@ -6,7 +6,7 @@ import jwt
 import requests
 from django.conf import settings
 
-from bilbyui.utils.misc import check_request_leak_decorator
+from bilbyui.utils.misc import check_request_leak_decorator, is_ligo_user
 
 
 @check_request_leak_decorator
@@ -21,7 +21,7 @@ def perform_db_search(user, kwargs):
     # Create the jwt token
     jwt_enc = jwt.encode(
         {
-            'userId': user.user_id,
+            'userId': 0 if user.is_anonymous else user.user_id,
             'exp': datetime.datetime.now() + datetime.timedelta(days=30)
         },
         settings.DB_SEARCH_SERVICE_JWT_SECRET,
@@ -36,7 +36,7 @@ def perform_db_search(user, kwargs):
     search_params += f", first: {kwargs.get('after', 0)}"
     # Fetch one extra record to trigger "hasNextPage"
     search_params += f", count: {kwargs.get('first', 0) + 1}"
-    search_params += f", excludeLigoJobs: {'false' if user.is_ligo else 'true'}"
+    search_params += f", excludeLigoJobs: {'false' if is_ligo_user(user) else 'true'}"
 
     query = f"""
     query {{
