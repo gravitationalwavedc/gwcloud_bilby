@@ -249,8 +249,6 @@ class TestDbSearch(TestCase):
             status=200
         )
 
-        self.user.__dict__['is_anonymous'] = True
-
         # Test working search without any arguments
         result = perform_db_search(AnonymousUser(), {})
         self.assertEqual(result[1], self.mock_data)
