@@ -220,7 +220,6 @@ class BilbyJob(models.Model):
         # If the job is the current user's job or the job is public
         return queryset.filter(Q(user_id=user.user_id) | Q(private=False))
 
-
     @classmethod
     def prune_supporting_files_jobs(cls):
         """

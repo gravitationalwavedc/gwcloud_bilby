@@ -91,7 +91,8 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
                 if f['isDir']:
                     self.files[i]['downloadToken'] = None
                 else:
-                    self.files[i]['downloadToken'] = str(FileDownloadToken.objects.get(job=self.job, path=f['path']).token)
+                    self.files[i]['downloadToken'] = \
+                        str(FileDownloadToken.objects.get(job=self.job, path=f['path']).token)
 
             expected = {
                 'bilbyResultFiles': {
