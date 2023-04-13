@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 import responses
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase, override_settings
 
 from bilbyui.tests.test_utils import silence_errors
@@ -238,4 +239,21 @@ class TestDbSearch(TestCase):
                     'excludeLigoJobs: true'
                 )
             )
+        )
+
+    def test_perform_db_search_success_exclude_ligo_jobs_user_anonymous(self):
+        self.responses.add(
+            responses.POST,
+            f"{settings.GWCLOUD_DB_SEARCH_API_URL}",
+            body=json.dumps({"data": {"publicBilbyJobs": self.mock_data}}),
+            status=200
+        )
+
+        # Test working search without any arguments
+        result = perform_db_search(AnonymousUser(), {})
+        self.assertEqual(result[1], self.mock_data)
+
+        self.assertEqual(
+            self.responses.calls[0].request.body,
+            urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 1, excludeLigoJobs: true'))
         )

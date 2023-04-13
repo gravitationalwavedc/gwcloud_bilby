@@ -6,10 +6,12 @@ from pathlib import Path
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
 from .utils.jobs.submit_job import submit_job
+from .utils.misc import is_ligo_user
 from .utils.parse_ini_file import parse_ini_file
 
 
@@ -161,8 +163,8 @@ class BilbyJob(models.Model):
         """
         job = cls.objects.get(id=bid)
 
-        # Users can only access the job if it is public or the user owns the job
-        if job.private and user.user_id != job.user_id:
+        # Users can only access the job if it is public or (the user is authenticated AND the user also owns the job)
+        if job.private and (user.is_anonymous or user.user_id != job.user_id):
             raise Exception("Permission Denied")
 
         return job
@@ -176,6 +178,9 @@ class BilbyJob(models.Model):
         :param user_job_filter: The UserBilbyJobFilter instance
         :return: The queryset filtered by the requesting user
         """
+        if user_job_filter.request.user.is_anonymous:
+            raise Exception("Permission Denied")
+
         return qs.filter(user_id=user_job_filter.request.user.user_id)
 
     @classmethod
@@ -194,17 +199,26 @@ class BilbyJob(models.Model):
         """
         Used by BilbyJobNode to filter which jobs are visible to the requesting user.
 
-        A user must be logged in to view any bilby jobs
+        A user who is not logged in can only see public jobs
+        A user who is logged in can only see their own jobs + public jobs
         A user who is not a ligo user can not view ligo jobs
 
         :param queryset: The BilbyJobNode queryset
         :param info: The BilbyJobNode queryset info object
         :return: queryset filtered by ligo jobs if required
         """
-        if info.context.user.is_anonymous:
-            raise Exception("You must be logged in to perform this action.")
 
-        return queryset
+        user = info.context.user
+        if user.is_anonymous:
+            # User isn't logged in - only allow public jobs
+            return queryset.filter(private=False, is_ligo_job=False)
+
+        if not is_ligo_user(user):
+            # If the job is not a ligo job and (the job is the current user's job or the job is public)
+            return queryset.filter(Q(is_ligo_job=False) & (Q(user_id=user.user_id) | Q(private=False)))
+
+        # If the job is the current user's job or the job is public
+        return queryset.filter(Q(user_id=user.user_id) | Q(private=False))
 
     @classmethod
     def prune_supporting_files_jobs(cls):
