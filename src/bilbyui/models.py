@@ -551,3 +551,19 @@ class BilbyJobUploadToken(models.Model):
         cls.objects.filter(
             created__lt=timezone.now() - datetime.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY)
         ).delete()
+
+
+class AnonymousMetrics(models.Model):
+    """
+    Used to track information about anonymous users accessing the system for reporting purposes.
+    """
+    # The public (Persistent) user identifier
+    public_id = models.UUIDField()
+    # The session identifier
+    session_id = models.UUIDField()
+    # When the request was made
+    timestamp = models.DateTimeField(auto_now_add=True)
+    # The graphql query
+    request = models.TextField()
+    # The graphql parameters if any (as json)
+    params = models.TextField()
