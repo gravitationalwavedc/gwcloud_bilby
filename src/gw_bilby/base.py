@@ -138,6 +138,7 @@ GRAPHENE = {
     'SCHEMA_INDENT': 2,  # Defaults to None (displays all data on a single line),
     'MIDDLEWARE': [
         'graphql_jwt.middleware.JSONWebTokenMiddleware',
+        'bilbyui.utils.anonymous_metrics.AnonymousMetricsMiddleware'
     ],
 }
 
