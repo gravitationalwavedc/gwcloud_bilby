@@ -13,6 +13,7 @@ from bilbyui.utils.jobs.request_file_list import request_file_list
 from .utils.jobs.submit_job import submit_job
 from .utils.misc import is_ligo_user
 from .utils.parse_ini_file import parse_ini_file
+from .utils.embargo import embargo_filter
 
 
 class Label(models.Model):
@@ -170,7 +171,7 @@ class BilbyJob(models.Model):
         return job
 
     @classmethod
-    def user_bilby_job_filter(cls, qs, user_job_filter):
+    def user_bilby_job_filter(cls, qs, user):
         """
         Used by UserBilbyJobFilter to filter only jobs owned by the requesting user
 
@@ -178,13 +179,13 @@ class BilbyJob(models.Model):
         :param user_job_filter: The UserBilbyJobFilter instance
         :return: The queryset filtered by the requesting user
         """
-        if user_job_filter.request.user.is_anonymous:
+        if user.is_anonymous:
             raise Exception("Permission Denied")
 
-        return qs.filter(user_id=user_job_filter.request.user.user_id)
+        return embargo_filter(qs.filter(user_id=user.user_id), user)
 
     @classmethod
-    def public_bilby_job_filter(cls, qs, public_job_filter):
+    def public_bilby_job_filter(cls, qs, user):
         """
         Used by PublicBilbyJobFilter to filter only public jobs
 
@@ -192,10 +193,10 @@ class BilbyJob(models.Model):
         :param public_job_filter: The PublicBilbyJobFilter instance
         :return: The queryset filtered by public jobs only
         """
-        return qs.filter(private=False)
+        return embargo_filter(qs.filter(private=False), user)
 
     @classmethod
-    def bilby_job_filter(cls, queryset, info):
+    def bilby_job_filter(cls, qs, user):
         """
         Used by BilbyJobNode to filter which jobs are visible to the requesting user.
 
@@ -203,22 +204,21 @@ class BilbyJob(models.Model):
         A user who is logged in can only see their own jobs + public jobs
         A user who is not a ligo user can not view ligo jobs
 
-        :param queryset: The BilbyJobNode queryset
-        :param info: The BilbyJobNode queryset info object
-        :return: queryset filtered by ligo jobs if required
+        :param qs: The BilbyJobNode qs
+        :param info: The BilbyJobNode qs info object
+        :return: qs filtered by ligo jobs if required
         """
 
-        user = info.context.user
         if user.is_anonymous:
             # User isn't logged in - only allow public jobs
-            return queryset.filter(private=False, is_ligo_job=False)
+            return embargo_filter(qs.filter(private=False, is_ligo_job=False), user)
 
         if not is_ligo_user(user):
             # If the job is not a ligo job and (the job is the current user's job or the job is public)
-            return queryset.filter(Q(is_ligo_job=False) & (Q(user_id=user.user_id) | Q(private=False)))
+            return embargo_filter(qs.filter(Q(is_ligo_job=False) & (Q(user_id=user.user_id) | Q(private=False))), user)
 
         # If the job is the current user's job or the job is public
-        return queryset.filter(Q(user_id=user.user_id) | Q(private=False))
+        return embargo_filter(qs.filter(Q(user_id=user.user_id) | Q(private=False)), user)
 
     @classmethod
     def prune_supporting_files_jobs(cls):
