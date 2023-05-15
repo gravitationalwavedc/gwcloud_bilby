@@ -19,6 +19,10 @@ def embargo_filter(qs, user):
     if not user_subject_to_embargo(user):
         return qs
 
+    return qs_embargo_filter(qs)
+
+
+def qs_embargo_filter(qs):
     return qs.annotate(
         trigger_time=Cast(
             Replace(
