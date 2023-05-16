@@ -199,4 +199,4 @@ SUPPORTING_FILE_UPLOAD_DIR = os.path.join(EXTERNAL_STORAGE_PATH, 'supporting_fil
 CLUSTERS = ['ozstar']
 
 # GPS time at the beginning of embargo period
-EMBARGO_START_TIME = 1361664018  # Midnight 1st March 2023 - Arbitrary cutoff before O4 began
+EMBARGO_START_TIME = None
