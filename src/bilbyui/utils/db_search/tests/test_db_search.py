@@ -254,6 +254,7 @@ class TestDbSearch(TestCase):
             urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 1, excludeLigoJobs: true'))
         )
 
+    @override_settings(EMBARGO_START_TIME=1.0)
     def test_perform_db_search_success_all_args(self):
         self.responses.add(
             responses.POST,
@@ -280,6 +281,7 @@ class TestDbSearch(TestCase):
             )
         )
 
+    @override_settings(EMBARGO_START_TIME=1.0)
     def test_perform_db_search_success_exclude_ligo_jobs_user_anonymous(self):
         self.responses.add(
             responses.POST,
