@@ -18,6 +18,7 @@ from django.http import Http404, FileResponse
 
 from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
+from .utils.embargo import should_embargo_job
 
 
 def validate_job_name(name):
@@ -33,6 +34,9 @@ def validate_job_name(name):
 
 
 def create_bilby_job(user, params):
+    if should_embargo_job(user, float(params.data.trigger_time), params.data.data_choice == 'simulated'):
+        raise Exception('Only LIGO users may run real jobs on embargoed LIGO data')
+
     validate_job_name(params.details.name)
 
     # Check the ligo permissions and ligo job status
@@ -326,12 +330,16 @@ def create_bilby_job_from_ini_string(user, params):
     args.idx = None
     args.ini = None
 
+    trigger_time = float(args.trigger_time) if args.trigger_time is not None else None
+    n_simulation = args.n_simulation if args.n_simulation is not None else None
+    if should_embargo_job(user, trigger_time, n_simulation):
+        raise Exception('Only LIGO users may run real jobs on embargoed LIGO data')
+
     if args.outdir == '.':
         args.outdir = "./"
 
     # Strip the prior, gps, timeslide, and injection file
     # as DataGenerationInput has trouble without the actual file existing
-
     # Don't change the prior file if it's one of the defaults
     prior_file = None
     if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
@@ -428,7 +436,7 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
         raise Exception('You must own the job to change it!')
 
 
-def upload_bilby_job(upload_token, details, job_file):
+def upload_bilby_job(user, upload_token, details, job_file):
     is_ligo_job = False
 
     # Check that the uploaded file is a tar.gz file
@@ -492,6 +500,12 @@ def upload_bilby_job(upload_token, details, job_file):
 
         # Parse the ini file to check it's validity
         args = bilby_ini_string_to_args(ini_content.encode('utf-8'))
+
+        trigger_time = float(args.trigger_time) if args.trigger_time is not None else None
+        n_simulation = args.n_simulation if args.n_simulation is not None else None
+        if should_embargo_job(user, trigger_time, n_simulation):
+            raise Exception('Only LIGO users may run real jobs on embargoed LIGO data')
+
         validate_job_name(args.label)
 
         args.idx = None

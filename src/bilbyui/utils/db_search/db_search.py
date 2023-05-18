@@ -6,7 +6,8 @@ import jwt
 import requests
 from django.conf import settings
 
-from bilbyui.utils.misc import check_request_leak_decorator, is_ligo_user
+from bilbyui.utils.misc import check_request_leak_decorator
+from bilbyui.utils.embargo import user_subject_to_embargo
 
 
 @check_request_leak_decorator
@@ -36,7 +37,7 @@ def perform_db_search(user, kwargs):
     search_params += f", first: {kwargs.get('after', 0)}"
     # Fetch one extra record to trigger "hasNextPage"
     search_params += f", count: {kwargs.get('first', 0) + 1}"
-    search_params += f", excludeLigoJobs: {'false' if is_ligo_user(user) else 'true'}"
+    search_params += f", excludeLigoJobs: {'false' if not user_subject_to_embargo(user) else 'true'}"
 
     query = f"""
     query {{

@@ -69,7 +69,8 @@ class UserBilbyJobFilter(FilterSet):
 
     @property
     def qs(self):
-        return BilbyJob.user_bilby_job_filter(super(UserBilbyJobFilter, self).qs, self)
+        user = self.request.user
+        return BilbyJob.user_bilby_job_filter(super(UserBilbyJobFilter, self).qs, user)
 
 
 class PublicBilbyJobFilter(FilterSet):
@@ -86,7 +87,8 @@ class PublicBilbyJobFilter(FilterSet):
 
     @property
     def qs(self):
-        return BilbyJob.public_bilby_job_filter(super(PublicBilbyJobFilter, self).qs, self)
+        user = self.request.user
+        return BilbyJob.public_bilby_job_filter(super(PublicBilbyJobFilter, self).qs, user)
 
 
 class BilbyJobNode(DjangoObjectType):
@@ -104,9 +106,10 @@ class BilbyJobNode(DjangoObjectType):
 
     @classmethod
     def get_queryset(parent, queryset, info):
-        user_id = info.context.user.user_id if info.context.user.is_authenticated else 0
+        user = info.context.user
+        user_id = user.user_id if user.is_authenticated else 0
 
-        qs = BilbyJob.bilby_job_filter(queryset, info)
+        qs = BilbyJob.bilby_job_filter(queryset, user)
 
         # Query any users from this queryset in one go
         user_ids = set(qs.values_list('user_id', flat=True))
@@ -570,7 +573,7 @@ class UploadBilbyJobMutation(relay.ClientIDMutation):
             raise GraphQLError("Job upload token is invalid or expired.")
 
         # Try uploading the bilby job
-        bilby_job = upload_bilby_job(token, details, job_file)
+        bilby_job = upload_bilby_job(info.context.user, token, details, job_file)
 
         # Convert the bilby job id to a global id
         job_id = to_global_id("BilbyJobNode", bilby_job.id)

@@ -196,7 +196,8 @@ class TestDbSearch(TestCase):
             urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 4322, excludeLigoJobs: false'))
         )
 
-    def test_perform_db_search_success_exclude_ligo_jobs(self):
+    @override_settings(EMBARGO_START_TIME=None)
+    def test_perform_db_search_success_no_embargo_ligo_jobs(self):
         self.responses.add(
             responses.POST,
             f"{settings.GWCLOUD_DB_SEARCH_API_URL}",
@@ -204,17 +205,56 @@ class TestDbSearch(TestCase):
             status=200
         )
 
-        self.user.is_ligo = False
-
-        # Test working search without any arguments
+        # Test ligo user doesn't exclude ligo jobs without embargo
+        self.user.is_ligo = True
         result = perform_db_search(self.user, {})
         self.assertEqual(result[1], self.mock_data)
 
         self.assertEqual(
             self.responses.calls[0].request.body,
+            urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 1, excludeLigoJobs: false'))
+        )
+
+        # Test non-ligo user doesn't exclude ligo jobs without embargo
+        self.user.is_ligo = False
+        result = perform_db_search(self.user, {})
+        self.assertEqual(result[1], self.mock_data)
+
+        self.assertEqual(
+            self.responses.calls[1].request.body,
+            urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 1, excludeLigoJobs: false'))
+        )
+
+    @override_settings(EMBARGO_START_TIME=1.0)
+    def test_perform_db_search_success_embargo_ligo_jobs(self):
+        self.responses.add(
+            responses.POST,
+            f"{settings.GWCLOUD_DB_SEARCH_API_URL}",
+            body=json.dumps({"data": {"publicBilbyJobs": self.mock_data}}),
+            status=200
+        )
+
+        # Test ligo user doesn't exclude ligo jobs without embargo
+        self.user.is_ligo = True
+        result = perform_db_search(self.user, {})
+        self.assertEqual(result[1], self.mock_data)
+
+        self.assertEqual(
+            self.responses.calls[0].request.body,
+            urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 1, excludeLigoJobs: false'))
+        )
+
+        # Test non-ligo user doesn't exclude ligo jobs without embargo
+        self.user.is_ligo = False
+        result = perform_db_search(self.user, {})
+        self.assertEqual(result[1], self.mock_data)
+
+        self.assertEqual(
+            self.responses.calls[1].request.body,
             urlencode(self.get_query('search: "", timeRange: "", first: 0, count: 1, excludeLigoJobs: true'))
         )
 
+    @override_settings(EMBARGO_START_TIME=1.0)
     def test_perform_db_search_success_all_args(self):
         self.responses.add(
             responses.POST,
@@ -241,6 +281,7 @@ class TestDbSearch(TestCase):
             )
         )
 
+    @override_settings(EMBARGO_START_TIME=1.0)
     def test_perform_db_search_success_exclude_ligo_jobs_user_anonymous(self):
         self.responses.add(
             responses.POST,

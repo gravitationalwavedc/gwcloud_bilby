@@ -1,6 +1,8 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.test import override_settings
+
 from graphql_relay.node.node import from_global_id
 
 from bilbyui.models import BilbyJob
@@ -9,8 +11,10 @@ from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 
 User = get_user_model()
 
+MOCK_EMBARGO_START_TIME = 1126259462.391
 
-class TestBilbyLigoPermissions(BilbyTestCase):
+
+class TestBilbyEmbargoPermissions(BilbyTestCase):
     def setUp(self):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
 
@@ -77,14 +81,6 @@ class TestBilbyLigoPermissions(BilbyTestCase):
             }
         """
 
-        self.expected_one = {
-            'newBilbyJob': {
-                'result': {
-                    'jobId': 'QmlsYnlKb2JOb2RlOjE='
-                }
-            }
-        }
-
         self.expected_none = {
             'newBilbyJob': None
         }
@@ -94,60 +90,73 @@ class TestBilbyLigoPermissions(BilbyTestCase):
         self.mock_api_call = patcher.start()
         self.mock_api_call.return_value = {'jobId': 4321}
 
-    @silence_errors
-    def test_non_ligo_user_with_gwosc(self):
+    def set_trigger_time_and_data_choice(self, trigger_time, data_choice):
+        self.params['input']['params']['data']['triggerTime'] = trigger_time
+        self.params['input']['params']['data']['dataChoice'] = data_choice
 
+    @silence_errors
+    @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
+    def test_non_ligo_user_embargo(self):
         self.client.authenticate(self.user, is_ligo=False)
 
-        response = self.client.execute(self.query, self.params)
-
-        self.assertDictEqual(
-            self.expected_one, response.data, "create bilbyJob mutation returned unexpected data."
-        )
-
-        # Check that the job is marked as not proprietary
-        self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
-
-    @silence_errors
-    def test_ligo_user_with_gwosc(self):
-        self.client.authenticate(self.user, is_ligo=True)
-
-        response = self.client.execute(self.query, self.params)
-
-        self.assertDictEqual(
-            self.expected_one, response.data, "create bilbyJob mutation returned unexpected data."
-        )
-
-        # Check that the job is marked as not proprietary
-        self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
-
-    @silence_errors
-    def test_ligo_user_with_non_gwosc(self):
-        # Now if the channels are proprietary, the ligo user should be able to create jobs
-        self.client.authenticate(self.user, is_ligo=True)
-
-        for detector, channel in [
-            ('hanfordChannel', 'GDS-CALIB_STRAIN'),
-            ('livingstonChannel', 'GDS-CALIB_STRAIN'),
-            ('virgoChannel', 'Hrec_hoft_16384Hz')
+        for trigger_time, data_choice in [
+            (str(MOCK_EMBARGO_START_TIME+1), "simulated"),
+            (str(MOCK_EMBARGO_START_TIME-1), "real"),
+            (str(MOCK_EMBARGO_START_TIME-1), "simulated"),
         ]:
-            self.params['input']['params']['data']['channels'][detector] = channel
-
+            self.set_trigger_time_and_data_choice(trigger_time, data_choice)
             response = self.client.execute(self.query, self.params)
+
+            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
+            self.assertEqual(BilbyJob.objects.count(), 1)
 
             self.assertTrue('jobId' in response.data['newBilbyJob']['result'])
 
             _, job_id = from_global_id(response.data['newBilbyJob']['result']['jobId'])
 
-            # Check that the job is marked as proprietary
-            job = BilbyJob.objects.all().last()
-            self.assertFalse(job.is_ligo_job)
+            # Check job_id maps to correct job
+            job = BilbyJob.objects.get(pk=job_id)
             job.delete()
 
-            self.params['input']['params']['data']['channels'][detector] = "GWOSC"
+        self.set_trigger_time_and_data_choice(str(MOCK_EMBARGO_START_TIME+1), "real")
+        response = self.client.execute(self.query, self.params)
+
+        self.assertDictEqual(
+            self.expected_none, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
+
+        # Check that no job was created
+        self.assertFalse(BilbyJob.objects.all().exists())
+
+    @silence_errors
+    @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
+    def test_ligo_user_embargo(self):
+        self.client.authenticate(self.user, is_ligo=True)
+
+        for trigger_time, data_choice in [
+            (str(MOCK_EMBARGO_START_TIME+1), "real"),
+            (str(MOCK_EMBARGO_START_TIME+1), "simulated"),
+            (str(MOCK_EMBARGO_START_TIME-1), "real"),
+            (str(MOCK_EMBARGO_START_TIME-1), "simulated"),
+        ]:
+            self.set_trigger_time_and_data_choice(trigger_time, data_choice)
+            response = self.client.execute(self.query, self.params)
+
+            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
+            self.assertEqual(BilbyJob.objects.count(), 1)
+
+            self.assertTrue('jobId' in response.data['newBilbyJob']['result'])
+
+            _, job_id = from_global_id(response.data['newBilbyJob']['result']['jobId'])
+
+            # Check job_id maps to correct job
+            job = BilbyJob.objects.get(pk=job_id)
+            job.delete()
 
 
-class TestIniBilbyLigoPermissions(BilbyTestCase):
+class TestIniBilbyEmbargoPermissions(BilbyTestCase):
     def setUp(self):
         self.maxDiff = 9999
 
@@ -178,14 +187,6 @@ class TestIniBilbyLigoPermissions(BilbyTestCase):
             }
         """
 
-        self.expected_one = {
-            'newBilbyJobFromIniString': {
-                'result': {
-                    'jobId': 'QmlsYnlKb2JOb2RlOjE='
-                }
-            }
-        }
-
         self.expected_none = {
             'newBilbyJobFromIniString': None
         }
@@ -196,66 +197,78 @@ class TestIniBilbyLigoPermissions(BilbyTestCase):
         self.mock_api_call.return_value = {'jobId': 4321}
 
     @silence_errors
-    def test_non_ligo_user_with_gwosc(self):
+    @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
+    def test_non_ligo_user_embargo(self):
         # Test checks that a LIGO user does not create a LIGO job if the data is real and channels are GWOSC
         self.client.authenticate(self.user, is_ligo=False)
 
-        ini_string = create_test_ini_string(config_dict={
-            "n-simulation": 0,
-            "channel-dict": {'H1': 'GWOSC', 'L1': 'GWOSC'}
-        }, complete=True)
-
-        self.params['input']['params']['iniString']['iniString'] = ini_string
-
-        response = self.client.execute(self.query, self.params)
-
-        self.assertDictEqual(
-            self.expected_one, response.data, "create bilbyJob mutation returned unexpected data."
-        )
-
-        # Check that the job is marked as not proprietary
-        self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
-
-    @silence_errors
-    def test_ligo_user_with_gwosc(self):
-        # This test checks that a non LIGO user can still create non LIGO jobs
-        self.client.authenticate(self.user, is_ligo=True)
-
-        ini_string = create_test_ini_string(config_dict={
-            "n-simulation": 0,
-            "channel-dict": {'H1': 'GWOSC', 'L1': 'GWOSC'}
-        }, complete=True)
-
-        self.params['input']['params']['iniString']['iniString'] = ini_string
-
-        response = self.client.execute(self.query, self.params)
-
-        self.assertDictEqual(
-            self.expected_one, response.data, "create bilbyJob mutation returned unexpected data."
-        )
-
-        # Check that the job is marked as not proprietary
-        self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
-
-    @silence_errors
-    def test_ligo_user_with_non_gwosc(self):
-        # Test that LIGO users can make jobs with proprietary channels
-        # Now if the channels are proprietary, the ligo user should be able to create jobs
-        self.client.authenticate(self.user, is_ligo=True)
-
-        for channel_dict in [
-            {'H1': 'GDS-CALIB_STRAIN', 'L1': 'GWOSC', 'V1': 'GWOSC'},
-            {'H1': 'GWOSC', 'L1': 'GDS-CALIB_STRAIN', 'V1': 'GWOSC'},
-            {'H1': 'GWOSC', 'L1': 'GWOSC', 'V1': 'Hrec_hoft_16384Hz'},
+        for trigger_time, n_simulation in [
+            (MOCK_EMBARGO_START_TIME+1, 1),
+            (MOCK_EMBARGO_START_TIME-1, 0),
+            (MOCK_EMBARGO_START_TIME-1, 1),
         ]:
-            ini_string = create_test_ini_string({'n-simulation': 0, 'channel-dict': channel_dict}, True)
+            ini_string = create_test_ini_string(config_dict={
+                "trigger-time": trigger_time,
+                "n-simulation": n_simulation
+            }, complete=True)
             self.params['input']['params']['iniString']['iniString'] = ini_string
 
             response = self.client.execute(self.query, self.params)
 
+            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
+            self.assertEqual(BilbyJob.objects.count(), 1)
+
             self.assertTrue('jobId' in response.data['newBilbyJobFromIniString']['result'])
 
-            # Check that the job is marked as proprietary
-            job = BilbyJob.objects.all().last()
-            self.assertFalse(job.is_ligo_job)
+            _, job_id = from_global_id(response.data['newBilbyJobFromIniString']['result']['jobId'])
+
+            # Check job_id maps to correct job
+            job = BilbyJob.objects.get(pk=job_id)
+            job.delete()
+
+        ini_string = create_test_ini_string(config_dict={
+            "trigger-time": MOCK_EMBARGO_START_TIME+1,
+            "n-simulation": 0
+        }, complete=True)
+        self.params['input']['params']['iniString']['iniString'] = ini_string
+        response = self.client.execute(self.query, self.params)
+
+        self.assertDictEqual(
+            self.expected_none, response.data, "create bilbyJob mutation returned unexpected data."
+        )
+
+        self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
+
+        # Check that no job was created
+        self.assertFalse(BilbyJob.objects.all().exists())
+
+    @silence_errors
+    @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
+    def test_ligo_user_embargo(self):
+        # Test checks that a LIGO user does not create a LIGO job if the data is real and channels are GWOSC
+        self.client.authenticate(self.user, is_ligo=True)
+
+        for trigger_time, n_simulation in [
+            (MOCK_EMBARGO_START_TIME+1, 0),
+            (MOCK_EMBARGO_START_TIME+1, 1),
+            (MOCK_EMBARGO_START_TIME-1, 0),
+            (MOCK_EMBARGO_START_TIME-1, 1),
+        ]:
+            ini_string = create_test_ini_string(config_dict={
+                "trigger-time": trigger_time,
+                "n-simulation": n_simulation
+            }, complete=True)
+            self.params['input']['params']['iniString']['iniString'] = ini_string
+
+            response = self.client.execute(self.query, self.params)
+
+            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
+            self.assertEqual(BilbyJob.objects.count(), 1)
+
+            self.assertTrue('jobId' in response.data['newBilbyJobFromIniString']['result'])
+
+            _, job_id = from_global_id(response.data['newBilbyJobFromIniString']['result']['jobId'])
+
+            # Check job_id maps to correct job
+            job = BilbyJob.objects.get(pk=job_id)
             job.delete()
