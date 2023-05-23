@@ -279,41 +279,36 @@ class Query(object):
         for job in jobs:
             bilby_job = BilbyJob.get_by_id(job['job']['id'], info.context.user)
 
-            if bilby_job.job_type == BilbyJobType.UPLOADED_JOB:
-                result.append(
-                    BilbyPublicJobNode(
-                        user=f"{job['user']['firstName']} {job['user']['lastName']}",
-                        name=job['job']['name'],
-                        description=job['job']['description'],
-                        job_status=JobStatusType(
-                            name=JobStatus.display_name(JobStatus.COMPLETED),
-                            number=JobStatus.COMPLETED,
-                            date=bilby_job.creation_time,
-                        ),
-                        event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
-                        labels=bilby_job.labels.all(),
-                        timestamp=bilby_job.creation_time,
-                        id=to_global_id("BilbyJobNode", job['job']['id'])
-                    )
-                )
+            job_node = BilbyPublicJobNode(
+                user=f"{job['user']['firstName']} {job['user']['lastName']}",
+                name=job['job']['name'],
+                description=job['job']['description'],
+                event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
+                id=to_global_id("BilbyJobNode", job['job']['id'])
+            )
 
-            else:
-                result.append(
-                    BilbyPublicJobNode(
-                        user=f"{job['user']['firstName']} {job['user']['lastName']}",
-                        name=job['job']['name'],
-                        description=job['job']['description'],
-                        job_status=JobStatusType(
-                            name=JobStatus.display_name(job['history'][0]['state']),
-                            number=job['history'][0]['state'],
-                            date=job['history'][0]['timestamp']
-                        ),
-                        event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
-                        labels=bilby_job.labels.all(),
-                        timestamp=job['history'][0]['timestamp'],
-                        id=to_global_id("BilbyJobNode", job['job']['id'])
-                    )
+            if bilby_job.job_type == BilbyJobType.NORMAL_JOB:
+                job_node.job_status = JobStatusType(
+                    name=JobStatus.display_name(job['history'][0]['state']),
+                    number=job['history'][0]['state'],
+                    date=job['history'][0]['timestamp']
                 )
+                job_node.labels = bilby_job.labels.all()
+                job_node.timestamp = job['history'][0]['timestamp']
+
+            elif bilby_job.job_type == BilbyJobType.UPLOADED_JOB:
+                job_node.job_status = JobStatusType(
+                    name=JobStatus.display_name(JobStatus.COMPLETED),
+                    number=JobStatus.COMPLETED,
+                    date=bilby_job.creation_time,
+                )
+                job_node.labels = bilby_job.labels.all()
+                job_node.timestamp = bilby_job.creation_time
+                
+            else:
+                raise RuntimeError(f"Unknown Bilby Job Type {bilby_job.job_type}")
+
+            result.append(job_node)
 
         # Nb. The perform_db_search function currently requests one extra record than kwargs['first'].
         # This triggers the ArrayConnection used by returning the result array to correctly set
