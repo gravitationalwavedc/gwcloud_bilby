@@ -22,7 +22,7 @@ class TestBilbyJobQueries(BilbyTestCase):
             "ini_string": "detectors=['H1']",
             "job_controller_id": 1,
             "is_ligo_job": False,
-            "is_uploaded_job": False,
+            "job_type": 0,
             "cluster": "TestCluster"
         }
 

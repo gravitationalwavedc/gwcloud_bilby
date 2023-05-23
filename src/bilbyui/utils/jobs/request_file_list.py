@@ -7,6 +7,7 @@ import jwt
 import requests
 from django.conf import settings
 
+from bilbyui.constants import BilbyJobType
 from bilbyui.utils.misc import check_request_leak
 
 
@@ -20,7 +21,7 @@ def request_file_list(job, path, recursive, user_id=None):
     :param recursive: If the file list should be recursive or not
     """
     # Check if the job is uploaded, and fetch the files off local storage
-    if job.is_uploaded_job:
+    if job.job_type == BilbyJobType.UPLOADED_JOB:
         job_dir = job.get_upload_directory()
 
         # Get the absolute path to the requested path

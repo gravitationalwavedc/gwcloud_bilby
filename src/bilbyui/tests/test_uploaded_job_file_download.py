@@ -80,7 +80,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
                         fileSize
                         downloadToken
                     }}
-                    isUploadedJob
+                    jobType
                 }}
             }}
             """

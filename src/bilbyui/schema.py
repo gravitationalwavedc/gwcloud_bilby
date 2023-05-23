@@ -1,8 +1,8 @@
 from decimal import Decimal
 
+import graphene
 from django.conf import settings
 from django_filters import FilterSet, OrderingFilter
-import graphene
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 from graphene_django.types import DjangoObjectType
@@ -11,6 +11,7 @@ from graphql import GraphQLError
 from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
 
+from .constants import BilbyJobType
 from .models import BilbyJob, BilbyJobUploadToken, EventID, FileDownloadToken, Label, SupportingFile
 from .status import JobStatus
 from .types import (
@@ -143,7 +144,7 @@ class BilbyJobNode(DjangoObjectType):
 
     def resolve_job_status(parent, info):
         # Uploaded jobs are always complete
-        if parent.is_uploaded_job:
+        if parent.job_type == BilbyJobType.UPLOADED_JOB:
             return {
                 "name": JobStatus.display_name(JobStatus.COMPLETED),
                 "number": JobStatus.COMPLETED,
@@ -190,7 +191,7 @@ class BilbyResultFiles(graphene.ObjectType):
         job_id = graphene.ID()
 
     files = graphene.List(BilbyResultFile)
-    is_uploaded_job = graphene.Boolean()
+    job_type = graphene.Int()
 
 
 class BilbyPublicJobNode(graphene.ObjectType):
@@ -278,24 +279,41 @@ class Query(object):
         for job in jobs:
             bilby_job = BilbyJob.get_by_id(job['job']['id'], info.context.user)
 
-            result.append(
-                BilbyPublicJobNode(
-                    user=f"{job['user']['firstName']} {job['user']['lastName']}",
-                    name=job['job']['name'],
-                    description=job['job']['description'],
-                    job_status=JobStatusType(
-                        name=JobStatus.display_name(
-                            JobStatus.COMPLETED if bilby_job.is_uploaded_job else job['history'][0]['state']
+            if bilby_job.job_type == BilbyJobType.UPLOADED_JOB:
+                result.append(
+                    BilbyPublicJobNode(
+                        user=f"{job['user']['firstName']} {job['user']['lastName']}",
+                        name=job['job']['name'],
+                        description=job['job']['description'],
+                        job_status=JobStatusType(
+                            name=JobStatus.display_name(JobStatus.COMPLETED),
+                            number=JobStatus.COMPLETED,
+                            date=bilby_job.creation_time,
                         ),
-                        number=JobStatus.COMPLETED if bilby_job.is_uploaded_job else job['history'][0]['state'],
-                        date=bilby_job.creation_time if bilby_job.is_uploaded_job else job['history'][0]['timestamp']
-                    ),
-                    event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
-                    labels=bilby_job.labels.all(),
-                    timestamp=bilby_job.creation_time if bilby_job.is_uploaded_job else job['history'][0]['timestamp'],
-                    id=to_global_id("BilbyJobNode", job['job']['id'])
+                        event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
+                        labels=bilby_job.labels.all(),
+                        timestamp=bilby_job.creation_time,
+                        id=to_global_id("BilbyJobNode", job['job']['id'])
+                    )
                 )
-            )
+
+            else:
+                result.append(
+                    BilbyPublicJobNode(
+                        user=f"{job['user']['firstName']} {job['user']['lastName']}",
+                        name=job['job']['name'],
+                        description=job['job']['description'],
+                        job_status=JobStatusType(
+                            name=JobStatus.display_name(job['history'][0]['state']),
+                            number=job['history'][0]['state'],
+                            date=job['history'][0]['timestamp']
+                        ),
+                        event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
+                        labels=bilby_job.labels.all(),
+                        timestamp=job['history'][0]['timestamp'],
+                        id=to_global_id("BilbyJobNode", job['job']['id'])
+                    )
+                )
 
         # Nb. The perform_db_search function currently requests one extra record than kwargs['first'].
         # This triggers the ArrayConnection used by returning the result array to correctly set
@@ -352,7 +370,7 @@ class Query(object):
 
         return BilbyResultFiles(
             files=result,
-            is_uploaded_job=job.is_uploaded_job
+            job_type=job.job_type
         )
 
 
@@ -534,7 +552,7 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
 
         # For uploaded jobs, we can just return the exact some download tokens - this function is basically a no-op
         # for uploaded jobs
-        if job.is_uploaded_job:
+        if job.job_type == BilbyJobType.UPLOADED_JOB:
             return GenerateFileDownloadIds(
                 result=download_tokens
             )

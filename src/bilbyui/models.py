@@ -10,10 +10,11 @@ from django.db.models import Q
 from django.utils import timezone
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
+from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
+from .utils.embargo import embargo_filter
 from .utils.jobs.submit_job import submit_job
 from .utils.misc import is_ligo_user
 from .utils.parse_ini_file import parse_ini_file
-from .utils.embargo import embargo_filter
 
 
 class Label(models.Model):
@@ -141,9 +142,8 @@ class BilbyJob(models.Model):
     # be set to False, otherwise a real data job using channels other than GWOSC will result in this value being True
     is_ligo_job = models.BooleanField(default=False)
 
-    # If the job was an uploaded or naturally run job. If this is true, then the job was created by the job upload
-    # mutation, otherwise it was created by either new job or new ini job
-    is_uploaded_job = models.BooleanField(default=False)
+    # The type of job
+    job_type = models.IntegerField(default=BilbyJobType.NORMAL_JOB, choices=BILBY_JOB_TYPE_CHOICES)
 
     # The cluster (as a string) that this job was submitted to. This is mainly used to track the cluster that the job
     # should be uploaded to once the supporting files are uploaded
