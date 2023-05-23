@@ -304,7 +304,7 @@ class Query(object):
                 )
                 job_node.labels = bilby_job.labels.all()
                 job_node.timestamp = bilby_job.creation_time
-                
+
             else:
                 raise RuntimeError(f"Unknown Bilby Job Type {bilby_job.job_type}")
 
