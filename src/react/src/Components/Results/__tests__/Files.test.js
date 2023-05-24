@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import {MockPayloadGenerator} from 'relay-test-utils';
 import Files from '../Files';
+import {jobTypes} from '../../../Utils/jobHelpers';
 
 /* global environment */
 
@@ -11,14 +12,14 @@ describe('files', () => {
 
     jest.mock('../../../index', () => ({
         harnessApi: {
-            getEnvironment: () => mockEnvironment 
+            getEnvironment: () => mockEnvironment
         }
     }));
 
     const mockFile = {
         BilbyResultFiles() {
             return {
-                isUploadedJob: false,
+                jobType: jobTypes.NORMAL,
                 files: [
                     {
                         path: '/b-cool-path/',
@@ -33,7 +34,7 @@ describe('files', () => {
 
                 ]
             };
-        } 
+        }
     };
 
     it('should render', () => {

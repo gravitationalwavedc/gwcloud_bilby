@@ -4,6 +4,7 @@ import {graphql, QueryRenderer} from 'react-relay';
 import {MockPayloadGenerator} from 'relay-test-utils';
 import ResultFile from '../ResultFile';
 import userEvent from '@testing-library/user-event';
+import {jobTypes} from '../../../Utils/jobHelpers';
 
 /* global environment */
 
@@ -26,10 +27,10 @@ describe('result file component', () => {
                 if (props) {
                     return <table>
                         <tbody>
-                            <ResultFile 
-                                data={{bilbyJob: { id: 1 }}} 
-                                file={props.bilbyResultFiles.files[0]} 
-                                bilbyResultFiles={{isUploadedJob: false }}
+                            <ResultFile
+                                data={{bilbyJob: { id: 1 }}}
+                                file={props.bilbyResultFiles.files[0]}
+                                bilbyResultFiles={{jobType: jobTypes.NORMAL}}
                             />
                         </tbody>
                     </table>;
@@ -63,7 +64,7 @@ describe('result file component', () => {
         expect.hasAssertions();
         render(<TestRenderer />);
         await waitFor(() => environment.mock.resolveMostRecentOperation(operation =>
-            MockPayloadGenerator.generate(operation, mockFile) 
+            MockPayloadGenerator.generate(operation, mockFile)
         ));
         expect(screen.getByText('/cool-path/')).toBeInTheDocument();
         expect(screen.getByText('File')).toBeInTheDocument();
@@ -74,7 +75,7 @@ describe('result file component', () => {
         expect.hasAssertions();
         render(<TestRenderer />);
         await waitFor(() => environment.mock.resolveMostRecentOperation(operation =>
-            MockPayloadGenerator.generate(operation, mockFile) 
+            MockPayloadGenerator.generate(operation, mockFile)
         ));
         userEvent.click(screen.getByText('/cool-path/'));
         await waitFor(() => environment.mock.resolveMostRecentOperation(
@@ -89,12 +90,12 @@ describe('result file component', () => {
         const errorAlert = jest.spyOn(window, 'alert').mockImplementation(jest.fn());
         render(<TestRenderer />);
         await waitFor(() => environment.mock.resolveMostRecentOperation(operation =>
-            MockPayloadGenerator.generate(operation, mockFile) 
+            MockPayloadGenerator.generate(operation, mockFile)
         ));
         userEvent.click(screen.getByText('/cool-path/'));
         await waitFor(() => environment.mock.resolveMostRecentOperation(
             () => (
-                { 
+                {
                     errors: [{ message: 'download failed' }],
                     data: {
                         generateFileDownloadIds: {
@@ -102,7 +103,7 @@ describe('result file component', () => {
                         }
                     }
                 }
-            ) 
+            )
         ));
         expect(errorAlert).toHaveBeenCalledWith('Unable to download file.');
     });

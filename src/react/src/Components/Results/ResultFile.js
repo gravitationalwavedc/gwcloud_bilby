@@ -3,6 +3,7 @@ import {commitMutation, createFragmentContainer, graphql} from 'react-relay';
 import filesize from 'filesize';
 import {harnessApi} from '../../index';
 import {IS_DEV} from '../../Utils/misc';
+import {jobTypes} from '../../Utils/jobHelpers';
 
 const downloadUrl = 'https://gwcloud.org.au/job/apiv1/file/?fileId=';
 const uploadedJobDownloadUrl =
@@ -26,11 +27,11 @@ const generateDownload = (url) => {
     document.body.removeChild(link);
 };
 
-const performFileDownload = (e, jobId, isUploadedJob, token) => {
+const performFileDownload = (e, jobId, jobTypeId, token) => {
     e.preventDefault();
     e.target.classList.add('link-visited');
 
-    if (isUploadedJob) {
+    if (jobTypeId === jobTypes.UPLOADED) {
         // For uploaded jobs, we can optionally skip the need to generate a download id
         generateDownload(uploadedJobDownloadUrl + token);
         return;
@@ -61,13 +62,13 @@ const ResultFile = ({file, data, bilbyResultFiles}) =>
         <td>
             {
                 file.isDir ? file.path : (
-                    <a 
-                        href="#"
+                    <a
+                        href='#'
                         onClick={
                             e => performFileDownload(
                                 e,
                                 data.bilbyJob.id,
-                                bilbyResultFiles.isUploadedJob,
+                                bilbyResultFiles.jobType,
                                 file.downloadToken
                             )
                         }
