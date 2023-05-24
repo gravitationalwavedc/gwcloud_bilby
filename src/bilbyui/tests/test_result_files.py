@@ -9,6 +9,7 @@ from django.test import override_settings
 from django.utils import timezone
 from graphql_relay import to_global_id
 
+from bilbyui.constants import BilbyJobType
 from bilbyui.models import FileDownloadToken, BilbyJob
 from bilbyui.tests.test_job_upload import get_upload_token
 from bilbyui.tests.test_utils import silence_errors, create_test_upload_data, create_test_ini_string
@@ -48,7 +49,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
                         fileSize
                         downloadToken
                     }}
-                    isUploadedJob
+                    jobType
                 }}
             }}
             """
@@ -97,7 +98,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
             expected = {
                 'bilbyResultFiles': {
                     'files': self.files,
-                    'isUploadedJob': False
+                    'jobType': BilbyJobType.NORMAL
                 }
             }
             self.assertDictEqual(response.data, expected)
@@ -223,7 +224,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
                         fileSize
                         downloadToken
                     }}
-                    isUploadedJob
+                    jobType
                 }}
             }}
             """
@@ -238,7 +239,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
 
     @silence_errors
     def test_uploaded_job(self):
-        self.job.is_uploaded_job = True
+        self.job.job_type = BilbyJobType.UPLOADED
         self.job.save()
 
         # Iterate twice, first iteration is anonymous user, second is authenticated user
@@ -260,7 +261,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
             expected = {
                 'bilbyResultFiles': {
                     'files': files,
-                    'isUploadedJob': True
+                    'jobType': BilbyJobType.UPLOADED
                 }
             }
             self.assertDictEqual(response.data, expected)

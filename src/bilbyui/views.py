@@ -16,9 +16,10 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import Http404, FileResponse
 
+from .constants import BilbyJobType
 from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile
-from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 from .utils.embargo import should_embargo_job
+from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 
 
 def validate_job_name(name):
@@ -566,7 +567,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
                 private=details.private,
                 ini_string=ini_string,
                 is_ligo_job=is_ligo_job,
-                is_uploaded_job=True
+                job_type=BilbyJobType.UPLOADED
             )
             bilby_job.save()
 
