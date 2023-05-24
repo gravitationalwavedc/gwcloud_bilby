@@ -3,6 +3,7 @@ from unittest import mock
 from django.contrib.auth import get_user_model
 from graphql_relay.node.node import to_global_id
 
+from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.tests.test_utils import silence_errors
@@ -207,3 +208,65 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
             # Authenticate the user now for the second iteration
             self.client.authenticate(self.user)
+
+    @silence_errors
+    @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
+    def test_public_bilby_jobs_uploaded(self, perform_db_search):
+        job1 = BilbyJob.objects.create(
+            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False,
+            job_type=BilbyJobType.UPLOADED_JOB
+        )
+        job2 = BilbyJob.objects.create(
+            user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False,
+            job_type=BilbyJobType.UPLOADED_JOB
+        )
+        # This job shouldn't appear in the list because it's private.
+        BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=3, private=True,
+                                job_type=BilbyJobType.UPLOADED_JOB)
+
+        self.public_bilby_job_expected['publicBilbyJobs']['edges'][0]['node']['timestamp'] = str(job1.creation_time)
+        self.public_bilby_job_expected['publicBilbyJobs']['edges'][1]['node']['timestamp'] = str(job2.creation_time)
+
+        variables = {
+            "count": 50,
+            "search": None,
+            "timeRange": "all"
+        }
+
+        # This query should work as expected for both authenticated and anonymous users.
+
+        # Loop twice, the first loop the user will not be authenticated, the second loop the user will be authenticated
+        for _ in range(2):
+            # Try again with authenticated user
+            response = self.client.execute(self.public_bilby_job_query, variables)
+            self.assertDictEqual(
+                response.data,
+                self.public_bilby_job_expected,
+                "publicBilbyJobs query returned unexpected data."
+            )
+
+            # Authenticate the user for the second iteration
+            self.client.authenticate(self.user)
+
+    @silence_errors
+    @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
+    def test_public_bilby_jobs_unknown_job_type(self, perform_db_search):
+        BilbyJob.objects.create(
+            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False,
+            job_type=666
+        )
+
+        variables = {
+            "count": 50,
+            "search": None,
+            "timeRange": "all"
+        }
+
+        # This query should raise an invalid job type error
+
+        response = self.client.execute(self.public_bilby_job_query, variables)
+        self.assertEqual(
+            response.errors[0].message,
+            "Unknown Bilby Job Type 666",
+            "publicBilbyJobs query returned unexpected data."
+        )
