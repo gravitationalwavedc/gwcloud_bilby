@@ -11,14 +11,14 @@ describe('files', () => {
 
     jest.mock('../../../index', () => ({
         harnessApi: {
-            getEnvironment: () => mockEnvironment 
+            getEnvironment: () => mockEnvironment
         }
     }));
 
     const mockFile = {
         BilbyResultFiles() {
             return {
-                isUploadedJob: false,
+                jobType: 0,
                 files: [
                     {
                         path: '/b-cool-path/',
@@ -33,7 +33,7 @@ describe('files', () => {
 
                 ]
             };
-        } 
+        }
     };
 
     it('should render', () => {

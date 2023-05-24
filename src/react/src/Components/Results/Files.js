@@ -22,8 +22,8 @@ const Files = (props) => <React.Fragment>
                               files {
                                 ...ResultFile_file
                               }
-                              isUploadedJob
-                            } 
+                              jobType
+                            }
                           }
                         `}
                 variables={{jobId: props.data.bilbyJob.id }}

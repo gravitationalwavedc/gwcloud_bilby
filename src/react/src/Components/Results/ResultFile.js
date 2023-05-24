@@ -26,11 +26,11 @@ const generateDownload = (url) => {
     document.body.removeChild(link);
 };
 
-const performFileDownload = (e, jobId, isUploadedJob, token) => {
+const performFileDownload = (e, jobId, jobType, token) => {
     e.preventDefault();
     e.target.classList.add('link-visited');
 
-    if (isUploadedJob) {
+    if (jobType === 1) {
         // For uploaded jobs, we can optionally skip the need to generate a download id
         generateDownload(uploadedJobDownloadUrl + token);
         return;
@@ -61,13 +61,13 @@ const ResultFile = ({file, data, bilbyResultFiles}) =>
         <td>
             {
                 file.isDir ? file.path : (
-                    <a 
-                        href="#"
+                    <a
+                        href='#'
                         onClick={
                             e => performFileDownload(
                                 e,
                                 data.bilbyJob.id,
-                                bilbyResultFiles.isUploadedJob,
+                                bilbyResultFiles.jobType,
                                 file.downloadToken
                             )
                         }
