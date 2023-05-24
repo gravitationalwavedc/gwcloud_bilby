@@ -5,10 +5,8 @@ const jobTypes = {
 };
 
 export function getJobType(jobTypeCode) {
-
-    // Make sure that the code is within the range of known codes.
-    if (jobTypeCode > (jobTypes.length - 1)) {
-        return undefined;
+    if (!(jobTypeCode in jobTypes)) {
+        throw new Error(`Incorrect JobType! ${jobTypeCode} is not a known jobType. Known job types are ${jobTypes}.`);
     }
 
     return jobTypes[jobTypeCode];
