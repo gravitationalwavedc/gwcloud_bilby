@@ -4,6 +4,7 @@ import {graphql, QueryRenderer} from 'react-relay';
 import {MockPayloadGenerator} from 'relay-test-utils';
 import ResultFile from '../ResultFile';
 import userEvent from '@testing-library/user-event';
+import {jobTypes} from '../../../Utils/jobHelpers';
 
 /* global environment */
 
@@ -29,7 +30,7 @@ describe('result file component', () => {
                             <ResultFile
                                 data={{bilbyJob: { id: 1 }}}
                                 file={props.bilbyResultFiles.files[0]}
-                                bilbyResultFiles={{jobType: 0}}
+                                bilbyResultFiles={{jobType: jobTypes.NORMAL}}
                             />
                         </tbody>
                     </table>;

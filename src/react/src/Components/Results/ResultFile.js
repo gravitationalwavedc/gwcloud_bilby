@@ -3,7 +3,7 @@ import {commitMutation, createFragmentContainer, graphql} from 'react-relay';
 import filesize from 'filesize';
 import {harnessApi} from '../../index';
 import {IS_DEV} from '../../Utils/misc';
-import {getJobType} from '../../Utils/jobHelpers';
+import {jobTypes} from '../../Utils/jobHelpers';
 
 const downloadUrl = 'https://gwcloud.org.au/job/apiv1/file/?fileId=';
 const uploadedJobDownloadUrl =
@@ -31,7 +31,7 @@ const performFileDownload = (e, jobId, jobTypeId, token) => {
     e.preventDefault();
     e.target.classList.add('link-visited');
 
-    if (getJobType(jobTypeId) === 'UPLOADED') {
+    if (jobTypeId === jobTypes.UPLOADED) {
         // For uploaded jobs, we can optionally skip the need to generate a download id
         generateDownload(uploadedJobDownloadUrl + token);
         return;

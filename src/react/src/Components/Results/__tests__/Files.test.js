@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import {MockPayloadGenerator} from 'relay-test-utils';
 import Files from '../Files';
+import {jobTypes} from '../../../Utils/jobHelpers';
 
 /* global environment */
 
@@ -18,7 +19,7 @@ describe('files', () => {
     const mockFile = {
         BilbyResultFiles() {
             return {
-                jobType: 0,
+                jobType: jobTypes.NORMAL,
                 files: [
                     {
                         path: '/b-cool-path/',
