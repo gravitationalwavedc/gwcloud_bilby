@@ -98,7 +98,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
             expected = {
                 'bilbyResultFiles': {
                     'files': self.files,
-                    'jobType': BilbyJobType.NORMAL_JOB
+                    'jobType': BilbyJobType.NORMAL
                 }
             }
             self.assertDictEqual(response.data, expected)
@@ -239,7 +239,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
 
     @silence_errors
     def test_uploaded_job(self):
-        self.job.job_type = BilbyJobType.UPLOADED_JOB
+        self.job.job_type = BilbyJobType.UPLOADED
         self.job.save()
 
         # Iterate twice, first iteration is anonymous user, second is authenticated user
@@ -261,7 +261,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
             expected = {
                 'bilbyResultFiles': {
                     'files': files,
-                    'jobType': BilbyJobType.UPLOADED_JOB
+                    'jobType': BilbyJobType.UPLOADED
                 }
             }
             self.assertDictEqual(response.data, expected)

@@ -144,7 +144,7 @@ class BilbyJobNode(DjangoObjectType):
 
     def resolve_job_status(parent, info):
         # Uploaded jobs are always complete
-        if parent.job_type == BilbyJobType.UPLOADED_JOB:
+        if parent.job_type == BilbyJobType.UPLOADED:
             return {
                 "name": JobStatus.display_name(JobStatus.COMPLETED),
                 "number": JobStatus.COMPLETED,
@@ -287,7 +287,7 @@ class Query(object):
                 id=to_global_id("BilbyJobNode", job['job']['id'])
             )
 
-            if bilby_job.job_type == BilbyJobType.NORMAL_JOB:
+            if bilby_job.job_type == BilbyJobType.NORMAL:
                 job_node.job_status = JobStatusType(
                     name=JobStatus.display_name(job['history'][0]['state']),
                     number=job['history'][0]['state'],
@@ -296,7 +296,7 @@ class Query(object):
                 job_node.labels = bilby_job.labels.all()
                 job_node.timestamp = job['history'][0]['timestamp']
 
-            elif bilby_job.job_type == BilbyJobType.UPLOADED_JOB:
+            elif bilby_job.job_type == BilbyJobType.UPLOADED:
                 job_node.job_status = JobStatusType(
                     name=JobStatus.display_name(JobStatus.COMPLETED),
                     number=JobStatus.COMPLETED,
@@ -547,7 +547,7 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
 
         # For uploaded jobs, we can just return the exact some download tokens - this function is basically a no-op
         # for uploaded jobs
-        if job.job_type == BilbyJobType.UPLOADED_JOB:
+        if job.job_type == BilbyJobType.UPLOADED:
             return GenerateFileDownloadIds(
                 result=download_tokens
             )

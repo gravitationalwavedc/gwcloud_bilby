@@ -143,7 +143,7 @@ class BilbyJob(models.Model):
     is_ligo_job = models.BooleanField(default=False)
 
     # The type of job
-    job_type = models.IntegerField(default=BilbyJobType.NORMAL_JOB, choices=BILBY_JOB_TYPE_CHOICES)
+    job_type = models.IntegerField(default=BilbyJobType.NORMAL, choices=BILBY_JOB_TYPE_CHOICES)
 
     # The cluster (as a string) that this job was submitted to. This is mainly used to track the cluster that the job
     # should be uploaded to once the supporting files are uploaded

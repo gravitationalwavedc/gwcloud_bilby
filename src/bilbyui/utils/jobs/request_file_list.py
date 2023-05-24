@@ -21,7 +21,7 @@ def request_file_list(job, path, recursive, user_id=None):
     :param recursive: If the file list should be recursive or not
     """
     # Check if the job is uploaded, and fetch the files off local storage
-    if job.job_type == BilbyJobType.UPLOADED_JOB:
+    if job.job_type == BilbyJobType.UPLOADED:
         job_dir = job.get_upload_directory()
 
         # Get the absolute path to the requested path

@@ -214,15 +214,15 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
     def test_public_bilby_jobs_uploaded(self, perform_db_search):
         job1 = BilbyJob.objects.create(
             user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False,
-            job_type=BilbyJobType.UPLOADED_JOB
+            job_type=BilbyJobType.UPLOADED
         )
         job2 = BilbyJob.objects.create(
             user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False,
-            job_type=BilbyJobType.UPLOADED_JOB
+            job_type=BilbyJobType.UPLOADED
         )
         # This job shouldn't appear in the list because it's private.
         BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=3, private=True,
-                                job_type=BilbyJobType.UPLOADED_JOB)
+                                job_type=BilbyJobType.UPLOADED)
 
         self.public_bilby_job_expected['publicBilbyJobs']['edges'][0]['node']['timestamp'] = str(job1.creation_time)
         self.public_bilby_job_expected['publicBilbyJobs']['edges'][1]['node']['timestamp'] = str(job2.creation_time)

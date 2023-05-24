@@ -567,7 +567,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
                 private=details.private,
                 ini_string=ini_string,
                 is_ligo_job=is_ligo_job,
-                job_type=BilbyJobType.UPLOADED_JOB
+                job_type=BilbyJobType.UPLOADED
             )
             bilby_job.save()
 
