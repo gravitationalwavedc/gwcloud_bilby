@@ -18,3 +18,4 @@ pyopenssl<22
 bilby_pipe
 responses
 pyhumps
+elasticsearch

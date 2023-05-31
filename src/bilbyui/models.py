@@ -1,16 +1,20 @@
 import datetime
+import json
 import os
 import uuid
 from pathlib import Path
 
+import elasticsearch
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
+from elasticsearch import Elasticsearch
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
+from .utils.auth.lookup_users import request_lookup_users
 from .utils.embargo import embargo_filter
 from .utils.jobs.submit_job import submit_job
 from .utils.misc import is_ligo_user
@@ -267,6 +271,10 @@ class BilbyJob(models.Model):
         # Whenever a job is saved, we need to regenerate the ini k/v pairs
         parse_ini_file(self)
 
+        # We also need to update our record in elastic search to keep the mysql database and elastic search database
+        # in sync
+        self.elastic_search_update()
+
     def get_file_list(self, path='', recursive=True):
         return request_file_list(self, path, recursive)
 
@@ -290,6 +298,62 @@ class BilbyJob(models.Model):
             ini_string=self.ini_string,
             supporting_files=supporting_file_details
         )
+
+    def elastic_search_update(self):
+        """
+        Updates this bilby job entry in elastic search
+        """
+        es = Elasticsearch(hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY)
+
+        # Get the user details for this job
+        _, users = request_lookup_users([self.user_id], 0)
+        user = users[0]
+
+        # Generate the document for insertion or update in elastic search
+        doc = {
+            "user": {
+                "firstName": user['firstName'],
+                "lastName": user['lastName'],
+            },
+            "job": {
+                "name": self.name,
+                "description": self.description,
+                "creationTime": self.creation_time,
+                "lastUpdatedTime": self.last_updated
+            },
+            "labels": [
+                {
+                    "name": label.name,
+                    "description": label.description
+                }
+                for label in self.labels.all()
+            ],
+            "ini": {
+                kv.key: json.loads(kv.value)
+                for kv in self.inikeyvalue_set.all()
+            }
+        }
+
+        # Set the event id if one is set on the job
+        if self.event_id:
+            doc.update(
+                {
+                    "eventId": {
+                        "eventId": self.event_id.event_id,
+                        "triggerId": self.event_id.trigger_id,
+                        "nickname": self.event_id.nickname,
+                        "gpsTime": self.event_id.gps_time
+                    }
+                }
+            )
+        else:
+            doc["eventId"] = None
+
+        # First try to update the document in elastic search if it exists, otherwise insert the new document
+        try:
+            es.update(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, doc=doc)
+        except elasticsearch.NotFoundError:
+            es.index(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, document=doc)
 
 
 class SupportingFile(models.Model):

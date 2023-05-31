@@ -698,6 +698,10 @@ def update_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is
         gps_time=gps_time,
     )
 
+    # Jobs need to be resynced to elastic search
+    for job in event.bilbyjob_set.all():
+        job.elastic_search_update()
+
     return f'EventID {event_id} succesfully updated!'
 
 
