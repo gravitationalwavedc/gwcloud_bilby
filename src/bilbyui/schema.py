@@ -26,7 +26,6 @@ from .types import (
     SupportingFileUploadResult,
 )
 from .utils.auth.lookup_users import request_lookup_users
-from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
