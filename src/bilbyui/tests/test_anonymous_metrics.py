@@ -2,9 +2,10 @@ import json
 import uuid
 from unittest import mock
 
+import requests
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import LiveServerTestCase
-import requests
+from django.test import override_settings
 from django.utils import timezone
 from graphql_relay import to_global_id
 
@@ -14,6 +15,7 @@ from bilbyui.tests.test_utils import silence_errors
 User = get_user_model()
 
 
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
 class TestAnonymousMetrics(LiveServerTestCase):
 
     def setUp(self):

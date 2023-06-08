@@ -2,15 +2,16 @@ import json
 import logging
 
 import responses
-from django.test import TestCase, override_settings
 from django.conf import settings
+from django.test import override_settings
 
 from bilbyui.models import BilbyJob
+from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.jobs.request_file_download_id import request_file_download_id, request_file_download_ids
 
 
 @override_settings(ALLOW_HTTP_LEAKS=True)
-class TestFileDownloadIds(TestCase):
+class TestFileDownloadIds(BilbyTestCase):
     def setUp(self):
         self.responses = responses.RequestsMock()
         self.responses.start()

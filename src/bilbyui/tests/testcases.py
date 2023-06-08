@@ -1,4 +1,4 @@
-from django.test import testcases
+from django.test import testcases, override_settings
 from graphql_jwt.testcases import JSONWebTokenClient
 from gw_bilby.schema import schema
 from graphql_jwt.shortcuts import get_token
@@ -21,6 +21,7 @@ class BilbyJSONWebTokenClient(JSONWebTokenClient):
             self._credentials = {}
 
 
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
 class BilbyTestCase(testcases.TestCase):
     """
     Bilby test classes should inherit from this class.

@@ -9,6 +9,8 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
+from django.db.models.signals import m2m_changed, post_save
+from django.dispatch import receiver
 from django.utils import timezone
 from elasticsearch import Elasticsearch
 
@@ -51,6 +53,12 @@ class Label(models.Model):
 
     def __str__(self):
         return f"Label: {self.name}"
+
+
+@receiver(post_save, sender=Label, dispatch_uid="label_save")
+def label_save(sender, instance, **kwargs):
+    for job in instance.bilbyjob_set.all():
+        job.elastic_search_update()
 
 
 class EventID(models.Model):
@@ -115,6 +123,12 @@ class EventID(models.Model):
 
     def __str__(self):
         return f"EventID: {self.event_id}"
+
+
+@receiver(post_save, sender=EventID, dispatch_uid="event_id_save")
+def event_id_save(sender, instance, **kwargs):
+    for job in instance.bilbyjob_set.all():
+        job.elastic_search_update()
 
 
 class BilbyJob(models.Model):
@@ -303,6 +317,9 @@ class BilbyJob(models.Model):
         """
         Updates this bilby job entry in elastic search
         """
+        if hasattr(settings, "IGNORE_ELASTIC_SEARCH") and settings.IGNORE_ELASTIC_SEARCH:
+            return
+
         es = Elasticsearch(hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY)
 
         # Get the user details for this job
@@ -328,6 +345,7 @@ class BilbyJob(models.Model):
                 }
                 for label in self.labels.all()
             ],
+            "eventId": None,
             "ini": {
                 kv.key: json.loads(kv.value)
                 for kv in self.inikeyvalue_set.all()
@@ -336,24 +354,26 @@ class BilbyJob(models.Model):
 
         # Set the event id if one is set on the job
         if self.event_id:
-            doc.update(
-                {
-                    "eventId": {
-                        "eventId": self.event_id.event_id,
-                        "triggerId": self.event_id.trigger_id,
-                        "nickname": self.event_id.nickname,
-                        "gpsTime": self.event_id.gps_time
-                    }
-                }
-            )
-        else:
-            doc["eventId"] = None
+            doc["eventId"] = {
+                "eventId": self.event_id.event_id,
+                "triggerId": self.event_id.trigger_id,
+                "nickname": self.event_id.nickname,
+                "gpsTime": self.event_id.gps_time
+            }
 
         # First try to update the document in elastic search if it exists, otherwise insert the new document
         try:
             es.update(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, doc=doc)
         except elasticsearch.NotFoundError:
             es.index(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, document=doc)
+
+
+def on_bilby_job_label_add_rem(sender, instance, action, pk_set, **kwargs):
+    if action in ['post_add', 'post_remove']:
+        instance.elastic_search_update()
+
+
+m2m_changed.connect(on_bilby_job_label_add_rem, sender=BilbyJob.labels.through)
 
 
 class SupportingFile(models.Model):
