@@ -12,7 +12,6 @@ from django.db.models import Q
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django.utils import timezone
-from elasticsearch import Elasticsearch
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
@@ -320,7 +319,10 @@ class BilbyJob(models.Model):
         if hasattr(settings, "IGNORE_ELASTIC_SEARCH") and settings.IGNORE_ELASTIC_SEARCH:
             return
 
-        es = Elasticsearch(hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY)
+        es = elasticsearch.Elasticsearch(
+            hosts=[settings.ELASTIC_SEARCH_HOST],
+            api_key=settings.ELASTIC_SEARCH_API_KEY
+        )
 
         # Get the user details for this job
         _, users = request_lookup_users([self.user_id], 0)
