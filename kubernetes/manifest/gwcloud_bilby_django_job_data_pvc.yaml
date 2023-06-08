@@ -12,3 +12,4 @@ spec:
   selector:
     matchLabels:
       volume: gwcloud-bilby-nfs-job-data-pv
+  storageClassName: ""
