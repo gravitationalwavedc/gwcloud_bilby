@@ -11,3 +11,4 @@ class Command(BaseCommand):
             job.elastic_search_update()
 
             print(job, "has been ingested into elastic search")
+

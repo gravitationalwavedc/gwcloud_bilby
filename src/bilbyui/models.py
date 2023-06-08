@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django.utils import timezone
+from elasticsearch import Elasticsearch
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
