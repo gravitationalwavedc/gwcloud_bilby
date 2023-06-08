@@ -316,7 +316,7 @@ class BilbyJob(models.Model):
         """
         Updates this bilby job entry in elastic search
         """
-        if hasattr(settings, "IGNORE_ELASTIC_SEARCH") and settings.IGNORE_ELASTIC_SEARCH:
+        if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
             return
 
         es = elasticsearch.Elasticsearch(
