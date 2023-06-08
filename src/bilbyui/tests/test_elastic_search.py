@@ -11,6 +11,7 @@ from bilbyui.tests.testcases import BilbyTestCase
 User = get_user_model()
 
 
+@override_settings(IGNORE_ELASTIC_SEARCH=False)
 class TestElasticSearch(BilbyTestCase):
     def setUp(self):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
@@ -66,7 +67,6 @@ class TestElasticSearch(BilbyTestCase):
     def request_elasticsearch_update_mock_raises(*args, **kwargs):
         raise elasticsearch.NotFoundError("Exists", None, None)
 
-    @override_settings(IGNORE_ELASTIC_SEARCH=False)
     @mock.patch('elasticsearch.Elasticsearch.update', side_effect=request_elasticsearch_update_mock_raises)
     @mock.patch('elasticsearch.Elasticsearch.index')
     @mock.patch('bilbyui.models.request_lookup_users', side_effect=request_lookup_users_mock)
@@ -109,7 +109,6 @@ class TestElasticSearch(BilbyTestCase):
             doc
         )
 
-    @override_settings(IGNORE_ELASTIC_SEARCH=False)
     @mock.patch('elasticsearch.Elasticsearch.update', side_effect=request_elasticsearch_update_mock_raises)
     @mock.patch('elasticsearch.Elasticsearch.index')
     @mock.patch('bilbyui.models.request_lookup_users', side_effect=request_lookup_users_mock)
@@ -162,7 +161,6 @@ class TestElasticSearch(BilbyTestCase):
             doc
         )
 
-    @override_settings(IGNORE_ELASTIC_SEARCH=False)
     @mock.patch('elasticsearch.Elasticsearch.update')
     @mock.patch('bilbyui.models.request_lookup_users', side_effect=request_lookup_users_mock)
     def test_job_save_update_document(self, lookup_users_mock, elasticsearch_update_mock):
@@ -201,7 +199,6 @@ class TestElasticSearch(BilbyTestCase):
             doc
         )
 
-    @override_settings(IGNORE_ELASTIC_SEARCH=False)
     @mock.patch('elasticsearch.Elasticsearch.update')
     @mock.patch('bilbyui.models.request_lookup_users', side_effect=request_lookup_users_mock)
     def test_job_save_event_id_update(self, lookup_users_mock, elasticsearch_update_mock):
@@ -234,7 +231,6 @@ class TestElasticSearch(BilbyTestCase):
             self.generate_doc(job, self.user)
         )
 
-    @override_settings(IGNORE_ELASTIC_SEARCH=False)
     @mock.patch('elasticsearch.Elasticsearch.update')
     @mock.patch('bilbyui.models.request_lookup_users', side_effect=request_lookup_users_mock)
     def test_job_save_label_update(self, lookup_users_mock, elasticsearch_update_mock):
