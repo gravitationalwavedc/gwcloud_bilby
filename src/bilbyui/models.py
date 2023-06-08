@@ -321,7 +321,8 @@ class BilbyJob(models.Model):
 
         es = elasticsearch.Elasticsearch(
             hosts=[settings.ELASTIC_SEARCH_HOST],
-            api_key=settings.ELASTIC_SEARCH_API_KEY
+            api_key=settings.ELASTIC_SEARCH_API_KEY,
+            verify_certs=False
         )
 
         # Get the user details for this job

@@ -6,7 +6,7 @@ services:
       dockerfile: ./docker/gwcloud_bilby.Dockerfile
       context: .
       target: django
-    image: nexus.gwdc.org.au/docker/gwcloud_bilby_django:0.67
+    image: nexus.gwdc.org.au/docker/gwcloud_bilby_django:0.68
     container_name: gwcloud_bilby_django
     environment:
       MYSQL_ROOT_PASSWORD: 76vcqmGKP19Z1AEx
