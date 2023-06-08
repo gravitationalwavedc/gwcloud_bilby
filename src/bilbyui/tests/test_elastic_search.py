@@ -4,7 +4,7 @@ import elasticsearch
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import override_settings
-from mock import mock
+from unittest import mock
 
 from bilbyui.tests.testcases import BilbyTestCase
 
