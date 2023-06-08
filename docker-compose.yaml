@@ -3,9 +3,10 @@ version: '3'
 services:
   django:
     build:
-      dockerfile: ./docker/gwcloud_bilby_django.Dockerfile
+      dockerfile: ./docker/gwcloud_bilby.Dockerfile
       context: .
-    image: nexus.gwdc.org.au/docker/gwcloud_bilby_django:0.66
+      target: django
+    image: nexus.gwdc.org.au/docker/gwcloud_bilby_django:0.68
     container_name: gwcloud_bilby_django
     environment:
       MYSQL_ROOT_PASSWORD: 76vcqmGKP19Z1AEx
@@ -20,8 +21,9 @@ services:
 
   nginx:
     build:
-      dockerfile: ./docker/gwcloud_bilby_nginx.Dockerfile
+      dockerfile: ./docker/gwcloud_bilby.Dockerfile
       context: .
+      target: static
     image: nexus.gwdc.org.au/docker/gwcloud_bilby_nginx:0.9
     container_name: gwcloud_bilby_nginx
     ports:
@@ -32,8 +34,9 @@ services:
       
   static:
     build:
-      dockerfile: ./docker/gwcloud_bilby_static.Dockerfile
+      dockerfile: ./docker/gwcloud_bilby.Dockerfile
       context: .
+      target: static
     image: nexus.gwdc.org.au/docker/gwcloud_bilby_static:0.42
     container_name: gwcloud_bilby_static
     ports:

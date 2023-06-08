@@ -5,7 +5,6 @@ import responses
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
 from django.test import override_settings
 
 from bilbyui.models import BilbyJob
@@ -18,7 +17,7 @@ User = get_user_model()
 
 
 @override_settings(ALLOW_HTTP_LEAKS=True)
-class TestRequestFileListNotUploaded(TestCase):
+class TestRequestFileListNotUploaded(BilbyTestCase):
     def setUp(self):
         self.responses = responses.RequestsMock()
         self.responses.start()

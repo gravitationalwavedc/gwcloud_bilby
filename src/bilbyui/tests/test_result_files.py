@@ -1,7 +1,7 @@
 import uuid
 from tempfile import TemporaryDirectory
+from unittest import mock
 
-import mock
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile

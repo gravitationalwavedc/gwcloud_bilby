@@ -1,16 +1,21 @@
 import datetime
+import json
 import os
 import uuid
 from pathlib import Path
 
+import elasticsearch
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
+from django.db.models.signals import m2m_changed, post_save
+from django.dispatch import receiver
 from django.utils import timezone
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
+from .utils.auth.lookup_users import request_lookup_users
 from .utils.embargo import embargo_filter
 from .utils.jobs.submit_job import submit_job
 from .utils.misc import is_ligo_user
@@ -47,6 +52,12 @@ class Label(models.Model):
 
     def __str__(self):
         return f"Label: {self.name}"
+
+
+@receiver(post_save, sender=Label, dispatch_uid="label_save")
+def label_save(sender, instance, **kwargs):
+    for job in instance.bilbyjob_set.all():
+        job.elastic_search_update()
 
 
 class EventID(models.Model):
@@ -111,6 +122,12 @@ class EventID(models.Model):
 
     def __str__(self):
         return f"EventID: {self.event_id}"
+
+
+@receiver(post_save, sender=EventID, dispatch_uid="event_id_save")
+def event_id_save(sender, instance, **kwargs):
+    for job in instance.bilbyjob_set.all():
+        job.elastic_search_update()
 
 
 class BilbyJob(models.Model):
@@ -267,6 +284,10 @@ class BilbyJob(models.Model):
         # Whenever a job is saved, we need to regenerate the ini k/v pairs
         parse_ini_file(self)
 
+        # We also need to update our record in elastic search to keep the mysql database and elastic search database
+        # in sync
+        self.elastic_search_update()
+
     def get_file_list(self, path='', recursive=True):
         return request_file_list(self, path, recursive)
 
@@ -290,6 +311,72 @@ class BilbyJob(models.Model):
             ini_string=self.ini_string,
             supporting_files=supporting_file_details
         )
+
+    def elastic_search_update(self):
+        """
+        Updates this bilby job entry in elastic search
+        """
+        if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
+            return
+
+        es = elasticsearch.Elasticsearch(
+            hosts=[settings.ELASTIC_SEARCH_HOST],
+            api_key=settings.ELASTIC_SEARCH_API_KEY,
+            verify_certs=False
+        )
+
+        # Get the user details for this job
+        _, users = request_lookup_users([self.user_id], 0)
+        user = users[0]
+
+        # Generate the document for insertion or update in elastic search
+        doc = {
+            "user": {
+                "firstName": user['firstName'],
+                "lastName": user['lastName'],
+            },
+            "job": {
+                "name": self.name,
+                "description": self.description,
+                "creationTime": self.creation_time,
+                "lastUpdatedTime": self.last_updated
+            },
+            "labels": [
+                {
+                    "name": label.name,
+                    "description": label.description
+                }
+                for label in self.labels.all()
+            ],
+            "eventId": None,
+            "ini": {
+                kv.key: json.loads(kv.value)
+                for kv in self.inikeyvalue_set.all()
+            }
+        }
+
+        # Set the event id if one is set on the job
+        if self.event_id:
+            doc["eventId"] = {
+                "eventId": self.event_id.event_id,
+                "triggerId": self.event_id.trigger_id,
+                "nickname": self.event_id.nickname,
+                "gpsTime": self.event_id.gps_time
+            }
+
+        # First try to update the document in elastic search if it exists, otherwise insert the new document
+        try:
+            es.update(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, doc=doc)
+        except elasticsearch.NotFoundError:
+            es.index(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, document=doc)
+
+
+def on_bilby_job_label_add_rem(sender, instance, action, pk_set, **kwargs):
+    if action in ['post_add', 'post_remove']:
+        instance.elastic_search_update()
+
+
+m2m_changed.connect(on_bilby_job_label_add_rem, sender=BilbyJob.labels.through)
 
 
 class SupportingFile(models.Model):

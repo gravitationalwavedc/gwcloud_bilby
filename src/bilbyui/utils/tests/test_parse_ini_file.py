@@ -1,11 +1,10 @@
-from django.test import TestCase
-
 from bilbyui.models import BilbyJob, IniKeyValue
 from bilbyui.tests.test_utils import compare_ini_kvs
+from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.parse_ini_file import parse_ini_file
 
 
-class TestParseIniFile(TestCase):
+class TestParseIniFile(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
         cls.job = BilbyJob.objects.create(

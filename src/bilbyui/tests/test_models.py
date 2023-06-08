@@ -2,16 +2,17 @@ import json
 import uuid
 from pathlib import Path
 
+from django.conf import settings
 from django.test import TestCase, override_settings
 from django.utils import timezone
-from django.conf import settings
 
 from bilbyui.models import BilbyJob, Label, FileDownloadToken, BilbyJobUploadToken, SupportingFile, EventID
+from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import update_bilby_job
 from gw_bilby.jwt_tools import GWCloudUser
 
 
-class TestBilbyJobModel(TestCase):
+class TestBilbyJobModel(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
         cls.job = BilbyJob.objects.create(
@@ -187,7 +188,7 @@ class TestBilbyJobModel(TestCase):
         })
 
 
-class TestFileDownloadToken(TestCase):
+class TestFileDownloadToken(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
         cls.job = BilbyJob.objects.create(
@@ -427,7 +428,7 @@ class TestBilbyJobUploadToken(TestCase):
         self.assertFalse(BilbyJobUploadToken.objects.all().exists())
 
 
-class TestSupportingFile(TestCase):
+class TestSupportingFile(BilbyTestCase):
     @classmethod
     def setUp(self):
         class TestUser:
