@@ -323,13 +323,29 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
     return supporting_files
 
 
+def bilby_ini_args_to_data_input(args):
+    # Strip the prior, gps, timeslide, and injection file
+    # as DataGenerationInput has trouble without the actual file existing
+    # Don't change the prior file if it's one of the defaults
+    args.gps_file = None
+    args.timeslide_file = None
+    args.injection_file = None
+    args.psd_dict = None
+
+    args.idx = None
+    args.ini = None
+
+    if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
+        args.prior_file = None
+
+    return DataGenerationInput(args, [], create_data=False)
+
+
 def create_bilby_job_from_ini_string(user, params):
     is_ligo_job = False
 
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
     args = bilby_ini_string_to_args(params.ini_string.ini_string.encode('utf-8'))
-    args.idx = None
-    args.ini = None
 
     trigger_time = float(args.trigger_time) if args.trigger_time is not None else None
     n_simulation = args.n_simulation if args.n_simulation is not None else None
@@ -339,27 +355,17 @@ def create_bilby_job_from_ini_string(user, params):
     if args.outdir == '.':
         args.outdir = "./"
 
-    # Strip the prior, gps, timeslide, and injection file
-    # as DataGenerationInput has trouble without the actual file existing
-    # Don't change the prior file if it's one of the defaults
+    # Get the files for any supporting files if they exist
     prior_file = None
     if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
         prior_file = args.prior_file
-        args.prior_file = None
 
     gps_file = args.gps_file
-    args.gps_file = None
-
     timeslide_file = args.timeslide_file
-    args.timeslide_file = None
-
     injection_file = args.injection_file
-    args.injection_file = None
-
     psd_dict = args.psd_dict
-    args.psd_dict = None
 
-    parser = DataGenerationInput(args, [], create_data=False)
+    parser = bilby_ini_args_to_data_input(args)
 
     # Parse any supporting files
     supporting_files = parse_supporting_files(

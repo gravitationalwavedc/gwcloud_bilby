@@ -12,7 +12,6 @@ from django.db.models import Q
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django.utils import timezone
-from elasticsearch import Elasticsearch
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
@@ -352,7 +351,15 @@ class BilbyJob(models.Model):
             "eventId": None,
             "ini": {
                 kv.key: json.loads(kv.value)
-                for kv in self.inikeyvalue_set.all()
+                for kv in self.inikeyvalue_set.filter(processed=False)
+            },
+            "params": {
+                kv.key: json.loads(kv.value)
+                for kv in self.inikeyvalue_set.filter(processed=True)
+            },
+            "_private_info_": {
+                "userId": self.user_id,
+                "private": self.private
             }
         }
 
@@ -515,6 +522,8 @@ class IniKeyValue(models.Model):
     value = models.TextField(db_index=True)
     # The index from the ini file this k/v was generated from (allows forward engineering the ini file from these k/v's)
     index = models.IntegerField()
+    # If this key/value pair represents the processed value (ie, it's been parsed through Bilby's Input() class)
+    processed = models.BooleanField(default=False)
 
 
 class FileDownloadToken(models.Model):

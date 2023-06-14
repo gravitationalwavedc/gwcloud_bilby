@@ -27,7 +27,11 @@ def qs_embargo_filter(qs):
         trigger_time=Cast(
             Replace(
                 Subquery(
-                    models.IniKeyValue.objects.filter(job=OuterRef('pk'), key='trigger_time').values('value')[:1]
+                    models.IniKeyValue.objects.filter(
+                        job=OuterRef('pk'),
+                        key='trigger_time',
+                        processed=True
+                    ).values('value')[:1]
                 ),
                 Value('"'),
             ),
