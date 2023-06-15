@@ -1,12 +1,14 @@
 from unittest import mock
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.tests.test_utils import silence_errors
+from bilbyui.tests.test_utils import silence_errors, create_test_ini_string, generate_elastic_doc
+from gw_bilby.jwt_tools import GWCloudUser
 
 User = get_user_model()
 
@@ -40,10 +42,10 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     {
                         'node': {
                             'description': 'A test job',
-                            'id': 'QmlsYnlKb2JOb2RlOjE=',
-                            'name': 'Test1',
+                            'id': 'QmlsYnlKb2JOb2RlOjI=',
+                            'name': 'Test2',
                             'jobStatus': {
-                                'name': 'Completed'
+                                'name': 'Completed',
                             },
                             'timestamp': '2020-01-01 12:00:00 UTC',
                             'user': 'buffy summers'
@@ -51,11 +53,11 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     },
                     {
                         'node': {
-                            'description': '',
-                            'id': 'QmlsYnlKb2JOb2RlOjI=',
-                            'name': 'Test2',
+                            'description': 'first job',
+                            'id': 'QmlsYnlKb2JOb2RlOjE=',
+                            'name': 'Test1',
                             'jobStatus': {
-                                'name': 'Completed',
+                                'name': 'Completed'
                             },
                             'timestamp': '2020-01-01 12:00:00 UTC',
                             'user': 'buffy summers'
@@ -65,58 +67,60 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             }
         }
 
-    def perform_db_search_mock(*args, **kwargs):
-        return True, [
-            {
-                'user': {
-                    'id': 1,
-                    'firstName': 'buffy',
-                    'lastName': 'summers'
-                },
-                'job': {
-                    'id': 1,
-                    'name': 'Test1',
-                    'description': 'A test job'
-                },
-                'history': [{'state': 500, 'timestamp': '2020-01-01 12:00:00 UTC'}],
-            },
-            {
-                'user': {
-                    'id': 1,
-                    'firstName': 'buffy',
-                    'lastName': 'summers'
-                },
-                'job': {
-                    'id': 2,
-                    'name': 'Test2',
-                    'description': ''
-                },
-                'history': [{'state': 500, 'timestamp': '2020-01-01 12:00:00 UTC'}],
+    def elasticsearch_search_mock(*args, **kwargs):
+        user = User.objects.all().first()
+        gwuser = GWCloudUser(user.username)
+        gwuser.user_id = user.id
+        gwuser.first_name = user.first_name
+        gwuser.last_name = user.last_name
+
+        jobs = []
+        for job in BilbyJob.objects.filter(user_id=user.id):
+            doc = {
+                '_source': generate_elastic_doc(job, user),
+                '_id': job.id
             }
-        ]
+            jobs.append(doc)
 
-    def request_lookup_users_mock(*args, **kwargs):
-        user = User.objects.first()
-        if user:
-            return True, [{
-                'userId': user.id,
-                'username': user.username,
-                'firstName': user.first_name,
-                'lastName': user.last_name
-            }]
-        return False, []
+        return {
+            'hits':
+                {
+                    'hits': jobs
+                }
+        }
 
-    @silence_errors
-    @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
-    def test_public_bilby_jobs_query_no_cursor(self, perform_db_search):
+    def request_job_filter_mock(*args, **kwargs):
+        jobs = []
+        for job in BilbyJob.objects.filter(user_id=User.objects.all().first().id):
+            jobs.append({
+                'id': job.job_controller_id,
+                'history': [
+                    {
+                        'state': 500,
+                        'timestamp': '2020-01-01 12:00:00 UTC'
+                    }
+                ]
+            })
+
+        return True, jobs
+
+    # @silence_errors
+    @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_no_cursor(self, request_job_filter, elasticsearch_search):
         BilbyJob.objects.create(
-            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False
+            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2345, private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
         BilbyJob.objects.create(
-            user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False
+            user_id=self.user.id, name="Test2", job_controller_id=1234, description="A test job", private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
-        # This job shouldn't appear in the list because it's private.
-        BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=3, private=True)
+        # This job shouldn't appear in the list because it's private and owned by a different user
+        BilbyJob.objects.create(
+            user_id=self.user.id+1, name="Test3", job_controller_id=3456, private=True,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
+        )
 
         variables = {
             "count": 50,
@@ -139,14 +143,33 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             # Authenticate the user for the second iteration
             self.client.authenticate(self.user)
 
+            self.assertDictEqual(
+                elasticsearch_search.mock_calls[-1].kwargs,
+                {
+                    'index': settings.ELASTIC_SEARCH_INDEX,
+                    'q': '(*) AND _private_info_.private:false',
+                    'size': 51,
+                    'from_': 0
+                }
+            )
+
+        self.assertEqual(request_job_filter.mock_calls[0].args[0], 0)
+        self.assertEqual(request_job_filter.mock_calls[1].args[0], self.user.id)
+
+        self.assertEqual(list(request_job_filter.mock_calls[0].kwargs['ids']), [1234, 2345])
+        self.assertEqual(list(request_job_filter.mock_calls[1].kwargs['ids']), [1234, 2345])
+
     @silence_errors
-    @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
-    def test_public_bilby_jobs_query_test_cursor_count(self, perform_db_search):
+    @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_test_cursor_count(self, request_job_filter, elasticsearch_search):
         BilbyJob.objects.create(
-            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False
+            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2345, private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
         BilbyJob.objects.create(
-            user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False
+            user_id=self.user.id, name="Test2", job_controller_id=1234, description="A test job", private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         # Loop twice, the first loop the user will not be authenticated, the second loop the user will be authenticated
@@ -166,9 +189,16 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 "publicBilbyJobs query returned unexpected data."
             )
 
-            # Verify that the "first" and "count" arguments were passed to the database search function
-            self.assertTrue(perform_db_search.call_args[0][1]['after'], 99)
-            self.assertTrue(perform_db_search.call_args[0][1]['first'], 50)
+            # Verify that the "first" and "count" arguments were passed to the elastic search search function
+            self.assertDictEqual(
+                elasticsearch_search.mock_calls[-1].kwargs,
+                {
+                    'index': settings.ELASTIC_SEARCH_INDEX,
+                    'q': '(*) AND _private_info_.private:false',
+                    'size': 51,
+                    'from_': 99
+                }
+            )
 
             # Double check that all array connection values from 0 - 100 work as expected
             for idx in range(100):
@@ -183,8 +213,15 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 response = self.client.execute(self.public_bilby_job_query, variables)
 
                 # Verify that the expected results are returned, first = count, after = cursor
-                self.assertEqual(perform_db_search.call_args[0][1]['first'], 25)
-                self.assertEqual(perform_db_search.call_args[0][1]['after'], idx)
+                self.assertDictEqual(
+                    elasticsearch_search.mock_calls[-1].kwargs,
+                    {
+                        'index': settings.ELASTIC_SEARCH_INDEX,
+                        'q': '(*) AND _private_info_.private:false',
+                        'size': 26,
+                        'from_': idx
+                    }
+                )
 
                 self.assertDictEqual(
                     response.data,
@@ -200,32 +237,41 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             }
 
             # Check that providing a cursor works as expected
-            response = self.client.execute(self.public_bilby_job_query, variables)
+            self.client.execute(self.public_bilby_job_query, variables)
 
-            self.assertEqual(perform_db_search.call_args[0][1]['first'], 25)
-            # after is not passed through if it is None
-            self.assertTrue('after' not in perform_db_search.call_args[0][1])
+            self.assertDictEqual(
+                elasticsearch_search.mock_calls[-1].kwargs,
+                {
+                    'index': settings.ELASTIC_SEARCH_INDEX,
+                    'q': '(*) AND _private_info_.private:false',
+                    'size': 26,
+                    'from_': 0
+                }
+            )
 
             # Authenticate the user now for the second iteration
             self.client.authenticate(self.user)
 
     @silence_errors
-    @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
-    def test_public_bilby_jobs_uploaded(self, perform_db_search):
+    @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_uploaded(self, request_job_filter, elasticsearch_search):
         job1 = BilbyJob.objects.create(
             user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False,
-            job_type=BilbyJobType.UPLOADED
+            job_type=BilbyJobType.UPLOADED, ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
         job2 = BilbyJob.objects.create(
             user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False,
-            job_type=BilbyJobType.UPLOADED
+            job_type=BilbyJobType.UPLOADED, ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
         # This job shouldn't appear in the list because it's private.
-        BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=3, private=True,
-                                job_type=BilbyJobType.UPLOADED)
+        BilbyJob.objects.create(
+            user_id=4, name="Test3", job_controller_id=3, private=True,
+            job_type=BilbyJobType.UPLOADED, ini_string=create_test_ini_string({'detectors': "['H1']"})
+        )
 
-        self.public_bilby_job_expected['publicBilbyJobs']['edges'][0]['node']['timestamp'] = str(job1.creation_time)
-        self.public_bilby_job_expected['publicBilbyJobs']['edges'][1]['node']['timestamp'] = str(job2.creation_time)
+        self.public_bilby_job_expected['publicBilbyJobs']['edges'][0]['node']['timestamp'] = str(job2.creation_time)
+        self.public_bilby_job_expected['publicBilbyJobs']['edges'][1]['node']['timestamp'] = str(job1.creation_time)
 
         variables = {
             "count": 50,
@@ -249,11 +295,12 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             self.client.authenticate(self.user)
 
     @silence_errors
-    @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
-    def test_public_bilby_jobs_unknown_job_type(self, perform_db_search):
+    @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_unknown_job_type(self, request_job_filter, elasticsearch_search):
         BilbyJob.objects.create(
             user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False,
-            job_type=666
+            job_type=666, ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         variables = {

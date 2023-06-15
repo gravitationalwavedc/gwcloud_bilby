@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
-from bilbyui.tests.test_utils import create_test_ini_string
+from bilbyui.tests.test_utils import create_test_ini_string, generate_elastic_doc
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
@@ -16,51 +16,6 @@ User = get_user_model()
 class TestElasticSearch(BilbyTestCase):
     def setUp(self):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-
-    def generate_doc(self, job, user):
-        doc = {
-            "user": {
-                "firstName": user.first_name,
-                "lastName": user.last_name,
-            },
-            "job": {
-                "name": job.name,
-                "description": job.description,
-                "creationTime": job.creation_time,
-                "lastUpdatedTime": job.last_updated
-            },
-            "labels": [
-                {
-                    "name": label.name,
-                    "description": label.description
-                }
-                for label in job.labels.all()
-            ],
-            "eventId": None,
-            "ini": {
-                kv.key: json.loads(kv.value)
-                for kv in job.inikeyvalue_set.filter(processed=False)
-            },
-            "params": {
-                kv.key: json.loads(kv.value)
-                for kv in job.inikeyvalue_set.filter(processed=True)
-            },
-            "_private_info_": {
-                "userId": job.user_id,
-                "private": job.private
-            }
-        }
-
-        # Set the event id if one is set on the job
-        if job.event_id:
-            doc["eventId"] = {
-                "eventId": job.event_id.event_id,
-                "triggerId": job.event_id.trigger_id,
-                "nickname": job.event_id.nickname,
-                "gpsTime": job.event_id.gps_time
-            }
-
-        return doc
 
     def request_lookup_users_mock(*args, **kwargs):
         user = User.objects.first()
@@ -109,7 +64,7 @@ class TestElasticSearch(BilbyTestCase):
         self.assertEqual(elasticsearch_index_mock.mock_calls[0].kwargs['id'], job.id)
 
         # Make sure this test has no labels or an event id
-        doc = self.generate_doc(job, self.user)
+        doc = generate_elastic_doc(job, self.user)
 
         self.assertEqual(doc['labels'], [])
         self.assertEqual(doc['eventId'], None)
@@ -162,7 +117,7 @@ class TestElasticSearch(BilbyTestCase):
         self.assertEqual(elasticsearch_index_mock.mock_calls[-1].kwargs['id'], job.id)
 
         # Make sure this test has no labels or an event id
-        doc = self.generate_doc(job, self.user)
+        doc = generate_elastic_doc(job, self.user)
 
         self.assertNotEqual(doc['labels'], [])
         self.assertNotEqual(doc['eventId'], None)
@@ -201,7 +156,7 @@ class TestElasticSearch(BilbyTestCase):
         self.assertEqual(elasticsearch_update_mock.mock_calls[0].kwargs['id'], job.id)
 
         # Make sure this test has no labels or an event id
-        doc = self.generate_doc(job, self.user)
+        doc = generate_elastic_doc(job, self.user)
 
         self.assertEqual(doc['labels'], [])
         self.assertEqual(doc['eventId'], None)
@@ -241,7 +196,7 @@ class TestElasticSearch(BilbyTestCase):
 
         self.assertDictEqual(
             elasticsearch_update_mock.mock_calls[-1].kwargs['doc'],
-            self.generate_doc(job, self.user)
+            generate_elastic_doc(job, self.user)
         )
 
     @mock.patch('elasticsearch.Elasticsearch.update')
@@ -274,5 +229,5 @@ class TestElasticSearch(BilbyTestCase):
 
         self.assertDictEqual(
             elasticsearch_update_mock.mock_calls[-1].kwargs['doc'],
-            self.generate_doc(job, self.user)
+            generate_elastic_doc(job, self.user)
         )

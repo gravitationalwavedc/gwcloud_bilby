@@ -317,3 +317,49 @@ def get_files(response):
         for f in filter(lambda x: not x['isDir'], response.data['bilbyResultFiles']['files'])
     ]
     return files
+
+
+def generate_elastic_doc(job, user):
+    doc = {
+        "user": {
+            "firstName": user.first_name,
+            "lastName": user.last_name,
+        },
+        "job": {
+            "name": job.name,
+            "description": job.description,
+            "creationTime": job.creation_time,
+            "lastUpdatedTime": job.last_updated
+        },
+        "labels": [
+            {
+                "name": label.name,
+                "description": label.description
+            }
+            for label in job.labels.all()
+        ],
+        "eventId": None,
+        "ini": {
+            kv.key: json.loads(kv.value)
+            for kv in job.inikeyvalue_set.filter(processed=False)
+        },
+        "params": {
+            kv.key: json.loads(kv.value)
+            for kv in job.inikeyvalue_set.filter(processed=True)
+        },
+        "_private_info_": {
+            "userId": job.user_id,
+            "private": job.private
+        }
+    }
+
+    # Set the event id if one is set on the job
+    if job.event_id:
+        doc["eventId"] = {
+            "eventId": job.event_id.event_id,
+            "triggerId": job.event_id.trigger_id,
+            "nickname": job.event_id.nickname,
+            "gpsTime": job.event_id.gps_time
+        }
+
+    return doc

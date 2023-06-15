@@ -331,7 +331,10 @@ class Query(object):
         if len(job_controller_ids):
             job_controller_jobs = {
                 job_controller_ids[job['id']]: job
-                for job in request_job_filter(info.context.user.user_id, ids=job_controller_ids.keys())[1]
+                for job in request_job_filter(
+                    info.context.user.user_id if info.context.user.is_authenticated else 0,
+                    ids=job_controller_ids.keys()
+                )[1]
             }
 
         # Parse the result in to graphql objects
