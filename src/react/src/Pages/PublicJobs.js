@@ -7,7 +7,7 @@ import JobSearchForm from '../Components/JobSearchForm';
 import {INFINITE_SCROLL_CHUNK_SIZE} from '../constants';
 
 const PublicJobs = ({data, match, router, relay}) => {
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState('*');
     const [timeRange, setTimeRange] = useState('all');
     const [order, setOrder] = useState();
     const [direction, setDirection] = useState('descending');
