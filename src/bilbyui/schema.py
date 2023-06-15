@@ -356,6 +356,7 @@ class Query(object):
                 # If there is no job controller record for this job, then the job is broken - ignore it.
                 if bilby_job.id not in job_controller_jobs:
                     continue
+
                 job_controller_job = job_controller_jobs[bilby_job.id]
                 job_node.job_status = JobStatusType(
                     name=JobStatus.display_name(job_controller_job['history'][0]['state']),
@@ -379,7 +380,7 @@ class Query(object):
 
             result.append(job_node)
 
-        # Nb. The perform_db_search function currently requests one extra record than kwargs['first'].
+        # Nb. The elastic search search function requests one extra record than kwargs['first'].
         # This triggers the ArrayConnection used by returning the result array to correctly set
         # hasNextPage correctly, such that infinite scroll works as expected.
 
