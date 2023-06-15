@@ -10,7 +10,7 @@ from django.utils import timezone
 from graphql_relay import to_global_id
 
 from bilbyui.models import BilbyJob, AnonymousMetrics
-from bilbyui.tests.test_utils import silence_errors
+from bilbyui.tests.test_utils import silence_errors, create_test_ini_string
 
 User = get_user_model()
 
@@ -24,11 +24,13 @@ class TestAnonymousMetrics(LiveServerTestCase):
         self.session_id = str(uuid.uuid4())
 
         self.job1 = BilbyJob.objects.create(
-            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False
+            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         self.job2 = BilbyJob.objects.create(
-            user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False
+            user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         self.variables = {

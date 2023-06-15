@@ -41,7 +41,8 @@ def compare_ini_kvs(test, job, ini, ignored=None):
                     json.dumps(v['value']),
                     json.dumps(float(v['value']) if type(v['value']) is int else v['value'])
                 ],
-                index=v['index']
+                index=v['index'],
+                processed=False
             ).exists(),
             f"ini k/v didn't exist when it should: {k}, {json.dumps(v['value'])} ({v['index']})"
         )

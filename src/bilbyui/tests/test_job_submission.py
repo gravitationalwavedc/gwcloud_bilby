@@ -122,12 +122,12 @@ class TestJobSubmission(BilbyTestCase):
 
         # Double check that the k/v's were correctly created
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="trigger_time").value,
+            IniKeyValue.objects.get(job=job, key="trigger_time", processed=False).value,
             json.dumps(_params['data']['triggerTime'])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="gaussian_noise").value,
+            IniKeyValue.objects.get(job=job, key="gaussian_noise", processed=False).value,
             json.dumps(True)
         )
 
@@ -137,52 +137,98 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertDictEqual(
-            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict", processed=False).value)),
+            {'H1': 'GWOSC', 'L1': 'GWOSC'}
+        )
+
+        self.assertDictEqual(
+            literal_eval(IniKeyValue.objects.get(job=job, key="channel_dict", processed=True).value),
             {'H1': 'GWOSC', 'L1': 'GWOSC'}
         )
 
         self.assertEqual(
-            sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors").value)),
+            sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=False).value)),
             sorted(["'H1'", "'L1'"])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="duration").value,
+            sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=True).value)),
+            sorted(["H1", "L1"])
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="duration", processed=False).value,
             json.dumps(float(_params['detector']['duration']))
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="sampling_frequency").value,
+            IniKeyValue.objects.get(job=job, key="duration", processed=True).value,
+            json.dumps(float(_params['detector']['duration']))
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=False).value,
+            json.dumps(float(_params['detector']['samplingFrequency']))
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=True).value,
             json.dumps(float(_params['detector']['samplingFrequency']))
         )
 
         self.assertDictEqual(
-            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=False).value)),
             {'H1': '1024', 'L1': '1024'}
         )
 
+        self.assertEqual(
+            literal_eval(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=True).value),
+            1024
+        )
+
         self.assertDictEqual(
-            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=False).value)),
             {'H1': '20', 'L1': '20'}
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="label").value,
+            literal_eval(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=True).value),
+            20
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="label", processed=False).value,
             json.dumps(_params['details']['name'])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="prior_file").value,
-            json.dumps(_params['prior']['priorDefault'])
+            IniKeyValue.objects.get(job=job, key="label", processed=True).value,
+            json.dumps(_params['details']['name'])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="sampler").value,
+            IniKeyValue.objects.get(job=job, key="prior_file", processed=False).value,
+            json.dumps(_params['prior']['priorDefault'])
+        )
+
+        self.assertTrue(
+            literal_eval(
+                IniKeyValue.objects.get(job=job, key="prior_file", processed=True).value
+            ).endswith("bilby_pipe/data_files/4s.prior")
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="sampler", processed=False).value,
             json.dumps(_params['sampler']['samplerChoice'])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="frequency_domain_source_model").value,
+            IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=True).value,
+            json.dumps("lal_binary_black_hole")
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=False).value,
             json.dumps("lal_binary_black_hole")
         )
 
@@ -281,67 +327,118 @@ class TestJobSubmission(BilbyTestCase):
 
         # Double check that the k/v's were correctly created
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="trigger_time").value,
+            IniKeyValue.objects.get(job=job, key="trigger_time", processed=False).value,
             json.dumps(_params['data']['triggerTime'])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="gaussian_noise").value,
+            IniKeyValue.objects.get(job=job, key="trigger_time", processed=True).value,
+            _params['data']['triggerTime']
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="gaussian_noise", processed=False).value,
             json.dumps(False)
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="n_simulation").value,
+            IniKeyValue.objects.get(job=job, key="n_simulation", processed=False).value,
             json.dumps(0)
         )
 
         self.assertDictEqual(
-            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict", processed=False).value)),
+            {'H1': 'GWOSC', 'L1': 'GWOSC'}
+        )
+
+        self.assertDictEqual(
+            literal_eval(IniKeyValue.objects.get(job=job, key="channel_dict", processed=True).value),
             {'H1': 'GWOSC', 'L1': 'GWOSC'}
         )
 
         self.assertEqual(
-            sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors").value)),
+            sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=False).value)),
             sorted(["'H1'", "'L1'"])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="duration").value,
+            sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=True).value)),
+            sorted(["H1", "L1"])
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="duration", processed=False).value,
             json.dumps(float(_params['detector']['duration']))
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="sampling_frequency").value,
+            IniKeyValue.objects.get(job=job, key="duration", processed=True).value,
+            json.dumps(float(_params['detector']['duration']))
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=False).value,
+            json.dumps(float(_params['detector']['samplingFrequency']))
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=True).value,
             json.dumps(float(_params['detector']['samplingFrequency']))
         )
 
         self.assertDictEqual(
-            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=False).value)),
             {'H1': '1024', 'L1': '1024'}
         )
 
+        self.assertEqual(
+            literal_eval(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=True).value),
+            1024
+        )
+
         self.assertDictEqual(
-            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency").value)),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=False).value)),
             {'H1': '20', 'L1': '20'}
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="label").value,
+            literal_eval(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=True).value),
+            20
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="label", processed=False).value,
             json.dumps(_params['details']['name'])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="prior_file").value,
-            json.dumps(_params['prior']['priorDefault'])
+            IniKeyValue.objects.get(job=job, key="label", processed=True).value,
+            json.dumps(_params['details']['name'])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="sampler").value,
+            IniKeyValue.objects.get(job=job, key="prior_file", processed=False).value,
+            json.dumps(_params['prior']['priorDefault'])
+        )
+
+        self.assertTrue(
+            literal_eval(IniKeyValue.objects.get(
+                job=job, key="prior_file", processed=True
+            ).value).endswith('bilby_pipe/data_files/4s.prior')
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="sampler", processed=False).value,
             json.dumps(_params['sampler']['samplerChoice'])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="frequency_domain_source_model").value,
+            IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=False).value,
+            json.dumps("lal_binary_black_hole")
+        )
+
+        self.assertEqual(
+            IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=True).value,
             json.dumps("lal_binary_black_hole")
         )
 

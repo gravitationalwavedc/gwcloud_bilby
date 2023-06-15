@@ -28,7 +28,8 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
             name="Test1",
             description="first job",
             job_controller_id=2,
-            private=False
+            private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
         self.global_id = to_global_id("BilbyJobNode", self.job.id)
 

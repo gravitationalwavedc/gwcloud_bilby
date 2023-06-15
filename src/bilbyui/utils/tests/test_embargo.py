@@ -1,5 +1,6 @@
 from django.test import override_settings
 
+from bilbyui.tests.test_utils import create_test_ini_string
 from gw_bilby.jwt_tools import GWCloudUser
 
 from bilbyui.models import BilbyJob, IniKeyValue
@@ -121,13 +122,18 @@ class TestShouldEmbargoJob(BilbyTestCase):
 class TestEmbargoFilter(BilbyTestCase):
     def setUp(self):
         for i, vals in enumerate([(1.0, 1), (2.0, 1), (1.0, 0), (2.0, 0)]):
-            job = BilbyJob.objects.create(
+            BilbyJob.objects.create(
                 user_id=i,
                 name=f"test job {i}",
-                description=f"test job {i}"
+                description=f"test job {i}",
+                ini_string=create_test_ini_string(
+                    {
+                        'detectors': "['H1']",
+                        'trigger-time': vals[0],
+                        'n-simulation': vals[1]
+                    }
+                )
             )
-            IniKeyValue.objects.filter(job=job, key='trigger_time').update(value=f'"{vals[0]}"')
-            IniKeyValue.objects.filter(job=job, key='n_simulation').update(value=vals[1])
 
         self.user = GWCloudUser(username="buffy")
 

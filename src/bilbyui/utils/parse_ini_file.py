@@ -23,10 +23,14 @@ def parse_ini_file(job, ini_key_value_klass=None):
     # Get the args from the ini
     args = bilby_ini_string_to_args((job.ini_string or '').encode('utf-8'))
 
+    if args.detectors is None:
+        raise Exception("Detectors must be set")
+
     # Iterate over the parsed ini configuration and store the key/value pairs in the database
     items = []
     for idx, key in enumerate(vars(args)):
         val = getattr(args, key)
+
         items.append(
             (ini_key_value_klass or IniKeyValue)(
                 job=job,

@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
+from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
@@ -38,7 +39,15 @@ class TestElasticSearch(BilbyTestCase):
             "eventId": None,
             "ini": {
                 kv.key: json.loads(kv.value)
-                for kv in job.inikeyvalue_set.all()
+                for kv in job.inikeyvalue_set.filter(processed=False)
+            },
+            "params": {
+                kv.key: json.loads(kv.value)
+                for kv in job.inikeyvalue_set.filter(processed=True)
+            },
+            "_private_info_": {
+                "userId": job.user_id,
+                "private": job.private
             }
         }
 
@@ -84,7 +93,8 @@ class TestElasticSearch(BilbyTestCase):
             name="Test1",
             description="first job",
             job_controller_id=2,
-            private=False
+            private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         # request_lookup_users should have been called once with an array containing only the user id
@@ -134,7 +144,8 @@ class TestElasticSearch(BilbyTestCase):
             description="first job",
             job_controller_id=2,
             private=False,
-            event_id=event_id
+            event_id=event_id,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         job.labels.add(label1)
@@ -174,7 +185,8 @@ class TestElasticSearch(BilbyTestCase):
             name="Test1",
             description="first job",
             job_controller_id=2,
-            private=False
+            private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         # request_lookup_users should have been called once with an array containing only the user id
@@ -217,7 +229,8 @@ class TestElasticSearch(BilbyTestCase):
             description="first job",
             job_controller_id=2,
             private=False,
-            event_id=event_id
+            event_id=event_id,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         event_id.is_ligo_event = False
@@ -247,7 +260,8 @@ class TestElasticSearch(BilbyTestCase):
             name="Test1",
             description="first job",
             job_controller_id=2,
-            private=False
+            private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         job.labels.add(label1)

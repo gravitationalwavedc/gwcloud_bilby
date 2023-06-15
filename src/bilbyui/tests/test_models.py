@@ -7,6 +7,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from bilbyui.models import BilbyJob, Label, FileDownloadToken, BilbyJobUploadToken, SupportingFile, EventID
+from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import update_bilby_job
 from gw_bilby.jwt_tools import GWCloudUser
@@ -20,7 +21,7 @@ class TestBilbyJobModel(BilbyTestCase):
             name='Test_Job',
             description='Test job description',
             private=False,
-            ini_string='test-config=12345'
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
         cls.job.save()
 
@@ -196,7 +197,7 @@ class TestFileDownloadToken(BilbyTestCase):
             name='Test Job',
             description='Test job description',
             private=False,
-            ini_string='test-config=12345'
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
         cls.job.save()
 
@@ -448,7 +449,10 @@ class TestSupportingFile(BilbyTestCase):
             SupportingFile.GPS: '/another/test/path/gps.file'
         }
 
-        self.job = BilbyJob.objects.create(user_id=self.user.user_id)
+        self.job = BilbyJob.objects.create(
+            user_id=self.user.user_id,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
+        )
         self.after = timezone.now()
 
     def test_save_from_parsed(self):

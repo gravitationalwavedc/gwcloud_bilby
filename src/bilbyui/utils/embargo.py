@@ -23,24 +23,20 @@ def embargo_filter(qs, user):
 
 
 def qs_embargo_filter(qs):
-    return qs.annotate(
-        trigger_time=Cast(
-            Replace(
-                Subquery(
-                    models.IniKeyValue.objects.filter(
-                        job=OuterRef('pk'),
-                        key='trigger_time',
-                        processed=True
-                    ).values('value')[:1]
-                ),
-                Value('"'),
-            ),
-            FloatField()
+    q = qs.annotate(
+        trigger_time=Subquery(
+            models.IniKeyValue.objects.filter(
+                job=OuterRef('pk'),
+                key='trigger_time',
+                processed=True
+            ).values('value')[:1]
         ),
         simulated=Subquery(
             models.IniKeyValue.objects.filter(job=OuterRef('pk'), key='n_simulation').values('value')[:1]
         )
-    ).filter(Q(trigger_time__lt=settings.EMBARGO_START_TIME) | Q(simulated__gt=0))
+    )
+
+    return q.filter(Q(trigger_time__lt=settings.EMBARGO_START_TIME) | Q(simulated__gt=0))
 
 
 def should_embargo_job(user, trigger_time, simulated):

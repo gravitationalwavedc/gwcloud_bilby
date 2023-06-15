@@ -148,7 +148,7 @@ class BilbyJob(models.Model):
     private = models.BooleanField(default=False)
 
     # The job ini string *should* be the full ini file for the job minus any client specific parameters
-    ini_string = models.TextField(blank=True, null=True)
+    ini_string = models.TextField()
 
     # The job controller id is the id given by the job controller at submission
     job_controller_id = models.IntegerField(default=None, blank=True, null=True)
@@ -279,6 +279,9 @@ class BilbyJob(models.Model):
         return f"Bilby Job: {self.name}"
 
     def save(self, *args, **kwargs):
+        # There must be an ini string
+        assert self.ini_string
+
         super().save(*args, **kwargs)
 
         # Whenever a job is saved, we need to regenerate the ini k/v pairs
