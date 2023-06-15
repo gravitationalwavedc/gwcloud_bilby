@@ -8,6 +8,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for job in BilbyJob.objects.all():
-            job.elastic_search_update()
+            job.save()
 
             print(job, "has been ingested into elastic search")

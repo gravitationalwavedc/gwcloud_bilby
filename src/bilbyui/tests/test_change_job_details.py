@@ -1,4 +1,4 @@
-from bilbyui.tests.test_utils import silence_errors
+from bilbyui.tests.test_utils import silence_errors, create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from graphql_relay.node.node import to_global_id
 from django.contrib.auth import get_user_model
@@ -22,7 +22,8 @@ class TestChangeJobDetails(BilbyTestCase):
         """
 
         self.job = BilbyJob.objects.create(
-            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False
+            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         self.global_job_id = to_global_id("BilbyJobNode", self.job.id)

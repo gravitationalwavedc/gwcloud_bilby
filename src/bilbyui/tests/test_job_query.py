@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 
 from graphql_relay.node.node import to_global_id
 from bilbyui.models import BilbyJob, Label, EventID
-from bilbyui.tests.test_utils import silence_errors
+from bilbyui.tests.test_utils import silence_errors, create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from unittest import mock
 
@@ -408,24 +408,34 @@ class TestBilbyJobQueries(BilbyTestCase):
             user_id=self.user.id,
             name="Test1",
             job_controller_id=2,
-            is_ligo_job=False
+            is_ligo_job=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
         BilbyJob.objects.create(
             user_id=self.user.id,
             name="Test2",
             job_controller_id=1,
             description="A test job",
-            is_ligo_job=False
+            is_ligo_job=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
         BilbyJob.objects.create(
             user_id=self.user.id,
             name="aaafirst",
             job_controller_id=None,
             description="A test job",
-            is_ligo_job=False
+            is_ligo_job=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
+
         # This job shouldn't appear in the list because it belongs to another user.
-        BilbyJob.objects.create(user_id=4, name="Test3", job_controller_id=4)
+        BilbyJob.objects.create(
+            user_id=4,
+            name="Test3",
+            job_controller_id=4,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
+        )
+
         query = """
                 query {
                     bilbyJobs {

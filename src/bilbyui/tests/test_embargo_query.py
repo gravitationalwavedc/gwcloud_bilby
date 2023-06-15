@@ -17,7 +17,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.real_job_data = {
             "name": "RealTestName",
             "user_id": 1,
-            "ini_string": create_test_ini_string({'trigger-time': 1.0, 'n-simulation': 0}),
+            "ini_string": create_test_ini_string({'trigger-time': 1.0, 'n-simulation': 0, 'detectors': "['H1']"}),
         }
         self.real_job = BilbyJob.objects.create(**self.real_job_data)
         self.real_job_data.update({"id": to_global_id("BilbyJobNode", self.real_job.id)})
@@ -25,7 +25,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.simulated_job_data = {
             "name": "SimulatedTestName",
             "user_id": 1,
-            "ini_string": create_test_ini_string({'trigger-time': 2.0, 'n-simulation': 1}),
+            "ini_string": create_test_ini_string({'trigger-time': 2.0, 'n-simulation': 1, 'detectors': "['H1']"}),
         }
         self.simulated_job = BilbyJob.objects.create(**self.simulated_job_data)
         self.simulated_job_data.update({"id": to_global_id("BilbyJobNode", self.simulated_job.id)})
@@ -33,7 +33,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.embargoed_job_data = {
             "name": "EmbargoedTestName",
             "user_id": 1,
-            "ini_string": create_test_ini_string({'trigger-time': 2.0, 'n-simulation': 0}),
+            "ini_string": create_test_ini_string({'trigger-time': 2.0, 'n-simulation': 0, 'detectors': "['H1']"}),
         }
         self.embargoed_job = BilbyJob.objects.create(**self.embargoed_job_data)
         self.embargoed_job_data.update({"id": to_global_id("BilbyJobNode", self.embargoed_job.id)})

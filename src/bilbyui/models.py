@@ -148,7 +148,7 @@ class BilbyJob(models.Model):
     private = models.BooleanField(default=False)
 
     # The job ini string *should* be the full ini file for the job minus any client specific parameters
-    ini_string = models.TextField(blank=True, null=True)
+    ini_string = models.TextField()
 
     # The job controller id is the id given by the job controller at submission
     job_controller_id = models.IntegerField(default=None, blank=True, null=True)
@@ -279,6 +279,9 @@ class BilbyJob(models.Model):
         return f"Bilby Job: {self.name}"
 
     def save(self, *args, **kwargs):
+        # There must be an ini string
+        assert self.ini_string
+
         super().save(*args, **kwargs)
 
         # Whenever a job is saved, we need to regenerate the ini k/v pairs
@@ -351,7 +354,15 @@ class BilbyJob(models.Model):
             "eventId": None,
             "ini": {
                 kv.key: json.loads(kv.value)
-                for kv in self.inikeyvalue_set.all()
+                for kv in self.inikeyvalue_set.filter(processed=False)
+            },
+            "params": {
+                kv.key: json.loads(kv.value)
+                for kv in self.inikeyvalue_set.filter(processed=True)
+            },
+            "_private_info_": {
+                "userId": self.user_id,
+                "private": self.private
             }
         }
 
@@ -514,6 +525,8 @@ class IniKeyValue(models.Model):
     value = models.TextField(db_index=True)
     # The index from the ini file this k/v was generated from (allows forward engineering the ini file from these k/v's)
     index = models.IntegerField()
+    # If this key/value pair represents the processed value (ie, it's been parsed through Bilby's Input() class)
+    processed = models.BooleanField(default=False)
 
 
 class FileDownloadToken(models.Model):

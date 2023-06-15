@@ -10,7 +10,8 @@ from django.utils import timezone
 from graphql_relay import to_global_id
 
 from bilbyui.models import BilbyJob, AnonymousMetrics
-from bilbyui.tests.test_utils import silence_errors
+from bilbyui.tests.test_utils import silence_errors, create_test_ini_string, generate_elastic_doc
+from gw_bilby.jwt_tools import GWCloudUser
 
 User = get_user_model()
 
@@ -24,11 +25,13 @@ class TestAnonymousMetrics(LiveServerTestCase):
         self.session_id = str(uuid.uuid4())
 
         self.job1 = BilbyJob.objects.create(
-            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False
+            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         self.job2 = BilbyJob.objects.create(
-            user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False
+            user_id=self.user.id, name="Test2", job_controller_id=1, description="A test job", private=False,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
         )
 
         self.variables = {
@@ -62,75 +65,72 @@ class TestAnonymousMetrics(LiveServerTestCase):
                     {
                         'node': {
                             'description': 'A test job',
-                            'id': to_global_id("BilbyJobNode", self.job1.id),
-                            'name': 'Test1',
+                            'id': to_global_id("BilbyJobNode", self.job2.id),
+                            'name': 'Test2',
                             'jobStatus': {
                                 'name': 'Completed'
                             },
                             'timestamp': '2020-01-01 12:00:00 UTC',
-                            'user': 'buffy summers'
+                            'user': 'Bill Nye'
                         }
                     },
                     {
                         'node': {
-                            'description': '',
-                            'id': to_global_id("BilbyJobNode", self.job2.id),
-                            'name': 'Test2',
+                            'description': 'first job',
+                            'id': to_global_id("BilbyJobNode", self.job1.id),
+                            'name': 'Test1',
                             'jobStatus': {
                                 'name': 'Completed',
                             },
                             'timestamp': '2020-01-01 12:00:00 UTC',
-                            'user': 'buffy summers'
+                            'user': 'Bill Nye'
                         }
                     }
                 ]
             }
         }
 
-    def perform_db_search_mock(*args, **kwargs):
-        return True, [
-            {
-                'user': {
-                    'id': 1,
-                    'firstName': 'buffy',
-                    'lastName': 'summers'
-                },
-                'job': {
-                    'id': list(BilbyJob.objects.all())[-1].id,
-                    'name': 'Test1',
-                    'description': 'A test job'
-                },
-                'history': [{'state': 500, 'timestamp': '2020-01-01 12:00:00 UTC'}],
-            },
-            {
-                'user': {
-                    'id': 1,
-                    'firstName': 'buffy',
-                    'lastName': 'summers'
-                },
-                'job': {
-                    'id': list(BilbyJob.objects.all())[-2].id,
-                    'name': 'Test2',
-                    'description': ''
-                },
-                'history': [{'state': 500, 'timestamp': '2020-01-01 12:00:00 UTC'}],
-            }
-        ]
+    def elasticsearch_search_mock(*args, **kwargs):
+        user = User.objects.all().first()
+        gwuser = GWCloudUser(user.username)
+        gwuser.user_id = user.id
+        gwuser.first_name = user.first_name
+        gwuser.last_name = user.last_name
 
-    def request_lookup_users_mock(*args, **kwargs):
-        user = User.objects.first()
-        if user:
-            return True, [{
-                'userId': user.id,
-                'username': user.username,
-                'firstName': user.first_name,
-                'lastName': user.last_name
-            }]
-        return False, []
+        jobs = []
+        for job in BilbyJob.objects.filter(user_id=user.id):
+            doc = {
+                '_source': generate_elastic_doc(job, user),
+                '_id': job.id
+            }
+            jobs.append(doc)
+
+        return {
+            'hits':
+                {
+                    'hits': jobs
+                }
+        }
+
+    def request_job_filter_mock(*args, **kwargs):
+        jobs = []
+        for job in BilbyJob.objects.filter(user_id=User.objects.all().first().id):
+            jobs.append({
+                'id': job.job_controller_id,
+                'history': [
+                    {
+                        'state': 500,
+                        'timestamp': '2020-01-01 12:00:00 UTC'
+                    }
+                ]
+            })
+
+        return True, jobs
 
     @silence_errors
-    @mock.patch('bilbyui.schema.perform_db_search', side_effect=perform_db_search_mock)
-    def _request(self, query, variables, db_search_mock, headers=None):
+    @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
+    def _request(self, query, variables, request_job_filter, elasticsearch_search, headers=None):
         if headers is None:
             headers = {}
 

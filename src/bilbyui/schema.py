@@ -1,7 +1,10 @@
+from datetime import timedelta
 from decimal import Decimal
 
+import elasticsearch
 import graphene
 from django.conf import settings
+from django.utils import timezone
 from django_filters import FilterSet, OrderingFilter
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
@@ -26,8 +29,8 @@ from .types import (
     SupportingFileUploadResult,
 )
 from .utils.auth.lookup_users import request_lookup_users
-from .utils.db_search.db_search import perform_db_search
 from .utils.derive_job_status import derive_job_status
+from .utils.embargo import user_subject_to_embargo
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
@@ -267,34 +270,101 @@ class Query(object):
         if 'after' in kwargs:
             kwargs['after'] = int(from_global_id(kwargs['after'])[1])
 
-        # Perform the database search
-        success, jobs = perform_db_search(info.context.user, kwargs)
+        es = elasticsearch.Elasticsearch(
+            hosts=[settings.ELASTIC_SEARCH_HOST],
+            api_key=settings.ELASTIC_SEARCH_API_KEY,
+            verify_certs=False
+        )
 
-        if not success:
+        # If no search term is provided, return all records via a wildcard
+        q = kwargs.get('search', '') or '*'
+
+        # Prevent the user from searching in private info
+        if "_private_info_" in q:
             return []
+
+        # Insert the time query
+        time_range = kwargs['time_range']
+        if time_range != "all":
+            now = timezone.now()
+            if time_range == "1d":
+                then = now - timedelta(days=1)
+            elif time_range == "1w":
+                then = now - timedelta(days=7)
+            elif time_range == "1m":
+                then = now - timedelta(days=31)
+            elif time_range == "1y":
+                then = now - timedelta(days=365)
+            else:
+                raise Exception(f"Unexpected timeRange value {time_range}")
+
+            q = f'({q}) AND job.creationTime:["{then.isoformat()}" TO "{now.isoformat()}"]'
+
+        # Filter out any private jobs
+        q = f'({q}) AND _private_info_.private:false'
+
+        # If user is subject to an embargo - then apply the embargo as well
+        if user_subject_to_embargo(info.context.user):
+            q = f'({q}) AND (params.trigger_time:<{settings.EMBARGO_START_TIME} OR ini.n_simulation:>0)'
+
+        results = es.search(
+            index=settings.ELASTIC_SEARCH_INDEX,
+            q=q,
+            size=kwargs['first'] + 1,
+            from_=kwargs.get('after', 0)
+        )
+
+        # Check that there were results
+        if not results['hits']:
+            return []
+
+        records = results['hits']['hits']
+
+        # Get a list of bilbyjobs and job controller ids
+        jobs = {
+            job.id: job for job in BilbyJob.objects.filter(id__in=[record['_id'] for record in records])
+        }
+
+        # Get a list of job controller ids and fetch the results from the job controller
+        job_controller_ids = {job.job_controller_id: job.id for job in jobs.values() if job.job_controller_id}
+        job_controller_jobs = {}
+        if len(job_controller_ids):
+            job_controller_jobs = {
+                job_controller_ids[job['id']]: job
+                for job in request_job_filter(
+                    info.context.user.user_id if info.context.user.is_authenticated else 0,
+                    ids=job_controller_ids.keys()
+                )[1]
+            }
 
         # Parse the result in to graphql objects
         result = []
 
-        for job in jobs:
-            bilby_job = BilbyJob.get_by_id(job['job']['id'], info.context.user)
+        for record in records:
+            job = record['_source']
+            bilby_job = BilbyJob.get_by_id(record['_id'], info.context.user)
 
             job_node = BilbyPublicJobNode(
                 user=f"{job['user']['firstName']} {job['user']['lastName']}",
                 name=job['job']['name'],
                 description=job['job']['description'],
                 event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
-                id=to_global_id("BilbyJobNode", job['job']['id'])
+                id=to_global_id("BilbyJobNode", bilby_job.id)
             )
 
             if bilby_job.job_type == BilbyJobType.NORMAL:
+                # If there is no job controller record for this job, then the job is broken - ignore it.
+                if bilby_job.id not in job_controller_jobs:
+                    continue
+
+                job_controller_job = job_controller_jobs[bilby_job.id]
                 job_node.job_status = JobStatusType(
-                    name=JobStatus.display_name(job['history'][0]['state']),
-                    number=job['history'][0]['state'],
-                    date=job['history'][0]['timestamp']
+                    name=JobStatus.display_name(job_controller_job['history'][0]['state']),
+                    number=job_controller_job['history'][0]['state'],
+                    date=job_controller_job['history'][0]['timestamp']
                 )
                 job_node.labels = bilby_job.labels.all()
-                job_node.timestamp = job['history'][0]['timestamp']
+                job_node.timestamp = job_controller_job['history'][0]['timestamp']
 
             elif bilby_job.job_type == BilbyJobType.UPLOADED:
                 job_node.job_status = JobStatusType(
@@ -310,7 +380,7 @@ class Query(object):
 
             result.append(job_node)
 
-        # Nb. The perform_db_search function currently requests one extra record than kwargs['first'].
+        # Nb. The elastic search search function requests one extra record than kwargs['first'].
         # This triggers the ArrayConnection used by returning the result array to correctly set
         # hasNextPage correctly, such that infinite scroll works as expected.
 

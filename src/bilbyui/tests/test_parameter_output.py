@@ -227,10 +227,12 @@ class TestJobSubmission(BilbyTestCase):
         # correctly sanitized
 
         # Start with creating a job with an invalid outdir (".")
-        job = BilbyJob.objects.create(user_id=self.user.id)
-        job.ini_string = """detectors=['H1']
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            ini_string="""detectors=['H1']
 trigger-time=12345678
 outdir=."""
+        )
         job.save()
 
         # Generate the output params - bilby will raise an exception if outdir=. is not sanitized
@@ -245,12 +247,14 @@ outdir=."""
         # Because "'sample': 'rwalk'" isn't parsable as a decimal
 
         # Start with creating a job with the test case
-        job = BilbyJob.objects.create(user_id=self.user.id)
-        job.ini_string = """detectors=['H1']
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            ini_string = """detectors=['H1']
 trigger-time=12345678
 outdir=./
 sampler=dynesty
 sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100, 'n_check_point': 2000, 'nact': 10, 'npool': 4}""" # noqa
+        )
         job.save()
 
         # Generate the output params - bilby will raise an exception if the decimal parser isn't updated to handle the
