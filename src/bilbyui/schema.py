@@ -311,7 +311,7 @@ class Query(object):
             index=settings.ELASTIC_SEARCH_INDEX,
             q=q,
             size=kwargs['first'] + 1,
-            from_=kwargs['after'] if 'after' in kwargs else 0
+            from_=kwargs.get('after', 0)
         )
 
         # Check that there were results
