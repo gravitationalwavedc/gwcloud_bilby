@@ -11,4 +11,3 @@ class Command(BaseCommand):
             job.save()
 
             print(job, "has been ingested into elastic search")
-

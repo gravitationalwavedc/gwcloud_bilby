@@ -229,7 +229,7 @@ class TestJobSubmission(BilbyTestCase):
         # Start with creating a job with an invalid outdir (".")
         job = BilbyJob.objects.create(
             user_id=self.user.id,
-            ini_string = """detectors=['H1']
+            ini_string="""detectors=['H1']
 trigger-time=12345678
 outdir=."""
         )

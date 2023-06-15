@@ -3,7 +3,7 @@ from django.test import override_settings
 from bilbyui.tests.test_utils import create_test_ini_string
 from gw_bilby.jwt_tools import GWCloudUser
 
-from bilbyui.models import BilbyJob, IniKeyValue
+from bilbyui.models import BilbyJob
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.embargo import user_subject_to_embargo, should_embargo_job, embargo_filter
 
