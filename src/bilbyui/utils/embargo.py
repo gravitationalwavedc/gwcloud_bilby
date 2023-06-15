@@ -1,5 +1,7 @@
-from django.db.models import Subquery, OuterRef, Q
+from django.db.models import Subquery, OuterRef, Q, FloatField
 from django.conf import settings
+from django.db.models.functions import Cast
+
 from .misc import is_ligo_user
 from bilbyui import models
 
@@ -23,17 +25,19 @@ def embargo_filter(qs, user):
 
 def qs_embargo_filter(qs):
     q = qs.annotate(
-        trigger_time=Subquery(
-            models.IniKeyValue.objects.filter(
-                job=OuterRef('pk'),
-                key='trigger_time',
-                processed=True
-            ).values('value')[:1]
+        trigger_time=Cast(
+            Subquery(
+                models.IniKeyValue.objects.filter(job=OuterRef('pk'), key='trigger_time', processed=True).values('value')
+            ),
+            FloatField(),
         ),
         simulated=Subquery(
-            models.IniKeyValue.objects.filter(job=OuterRef('pk'), key='n_simulation').values('value')[:1]
+            models.IniKeyValue.objects.filter(job=OuterRef('pk'), key='n_simulation', processed=False).values('value')[:1]
         )
     )
+
+    for job in q:
+        print(job.trigger_time, job.simulated)
 
     return q.filter(Q(trigger_time__lt=settings.EMBARGO_START_TIME) | Q(simulated__gt=0))
 
