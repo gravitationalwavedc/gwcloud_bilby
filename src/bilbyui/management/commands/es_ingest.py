@@ -8,6 +8,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for job in BilbyJob.objects.all():
-            job.save()
-
-            print(job, "has been ingested into elastic search")
+            try:
+                job.save()
+                print(f"Job {job.id} - {job.name} has been ingested into elastic search")
+            except Exception:
+                print(f"Job {job.id} - {job.name} could not be ingested - perhaps it has an empty ini_string")
