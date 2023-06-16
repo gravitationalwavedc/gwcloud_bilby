@@ -30,7 +30,7 @@ from .types import (
 )
 from .utils.auth.lookup_users import request_lookup_users
 from .utils.derive_job_status import derive_job_status
-from .utils.embargo import user_subject_to_embargo
+from .utils.embargo import user_subject_to_embargo, embargo_filter
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
@@ -311,7 +311,8 @@ class Query(object):
             index=settings.ELASTIC_SEARCH_INDEX,
             q=q,
             size=kwargs['first'] + 1,
-            from_=kwargs.get('after', 0)
+            from_=kwargs.get('after', 0),
+            sort="job.lastUpdatedTime:desc"
         )
 
         # Check that there were results
@@ -319,6 +320,19 @@ class Query(object):
             return []
 
         records = results['hits']['hits']
+
+        # Double check the embargo and private jobs. Here we take the list of jobs returned by elastic search, then
+        # use the embargo filter on that and compare the number of jobs before and after the embargo. If this number
+        # doesn't match then something strange has happened.
+        qs_after = qs_before = BilbyJob.objects.filter(id__in=[record['_id'] for record in records])
+        if user_subject_to_embargo(info.context.user):
+            qs_after = embargo_filter(qs_before, info.context.user)
+
+        qs_after = qs_after.filter(private=False)
+
+        if qs_before.count() != qs_after.count():
+            # Somehow user has made a query that violates the embargo or includes a private job. Return nothing.
+            return []
 
         # Get a list of bilbyjobs and job controller ids
         jobs = {
@@ -353,18 +367,24 @@ class Query(object):
             )
 
             if bilby_job.job_type == BilbyJobType.NORMAL:
-                # If there is no job controller record for this job, then the job is broken - ignore it.
+                # If there is no job controller record for this job, then the job is broken.
                 if bilby_job.id not in job_controller_jobs:
-                    continue
-
-                job_controller_job = job_controller_jobs[bilby_job.id]
-                job_node.job_status = JobStatusType(
-                    name=JobStatus.display_name(job_controller_job['history'][0]['state']),
-                    number=job_controller_job['history'][0]['state'],
-                    date=job_controller_job['history'][0]['timestamp']
-                )
-                job_node.labels = bilby_job.labels.all()
-                job_node.timestamp = job_controller_job['history'][0]['timestamp']
+                    job_node.job_status = JobStatusType(
+                        name="Unknown",
+                        number=0,
+                        date=bilby_job.creation_time
+                    )
+                    job_node.labels = bilby_job.labels.all()
+                    job_node.timestamp = bilby_job.creation_time
+                else:
+                    job_controller_job = job_controller_jobs[bilby_job.id]
+                    job_node.job_status = JobStatusType(
+                        name=JobStatus.display_name(job_controller_job['history'][0]['state']),
+                        number=job_controller_job['history'][0]['state'],
+                        date=job_controller_job['history'][0]['timestamp']
+                    )
+                    job_node.labels = bilby_job.labels.all()
+                    job_node.timestamp = job_controller_job['history'][0]['timestamp']
 
             elif bilby_job.job_type == BilbyJobType.UPLOADED:
                 job_node.job_status = JobStatusType(

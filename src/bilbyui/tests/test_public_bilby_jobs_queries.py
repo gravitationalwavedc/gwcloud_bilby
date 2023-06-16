@@ -10,7 +10,7 @@ from graphql_relay.node.node import to_global_id
 
 from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob
-from bilbyui.tests.test_utils import silence_errors, create_test_ini_string, generate_elastic_doc
+from bilbyui.tests.test_utils import create_test_ini_string, generate_elastic_doc, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 from gw_bilby.jwt_tools import GWCloudUser
 
@@ -97,10 +97,14 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             jobs.append(doc)
 
         return {
-            'hits':
-                {
-                    'hits': jobs
-                }
+            'hits': {
+                'hits': jobs
+            }
+        }
+
+    def elasticsearch_search_mock_no_hits(*args, **kwargs):
+        return {
+            'hits': {}
         }
 
     def request_job_filter_mock(*args, **kwargs):
@@ -118,7 +122,21 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         return True, jobs
 
-    # @silence_errors
+    def request_job_filter_mock_missing_record(*args, **kwargs):
+        jobs = []
+        for job in BilbyJob.objects.filter(user_id=User.objects.all().first().id)[1:]:
+            jobs.append({
+                'id': job.job_controller_id,
+                'history': [
+                    {
+                        'state': 500,
+                        'timestamp': '2020-01-01 12:00:00 UTC'
+                    }
+                ]
+            })
+
+        return True, jobs
+
     @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
     @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_no_cursor(self, request_job_filter, elasticsearch_search):
@@ -155,7 +173,8 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     'index': settings.ELASTIC_SEARCH_INDEX,
                     'q': '(*) AND _private_info_.private:false',
                     'size': 51,
-                    'from_': 0
+                    'from_': 0,
+                    'sort': "job.lastUpdatedTime:desc"
                 }
             )
 
@@ -165,7 +184,50 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         self.assertEqual(list(request_job_filter.mock_calls[0].kwargs['ids']), [1234, 2345])
         self.assertEqual(list(request_job_filter.mock_calls[1].kwargs['ids']), [1234, 2345])
 
-    @silence_errors
+    @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock_missing_record)
+    def test_public_bilby_jobs_query_missing_job_controller_job(self, request_job_filter, elasticsearch_search):
+        # This job shouldn't appear in the list because it's private and owned by a different user
+        BilbyJob.objects.create(
+            user_id=self.user.id + 1, name="Test3", job_controller_id=3456, private=True,
+            ini_string=create_test_ini_string({'detectors': "['H1']"})
+        )
+
+        variables = {
+            "count": 50,
+            "search": None,
+            "timeRange": "all"
+        }
+
+        self.public_bilby_job_expected['publicBilbyJobs']['edges'][0]['node']['jobStatus']['name'] = 'Unknown'
+        self.public_bilby_job_expected['publicBilbyJobs']['edges'][0]['node']['timestamp'] = str(self.job2.creation_time)
+
+        # Try again with authenticated user
+        response = self.client.execute(self.public_bilby_job_query, variables)
+        self.assertDictEqual(
+            response.data,
+            self.public_bilby_job_expected,
+            "publicBilbyJobs query returned unexpected data."
+        )
+
+        # Authenticate the user for the second iteration
+        self.client.authenticate(self.user)
+
+        self.assertDictEqual(
+            elasticsearch_search.mock_calls[-1].kwargs,
+            {
+                'index': settings.ELASTIC_SEARCH_INDEX,
+                'q': '(*) AND _private_info_.private:false',
+                'size': 51,
+                'from_': 0,
+                'sort': "job.lastUpdatedTime:desc"
+            }
+        )
+
+        self.assertEqual(request_job_filter.mock_calls[0].args[0], 0)
+
+        self.assertEqual(list(request_job_filter.mock_calls[0].kwargs['ids']), [1234, 2345])
+
     @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
     @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_test_cursor_count(self, request_job_filter, elasticsearch_search):
@@ -193,7 +255,8 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     'index': settings.ELASTIC_SEARCH_INDEX,
                     'q': '(*) AND _private_info_.private:false',
                     'size': 51,
-                    'from_': 99
+                    'from_': 99,
+                    'sort': "job.lastUpdatedTime:desc"
                 }
             )
 
@@ -216,7 +279,8 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                         'index': settings.ELASTIC_SEARCH_INDEX,
                         'q': '(*) AND _private_info_.private:false',
                         'size': 26,
-                        'from_': idx
+                        'from_': idx,
+                        'sort': "job.lastUpdatedTime:desc"
                     }
                 )
 
@@ -242,14 +306,14 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     'index': settings.ELASTIC_SEARCH_INDEX,
                     'q': '(*) AND _private_info_.private:false',
                     'size': 26,
-                    'from_': 0
+                    'from_': 0,
+                    'sort': "job.lastUpdatedTime:desc"
                 }
             )
 
             # Authenticate the user now for the second iteration
             self.client.authenticate(self.user)
 
-    @silence_errors
     @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
     @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_uploaded(self, request_job_filter, elasticsearch_search):
@@ -291,7 +355,6 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             # Authenticate the user for the second iteration
             self.client.authenticate(self.user)
 
-    @silence_errors
     @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
     @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_unknown_job_type(self, request_job_filter, elasticsearch_search):
@@ -357,7 +420,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
             now = timezone.now()
 
-            # Should return no results
+            # Should return expected results
             response = self.client.execute(self.public_bilby_job_query, variables)
             self.assertDictEqual(
                 response.data,
@@ -413,7 +476,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             "timeRange": "all"
         }
 
-        # Should return no results
+        # Should return expected results
         response = self.client.execute(self.public_bilby_job_query, variables)
         self.assertDictEqual(
             response.data,
@@ -460,8 +523,6 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         # From -> To should be equal to the delta
         self.assertEqual((to - _from), delta)
 
-        print(elasticsearch_search.mock_calls[-1].kwargs)
-
         self.assertEqual(
             elasticsearch_search.mock_calls[-1].kwargs['q'],
             f'(((test) AND job.creationTime:["{_from.isoformat()}" TO "{to.isoformat()}"]) AND '
@@ -477,4 +538,90 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 'size': 51,
                 'from_': 99
             }
+        )
+
+    @silence_errors
+    @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_invalid_time_range(self, request_job_filter, elasticsearch_search):
+        variables = {
+            "count": 50,
+            "search": None,
+            "timeRange": "invalid"
+        }
+
+        # Should return no results
+        response = self.client.execute(self.public_bilby_job_query, variables)
+        self.assertDictEqual(
+            response.data,
+            {'publicBilbyJobs': None},
+            "publicBilbyJobs query returned unexpected data."
+        )
+
+        self.assertEqual(response.errors[0].message, "Unexpected timeRange value invalid")
+
+    @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock_no_hits)
+    def test_public_bilby_jobs_query_no_hits(self, elasticsearch_search):
+        variables = {
+            "count": 50,
+            "search": None,
+            "timeRange": "all"
+        }
+
+        # Should return no results
+        response = self.client.execute(self.public_bilby_job_query, variables)
+        self.assertDictEqual(
+            response.data,
+            {'publicBilbyJobs': {'edges': []}},
+            "publicBilbyJobs query returned unexpected data."
+        )
+
+    @override_settings(EMBARGO_START_TIME=1234)
+    @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_embargo_violation(self, request_job_filter, elasticsearch_search):
+        variables = {
+            "count": 50,
+            "search": None,
+            "timeRange": "all"
+        }
+
+        # Update the trigger time for one of the jobs to be after the embargo time
+        self.job1.ini_string = create_test_ini_string(
+            {
+                'detectors': "['H1']",
+                'trigger-time': settings.EMBARGO_START_TIME + 1
+            }
+        )
+        self.job1.save()
+
+        # Should return no results because the number of results returned from elastic search are now a different
+        # length to those returned after the embargo filter is applied
+        response = self.client.execute(self.public_bilby_job_query, variables)
+        self.assertDictEqual(
+            response.data,
+            {'publicBilbyJobs': {'edges': []}},
+            "publicBilbyJobs query returned unexpected data."
+        )
+
+    @mock.patch('elasticsearch.Elasticsearch.search', side_effect=elasticsearch_search_mock)
+    @mock.patch('bilbyui.schema.request_job_filter', side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_private_violation(self, request_job_filter, elasticsearch_search):
+        variables = {
+            "count": 50,
+            "search": None,
+            "timeRange": "all"
+        }
+
+        # Update the trigger time for one of the jobs to be after the embargo time
+        self.job1.private = True
+        self.job1.save()
+
+        # Should return no results because the number of results returned from elastic search are now a different
+        # length to those returned after the embargo filter is applied
+        response = self.client.execute(self.public_bilby_job_query, variables)
+        self.assertDictEqual(
+            response.data,
+            {'publicBilbyJobs': {'edges': []}},
+            "publicBilbyJobs query returned unexpected data."
         )

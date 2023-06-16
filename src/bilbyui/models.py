@@ -9,7 +9,7 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
-from django.db.models.signals import m2m_changed, post_save
+from django.db.models.signals import m2m_changed, post_save, pre_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
@@ -381,6 +381,21 @@ class BilbyJob(models.Model):
         except elasticsearch.NotFoundError:
             es.index(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, document=doc)
 
+    def elastic_search_remove(self):
+        """
+        Deletes the elastic search record for this job
+        """
+        if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
+            return
+
+        es = elasticsearch.Elasticsearch(
+            hosts=[settings.ELASTIC_SEARCH_HOST],
+            api_key=settings.ELASTIC_SEARCH_API_KEY,
+            verify_certs=False
+        )
+
+        es.delete(index=settings.ELASTIC_SEARCH_INDEX, id=self.id)
+
 
 def on_bilby_job_label_add_rem(sender, instance, action, pk_set, **kwargs):
     if action in ['post_add', 'post_remove']:
@@ -388,6 +403,11 @@ def on_bilby_job_label_add_rem(sender, instance, action, pk_set, **kwargs):
 
 
 m2m_changed.connect(on_bilby_job_label_add_rem, sender=BilbyJob.labels.through)
+
+
+@receiver(pre_delete, sender=BilbyJob, dispatch_uid='bilby_job_delete_signal')
+def bilby_job_delete_signal(sender, instance, using, **kwargs):
+    instance.elastic_search_remove()
 
 
 class SupportingFile(models.Model):
