@@ -200,7 +200,8 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         }
 
         self.public_bilby_job_expected['publicBilbyJobs']['edges'][0]['node']['jobStatus']['name'] = 'Unknown'
-        self.public_bilby_job_expected['publicBilbyJobs']['edges'][0]['node']['timestamp'] = str(self.job2.creation_time)
+        self.public_bilby_job_expected['publicBilbyJobs']['edges'][0]['node']['timestamp'] = \
+            str(self.job2.creation_time)
 
         # Try again with authenticated user
         response = self.client.execute(self.public_bilby_job_query, variables)
