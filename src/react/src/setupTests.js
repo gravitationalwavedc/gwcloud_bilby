@@ -14,6 +14,7 @@ setHarnessApi({
     currentUser: {
         userId: 1,
     },
+    hasAuthToken: () => true,
 });
 
 global.queryRendererSetup = (inputQuery, componentToRender) => {

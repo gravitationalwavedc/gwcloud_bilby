@@ -5,9 +5,8 @@ import JobTable from '../Components/JobTable';
 import JobsHeading from '../Components/JobsHeading';
 import JobSearchForm from '../Components/JobSearchForm';
 import { INFINITE_SCROLL_CHUNK_SIZE } from '../constants';
-import { harnessApi } from '../index';
 
-const PublicJobs = ({ data, match, router, relay }) => {
+const PublicJobs = ({ data, match, router, relay, isAuthenticated }) => {
     const [search, setSearch] = useState('*');
     const [timeRange, setTimeRange] = useState('all');
     const [order, setOrder] = useState();
@@ -63,10 +62,9 @@ const PublicJobs = ({ data, match, router, relay }) => {
                         />
                     </Card.Body>
                 </Card>
-                {!harnessApi.hasAuthToken() && (
+                {!isAuthenticated && (
                     <Alert variant='light'>
-                        Only showing jobs that are outside any embargo periods. To see all gwcloud jobs login with your
-                        LIGO account.
+                        Showing only public jobs. Log in with your LIGO.ORG credentials to see embargoed jobs.
                     </Alert>
                 )}
             </Col>

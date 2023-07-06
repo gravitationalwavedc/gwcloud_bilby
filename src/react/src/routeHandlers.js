@@ -19,6 +19,8 @@ export const handlePublicRender = ({ Component, props }) => {
             location: props.location,
         };
 
+    props.isAuthenticated = harnessApi.hasAuthToken();
+
     ReactGA.pageview(props.match.location.pathname);
 
     return <Component data={props} {...props} />;
