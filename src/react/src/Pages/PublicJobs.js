@@ -39,6 +39,7 @@ const PublicJobs = ({ data, match, router, relay, isAuthenticated }) => {
                     link={{ text: 'Switch to my jobs', path: '/bilby/job-list/' }}
                     match={match}
                     router={router}
+                    isAuthenticated={isAuthenticated}
                 />
                 <Card className="gw-form-card">
                     <Card.Body>
