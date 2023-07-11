@@ -1,4 +1,4 @@
-from .base import *
+from .base import *  # noqa: F401, F403
 
 DEBUG = False
 
@@ -17,6 +17,6 @@ GWCLOUD_DB_SEARCH_API_URL = "http://gwcloud-db-search:8000/graphql"
 ELASTIC_SEARCH_HOST = "https://elasticsearch-master.elastic-stack.svc.cluster.local:9200"
 
 try:
-    from .environment import *
+    from .environment import *  # noqa: F401, F403
 except ImportError:
     pass

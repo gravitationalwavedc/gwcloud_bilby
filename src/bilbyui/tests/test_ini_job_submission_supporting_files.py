@@ -170,7 +170,7 @@ class TestIniJobSubmission(BilbyTestCase):
             job.refresh_from_db()
             self.assertIsNone(job.job_controller_id)
 
-            supporting_files_subset = supporting_files[i : i + batch_size]
+            supporting_files_subset = supporting_files[i: i + batch_size]
             upload_tokens = [sf.upload_token for sf in supporting_files_subset]
             upload_supporting_files(upload_tokens)
 

@@ -14,6 +14,6 @@ condor_accounting_group = "no.group"
 condor_accounting_user = "no.one"
 
 try:
-    from local import *
+    from local import *  # noqa: F401, F403
 except Exception:
     pass

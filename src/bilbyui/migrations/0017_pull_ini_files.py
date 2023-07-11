@@ -39,7 +39,7 @@ def pull_ini_files(apps, schema_editor):
 
             print(f"Successfully fetched ini file for Job {job}")
 
-        except:
+        except:  # noqa: E722
             print(f"Unable to fetch ini file for {job} reason unknown - job server did not return 200.")
 
 
