@@ -117,30 +117,30 @@ const NewJob = ({initialValues, router, data}) => {
                     <JobTitle formik={formik} />
                 </Col>
             </Row>
-            <Tab.Container id="jobForm" activeKey={key} onSelect={(key) => setKey(key)}>
+            <Tab.Container id='jobForm' activeKey={key} onSelect={(key) => setKey(key)}>
                 <Row>
                     <Col md={2}>
-                        <Nav className="flex-column">
+                        <Nav className='flex-column'>
                             <Nav.Item>
-                                <Nav.Link eventKey="data">
+                                <Nav.Link eventKey='data'>
                                     <h5>Data</h5>
                                     <p>Type and detectors</p>
                                 </Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
-                                <Nav.Link eventKey="signal">
+                                <Nav.Link eventKey='signal'>
                                     <h5>Signal</h5>
                                     <p>Injection type and details</p>
                                 </Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
-                                <Nav.Link eventKey="priorsAndSampler">
+                                <Nav.Link eventKey='priorsAndSampler'>
                                     <h5>Priors & Sampler</h5>
                                     <p>Default prior and sampler parameters</p>
                                 </Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
-                                <Nav.Link eventKey="review">
+                                <Nav.Link eventKey='review'>
                                     <h5>Review</h5>
                                     <p>Finalise and start your job</p>
                                 </Nav.Link>
@@ -149,16 +149,16 @@ const NewJob = ({initialValues, router, data}) => {
                     </Col>
                     <Col md={8}>
                         <Tab.Content>
-                            <Tab.Pane eventKey="data">
+                            <Tab.Pane eventKey='data'>
                                 <DataForm formik={formik} handlePageChange={setKey} data={data}/>
                             </Tab.Pane>
-                            <Tab.Pane data-testid="signalPane" eventKey="signal">
+                            <Tab.Pane data-testid='signalPane' eventKey='signal'>
                                 <SignalForm formik={formik} handlePageChange={setKey}/>
                             </Tab.Pane>
-                            <Tab.Pane eventKey="priorsAndSampler">
+                            <Tab.Pane eventKey='priorsAndSampler'>
                                 <PriorsForm formik={formik} handlePageChange={setKey}/>
                             </Tab.Pane>
-                            <Tab.Pane eventKey="review">
+                            <Tab.Pane eventKey='review'>
                                 <ReviewJob
                                     formik={formik}
                                     values={formik.values}

@@ -33,28 +33,28 @@ const MyJobs = ({data, match, router,relay}) => {
     };
 
     return (
-        <Container fluid className="pb-3">
+        <Container fluid className='pb-3'>
             <Col md={{offset: 1, span: 10}}>
-                <h1 className="pt-5 mb-4">
+                <h1 className='pt-5 mb-4'>
                     My Jobs
-                    <span className="float-right">
+                    <span className='float-right'>
                         <Link 
                             as={Button}
-                            variant="outline-primary"
+                            variant='outline-primary'
                             to='/bilby/' 
                             exact 
                             match={match}
                             router={router}
-                            className="mr-1">
+                            className='mr-1'>
                                 Switch to public jobs
                         </Link>
                         <Link as={Button} to='/bilby/job-form/' exact match={match} router={router}>
-                            <HiOutlinePlus size={18} className="mb-1 mr-1"/>
+                            <HiOutlinePlus size={18} className='mb-1 mr-1'/>
                                 Start a new job 
                         </Link>
                     </span>
                 </h1>
-                <Card className="gw-form-card">
+                <Card className='gw-form-card'>
                     <Card.Body>
                         <JobSearchForm
                             search={search}
@@ -62,7 +62,7 @@ const MyJobs = ({data, match, router,relay}) => {
                             timeRange={timeRange}
                             setTimeRange={setTimeRange}
                         />
-                        <Row className="mt-4">
+                        <Row className='mt-4'>
                             <Col>
                                 <JobTable
                                     data={data.bilbyJobs} 

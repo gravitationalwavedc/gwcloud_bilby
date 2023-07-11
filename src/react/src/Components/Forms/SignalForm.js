@@ -10,13 +10,13 @@ const SignalForm = ({formik, handlePageChange}) => {
         <React.Fragment>
             <Row>
                 <Col>
-                    <FormCard title="Signal">
+                    <FormCard title='Signal'>
                         <Row>
                             <Col>
                                 <RadioGroup 
                                     formik={formik} 
-                                    title="Injection" 
-                                    name="signalChoice" 
+                                    title='Injection' 
+                                    name='signalChoice' 
                                     options={[
                                         {label: 'None', value: 'skip'}, 
                                         {label: 'Binary Black Hole', value: 'binaryBlackHole'}, 
@@ -30,40 +30,40 @@ const SignalForm = ({formik, handlePageChange}) => {
             <Row>
                 <Col>
                     <FormCard 
-                        title="Injected Signal Parameters" 
+                        title='Injected Signal Parameters' 
                         disabled={signalDisabled}>
                         <Row>
                             <Col>
                                 <Input 
                                     formik={formik} 
-                                    title="Mass 1 (M&#9737;)" 
-                                    name="mass1" 
-                                    type="number" 
+                                    title='Mass 1 (M&#9737;)' 
+                                    name='mass1' 
+                                    type='number' 
                                     disabled={signalDisabled}/>
                             </Col>
                             <Col>
                                 <Input 
                                     formik={formik} 
-                                    title="Mass 2 (M&#9737;)" 
-                                    name="mass2" 
-                                    type="number" disabled={signalDisabled} />
+                                    title='Mass 2 (M&#9737;)' 
+                                    name='mass2' 
+                                    type='number' disabled={signalDisabled} />
                             </Col>
                         </Row>
                         <Row>
                             <Col>
                                 <Input 
                                     formik={formik} 
-                                    title="Luminosity distance (Mpc)" 
-                                    name="luminosityDistance" 
-                                    type="number"
+                                    title='Luminosity distance (Mpc)' 
+                                    name='luminosityDistance' 
+                                    type='number'
                                     disabled={signalDisabled}/>
                             </Col>
                             <Col>
                                 <Input 
                                     formik={formik} 
-                                    title="Merger time (GPS)" 
-                                    name="mergerTime" 
-                                    type="number" 
+                                    title='Merger time (GPS)' 
+                                    name='mergerTime' 
+                                    type='number' 
                                     disabled={signalDisabled}/>
                             </Col>
                         </Row>
@@ -71,17 +71,17 @@ const SignalForm = ({formik, handlePageChange}) => {
                             <Col>
                                 <Input 
                                     formik={formik} 
-                                    title="psi" 
-                                    name="psi" 
-                                    type="number" 
+                                    title='psi' 
+                                    name='psi' 
+                                    type='number' 
                                     disabled={signalDisabled} />
                             </Col>
                             <Col>
                                 <Input 
                                     formik={formik} 
-                                    title="iota" 
-                                    name="iota" 
-                                    type="number"
+                                    title='iota' 
+                                    name='iota' 
+                                    type='number'
                                     disabled={signalDisabled}/>
                             </Col>
                         </Row>
@@ -89,9 +89,9 @@ const SignalForm = ({formik, handlePageChange}) => {
                             <Col>
                                 <Input 
                                     formik={formik} 
-                                    title="Phase" 
-                                    name="phase" 
-                                    type="number"
+                                    title='Phase' 
+                                    name='phase' 
+                                    type='number'
                                     disabled={signalDisabled}/>
                             </Col>
                             <Col />
@@ -100,17 +100,17 @@ const SignalForm = ({formik, handlePageChange}) => {
                             <Col>
                                 <Input 
                                     formik={formik} 
-                                    title="Right ascension (radians)" 
-                                    name="ra" 
-                                    type="number"
+                                    title='Right ascension (radians)' 
+                                    name='ra' 
+                                    type='number'
                                     disabled={signalDisabled}/>
                             </Col>
                             <Col>
                                 <Input 
                                     formik={formik} 
-                                    title="Declination (degrees)" 
-                                    name="dec" 
-                                    type="number"
+                                    title='Declination (degrees)' 
+                                    name='dec' 
+                                    type='number'
                                     disabled={signalDisabled}/>
                             </Col>
                         </Row>

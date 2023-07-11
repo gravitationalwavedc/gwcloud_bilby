@@ -12,8 +12,8 @@ const spinnerStyle = {
 };
 
 const Loading = () => 
-    <Spinner animation="border" role="status" style={spinnerStyle}>
-        <span className="sr-only">Loading...</span>
+    <Spinner animation='border' role='status' style={spinnerStyle}>
+        <span className='sr-only'>Loading...</span>
     </Spinner>
 ;
 

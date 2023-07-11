@@ -5,7 +5,7 @@ import { getBadgeType } from '../getVariants';
 
 const LabelBadge = ({ name, dismissable, onDismiss }) => 
 
-    <h5 className="d-inline ml-1">
+    <h5 className='d-inline ml-1'>
         <Badge
             variant={getBadgeType(name)} 
             key={name} 
@@ -14,8 +14,8 @@ const LabelBadge = ({ name, dismissable, onDismiss }) =>
             {name}
             {
                 dismissable &&
-                <a data-testid="dismissable-link" role='button' className="text-light" onClick={onDismiss}>
-                    <HiOutlineX className="ml-3"/>
+                <a data-testid='dismissable-link' role='button' className='text-light' onClick={onDismiss}>
+                    <HiOutlineX className='ml-3'/>
                 </a>
             }
         </Badge>

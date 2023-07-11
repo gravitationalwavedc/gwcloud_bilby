@@ -28,10 +28,10 @@ const LabelDropdown = ({data, jobId, onUpdate, modifiable}) => {
 
 
     return (
-        <Row className="mb-1">
+        <Row className='mb-1'>
             {
                 labels.length > 0 && 
-                <Col md="auto" className="my-auto">
+                <Col md='auto' className='my-auto'>
                     {
                         labels.map(
                             name => 
@@ -46,9 +46,9 @@ const LabelDropdown = ({data, jobId, onUpdate, modifiable}) => {
                 </Col>
             }
             {(labelChoices.length > 0 && modifiable) &&
-            <Col className="my-auto">
+            <Col className='my-auto'>
                 <Dropdown>
-                    <Dropdown.Toggle as={CustomToggle} id="labelControl">
+                    <Dropdown.Toggle as={CustomToggle} id='labelControl'>
                         Add label
                     </Dropdown.Toggle>
                     <Dropdown.Menu>

@@ -9,38 +9,38 @@ const CancelButton = () => <HiOutlineX/>;
 const JobTitle = ({formik}) => (
     <React.Fragment>
         <EdiText 
-            type="text" 
-            name="name"
+            type='text' 
+            name='name'
             value={formik.values.name}
             viewProps={{className: 'h1'}}
             onSave={(value) => formik.setFieldValue('name', value)}
-            hint="You can use letters, numbers, underscores, and hyphens."
+            hint='You can use letters, numbers, underscores, and hyphens.'
             editButtonContent={<EditButton/>}
-            editButtonClassName="edit-button"
+            editButtonClassName='edit-button'
             saveButtonContent={<SaveButton />}
-            saveButtonClassName="save-button"
+            saveButtonClassName='save-button'
             cancelButtonContent={<CancelButton />}
-            cancelButtonClassName="cancel-button"
+            cancelButtonClassName='cancel-button'
             hideIcons
             editOnViewClick
             submitOnUnfocus
             submitOnEnter
         />
         {formik.errors.name && 
-          <p className="text-danger small">
+          <p className='text-danger small'>
               Invalid name. You can use letters, numbers, underscores, and hyphens.
           </p>}
         <EdiText 
-            type="text" 
-            name="description"
+            type='text' 
+            name='description'
             value={formik.values.description}
             onSave={(value) => formik.setFieldValue('description', value)}
             editButtonContent={<EditButton/>}
-            editButtonClassName="edit-button"
+            editButtonClassName='edit-button'
             saveButtonContent={<SaveButton />}
-            saveButtonClassName="save-button"
+            saveButtonClassName='save-button'
             cancelButtonContent={<CancelButton />}
-            cancelButtonClassName="cancel-button"
+            cancelButtonClassName='cancel-button'
             hideIcons
             editOnViewClick
             submitOnUnfocus

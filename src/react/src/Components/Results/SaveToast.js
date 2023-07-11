@@ -8,7 +8,7 @@ const SaveToast = ({ saved, show, message, onClose }) => show &&
             show={show} 
             delay={3000} 
             autohide>
-            <Toast.Header data-testid="toast-header">{saved ? 'Saved' : 'Save Failed'}</Toast.Header>
+            <Toast.Header data-testid='toast-header'>{saved ? 'Saved' : 'Save Failed'}</Toast.Header>
             <Toast.Body>{message}</Toast.Body>
         </Toast>;
 

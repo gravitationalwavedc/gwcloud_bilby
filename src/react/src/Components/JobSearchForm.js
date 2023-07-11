@@ -15,7 +15,7 @@ export default function JobSearchForm({search, setSearch, timeRange, setTimeRang
     return <Form onSubmit={e => e.preventDefault()}>
         <Form.Row>
             <Col lg={3}>
-                <Form.Group controlId="searchJobs" className="form-initial-height">
+                <Form.Group controlId='searchJobs' className='form-initial-height'>
                     <Form.Label srOnly>
                         Search
                     </Form.Label>
@@ -26,19 +26,19 @@ export default function JobSearchForm({search, setSearch, timeRange, setTimeRang
                             </InputGroup.Text>
                         </InputGroup.Prepend>
                         <Form.Control 
-                            placeholder="Find a job..." 
+                            placeholder='Find a job...' 
                             value={search} 
                             onChange={({target}) => setSearch(target.value)} />
                     </InputGroup>
                 </Form.Group>
             </Col>
             <Col lg={2}>
-                <Form.Group controlId="timeRange" className="form-initial-height">
+                <Form.Group controlId='timeRange' className='form-initial-height'>
                     <Form.Label srOnly>
                         Time
                     </Form.Label>
                     <Form.Control 
-                        as="select" 
+                        as='select' 
                         value={timeRange} 
                         onChange={({target}) => setTimeRange(target.value)} 
                         custom>

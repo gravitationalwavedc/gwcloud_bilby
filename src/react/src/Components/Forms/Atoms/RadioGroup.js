@@ -10,7 +10,7 @@ const RadioGroup = ({title, formik, name, options }) =>
                 id={ name + label }
                 key={ name + label }
                 label={ label } 
-                type="radio" 
+                type='radio' 
                 name={ name } 
                 value={ value } 
                 onChange={ formik.handleChange } 
