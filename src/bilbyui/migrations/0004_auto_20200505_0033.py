@@ -4,80 +4,72 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0003_bilbyjob_job_id'),
+        ("bilbyui", "0003_bilbyjob_job_id"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='prior',
-            name='fixed_value',
+            model_name="prior",
+            name="fixed_value",
         ),
         migrations.RemoveField(
-            model_name='prior',
-            name='prior_choice',
+            model_name="prior",
+            name="prior_choice",
         ),
         migrations.RemoveField(
-            model_name='prior',
-            name='uniform_max_value',
+            model_name="prior",
+            name="uniform_max_value",
         ),
         migrations.RemoveField(
-            model_name='prior',
-            name='uniform_min_value',
+            model_name="prior",
+            name="uniform_min_value",
         ),
         migrations.AddField(
-            model_name='prior',
-            name='prior',
+            model_name="prior",
+            name="prior",
             field=models.CharField(
-                choices=[
-                    ['4s', '4s'],
-                    ['8s', '8s'],
-                    ['16s', '16s'],
-                    ['32s', '32s'],
-                    ['64s', '64s'],
-                    ['128s', '128s']
-                ],
+                choices=[["4s", "4s"], ["8s", "8s"], ["16s", "16s"], ["32s", "32s"], ["64s", "64s"], ["128s", "128s"]],
                 default=0,
-                max_length=4
+                max_length=4,
             ),
             preserve_default=False,
         ),
         migrations.AlterField(
-            model_name='dataparameter',
-            name='name',
-            field=models.CharField(choices=[
-                ['hanford', 'Hanford'],
-                ['livingston', 'Livingston'],
-                ['virgo', 'Virgo'],
-                ['signal_duration', 'Signal Duration (s)'],
-                ['sampling_frequency', 'Sampling Frequency (Hz)'],
-                ['trigger_time', 'Trigger Time'],
-                ['hanfordChannel', 'Hanford Channel']],
-                max_length=20),
-        ),
-        migrations.AlterField(
-            model_name='signal',
-            name='signal_choice',
+            model_name="dataparameter",
+            name="name",
             field=models.CharField(
                 choices=[
-                    ['skip', 'None'],
-                    ['binaryBlackHole', 'Binary Black Hole'],
-                    ['binaryNeutronStar', 'Binary Neutron Star']
+                    ["hanford", "Hanford"],
+                    ["livingston", "Livingston"],
+                    ["virgo", "Virgo"],
+                    ["signal_duration", "Signal Duration (s)"],
+                    ["sampling_frequency", "Sampling Frequency (Hz)"],
+                    ["trigger_time", "Trigger Time"],
+                    ["hanfordChannel", "Hanford Channel"],
                 ],
-                default='skip',
-                max_length=50
+                max_length=20,
             ),
         ),
         migrations.AlterField(
-            model_name='signal',
-            name='signal_model',
+            model_name="signal",
+            name="signal_choice",
             field=models.CharField(
                 choices=[
-                    ['binaryBlackHole', 'Binary Black Hole'],
-                    ['binaryNeutronStar', 'Binary Neutron Star']
+                    ["skip", "None"],
+                    ["binaryBlackHole", "Binary Black Hole"],
+                    ["binaryNeutronStar", "Binary Neutron Star"],
                 ],
-                max_length=50
+                default="skip",
+                max_length=50,
+            ),
+        ),
+        migrations.AlterField(
+            model_name="signal",
+            name="signal_model",
+            field=models.CharField(
+                choices=[["binaryBlackHole", "Binary Black Hole"], ["binaryNeutronStar", "Binary Neutron Star"]],
+                max_length=50,
             ),
         ),
     ]

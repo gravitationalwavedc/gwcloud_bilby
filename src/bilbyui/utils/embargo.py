@@ -27,17 +27,17 @@ def qs_embargo_filter(qs):
     return qs.annotate(
         trigger_time=Cast(
             Subquery(
-                models.IniKeyValue.objects.filter(
-                    job=OuterRef('pk'), key='trigger_time', processed=True
-                ).values('value')
+                models.IniKeyValue.objects.filter(job=OuterRef("pk"), key="trigger_time", processed=True).values(
+                    "value"
+                )
             ),
             FloatField(),
         ),
         simulated=Subquery(
-            models.IniKeyValue.objects.filter(
-                job=OuterRef('pk'), key='n_simulation', processed=False
-            ).values('value')[:1]
-        )
+            models.IniKeyValue.objects.filter(job=OuterRef("pk"), key="n_simulation", processed=False).values("value")[
+                :1
+            ]
+        ),
     ).filter(Q(trigger_time__lt=settings.EMBARGO_START_TIME) | Q(simulated__gt=0))
 
 

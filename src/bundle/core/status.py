@@ -17,16 +17,12 @@ def get_submit_status(job):
     """
     sched = get_scheduler()
 
-    if 'submit_id' in job:
-        _status, info = sched.status(job['submit_id'], job)
+    if "submit_id" in job:
+        _status, info = sched.status(job["submit_id"], job)
 
         # If the job is a state less than or equal to running, return it's state
         if _status <= JobStatus.RUNNING:
-            result = {
-                'what': 'submit',
-                'status': _status,
-                'info': info
-            }
+            result = {"what": "submit", "status": _status, "info": info}
 
             return result, False
 
@@ -36,23 +32,15 @@ def get_submit_status(job):
             _bundledb.delete_job(job)
 
             # Report the error
-            result = {
-                'what': 'submit',
-                'status': _status,
-                'info': info
-            }
+            result = {"what": "submit", "status": _status, "info": info}
 
             return result, True
 
         # The batch submission was successful, remove the submit id from the job
-        del job['submit_id']
+        del job["submit_id"]
         _bundledb.create_or_update_job(job)
 
-    result = {
-        'what': 'submit',
-        'status': JobStatus.COMPLETED,
-        'info': "Completed"
-    }
+    result = {"what": "submit", "status": JobStatus.COMPLETED, "info": "Completed"}
 
     return result, False
 
@@ -65,26 +53,16 @@ def condor_status(job):
     :return: The same return type from submit()
     """
     sched = get_scheduler()
-    _status, info = sched.status(job['submit_id'], job)
-    result = [{
-        'what': 'submit',
-        'status': _status,
-        'info': info
-    }]
+    _status, info = sched.status(job["submit_id"], job)
+    result = [{"what": "submit", "status": _status, "info": info}]
 
     if _status <= JobStatus.RUNNING:
-        return {
-            'status': result,
-            'complete': False
-        }
+        return {"status": result, "complete": False}
     else:
         # Job is completed, or an error occurred
         _bundledb.delete_job(job)
 
-        return {
-            'status': result,
-            'complete': True
-        }
+        return {"status": result, "complete": True}
 
 
 def slurm_status(job):
@@ -100,22 +78,16 @@ def slurm_status(job):
 
     # If there was an error with the submit step, mark the job as completed and return the error status
     if error:
-        return {
-            'status': result_status,
-            'complete': True
-        }
+        return {"status": result_status, "complete": True}
 
     # Get the path to the slurm id's file
-    sid_file = os.path.join(job['working_directory'], job['submit_directory'], 'slurm_ids')
+    sid_file = os.path.join(job["working_directory"], job["submit_directory"], "slurm_ids")
 
     # Check if the slurm_ids file exists
     if not os.path.exists(sid_file):
-        return {
-            'status': result_status,
-            'complete': False
-        }
+        return {"status": result_status, "complete": False}
 
-    with open(sid_file, 'r') as f:
+    with open(sid_file, "r") as f:
         slurm_ids = [line.strip() for line in f.readlines()]
 
     # Track the job statuses
@@ -125,16 +97,12 @@ def slurm_status(job):
     # Iterate over each job id and record it's status
     sched = get_scheduler()
     for _sid in slurm_ids:
-        what = _sid.split(' ')[0]
-        sid = _sid.split(' ')[1]
+        what = _sid.split(" ")[0]
+        sid = _sid.split(" ")[1]
 
         jid_status, info = sched.status(sid, job)
 
-        result_status.append({
-            'what': what,
-            'status': jid_status,
-            'info': info
-        })
+        result_status.append({"what": what, "status": jid_status, "info": info})
 
         statuses.append(jid_status)
 
@@ -150,10 +118,7 @@ def slurm_status(job):
     if completed:
         _bundledb.delete_job(job)
 
-    return {
-        'status': result_status,
-        'complete': completed
-    }
+    return {"status": result_status, "complete": completed}
 
 
 def status(details, *args, **kwargs):
@@ -175,19 +140,14 @@ def status(details, *args, **kwargs):
     }
     """
     # Get the job
-    job = _bundledb.get_job_by_id(details['scheduler_id'])
+    job = _bundledb.get_job_by_id(details["scheduler_id"])
     if not job:
         # Job doesn't exist. Report error
-        result = [{
-            'what': "system",
-            'status': JobStatus.ERROR,
-            'info': "Job does not exist. Perhaps it failed to start?"
-        }]
+        result = [
+            {"what": "system", "status": JobStatus.ERROR, "info": "Job does not exist. Perhaps it failed to start?"}
+        ]
 
-        return {
-            'status': result,
-            'complete': True
-        }
+        return {"status": result, "complete": True}
 
     # Use the relevant scheduler to obtain the job status
     if settings.scheduler == EScheduler.CONDOR:

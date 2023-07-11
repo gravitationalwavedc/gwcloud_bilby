@@ -4,7 +4,7 @@ from django.db import migrations
 def update_preferred_label(apps, schema_editor):
     Label = apps.get_model("bilbyui", "Label")
 
-    for label in Label.objects.filter(name='Preferred'):
+    for label in Label.objects.filter(name="Preferred"):
         label.name = "Official"
         label.save()
 
@@ -12,15 +12,14 @@ def update_preferred_label(apps, schema_editor):
 def rollback_preferred_label(apps, schema_editor):
     Label = apps.get_model("bilbyui", "Label")
 
-    for label in Label.objects.filter(name='Official'):
+    for label in Label.objects.filter(name="Official"):
         label.name = "Preferred"
         label.save()
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0033_auto_20220810_0113'),
+        ("bilbyui", "0033_auto_20220810_0113"),
     ]
 
     operations = [

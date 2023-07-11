@@ -4,11 +4,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0015_insert_preferred_label'),
-        ('bilbyui', '0014_merge_20210527_0404'),
+        ("bilbyui", "0015_insert_preferred_label"),
+        ("bilbyui", "0014_merge_20210527_0404"),
     ]
 
-    operations = [
-    ]
+    operations = []

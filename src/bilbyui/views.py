@@ -24,19 +24,19 @@ from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 
 def validate_job_name(name):
     if len(name) < 5:
-        raise Exception('Job name must be at least 5 characters long.')
+        raise Exception("Job name must be at least 5 characters long.")
 
     if len(name) > 30:
-        raise Exception('Job name must be less than 30 characters long.')
+        raise Exception("Job name must be less than 30 characters long.")
 
     pattern = re.compile(r"^[0-9a-z_-]+\Z", flags=re.IGNORECASE | re.ASCII)
     if not pattern.match(name):
-        raise Exception('Job name must not contain any spaces or special characters.')
+        raise Exception("Job name must not contain any spaces or special characters.")
 
 
 def create_bilby_job(user, params):
-    if should_embargo_job(user, float(params.data.trigger_time), params.data.data_choice == 'simulated'):
-        raise Exception('Only LIGO users may run real jobs on embargoed LIGO data')
+    if should_embargo_job(user, float(params.data.trigger_time), params.data.data_choice == "simulated"):
+        raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
     validate_job_name(params.details.name)
 
@@ -50,11 +50,7 @@ def create_bilby_job(user, params):
     maximum_frequencies = {}
     minimum_frequencies = {}
     channels = {}
-    for k, v in {
-        ('hanford', 'H1'),
-        ('livingston', 'L1'),
-        ('virgo', 'V1')
-    }:
+    for k, v in {("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")}:
         if getattr(params.detector, k):
             detectors.append(v)
             maximum_frequencies[v] = str(getattr(params.detector, k + "_maximum_frequency"))
@@ -74,11 +70,11 @@ def create_bilby_job(user, params):
         frequency_domain_source_model = "lal_binary_neutron_star"
 
     sampler_kwargs = {
-        'nlive': params.sampler.nlive,
-        'nact': params.sampler.nact,
-        'maxmcmc': params.sampler.maxmcmc,
-        'walks': params.sampler.walks,
-        'dlogz': str(params.sampler.dlogz)
+        "nlive": params.sampler.nlive,
+        "nact": params.sampler.nact,
+        "maxmcmc": params.sampler.maxmcmc,
+        "walks": params.sampler.walks,
+        "dlogz": str(params.sampler.dlogz),
     }
 
     # Parse the input parameters in to an argument dict
@@ -87,120 +83,92 @@ def create_bilby_job(user, params):
         # Calibration arguments
         # Which calibration model and settings to use.
         ################################################################################
-
         ################################################################################
         # Data generation arguments
         # How to generate the data, e.g., from a list of gps times or simulated Gaussian noise.
         ################################################################################
-
         # The trigger time
         "trigger-time": params.data.trigger_time or "None",
-
         # If true, use simulated Gaussian noise
         "gaussian-noise": gaussian_noise,
-
         # Number of simulated segments to use with gaussian-noise Note, this must match the number of injections
         # specified
         "n-simulation": num_simulated,
-
         # Channel dictionary: keys relate to the detector with values the channel name, e.g. 'GDS-CALIB_STRAIN'.
         # For GWOSC open data, set the channel-dict keys to 'GWOSC'. Note, the dictionary should follow basic python
         # dict syntax.
         "channel-dict": repr(channels),
-
         ################################################################################
         # Detector arguments
         # How to set up the interferometers and power spectral density.
         ################################################################################
-
         # The names of detectors to use. If given in the ini file, detectors are specified by `detectors=[H1, L1]`. If
         # given at the command line, as `--detectors H1 --detectors L1`
         "detectors": repr(detectors),
-
         # The duration of data around the event to use
         "duration": params.detector.duration,
-
         # None
         "sampling-frequency": params.detector.sampling_frequency,
-
         # The maximum frequency, given either as a float for all detectors or as a dictionary (see minimum-frequency)
         "maximum-frequency": repr(maximum_frequencies),
-
         # The minimum frequency, given either as a float for all detectors or as a dictionary where all keys relate
         # the detector with values of the minimum frequency, e.g. {H1: 10, L1: 20}. If the waveform generation should
         # start the minimum frequency for any of the detectors, add another entry to the dictionary,
         # e.g., {H1: 40, L1: 60, waveform: 20}.
         "minimum-frequency": repr(minimum_frequencies),
-
         ################################################################################
         # Injection arguments
         # Whether to include software injections and how to generate them.
         ################################################################################
-
         ################################################################################
         # Job submission arguments
         # How the jobs should be formatted, e.g., which job scheduler to use.
         ################################################################################
-
         # Output label
         "label": params.details.name,
-
         # Use multi-processing. This options sets the number of cores to request. To use a pool of 8 threads on an
         # 8-core CPU, set request-cpus=8. For the dynesty, ptemcee, cpnest, and bilby_mcmc samplers, no additional
         # sampler-kwargs are required
         "request-cpus": params.sampler.cpus,
-
         # Some parameters set by job controller client
-
         ################################################################################
         # Likelihood arguments
         # Options for setting up the likelihood.
         ################################################################################
-
         ################################################################################
         # Output arguments
         # What kind of output/summary to generate.
         ################################################################################
-
         # Some parameters set by job controller client
-
         ################################################################################
         # Prior arguments
         # Specify the prior settings.
         ################################################################################
-
         # The prior file
         "prior-file": params.prior.prior_default,
-
         ################################################################################
         # Post processing arguments
         # What post-processing to perform.
         ################################################################################
-
         ################################################################################
         # Sampler arguments
         # None
         ################################################################################
-
         # Sampler to use
         "sampler": params.sampler.sampler_choice,
-
         # Dictionary of sampler-kwargs to pass in, e.g., {nlive: 1000} OR pass pre-defined set of sampler-kwargs
         # {Default, FastTest}
         "sampler-kwargs": repr(sampler_kwargs),
-
         ################################################################################
         # Waveform arguments
         # Setting for the waveform generator
         ################################################################################
-
         # Turns on waveform error catching
         "catch-waveform-errors": True,
-
         # Name of the frequency domain source model. Can be one of[lal_binary_black_hole, lal_binary_neutron_star,
         # lal_eccentric_binary_black_hole_no_spins, sinegaussian, supernova, supernova_pca_model] or any python path
         # to a bilby  source function the users installation, e.g. examp.source.bbh
-        "frequency-domain-source-model": frequency_domain_source_model
+        "frequency-domain-source-model": frequency_domain_source_model,
     }
 
     # Create an argument parser
@@ -216,7 +184,7 @@ def create_bilby_job(user, params):
         # Make sure the data is flushed
         f.flush()
 
-        ini_string = f.read().decode('utf-8')
+        ini_string = f.read().decode("utf-8")
 
     event_id = EventID.get_by_event_id(params.data.event_id, user) if params.data.event_id else None
 
@@ -228,7 +196,7 @@ def create_bilby_job(user, params):
         is_ligo_job=is_ligo_job,
         ini_string=ini_string,
         cluster=params.details.cluster,
-        event_id=event_id
+        event_id=event_id,
     )
 
     # Submit the job to the job controller
@@ -258,18 +226,18 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
         supporting_files[SupportingFile.INJECTION] = injection_file
 
     for supporting_file_type, config_name in {
-        SupportingFile.PSD: 'psd_dict',
-        SupportingFile.CALIBRATION: 'spline_calibration_envelope_dict',
-        SupportingFile.NUMERICAL_RELATIVITY: 'numerical_relativity_file',
-        SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE: 'distance_marginalization_lookup_table',
-        SupportingFile.DATA: 'data_dict'
+        SupportingFile.PSD: "psd_dict",
+        SupportingFile.CALIBRATION: "spline_calibration_envelope_dict",
+        SupportingFile.NUMERICAL_RELATIVITY: "numerical_relativity_file",
+        SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE: "distance_marginalization_lookup_table",
+        SupportingFile.DATA: "data_dict",
     }.items():
-        if config_name == 'psd_dict':
+        if config_name == "psd_dict":
             if not psd_dict:
                 continue
 
             config = convert_string_to_dict(psd_dict, "psd-dict")
-        elif config_name == 'distance_marginalization_lookup_table':
+        elif config_name == "distance_marginalization_lookup_table":
             # Bilby pipe has a weird way to deal with default distance marginalisation tables. If the distance
             # marginalisation lookup table is None, then bilby_pipe will copy a default one for the specified prior
             # in to the current working directory. Then upon our code trying to check if that file exists, we get an
@@ -345,14 +313,14 @@ def create_bilby_job_from_ini_string(user, params):
     is_ligo_job = False
 
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
-    args = bilby_ini_string_to_args(params.ini_string.ini_string.encode('utf-8'))
+    args = bilby_ini_string_to_args(params.ini_string.ini_string.encode("utf-8"))
 
     trigger_time = float(args.trigger_time) if args.trigger_time is not None else None
     n_simulation = args.n_simulation if args.n_simulation is not None else None
     if should_embargo_job(user, trigger_time, n_simulation):
-        raise Exception('Only LIGO users may run real jobs on embargoed LIGO data')
+        raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
-    if args.outdir == '.':
+    if args.outdir == ".":
         args.outdir = "./"
 
     # Get the files for any supporting files if they exist
@@ -369,13 +337,7 @@ def create_bilby_job_from_ini_string(user, params):
 
     # Parse any supporting files
     supporting_files = parse_supporting_files(
-        parser,
-        args,
-        prior_file,
-        gps_file,
-        timeslide_file,
-        injection_file,
-        psd_dict
+        parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict
     )
 
     # Override any required fields
@@ -392,7 +354,7 @@ def create_bilby_job_from_ini_string(user, params):
         private=params.details.private,
         ini_string=ini_string,
         is_ligo_job=is_ligo_job,
-        cluster=params.details.cluster
+        cluster=params.details.cluster,
     )
     bilby_job.save()
 
@@ -416,7 +378,7 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
             bilby_job.labels.set(Label.filter_by_name(labels) | protected_labels)
 
         if event_id is not None:
-            bilby_job.event_id = None if event_id == '' else EventID.objects.get(event_id=event_id)
+            bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
 
         if private is not None:
             bilby_job.private = private
@@ -430,34 +392,33 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
 
         bilby_job.save()
 
-        return 'Job saved!'
+        return "Job saved!"
 
     elif user.user_id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
-        bilby_job.event_id = None if event_id == '' else EventID.objects.get(event_id=event_id)
+        bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
 
         bilby_job.save()
 
-        return 'Job saved'
+        return "Job saved"
 
     else:
-        raise Exception('You must own the job to change it!')
+        raise Exception("You must own the job to change it!")
 
 
 def upload_bilby_job(user, upload_token, details, job_file):
     is_ligo_job = False
 
     # Check that the uploaded file is a tar.gz file
-    if not job_file.name.endswith('tar.gz'):
+    if not job_file.name.endswith("tar.gz"):
         raise Exception("Job upload should be a tar.gz file")
 
     # Check that the job upload directory exists
     os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
 
     # Write out the uploaded job to disk and unpack the archive to a temporary staging directory
-    with TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir, \
-            NamedTemporaryFile(dir=settings.JOB_UPLOAD_STAGING_DIR, suffix='.tar.gz') as job_upload_file, \
-            UploadedFile(job_file) as django_job_file:
-
+    with TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir, NamedTemporaryFile(
+        dir=settings.JOB_UPLOAD_STAGING_DIR, suffix=".tar.gz"
+    ) as job_upload_file, UploadedFile(job_file) as django_job_file:
         # Write the uploaded file to the temporary file
         for c in django_job_file.chunks():
             job_upload_file.write(c)
@@ -465,10 +426,10 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
         # Unpack the archive to the temporary directory
         p = subprocess.Popen(
-            ['tar', '-xvf', job_upload_file.name, '.'],
+            ["tar", "-xvf", job_upload_file.name, "."],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            cwd=job_staging_dir
+            cwd=job_staging_dir,
         )
         out, err = p.communicate()
 
@@ -480,19 +441,17 @@ def upload_bilby_job(user, upload_token, details, job_file):
             raise Exception("Invalid or corrupt tar.gz file")
 
         # Validate the directory structure, this should include 'data', 'result', and 'results_page' at minimum
-        for directory in [
-            'data',
-            'result',
-            'results_page'
-        ]:
+        for directory in ["data", "result", "results_page"]:
             if not os.path.isdir(os.path.join(job_staging_dir, directory)):
                 raise Exception(f"Invalid directory structure, expected directory ./{directory} to exist.")
 
         # Find the config complete ini
-        ini_file = list(filter(
-            lambda x: os.path.isfile(os.path.join(job_staging_dir, x)) and x.endswith("_config_complete.ini"),
-            os.listdir(job_staging_dir)
-        ))
+        ini_file = list(
+            filter(
+                lambda x: os.path.isfile(os.path.join(job_staging_dir, x)) and x.endswith("_config_complete.ini"),
+                os.listdir(job_staging_dir),
+            )
+        )
 
         if len(ini_file) != 1:
             raise Exception(
@@ -502,16 +461,16 @@ def upload_bilby_job(user, upload_token, details, job_file):
         ini_file = ini_file[0]
 
         # Read the ini file
-        with open(os.path.join(job_staging_dir, ini_file), 'r') as f:
+        with open(os.path.join(job_staging_dir, ini_file), "r") as f:
             ini_content = f.read()
 
         # Parse the ini file to check it's validity
-        args = bilby_ini_string_to_args(ini_content.encode('utf-8'))
+        args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
 
         trigger_time = float(args.trigger_time) if args.trigger_time is not None else None
         n_simulation = args.n_simulation if args.n_simulation is not None else None
         if should_embargo_job(user, trigger_time, n_simulation):
-            raise Exception('Only LIGO users may run real jobs on embargoed LIGO data')
+            raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
         validate_job_name(args.label)
 
@@ -547,13 +506,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
         # Parse any supporting files
         supporting_files = parse_supporting_files(
-            parser,
-            args,
-            prior_file,
-            gps_file,
-            timeslide_file,
-            injection_file,
-            psd_dict
+            parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict
         )
 
         # Convert the modified arguments back to an ini string
@@ -573,7 +526,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
                 private=details.private,
                 ini_string=ini_string,
                 is_ligo_job=is_ligo_job,
-                job_type=BilbyJobType.UPLOADED
+                job_type=BilbyJobType.UPLOADED,
             )
             bilby_job.save()
 
@@ -586,14 +539,14 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
             # Make sure the source supporting file exists
             for supporting_file in supporting_file_details:
-                source_file = Path(job_staging_dir) / supporting_file['file_path']
+                source_file = Path(job_staging_dir) / supporting_file["file_path"]
                 if not source_file.is_file():
                     raise Exception(f"Supporting file {supporting_file['file_path']} does not exist.")
 
                 # Because we're in a transaction here, the bulk_create in `SupportingFile.save_from_parsed` isn't saved
                 # so we need to fetch it again from the database to get the inserted ID
-                supporting_file_instance = SupportingFile.objects.get(download_token=supporting_file['download_token'])
-                source_file = Path(job_staging_dir) / supporting_file['file_path']
+                supporting_file_instance = SupportingFile.objects.get(download_token=supporting_file["download_token"])
+                source_file = Path(job_staging_dir) / supporting_file["file_path"]
                 shutil.copyfile(source_file, supporting_file_dir / str(supporting_file_instance.id))
 
             # Now we have the bilby job id, we can move the staging directory to the actual job directory
@@ -602,10 +555,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
             # Finally generate the archive.tar.gz file
             p = subprocess.Popen(
-                ['tar', '-cvf', 'archive.tar.gz', '.'],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=job_dir
+                ["tar", "-cvf", "archive.tar.gz", "."], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=job_dir
             )
             out, err = p.communicate()
 
@@ -626,7 +576,7 @@ def file_download_job_file(request, fdl):
 
     # Make sure that there is no leading slash on the file path
     file_path = fdl.path
-    while len(file_path) and file_path[0] == '/':
+    while len(file_path) and file_path[0] == "/":
         file_path = file_path[1:]
 
     # Get the full file path
@@ -634,10 +584,10 @@ def file_download_job_file(request, fdl):
 
     # Use a django file response object to stream the file back to the client
     return FileResponse(
-        open(file_path, 'rb'),
-        as_attachment='forceDownload' in request.GET,
+        open(file_path, "rb"),
+        as_attachment="forceDownload" in request.GET,
         filename=os.path.basename(file_path),
-        content_type='application/octet-stream'
+        content_type="application/octet-stream",
     )
 
 
@@ -650,16 +600,16 @@ def file_download_supporting_file(request, supporting_file):
 
     # Use a django file response object to stream the file back to the client
     return FileResponse(
-        open(file_path, 'rb'),
-        as_attachment='forceDownload' in request.GET,
+        open(file_path, "rb"),
+        as_attachment="forceDownload" in request.GET,
         filename=supporting_file.file_name,
-        content_type='application/octet-stream'
+        content_type="application/octet-stream",
     )
 
 
 def file_download(request):
     # Get the file token from the request and make sure it's real
-    token = request.GET.get('fileId', None)
+    token = request.GET.get("fileId", None)
     if not token:
         raise Http404
 
@@ -692,7 +642,7 @@ def create_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is
         gps_time=gps_time,
     )
 
-    return f'EventID {event_id} succesfully created!'
+    return f"EventID {event_id} succesfully created!"
 
 
 def update_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=None):
@@ -708,13 +658,13 @@ def update_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is
     for job in event.bilbyjob_set.all():
         job.elastic_search_update()
 
-    return f'EventID {event_id} succesfully updated!'
+    return f"EventID {event_id} succesfully updated!"
 
 
 def delete_event_id(user, event_id):
     event = EventID.get_by_event_id(event_id, user)
     event.delete()
-    return f'EventID {event_id} succesfully deleted!'
+    return f"EventID {event_id} succesfully deleted!"
 
 
 def upload_supporting_files(upload_tokens, uploaded_supporting_files):
@@ -723,7 +673,7 @@ def upload_supporting_files(upload_tokens, uploaded_supporting_files):
         job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(upload_token.job.id)
         os.makedirs(job_dir, exist_ok=True)
 
-        with open(job_dir / str(upload_token.id), 'wb') as supporting_file:
+        with open(job_dir / str(upload_token.id), "wb") as supporting_file:
             # Write the uploaded file to the temporary file
             for c in uploaded_supporting_file.chunks():
                 supporting_file.write(c)

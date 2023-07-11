@@ -31,29 +31,21 @@ def submit_job(user_id, params, cluster):
         raise Exception(msg)
 
     # Construct the request parameters to the job controller, note that parameters must be a string, not an object
-    data = {
-        "parameters": json.dumps(params),
-        "cluster": cluster,
-        "bundle": "fbc9f7c0815f1a83b0de36f957351c93797b2049"
-    }
+    data = {"parameters": json.dumps(params), "cluster": cluster, "bundle": "fbc9f7c0815f1a83b0de36f957351c93797b2049"}
 
     # Create the jwt token
     jwt_enc = jwt.encode(
-        {
-            'userId': user_id,
-            'exp': datetime.datetime.now() + datetime.timedelta(days=30)
-        },
+        {"userId": user_id, "exp": datetime.datetime.now() + datetime.timedelta(days=30)},
         settings.JOB_CONTROLLER_JWT_SECRET,
-        algorithm='HS256'
+        algorithm="HS256",
     )
 
     # Initiate the request to the job controller
     result = requests.request(
-        "POST", settings.GWCLOUD_JOB_CONTROLLER_API_URL + "/job/",
+        "POST",
+        settings.GWCLOUD_JOB_CONTROLLER_API_URL + "/job/",
         data=json.dumps(data),
-        headers={
-            "Authorization": jwt_enc
-        }
+        headers={"Authorization": jwt_enc},
     )
 
     # Check that the request was successful

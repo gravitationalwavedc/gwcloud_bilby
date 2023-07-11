@@ -25,40 +25,33 @@ class TestRequestFileListNotUploaded(BilbyTestCase):
         self.addCleanup(self.responses.stop)
         self.addCleanup(self.responses.reset)
 
-        self.job = BilbyJob.objects.create(
-            user_id=1234,
-            ini_string="detectors=['H1']"
-        )
+        self.job = BilbyJob.objects.create(user_id=1234, ini_string="detectors=['H1']")
 
     @silence_errors
     def test_request_file_list_not_uploaded(self):
         # Set up responses before any call to request
         # See https://github.com/getsentry/responses/pull/375
-        self.responses.add(
-            responses.PATCH,
-            f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
-            status=400
-        )
+        self.responses.add(responses.PATCH, f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/", status=400)
 
         return_result = [
-            {'path': '/a', 'isDir': True, 'fileSize': 0},
-            {'path': '/a/path', 'isDir': True, 'fileSize': 0},
-            {'path': '/a/path/here2.txt', 'isDir': False, 'fileSize': 12345},
-            {'path': '/a/path/here3.txt', 'isDir': False, 'fileSize': 123456},
-            {'path': '/a/path/here4.txt', 'isDir': False, 'fileSize': 1234567}
+            {"path": "/a", "isDir": True, "fileSize": 0},
+            {"path": "/a/path", "isDir": True, "fileSize": 0},
+            {"path": "/a/path/here2.txt", "isDir": False, "fileSize": 12345},
+            {"path": "/a/path/here3.txt", "isDir": False, "fileSize": 123456},
+            {"path": "/a/path/here4.txt", "isDir": False, "fileSize": 1234567},
         ]
         self.responses.add(
             responses.PATCH,
             f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
             body=json.dumps({"files": return_result}),
-            status=200
+            status=200,
         )
 
         # Test job not submitted
         self.job.job_controller_id = None
         self.job.save()
 
-        result = request_file_list(self.job, '.', True, self.job.user_id)
+        result = request_file_list(self.job, ".", True, self.job.user_id)
 
         self.assertEqual(result, (False, "Job not submitted"))
 
@@ -66,7 +59,7 @@ class TestRequestFileListNotUploaded(BilbyTestCase):
         self.job.job_controller_id = 4321
         self.job.save()
 
-        result = request_file_list(self.job, '.', True, self.job.user_id)
+        result = request_file_list(self.job, ".", True, self.job.user_id)
 
         self.assertEqual(result, (False, "Error getting job file list"))
 
@@ -74,7 +67,7 @@ class TestRequestFileListNotUploaded(BilbyTestCase):
         self.job.job_controller_id = 4321
         self.job.save()
 
-        result = request_file_list(self.job, '.', True, self.job.user_id)
+        result = request_file_list(self.job, ".", True, self.job.user_id)
 
         self.assertEqual(result, (True, return_result))
 
@@ -85,36 +78,26 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user)
 
-        token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
 
         # Create a new uploaded bilby job
         test_name = "myjob"
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string(
-            {
-                'label': test_name,
-                'detectors': "['H1']",
-                'outdir': './'
-            },
-            True
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']", "outdir": "./"}, True)
 
         test_file = SimpleUploadedFile(
-            name='test.tar.gz',
+            name="test.tar.gz",
             content=create_test_upload_data(test_ini_string, test_name),
-            content_type='application/gzip'
+            content_type="application/gzip",
         )
 
         test_input = {
             "input": {
                 "uploadToken": token,
-                "details": {
-                    "description": test_description,
-                    "private": test_private
-                },
-                "jobFile": test_file
+                "details": {"description": test_description, "private": test_private},
+                "jobFile": test_file,
             }
         }
 
@@ -128,65 +111,66 @@ class TestRequestFileListUploaded(BilbyTestCase):
                   }
                 }
             """,
-            test_input
+            test_input,
         )
 
         self.job = BilbyJob.objects.all().last()
 
     def test_request_file_list_uploaded(self):
         # Test "this file really sits under the working directory"
-        result = request_file_list(self.job, '../test/', True, self.job.user_id)
+        result = request_file_list(self.job, "../test/", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(self.job, '../../../../../../../../../bin/bash', True, self.job.user_id)
+        result = request_file_list(self.job, "../../../../../../../../../bin/bash", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(self.job, '../data/', True, self.job.user_id)
+        result = request_file_list(self.job, "../data/", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(self.job, './data/../../test/', True, self.job.user_id)
+        result = request_file_list(self.job, "./data/../../test/", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(self.job, './data', True, self.job.user_id)
+        result = request_file_list(self.job, "./data", True, self.job.user_id)
         self.assertEqual(result[0], True)
 
-        result = request_file_list(self.job, './result/../data', True, self.job.user_id)
+        result = request_file_list(self.job, "./result/../data", True, self.job.user_id)
         self.assertEqual(result[0], True)
 
         # Test "the path exists"
-        result = request_file_list(self.job, './data_not_exist/', True, self.job.user_id)
+        result = request_file_list(self.job, "./data_not_exist/", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(self.job, 'data_not_exist', True, self.job.user_id)
+        result = request_file_list(self.job, "data_not_exist", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(self.job, './data/not_exist', True, self.job.user_id)
+        result = request_file_list(self.job, "./data/not_exist", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(self.job, 'data', True, self.job.user_id)
+        result = request_file_list(self.job, "data", True, self.job.user_id)
         self.assertEqual(result[0], True)
 
-        result = request_file_list(self.job, './result', True, self.job.user_id)
+        result = request_file_list(self.job, "./result", True, self.job.user_id)
         self.assertEqual(result[0], True)
 
         # Test "the path is a directory"
-        result = request_file_list(self.job, 'myjob_config_complete.ini', True, self.job.user_id)
+        result = request_file_list(self.job, "myjob_config_complete.ini", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(self.job, 'data/H1_myjob_generation_frequency_domain_data.png', True,
-                                   self.job.user_id)
+        result = request_file_list(
+            self.job, "data/H1_myjob_generation_frequency_domain_data.png", True, self.job.user_id
+        )
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(self.job, 'results_page', True, self.job.user_id)
+        result = request_file_list(self.job, "results_page", True, self.job.user_id)
         self.assertEqual(result[0], True)
 
         # Test recursive file list
-        result = request_file_list(self.job, '', True, self.job.user_id)
-        self.assertTrue(len(list(filter(lambda x: 'overview.html' in x['path'], result[1]))))
+        result = request_file_list(self.job, "", True, self.job.user_id)
+        self.assertTrue(len(list(filter(lambda x: "overview.html" in x["path"], result[1]))))
 
         # Test non-recursive file list
-        result = request_file_list(self.job, '', False, self.job.user_id)
-        self.assertFalse(len(list(filter(lambda x: 'overview.html' in x['path'], result[1]))))
+        result = request_file_list(self.job, "", False, self.job.user_id)
+        self.assertFalse(len(list(filter(lambda x: "overview.html" in x["path"], result[1]))))
 
-        result = request_file_list(self.job, 'results_page', True, self.job.user_id)
-        self.assertTrue(len(list(filter(lambda x: 'overview.html' in x['path'], result[1]))))
+        result = request_file_list(self.job, "results_page", True, self.job.user_id)
+        self.assertTrue(len(list(filter(lambda x: "overview.html" in x["path"], result[1]))))

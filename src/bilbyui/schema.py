@@ -62,12 +62,12 @@ class EventIDType(DjangoObjectType):
 class UserBilbyJobFilter(FilterSet):
     class Meta:
         model = BilbyJob
-        fields = '__all__'
+        fields = "__all__"
 
     order_by = OrderingFilter(
         fields=(
-            ('last_updated', 'lastUpdated'),
-            ('name', 'name'),
+            ("last_updated", "lastUpdated"),
+            ("name", "name"),
         )
     )
 
@@ -80,12 +80,12 @@ class UserBilbyJobFilter(FilterSet):
 class PublicBilbyJobFilter(FilterSet):
     class Meta:
         model = BilbyJob
-        fields = '__all__'
+        fields = "__all__"
 
     order_by = OrderingFilter(
         fields=(
-            ('last_updated', 'last_updated'),
-            ('name', 'name'),
+            ("last_updated", "last_updated"),
+            ("name", "name"),
         )
     )
 
@@ -116,14 +116,14 @@ class BilbyJobNode(DjangoObjectType):
         qs = BilbyJob.bilby_job_filter(queryset, user)
 
         # Query any users from this queryset in one go
-        user_ids = set(qs.values_list('user_id', flat=True))
+        user_ids = set(qs.values_list("user_id", flat=True))
         _, users = request_lookup_users(list(user_ids), user_id)
-        info.context.users = dict(zip([user['userId'] for user in users], [user for user in users]))
+        info.context.users = dict(zip([user["userId"] for user in users], [user for user in users]))
 
         # Query any job controller information in one go - exclude any job controller ids that are not set
-        job_controller_ids = set(qs.exclude(job_controller_id=None).values_list('job_controller_id', flat=True))
+        job_controller_ids = set(qs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
         _, jc_jobs = request_job_filter(user_id, ids=list(job_controller_ids))
-        info.context.job_controller_jobs = dict(zip([job['id'] for job in jc_jobs], [job for job in jc_jobs]))
+        info.context.job_controller_jobs = dict(zip([job["id"] for job in jc_jobs], [job for job in jc_jobs]))
 
         return qs
 
@@ -151,7 +151,7 @@ class BilbyJobNode(DjangoObjectType):
             return {
                 "name": JobStatus.display_name(JobStatus.COMPLETED),
                 "number": JobStatus.COMPLETED,
-                "date": parent.creation_time
+                "date": parent.creation_time,
             }
 
         try:
@@ -159,17 +159,9 @@ class BilbyJobNode(DjangoObjectType):
                 info.context.job_controller_jobs.get(parent.job_controller_id, None)["history"]
             )
 
-            return {
-                "name": status_name,
-                "number": status_number,
-                "date": status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
-            }
+            return {"name": status_name, "number": status_number, "date": status_date.strftime("%Y-%m-%d %H:%M:%S UTC")}
         except Exception:
-            return {
-                "name": "Unknown",
-                "number": 0,
-                "data": "Unknown"
-            }
+            return {"name": "Unknown", "number": 0, "data": "Unknown"}
 
 
 class UserDetails(graphene.ObjectType):
@@ -230,12 +222,10 @@ class Query(object):
         search=graphene.String(),
         time_range=graphene.String(),
         cursor=graphene.Argument(graphene.ID),
-        count=graphene.Int()
+        count=graphene.Int(),
     )
 
-    all_labels = relay.ConnectionField(
-       AllLabelsConnection
-    )
+    all_labels = relay.ConnectionField(AllLabelsConnection)
 
     event_id = graphene.Field(EventIDType, event_id=graphene.String(required=True))
     all_event_ids = graphene.List(EventIDType)
@@ -267,24 +257,22 @@ class Query(object):
 
     def resolve_public_bilby_jobs(self, info, **kwargs):
         # Parse the cursor if it was provided and set the first offset to be used by the database search
-        if 'after' in kwargs:
-            kwargs['after'] = int(from_global_id(kwargs['after'])[1])
+        if "after" in kwargs:
+            kwargs["after"] = int(from_global_id(kwargs["after"])[1])
 
         es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST],
-            api_key=settings.ELASTIC_SEARCH_API_KEY,
-            verify_certs=False
+            hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY, verify_certs=False
         )
 
         # If no search term is provided, return all records via a wildcard
-        q = kwargs.get('search', '') or '*'
+        q = kwargs.get("search", "") or "*"
 
         # Prevent the user from searching in private info
         if "_private_info_" in q:
             return []
 
         # Insert the time query
-        time_range = kwargs['time_range']
+        time_range = kwargs["time_range"]
         if time_range != "all":
             now = timezone.now()
             if time_range == "1d":
@@ -301,30 +289,30 @@ class Query(object):
             q = f'({q}) AND job.creationTime:["{then.isoformat()}" TO "{now.isoformat()}"]'
 
         # Filter out any private jobs
-        q = f'({q}) AND _private_info_.private:false'
+        q = f"({q}) AND _private_info_.private:false"
 
         # If user is subject to an embargo - then apply the embargo as well
         if user_subject_to_embargo(info.context.user):
-            q = f'({q}) AND (params.trigger_time:<{settings.EMBARGO_START_TIME} OR ini.n_simulation:>0)'
+            q = f"({q}) AND (params.trigger_time:<{settings.EMBARGO_START_TIME} OR ini.n_simulation:>0)"
 
         results = es.search(
             index=settings.ELASTIC_SEARCH_INDEX,
             q=q,
-            size=kwargs['first'] + 1,
-            from_=kwargs.get('after', 0),
-            sort="job.lastUpdatedTime:desc"
+            size=kwargs["first"] + 1,
+            from_=kwargs.get("after", 0),
+            sort="job.lastUpdatedTime:desc",
         )
 
         # Check that there were results
-        if not results['hits']:
+        if not results["hits"]:
             return []
 
-        records = results['hits']['hits']
+        records = results["hits"]["hits"]
 
         # Double check the embargo and private jobs. Here we take the list of jobs returned by elastic search, then
         # use the embargo filter on that and compare the number of jobs before and after the embargo. If this number
         # doesn't match then something strange has happened.
-        qs_after = qs_before = BilbyJob.objects.filter(id__in=[record['_id'] for record in records])
+        qs_after = qs_before = BilbyJob.objects.filter(id__in=[record["_id"] for record in records])
         if user_subject_to_embargo(info.context.user):
             qs_after = embargo_filter(qs_before, info.context.user)
 
@@ -335,19 +323,17 @@ class Query(object):
             return []
 
         # Get a list of bilbyjobs and job controller ids
-        jobs = {
-            job.id: job for job in BilbyJob.objects.filter(id__in=[record['_id'] for record in records])
-        }
+        jobs = {job.id: job for job in BilbyJob.objects.filter(id__in=[record["_id"] for record in records])}
 
         # Get a list of job controller ids and fetch the results from the job controller
         job_controller_ids = {job.job_controller_id: job.id for job in jobs.values() if job.job_controller_id}
         job_controller_jobs = {}
         if len(job_controller_ids):
             job_controller_jobs = {
-                job_controller_ids[job['id']]: job
+                job_controller_ids[job["id"]]: job
                 for job in request_job_filter(
                     info.context.user.user_id if info.context.user.is_authenticated else 0,
-                    ids=job_controller_ids.keys()
+                    ids=job_controller_ids.keys(),
                 )[1]
             }
 
@@ -355,36 +341,32 @@ class Query(object):
         result = []
 
         for record in records:
-            job = record['_source']
-            bilby_job = BilbyJob.get_by_id(record['_id'], info.context.user)
+            job = record["_source"]
+            bilby_job = BilbyJob.get_by_id(record["_id"], info.context.user)
 
             job_node = BilbyPublicJobNode(
                 user=f"{job['user']['firstName']} {job['user']['lastName']}",
-                name=job['job']['name'],
-                description=job['job']['description'],
+                name=job["job"]["name"],
+                description=job["job"]["description"],
                 event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
-                id=to_global_id("BilbyJobNode", bilby_job.id)
+                id=to_global_id("BilbyJobNode", bilby_job.id),
             )
 
             if bilby_job.job_type == BilbyJobType.NORMAL:
                 # If there is no job controller record for this job, then the job is broken.
                 if bilby_job.id not in job_controller_jobs:
-                    job_node.job_status = JobStatusType(
-                        name="Unknown",
-                        number=0,
-                        date=bilby_job.creation_time
-                    )
+                    job_node.job_status = JobStatusType(name="Unknown", number=0, date=bilby_job.creation_time)
                     job_node.labels = bilby_job.labels.all()
                     job_node.timestamp = bilby_job.creation_time
                 else:
                     job_controller_job = job_controller_jobs[bilby_job.id]
                     job_node.job_status = JobStatusType(
-                        name=JobStatus.display_name(job_controller_job['history'][0]['state']),
-                        number=job_controller_job['history'][0]['state'],
-                        date=job_controller_job['history'][0]['timestamp']
+                        name=JobStatus.display_name(job_controller_job["history"][0]["state"]),
+                        number=job_controller_job["history"][0]["state"],
+                        date=job_controller_job["history"][0]["timestamp"],
                     )
                     job_node.labels = bilby_job.labels.all()
-                    job_node.timestamp = job_controller_job['history'][0]['timestamp']
+                    job_node.timestamp = job_controller_job["history"][0]["timestamp"]
 
             elif bilby_job.job_type == BilbyJobType.UPLOADED:
                 job_node.job_status = JobStatusType(
@@ -413,7 +395,7 @@ class Query(object):
         # Furthermore, arrayconnections with offset 0 or 1 are functionally the same, this is why we add a +1 to the
         # value from after if it is provided, otherwise we use 0 (-1 + 1) if no after value is provided.
 
-        after_value = int(kwargs.get('after', -1)+1)
+        after_value = int(kwargs.get("after", -1) + 1)
         real_result = [None] * after_value
         real_result.extend(result)
 
@@ -436,7 +418,7 @@ class Query(object):
             raise Exception("Error getting file list. " + str(files))
 
         # Generate download tokens for the list of files
-        paths = [f['path'] for f in filter(lambda x: not x['isDir'], files)]
+        paths = [f["path"] for f in filter(lambda x: not x["isDir"], files)]
         tokens = FileDownloadToken.create(job, paths)
 
         # Generate a dict that can be used to query the generated tokens
@@ -448,15 +430,12 @@ class Query(object):
                 path=f["path"],
                 is_dir=f["isDir"],
                 file_size=Decimal(f["fileSize"]),
-                download_token=token_dict[f["path"]] if f["path"] in token_dict else None
+                download_token=token_dict[f["path"]] if f["path"] in token_dict else None,
             )
             for f in files
         ]
 
-        return BilbyResultFiles(
-            files=result,
-            job_type=job.job_type
-        )
+        return BilbyResultFiles(files=result, job_type=job.job_type)
 
 
 class EventIDMutation(relay.ClientIDMutation):
@@ -475,13 +454,11 @@ class EventIDMutation(relay.ClientIDMutation):
         user = info.context.user
 
         if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
-            raise Exception('User is not permitted to create EventIDs')
+            raise Exception("User is not permitted to create EventIDs")
 
         message = create_event_id(user, **kwargs)
 
-        return EventIDMutation(
-            result=message
-        )
+        return EventIDMutation(result=message)
 
 
 class UpdateEventIDMutation(relay.ClientIDMutation):
@@ -500,13 +477,11 @@ class UpdateEventIDMutation(relay.ClientIDMutation):
         user = info.context.user
 
         if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
-            raise Exception('User is not permitted to modify EventIDs')
+            raise Exception("User is not permitted to modify EventIDs")
 
         message = update_event_id(user, **kwargs)
 
-        return UpdateEventIDMutation(
-            result=message
-        )
+        return UpdateEventIDMutation(result=message)
 
 
 class DeleteEventIDMutation(relay.ClientIDMutation):
@@ -521,13 +496,11 @@ class DeleteEventIDMutation(relay.ClientIDMutation):
         user = info.context.user
 
         if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
-            raise Exception('User is not permitted to delete EventIDs')
+            raise Exception("User is not permitted to delete EventIDs")
 
         message = delete_event_id(user, event_id)
 
-        return DeleteEventIDMutation(
-            result=message
-        )
+        return DeleteEventIDMutation(result=message)
 
 
 class BilbyJobMutation(relay.ClientIDMutation):
@@ -548,9 +521,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
         job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
         # Return the bilby job id to the client
-        return BilbyJobMutation(
-            result=BilbyJobCreationResult(job_id=job_id)
-        )
+        return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
 
 
 class BilbyJobFromIniStringMutation(relay.ClientIDMutation):
@@ -570,20 +541,10 @@ class BilbyJobFromIniStringMutation(relay.ClientIDMutation):
         # Convert the bilby job id to a global id
         job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
-        files = [
-            BilbyJobSupportingFile(
-                file_path=f['file_path'],
-                token=f['token']
-            ) for f in supporting_file_details
-        ]
+        files = [BilbyJobSupportingFile(file_path=f["file_path"], token=f["token"]) for f in supporting_file_details]
 
         # Return the bilby job id to the client
-        return BilbyJobFromIniStringMutation(
-            result=BilbyJobCreationResult(
-                job_id=job_id,
-                supporting_files=files
-            )
-        )
+        return BilbyJobFromIniStringMutation(result=BilbyJobCreationResult(job_id=job_id, supporting_files=files))
 
 
 class UpdateBilbyJobMutation(relay.ClientIDMutation):
@@ -609,9 +570,7 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         message = update_bilby_job(from_global_id(job_id)[1], user, **kwargs)
 
         # Return the bilby job id to the client
-        return UpdateBilbyJobMutation(
-            result=message, job_id=job_id
-        )
+        return UpdateBilbyJobMutation(result=message, job_id=job_id)
 
 
 class GenerateFileDownloadIds(relay.ClientIDMutation):
@@ -638,25 +597,18 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
         # For uploaded jobs, we can just return the exact some download tokens - this function is basically a no-op
         # for uploaded jobs
         if job.job_type == BilbyJobType.UPLOADED:
-            return GenerateFileDownloadIds(
-                result=download_tokens
-            )
+            return GenerateFileDownloadIds(result=download_tokens)
 
         # Request the list of file download ids from the list of paths
         # Only the original job author may generate a file download id
-        success, result = request_file_download_ids(
-            job,
-            paths
-        )
+        success, result = request_file_download_ids(job, paths)
 
         # Report the error if there is one
         if not success:
             raise GraphQLError(result)
 
         # Return the list of file download ids
-        return GenerateFileDownloadIds(
-            result=result
-        )
+        return GenerateFileDownloadIds(result=result)
 
 
 class UploadBilbyJobMutation(relay.ClientIDMutation):
@@ -682,9 +634,7 @@ class UploadBilbyJobMutation(relay.ClientIDMutation):
         job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
         # Return the bilby job id to the client
-        return BilbyJobMutation(
-            result=BilbyJobCreationResult(job_id=job_id)
-        )
+        return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
 
 
 class UploadSupportingFilesMutation(relay.ClientIDMutation):
@@ -710,11 +660,7 @@ class UploadSupportingFilesMutation(relay.ClientIDMutation):
         success = upload_supporting_files(tokens, uploaded_files)
 
         # Return the success state job id to the client
-        return UploadSupportingFilesMutation(
-            result=SupportingFileUploadResult(
-                result=success
-            )
-        )
+        return UploadSupportingFilesMutation(result=SupportingFileUploadResult(result=success))
 
 
 class Mutation(graphene.ObjectType):

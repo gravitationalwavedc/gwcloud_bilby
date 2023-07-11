@@ -8,7 +8,7 @@ from settings import job_directory
 
 
 def working_directory(details, *args, **kwargs):
-    return str(Path(job_directory, str(details['job_id'])))
+    return str(Path(job_directory, str(details["job_id"])))
 
 
 def get_scheduler():

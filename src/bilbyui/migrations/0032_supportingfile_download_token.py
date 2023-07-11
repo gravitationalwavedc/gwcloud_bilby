@@ -5,15 +5,14 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0031_rename_token_supportingfile_upload_token'),
+        ("bilbyui", "0031_rename_token_supportingfile_upload_token"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='supportingfile',
-            name='download_token',
+            model_name="supportingfile",
+            name="download_token",
             field=models.UUIDField(db_index=True, default=uuid.uuid4, unique=True),
         ),
     ]

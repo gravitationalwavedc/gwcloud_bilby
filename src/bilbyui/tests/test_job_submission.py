@@ -30,7 +30,7 @@ class TestJobSubmission(BilbyTestCase):
 
     @patch("bilbyui.models.submit_job")
     def test_simulated_job(self, mock_api_call):
-        mock_api_call.return_value = {'jobId': 4321}
+        mock_api_call.return_value = {"jobId": 4321}
 
         params = {
             "input": {
@@ -44,11 +44,7 @@ class TestJobSubmission(BilbyTestCase):
                     "data": {
                         "dataChoice": "simulated",
                         "triggerTime": "1126259462.391",
-                        "channels": {
-                            "hanfordChannel": "GWOSC",
-                            "livingstonChannel": "GWOSC",
-                            "virgoChannel": "GWOSC"
-                        }
+                        "channels": {"hanfordChannel": "GWOSC", "livingstonChannel": "GWOSC", "virgoChannel": "GWOSC"},
                     },
                     "detector": {
                         "hanford": True,
@@ -61,13 +57,11 @@ class TestJobSubmission(BilbyTestCase):
                         "virgoMinimumFrequency": "20",
                         "virgoMaximumFrequency": "1024",
                         "duration": "4",
-                        "samplingFrequency": "512"
+                        "samplingFrequency": "512",
                     },
                     # "injection": {},
                     # "likelihood": {},
-                    "prior": {
-                        "priorDefault": "4s"
-                    },
+                    "prior": {"priorDefault": "4s"},
                     # "postProcessing": {},
                     "sampler": {
                         "nlive": "1000.0",
@@ -76,11 +70,9 @@ class TestJobSubmission(BilbyTestCase):
                         "walks": "1000.0",
                         "dlogz": "0.1",
                         "cpus": "1",
-                        "samplerChoice": "dynesty"
+                        "samplerChoice": "dynesty",
                     },
-                    "waveform": {
-                        "model": None
-                    }
+                    "waveform": {"model": None},
                 }
             }
         }
@@ -95,20 +87,12 @@ class TestJobSubmission(BilbyTestCase):
               }
             }
             """,
-            params
+            params,
         )
 
-        expected = {
-            'newBilbyJob': {
-                'result': {
-                    'jobId': 'QmlsYnlKb2JOb2RlOjE='
-                }
-            }
-        }
+        expected = {"newBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
-        self.assertDictEqual(
-            expected, response.data, "create bilbyJob mutation returned unexpected data."
-        )
+        self.assertDictEqual(expected, response.data, "create bilbyJob mutation returned unexpected data.")
 
         # And should create all k/v's with default values
         job = BilbyJob.objects.all().last()
@@ -116,125 +100,117 @@ class TestJobSubmission(BilbyTestCase):
 
         _params = params["input"]["params"]
 
-        self.assertEqual(job.name, _params['details']['name'])
-        self.assertEqual(job.description, _params['details']['description'])
-        self.assertEqual(job.private, _params['details']['private'])
+        self.assertEqual(job.name, _params["details"]["name"])
+        self.assertEqual(job.description, _params["details"]["description"])
+        self.assertEqual(job.private, _params["details"]["private"])
 
         # Double check that the k/v's were correctly created
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="trigger_time", processed=False).value,
-            json.dumps(_params['data']['triggerTime'])
+            json.dumps(_params["data"]["triggerTime"]),
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="gaussian_noise", processed=False).value,
-            json.dumps(True)
+            IniKeyValue.objects.get(job=job, key="gaussian_noise", processed=False).value, json.dumps(True)
         )
 
-        self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="n_simulation").value,
-            json.dumps(1)
-        )
+        self.assertEqual(IniKeyValue.objects.get(job=job, key="n_simulation").value, json.dumps(1))
 
         self.assertDictEqual(
             literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict", processed=False).value)),
-            {'H1': 'GWOSC', 'L1': 'GWOSC'}
+            {"H1": "GWOSC", "L1": "GWOSC"},
         )
 
         self.assertDictEqual(
             literal_eval(IniKeyValue.objects.get(job=job, key="channel_dict", processed=True).value),
-            {'H1': 'GWOSC', 'L1': 'GWOSC'}
+            {"H1": "GWOSC", "L1": "GWOSC"},
         )
 
         self.assertEqual(
             sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=False).value)),
-            sorted(["'H1'", "'L1'"])
+            sorted(["'H1'", "'L1'"]),
         )
 
         self.assertEqual(
             sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=True).value)),
-            sorted(["H1", "L1"])
+            sorted(["H1", "L1"]),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="duration", processed=False).value,
-            json.dumps(float(_params['detector']['duration']))
+            json.dumps(float(_params["detector"]["duration"])),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="duration", processed=True).value,
-            json.dumps(float(_params['detector']['duration']))
+            json.dumps(float(_params["detector"]["duration"])),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=False).value,
-            json.dumps(float(_params['detector']['samplingFrequency']))
+            json.dumps(float(_params["detector"]["samplingFrequency"])),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=True).value,
-            json.dumps(float(_params['detector']['samplingFrequency']))
+            json.dumps(float(_params["detector"]["samplingFrequency"])),
         )
 
         self.assertDictEqual(
             literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=False).value)),
-            {'H1': '1024', 'L1': '1024'}
+            {"H1": "1024", "L1": "1024"},
         )
 
         self.assertEqual(
-            literal_eval(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=True).value),
-            1024
+            literal_eval(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=True).value), 1024
         )
 
         self.assertDictEqual(
             literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=False).value)),
-            {'H1': '20', 'L1': '20'}
+            {"H1": "20", "L1": "20"},
         )
 
         self.assertEqual(
-            literal_eval(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=True).value),
-            20
+            literal_eval(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=True).value), 20
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="label", processed=False).value,
-            json.dumps(_params['details']['name'])
+            IniKeyValue.objects.get(job=job, key="label", processed=False).value, json.dumps(_params["details"]["name"])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="label", processed=True).value,
-            json.dumps(_params['details']['name'])
+            IniKeyValue.objects.get(job=job, key="label", processed=True).value, json.dumps(_params["details"]["name"])
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="prior_file", processed=False).value,
-            json.dumps(_params['prior']['priorDefault'])
+            json.dumps(_params["prior"]["priorDefault"]),
         )
 
         self.assertTrue(
-            literal_eval(
-                IniKeyValue.objects.get(job=job, key="prior_file", processed=True).value
-            ).endswith("bilby_pipe/data_files/4s.prior")
+            literal_eval(IniKeyValue.objects.get(job=job, key="prior_file", processed=True).value).endswith(
+                "bilby_pipe/data_files/4s.prior"
+            )
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="sampler", processed=False).value,
-            json.dumps(_params['sampler']['samplerChoice'])
+            json.dumps(_params["sampler"]["samplerChoice"]),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=True).value,
-            json.dumps("lal_binary_black_hole")
+            json.dumps("lal_binary_black_hole"),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=False).value,
-            json.dumps("lal_binary_black_hole")
+            json.dumps("lal_binary_black_hole"),
         )
 
     @patch("bilbyui.models.submit_job")
     def test_real_job(self, mock_api_call):
-        mock_api_call.return_value = {'jobId': 4321}
+        mock_api_call.return_value = {"jobId": 4321}
 
         params = {
             "input": {
@@ -248,11 +224,7 @@ class TestJobSubmission(BilbyTestCase):
                     "data": {
                         "dataChoice": "real",
                         "triggerTime": "1126259562.391",
-                        "channels": {
-                            "hanfordChannel": "GWOSC",
-                            "livingstonChannel": "GWOSC",
-                            "virgoChannel": "GWOSC"
-                        }
+                        "channels": {"hanfordChannel": "GWOSC", "livingstonChannel": "GWOSC", "virgoChannel": "GWOSC"},
                     },
                     "detector": {
                         "hanford": True,
@@ -265,13 +237,11 @@ class TestJobSubmission(BilbyTestCase):
                         "virgoMinimumFrequency": "20",
                         "virgoMaximumFrequency": "1024",
                         "duration": "4",
-                        "samplingFrequency": "512"
+                        "samplingFrequency": "512",
                     },
                     # "injection": {},
                     # "likelihood": {},
-                    "prior": {
-                        "priorDefault": "4s"
-                    },
+                    "prior": {"priorDefault": "4s"},
                     # "postProcessing": {},
                     "sampler": {
                         "nlive": "1000.0",
@@ -280,11 +250,9 @@ class TestJobSubmission(BilbyTestCase):
                         "walks": "1000.0",
                         "dlogz": "0.1",
                         "cpus": "1",
-                        "samplerChoice": "dynesty"
+                        "samplerChoice": "dynesty",
                     },
-                    "waveform": {
-                        "model": None
-                    }
+                    "waveform": {"model": None},
                 }
             }
         }
@@ -299,20 +267,12 @@ class TestJobSubmission(BilbyTestCase):
               }
             }
             """,
-            params
+            params,
         )
 
-        expected = {
-            'newBilbyJob': {
-                'result': {
-                    'jobId': 'QmlsYnlKb2JOb2RlOjE='
-                }
-            }
-        }
+        expected = {"newBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
-        self.assertDictEqual(
-            expected, response.data, "create bilbyJob mutation returned unexpected data."
-        )
+        self.assertDictEqual(expected, response.data, "create bilbyJob mutation returned unexpected data.")
 
         # And should create all k/v's with default values
         job = BilbyJob.objects.all().last()
@@ -321,138 +281,129 @@ class TestJobSubmission(BilbyTestCase):
 
         _params = params["input"]["params"]
 
-        self.assertEqual(job.name, _params['details']['name'])
-        self.assertEqual(job.description, _params['details']['description'])
-        self.assertEqual(job.private, _params['details']['private'])
+        self.assertEqual(job.name, _params["details"]["name"])
+        self.assertEqual(job.description, _params["details"]["description"])
+        self.assertEqual(job.private, _params["details"]["private"])
 
         # Double check that the k/v's were correctly created
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="trigger_time", processed=False).value,
-            json.dumps(_params['data']['triggerTime'])
+            json.dumps(_params["data"]["triggerTime"]),
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="trigger_time", processed=True).value,
-            _params['data']['triggerTime']
+            IniKeyValue.objects.get(job=job, key="trigger_time", processed=True).value, _params["data"]["triggerTime"]
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="gaussian_noise", processed=False).value,
-            json.dumps(False)
+            IniKeyValue.objects.get(job=job, key="gaussian_noise", processed=False).value, json.dumps(False)
         )
 
-        self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="n_simulation", processed=False).value,
-            json.dumps(0)
-        )
+        self.assertEqual(IniKeyValue.objects.get(job=job, key="n_simulation", processed=False).value, json.dumps(0))
 
         self.assertDictEqual(
             literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict", processed=False).value)),
-            {'H1': 'GWOSC', 'L1': 'GWOSC'}
+            {"H1": "GWOSC", "L1": "GWOSC"},
         )
 
         self.assertDictEqual(
             literal_eval(IniKeyValue.objects.get(job=job, key="channel_dict", processed=True).value),
-            {'H1': 'GWOSC', 'L1': 'GWOSC'}
+            {"H1": "GWOSC", "L1": "GWOSC"},
         )
 
         self.assertEqual(
             sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=False).value)),
-            sorted(["'H1'", "'L1'"])
+            sorted(["'H1'", "'L1'"]),
         )
 
         self.assertEqual(
             sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=True).value)),
-            sorted(["H1", "L1"])
+            sorted(["H1", "L1"]),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="duration", processed=False).value,
-            json.dumps(float(_params['detector']['duration']))
+            json.dumps(float(_params["detector"]["duration"])),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="duration", processed=True).value,
-            json.dumps(float(_params['detector']['duration']))
+            json.dumps(float(_params["detector"]["duration"])),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=False).value,
-            json.dumps(float(_params['detector']['samplingFrequency']))
+            json.dumps(float(_params["detector"]["samplingFrequency"])),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=True).value,
-            json.dumps(float(_params['detector']['samplingFrequency']))
+            json.dumps(float(_params["detector"]["samplingFrequency"])),
         )
 
         self.assertDictEqual(
             literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=False).value)),
-            {'H1': '1024', 'L1': '1024'}
+            {"H1": "1024", "L1": "1024"},
         )
 
         self.assertEqual(
-            literal_eval(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=True).value),
-            1024
+            literal_eval(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=True).value), 1024
         )
 
         self.assertDictEqual(
             literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=False).value)),
-            {'H1': '20', 'L1': '20'}
+            {"H1": "20", "L1": "20"},
         )
 
         self.assertEqual(
-            literal_eval(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=True).value),
-            20
+            literal_eval(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=True).value), 20
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="label", processed=False).value,
-            json.dumps(_params['details']['name'])
+            IniKeyValue.objects.get(job=job, key="label", processed=False).value, json.dumps(_params["details"]["name"])
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="label", processed=True).value,
-            json.dumps(_params['details']['name'])
+            IniKeyValue.objects.get(job=job, key="label", processed=True).value, json.dumps(_params["details"]["name"])
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="prior_file", processed=False).value,
-            json.dumps(_params['prior']['priorDefault'])
+            json.dumps(_params["prior"]["priorDefault"]),
         )
 
         self.assertTrue(
-            literal_eval(IniKeyValue.objects.get(
-                job=job, key="prior_file", processed=True
-            ).value).endswith('bilby_pipe/data_files/4s.prior')
+            literal_eval(IniKeyValue.objects.get(job=job, key="prior_file", processed=True).value).endswith(
+                "bilby_pipe/data_files/4s.prior"
+            )
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="sampler", processed=False).value,
-            json.dumps(_params['sampler']['samplerChoice'])
+            json.dumps(_params["sampler"]["samplerChoice"]),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=False).value,
-            json.dumps("lal_binary_black_hole")
+            json.dumps("lal_binary_black_hole"),
         )
 
         self.assertEqual(
             IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=True).value,
-            json.dumps("lal_binary_black_hole")
+            json.dumps("lal_binary_black_hole"),
         )
 
     @silence_errors
-    @override_settings(CLUSTERS=['default', 'another'])
+    @override_settings(CLUSTERS=["default", "another"])
     @override_settings(ALLOW_HTTP_LEAKS=True)
     def test_cluster_submission(self):
-        return_result = {'jobId': 1122}
+        return_result = {"jobId": 1122}
 
         self.responses.add(
             responses.POST,
             f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/",
             body=json.dumps(return_result),
-            status=200
+            status=200,
         )
 
         params = {
@@ -467,11 +418,7 @@ class TestJobSubmission(BilbyTestCase):
                     "data": {
                         "dataChoice": "simulated",
                         "triggerTime": "1126259462.391",
-                        "channels": {
-                            "hanfordChannel": "GWOSC",
-                            "livingstonChannel": "GWOSC",
-                            "virgoChannel": "GWOSC"
-                        }
+                        "channels": {"hanfordChannel": "GWOSC", "livingstonChannel": "GWOSC", "virgoChannel": "GWOSC"},
                     },
                     "detector": {
                         "hanford": True,
@@ -484,13 +431,11 @@ class TestJobSubmission(BilbyTestCase):
                         "virgoMinimumFrequency": "20",
                         "virgoMaximumFrequency": "1024",
                         "duration": "4",
-                        "samplingFrequency": "512"
+                        "samplingFrequency": "512",
                     },
                     # "injection": {},
                     # "likelihood": {},
-                    "prior": {
-                        "priorDefault": "4s"
-                    },
+                    "prior": {"priorDefault": "4s"},
                     # "postProcessing": {},
                     "sampler": {
                         "nlive": "1000.0",
@@ -499,11 +444,9 @@ class TestJobSubmission(BilbyTestCase):
                         "walks": "1000.0",
                         "dlogz": "0.1",
                         "cpus": "1",
-                        "samplerChoice": "dynesty"
+                        "samplerChoice": "dynesty",
                     },
-                    "waveform": {
-                        "model": None
-                    }
+                    "waveform": {"model": None},
                 }
             }
         }
@@ -521,17 +464,9 @@ class TestJobSubmission(BilbyTestCase):
         # First test no cluster - this should default to 'default'
         response = self.client.execute(mut, params)
 
-        expected = {
-            'newBilbyJob': {
-                'result': {
-                    'jobId': 'QmlsYnlKb2JOb2RlOjE='
-                }
-            }
-        }
+        expected = {"newBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
-        self.assertDictEqual(
-            expected, response.data, "create bilbyJob mutation returned unexpected data."
-        )
+        self.assertDictEqual(expected, response.data, "create bilbyJob mutation returned unexpected data.")
 
         # Check the job controller id was set as expected
         job = BilbyJob.objects.all().last()
@@ -540,56 +475,40 @@ class TestJobSubmission(BilbyTestCase):
 
         # Check that the correct cluster was used in the request
         r = json.loads(self.responses.calls[0].request.body)
-        self.assertEqual(r['cluster'], 'default')
+        self.assertEqual(r["cluster"], "default")
 
         job.delete()
 
         # Next test default cluster uses the default cluster
-        params['input']['params']['details']['cluster'] = 'default'
+        params["input"]["params"]["details"]["cluster"] = "default"
         response = self.client.execute(mut, params)
 
-        expected = {
-            'newBilbyJob': {
-                'result': {
-                    'jobId': 'QmlsYnlKb2JOb2RlOjI='
-                }
-            }
-        }
+        expected = {"newBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjI="}}}
 
-        self.assertDictEqual(
-            expected, response.data, "create bilbyJob mutation returned unexpected data."
-        )
+        self.assertDictEqual(expected, response.data, "create bilbyJob mutation returned unexpected data.")
 
         # Check that the correct cluster was used in the request
         r = json.loads(self.responses.calls[1].request.body)
-        self.assertEqual(r['cluster'], 'default')
+        self.assertEqual(r["cluster"], "default")
 
         BilbyJob.objects.all().last().delete()
 
         # Next test "another" cluster
-        params['input']['params']['details']['cluster'] = 'another'
+        params["input"]["params"]["details"]["cluster"] = "another"
         response = self.client.execute(mut, params)
 
-        expected = {
-            'newBilbyJob': {
-                'result': {
-                    'jobId': 'QmlsYnlKb2JOb2RlOjM='
-                }
-            }
-        }
+        expected = {"newBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjM="}}}
 
-        self.assertDictEqual(
-            expected, response.data, "create bilbyJob mutation returned unexpected data."
-        )
+        self.assertDictEqual(expected, response.data, "create bilbyJob mutation returned unexpected data.")
 
         # Check that the correct cluster was used in the request
         r = json.loads(self.responses.calls[2].request.body)
-        self.assertEqual(r['cluster'], 'another')
+        self.assertEqual(r["cluster"], "another")
 
         BilbyJob.objects.all().last().delete()
 
         # Finally test invalid clusters are rejected cluster
-        params['input']['params']['details']['cluster'] = 'not_real'
+        params["input"]["params"]["details"]["cluster"] = "not_real"
         response = self.client.execute(mut, params)
 
         self.assertEqual(
@@ -599,7 +518,7 @@ class TestJobSubmission(BilbyTestCase):
     @patch("bilbyui.models.submit_job")
     @silence_errors
     def test_job_submission_event_id(self, mock_api_call):
-        mock_api_call.return_value = {'jobId': 4321}
+        mock_api_call.return_value = {"jobId": 4321}
 
         params = {
             "input": {
@@ -613,12 +532,8 @@ class TestJobSubmission(BilbyTestCase):
                     "data": {
                         "dataChoice": "real",
                         "triggerTime": "1126259562.391",
-                        "channels": {
-                            "hanfordChannel": "GWOSC",
-                            "livingstonChannel": "GWOSC",
-                            "virgoChannel": "GWOSC"
-                        },
-                        "eventId": "GW123456_123456"
+                        "channels": {"hanfordChannel": "GWOSC", "livingstonChannel": "GWOSC", "virgoChannel": "GWOSC"},
+                        "eventId": "GW123456_123456",
                     },
                     "detector": {
                         "hanford": True,
@@ -631,13 +546,11 @@ class TestJobSubmission(BilbyTestCase):
                         "virgoMinimumFrequency": "20",
                         "virgoMaximumFrequency": "1024",
                         "duration": "4",
-                        "samplingFrequency": "512"
+                        "samplingFrequency": "512",
                     },
                     # "injection": {},
                     # "likelihood": {},
-                    "prior": {
-                        "priorDefault": "4s"
-                    },
+                    "prior": {"priorDefault": "4s"},
                     # "postProcessing": {},
                     "sampler": {
                         "nlive": "1000.0",
@@ -646,11 +559,9 @@ class TestJobSubmission(BilbyTestCase):
                         "walks": "1000.0",
                         "dlogz": "0.1",
                         "cpus": "1",
-                        "samplerChoice": "dynesty"
+                        "samplerChoice": "dynesty",
                     },
-                    "waveform": {
-                        "model": None
-                    }
+                    "waveform": {"model": None},
                 }
             }
         }
@@ -665,37 +576,23 @@ class TestJobSubmission(BilbyTestCase):
             }
         """
 
-        response = self.client.execute(
-            mutation,
-            params
-        )
+        response = self.client.execute(mutation, params)
 
         # Since the event id doesn't exist, it should raise an error here
         self.assertEqual(
             "EventID matching query does not exist.",
             str(response.errors[0]),
-            "create bilbyJob mutation returned unexpected data."
+            "create bilbyJob mutation returned unexpected data.",
         )
 
         # Now create the event id, and check that creating the job succeeds
         EventID.create(event_id="GW123456_123456", gps_time=1234.1234)
 
-        response = self.client.execute(
-            mutation,
-            params
-        )
+        response = self.client.execute(mutation, params)
 
-        expected = {
-            'newBilbyJob': {
-                'result': {
-                    'jobId': 'QmlsYnlKb2JOb2RlOjE='
-                }
-            }
-        }
+        expected = {"newBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
-        self.assertEqual(
-            expected, response.data, "create bilbyJob mutation returned unexpected data."
-        )
+        self.assertEqual(expected, response.data, "create bilbyJob mutation returned unexpected data.")
 
 
 class TestJobSubmissionNameValidation(BilbyTestCase):
@@ -715,11 +612,7 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
                     "data": {
                         "dataChoice": "simulated",
                         "triggerTime": "1126259462.391",
-                        "channels": {
-                            "hanfordChannel": "GWOSC",
-                            "livingstonChannel": "GWOSC",
-                            "virgoChannel": "GWOSC"
-                        }
+                        "channels": {"hanfordChannel": "GWOSC", "livingstonChannel": "GWOSC", "virgoChannel": "GWOSC"},
                     },
                     "detector": {
                         "hanford": True,
@@ -732,13 +625,11 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
                         "virgoMinimumFrequency": "20",
                         "virgoMaximumFrequency": "1024",
                         "duration": "4",
-                        "samplingFrequency": "512"
+                        "samplingFrequency": "512",
                     },
                     # "injection": {},
                     # "likelihood": {},
-                    "prior": {
-                        "priorDefault": "4s"
-                    },
+                    "prior": {"priorDefault": "4s"},
                     # "postProcessing": {},
                     "sampler": {
                         "nlive": "1000.0",
@@ -747,11 +638,9 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
                         "walks": "1000.0",
                         "dlogz": "0.1",
                         "cpus": "1",
-                        "samplerChoice": "dynesty"
+                        "samplerChoice": "dynesty",
                     },
-                    "waveform": {
-                        "model": None
-                    }
+                    "waveform": {"model": None},
                 }
             }
         }
@@ -768,37 +657,31 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
 
     @silence_errors
     def test_invalid_job_name_symbols(self):
-        self.params['input']['params']['details']['name'] = "test_job_for_GW12345$"
+        self.params["input"]["params"]["details"]["name"] = "test_job_for_GW12345$"
 
         response = self.client.execute(self.mutation, self.params)
 
-        self.assertDictEqual(
-            {'newBilbyJob': None}, response.data, "create bilbyJob mutation returned unexpected data."
-        )
+        self.assertDictEqual({"newBilbyJob": None}, response.data, "create bilbyJob mutation returned unexpected data.")
 
         self.assertEqual(response.errors[0].message, "Job name must not contain any spaces or special characters.")
 
     @silence_errors
     def test_invalid_job_name_too_long(self):
-        self.params['input']['params']['details']['name'] = 'a'*50
+        self.params["input"]["params"]["details"]["name"] = "a" * 50
 
         response = self.client.execute(self.mutation, self.params)
 
-        self.assertDictEqual(
-            {'newBilbyJob': None}, response.data, "create bilbyJob mutation returned unexpected data."
-        )
+        self.assertDictEqual({"newBilbyJob": None}, response.data, "create bilbyJob mutation returned unexpected data.")
 
         self.assertEqual(response.errors[0].message, "Job name must be less than 30 characters long.")
 
     @silence_errors
     def test_invalid_job_name_too_short(self):
-        self.params['input']['params']['details']['name'] = 'a'
+        self.params["input"]["params"]["details"]["name"] = "a"
 
         response = self.client.execute(self.mutation, self.params)
 
-        self.assertDictEqual(
-            {'newBilbyJob': None}, response.data, "create bilbyJob mutation returned unexpected data."
-        )
+        self.assertDictEqual({"newBilbyJob": None}, response.data, "create bilbyJob mutation returned unexpected data.")
 
         self.assertEqual(response.errors[0].message, "Job name must be at least 5 characters long.")
 
@@ -807,36 +690,36 @@ class TestJobNameValidation(testcases.TestCase):
     def test_length(self):
         # Test name too short
         with self.assertRaises(Exception) as ex:
-            validate_job_name('')
+            validate_job_name("")
 
         self.assertEqual(str(ex.exception), "Job name must be at least 5 characters long.")
 
         with self.assertRaises(Exception) as ex:
-            validate_job_name('1234')
+            validate_job_name("1234")
 
         self.assertEqual(str(ex.exception), "Job name must be at least 5 characters long.")
 
         # Test name too long
         with self.assertRaises(Exception) as ex:
-            validate_job_name('a'*31)
+            validate_job_name("a" * 31)
 
         self.assertEqual(str(ex.exception), "Job name must be less than 30 characters long.")
 
         with self.assertRaises(Exception) as ex:
-            validate_job_name('a'*3000)
+            validate_job_name("a" * 3000)
 
         self.assertEqual(str(ex.exception), "Job name must be less than 30 characters long.")
 
         # Test valid name length
         try:
             for i in range(5, 30):
-                validate_job_name('a' * i)
+                validate_job_name("a" * i)
         except Exception:
             self.fail("validate_job_name raised an exception when it should not have")
 
     def test_invalid_characters(self):
         # Generate a list of valid characters for a job
-        valid_characters = string.digits + string.ascii_letters + '_-'
+        valid_characters = string.digits + string.ascii_letters + "_-"
 
         # Try every possible character, including all unicode characters.
         # Refer to https://www.rfc-editor.org/rfc/rfc3629 as to why the upper range is 0x10FFFF
@@ -846,13 +729,13 @@ class TestJobNameValidation(testcases.TestCase):
             # If the current character code is valid, no exception should be raised
             if char in valid_characters:
                 try:
-                    validate_job_name('a'*10 + char)
+                    validate_job_name("a" * 10 + char)
                 except Exception:
                     self.fail("validate_job_name raised an exception when it should not have")
 
             else:
                 # Any invalid character code should raise an exception
                 with self.assertRaises(Exception) as ex:
-                    validate_job_name('a' * 10 + char)
+                    validate_job_name("a" * 10 + char)
 
                 self.assertEqual(str(ex.exception), "Job name must not contain any spaces or special characters.")

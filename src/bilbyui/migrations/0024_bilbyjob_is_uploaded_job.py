@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0023_filedownloadtoken'),
+        ("bilbyui", "0023_filedownloadtoken"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='bilbyjob',
-            name='is_uploaded_job',
+            model_name="bilbyjob",
+            name="is_uploaded_job",
             field=models.BooleanField(default=False),
         ),
     ]

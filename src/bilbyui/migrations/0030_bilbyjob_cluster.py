@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0029_supportingfile'),
+        ("bilbyui", "0029_supportingfile"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='bilbyjob',
-            name='cluster',
+            model_name="bilbyjob",
+            name="cluster",
             field=models.TextField(null=True),
         ),
     ]

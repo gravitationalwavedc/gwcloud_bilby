@@ -59,11 +59,9 @@ class TestIniJobSubmission(BilbyTestCase):
                     "details": {
                         "name": self.test_name,
                         "description": self.test_description,
-                        "private": self.test_private
+                        "private": self.test_private,
                     },
-                    "iniString": {
-                        "iniString": None
-                    }
+                    "iniString": {"iniString": None},
                 }
             }
         }
@@ -93,9 +91,9 @@ class TestIniJobSubmission(BilbyTestCase):
           submitted
         """
 
-        self.test_input['input']['params']['iniString']['iniString'] = test_ini_string
+        self.test_input["input"]["params"]["iniString"]["iniString"] = test_ini_string
 
-        mock_api_call.return_value = {'jobId': 4321}
+        mock_api_call.return_value = {"jobId": 4321}
 
         response = self.client.execute(self.mutation, self.test_input)
 
@@ -110,26 +108,18 @@ class TestIniJobSubmission(BilbyTestCase):
         for v in file_names:
             sf = supporting_files.filter(key=v[0], file_name=Path(v[1]).name, file_type=v[2])
             self.assertTrue(sf.exists())
-            expected_supporting_files.append({
-                'filePath': v[1],
-                'token': str(sf.first().upload_token)
-            }),
+            expected_supporting_files.append({"filePath": v[1], "token": str(sf.first().upload_token)}),
 
         expected = {
-            'newBilbyJobFromIniString': {
-                'result': {
-                    'jobId': 'QmlsYnlKb2JOb2RlOjE=',
-                    'supportingFiles': expected_supporting_files
-                }
+            "newBilbyJobFromIniString": {
+                "result": {"jobId": "QmlsYnlKb2JOb2RlOjE=", "supportingFiles": expected_supporting_files}
             }
         }
 
-        response.data['newBilbyJobFromIniString']['result']['supportingFiles'].sort(key=lambda x: x['token'])
-        expected['newBilbyJobFromIniString']['result']['supportingFiles'].sort(key=lambda x: x['token'])
+        response.data["newBilbyJobFromIniString"]["result"]["supportingFiles"].sort(key=lambda x: x["token"])
+        expected["newBilbyJobFromIniString"]["result"]["supportingFiles"].sort(key=lambda x: x["token"])
 
-        self.assertDictEqual(
-            expected, response.data, "create bilbyJob mutation returned unexpected data."
-        )
+        self.assertDictEqual(expected, response.data, "create bilbyJob mutation returned unexpected data.")
 
         # And should create all k/v's with default values
         compare_ini_kvs(self, job, test_ini_string, config_names)
@@ -148,28 +138,23 @@ class TestIniJobSubmission(BilbyTestCase):
 
         # Now all files, checking that the job is only submitted once the last file upload has completed.
         def upload_supporting_files(tokens):
-            content = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(128))
+            content = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(128))
 
             file_input = {
                 "input": {
                     "supportingFiles": [
                         {
                             "fileToken": token,
-                            "supportingFile": SimpleUploadedFile(
-                                name='test.tar.gz',
-                                content=content.encode('utf-8')
-                            )
-                        } for token in tokens
+                            "supportingFile": SimpleUploadedFile(name="test.tar.gz", content=content.encode("utf-8")),
+                        }
+                        for token in tokens
                     ]
                 }
             }
 
-            response = self.client.execute(
-                self.supporting_file_mutation,
-                file_input
-            )
+            response = self.client.execute(self.supporting_file_mutation, file_input)
 
-            self.assertTrue(response.data['uploadSupportingFiles']['result']['result'])
+            self.assertTrue(response.data["uploadSupportingFiles"]["result"]["result"])
 
         job.refresh_from_db()
         self.assertIsNone(job.job_controller_id)
@@ -185,7 +170,7 @@ class TestIniJobSubmission(BilbyTestCase):
             job.refresh_from_db()
             self.assertIsNone(job.job_controller_id)
 
-            supporting_files_subset = supporting_files[i:i+batch_size]
+            supporting_files_subset = supporting_files[i : i + batch_size]
             upload_tokens = [sf.upload_token for sf in supporting_files_subset]
             upload_supporting_files(upload_tokens)
 
@@ -197,216 +182,178 @@ class TestIniJobSubmission(BilbyTestCase):
 
     def test_ini_job_submission_supporting_file_psd1(self):
         test_ini_string = create_test_ini_string(
-            {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat}'
-            },
+            {"label": "Test_Name", "detectors": "['H1']", "psd-dict": "{V1:./supporting_files/psd/V1-psd.dat}"},
         )
 
         self.mock_ini_job_submission_with_supporting_files(
-            test_ini_string,
-            [
-                ['V1', './supporting_files/psd/V1-psd.dat', SupportingFile.PSD]
-            ],
-            'psd_dict'
+            test_ini_string, [["V1", "./supporting_files/psd/V1-psd.dat", SupportingFile.PSD]], "psd_dict"
         )
 
     def test_ini_job_submission_supporting_file_psd2(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'psd-dict': '{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat}'
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "psd-dict": "{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat}",
             }
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
-                ['L1', './supporting_files/psd/L1-psd.dat', SupportingFile.PSD],
-                ['V1', './supporting_files/psd/V1-psd.dat', SupportingFile.PSD]
+                ["L1", "./supporting_files/psd/L1-psd.dat", SupportingFile.PSD],
+                ["V1", "./supporting_files/psd/V1-psd.dat", SupportingFile.PSD],
             ],
-            'psd_dict'
+            "psd_dict",
         )
 
     def test_ini_job_submission_supporting_file_psd3(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'psd-dict': '{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat, '
-                            'H1:./supporting_files/psd/H1-psd.dat}'
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "psd-dict": "{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat, "
+                "H1:./supporting_files/psd/H1-psd.dat}",
             }
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
-                ['L1', './supporting_files/psd/L1-psd.dat', SupportingFile.PSD],
-                ['V1', './supporting_files/psd/V1-psd.dat', SupportingFile.PSD],
-                ['H1', './supporting_files/psd/H1-psd.dat', SupportingFile.PSD]
+                ["L1", "./supporting_files/psd/L1-psd.dat", SupportingFile.PSD],
+                ["V1", "./supporting_files/psd/V1-psd.dat", SupportingFile.PSD],
+                ["H1", "./supporting_files/psd/H1-psd.dat", SupportingFile.PSD],
             ],
-            'psd_dict'
+            "psd_dict",
         )
 
     def test_ini_job_submission_supporting_file_calibration1(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat}'
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "spline-calibration-envelope-dict": "{L1:./supporting_files/calib/L1-calib.dat}",
             }
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
-            [
-                ['L1', './supporting_files/calib/L1-calib.dat', SupportingFile.CALIBRATION]
-            ],
-            'spline_calibration_envelope_dict'
+            [["L1", "./supporting_files/calib/L1-calib.dat", SupportingFile.CALIBRATION]],
+            "spline_calibration_envelope_dict",
         )
 
     def test_ini_job_submission_supporting_file_calibration2(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat, '
-                                                    'V1:./supporting_files/calib/V1-calib.dat}'
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "spline-calibration-envelope-dict": "{L1:./supporting_files/calib/L1-calib.dat, "
+                "V1:./supporting_files/calib/V1-calib.dat}",
             }
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
-                ['L1', './supporting_files/calib/L1-calib.dat', SupportingFile.CALIBRATION],
-                ['V1', './supporting_files/calib/V1-calib.dat', SupportingFile.CALIBRATION]
+                ["L1", "./supporting_files/calib/L1-calib.dat", SupportingFile.CALIBRATION],
+                ["V1", "./supporting_files/calib/V1-calib.dat", SupportingFile.CALIBRATION],
             ],
-            'spline_calibration_envelope_dict'
+            "spline_calibration_envelope_dict",
         )
 
     def test_ini_job_submission_supporting_file_calibration3(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat, '
-                                                    'V1:./supporting_files/calib/V1-calib.dat, '
-                                                    'H1:./supporting_files/calib/H1-calib.dat}'
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "spline-calibration-envelope-dict": "{L1:./supporting_files/calib/L1-calib.dat, "
+                "V1:./supporting_files/calib/V1-calib.dat, "
+                "H1:./supporting_files/calib/H1-calib.dat}",
             }
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
-                ['L1', './supporting_files/calib/L1-calib.dat', SupportingFile.CALIBRATION],
-                ['V1', './supporting_files/calib/V1-calib.dat', SupportingFile.CALIBRATION],
-                ['H1', './supporting_files/calib/H1-calib.dat', SupportingFile.CALIBRATION]
+                ["L1", "./supporting_files/calib/L1-calib.dat", SupportingFile.CALIBRATION],
+                ["V1", "./supporting_files/calib/V1-calib.dat", SupportingFile.CALIBRATION],
+                ["H1", "./supporting_files/calib/H1-calib.dat", SupportingFile.CALIBRATION],
             ],
-            'spline_calibration_envelope_dict'
+            "spline_calibration_envelope_dict",
         )
 
     def test_ini_job_submission_supporting_file_prior(self):
         test_ini_string = create_test_ini_string(
-            {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'prior-file': './supporting_files/prior/myprior.prior'
-            }
+            {"label": "Test_Name", "detectors": "['H1']", "prior-file": "./supporting_files/prior/myprior.prior"}
         )
 
         self.mock_ini_job_submission_with_supporting_files(
-            test_ini_string,
-            [
-                [None, './supporting_files/prior/myprior.prior', SupportingFile.PRIOR]
-            ],
-            'prior_file'
+            test_ini_string, [[None, "./supporting_files/prior/myprior.prior", SupportingFile.PRIOR]], "prior_file"
         )
 
     def test_ini_job_submission_supporting_file_gps(self):
         test_ini_string = create_test_ini_string(
-            {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'gps-file': './supporting_files/gps/gps.dat'
-            }
+            {"label": "Test_Name", "detectors": "['H1']", "gps-file": "./supporting_files/gps/gps.dat"}
         )
 
         self.mock_ini_job_submission_with_supporting_files(
-            test_ini_string,
-            [
-                [None, './supporting_files/gps/gps.dat', SupportingFile.GPS]
-            ],
-            'gps_file'
+            test_ini_string, [[None, "./supporting_files/gps/gps.dat", SupportingFile.GPS]], "gps_file"
         )
 
     def test_ini_job_submission_supporting_file_timeslide(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'timeslide-file': './supporting_files/timeslide/timeslide.dat'
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "timeslide-file": "./supporting_files/timeslide/timeslide.dat",
             }
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
-            [
-                [None, './supporting_files/timeslide/timeslide.dat', SupportingFile.TIME_SLIDE]
-            ],
-            'timeslide_file'
+            [[None, "./supporting_files/timeslide/timeslide.dat", SupportingFile.TIME_SLIDE]],
+            "timeslide_file",
         )
 
     def test_ini_job_submission_supporting_file_injection(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'injection-file': './supporting_files/injection/injection.dat'
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "injection-file": "./supporting_files/injection/injection.dat",
             }
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
-            [
-                [None, './supporting_files/injection/injection.dat', SupportingFile.INJECTION]
-            ],
-            'injection_file'
+            [[None, "./supporting_files/injection/injection.dat", SupportingFile.INJECTION]],
+            "injection_file",
         )
 
     def test_ini_job_submission_supporting_file_numerical_relativity_file(self):
         test_ini_string = create_test_ini_string(
-            {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'numerical-relativity-file': './supporting_files/nrf/nrf.dat'
-            }
+            {"label": "Test_Name", "detectors": "['H1']", "numerical-relativity-file": "./supporting_files/nrf/nrf.dat"}
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
-            [
-                [None, './supporting_files/nrf/nrf.dat', SupportingFile.NUMERICAL_RELATIVITY]
-            ],
-            'numerical_relativity_file'
+            [[None, "./supporting_files/nrf/nrf.dat", SupportingFile.NUMERICAL_RELATIVITY]],
+            "numerical_relativity_file",
         )
 
     def test_ini_job_submission_supporting_file_distance_marginalization_lookup_table(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'distance-marginalization-lookup-table': './supporting_files/dml/dml.npz'
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "distance-marginalization-lookup-table": "./supporting_files/dml/dml.npz",
             }
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
-            [
-                [None, './supporting_files/dml/dml.npz', SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE]
-            ],
-            'distance_marginalization_lookup_table'
+            [[None, "./supporting_files/dml/dml.npz", SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE]],
+            "distance_marginalization_lookup_table",
         )
 
     def test_ini_job_submission_supporting_file_distance_marginalization_lookup_table_none(self):
@@ -414,113 +361,93 @@ class TestIniJobSubmission(BilbyTestCase):
         # `.4s_distance_marginalization_lookup_phase.npz`
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'prior-file': '4s',
-                'distance-marginalization-lookup-table': None
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "prior-file": "4s",
+                "distance-marginalization-lookup-table": None,
             }
         )
 
-        self.mock_ini_job_submission_with_supporting_files(
-            test_ini_string,
-            [],
-            'distance_marginalization_lookup_table'
-        )
+        self.mock_ini_job_submission_with_supporting_files(test_ini_string, [], "distance_marginalization_lookup_table")
 
     def test_ini_job_submission_supporting_file_data_dict_1(self):
         test_ini_string = create_test_ini_string(
-            {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'data-dict': '{H1: ./supporting_files/dat/h1.gwf}'
-            }
+            {"label": "Test_Name", "detectors": "['H1']", "data-dict": "{H1: ./supporting_files/dat/h1.gwf}"}
         )
 
         self.mock_ini_job_submission_with_supporting_files(
-            test_ini_string,
-            [
-                ['H1', './supporting_files/dat/h1.gwf', SupportingFile.DATA]
-            ],
-            'data_dict'
+            test_ini_string, [["H1", "./supporting_files/dat/h1.gwf", SupportingFile.DATA]], "data_dict"
         )
 
     def test_ini_job_submission_supporting_file_data_dict_2(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1', 'L1']",
-                'data-dict': '{H1: ./supporting_files/dat/h1.gwf, L1: ./supporting_files/dat/l1.gwf}'
+                "label": "Test_Name",
+                "detectors": "['H1', 'L1']",
+                "data-dict": "{H1: ./supporting_files/dat/h1.gwf, L1: ./supporting_files/dat/l1.gwf}",
             }
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
-                ['H1', './supporting_files/dat/h1.gwf', SupportingFile.DATA],
-                ['L1', './supporting_files/dat/l1.gwf', SupportingFile.DATA]
+                ["H1", "./supporting_files/dat/h1.gwf", SupportingFile.DATA],
+                ["L1", "./supporting_files/dat/l1.gwf", SupportingFile.DATA],
             ],
-            'data_dict'
+            "data_dict",
         )
 
     def test_ini_job_submission_supporting_file_all(self):
         test_ini_string = create_test_ini_string(
             {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'psd-dict': '{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat, '
-                            'H1:./supporting_files/psd/H1-psd.dat}',
-                'spline-calibration-envelope-dict': '{L1:./supporting_files/calib/L1-calib.dat, '
-                                                    'V1:./supporting_files/calib/V1-calib.dat, '
-                                                    'H1:./supporting_files/calib/H1-calib.dat}',
-                'prior-file': './supporting_files/prior/myprior.prior',
-                'gps-file': './supporting_files/gps/gps.dat',
-                'timeslide-file': './supporting_files/timeslide/timeslide.dat',
-                'injection-file': './supporting_files/injection/injection.dat',
-                'numerical-relativity-file': './supporting_files/nrf/nrf.dat',
-                'distance-marginalization-lookup-table': './supporting_files/dml/dml.npz',
-                'data-dict': '{H1: ./supporting_files/dat/h1.gwf, L1: ./supporting_files/dat/l1.gwf, '
-                             'V1: ./supporting_files/dat/v1.gwf}'
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "psd-dict": "{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat, "
+                "H1:./supporting_files/psd/H1-psd.dat}",
+                "spline-calibration-envelope-dict": "{L1:./supporting_files/calib/L1-calib.dat, "
+                "V1:./supporting_files/calib/V1-calib.dat, "
+                "H1:./supporting_files/calib/H1-calib.dat}",
+                "prior-file": "./supporting_files/prior/myprior.prior",
+                "gps-file": "./supporting_files/gps/gps.dat",
+                "timeslide-file": "./supporting_files/timeslide/timeslide.dat",
+                "injection-file": "./supporting_files/injection/injection.dat",
+                "numerical-relativity-file": "./supporting_files/nrf/nrf.dat",
+                "distance-marginalization-lookup-table": "./supporting_files/dml/dml.npz",
+                "data-dict": "{H1: ./supporting_files/dat/h1.gwf, L1: ./supporting_files/dat/l1.gwf, "
+                "V1: ./supporting_files/dat/v1.gwf}",
             }
         )
 
         self.mock_ini_job_submission_with_supporting_files(
             test_ini_string,
             [
-                ['L1', './supporting_files/psd/L1-psd.dat', SupportingFile.PSD],
-                ['V1', './supporting_files/psd/V1-psd.dat', SupportingFile.PSD],
-                ['H1', './supporting_files/psd/H1-psd.dat', SupportingFile.PSD],
-
-                ['L1', './supporting_files/calib/L1-calib.dat', SupportingFile.CALIBRATION],
-                ['V1', './supporting_files/calib/V1-calib.dat', SupportingFile.CALIBRATION],
-                ['H1', './supporting_files/calib/H1-calib.dat', SupportingFile.CALIBRATION],
-
-                [None, './supporting_files/prior/myprior.prior', SupportingFile.PRIOR],
-
-                [None, './supporting_files/gps/gps.dat', SupportingFile.GPS],
-
-                [None, './supporting_files/timeslide/timeslide.dat', SupportingFile.TIME_SLIDE],
-
-                [None, './supporting_files/injection/injection.dat', SupportingFile.INJECTION],
-
-                [None, './supporting_files/nrf/nrf.dat', SupportingFile.NUMERICAL_RELATIVITY],
-
-                [None, './supporting_files/dml/dml.npz', SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE],
-
-                ['H1', './supporting_files/dat/h1.gwf', SupportingFile.DATA],
-                ['L1', './supporting_files/dat/l1.gwf', SupportingFile.DATA],
-                ['V1', './supporting_files/dat/v1.gwf', SupportingFile.DATA]
+                ["L1", "./supporting_files/psd/L1-psd.dat", SupportingFile.PSD],
+                ["V1", "./supporting_files/psd/V1-psd.dat", SupportingFile.PSD],
+                ["H1", "./supporting_files/psd/H1-psd.dat", SupportingFile.PSD],
+                ["L1", "./supporting_files/calib/L1-calib.dat", SupportingFile.CALIBRATION],
+                ["V1", "./supporting_files/calib/V1-calib.dat", SupportingFile.CALIBRATION],
+                ["H1", "./supporting_files/calib/H1-calib.dat", SupportingFile.CALIBRATION],
+                [None, "./supporting_files/prior/myprior.prior", SupportingFile.PRIOR],
+                [None, "./supporting_files/gps/gps.dat", SupportingFile.GPS],
+                [None, "./supporting_files/timeslide/timeslide.dat", SupportingFile.TIME_SLIDE],
+                [None, "./supporting_files/injection/injection.dat", SupportingFile.INJECTION],
+                [None, "./supporting_files/nrf/nrf.dat", SupportingFile.NUMERICAL_RELATIVITY],
+                [None, "./supporting_files/dml/dml.npz", SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE],
+                ["H1", "./supporting_files/dat/h1.gwf", SupportingFile.DATA],
+                ["L1", "./supporting_files/dat/l1.gwf", SupportingFile.DATA],
+                ["V1", "./supporting_files/dat/v1.gwf", SupportingFile.DATA],
             ],
             [
-                'psd_dict',
-                'spline_calibration_envelope_dict',
-                'prior_file',
-                'gps_file',
-                'timeslide_file',
-                'injection_file',
-                'numerical_relativity_file',
-                'distance_marginalization_lookup_table',
-                'data_dict'
-            ]
+                "psd_dict",
+                "spline_calibration_envelope_dict",
+                "prior_file",
+                "gps_file",
+                "timeslide_file",
+                "injection_file",
+                "numerical_relativity_file",
+                "distance_marginalization_lookup_table",
+                "data_dict",
+            ],
         )
 
     @silence_errors
@@ -531,19 +458,11 @@ class TestIniJobSubmission(BilbyTestCase):
 
     def test_download_supporting_files_valid_token_force_download(self):
         test_ini_string = create_test_ini_string(
-            {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat}'
-            },
+            {"label": "Test_Name", "detectors": "['H1']", "psd-dict": "{V1:./supporting_files/psd/V1-psd.dat}"},
         )
 
         self.mock_ini_job_submission_with_supporting_files(
-            test_ini_string,
-            [
-                ['V1', './supporting_files/psd/V1-psd.dat', SupportingFile.PSD]
-            ],
-            'psd_dict'
+            test_ini_string, [["V1", "./supporting_files/psd/V1-psd.dat", SupportingFile.PSD]], "psd_dict"
         )
 
         supporting_file = SupportingFile.objects.last()
@@ -552,53 +471,37 @@ class TestIniJobSubmission(BilbyTestCase):
             f'{reverse(viewname="file_download")}?fileId={supporting_file.download_token}&forceDownload'
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.headers['Content-Type'], 'application/octet-stream')
-        self.assertEqual(
-            response.headers['Content-Disposition'],
-            'attachment; filename="V1-psd.dat"'
-        )
+        self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
+        self.assertEqual(response.headers["Content-Disposition"], 'attachment; filename="V1-psd.dat"')
 
-        content = b''.join(list(response))
+        content = b"".join(list(response))
 
         # Get the supporting file path
         file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)
 
-        with open(str(file_path), 'rb') as f:
+        with open(str(file_path), "rb") as f:
             self.assertEqual(content, f.read())
 
     def test_download_supporting_files_valid_token(self):
         test_ini_string = create_test_ini_string(
-            {
-                'label': "Test_Name",
-                'detectors': "['H1']",
-                'psd-dict': '{V1:./supporting_files/psd/V1-psd.dat}'
-            },
+            {"label": "Test_Name", "detectors": "['H1']", "psd-dict": "{V1:./supporting_files/psd/V1-psd.dat}"},
         )
 
         self.mock_ini_job_submission_with_supporting_files(
-            test_ini_string,
-            [
-                ['V1', './supporting_files/psd/V1-psd.dat', SupportingFile.PSD]
-            ],
-            'psd_dict'
+            test_ini_string, [["V1", "./supporting_files/psd/V1-psd.dat", SupportingFile.PSD]], "psd_dict"
         )
 
         supporting_file = SupportingFile.objects.last()
 
-        response = self.http_client.get(
-            f'{reverse(viewname="file_download")}?fileId={supporting_file.download_token}'
-        )
+        response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={supporting_file.download_token}')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.headers['Content-Type'], 'application/octet-stream')
-        self.assertEqual(
-            response.headers['Content-Disposition'],
-            'inline; filename="V1-psd.dat"'
-        )
+        self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
+        self.assertEqual(response.headers["Content-Disposition"], 'inline; filename="V1-psd.dat"')
 
-        content = b''.join(list(response))
+        content = b"".join(list(response))
 
         # Get the supporting file path
         file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)
 
-        with open(str(file_path), 'rb') as f:
+        with open(str(file_path), "rb") as f:
             self.assertEqual(content, f.read())

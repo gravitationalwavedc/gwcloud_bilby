@@ -21,7 +21,7 @@ from graphene_file_upload.django import FileUploadGraphQLView
 import bilbyui.views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path("admin/", admin.site.urls),
     path("graphql", csrf_exempt(FileUploadGraphQLView.as_view(graphiql=True))),
-    path("file_download/", bilbyui.views.file_download, name='file_download'),
+    path("file_download/", bilbyui.views.file_download, name="file_download"),
 ]

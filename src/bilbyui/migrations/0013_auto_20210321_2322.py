@@ -4,27 +4,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0012_insert_default_labels'),
+        ("bilbyui", "0012_insert_default_labels"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='bilbyjob',
-            name='is_ligo_job',
+            model_name="bilbyjob",
+            name="is_ligo_job",
             field=models.BooleanField(default=False),
         ),
         migrations.AlterField(
-            model_name='data',
-            name='data_choice',
+            model_name="data",
+            name="data_choice",
             field=models.CharField(
-                choices=[
-                    ['simulated', 'Simulated'],
-                    ['real', 'Real']
-                ],
-                default='simulated',
-                max_length=20
+                choices=[["simulated", "Simulated"], ["real", "Real"]], default="simulated", max_length=20
             ),
         ),
     ]

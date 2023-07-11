@@ -4,21 +4,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0035_auto_20220830_2246'),
+        ("bilbyui", "0035_auto_20220830_2246"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='AnonymousMetrics',
+            name="AnonymousMetrics",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('public_id', models.UUIDField()),
-                ('session_id', models.UUIDField()),
-                ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('request', models.TextField()),
-                ('params', models.TextField()),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("public_id", models.UUIDField()),
+                ("session_id", models.UUIDField()),
+                ("timestamp", models.DateTimeField(auto_now_add=True)),
+                ("request", models.TextField()),
+                ("params", models.TextField()),
             ],
         ),
     ]

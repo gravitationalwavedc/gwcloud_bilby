@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0013_auto_20210321_2322'),
+        ("bilbyui", "0013_auto_20210321_2322"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='label',
-            name='protected',
+            model_name="label",
+            name="protected",
             field=models.BooleanField(default=False),
         ),
     ]

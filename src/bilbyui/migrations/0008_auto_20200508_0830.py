@@ -4,18 +4,17 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0007_auto_20200512_0126'),
+        ("bilbyui", "0007_auto_20200512_0126"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='bilbyjob',
-            unique_together={('user_id', 'name')},
+            name="bilbyjob",
+            unique_together={("user_id", "name")},
         ),
         migrations.RemoveField(
-            model_name='bilbyjob',
-            name='username',
+            model_name="bilbyjob",
+            name="username",
         ),
     ]

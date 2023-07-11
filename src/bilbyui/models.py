@@ -66,13 +66,13 @@ class EventID(models.Model):
         blank=False,
         null=False,
         unique=True,
-        validators=[RegexValidator(regex=r'^GW\d{6}_\d{6}$', message='Must be of the form GW123456_123456')]
+        validators=[RegexValidator(regex=r"^GW\d{6}_\d{6}$", message="Must be of the form GW123456_123456")],
     )
     trigger_id = models.CharField(
         max_length=15,
         blank=True,
         null=True,
-        validators=[RegexValidator(regex=r'^S\d{6}[a-z]{1,2}$', message='Must be of the form S123456a')]
+        validators=[RegexValidator(regex=r"^S\d{6}[a-z]{1,2}$", message="Must be of the form S123456a")],
     )
     nickname = models.CharField(max_length=20, blank=True, null=True)
     is_ligo_event = models.BooleanField(default=False)
@@ -98,11 +98,7 @@ class EventID(models.Model):
     @classmethod
     def create(cls, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
         event = cls(
-            event_id=event_id,
-            trigger_id=trigger_id,
-            nickname=nickname,
-            is_ligo_event=is_ligo_event,
-            gps_time=gps_time
+            event_id=event_id, trigger_id=trigger_id, nickname=nickname, is_ligo_event=is_ligo_event, gps_time=gps_time
         )
         event.clean_fields()  # Validate IDs
         event.save()
@@ -132,11 +128,9 @@ def event_id_save(sender, instance, **kwargs):
 
 class BilbyJob(models.Model):
     class Meta:
-        unique_together = (
-            ('user_id', 'name'),
-        )
+        unique_together = (("user_id", "name"),)
 
-        ordering = ('-last_updated', 'name')
+        ordering = ("-last_updated", "name")
 
     user_id = models.IntegerField()
     name = models.CharField(max_length=255, blank=False, null=False)
@@ -246,8 +240,7 @@ class BilbyJob(models.Model):
         removal_time = timezone.now() - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY)
 
         expired_supporting_file_job_ids = SupportingFile.objects.filter(
-            job__creation_time__lt=removal_time,
-            upload_token__isnull=False
+            job__creation_time__lt=removal_time, upload_token__isnull=False
         )
 
         cls.objects.filter(id__in=expired_supporting_file_job_ids).delete()
@@ -291,7 +284,7 @@ class BilbyJob(models.Model):
         # in sync
         self.elastic_search_update()
 
-    def get_file_list(self, path='', recursive=True):
+    def get_file_list(self, path="", recursive=True):
         return request_file_list(self, path, recursive)
 
     def as_dict(self):
@@ -301,18 +294,20 @@ class BilbyJob(models.Model):
         # Iterate over any supporting files and generate the supporting file details
         supporting_file_details = []
         for supporting_file in self.supportingfile_set.all():
-            supporting_file_details.append({
-                'type': supporting_file.file_type,
-                'key': supporting_file.key,
-                'file_name': supporting_file.file_name,
-                'token': str(supporting_file.download_token)
-            })
+            supporting_file_details.append(
+                {
+                    "type": supporting_file.file_type,
+                    "key": supporting_file.key,
+                    "file_name": supporting_file.file_name,
+                    "token": str(supporting_file.download_token),
+                }
+            )
 
         return dict(
             name=self.name,
             description=self.description,
             ini_string=self.ini_string,
-            supporting_files=supporting_file_details
+            supporting_files=supporting_file_details,
         )
 
     def elastic_search_update(self):
@@ -323,9 +318,7 @@ class BilbyJob(models.Model):
             return
 
         es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST],
-            api_key=settings.ELASTIC_SEARCH_API_KEY,
-            verify_certs=False
+            hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY, verify_certs=False
         )
 
         # Get the user details for this job
@@ -335,35 +328,20 @@ class BilbyJob(models.Model):
         # Generate the document for insertion or update in elastic search
         doc = {
             "user": {
-                "firstName": user['firstName'],
-                "lastName": user['lastName'],
+                "firstName": user["firstName"],
+                "lastName": user["lastName"],
             },
             "job": {
                 "name": self.name,
                 "description": self.description,
                 "creationTime": self.creation_time,
-                "lastUpdatedTime": self.last_updated
+                "lastUpdatedTime": self.last_updated,
             },
-            "labels": [
-                {
-                    "name": label.name,
-                    "description": label.description
-                }
-                for label in self.labels.all()
-            ],
+            "labels": [{"name": label.name, "description": label.description} for label in self.labels.all()],
             "eventId": None,
-            "ini": {
-                kv.key: json.loads(kv.value)
-                for kv in self.inikeyvalue_set.filter(processed=False)
-            },
-            "params": {
-                kv.key: json.loads(kv.value)
-                for kv in self.inikeyvalue_set.filter(processed=True)
-            },
-            "_private_info_": {
-                "userId": self.user_id,
-                "private": self.private
-            }
+            "ini": {kv.key: json.loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=False)},
+            "params": {kv.key: json.loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=True)},
+            "_private_info_": {"userId": self.user_id, "private": self.private},
         }
 
         # Set the event id if one is set on the job
@@ -372,7 +350,7 @@ class BilbyJob(models.Model):
                 "eventId": self.event_id.event_id,
                 "triggerId": self.event_id.trigger_id,
                 "nickname": self.event_id.nickname,
-                "gpsTime": self.event_id.gps_time
+                "gpsTime": self.event_id.gps_time,
             }
 
         # First try to update the document in elastic search if it exists, otherwise insert the new document
@@ -389,23 +367,21 @@ class BilbyJob(models.Model):
             return
 
         es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST],
-            api_key=settings.ELASTIC_SEARCH_API_KEY,
-            verify_certs=False
+            hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY, verify_certs=False
         )
 
         es.delete(index=settings.ELASTIC_SEARCH_INDEX, id=self.id)
 
 
 def on_bilby_job_label_add_rem(sender, instance, action, pk_set, **kwargs):
-    if action in ['post_add', 'post_remove']:
+    if action in ["post_add", "post_remove"]:
         instance.elastic_search_update()
 
 
 m2m_changed.connect(on_bilby_job_label_add_rem, sender=BilbyJob.labels.through)
 
 
-@receiver(pre_delete, sender=BilbyJob, dispatch_uid='bilby_job_delete_signal')
+@receiver(pre_delete, sender=BilbyJob, dispatch_uid="bilby_job_delete_signal")
 def bilby_job_delete_signal(sender, instance, using, **kwargs):
     instance.elastic_search_remove()
 
@@ -416,6 +392,7 @@ class SupportingFile(models.Model):
     Time Slide and Injection files. Doesn't include a timestamp, as these records will be created at the same time as a
     BilbyJob is.
     """
+
     PSD = "psd"
     CALIBRATION = "cal"
     PRIOR = "pri"
@@ -451,7 +428,7 @@ class SupportingFile(models.Model):
         """
         extra = {}
         if uploaded:
-            extra['upload_token'] = None
+            extra["upload_token"] = None
 
         bulk_items = []
         result_files = []
@@ -459,37 +436,25 @@ class SupportingFile(models.Model):
             if type(details) is list:
                 for element in details:
                     for k, f in element.items():
-                        result_files.append({'file_path': f})
+                        result_files.append({"file_path": f})
 
                         bulk_items.append(
-                            cls(
-                                job=bilby_job,
-                                file_type=supporting_file_type,
-                                key=k,
-                                file_name=Path(f).name,
-                                **extra
-                            )
+                            cls(job=bilby_job, file_type=supporting_file_type, key=k, file_name=Path(f).name, **extra)
                         )
 
             elif type(details) is str:
-                result_files.append({'file_path': details})
+                result_files.append({"file_path": details})
 
                 bulk_items.append(
-                    cls(
-                        job=bilby_job,
-                        file_type=supporting_file_type,
-                        key=None,
-                        file_name=Path(details).name,
-                        **extra
-                    )
+                    cls(job=bilby_job, file_type=supporting_file_type, key=None, file_name=Path(details).name, **extra)
                 )
 
         created = cls.objects.bulk_create(bulk_items)
 
         # Map the tokens for the created files to the returned supporting files details
         for i, v in enumerate(created):
-            result_files[i]['token'] = created[i].upload_token
-            result_files[i]['download_token'] = created[i].download_token
+            result_files[i]["token"] = created[i].upload_token
+            result_files[i]["download_token"] = created[i].download_token
 
         return result_files
 
@@ -554,6 +519,7 @@ class FileDownloadToken(models.Model):
     This model tracks files from job file lists which can be used to generate file download tokens from the job
     controller
     """
+
     # The job this token is for
     job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE, db_index=True)
     # The token sent to the client and used by the client to generate a file download token
@@ -584,12 +550,7 @@ class FileDownloadToken(models.Model):
         Creates a bulk number of FileDownloadToken objects for a specific job and list of paths, and returns the
         created objects
         """
-        data = [
-            cls(
-                job=job,
-                path=p
-            ) for p in paths
-        ]
+        data = [cls(job=job, path=p) for p in paths]
 
         return cls.objects.bulk_create(data)
 
@@ -613,14 +574,10 @@ class FileDownloadToken(models.Model):
         cls.prune()
 
         # Get all objects matching the list of tokens
-        objects = {
-            str(rec.token): rec.path for rec in cls.objects.filter(job=job, token__in=tokens)
-        }
+        objects = {str(rec.token): rec.path for rec in cls.objects.filter(job=job, token__in=tokens)}
 
         # Generate the list and return
-        return [
-            objects[str(tok)] if str(tok) in objects else None for tok in tokens
-        ]
+        return [objects[str(tok)] if str(tok) in objects else None for tok in tokens]
 
 
 class BilbyJobUploadToken(models.Model):
@@ -628,6 +585,7 @@ class BilbyJobUploadToken(models.Model):
     This model tracks file upload tokens that can be used to upload bilby jobs rather than using traditional JWT
     authentication
     """
+
     # The job upload token
     token = models.UUIDField(unique=True, default=uuid.uuid4, db_index=True)
     # The ID of the user the upload token was created for (Used to provide the user of the uploaded job)
@@ -677,6 +635,7 @@ class AnonymousMetrics(models.Model):
     """
     Used to track information about anonymous users accessing the system for reporting purposes.
     """
+
     # The public (Persistent) user identifier
     public_id = models.UUIDField()
     # The session identifier

@@ -5,20 +5,19 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0024_bilbyjob_is_uploaded_job'),
+        ("bilbyui", "0024_bilbyjob_is_uploaded_job"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='BilbyJobUploadToken',
+            name="BilbyJobUploadToken",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('token', models.UUIDField(db_index=True, default=uuid.uuid4, unique=True)),
-                ('user_id', models.IntegerField()),
-                ('is_ligo', models.BooleanField()),
-                ('created', models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("token", models.UUIDField(db_index=True, default=uuid.uuid4, unique=True)),
+                ("user_id", models.IntegerField()),
+                ("is_ligo", models.BooleanField()),
+                ("created", models.DateTimeField(auto_now_add=True, db_index=True)),
             ],
         ),
     ]

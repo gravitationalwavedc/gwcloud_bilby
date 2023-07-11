@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0002_auto_20200403_0346'),
+        ("bilbyui", "0002_auto_20200403_0346"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='bilbyjob',
-            name='job_id',
+            model_name="bilbyjob",
+            name="job_id",
             field=models.IntegerField(blank=True, default=None, null=True),
         ),
     ]

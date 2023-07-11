@@ -127,12 +127,8 @@ class TestEmbargoFilter(BilbyTestCase):
                 name=f"test job {i}",
                 description=f"test job {i}",
                 ini_string=create_test_ini_string(
-                    {
-                        'detectors': "['H1']",
-                        'trigger-time': vals[0],
-                        'n-simulation': vals[1]
-                    }
-                )
+                    {"detectors": "['H1']", "trigger-time": vals[0], "n-simulation": vals[1]}
+                ),
             )
 
         self.user = GWCloudUser(username="buffy")
@@ -143,29 +139,17 @@ class TestEmbargoFilter(BilbyTestCase):
         input_qs = BilbyJob.objects.all()
         self.user.is_anonymous = True
         self.user.is_ligo = False
-        self.assertQuerysetEqual(
-            input_qs,
-            map(repr, embargo_filter(input_qs, self.user))
-        )
+        self.assertQuerysetEqual(input_qs, map(repr, embargo_filter(input_qs, self.user)))
 
         self.user.is_ligo = True
-        self.assertQuerysetEqual(
-            input_qs,
-            map(repr, embargo_filter(input_qs, self.user))
-        )
+        self.assertQuerysetEqual(input_qs, map(repr, embargo_filter(input_qs, self.user)))
 
         self.user.is_anonymous = False
         self.user.is_ligo = False
-        self.assertQuerysetEqual(
-            input_qs,
-            map(repr, embargo_filter(input_qs, self.user))
-        )
+        self.assertQuerysetEqual(input_qs, map(repr, embargo_filter(input_qs, self.user)))
 
         self.user.is_ligo = True
-        self.assertQuerysetEqual(
-            input_qs,
-            map(repr, embargo_filter(input_qs, self.user))
-        )
+        self.assertQuerysetEqual(input_qs, map(repr, embargo_filter(input_qs, self.user)))
 
     @override_settings(EMBARGO_START_TIME=1.5)
     def test_with_embargo(self):
@@ -175,25 +159,19 @@ class TestEmbargoFilter(BilbyTestCase):
         self.user.is_anonymous = True
         self.user.is_ligo = False
         self.assertQuerysetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]),
-            map(repr, embargo_filter(input_qs, self.user))
+            BilbyJob.objects.filter(pk__in=[1, 2, 3]), map(repr, embargo_filter(input_qs, self.user))
         )
 
         self.user.is_ligo = True
         self.assertQuerysetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]),
-            map(repr, embargo_filter(input_qs, self.user))
+            BilbyJob.objects.filter(pk__in=[1, 2, 3]), map(repr, embargo_filter(input_qs, self.user))
         )
 
         self.user.is_anonymous = False
         self.user.is_ligo = False
         self.assertQuerysetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]),
-            map(repr, embargo_filter(input_qs, self.user))
+            BilbyJob.objects.filter(pk__in=[1, 2, 3]), map(repr, embargo_filter(input_qs, self.user))
         )
 
         self.user.is_ligo = True
-        self.assertQuerysetEqual(
-            input_qs,
-            map(repr, embargo_filter(input_qs, self.user))
-        )
+        self.assertQuerysetEqual(input_qs, map(repr, embargo_filter(input_qs, self.user)))

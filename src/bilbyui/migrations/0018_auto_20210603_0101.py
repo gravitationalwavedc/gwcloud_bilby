@@ -4,48 +4,47 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     atomic = False
 
     dependencies = [
-        ('bilbyui', '0017_pull_ini_files'),
+        ("bilbyui", "0017_pull_ini_files"),
     ]
 
     operations = [
         migrations.AlterModelTable(
-            name='bilbyjob',
+            name="bilbyjob",
             table=None,
         ),
         migrations.AlterModelTable(
-            name='data',
+            name="data",
             table=None,
         ),
         migrations.AlterModelTable(
-            name='dataparameter',
+            name="dataparameter",
             table=None,
         ),
         migrations.AlterModelTable(
-            name='label',
+            name="label",
             table=None,
         ),
         migrations.AlterModelTable(
-            name='prior',
+            name="prior",
             table=None,
         ),
         migrations.AlterModelTable(
-            name='sampler',
+            name="sampler",
             table=None,
         ),
         migrations.AlterModelTable(
-            name='samplerparameter',
+            name="samplerparameter",
             table=None,
         ),
         migrations.AlterModelTable(
-            name='signal',
+            name="signal",
             table=None,
         ),
         migrations.AlterModelTable(
-            name='signalparameter',
+            name="signalparameter",
             table=None,
         ),
     ]

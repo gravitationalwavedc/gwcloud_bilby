@@ -23,9 +23,8 @@ def reverse_parse_ini_files(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0019_inikeyvalue'),
+        ("bilbyui", "0019_inikeyvalue"),
     ]
 
     operations = [

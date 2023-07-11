@@ -19,10 +19,7 @@ class TestFileDownloadIds(BilbyTestCase):
         self.addCleanup(self.responses.stop)
         self.addCleanup(self.responses.reset)
 
-        self.job = BilbyJob.objects.create(
-            user_id=1234,
-            ini_string="detectors=['H1']"
-        )
+        self.job = BilbyJob.objects.create(user_id=1234, ini_string="detectors=['H1']")
 
     def test_request_file_download_id(self):
         try:
@@ -30,25 +27,21 @@ class TestFileDownloadIds(BilbyTestCase):
 
             # Set up responses before any call to request
             # See https://github.com/getsentry/responses/pull/375
-            self.responses.add(
-                responses.POST,
-                f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
-                status=400
-            )
+            self.responses.add(responses.POST, f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/", status=400)
 
-            return_result = 'val1'
+            return_result = "val1"
             self.responses.add(
                 responses.POST,
                 f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
                 body=json.dumps({"fileIds": [return_result]}),
-                status=200
+                status=200,
             )
 
             # Test job not submitted
             self.job.job_controller_id = None
             self.job.save()
 
-            result = request_file_download_id(self.job, 'test_path')
+            result = request_file_download_id(self.job, "test_path")
 
             self.assertEqual(result, (False, "Job not submitted"))
 
@@ -56,7 +49,7 @@ class TestFileDownloadIds(BilbyTestCase):
             self.job.job_controller_id = 4321
             self.job.save()
 
-            result = request_file_download_id(self.job, 'test_path')
+            result = request_file_download_id(self.job, "test_path")
 
             self.assertEqual(result, (False, "Error getting job file download url"))
 
@@ -64,7 +57,7 @@ class TestFileDownloadIds(BilbyTestCase):
             self.job.job_controller_id = 4321
             self.job.save()
 
-            result = request_file_download_id(self.job, 'test_path')
+            result = request_file_download_id(self.job, "test_path")
 
             self.assertEqual(result, (True, return_result))
         finally:
@@ -76,25 +69,21 @@ class TestFileDownloadIds(BilbyTestCase):
 
             # Set up responses before any call to request
             # See https://github.com/getsentry/responses/pull/375
-            self.responses.add(
-                responses.POST,
-                f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
-                status=400
-            )
+            self.responses.add(responses.POST, f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/", status=400)
 
-            return_result = ['val1', 'val2', 'val3']
+            return_result = ["val1", "val2", "val3"]
             self.responses.add(
                 responses.POST,
                 f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
                 body=json.dumps({"fileIds": return_result}),
-                status=200
+                status=200,
             )
 
             # Test job not submitted
             self.job.job_controller_id = None
             self.job.save()
 
-            result = request_file_download_ids(self.job, 'test_path')
+            result = request_file_download_ids(self.job, "test_path")
 
             self.assertEqual(result, (False, "Job not submitted"))
 
@@ -102,7 +91,7 @@ class TestFileDownloadIds(BilbyTestCase):
             self.job.job_controller_id = 4321
             self.job.save()
 
-            result = request_file_download_ids(self.job, 'test_path')
+            result = request_file_download_ids(self.job, "test_path")
 
             self.assertEqual(result, (False, "Error getting job file download url"))
 
@@ -110,7 +99,7 @@ class TestFileDownloadIds(BilbyTestCase):
             self.job.job_controller_id = 4321
             self.job.save()
 
-            result = request_file_download_ids(self.job, 'test_path')
+            result = request_file_download_ids(self.job, "test_path")
 
             self.assertEqual(result, (True, return_result))
         finally:

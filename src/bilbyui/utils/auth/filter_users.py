@@ -19,12 +19,9 @@ def request_filter_users(search, user_id):
 
     # Create the jwt token
     jwt_enc = jwt.encode(
-        {
-            'userId': user_id,
-            'exp': datetime.datetime.now() + datetime.timedelta(days=30)
-        },
+        {"userId": user_id, "exp": datetime.datetime.now() + datetime.timedelta(days=30)},
         settings.AUTH_SERVICE_JWT_SECRET,
-        algorithm='HS256'
+        algorithm="HS256",
     )
 
     query = f"""
@@ -46,11 +43,7 @@ def request_filter_users(search, user_id):
     try:
         # Initiate the request to the job controller
         result = requests.request(
-            "POST", f"{settings.GWCLOUD_AUTH_API_URL}",
-            data={'query': query},
-            headers={
-                "Authorization": jwt_enc
-            }
+            "POST", f"{settings.GWCLOUD_AUTH_API_URL}", data={"query": query}, headers={"Authorization": jwt_enc}
         )
 
         # Check that the request was successful

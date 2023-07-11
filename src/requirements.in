@@ -9,8 +9,7 @@ python-jwt
 pyjwt<2
 requests
 django-jenkins
-pep8
-pyflakes
+black
 flake8
 coverage<5
 munch

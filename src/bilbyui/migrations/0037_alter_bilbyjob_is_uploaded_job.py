@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0036_anonymousmetrics'),
+        ("bilbyui", "0036_anonymousmetrics"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='bilbyjob',
-            name='is_uploaded_job',
-            field=models.IntegerField(choices=[(0, 'Normal Job'), (1, 'Uploaded Job'), (2, 'GWOSC Job')], default=0),
+            model_name="bilbyjob",
+            name="is_uploaded_job",
+            field=models.IntegerField(choices=[(0, "Normal Job"), (1, "Uploaded Job"), (2, "GWOSC Job")], default=0),
         ),
     ]

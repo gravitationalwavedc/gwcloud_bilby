@@ -29,16 +29,16 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
             description="first job",
             job_controller_id=2,
             private=False,
-            ini_string=create_test_ini_string({'detectors': "['H1']"})
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         self.global_id = to_global_id("BilbyJobNode", self.job.id)
 
         self.files = [
-            {'path': '/a', 'isDir': True, 'fileSize': "0"},
-            {'path': '/a/path', 'isDir': True, 'fileSize': "0"},
-            {'path': '/a/path/here2.txt', 'isDir': False, 'fileSize': "12345"},
-            {'path': '/a/path/here3.txt', 'isDir': False, 'fileSize': "123456"},
-            {'path': '/a/path/here4.txt', 'isDir': False, 'fileSize': "1234567"}
+            {"path": "/a", "isDir": True, "fileSize": "0"},
+            {"path": "/a/path", "isDir": True, "fileSize": "0"},
+            {"path": "/a/path/here2.txt", "isDir": False, "fileSize": "12345"},
+            {"path": "/a/path/here3.txt", "isDir": False, "fileSize": "123456"},
+            {"path": "/a/path/here4.txt", "isDir": False, "fileSize": "1234567"},
         ]
 
         self.query = f"""
@@ -65,22 +65,20 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
 
     def request_file_list_mock(*args, **kwargs):
         return True, [
-            {'path': '/a', 'isDir': True, 'fileSize': 0},
-            {'path': '/a/path', 'isDir': True, 'fileSize': 0},
-            {'path': '/a/path/here2.txt', 'isDir': False, 'fileSize': 12345},
-            {'path': '/a/path/here3.txt', 'isDir': False, 'fileSize': 123456},
-            {'path': '/a/path/here4.txt', 'isDir': False, 'fileSize': 1234567}
+            {"path": "/a", "isDir": True, "fileSize": 0},
+            {"path": "/a/path", "isDir": True, "fileSize": 0},
+            {"path": "/a/path/here2.txt", "isDir": False, "fileSize": 12345},
+            {"path": "/a/path/here3.txt", "isDir": False, "fileSize": 123456},
+            {"path": "/a/path/here4.txt", "isDir": False, "fileSize": 1234567},
         ]
 
     def request_file_download_ids_mock(*args, **kwargs):
         return True, [uuid.uuid4() for _ in args[1]]
 
     @silence_errors
-    @mock.patch('bilbyui.models.request_file_list', side_effect=request_file_list_mock)
-    @mock.patch('bilbyui.schema.request_file_download_ids',
-                side_effect=request_file_download_ids_mock)
+    @mock.patch("bilbyui.models.request_file_list", side_effect=request_file_list_mock)
+    @mock.patch("bilbyui.schema.request_file_download_ids", side_effect=request_file_download_ids_mock)
     def test_not_uploaded_job(self, request_file_list, request_file_download_id_mock):
-
         # Iterate twice, first is unauthenticated user, second is authenticated user
         self.client.authenticate(None)
         for _ in range(2):
@@ -90,55 +88,39 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
             response = self.client.execute(self.query)
 
             for i, f in enumerate(self.files):
-                if f['isDir']:
-                    self.files[i]['downloadToken'] = None
+                if f["isDir"]:
+                    self.files[i]["downloadToken"] = None
                 else:
-                    self.files[i]['downloadToken'] = \
-                        str(FileDownloadToken.objects.get(job=self.job, path=f['path']).token)
+                    self.files[i]["downloadToken"] = str(
+                        FileDownloadToken.objects.get(job=self.job, path=f["path"]).token
+                    )
 
-            expected = {
-                'bilbyResultFiles': {
-                    'files': self.files,
-                    'jobType': BilbyJobType.NORMAL
-                }
-            }
+            expected = {"bilbyResultFiles": {"files": self.files, "jobType": BilbyJobType.NORMAL}}
             self.assertDictEqual(response.data, expected)
 
-            download_tokens = [f['downloadToken'] for f in filter(lambda x: not x['isDir'], self.files)]
+            download_tokens = [f["downloadToken"] for f in filter(lambda x: not x["isDir"], self.files)]
 
             self.client.authenticate(self.user)
 
         self.client.authenticate(None)
         for _ in range(2):
             response = self.client.execute(
-                self.mutation,
-                {
-                    'input': {
-                        'jobId': self.global_id,
-                        'downloadTokens': [download_tokens[0]]
-                    }
-                }
+                self.mutation, {"input": {"jobId": self.global_id, "downloadTokens": [download_tokens[0]]}}
             )
 
             # Make sure the regex is parsable
-            self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 1)
-            uuid.UUID(response.data['generateFileDownloadIds']['result'][0], version=4)
+            self.assertEqual(len(response.data["generateFileDownloadIds"]["result"]), 1)
+            uuid.UUID(response.data["generateFileDownloadIds"]["result"][0], version=4)
 
             response = self.client.execute(
-                self.mutation,
-                {
-                    'input': {
-                        'jobId': self.global_id,
-                        'downloadTokens': download_tokens
-                    }
-                }
+                self.mutation, {"input": {"jobId": self.global_id, "downloadTokens": download_tokens}}
             )
 
             # Make sure that the UUID's are parsable
-            self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 3)
-            uuid.UUID(response.data['generateFileDownloadIds']['result'][0], version=4)
-            uuid.UUID(response.data['generateFileDownloadIds']['result'][1], version=4)
-            uuid.UUID(response.data['generateFileDownloadIds']['result'][2], version=4)
+            self.assertEqual(len(response.data["generateFileDownloadIds"]["result"]), 3)
+            uuid.UUID(response.data["generateFileDownloadIds"]["result"][0], version=4)
+            uuid.UUID(response.data["generateFileDownloadIds"]["result"][1], version=4)
+            uuid.UUID(response.data["generateFileDownloadIds"]["result"][2], version=4)
 
             self.client.authenticate(self.user)
 
@@ -148,16 +130,10 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
         tk.save()
 
         response = self.client.execute(
-            self.mutation,
-            {
-                'input': {
-                    'jobId': self.global_id,
-                    'downloadTokens': download_tokens
-                }
-            }
+            self.mutation, {"input": {"jobId": self.global_id, "downloadTokens": download_tokens}}
         )
 
-        self.assertEqual(response.data['generateFileDownloadIds'], None)
+        self.assertEqual(response.data["generateFileDownloadIds"], None)
         self.assertEqual(str(response.errors[0]), "At least one token was invalid or expired.")
 
 
@@ -167,36 +143,26 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user)
 
-        token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
 
         # Create a new uploaded bilby job
         test_name = "myjob"
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string(
-            {
-                'label': test_name,
-                'detectors': "['H1']",
-                'outdir': './'
-            },
-            True
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']", "outdir": "./"}, True)
 
         test_file = SimpleUploadedFile(
-            name='test.tar.gz',
+            name="test.tar.gz",
             content=create_test_upload_data(test_ini_string, test_name),
-            content_type='application/gzip'
+            content_type="application/gzip",
         )
 
         test_input = {
             "input": {
                 "uploadToken": token,
-                "details": {
-                    "description": test_description,
-                    "private": test_private
-                },
-                "jobFile": test_file
+                "details": {"description": test_description, "private": test_private},
+                "jobFile": test_file,
             }
         }
 
@@ -210,10 +176,10 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
                   }
                 }
             """,
-            test_input
+            test_input,
         )
 
-        self.global_id = response.data['uploadBilbyJob']['result']['jobId']
+        self.global_id = response.data["uploadBilbyJob"]["result"]["jobId"]
         self.job = BilbyJob.objects.all().last()
 
         self.query = f"""
@@ -251,54 +217,37 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
 
             response = self.client.execute(self.query)
 
-            files = response.data['bilbyResultFiles']['files']
+            files = response.data["bilbyResultFiles"]["files"]
 
             for i, f in enumerate(files):
-                if f['isDir']:
-                    files[i]['downloadToken'] = None
+                if f["isDir"]:
+                    files[i]["downloadToken"] = None
                 else:
-                    files[i]['downloadToken'] = str(FileDownloadToken.objects.get(job=self.job, path=f['path']).token)
+                    files[i]["downloadToken"] = str(FileDownloadToken.objects.get(job=self.job, path=f["path"]).token)
 
-            expected = {
-                'bilbyResultFiles': {
-                    'files': files,
-                    'jobType': BilbyJobType.UPLOADED
-                }
-            }
+            expected = {"bilbyResultFiles": {"files": files, "jobType": BilbyJobType.UPLOADED}}
             self.assertDictEqual(response.data, expected)
 
-            download_tokens = [f['downloadToken'] for f in filter(lambda x: not x['isDir'], files)]
+            download_tokens = [f["downloadToken"] for f in filter(lambda x: not x["isDir"], files)]
 
             self.client.authenticate(self.user)
 
         self.client.authenticate(None)
         for _ in range(2):
             response = self.client.execute(
-                self.mutation,
-                {
-                    'input': {
-                        'jobId': self.global_id,
-                        'downloadTokens': [download_tokens[0]]
-                    }
-                }
+                self.mutation, {"input": {"jobId": self.global_id, "downloadTokens": [download_tokens[0]]}}
             )
 
             # Make sure the result is the same as the download token
-            self.assertEqual(len(response.data['generateFileDownloadIds']['result']), 1)
-            self.assertEqual(response.data['generateFileDownloadIds']['result'], [download_tokens[0]])
+            self.assertEqual(len(response.data["generateFileDownloadIds"]["result"]), 1)
+            self.assertEqual(response.data["generateFileDownloadIds"]["result"], [download_tokens[0]])
 
             response = self.client.execute(
-                self.mutation,
-                {
-                    'input': {
-                        'jobId': self.global_id,
-                        'downloadTokens': download_tokens
-                    }
-                }
+                self.mutation, {"input": {"jobId": self.global_id, "downloadTokens": download_tokens}}
             )
 
             # Make sure that the result is the same as the download tokens
-            self.assertEqual(response.data['generateFileDownloadIds']['result'], download_tokens)
+            self.assertEqual(response.data["generateFileDownloadIds"]["result"], download_tokens)
 
             self.client.authenticate(self.user)
 
@@ -308,14 +257,8 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
         tk.save()
 
         response = self.client.execute(
-            self.mutation,
-            {
-                'input': {
-                    'jobId': self.global_id,
-                    'downloadTokens': download_tokens
-                }
-            }
+            self.mutation, {"input": {"jobId": self.global_id, "downloadTokens": download_tokens}}
         )
 
-        self.assertEqual(response.data['generateFileDownloadIds'], None)
+        self.assertEqual(response.data["generateFileDownloadIds"], None)
         self.assertEqual(str(response.errors[0]), "At least one token was invalid or expired.")

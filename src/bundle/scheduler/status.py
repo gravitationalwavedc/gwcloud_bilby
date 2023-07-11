@@ -36,32 +36,32 @@ class JobStatus:
     @staticmethod
     def display_name(status):
         if status == JobStatus.DRAFT:
-            return 'Draft'
+            return "Draft"
         elif status == JobStatus.PENDING:
-            return 'Pending'
+            return "Pending"
         elif status == JobStatus.SUBMITTING:
-            return 'Submitting'
+            return "Submitting"
         elif status == JobStatus.SUBMITTED:
-            return 'Submitted'
+            return "Submitted"
         elif status == JobStatus.QUEUED:
-            return 'Queued'
+            return "Queued"
         elif status == JobStatus.RUNNING:
-            return 'Running'
+            return "Running"
         elif status == JobStatus.CANCELLING:
-            return 'Cancelling'
+            return "Cancelling"
         elif status == JobStatus.CANCELLED:
-            return 'Cancelled'
+            return "Cancelled"
         elif status == JobStatus.DELETING:
-            return 'Deleting'
+            return "Deleting"
         elif status == JobStatus.DELETED:
-            return 'Deleted'
+            return "Deleted"
         elif status == JobStatus.ERROR:
-            return 'Error'
+            return "Error"
         elif status == JobStatus.WALL_TIME_EXCEEDED:
-            return 'Wall Time Exceeded'
+            return "Wall Time Exceeded"
         elif status == JobStatus.OUT_OF_MEMORY:
-            return 'Out of Memory'
+            return "Out of Memory"
         elif status == JobStatus.COMPLETED:
-            return 'Completed'
+            return "Completed"
         else:
-            return 'Unknown'
+            return "Unknown"
