@@ -175,7 +175,7 @@ eslint:
     - npx eslint src --quiet --format junit --output-file eslint.xml
 
   artifacts:
+    name: "eslint"
+    expose_as: "eslint"
     reports:
-      name: "eslint"
-      expose_as: "eslint"
       junit: src/react/eslint.xml
