@@ -138,7 +138,6 @@ flake8:
 
 black:
   stage: lint python
-  allow_failure: true
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -149,7 +148,6 @@ black:
 
 eslint:
   stage: lint javascript
-  allow_failure: true
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -172,9 +170,4 @@ eslint:
     - cd src/react/
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
     - eval "[ -f .nvmrc ] && nvm use"
-    - npx eslint src --quiet --format junit --output-file eslint.xml
-
-  artifacts:
-    name: "eslint"
-    reports:
-      junit: src/react/eslint.xml
+    - npx eslint src
