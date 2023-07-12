@@ -172,4 +172,8 @@ eslint:
     - cd src/react/
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
     - eval "[ -f .nvmrc ] && nvm use"
-    - npx eslint src
+    - npx eslint src --quiet --format junit --output-file eslint.xml
+
+  artifacts:
+    reports:
+      eslint: eslint.xml
