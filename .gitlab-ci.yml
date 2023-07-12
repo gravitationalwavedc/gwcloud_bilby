@@ -176,4 +176,6 @@ eslint:
 
   artifacts:
     reports:
+      name: "eslint"
+      expose-as: "eslint"
       junit: src/react/eslint.xml
