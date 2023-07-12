@@ -3,6 +3,14 @@ default:
     name: ubuntu:22.04
     entrypoint: ["/usr/bin/env"]
 
+stages:
+  - .pre
+  - build
+  - test
+  - lint python
+  - lint javascript
+  - code quality
+
 django-tests:
   stage: test
   script:
