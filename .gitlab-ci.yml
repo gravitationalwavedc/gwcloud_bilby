@@ -96,6 +96,7 @@ bundle-tests:
       junit: src/bundle/junit.xml
 
 code-quality:
+  stage: code quality
   image: docker:stable
   variables:
     DOCKER_DRIVER: overlay2
@@ -115,6 +116,7 @@ code-quality:
       codequality: gl-code-quality-report.json
 
 flake8:
+  stage: lint python
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -127,6 +129,7 @@ flake8:
       codequality: gl-code-quality-report.json
 
 black:
+  stage: lint python
   allow_failure: true
   script:
     - apt -y update
@@ -135,3 +138,30 @@ black:
     - apt -y upgrade
     - pip3 install black
     - black --check src/
+
+eslint:
+  stage: lint javascript
+  allow_failure: true
+  script:
+    - apt -y update
+    - apt -y install apt-utils
+    - apt -y install net-tools python3.10 python3-pip git curl wget
+    - apt -y upgrade
+    - cd src/
+    - cd react/
+    - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
+    - eval "[ -f .nvmrc ] && nvm install && nvm use && npm install npm@8.5.5"
+    - npm install
+
+  cache:
+    key: build-cache
+    paths:
+      - src/react/package-lock.json
+      - src/requirements.txt
+
+  after_script:
+    - cd src/react/
+    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
+    - eval "[ -f .nvmrc ] && nvm use"
+    - npx eslint src
