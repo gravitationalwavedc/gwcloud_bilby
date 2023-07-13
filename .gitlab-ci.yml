@@ -37,8 +37,8 @@ npm-tests:
     - cd react/
     - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
-    - eval "[ -f .nvmrc ] && nvm install && nvm use && npm install npm@8.5.5"
-    - npm install
+    - eval "[ -f .nvmrc ] && nvm install && nvm use && npm install npm@9.1.2"
+    - npm install --legacy-peer-deps
     - npm run relay
     - npm run test-ci
 
@@ -127,6 +127,6 @@ eslint:
     - cd react/
     - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
-    - eval "[ -f .nvmrc ] && nvm install && nvm use && npm install npm@8.5.5"
-    - npm install
+    - eval "[ -f .nvmrc ] && nvm install && nvm use && npm install npm@9.1.2"
+    - npm install --legacy-peer-deps
     - npx eslint src
