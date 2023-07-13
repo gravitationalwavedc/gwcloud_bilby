@@ -46,11 +46,11 @@ describe('duplicate a job and create a new form', () => {
         expect.hasAssertions();
         const { getByText } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturn)
+            MockPayloadGenerator.generate(operation, mockReturn),
         );
         expect(getByText('Copy-of-TestJob-1')).toBeInTheDocument();
         expect(
-            getByText('A duplicate job of Copy-of-TestJob-1. Original description: A test job.')
+            getByText('A duplicate job of Copy-of-TestJob-1. Original description: A test job.'),
         ).toBeInTheDocument();
     });
 });

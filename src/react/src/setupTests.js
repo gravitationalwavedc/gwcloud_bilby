@@ -30,7 +30,7 @@ global.queryRendererSetup = (inputQuery, componentToRender) => {
                 }
                 return 'Loading...';
             }}
-        />
+        />,
     );
     return environment;
 };

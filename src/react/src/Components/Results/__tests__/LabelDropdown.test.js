@@ -75,8 +75,8 @@ describe('the label dropdown component', () => {
         render(<TestRenderer />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockLabelData)
-            )
+                MockPayloadGenerator.generate(operation, mockLabelData),
+            ),
         );
         expect(screen.queryByText('test-label')).toBeInTheDocument();
         expect(screen.queryByTestId('dismissable-link')).not.toBeInTheDocument();
@@ -88,8 +88,8 @@ describe('the label dropdown component', () => {
         render(<TestRenderer modifiable={true} />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockLabelData)
-            )
+                MockPayloadGenerator.generate(operation, mockLabelData),
+            ),
         );
         expect(screen.getByTestId('dismissable-link')).toBeInTheDocument();
         expect(screen.queryByText('Add label')).toBeInTheDocument();
@@ -100,8 +100,8 @@ describe('the label dropdown component', () => {
         render(<TestRenderer modifiable={true} />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockLabelData)
-            )
+                MockPayloadGenerator.generate(operation, mockLabelData),
+            ),
         );
         const addLabelButton = screen.queryByText('Add label');
         await waitFor(() => userEvent.click(addLabelButton));
@@ -116,15 +116,15 @@ describe('the label dropdown component', () => {
         render(<TestRenderer modifiable={true} />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockLabelData)
-            )
+                MockPayloadGenerator.generate(operation, mockLabelData),
+            ),
         );
         expect(screen.queryByText('test-label')).toBeInTheDocument();
         const dismissableLink = screen.queryByTestId('dismissable-link');
         await waitFor(() => userEvent.click(dismissableLink));
         expect(screen.queryByText('test-label')).not.toBeInTheDocument();
         await waitFor(() =>
-            environment.mock.resolveMostRecentOperation((operation) => MockPayloadGenerator.generate(operation))
+            environment.mock.resolveMostRecentOperation((operation) => MockPayloadGenerator.generate(operation)),
         );
         expect(onUpdateMock).toHaveBeenCalledWith(true, 'Job labels updated!');
         onUpdateMock.mockRestore();
@@ -135,8 +135,8 @@ describe('the label dropdown component', () => {
         render(<TestRenderer modifiable={true} />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockLabelData)
-            )
+                MockPayloadGenerator.generate(operation, mockLabelData),
+            ),
         );
         expect(screen.queryByText('test-label')).toBeInTheDocument();
         const dismissableLink = screen.queryByTestId('dismissable-link');
@@ -146,7 +146,7 @@ describe('the label dropdown component', () => {
             environment.mock.resolveMostRecentOperation(() => ({
                 errors: [{ message: 'Label updated failed' }],
                 data: { updateBilbyJob: { result: false } },
-            }))
+            })),
         );
         expect(onUpdateMock).toHaveBeenCalledWith(false, [{ message: 'Label updated failed' }]);
         onUpdateMock.mockRestore();

@@ -46,8 +46,8 @@ describe('files', () => {
         render(<Files data={{ bilbyJob: { id: 1 } }} />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockFile)
-            )
+                MockPayloadGenerator.generate(operation, mockFile),
+            ),
         );
         expect(screen.getByText('/b-cool-path/')).toBeInTheDocument();
         expect(screen.getByText('/a-cooler-path/')).toBeInTheDocument();

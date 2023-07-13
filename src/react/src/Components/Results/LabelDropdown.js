@@ -17,7 +17,7 @@ const LabelDropdown = ({ data, jobId, onUpdate, modifiable }) => {
                     jobId: jobId,
                     labels: labels,
                 },
-                onUpdate
+                onUpdate,
             );
         } else {
             isMounted.current = true;

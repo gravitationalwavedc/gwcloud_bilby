@@ -14,7 +14,7 @@ const PrivacyToggle = (props) => {
                 jobId: props.jobId,
                 private: newValue,
             },
-            props.onUpdate
+            props.onUpdate,
         );
     };
 

@@ -20,7 +20,7 @@ describe('editable job name component', () => {
         userEvent.type(screen.getByDisplayValue('Testing'), '-new-value');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));
         await waitFor(() =>
-            environment.mock.resolveMostRecentOperation((operation) => MockPayloadGenerator.generate(operation))
+            environment.mock.resolveMostRecentOperation((operation) => MockPayloadGenerator.generate(operation)),
         );
         expect(screen.getByText('Testing-new-value')).toBeInTheDocument();
     });
@@ -44,7 +44,7 @@ describe('editable job name component', () => {
             environment.mock.resolveMostRecentOperation(() => ({
                 data: { updateBilbyJob: { jobId: null, result: null } },
                 errors: [{ message: 'Duplicate job name found! Bad!' }, { message: 'So bad. Do a stop!' }],
-            }))
+            })),
         );
         expect(screen.getByText(/Duplicate job name found! Bad!/)).toBeInTheDocument();
         expect(screen.getByText(/So bad. Do a stop!/)).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe('editable job name component', () => {
             environment.mock.resolveMostRecentOperation(() => ({
                 data: { updateBilbyJob: { jobId: null, result: null } },
                 errors: [{ message: 'Duplicate job name found! Bad!' }, { message: 'So bad. Do a stop!' }],
-            }))
+            })),
         );
         expect(screen.getByText(/Duplicate job name found! Bad!/)).toBeInTheDocument();
         expect(screen.getByText(/So bad. Do a stop!/)).toBeInTheDocument();
@@ -71,7 +71,7 @@ describe('editable job name component', () => {
         userEvent.type(nameInput, 'Good-name');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));
         await waitFor(() =>
-            environment.mock.resolveMostRecentOperation((operation) => MockPayloadGenerator.generate(operation))
+            environment.mock.resolveMostRecentOperation((operation) => MockPayloadGenerator.generate(operation)),
         );
         expect(screen.queryByText(/Duplicate job name found! Bad!/)).not.toBeInTheDocument();
         expect(screen.queryByText(/So bad. Do a stop!/)).not.toBeInTheDocument();

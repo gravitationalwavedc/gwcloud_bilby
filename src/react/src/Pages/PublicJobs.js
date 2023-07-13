@@ -125,5 +125,5 @@ export default createPaginationContainer(
                 cursor,
             };
         },
-    }
+    },
 );

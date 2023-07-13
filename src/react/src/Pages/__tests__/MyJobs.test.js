@@ -48,7 +48,7 @@ describe('my Jobs Page', () => {
         expect.hasAssertions();
         const { getByText } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturn)
+            MockPayloadGenerator.generate(operation, mockReturn),
         );
         expect(getByText('My Jobs')).toBeInTheDocument();
     });
@@ -57,7 +57,7 @@ describe('my Jobs Page', () => {
         expect.hasAssertions();
         const { getByLabelText, getByText, queryByText } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturn)
+            MockPayloadGenerator.generate(operation, mockReturn),
         );
         // When the page first loads it should match the initial mock query
         expect(getByText('TestJob-1')).toBeInTheDocument();
@@ -86,7 +86,7 @@ describe('my Jobs Page', () => {
                         timestamp: 'timestamp',
                     };
                 },
-            })
+            }),
         );
 
         // Check the table updated.
@@ -98,7 +98,7 @@ describe('my Jobs Page', () => {
         expect.hasAssertions();
         const { getByLabelText, getByText, queryByText } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturn)
+            MockPayloadGenerator.generate(operation, mockReturn),
         );
         // When the page first loads it should match the initial mock query
         expect(getByText('TestJob-1')).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe('my Jobs Page', () => {
                         timestamp: 'timestamp',
                     };
                 },
-            })
+            }),
         );
 
         // Check the table updated.

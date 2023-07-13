@@ -61,7 +61,7 @@ describe('the privacy toggle component', () => {
         expect.hasAssertions();
         const { getByLabelText } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturnLigo)
+            MockPayloadGenerator.generate(operation, mockReturnLigo),
         );
         expect(getByLabelText('Share with LVK collaborators')).not.toBeChecked();
     });
@@ -70,7 +70,7 @@ describe('the privacy toggle component', () => {
         expect.hasAssertions();
         const { getByLabelText } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturnLigo)
+            MockPayloadGenerator.generate(operation, mockReturnLigo),
         );
         const privacyCheck = getByLabelText('Share with LVK collaborators');
         expect(privacyCheck).not.toBeChecked();
@@ -82,7 +82,7 @@ describe('the privacy toggle component', () => {
         expect.hasAssertions();
         const { getByLabelText } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturnLigo)
+            MockPayloadGenerator.generate(operation, mockReturnLigo),
         );
         const privacyCheck = getByLabelText('Share with LVK collaborators');
         fireEvent.click(privacyCheck);
@@ -94,7 +94,7 @@ describe('the privacy toggle component', () => {
         expect.hasAssertions();
         const { getByLabelText } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturnNonLigo)
+            MockPayloadGenerator.generate(operation, mockReturnNonLigo),
         );
         expect(getByLabelText('Share publicly')).not.toBeChecked();
     });
@@ -103,7 +103,7 @@ describe('the privacy toggle component', () => {
         expect.hasAssertions();
         const { getByLabelText } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturnNonLigo)
+            MockPayloadGenerator.generate(operation, mockReturnNonLigo),
         );
         const privacyCheck = getByLabelText('Share publicly');
         expect(privacyCheck).not.toBeChecked();
@@ -115,7 +115,7 @@ describe('the privacy toggle component', () => {
         expect.hasAssertions();
         const { getByLabelText } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturnNonLigo)
+            MockPayloadGenerator.generate(operation, mockReturnNonLigo),
         );
         const privacyCheck = getByLabelText('Share publicly');
         fireEvent.click(privacyCheck);

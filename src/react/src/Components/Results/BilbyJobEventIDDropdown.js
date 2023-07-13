@@ -15,7 +15,7 @@ const BilbyJobEventIDDropdown = (props) => {
                     jobId: props.jobId,
                     eventId: (eventId && eventId.eventId) || null,
                 },
-                props.onUpdate
+                props.onUpdate,
             );
         } else {
             isMounted.current = true;

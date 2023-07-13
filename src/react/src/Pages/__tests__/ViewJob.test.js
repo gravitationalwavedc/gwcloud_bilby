@@ -130,13 +130,13 @@ describe('view job page', () => {
         const { getByText, getAllByText } = render(<TestRenderer />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockBilbyJobReturn)
-            )
+                MockPayloadGenerator.generate(operation, mockBilbyJobReturn),
+            ),
         );
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockBilbyJobResultsFiles)
-            )
+                MockPayloadGenerator.generate(operation, mockBilbyJobResultsFiles),
+            ),
         );
         expect(getByText('GW-Sim-test32')).toBeInTheDocument();
         expect(getAllByText('a_cool_path')[0]).toBeInTheDocument();
@@ -147,8 +147,8 @@ describe('view job page', () => {
         render(<TestRenderer />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockBilbyJobReturn)
-            )
+                MockPayloadGenerator.generate(operation, mockBilbyJobReturn),
+            ),
         );
 
         expect(screen.queryByText('Event ID: test-1')).not.toBeInTheDocument();

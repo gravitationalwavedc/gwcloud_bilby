@@ -41,7 +41,7 @@ describe('new Job Page', () => {
         expect.hasAssertions();
         const { getByText, getByTestId } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturn)
+            MockPayloadGenerator.generate(operation, mockReturn),
         );
         fireEvent.click(getByTestId('hanfordActive'));
         fireEvent.click(getByText('Submit your job'));
@@ -54,7 +54,7 @@ describe('new Job Page', () => {
         expect.hasAssertions();
         const { getByText, getByTestId } = render(<TestRenderer />);
         environment.mock.resolveMostRecentOperation((operation) =>
-            MockPayloadGenerator.generate(operation, mockReturn)
+            MockPayloadGenerator.generate(operation, mockReturn),
         );
         const signalPane = getByTestId('signalPane');
         expect(signalPane).toHaveAttribute('aria-hidden', 'true');
@@ -68,8 +68,8 @@ describe('new Job Page', () => {
         render(<TestRenderer />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockReturn)
-            )
+                MockPayloadGenerator.generate(operation, mockReturn),
+            ),
         );
 
         expect(screen.queryByText('Event ID: test-1')).not.toBeInTheDocument();

@@ -10,27 +10,27 @@ describe('validation schema', () => {
         expect.hasAssertions();
 
         expect(() => validationSchema.validateSync({ hanford: true })).toThrow(
-            'Please choose a hanford detector channel.'
+            'Please choose a hanford detector channel.',
         );
         expect(() => validationSchema.validateSync({ hanford: true, hanfordChannel: 'GWOSC' })).toThrow(
-            'dlogz is a required field'
+            'dlogz is a required field',
         );
 
         expect(() => validationSchema.validateSync({ virgo: true })).toThrow(
-            'Please choose a virgo detector channel.'
+            'Please choose a virgo detector channel.',
         );
         expect(() => validationSchema.validateSync({ virgo: true, virgoChannel: 'GWOSC' })).toThrow(
-            'dlogz is a required field'
+            'dlogz is a required field',
         );
 
         expect(() => validationSchema.validateSync({ livingston: true })).toThrow(
-            'Please choose a livingston detector channel.'
+            'Please choose a livingston detector channel.',
         );
         expect(() =>
             validationSchema.validateSync({
                 livingston: true,
                 livingstonChannel: 'GWOSC',
-            })
+            }),
         ).toThrow('dlogz is a required field');
     });
 });

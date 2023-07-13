@@ -67,8 +67,8 @@ describe('result file component', () => {
         render(<TestRenderer />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockFile)
-            )
+                MockPayloadGenerator.generate(operation, mockFile),
+            ),
         );
         expect(screen.getByText('/cool-path/')).toBeInTheDocument();
         expect(screen.getByText('File')).toBeInTheDocument();
@@ -80,12 +80,12 @@ describe('result file component', () => {
         render(<TestRenderer />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockFile)
-            )
+                MockPayloadGenerator.generate(operation, mockFile),
+            ),
         );
         userEvent.click(screen.getByText('/cool-path/'));
         await waitFor(() =>
-            environment.mock.resolveMostRecentOperation((operation) => MockPayloadGenerator.generate(operation))
+            environment.mock.resolveMostRecentOperation((operation) => MockPayloadGenerator.generate(operation)),
         );
         expect(screen.getByText('/cool-path/')).toBeInTheDocument();
         expect(screen.getByText('/cool-path/')).toHaveClass('link-visited');
@@ -97,8 +97,8 @@ describe('result file component', () => {
         render(<TestRenderer />);
         await waitFor(() =>
             environment.mock.resolveMostRecentOperation((operation) =>
-                MockPayloadGenerator.generate(operation, mockFile)
-            )
+                MockPayloadGenerator.generate(operation, mockFile),
+            ),
         );
         userEvent.click(screen.getByText('/cool-path/'));
         await waitFor(() =>
@@ -109,7 +109,7 @@ describe('result file component', () => {
                         result: {},
                     },
                 },
-            }))
+            })),
         );
         expect(errorAlert).toHaveBeenCalledWith('Unable to download file.');
     });

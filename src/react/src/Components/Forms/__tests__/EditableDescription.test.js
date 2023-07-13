@@ -20,7 +20,7 @@ describe('editable description component', () => {
         userEvent.type(screen.getByDisplayValue('Testing'), '-new-value');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));
         await waitFor(() =>
-            environment.mock.resolveMostRecentOperation((operation) => MockPayloadGenerator.generate(operation))
+            environment.mock.resolveMostRecentOperation((operation) => MockPayloadGenerator.generate(operation)),
         );
         expect(screen.getByText('Testing-new-value')).toBeInTheDocument();
     });
