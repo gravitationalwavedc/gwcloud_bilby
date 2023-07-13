@@ -1,76 +1,76 @@
-import React, { useState, useEffect } from 'react';
-import { createPaginationContainer, graphql } from 'react-relay';
-import { Card, Container, Col } from 'react-bootstrap';
-import JobTable from '../Components/JobTable';
-import JobsHeading from '../Components/JobsHeading';
-import JobSearchForm from '../Components/JobSearchForm';
-import { INFINITE_SCROLL_CHUNK_SIZE } from '../constants';
+import React, { useState, useEffect } from "react";
+import { createPaginationContainer, graphql } from "react-relay";
+import { Card, Container, Col } from "react-bootstrap";
+import JobTable from "../Components/JobTable";
+import JobsHeading from "../Components/JobsHeading";
+import JobSearchForm from "../Components/JobSearchForm";
+import { INFINITE_SCROLL_CHUNK_SIZE } from "../constants";
 
 const PublicJobs = ({ data, match, router, relay }) => {
-    const [search, setSearch] = useState('*');
-    const [timeRange, setTimeRange] = useState('all');
-    const [order, setOrder] = useState();
-    const [direction, setDirection] = useState('descending');
+  const [search, setSearch] = useState("*");
+  const [timeRange, setTimeRange] = useState("all");
+  const [order, setOrder] = useState();
+  const [direction, setDirection] = useState("descending");
 
-    useEffect(() => handleSearchChange(), [search, timeRange, direction, order]);
+  useEffect(() => handleSearchChange(), [search, timeRange, direction, order]);
 
-    const handleSearchChange = () => {
-        const refetchVariables = {
-            count: INFINITE_SCROLL_CHUNK_SIZE,
-            search: search,
-            timeRange: timeRange,
-            orderBy: order,
-            direction: direction,
-        };
-        relay.refetchConnection(1, null, refetchVariables);
+  const handleSearchChange = () => {
+    const refetchVariables = {
+      count: INFINITE_SCROLL_CHUNK_SIZE,
+      search: search,
+      timeRange: timeRange,
+      orderBy: order,
+      direction: direction,
     };
+    relay.refetchConnection(1, null, refetchVariables);
+  };
 
-    const loadMore = () => {
-        if (relay.hasMore()) {
-            relay.loadMore(INFINITE_SCROLL_CHUNK_SIZE);
-        }
-    };
+  const loadMore = () => {
+    if (relay.hasMore()) {
+      relay.loadMore(INFINITE_SCROLL_CHUNK_SIZE);
+    }
+  };
 
-    return (
-        <Container fluid>
-            <Col md={{ offset: 1, span: 10 }} className='mb-5'>
-                <JobsHeading
-                    heading='Public Jobs'
-                    link={{ text: 'Switch to my jobs', path: '/bilby/job-list/' }}
-                    match={match}
-                    router={router}
-                />
-                <Card className='gw-form-card'>
-                    <Card.Body>
-                        <JobSearchForm
-                            search={search}
-                            setSearch={setSearch}
-                            timeRange={timeRange}
-                            setTimeRange={setTimeRange}
-                        />
-                        <JobTable
-                            data={data.publicBilbyJobs}
-                            setOrder={setOrder}
-                            order={order}
-                            setDirection={setDirection}
-                            direction={direction}
-                            match={match}
-                            router={router}
-                            hasMore={relay.hasMore()}
-                            loadMore={loadMore}
-                            className='mt-4'
-                        />
-                    </Card.Body>
-                </Card>
-            </Col>
-        </Container>
-    );
+  return (
+    <Container fluid>
+      <Col md={{ offset: 1, span: 10 }} className="mb-5">
+        <JobsHeading
+          heading="Public Jobs"
+          link={{ text: "Switch to my jobs", path: "/bilby/job-list/" }}
+          match={match}
+          router={router}
+        />
+        <Card className="gw-form-card">
+          <Card.Body>
+            <JobSearchForm
+              search={search}
+              setSearch={setSearch}
+              timeRange={timeRange}
+              setTimeRange={setTimeRange}
+            />
+            <JobTable
+              data={data.publicBilbyJobs}
+              setOrder={setOrder}
+              order={order}
+              setDirection={setDirection}
+              direction={direction}
+              match={match}
+              router={router}
+              hasMore={relay.hasMore()}
+              loadMore={loadMore}
+              className="mt-4"
+            />
+          </Card.Body>
+        </Card>
+      </Col>
+    </Container>
+  );
 };
 
 export default createPaginationContainer(
-    PublicJobs,
-    {
-        data: graphql`
+  PublicJobs,
+  {
+    data: graphql`
       fragment PublicJobs_data on Query {
         publicBilbyJobs(
           first: $count
@@ -104,10 +104,10 @@ export default createPaginationContainer(
         }
       }
     `,
-    },
-    {
-        direction: 'forward',
-        query: graphql`
+  },
+  {
+    direction: "forward",
+    query: graphql`
       query PublicJobsForwardQuery(
         $count: Int!
         $cursor: String
@@ -118,21 +118,21 @@ export default createPaginationContainer(
       }
     `,
 
-        getConnectionFromProps(props) {
-            return props.data && props.data.publicBilbyJobs;
-        },
+    getConnectionFromProps(props) {
+      return props.data && props.data.publicBilbyJobs;
+    },
 
-        getFragmentVariables(previousVariables, totalCount) {
-            return {
-                ...previousVariables,
-                count: totalCount,
-            };
-        },
-        getVariables({ count, cursor }) {
-            return {
-                count,
-                cursor,
-            };
-        },
-    }
+    getFragmentVariables(previousVariables, totalCount) {
+      return {
+        ...previousVariables,
+        count: totalCount,
+      };
+    },
+    getVariables({ count, cursor }) {
+      return {
+        count,
+        cursor,
+      };
+    },
+  }
 );

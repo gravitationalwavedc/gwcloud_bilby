@@ -1,5 +1,5 @@
 export const jobTypes = {
-    'NORMAL': 0,
-    'UPLOADED': 1,
-    'GWOSC': 2
+  NORMAL: 0,
+  UPLOADED: 1,
+  GWOSC: 2,
 };
