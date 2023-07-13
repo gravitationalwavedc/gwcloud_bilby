@@ -7,27 +7,21 @@ import MyJobs from '../MyJobs';
 /* global environment, router */
 
 describe('my Jobs Page', () => {
-
     const TestRenderer = () => (
         <QueryRenderer
             environment={environment}
             query={graphql`
-            query MyJobsTestQuery (
-              $count: Int, 
-              $cursor: String,
-              $orderBy: String
-              )
-              @relay_test_operation {
-                ...MyJobs_data
-            }
-          `}
+                query MyJobsTestQuery($count: Int, $cursor: String, $orderBy: String) @relay_test_operation {
+                    ...MyJobs_data
+                }
+            `}
             variables={{
                 count: 10,
-                orderBy: 'Name'
+                orderBy: 'Name',
             }}
             render={({ error, props }) => {
                 if (props) {
-                    return <MyJobs data={props} match={{}} router={router}/>;
+                    return <MyJobs data={props} match={{}} router={router} />;
                 } else if (error) {
                     return error.message;
                 }
@@ -42,43 +36,43 @@ describe('my Jobs Page', () => {
                 id: '1',
                 user: 'Buffy',
                 labels: [],
-                jobStatus: {name: 'complete'},
+                jobStatus: { name: 'complete' },
                 name: 'TestJob-1',
                 description: 'A test job',
-                timestamp: 'timestamp'
+                timestamp: 'timestamp',
             };
-        }
+        },
     };
 
     it('renders with data', () => {
         expect.hasAssertions();
         const { getByText } = render(<TestRenderer />);
-        environment.mock.resolveMostRecentOperation(operation => 
-            MockPayloadGenerator.generate(operation, mockReturn)
+        environment.mock.resolveMostRecentOperation((operation) =>
+            MockPayloadGenerator.generate(operation, mockReturn),
         );
         expect(getByText('My Jobs')).toBeInTheDocument();
     });
 
     it('calls refetchConnection when the serach field is updated', () => {
         expect.hasAssertions();
-        const { getByLabelText, getByText, queryByText } = render(<TestRenderer/>);
-        environment.mock.resolveMostRecentOperation(operation => 
-            MockPayloadGenerator.generate(operation, mockReturn)
+        const { getByLabelText, getByText, queryByText } = render(<TestRenderer />);
+        environment.mock.resolveMostRecentOperation((operation) =>
+            MockPayloadGenerator.generate(operation, mockReturn),
         );
         // When the page first loads it should match the initial mock query
         expect(getByText('TestJob-1')).toBeInTheDocument();
 
         // Simulate searching
         const searchField = getByLabelText('Search');
-        fireEvent.change(searchField, { target: { value: 'Giles' }});
+        fireEvent.change(searchField, { target: { value: 'Giles' } });
 
         // Refetch the container
-        environment.mock.resolveMostRecentOperation(operation => 
+        environment.mock.resolveMostRecentOperation((operation) =>
             MockPayloadGenerator.generate(operation, {
                 PageInfo() {
                     return {
                         hasNextPage: true,
-                        endCursor: 'endcursor'
+                        endCursor: 'endcursor',
                     };
                 },
                 BilbyJobNode() {
@@ -86,13 +80,13 @@ describe('my Jobs Page', () => {
                         id: '2',
                         user: 'Giles',
                         labels: [],
-                        jobStatus: {name: 'complete'},
+                        jobStatus: { name: 'complete' },
                         name: 'TestJob-2',
                         description: 'A load more job.',
-                        timestamp: 'timestamp'
+                        timestamp: 'timestamp',
                     };
-                }
-            })
+                },
+            }),
         );
 
         // Check the table updated.
@@ -102,24 +96,24 @@ describe('my Jobs Page', () => {
 
     it('calls refetchConnection when the time range is changed', () => {
         expect.hasAssertions();
-        const { getByLabelText, getByText, queryByText } = render(<TestRenderer/>);
-        environment.mock.resolveMostRecentOperation(operation => 
-            MockPayloadGenerator.generate(operation, mockReturn)
+        const { getByLabelText, getByText, queryByText } = render(<TestRenderer />);
+        environment.mock.resolveMostRecentOperation((operation) =>
+            MockPayloadGenerator.generate(operation, mockReturn),
         );
         // When the page first loads it should match the initial mock query
         expect(getByText('TestJob-1')).toBeInTheDocument();
 
-        // Simulate changing the time field 
+        // Simulate changing the time field
         const timeRangeField = getByLabelText('Time');
-        fireEvent.change(timeRangeField, { target: { value: '1d' }});
+        fireEvent.change(timeRangeField, { target: { value: '1d' } });
 
         // Refetch the container
-        environment.mock.resolveMostRecentOperation(operation => 
+        environment.mock.resolveMostRecentOperation((operation) =>
             MockPayloadGenerator.generate(operation, {
                 PageInfo() {
                     return {
                         hasNextPage: true,
-                        endCursor: 'endcursor'
+                        endCursor: 'endcursor',
                     };
                 },
                 BilbyJobNode() {
@@ -127,18 +121,17 @@ describe('my Jobs Page', () => {
                         id: '2',
                         user: 'Giles',
                         labels: [],
-                        jobStatus: {name: 'complete'},
+                        jobStatus: { name: 'complete' },
                         name: 'TestJob-2',
                         description: 'A load more job.',
-                        timestamp: 'timestamp'
+                        timestamp: 'timestamp',
                     };
-                }
-            })
+                },
+            }),
         );
 
         // Check the table updated.
         expect(getByText('TestJob-2')).toBeInTheDocument();
         expect(queryByText('TestJob-1')).not.toBeInTheDocument();
     });
-
 });

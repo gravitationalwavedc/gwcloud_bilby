@@ -3,20 +3,21 @@ import { Button, Col, Row, Form } from 'react-bootstrap';
 import Input from './Atoms/Input';
 import FormCard from './FormCard';
 
-const PriorsForm = ({formik, handlePageChange}) =>
+const PriorsForm = ({ formik, handlePageChange }) => (
     <Row>
         <Col>
-            <FormCard title='Priors & Sampler'>
+            <FormCard title="Priors & Sampler">
                 <Row>
                     <Col md={6}>
-                        <Form.Group controlId='priorChoice'>
+                        <Form.Group controlId="priorChoice">
                             <Form.Label>Priors</Form.Label>
-                            <Form.Control 
-                                name='priorChoice' 
-                                as='select' 
-                                custom 
+                            <Form.Control
+                                name="priorChoice"
+                                as="select"
+                                custom
                                 value={formik.values.priorChoice}
-                                {...formik.getFieldProps('priorChoice')}>
+                                {...formik.getFieldProps('priorChoice')}
+                            >
                                 <option>High Mass</option>
                                 <option>4s</option>
                                 <option>8s</option>
@@ -31,42 +32,45 @@ const PriorsForm = ({formik, handlePageChange}) =>
                 </Row>
                 <Row>
                     <Col md={6}>
-                        <Form.Group controlId='sampler'>
+                        <Form.Group controlId="sampler">
                             <Form.Label>Sampler</Form.Label>
-                            <Form.Control 
-                                name='sampler' 
-                                as='select' 
-                                aria-describedby='samplerHelp'
-                                custom 
-                                {...formik.getFieldProps('sampler')} 
-                                disabled>
+                            <Form.Control
+                                name="sampler"
+                                as="select"
+                                aria-describedby="samplerHelp"
+                                custom
+                                {...formik.getFieldProps('sampler')}
+                                disabled
+                            >
                                 <option>Dynesty</option>
                             </Form.Control>
-                            <Form.Text id='samplerHelp' muted>More samplers will be available soon.</Form.Text>
+                            <Form.Text id="samplerHelp" muted>
+                                More samplers will be available soon.
+                            </Form.Text>
                         </Form.Group>
                     </Col>
                 </Row>
             </FormCard>
-            <FormCard title='Sampler Parameters'>
+            <FormCard title="Sampler Parameters">
                 <Row>
                     <Col>
-                        <Input formik={formik} name='nlive' title='Live points' type='number' min='100'/>
+                        <Input formik={formik} name="nlive" title="Live points" type="number" min="100" />
                     </Col>
                     <Col>
-                        <Input formik={formik} name='nact' title='Auto-correlation steps' type='number'/>
+                        <Input formik={formik} name="nact" title="Auto-correlation steps" type="number" />
                     </Col>
                 </Row>
                 <Row>
                     <Col>
-                        <Input formik={formik} name='maxmcmc' title='Maximum steps' type='number'/>
+                        <Input formik={formik} name="maxmcmc" title="Maximum steps" type="number" />
                     </Col>
                     <Col>
-                        <Input formik={formik} name='walks' title='Minimum walks' type='number'/>
+                        <Input formik={formik} name="walks" title="Minimum walks" type="number" />
                     </Col>
                 </Row>
                 <Row>
                     <Col md={6}>
-                        <Input formik={formik} name='dlogz' title='Stopping criteria' type='number'/>
+                        <Input formik={formik} name="dlogz" title="Stopping criteria" type="number" />
                     </Col>
                 </Row>
             </FormCard>
@@ -77,6 +81,5 @@ const PriorsForm = ({formik, handlePageChange}) =>
             </Row>
         </Col>
     </Row>
-;
-
+);
 export default PriorsForm;

@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Button, Card, Form } from 'react-bootstrap';
 import CreatableSelect from 'react-select/creatable';
 import Input from './Atoms/Input';
-import {isLigoUser} from '../../Utils/UserUtils';
+import { isLigoUser } from '../../Utils/UserUtils';
 
-const DetectorCard = ({image, title, formik, channelOptions}) => {
+const DetectorCard = ({ image, title, formik, channelOptions }) => {
     const [options, setOptions] = useState(channelOptions);
 
     const identifier = title.toLowerCase();
@@ -18,17 +18,18 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
         formik.setFieldValue(identifier, !isActive);
     };
 
-    const channelSelectValue = isLigoUser() ?
-        {
-            value: formik.values[channelId],
-            label: formik.values[channelId]
-        } : {
-            value: 'GWOSC',
-            label: 'GWOSC'
-        };
-    
+    const channelSelectValue = isLigoUser()
+        ? {
+              value: formik.values[channelId],
+              label: formik.values[channelId],
+          }
+        : {
+              value: 'GWOSC',
+              label: 'GWOSC',
+          };
+
     const handleChange = (newValue, actionMeta) => {
-        if(actionMeta.action === 'create-option'){
+        if (actionMeta.action === 'create-option') {
             setOptions([newValue, ...options]);
         }
         formik.setFieldValue(identifier + 'Channel', newValue.value);
@@ -36,24 +37,25 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
 
     return (
         <Card className={isActive ? 'gw-detector-card active' : 'gw-detector-card'}>
-            <Card.Img variant='top' src={image} />
-            <Card.Header className='h4'>
+            <Card.Img variant="top" src={image} />
+            <Card.Header className="h4">
                 {title}
-                <Button 
+                <Button
                     data-testid={identifier + 'Active'}
-                    className='float-right' 
-                    variant='outline-primary' 
-                    size='sm' 
-                    onClick={toggleActive}>
-                    {isActive ? 'Deactivate' : 'Activate' }
+                    className="float-right"
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={toggleActive}
+                >
+                    {isActive ? 'Deactivate' : 'Activate'}
                 </Button>
             </Card.Header>
             <Card.Body>
                 <Form.Group controlId={channelId}>
                     <Form.Label>Channel</Form.Label>
-                    <CreatableSelect 
-                        className='gw-select'
-                        classNamePrefix='gw-select'
+                    <CreatableSelect
+                        className="gw-select"
+                        classNamePrefix="gw-select"
                         isDisabled={!isActive || !isLigoUser()}
                         onChange={handleChange}
                         options={options}
@@ -61,22 +63,23 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
                     />
                     <Form.Text id={channelId + 'Help'}>Start typing for a custom channel.</Form.Text>
                 </Form.Group>
-                <Input 
-                    formik={formik} 
-                    title='Minimum frequency' 
-                    name={minimumFrequencyId} 
-                    type='number' 
-                    disabled={!isActive}/>
-                <Input 
-                    formik={formik} 
-                    title='Maximum frequency' 
-                    name={maximumFrequencyId} 
-                    type='number' 
-                    disabled={!isActive}/>
+                <Input
+                    formik={formik}
+                    title="Minimum frequency"
+                    name={minimumFrequencyId}
+                    type="number"
+                    disabled={!isActive}
+                />
+                <Input
+                    formik={formik}
+                    title="Maximum frequency"
+                    name={maximumFrequencyId}
+                    type="number"
+                    disabled={!isActive}
+                />
             </Card.Body>
         </Card>
     );
 };
-
 
 export default DetectorCard;

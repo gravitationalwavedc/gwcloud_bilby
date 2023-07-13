@@ -39,7 +39,7 @@ const initialValues = {
 
     // Priors
     priorChoice: '4s',
-      
+
     // Sampler
     sampler: 'dynasty',
     nlive: 1000,

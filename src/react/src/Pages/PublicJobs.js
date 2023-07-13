@@ -33,14 +33,14 @@ const PublicJobs = ({ data, match, router, relay }) => {
 
     return (
         <Container fluid>
-            <Col md={{ offset: 1, span: 10 }} className='mb-5'>
+            <Col md={{ offset: 1, span: 10 }} className="mb-5">
                 <JobsHeading
-                    heading='Public Jobs'
+                    heading="Public Jobs"
                     link={{ text: 'Switch to my jobs', path: '/bilby/job-list/' }}
                     match={match}
                     router={router}
                 />
-                <Card className='gw-form-card'>
+                <Card className="gw-form-card">
                     <Card.Body>
                         <JobSearchForm
                             search={search}
@@ -58,7 +58,7 @@ const PublicJobs = ({ data, match, router, relay }) => {
                             router={router}
                             hasMore={relay.hasMore()}
                             loadMore={loadMore}
-                            className='mt-4'
+                            className="mt-4"
                         />
                     </Card.Body>
                 </Card>
@@ -71,52 +71,43 @@ export default createPaginationContainer(
     PublicJobs,
     {
         data: graphql`
-      fragment PublicJobs_data on Query {
-        publicBilbyJobs(
-          first: $count
-          after: $cursor
-          search: $search
-          timeRange: $timeRange
-        ) @connection(key: "PublicJobs_publicBilbyJobs") {
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-          edges {
-            node {
-              id
-              user
-              name
-              description
-              jobStatus {
-                name
-              }
-              labels {
-                name
-              }
-              eventId {
-                triggerId
-                eventId
-                nickname
-              }
+            fragment PublicJobs_data on Query {
+                publicBilbyJobs(first: $count, after: $cursor, search: $search, timeRange: $timeRange)
+                    @connection(key: "PublicJobs_publicBilbyJobs") {
+                    pageInfo {
+                        hasNextPage
+                        endCursor
+                    }
+                    edges {
+                        node {
+                            id
+                            user
+                            name
+                            description
+                            jobStatus {
+                                name
+                            }
+                            labels {
+                                name
+                            }
+                            eventId {
+                                triggerId
+                                eventId
+                                nickname
+                            }
+                        }
+                    }
+                }
             }
-          }
-        }
-      }
-    `,
+        `,
     },
     {
         direction: 'forward',
         query: graphql`
-      query PublicJobsForwardQuery(
-        $count: Int!
-        $cursor: String
-        $search: String
-        $timeRange: String
-      ) {
-        ...PublicJobs_data
-      }
-    `,
+            query PublicJobsForwardQuery($count: Int!, $cursor: String, $search: String, $timeRange: String) {
+                ...PublicJobs_data
+            }
+        `,
 
         getConnectionFromProps(props) {
             return props.data && props.data.publicBilbyJobs;
@@ -134,5 +125,5 @@ export default createPaginationContainer(
                 cursor,
             };
         },
-    }
+    },
 );

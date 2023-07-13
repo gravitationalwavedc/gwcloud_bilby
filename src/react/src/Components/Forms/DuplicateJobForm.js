@@ -1,5 +1,5 @@
 import React from 'react';
-import {graphql, createFragmentContainer} from 'react-relay';
+import { graphql, createFragmentContainer } from 'react-relay';
 import NewJob from '../../Pages/NewJob';
 import parseJobParams from '../../Utils/ParseJobParams';
 
@@ -9,18 +9,17 @@ const DuplicateJobForm = (props) => {
     const initialValues = parseJobParams(params);
 
     initialValues['name'] = `Copy-of-${initialValues.name}`;
-    initialValues['description'] = `A duplicate job of ${initialValues.name}. Original description: ${initialValues.description}`;
+    initialValues[
+        'description'
+    ] = `A duplicate job of ${initialValues.name}. Original description: ${initialValues.description}`;
 
-    return <NewJob initialValues={initialValues} {...props}/>;
+    return <NewJob initialValues={initialValues} {...props} />;
 };
 
-export default createFragmentContainer(DuplicateJobForm,
-    {
-        data: graphql`
-        fragment DuplicateJobForm_data on Query @argumentDefinitions(
-            jobId: {type: "ID!"}
-        ){
-            bilbyJob (id: $jobId){
+export default createFragmentContainer(DuplicateJobForm, {
+    data: graphql`
+        fragment DuplicateJobForm_data on Query @argumentDefinitions(jobId: { type: "ID!" }) {
+            bilbyJob(id: $jobId) {
                 params {
                     details {
                         name
@@ -65,9 +64,9 @@ export default createFragmentContainer(DuplicateJobForm,
                         model
                     }
                 }
-           }
-           
-           ...DataForm_data
-        }`
-    }
-);
+            }
+
+            ...DataForm_data
+        }
+    `,
+});

@@ -1,5 +1,5 @@
 import React from 'react';
-import {createFragmentContainer, graphql} from 'react-relay';
+import { createFragmentContainer, graphql } from 'react-relay';
 import ReviewJob from '../Forms/ReviewJob';
 import parseJobParams from '../../Utils/ParseJobParams';
 
@@ -8,7 +8,7 @@ const Parameters = (props) => {
 
     const result = parseJobParams(params);
 
-    return <ReviewJob values={result}/>;
+    return <ReviewJob values={result} />;
 };
 
 export default createFragmentContainer(Parameters, {
@@ -56,5 +56,6 @@ export default createFragmentContainer(Parameters, {
             waveform {
                 model
             }
-        }`
+        }
+    `,
 });

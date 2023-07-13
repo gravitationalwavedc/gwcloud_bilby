@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import {commitMutation} from 'relay-runtime';
-import {graphql} from 'react-relay';
-import {harnessApi} from '../index';
+import { commitMutation } from 'relay-runtime';
+import { graphql } from 'react-relay';
+import { harnessApi } from '../index';
 import { Container, Col, Row, Tab, Nav } from 'react-bootstrap';
 import { useFormik } from 'formik';
 import JobTitle from '../Components/Forms/JobTitle';
@@ -13,29 +13,29 @@ import initialValues from '../Components/Forms/initialValues';
 import validationSchema from '../Components/Forms/validationSchema';
 
 const submitMutation = graphql`
-  mutation NewJobMutation($input: BilbyJobMutationInput!) {
-    newBilbyJob(input: $input) {
-      result {
-        jobId
-      }
+    mutation NewJobMutation($input: BilbyJobMutationInput!) {
+        newBilbyJob(input: $input) {
+            result {
+                jobId
+            }
+        }
     }
-  }
 `;
 
-const NewJob = ({initialValues, router, data}) => {
+const NewJob = ({ initialValues, router, data }) => {
     const [key, setKey] = useState('data');
 
     const formik = useFormik({
         initialValues: initialValues,
-        onSubmit: values => handleJobSubmission(values),
+        onSubmit: (values) => handleJobSubmission(values),
         validationSchema: validationSchema,
     });
 
     const handleJobSubmission = (values) => {
-    // The mutation requires all number values to be strings.
+        // The mutation requires all number values to be strings.
         Object.entries(values)
-            .filter(([key, value]) => typeof(value) === 'number') // eslint-disable-line no-unused-vars
-            .map(([key, value]) => values[key] = value.toString());
+            .filter(([key, value]) => typeof value === 'number') // eslint-disable-line no-unused-vars
+            .map(([key, value]) => (values[key] = value.toString()));
 
         const variables = {
             input: {
@@ -43,7 +43,7 @@ const NewJob = ({initialValues, router, data}) => {
                     details: {
                         name: values.name,
                         description: values.description,
-                        private: false
+                        private: false,
                     },
 
                     data: {
@@ -57,7 +57,7 @@ const NewJob = ({initialValues, router, data}) => {
                             virgoChannel: values.virgoChannel,
                         },
 
-                        eventId: values.eventId ? values.eventId.eventId : null
+                        eventId: values.eventId ? values.eventId.eventId : null,
                     },
 
                     detector: {
@@ -78,7 +78,7 @@ const NewJob = ({initialValues, router, data}) => {
                     },
 
                     prior: {
-                        priorDefault: values.priorChoice
+                        priorDefault: values.priorChoice,
                     },
 
                     sampler: {
@@ -92,10 +92,10 @@ const NewJob = ({initialValues, router, data}) => {
                     },
 
                     waveform: {
-                        model: values.signalChoice
+                        model: values.signalChoice,
                     },
-                }
-            }
+                },
+            },
         };
 
         commitMutation(harnessApi.getEnvironment('bilby'), {
@@ -112,35 +112,35 @@ const NewJob = ({initialValues, router, data}) => {
     return (
         <Container fluid>
             <Row>
-                <Col md={2}/>
-                <Col md={8} style={{minHeight: '110px'}}>
+                <Col md={2} />
+                <Col md={8} style={{ minHeight: '110px' }}>
                     <JobTitle formik={formik} />
                 </Col>
             </Row>
-            <Tab.Container id='jobForm' activeKey={key} onSelect={(key) => setKey(key)}>
+            <Tab.Container id="jobForm" activeKey={key} onSelect={(key) => setKey(key)}>
                 <Row>
                     <Col md={2}>
-                        <Nav className='flex-column'>
+                        <Nav className="flex-column">
                             <Nav.Item>
-                                <Nav.Link eventKey='data'>
+                                <Nav.Link eventKey="data">
                                     <h5>Data</h5>
                                     <p>Type and detectors</p>
                                 </Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
-                                <Nav.Link eventKey='signal'>
+                                <Nav.Link eventKey="signal">
                                     <h5>Signal</h5>
                                     <p>Injection type and details</p>
                                 </Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
-                                <Nav.Link eventKey='priorsAndSampler'>
+                                <Nav.Link eventKey="priorsAndSampler">
                                     <h5>Priors & Sampler</h5>
                                     <p>Default prior and sampler parameters</p>
                                 </Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
-                                <Nav.Link eventKey='review'>
+                                <Nav.Link eventKey="review">
                                     <h5>Review</h5>
                                     <p>Finalise and start your job</p>
                                 </Nav.Link>
@@ -149,20 +149,17 @@ const NewJob = ({initialValues, router, data}) => {
                     </Col>
                     <Col md={8}>
                         <Tab.Content>
-                            <Tab.Pane eventKey='data'>
-                                <DataForm formik={formik} handlePageChange={setKey} data={data}/>
+                            <Tab.Pane eventKey="data">
+                                <DataForm formik={formik} handlePageChange={setKey} data={data} />
                             </Tab.Pane>
-                            <Tab.Pane data-testid='signalPane' eventKey='signal'>
-                                <SignalForm formik={formik} handlePageChange={setKey}/>
+                            <Tab.Pane data-testid="signalPane" eventKey="signal">
+                                <SignalForm formik={formik} handlePageChange={setKey} />
                             </Tab.Pane>
-                            <Tab.Pane eventKey='priorsAndSampler'>
-                                <PriorsForm formik={formik} handlePageChange={setKey}/>
+                            <Tab.Pane eventKey="priorsAndSampler">
+                                <PriorsForm formik={formik} handlePageChange={setKey} />
                             </Tab.Pane>
-                            <Tab.Pane eventKey='review'>
-                                <ReviewJob
-                                    formik={formik}
-                                    values={formik.values}
-                                    handleSubmit={formik.handleSubmit}/>
+                            <Tab.Pane eventKey="review">
+                                <ReviewJob formik={formik} values={formik.values} handleSubmit={formik.handleSubmit} />
                             </Tab.Pane>
                         </Tab.Content>
                     </Col>
@@ -173,7 +170,7 @@ const NewJob = ({initialValues, router, data}) => {
 };
 
 NewJob.defaultProps = {
-    initialValues: initialValues
+    initialValues: initialValues,
 };
 
 export default NewJob;

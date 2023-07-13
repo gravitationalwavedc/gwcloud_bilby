@@ -12,8 +12,8 @@ const environment = createMockEnvironment();
 setHarnessApi({
     getEnvironment: () => environment,
     currentUser: {
-        userId: 1
-    }
+        userId: 1,
+    },
 });
 
 global.queryRendererSetup = (inputQuery, componentToRender) => {
@@ -30,7 +30,7 @@ global.queryRendererSetup = (inputQuery, componentToRender) => {
                 }
                 return 'Loading...';
             }}
-        />
+        />,
     );
     return environment;
 };
@@ -46,10 +46,10 @@ global.router = {
         match: jest.fn(),
         getRoutes: jest.fn(),
         isActive: jest.fn(),
-        format: jest.fn()
+        format: jest.fn(),
     },
     addTransitionHook: jest.fn(),
-    addNavigationListener: jest.fn()
+    addNavigationListener: jest.fn(),
 };
 
 global.environment = environment;

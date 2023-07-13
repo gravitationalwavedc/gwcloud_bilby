@@ -1,7 +1,7 @@
-import React, {useEffect, useRef, useState} from 'react';
-import {commitMutation, createFragmentContainer, graphql} from 'react-relay';
+import React, { useEffect, useRef, useState } from 'react';
+import { commitMutation, createFragmentContainer, graphql } from 'react-relay';
 import 'react-bootstrap-typeahead/css/Typeahead.css';
-import {harnessApi} from '../../index';
+import { harnessApi } from '../../index';
 import EventIDDropdown from './EventIDDropdown';
 
 const BilbyJobEventIDDropdown = (props) => {
@@ -13,53 +13,47 @@ const BilbyJobEventIDDropdown = (props) => {
             updateJob(
                 {
                     jobId: props.jobId,
-                    eventId: (eventId && eventId.eventId) || null
+                    eventId: (eventId && eventId.eventId) || null,
                 },
-                props.onUpdate
+                props.onUpdate,
             );
         } else {
             isMounted.current = true;
         }
     }, [eventId]);
 
-    return <EventIDDropdown
-        data={props.data}
-        modifiable={props.modifiable}
-        eventId={eventId}
-        setEventId={setEventId}
-    />;
+    return (
+        <EventIDDropdown data={props.data} modifiable={props.modifiable} eventId={eventId} setEventId={setEventId} />
+    );
 };
 
-const updateJob = (variables, callback) => commitMutation(harnessApi.getEnvironment('bilby'), {
-    mutation: graphql`mutation BilbyJobEventIDDropdownMutation($jobId: ID!, $eventId: String)
-            {
-              updateBilbyJob(input: {jobId: $jobId, eventId: $eventId}) 
-              {
-                result
-              }
-            }`,
-    optimisticResponse: {
-        updateBilbyJob: {
-            result: 'Job saved!'
-        }
-    },
-    variables: variables,
-    onCompleted: (_response, errors) => {
-        if (errors) {
-            callback(false, errors);
-        }
-        else {
-            callback(true, 'Job Event ID updated!');
-        }
-    },
-});
-
+const updateJob = (variables, callback) =>
+    commitMutation(harnessApi.getEnvironment('bilby'), {
+        mutation: graphql`
+            mutation BilbyJobEventIDDropdownMutation($jobId: ID!, $eventId: String) {
+                updateBilbyJob(input: { jobId: $jobId, eventId: $eventId }) {
+                    result
+                }
+            }
+        `,
+        optimisticResponse: {
+            updateBilbyJob: {
+                result: 'Job saved!',
+            },
+        },
+        variables: variables,
+        onCompleted: (_response, errors) => {
+            if (errors) {
+                callback(false, errors);
+            } else {
+                callback(true, 'Job Event ID updated!');
+            }
+        },
+    });
 
 export default createFragmentContainer(BilbyJobEventIDDropdown, {
     data: graphql`
-        fragment BilbyJobEventIDDropdown_data on Query @argumentDefinitions(
-            jobId: {type: "ID!"}
-        ) {
+        fragment BilbyJobEventIDDropdown_data on Query @argumentDefinitions(jobId: { type: "ID!" }) {
             bilbyJob(id: $jobId) {
                 eventId {
                     eventId
@@ -67,8 +61,8 @@ export default createFragmentContainer(BilbyJobEventIDDropdown, {
                     nickname
                 }
             }
-            
+
             ...EventIDDropdown_data
         }
-    `
+    `,
 });

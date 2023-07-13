@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import {createPaginationContainer, graphql} from 'react-relay';
+import { createPaginationContainer, graphql } from 'react-relay';
 import { Button, Card, Container, Col, Row } from 'react-bootstrap';
 import { HiOutlinePlus } from 'react-icons/hi';
 import Link from 'found/Link';
 import JobTable from '../Components/JobTable';
 import JobSearchForm from '../Components/JobSearchForm';
-import {INFINITE_SCROLL_CHUNK_SIZE} from '../constants';
+import { INFINITE_SCROLL_CHUNK_SIZE } from '../constants';
 
-const MyJobs = ({data, match, router,relay}) => {
+const MyJobs = ({ data, match, router, relay }) => {
     const [search, setSearch] = useState('');
     const [timeRange, setTimeRange] = useState('all');
     const [order, setOrder] = useState();
@@ -21,7 +21,7 @@ const MyJobs = ({data, match, router,relay}) => {
             search: search,
             timeRange: timeRange,
             orderBy: order,
-            direction: direction
+            direction: direction,
         };
         relay.refetchConnection(1, null, refetchVariables);
     };
@@ -33,28 +33,29 @@ const MyJobs = ({data, match, router,relay}) => {
     };
 
     return (
-        <Container fluid className='pb-3'>
-            <Col md={{offset: 1, span: 10}}>
-                <h1 className='pt-5 mb-4'>
+        <Container fluid className="pb-3">
+            <Col md={{ offset: 1, span: 10 }}>
+                <h1 className="pt-5 mb-4">
                     My Jobs
-                    <span className='float-right'>
-                        <Link 
+                    <span className="float-right">
+                        <Link
                             as={Button}
-                            variant='outline-primary'
-                            to='/bilby/' 
-                            exact 
+                            variant="outline-primary"
+                            to="/bilby/"
+                            exact
                             match={match}
                             router={router}
-                            className='mr-1'>
-                                Switch to public jobs
+                            className="mr-1"
+                        >
+                            Switch to public jobs
                         </Link>
-                        <Link as={Button} to='/bilby/job-form/' exact match={match} router={router}>
-                            <HiOutlinePlus size={18} className='mb-1 mr-1'/>
-                                Start a new job 
+                        <Link as={Button} to="/bilby/job-form/" exact match={match} router={router}>
+                            <HiOutlinePlus size={18} className="mb-1 mr-1" />
+                            Start a new job
                         </Link>
                     </span>
                 </h1>
-                <Card className='gw-form-card'>
+                <Card className="gw-form-card">
                     <Card.Body>
                         <JobSearchForm
                             search={search}
@@ -62,13 +63,13 @@ const MyJobs = ({data, match, router,relay}) => {
                             timeRange={timeRange}
                             setTimeRange={setTimeRange}
                         />
-                        <Row className='mt-4'>
+                        <Row className="mt-4">
                             <Col>
                                 <JobTable
-                                    data={data.bilbyJobs} 
-                                    setOrder={setOrder} 
-                                    order={order} 
-                                    setDirection={setDirection} 
+                                    data={data.bilbyJobs}
+                                    setOrder={setOrder}
+                                    order={order}
+                                    setDirection={setDirection}
                                     direction={direction}
                                     match={match}
                                     router={router}
@@ -85,15 +86,12 @@ const MyJobs = ({data, match, router,relay}) => {
     );
 };
 
-export default createPaginationContainer(MyJobs,
+export default createPaginationContainer(
+    MyJobs,
     {
         data: graphql`
             fragment MyJobs_data on Query {
-                bilbyJobs(
-                    first: $count,
-                    after: $cursor,
-                    orderBy: $orderBy
-                ) @connection(key: "MyJobs_bilbyJobs") {
+                bilbyJobs(first: $count, after: $cursor, orderBy: $orderBy) @connection(key: "MyJobs_bilbyJobs") {
                     edges {
                         node {
                             id
@@ -113,19 +111,15 @@ export default createPaginationContainer(MyJobs,
                             }
                         }
                     }
-                  }
+                }
             }
         `,
     },
     {
         direction: 'forward',
         query: graphql`
-            query MyJobsForwardQuery(
-                $count: Int!,
-                $cursor: String,
-                $orderBy: String
-            ) {
-              ...MyJobs_data
+            query MyJobsForwardQuery($count: Int!, $cursor: String, $orderBy: String) {
+                ...MyJobs_data
             }
         `,
         getConnectionFromProps(props) {
@@ -135,16 +129,16 @@ export default createPaginationContainer(MyJobs,
         getFragmentVariables(previousVariables, totalCount) {
             return {
                 ...previousVariables,
-                count: totalCount
+                count: totalCount,
             };
         },
 
-        getVariables(props, {count, cursor}, {orderBy}) {
+        getVariables(props, { count, cursor }, { orderBy }) {
             return {
                 count,
                 cursor,
                 orderBy,
             };
-        }
-    }
+        },
+    },
 );

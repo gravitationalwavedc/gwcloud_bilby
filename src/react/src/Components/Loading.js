@@ -11,10 +11,9 @@ const spinnerStyle = {
     height: '5rem',
 };
 
-const Loading = () => 
-    <Spinner animation='border' role='status' style={spinnerStyle}>
-        <span className='sr-only'>Loading...</span>
+const Loading = () => (
+    <Spinner animation="border" role="status" style={spinnerStyle}>
+        <span className="sr-only">Loading...</span>
     </Spinner>
-;
-
+);
 export default Loading;

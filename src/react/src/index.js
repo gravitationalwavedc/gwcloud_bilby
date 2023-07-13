@@ -7,8 +7,4 @@ function setHarnessApi(api) {
     harnessApi = api;
 }
 
-export {
-    getRoutes,
-    setHarnessApi,
-    harnessApi
-};
+export { getRoutes, setHarnessApi, harnessApi };

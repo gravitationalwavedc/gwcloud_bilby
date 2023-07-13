@@ -1,7 +1,7 @@
 import React from 'react';
-import {graphql, QueryRenderer} from 'react-relay';
-import {MockPayloadGenerator} from 'relay-test-utils';
-import {render, waitFor, screen} from '@testing-library/react';
+import { graphql, QueryRenderer } from 'react-relay';
+import { MockPayloadGenerator } from 'relay-test-utils';
+import { render, waitFor, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ViewJob from '../ViewJob';
 
@@ -12,16 +12,16 @@ describe('view job page', () => {
         <QueryRenderer
             environment={environment}
             query={graphql`
-            query ViewJobTestQuery($jobId: ID!) @relay_test_operation {
-              ...ViewJob_data @arguments(jobId: $jobId)
-            }
-          `}
+                query ViewJobTestQuery($jobId: ID!) @relay_test_operation {
+                    ...ViewJob_data @arguments(jobId: $jobId)
+                }
+            `}
             variables={{
-                jobId: 'QmlsYnlKb2JOb2RlOjY='
+                jobId: 'QmlsYnlKb2JOb2RlOjY=',
             }}
-            render={({error, props}) => {
+            render={({ error, props }) => {
                 if (props) {
-                    return <ViewJob data={props} match={{params: {jobId: 'QmlsYnlKb'}}} router={router}/>;
+                    return <ViewJob data={props} match={{ params: { jobId: 'QmlsYnlKb' } }} router={router} />;
                 } else if (error) {
                     return error.message;
                 }
@@ -35,7 +35,7 @@ describe('view job page', () => {
             return {
                 eventId: 'test-1',
                 triggerId: 'trigger-1',
-                nickname: 'slayer'
+                nickname: 'slayer',
             };
         },
         BilbyJobNode() {
@@ -47,13 +47,13 @@ describe('view job page', () => {
                 jobStatus: {
                     name: 'Error',
                     number: '400',
-                    date: '2020-10-05 04:49:58 UTC'
+                    date: '2020-10-05 04:49:58 UTC',
                 },
                 params: {
                     details: {
                         name: 'GW-Sim-test32',
                         description: 'A simulated binary black hole test job using 32s priors.',
-                        private: true
+                        private: true,
                     },
                     data: {
                         dataChoice: 'real',
@@ -61,8 +61,8 @@ describe('view job page', () => {
                         channels: {
                             hanfordChannel: 'GDS-CALIB_STRAIN',
                             livingstonChannel: 'GDS-CALIB_STRAIN',
-                            virgoChannel: null
-                        }
+                            virgoChannel: null,
+                        },
                     },
                     detector: {
                         hanford: true,
@@ -75,10 +75,10 @@ describe('view job page', () => {
                         virgoMinimumFrequency: '20',
                         virgoMaximumFrequency: '1024',
                         duration: '8',
-                        samplingFrequency: '16384'
+                        samplingFrequency: '16384',
                     },
                     prior: {
-                        priorDefault: '4s'
+                        priorDefault: '4s',
                     },
                     sampler: {
                         nlive: '1000',
@@ -87,21 +87,23 @@ describe('view job page', () => {
                         walks: '50',
                         dlogz: null,
                         cpus: 1,
-                        samplerChoice: 'dynesty'
+                        samplerChoice: 'dynesty',
                     },
                     waveform: {
-                        model: 'binaryBlackHole'
-                    }
+                        model: 'binaryBlackHole',
+                    },
                 },
-                labels: [{
-                    LabelType() {
-                        return {
-                            name: 'Review Requested',
-                            id: 'TGFiZWxUeXBlOjM='
-                        };
-                    }
-                }],
-                eventId: null 
+                labels: [
+                    {
+                        LabelType() {
+                            return {
+                                name: 'Review Requested',
+                                id: 'TGFiZWxUeXBlOjM=',
+                            };
+                        },
+                    },
+                ],
+                eventId: null,
             };
         },
     };
@@ -112,27 +114,30 @@ describe('view job page', () => {
                 path: 'a_cool_path',
                 isDir: false,
                 fileSize: 1234,
-                downloadId: 'anDownloadId'
+                downloadId: 'anDownloadId',
             };
-        }
+        },
     };
-
 
     it('should render a loading page', () => {
         expect.hasAssertions();
-        const {getByText} = render(<TestRenderer/>);
+        const { getByText } = render(<TestRenderer />);
         expect(getByText('Loading...')).toBeInTheDocument();
     });
 
     it('should render the actual page', async () => {
         expect.hasAssertions();
-        const {getByText, getAllByText} = render(<TestRenderer/>);
-        await waitFor(() => environment.mock.resolveMostRecentOperation(operation =>
-            MockPayloadGenerator.generate(operation, mockBilbyJobReturn)
-        ));
-        await waitFor(() => environment.mock.resolveMostRecentOperation(operation =>
-            MockPayloadGenerator.generate(operation, mockBilbyJobResultsFiles)
-        ));
+        const { getByText, getAllByText } = render(<TestRenderer />);
+        await waitFor(() =>
+            environment.mock.resolveMostRecentOperation((operation) =>
+                MockPayloadGenerator.generate(operation, mockBilbyJobReturn),
+            ),
+        );
+        await waitFor(() =>
+            environment.mock.resolveMostRecentOperation((operation) =>
+                MockPayloadGenerator.generate(operation, mockBilbyJobResultsFiles),
+            ),
+        );
         expect(getByText('GW-Sim-test32')).toBeInTheDocument();
         expect(getAllByText('a_cool_path')[0]).toBeInTheDocument();
     });
@@ -140,10 +145,12 @@ describe('view job page', () => {
     it('should change event id when using the Event ID modal', async () => {
         expect.hasAssertions();
         render(<TestRenderer />);
-        await waitFor(() => environment.mock.resolveMostRecentOperation(operation =>
-            MockPayloadGenerator.generate(operation, mockBilbyJobReturn)
-        ));
-        
+        await waitFor(() =>
+            environment.mock.resolveMostRecentOperation((operation) =>
+                MockPayloadGenerator.generate(operation, mockBilbyJobReturn),
+            ),
+        );
+
         expect(screen.queryByText('Event ID: test-1')).not.toBeInTheDocument();
 
         const changeEventIdBtn = screen.getByText('Set Event ID');
@@ -155,5 +162,4 @@ describe('view job page', () => {
         expect(screen.queryByText('Event ID: test-1')).toBeInTheDocument();
         expect(screen.queryByText('Change Event ID')).toBeInTheDocument();
     });
-
 });

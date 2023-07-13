@@ -48,6 +48,6 @@ export default function parseJobParams(params) {
         samplerChoice: params.sampler.samplerChoice,
 
         // Waveform
-        signalChoice: params.waveform.model
+        signalChoice: params.waveform.model,
     };
 }

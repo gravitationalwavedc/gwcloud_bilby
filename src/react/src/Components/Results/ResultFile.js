@@ -1,20 +1,21 @@
 import React from 'react';
-import {commitMutation, createFragmentContainer, graphql} from 'react-relay';
+import { commitMutation, createFragmentContainer, graphql } from 'react-relay';
 import filesize from 'filesize';
-import {harnessApi} from '../../index';
-import {IS_DEV} from '../../Utils/misc';
-import {jobTypes} from '../../Utils/jobHelpers';
+import { harnessApi } from '../../index';
+import { IS_DEV } from '../../Utils/misc';
+import { jobTypes } from '../../Utils/jobHelpers';
 
 const downloadUrl = 'https://gwcloud.org.au/job/apiv1/file/?fileId=';
-const uploadedJobDownloadUrl =
-    IS_DEV ? 'http://localhost:8001/file_download/?fileId=' : 'https://gwcloud.org.au/bilby/file_download/?fileId=';
+const uploadedJobDownloadUrl = IS_DEV
+    ? 'http://localhost:8001/file_download/?fileId='
+    : 'https://gwcloud.org.au/bilby/file_download/?fileId=';
 
 const getFileDownloadIdMutation = graphql`
-  mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
-    generateFileDownloadIds(input: $input) {
-      result
+    mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
+        generateFileDownloadIds(input: $input) {
+            result
+        }
     }
-  }
 `;
 
 const generateDownload = (url) => {
@@ -42,45 +43,40 @@ const performFileDownload = (e, jobId, jobTypeId, token) => {
         variables: {
             input: {
                 jobId: jobId,
-                downloadTokens: [token]
-            }
+                downloadTokens: [token],
+            },
         },
         onCompleted: (response, errors) => {
             if (errors) {
                 // eslint-disable-next-line no-alert
                 alert('Unable to download file.');
-            }
-            else {
+            } else {
                 generateDownload(downloadUrl + response.generateFileDownloadIds.result[0]);
             }
         },
     });
 };
 
-const ResultFile = ({file, data, bilbyResultFiles}) =>
+const ResultFile = ({ file, data, bilbyResultFiles }) => (
     <tr>
         <td>
-            {
-                file.isDir ? file.path : (
-                    <a
-                        href='#'
-                        onClick={
-                            e => performFileDownload(
-                                e,
-                                data.bilbyJob.id,
-                                bilbyResultFiles.jobType,
-                                file.downloadToken
-                            )
-                        }
-                    >
-                        {file.path}
-                    </a>
-                )
-            }
+            {file.isDir ? (
+                file.path
+            ) : (
+                <a
+                    href="#"
+                    onClick={(e) =>
+                        performFileDownload(e, data.bilbyJob.id, bilbyResultFiles.jobType, file.downloadToken)
+                    }
+                >
+                    {file.path}
+                </a>
+            )}
         </td>
         <td>{file.isDir ? 'Directory' : 'File'}</td>
-        <td>{file.isDir ? '' : filesize(parseInt(file.fileSize), {round: 0})}</td>
-    </tr>;
+        <td>{file.isDir ? '' : filesize(parseInt(file.fileSize), { round: 0 })}</td>
+    </tr>
+);
 
 export default createFragmentContainer(ResultFile, {
     file: graphql`
@@ -90,5 +86,5 @@ export default createFragmentContainer(ResultFile, {
             fileSize
             downloadToken
         }
-    `
+    `,
 });

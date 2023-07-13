@@ -2,7 +2,7 @@ import React from 'react';
 import EditableText from './EditableText';
 import { graphql } from 'react-relay';
 import { commitMutation } from 'relay-runtime';
-import {harnessApi} from '../../index';
+import { harnessApi } from '../../index';
 
 const mutation = graphql`
     mutation EditableDescriptionMutation($input: UpdateBilbyJobMutationInput!) {
@@ -13,15 +13,13 @@ const mutation = graphql`
     }
 `;
 
-
-const EditableDescription = ({modifiable, value, jobId}) => {
-
+const EditableDescription = ({ modifiable, value, jobId }) => {
     const handleSaveDescription = (newValue) => {
         const variables = {
             input: {
                 jobId: jobId,
-                description: newValue 
-            }
+                description: newValue,
+            },
         };
 
         commitMutation(harnessApi.getEnvironment('bilby'), {
@@ -30,17 +28,21 @@ const EditableDescription = ({modifiable, value, jobId}) => {
         });
     };
 
-    return <React.Fragment>
-        {modifiable ? 
-            <EditableText 
-                name='description' 
-                type='textarea'
-                value={value} 
-                onSave={(value) => handleSaveDescription(value)} 
-                viewProps={{className: 'p'}}
-            /> 
-            : <p>{value}</p>}
-    </React.Fragment>;
+    return (
+        <React.Fragment>
+            {modifiable ? (
+                <EditableText
+                    name="description"
+                    type="textarea"
+                    value={value}
+                    onSave={(value) => handleSaveDescription(value)}
+                    viewProps={{ className: 'p' }}
+                />
+            ) : (
+                <p>{value}</p>
+            )}
+        </React.Fragment>
+    );
 };
 
 export default EditableDescription;

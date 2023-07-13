@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import EditableText from './EditableText';
 import { graphql } from 'react-relay';
 import { commitMutation } from 'relay-runtime';
-import {harnessApi} from '../../index';
+import { harnessApi } from '../../index';
 import validationSchema from './validationSchema';
 
 const mutation = graphql`
@@ -14,14 +14,13 @@ const mutation = graphql`
     }
 `;
 
-
-const EditableJobName = ({modifiable, value, jobId}) => {
+const EditableJobName = ({ modifiable, value, jobId }) => {
     const [errors, setErrors] = useState();
 
     const handleSaveJobName = async (newValue) => {
         try {
-            await validationSchema.validateAt('name', {name: newValue});
-        } catch(error) {
+            await validationSchema.validateAt('name', { name: newValue });
+        } catch (error) {
             setErrors(error.message);
             return;
         }
@@ -29,8 +28,8 @@ const EditableJobName = ({modifiable, value, jobId}) => {
         const variables = {
             input: {
                 jobId: jobId,
-                name: newValue 
-            }
+                name: newValue,
+            },
         };
 
         commitMutation(harnessApi.getEnvironment('bilby'), {
@@ -43,22 +42,26 @@ const EditableJobName = ({modifiable, value, jobId}) => {
                     // clear errors if everything worked.
                     setErrors();
                 }
-            }
+            },
         });
     };
 
-    return <React.Fragment>
-        {modifiable ? 
-            <EditableText 
-                name='job-name' 
-                value={value} 
-                onSave={(value) => handleSaveJobName(value)} 
-                viewProps={{className: 'h1'}}
-                hint='You can only use letters, numbers, underscores, and hyphens.'
-                errors={errors}
-            /> 
-            : <h1>{value}</h1>}
-    </React.Fragment>;
+    return (
+        <React.Fragment>
+            {modifiable ? (
+                <EditableText
+                    name="job-name"
+                    value={value}
+                    onSave={(value) => handleSaveJobName(value)}
+                    viewProps={{ className: 'h1' }}
+                    hint="You can only use letters, numbers, underscores, and hyphens."
+                    errors={errors}
+                />
+            ) : (
+                <h1>{value}</h1>
+            )}
+        </React.Fragment>
+    );
 };
 
 export default EditableJobName;
