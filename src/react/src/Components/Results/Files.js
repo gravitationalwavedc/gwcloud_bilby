@@ -1,70 +1,65 @@
-import React from "react";
-import { QueryRenderer, graphql } from "react-relay";
-import { harnessApi } from "../../index";
-import Table from "react-bootstrap/Table";
-import ResultFile from "./ResultFile";
+import React from 'react';
+import { QueryRenderer, graphql } from 'react-relay';
+import { harnessApi } from '../../index';
+import Table from 'react-bootstrap/Table';
+import ResultFile from './ResultFile';
 
 const Files = (props) => (
-  <React.Fragment>
-    <Table style={props.hidden ? { display: "none" } : {}}>
-      <thead>
-        <tr>
-          <th>File Path</th>
-          <th>Type</th>
-          <th>File Size</th>
-        </tr>
-      </thead>
-      <tbody>
-        <QueryRenderer
-          environment={harnessApi.getEnvironment("bilby")}
-          query={graphql`
-            query FilesQuery($jobId: ID!) {
-              bilbyResultFiles(jobId: $jobId) {
-                files {
-                  ...ResultFile_file
-                }
-                jobType
-              }
-            }
-          `}
-          variables={{ jobId: props.data.bilbyJob.id }}
-          render={(_result) => {
-            const _error = _result.error;
-            const _props = _result.props;
-
-            if (_error) {
-              return (
+    <React.Fragment>
+        <Table style={props.hidden ? { display: 'none' } : {}}>
+            <thead>
                 <tr>
-                  <td colSpan={3}>
-                    <div>{_error.message}</div>
-                  </td>
+                    <th>File Path</th>
+                    <th>Type</th>
+                    <th>File Size</th>
                 </tr>
-              );
-            } else if (_props && _props.bilbyResultFiles) {
-              return (
-                <React.Fragment>
-                  {_props.bilbyResultFiles.files.map((file) => (
-                    <ResultFile
-                      key={file.path}
-                      file={file}
-                      {..._props}
-                      {...props}
-                    />
-                  ))}
-                </React.Fragment>
-              );
-            }
+            </thead>
+            <tbody>
+                <QueryRenderer
+                    environment={harnessApi.getEnvironment('bilby')}
+                    query={graphql`
+                        query FilesQuery($jobId: ID!) {
+                            bilbyResultFiles(jobId: $jobId) {
+                                files {
+                                    ...ResultFile_file
+                                }
+                                jobType
+                            }
+                        }
+                    `}
+                    variables={{ jobId: props.data.bilbyJob.id }}
+                    render={(_result) => {
+                        const _error = _result.error;
+                        const _props = _result.props;
 
-            return (
-              <tr>
-                <td colSpan={3}>Loading...</td>
-              </tr>
-            );
-          }}
-        />
-      </tbody>
-    </Table>
-  </React.Fragment>
+                        if (_error) {
+                            return (
+                                <tr>
+                                    <td colSpan={3}>
+                                        <div>{_error.message}</div>
+                                    </td>
+                                </tr>
+                            );
+                        } else if (_props && _props.bilbyResultFiles) {
+                            return (
+                                <React.Fragment>
+                                    {_props.bilbyResultFiles.files.map((file) => (
+                                        <ResultFile key={file.path} file={file} {..._props} {...props} />
+                                    ))}
+                                </React.Fragment>
+                            );
+                        }
+
+                        return (
+                            <tr>
+                                <td colSpan={3}>Loading...</td>
+                            </tr>
+                        );
+                    }}
+                />
+            </tbody>
+        </Table>
+    </React.Fragment>
 );
 
 export default Files;

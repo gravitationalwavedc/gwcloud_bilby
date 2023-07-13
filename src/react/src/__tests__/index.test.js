@@ -1,26 +1,26 @@
-import { setHarnessApi, harnessApi } from "../index";
-import { createMockEnvironment } from "relay-test-utils";
-import { expect } from "@jest/globals";
+import { setHarnessApi, harnessApi } from '../index';
+import { createMockEnvironment } from 'relay-test-utils';
+import { expect } from '@jest/globals';
 
 const newApi = {
-  getEnvironment: () => createMockEnvironment(),
+    getEnvironment: () => createMockEnvironment(),
 };
 
 function setupHarnessApi() {
-  setHarnessApi(null);
+    setHarnessApi(null);
 }
 
-describe("app base route in index", () => {
-  it("should set the harnessApi correctly", () => {
-    expect.hasAssertions();
-    setupHarnessApi();
+describe('app base route in index', () => {
+    it('should set the harnessApi correctly', () => {
+        expect.hasAssertions();
+        setupHarnessApi();
 
-    // harnessApi initial value should be null
-    expect(harnessApi).toBeNull();
+        // harnessApi initial value should be null
+        expect(harnessApi).toBeNull();
 
-    // Set the harness api to our test api
-    setHarnessApi(newApi);
+        // Set the harness api to our test api
+        setHarnessApi(newApi);
 
-    expect(harnessApi).toBe(newApi);
-  });
+        expect(harnessApi).toBe(newApi);
+    });
 });
