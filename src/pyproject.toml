@@ -1,0 +1,18 @@
+[tool.black]
+line-length = 120
+target-version = ['py38', 'py39']
+extend-exclude = "/react/"
+
+[flake8]
+max-line-length = 120
+exclude = """
+  react
+  migrations
+  include
+  venv
+  outdir
+  job_uploads
+  development-manage.py
+  production-manage.py
+  bundle
+"""

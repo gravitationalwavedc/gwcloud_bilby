@@ -64,7 +64,7 @@ function getRoutes() {
                 environment={harnessApi.getEnvironment('bilby')}
                 render={handleRender}/>
             <Route
-                path="job-form"
+                path='job-form'
                 Component={NewJob}
                 render={handleRender}
                 query={graphql`
@@ -75,7 +75,7 @@ function getRoutes() {
                 environment={harnessApi.getEnvironment('bilby')}
             />
             <Route
-                path="job-form/duplicate/"
+                path='job-form/duplicate/'
                 query={graphql`
                    query Routes_JobForm_Query ($jobId: ID!){
                      ...DuplicateJobForm_data @arguments(jobId: $jobId)
@@ -88,7 +88,7 @@ function getRoutes() {
                 Component={DuplicateJobForm}
                 render={handleRender}/>
             <Route
-                path="job-list"
+                path='job-list'
                 query={graphql`
                     query Routes_JobList_Query(
                       $count: Int!,
@@ -106,7 +106,7 @@ function getRoutes() {
                 Component={MyJobs}
                 render={handleRender}/>
             <Route
-                path="job-results/:jobId/"
+                path='job-results/:jobId/'
                 environment={harnessApi.getEnvironment('bilby')}
                 Component={ViewJob}
                 query={graphql`

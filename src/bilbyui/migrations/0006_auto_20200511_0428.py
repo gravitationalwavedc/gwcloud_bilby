@@ -5,19 +5,16 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0005_auto_20200508_0703'),
+        ("bilbyui", "0005_auto_20200508_0703"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='prior',
-            name='job',
+            model_name="prior",
+            name="job",
             field=models.OneToOneField(
-                on_delete=django.db.models.deletion.CASCADE,
-                related_name='prior',
-                to='bilbyui.BilbyJob'
+                on_delete=django.db.models.deletion.CASCADE, related_name="prior", to="bilbyui.BilbyJob"
             ),
         ),
     ]

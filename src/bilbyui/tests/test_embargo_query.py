@@ -17,7 +17,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.real_job_data = {
             "name": "RealTestName",
             "user_id": 1,
-            "ini_string": create_test_ini_string({'trigger-time': 1.0, 'n-simulation': 0, 'detectors': "['H1']"}),
+            "ini_string": create_test_ini_string({"trigger-time": 1.0, "n-simulation": 0, "detectors": "['H1']"}),
         }
         self.real_job = BilbyJob.objects.create(**self.real_job_data)
         self.real_job_data.update({"id": to_global_id("BilbyJobNode", self.real_job.id)})
@@ -25,7 +25,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.simulated_job_data = {
             "name": "SimulatedTestName",
             "user_id": 1,
-            "ini_string": create_test_ini_string({'trigger-time': 2.0, 'n-simulation': 1, 'detectors': "['H1']"}),
+            "ini_string": create_test_ini_string({"trigger-time": 2.0, "n-simulation": 1, "detectors": "['H1']"}),
         }
         self.simulated_job = BilbyJob.objects.create(**self.simulated_job_data)
         self.simulated_job_data.update({"id": to_global_id("BilbyJobNode", self.simulated_job.id)})
@@ -33,7 +33,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.embargoed_job_data = {
             "name": "EmbargoedTestName",
             "user_id": 1,
-            "ini_string": create_test_ini_string({'trigger-time': 2.0, 'n-simulation': 0, 'detectors': "['H1']"}),
+            "ini_string": create_test_ini_string({"trigger-time": 2.0, "n-simulation": 0, "detectors": "['H1']"}),
         }
         self.embargoed_job = BilbyJob.objects.create(**self.embargoed_job_data)
         self.embargoed_job_data.update({"id": to_global_id("BilbyJobNode", self.embargoed_job.id)})
@@ -73,17 +73,14 @@ class TestBilbyJobQueries(BilbyTestCase):
     def request_lookup_users_mock(*args, **kwargs):
         user = User.objects.first()
         if user:
-            return True, [{
-                'userId': user.id,
-                'username': user.username,
-                'firstName': user.first_name,
-                'lastName': user.last_name
-            }]
+            return True, [
+                {"userId": user.id, "username": user.username, "firstName": user.first_name, "lastName": user.last_name}
+            ]
         return False, []
 
     @override_settings(EMBARGO_START_TIME=1.5)
-    @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
-    @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
+    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=lambda *args, **kwargs: (True, []))
     def test_embargoed_user_embargo_single_query(self, *args):
         """
         Checks that non-ligo and anonymous users will not receive jobs subject to embargo
@@ -91,24 +88,16 @@ class TestBilbyJobQueries(BilbyTestCase):
         for _ in range(2):
             for data in self.job_data[:2]:
                 response = self.job_request(data)
-                expected = {
-                    "bilbyJob": camelize(data)
-                }
-                self.assertDictEqual(
-                    expected, response.data, "bilbyJob query returned unexpected data."
-                )
+                expected = {"bilbyJob": camelize(data)}
+                self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
             response = self.job_request(self.embargoed_job_data)
-            expected = {
-                "bilbyJob": None
-            }
-            self.assertDictEqual(
-                expected, response.data, "bilbyJob query returned unexpected data."
-            )
+            expected = {"bilbyJob": None}
+            self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
             self.client.authenticate(self.user, is_ligo=False)
 
     @override_settings(EMBARGO_START_TIME=1.5)
-    @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
-    @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
+    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=lambda *args, **kwargs: (True, []))
     def test_ligo_user_embargo_single_query(self, *args):
         """
         checks that ligo users will receive all jobs
@@ -116,16 +105,12 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.client.authenticate(self.user, is_ligo=True)
         for data in self.job_data:
             response = self.job_request(data)
-            expected = {
-                "bilbyJob": camelize(data)
-            }
-            self.assertDictEqual(
-                expected, response.data, "bilbyJob query returned unexpected data."
-            )
+            expected = {"bilbyJob": camelize(data)}
+            self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
     @override_settings(EMBARGO_START_TIME=1.5)
-    @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
-    @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
+    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=lambda *args, **kwargs: (True, []))
     def test_embargoed_user_embargo_query(self, *args):
         """
         checks that non-ligo users will not receive embargoed jobs
@@ -134,13 +119,11 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.client.authenticate(self.user, is_ligo=False)
         response = self.jobs_request()
         expected = {"bilbyJobs": {"edges": [{"node": camelize(data)} for data in self.job_data[1::-1]]}}
-        self.assertDictEqual(
-            expected, response.data, "bilbyJob query returned unexpected data."
-        )
+        self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
     @override_settings(EMBARGO_START_TIME=1.5)
-    @mock.patch('bilbyui.schema.request_lookup_users', side_effect=request_lookup_users_mock)
-    @mock.patch('bilbyui.schema.request_job_filter', side_effect=lambda *args, **kwargs: (True, []))
+    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=lambda *args, **kwargs: (True, []))
     def test_ligo_user_embargo_query(self, *args):
         """
         checks that ligo users will receive all jobs
@@ -148,6 +131,4 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.client.authenticate(self.user, is_ligo=True)
         response = self.jobs_request()
         expected = {"bilbyJobs": {"edges": [{"node": camelize(data)} for data in self.job_data[::-1]]}}
-        self.assertDictEqual(
-            expected, response.data, "bilbyJob query returned unexpected data."
-        )
+        self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")

@@ -66,7 +66,7 @@ class TestEventIDCreation(BilbyTestCase):
                 "triggerId": "S123456a",
                 "nickname": "GW123456",
                 "isLigoEvent": False,
-                "gpsTime": 12345678.1234
+                "gpsTime": 12345678.1234,
             }
         }
 
@@ -83,28 +83,28 @@ class TestEventIDCreation(BilbyTestCase):
 
         # Check that the event has input params
         event = EventID.objects.all().last()
-        self.assertEqual(event.event_id, self.params['input']['eventId'])
-        self.assertEqual(event.trigger_id, self.params['input']['triggerId'])
-        self.assertEqual(event.nickname, self.params['input']['nickname'])
-        self.assertEqual(event.is_ligo_event, self.params['input']['isLigoEvent'])
-        self.assertEqual(event.gps_time, self.params['input']['gpsTime'])
+        self.assertEqual(event.event_id, self.params["input"]["eventId"])
+        self.assertEqual(event.trigger_id, self.params["input"]["triggerId"])
+        self.assertEqual(event.nickname, self.params["input"]["nickname"])
+        self.assertEqual(event.is_ligo_event, self.params["input"]["isLigoEvent"])
+        self.assertEqual(event.gps_time, self.params["input"]["gpsTime"])
 
     @silence_errors
     def test_bad_event_ids(self):
         self.client.authenticate(self.user)
 
         bad_event_ids = [
-            'GW123456_1234567',  # Too many characters
-            'GW123456_12345',    # Too few characters
-            'GW1234567_12345',   # Underscore in wrong place
-            'GG123456_123456',   # Should start with GW
-            'G123456_123456',    # Should start with GW
-            '123456_123456',     # Should start with GW
-            'GW123456-123456',   # Should have underscore
-            'GW123a56-123456'    # Must not have letters after the GW
+            "GW123456_1234567",  # Too many characters
+            "GW123456_12345",  # Too few characters
+            "GW1234567_12345",  # Underscore in wrong place
+            "GG123456_123456",  # Should start with GW
+            "G123456_123456",  # Should start with GW
+            "123456_123456",  # Should start with GW
+            "GW123456-123456",  # Should have underscore
+            "GW123a56-123456",  # Must not have letters after the GW
         ]
         for event_id in bad_event_ids:
-            self.params['input']['eventId'] = event_id
+            self.params["input"]["eventId"] = event_id
             response = self.client.execute(self.query, self.params)
             self.assertResponseHasErrors(response)
             self.assertFalse(EventID.objects.all().exists())
@@ -114,16 +114,16 @@ class TestEventIDCreation(BilbyTestCase):
         self.client.authenticate(self.user)
 
         bad_trigger_ids = [
-            'S123456',     # Must end with 1 or 2 letters
-            'S123456abc',  # Must end with 1 or 2 letters
-            'S_123456a',   # Should not have underscore
-            'S1234567a',   # Too many numbers
-            'S12345a',     # Too few numbers
-            '123456a',     # Must start with S
-            'G123456a',    # Must start with S
+            "S123456",  # Must end with 1 or 2 letters
+            "S123456abc",  # Must end with 1 or 2 letters
+            "S_123456a",  # Should not have underscore
+            "S1234567a",  # Too many numbers
+            "S12345a",  # Too few numbers
+            "123456a",  # Must start with S
+            "G123456a",  # Must start with S
         ]
         for trigger_id in bad_trigger_ids:
-            self.params['input']['triggerId'] = trigger_id
+            self.params["input"]["triggerId"] = trigger_id
             response = self.client.execute(self.query, self.params)
             self.assertResponseHasErrors(response)
             self.assertFalse(EventID.objects.all().exists())
@@ -143,7 +143,7 @@ class TestEventIDUpdating(BilbyTestCase):
             trigger_id="S123456a",
             nickname="GW123456",
             is_ligo_event=False,
-            gps_time=1126259462.391
+            gps_time=1126259462.391,
         )
 
     @silence_errors
@@ -154,7 +154,7 @@ class TestEventIDUpdating(BilbyTestCase):
                 "triggerId": "S234567a",
                 "nickname": "new nickname",
                 "isLigoEvent": False,
-                "gpsTime": 87654321.87654321
+                "gpsTime": 87654321.87654321,
             }
         }
         response = self.client.execute(self.query, new_params)
@@ -174,24 +174,24 @@ class TestEventIDUpdating(BilbyTestCase):
 
         # Check that the event has input params
         event = EventID.objects.all().last()
-        self.assertEqual(event.event_id, new_params['input']['eventId'])
-        self.assertEqual(event.trigger_id, new_params['input']['triggerId'])
-        self.assertEqual(event.nickname, new_params['input']['nickname'])
-        self.assertEqual(event.is_ligo_event, new_params['input']['isLigoEvent'])
-        self.assertEqual(event.gps_time, new_params['input']['gpsTime'])
+        self.assertEqual(event.event_id, new_params["input"]["eventId"])
+        self.assertEqual(event.trigger_id, new_params["input"]["triggerId"])
+        self.assertEqual(event.nickname, new_params["input"]["nickname"])
+        self.assertEqual(event.is_ligo_event, new_params["input"]["isLigoEvent"])
+        self.assertEqual(event.gps_time, new_params["input"]["gpsTime"])
 
     @silence_errors
     def test_update_bad_trigger_ids(self):
         self.client.authenticate(self.user)
 
         bad_trigger_ids = [
-            'S123456',     # Must end with 1 or 2 letters
-            'S123456abc',  # Must end with 1 or 2 letters
-            'S_123456a',   # Should not have underscore
-            'S1234567a',   # Too many numbers
-            'S12345a',     # Too few numbers
-            '123456a',     # Must start with S
-            'G123456a',    # Must start with S
+            "S123456",  # Must end with 1 or 2 letters
+            "S123456abc",  # Must end with 1 or 2 letters
+            "S_123456a",  # Should not have underscore
+            "S1234567a",  # Too many numbers
+            "S12345a",  # Too few numbers
+            "123456a",  # Must start with S
+            "G123456a",  # Must start with S
         ]
         for trigger_id in bad_trigger_ids:
             response = self.client.execute(
@@ -201,7 +201,7 @@ class TestEventIDUpdating(BilbyTestCase):
                         "eventId": "GW123456_123456",
                         "triggerId": trigger_id,
                     }
-                }
+                },
             )
 
             self.assertResponseHasErrors(response)
@@ -221,34 +221,25 @@ class TestEventIDDeletion(BilbyTestCase):
         self.query = delete_mutation
 
         EventID.objects.create(
-            event_id="GW123456_123456",
-            trigger_id="S123456a",
-            nickname="GW123456",
-            is_ligo_event=False
+            event_id="GW123456_123456", trigger_id="S123456a", nickname="GW123456", is_ligo_event=False
         )
 
     @silence_errors
     def test_delete_event_id(self):
         params = {
-                "input": {
-                    "eventId": "GW123456_123456",
-                }
+            "input": {
+                "eventId": "GW123456_123456",
             }
+        }
 
-        response = self.client.execute(
-            self.query,
-            params
-        )
+        response = self.client.execute(self.query, params)
 
         self.assertResponseHasErrors(response)
 
         self.client.authenticate(self.user)
 
         self.assertTrue(EventID.objects.filter(event_id="GW123456_123456").exists())
-        response = self.client.execute(
-            self.query,
-            params
-        )
+        response = self.client.execute(self.query, params)
 
         self.assertResponseHasNoErrors(response)
 
@@ -262,32 +253,15 @@ class TestEventIDPermissions(BilbyTestCase):
 
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
 
-        self.event_id1 = EventID.objects.create(
-            event_id="GW123456_123456",
-            is_ligo_event=False
-        )
-        self.event_id2 = EventID.objects.create(
-            event_id="GW654321_654321",
-            is_ligo_event=False
-        )
-        self.event_id_ligo1 = EventID.objects.create(
-            event_id="GW012345_012345",
-            is_ligo_event=True
-        )
-        self.event_id_ligo2 = EventID.objects.create(
-            event_id="GW543210_543210",
-            is_ligo_event=True
-        )
+        self.event_id1 = EventID.objects.create(event_id="GW123456_123456", is_ligo_event=False)
+        self.event_id2 = EventID.objects.create(event_id="GW654321_654321", is_ligo_event=False)
+        self.event_id_ligo1 = EventID.objects.create(event_id="GW012345_012345", is_ligo_event=True)
+        self.event_id_ligo2 = EventID.objects.create(event_id="GW543210_543210", is_ligo_event=True)
 
     @silence_errors
     def test_create_event_id_permissions(self):
         new_event_id = "GW111111_111111"
-        params = {
-            "input": {
-                "eventId": new_event_id,
-                "gpsTime": 1126259462.391
-            }
-        }
+        params = {"input": {"eventId": new_event_id, "gpsTime": 1126259462.391}}
 
         # Run this test twice, the first time without an authenticated user, and the second with an authenticated user
         for _ in range(2):
@@ -305,13 +279,7 @@ class TestEventIDPermissions(BilbyTestCase):
     @silence_errors
     def test_update_event_id_permissions(self):
         new_trigger_id = "S111111a"
-        params = {
-            "input": {
-                "eventId": self.event_id1.event_id,
-                "triggerId": new_trigger_id,
-                "gpsTime": 1126259462.391
-            }
-        }
+        params = {"input": {"eventId": self.event_id1.event_id, "triggerId": new_trigger_id, "gpsTime": 1126259462.391}}
 
         # Run this test twice, the first time without an authenticated user, and the second with an authenticated user
         for _ in range(2):
@@ -349,17 +317,13 @@ class TestEventIDPermissions(BilbyTestCase):
 
     @silence_errors
     def test_view_event_id_permissions(self):
-        variables_not_ligo = {
-            "eventId": self.event_id1.event_id
-        }
+        variables_not_ligo = {"eventId": self.event_id1.event_id}
 
-        variables_ligo = {
-            "eventId": self.event_id_ligo1.event_id
-        }
+        variables_ligo = {"eventId": self.event_id_ligo1.event_id}
 
         response = self.client.execute(get_event_id_query, variables_not_ligo)
         self.assertResponseHasNoErrors(response)
-        self.assertFalse(response.data['eventId']['isLigoEvent'])
+        self.assertFalse(response.data["eventId"]["isLigoEvent"])
 
         response = self.client.execute(get_event_id_query, variables_ligo)
         self.assertResponseHasErrors(response)
@@ -367,7 +331,7 @@ class TestEventIDPermissions(BilbyTestCase):
         self.client.authenticate(self.user, is_ligo=False)
         response = self.client.execute(get_event_id_query, variables_not_ligo)
         self.assertResponseHasNoErrors(response)
-        self.assertFalse(response.data['eventId']['isLigoEvent'])
+        self.assertFalse(response.data["eventId"]["isLigoEvent"])
 
         response = self.client.execute(get_event_id_query, variables_ligo)
         self.assertResponseHasErrors(response)
@@ -375,23 +339,23 @@ class TestEventIDPermissions(BilbyTestCase):
         self.client.authenticate(self.user, is_ligo=True)
         response = self.client.execute(get_event_id_query, variables_not_ligo)
         self.assertResponseHasNoErrors(response)
-        self.assertFalse(response.data['eventId']['isLigoEvent'])
+        self.assertFalse(response.data["eventId"]["isLigoEvent"])
 
         response = self.client.execute(get_event_id_query, variables_ligo)
         self.assertResponseHasNoErrors(response)
-        self.assertTrue(response.data['eventId']['isLigoEvent'])
+        self.assertTrue(response.data["eventId"]["isLigoEvent"])
 
     @silence_errors
     def test_view_event_id_list_permissions(self):
         response = self.client.execute(get_all_event_ids_query)
-        self.assertEqual(len(response.data['allEventIds']), 2)
-        self.assertTrue(all([not event['isLigoEvent'] for event in response.data['allEventIds']]))
+        self.assertEqual(len(response.data["allEventIds"]), 2)
+        self.assertTrue(all([not event["isLigoEvent"] for event in response.data["allEventIds"]]))
 
         self.client.authenticate(self.user, is_ligo=False)
         response = self.client.execute(get_all_event_ids_query)
-        self.assertEqual(len(response.data['allEventIds']), 2)
-        self.assertTrue(all([not event['isLigoEvent'] for event in response.data['allEventIds']]))
+        self.assertEqual(len(response.data["allEventIds"]), 2)
+        self.assertTrue(all([not event["isLigoEvent"] for event in response.data["allEventIds"]]))
 
         self.client.authenticate(self.user, is_ligo=True)
         response = self.client.execute(get_all_event_ids_query)
-        self.assertEqual(len(response.data['allEventIds']), 4)
+        self.assertEqual(len(response.data["allEventIds"]), 4)

@@ -21,7 +21,7 @@ def parse_ini_file(job, ini_key_value_klass=None):
     (ini_key_value_klass or IniKeyValue).objects.filter(job=job).delete()
 
     # Get the args from the ini
-    args = bilby_ini_string_to_args((job.ini_string or '').encode('utf-8'))
+    args = bilby_ini_string_to_args((job.ini_string or "").encode("utf-8"))
 
     if args.detectors is None:
         raise Exception("Detectors must be set")
@@ -32,23 +32,17 @@ def parse_ini_file(job, ini_key_value_klass=None):
         val = getattr(args, key)
 
         items.append(
-            (ini_key_value_klass or IniKeyValue)(
-                job=job,
-                key=key,
-                value=json.dumps(val),
-                index=idx,
-                processed=False
-            )
+            (ini_key_value_klass or IniKeyValue)(job=job, key=key, value=json.dumps(val), index=idx, processed=False)
         )
 
     # Parse the args through DataGenerationInput to postprocess any values
-    args.outdir = './'
+    args.outdir = "./"
 
     try:
         processed_args = bilby_ini_args_to_data_input(args)
 
         for idx, key in enumerate(vars(processed_args)):
-            while key.startswith('_'):
+            while key.startswith("_"):
                 key = key[1:]
 
             try:
@@ -56,11 +50,7 @@ def parse_ini_file(job, ini_key_value_klass=None):
 
                 items.append(
                     (ini_key_value_klass or IniKeyValue)(
-                        job=job,
-                        key=key,
-                        value=json.dumps(val),
-                        index=idx,
-                        processed=True
+                        job=job, key=key, value=json.dumps(val), index=idx, processed=True
                     )
                 )
             except Exception:

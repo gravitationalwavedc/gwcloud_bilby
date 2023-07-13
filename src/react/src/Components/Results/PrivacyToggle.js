@@ -20,9 +20,9 @@ const PrivacyToggle = (props) => {
 
     const label = props.data.isLigoJob ? 'Share with LVK collaborators' : 'Share publicly';
     
-    return props.modifiable && <Form.Group controlId="privateToggle">
+    return props.modifiable && <Form.Group controlId='privateToggle'>
         <Form.Check
-            type="checkbox"
+            type='checkbox'
             label={label}
             onChange={handleChange} 
             checked={!isPrivate}/>

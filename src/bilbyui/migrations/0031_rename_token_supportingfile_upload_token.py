@@ -4,15 +4,14 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0030_bilbyjob_cluster'),
+        ("bilbyui", "0030_bilbyjob_cluster"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='supportingfile',
-            old_name='token',
-            new_name='upload_token',
+            model_name="supportingfile",
+            old_name="token",
+            new_name="upload_token",
         ),
     ]

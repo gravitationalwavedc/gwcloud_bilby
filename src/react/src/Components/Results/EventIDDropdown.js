@@ -13,7 +13,7 @@ const EventIDDisplay = ({eventId, triggerId, nickname}) => <React.Fragment>
 const EventIDMenuDisplay = ({eventId, triggerId, nickname, props}) => <React.Fragment>
     <h5><Highlighter search={props.text}>{`Event ID: ${eventId}`}</Highlighter></h5>
     <Highlighter search={props.text}>{`Trigger ID: ${triggerId}; Nickname: ${nickname}`}</Highlighter>
-    <hr className="m-0 p-0"/>
+    <hr className='m-0 p-0'/>
 </React.Fragment>;
 
 const EventIDDropdown = ({eventId, data, setEventId, modifiable}) => {
@@ -23,8 +23,8 @@ const EventIDDropdown = ({eventId, data, setEventId, modifiable}) => {
         {eventId && <EventIDDisplay {...eventId}/>}
         {
             modifiable && <Button
-                variant="link"
-                className="py-0"
+                variant='link'
+                className='py-0'
                 onClick={() => setShow(true)}
             >
                 {eventId ? <>Change Event ID</> : 'Set Event ID'}

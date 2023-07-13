@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0027_alter_bilbyjob_event_id'),
+        ("bilbyui", "0027_alter_bilbyjob_event_id"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='eventid',
-            name='is_ligo_event',
+            model_name="eventid",
+            name="is_ligo_event",
             field=models.BooleanField(default=False),
         ),
     ]

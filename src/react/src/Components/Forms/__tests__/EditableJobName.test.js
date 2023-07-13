@@ -10,13 +10,13 @@ describe('editable job name component', () => {
 
     it('should render', () => {
         expect.hasAssertions();
-        render(<EditableJobName value="Testing" />); 
+        render(<EditableJobName value='Testing' />); 
         expect(screen.getByText('Testing')).toBeInTheDocument();
     });
 
     it('should call a mutation when changed', async () => {
         expect.hasAssertions();
-        const { container } = render(<EditableJobName modifiable={true} value="Testing" jobId={1} />);
+        const { container } = render(<EditableJobName modifiable={true} value='Testing' jobId={1} />);
         userEvent.click(screen.getByText('edit'));
         userEvent.type(screen.getByDisplayValue('Testing'), '-new-value');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));
@@ -28,7 +28,7 @@ describe('editable job name component', () => {
 
     it('should display errors correctly', async () => {
         expect.hasAssertions();
-        const { container } = render(<EditableJobName modifiable={true} value="Testing" jobId={1} />);
+        const { container } = render(<EditableJobName modifiable={true} value='Testing' jobId={1} />);
         userEvent.click(screen.getByText('edit'));
         userEvent.type(screen.getByDisplayValue('Testing'), ' bad v@!u3');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));
@@ -37,7 +37,7 @@ describe('editable job name component', () => {
 
     it('should display graphql mutation errors correctly', async () => {
         expect.hasAssertions();
-        const { container } = render(<EditableJobName modifiable={true} value="Testing" jobId={1} />);
+        const { container } = render(<EditableJobName modifiable={true} value='Testing' jobId={1} />);
         userEvent.click(screen.getByText('edit'));
         userEvent.type(screen.getByDisplayValue('Testing'), '-bad-graphql-mutation');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));
@@ -53,7 +53,7 @@ describe('editable job name component', () => {
 
     it('should clear errors when the mutation is successful', async () => {
         expect.hasAssertions();
-        const { container } = render(<EditableJobName modifiable={true} value="Testing" jobId={1} />);
+        const { container } = render(<EditableJobName modifiable={true} value='Testing' jobId={1} />);
         userEvent.click(screen.getByText('edit'));
         userEvent.type(screen.getByDisplayValue('Testing'), '-bad-graphql-mutation');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));

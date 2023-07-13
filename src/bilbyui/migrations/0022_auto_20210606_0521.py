@@ -4,71 +4,70 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0020_parse_ini_kv'),
+        ("bilbyui", "0020_parse_ini_kv"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='dataparameter',
-            name='data',
+            model_name="dataparameter",
+            name="data",
         ),
         migrations.RemoveField(
-            model_name='dataparameter',
-            name='job',
+            model_name="dataparameter",
+            name="job",
         ),
         migrations.AlterUniqueTogether(
-            name='prior',
+            name="prior",
             unique_together=None,
         ),
         migrations.RemoveField(
-            model_name='prior',
-            name='job',
+            model_name="prior",
+            name="job",
         ),
         migrations.RemoveField(
-            model_name='sampler',
-            name='job',
+            model_name="sampler",
+            name="job",
         ),
         migrations.RemoveField(
-            model_name='samplerparameter',
-            name='job',
+            model_name="samplerparameter",
+            name="job",
         ),
         migrations.RemoveField(
-            model_name='samplerparameter',
-            name='sampler',
+            model_name="samplerparameter",
+            name="sampler",
         ),
         migrations.RemoveField(
-            model_name='signal',
-            name='job',
+            model_name="signal",
+            name="job",
         ),
         migrations.RemoveField(
-            model_name='signalparameter',
-            name='job',
+            model_name="signalparameter",
+            name="job",
         ),
         migrations.RemoveField(
-            model_name='signalparameter',
-            name='signal',
+            model_name="signalparameter",
+            name="signal",
         ),
         migrations.DeleteModel(
-            name='Data',
+            name="Data",
         ),
         migrations.DeleteModel(
-            name='DataParameter',
+            name="DataParameter",
         ),
         migrations.DeleteModel(
-            name='Prior',
+            name="Prior",
         ),
         migrations.DeleteModel(
-            name='Sampler',
+            name="Sampler",
         ),
         migrations.DeleteModel(
-            name='SamplerParameter',
+            name="SamplerParameter",
         ),
         migrations.DeleteModel(
-            name='Signal',
+            name="Signal",
         ),
         migrations.DeleteModel(
-            name='SignalParameter',
+            name="SignalParameter",
         ),
     ]

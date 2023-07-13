@@ -4,19 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0032_supportingfile_download_token'),
+        ("bilbyui", "0032_supportingfile_download_token"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='bilbyjob',
-            options={'ordering': ('last_updated', 'name')},
+            name="bilbyjob",
+            options={"ordering": ("last_updated", "name")},
         ),
         migrations.AlterField(
-            model_name='bilbyjob',
-            name='last_updated',
+            model_name="bilbyjob",
+            name="last_updated",
             field=models.DateTimeField(auto_now=True),
         ),
     ]

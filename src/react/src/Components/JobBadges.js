@@ -7,7 +7,7 @@ const JobBadges = ({labels}) =>
         <Badge 
             key={name} 
             variant={getBadgeType(name)} 
-            className="mr-1">
+            className='mr-1'>
             {name}
         </Badge>
     )}</React.Fragment>;

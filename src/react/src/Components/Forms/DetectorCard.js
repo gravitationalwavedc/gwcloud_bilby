@@ -36,14 +36,14 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
 
     return (
         <Card className={isActive ? 'gw-detector-card active' : 'gw-detector-card'}>
-            <Card.Img variant="top" src={image} />
-            <Card.Header className="h4">
+            <Card.Img variant='top' src={image} />
+            <Card.Header className='h4'>
                 {title}
                 <Button 
                     data-testid={identifier + 'Active'}
-                    className="float-right" 
-                    variant="outline-primary" 
-                    size="sm" 
+                    className='float-right' 
+                    variant='outline-primary' 
+                    size='sm' 
                     onClick={toggleActive}>
                     {isActive ? 'Deactivate' : 'Activate' }
                 </Button>
@@ -52,8 +52,8 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
                 <Form.Group controlId={channelId}>
                     <Form.Label>Channel</Form.Label>
                     <CreatableSelect 
-                        className="gw-select"
-                        classNamePrefix="gw-select"
+                        className='gw-select'
+                        classNamePrefix='gw-select'
                         isDisabled={!isActive || !isLigoUser()}
                         onChange={handleChange}
                         options={options}
@@ -63,15 +63,15 @@ const DetectorCard = ({image, title, formik, channelOptions}) => {
                 </Form.Group>
                 <Input 
                     formik={formik} 
-                    title="Minimum frequency" 
+                    title='Minimum frequency' 
                     name={minimumFrequencyId} 
-                    type="number" 
+                    type='number' 
                     disabled={!isActive}/>
                 <Input 
                     formik={formik} 
-                    title="Maximum frequency" 
+                    title='Maximum frequency' 
                     name={maximumFrequencyId} 
-                    type="number" 
+                    type='number' 
                     disabled={!isActive}/>
             </Card.Body>
         </Card>

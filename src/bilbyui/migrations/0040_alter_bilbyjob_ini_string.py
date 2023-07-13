@@ -4,16 +4,15 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0039_inikeyvalue_processed'),
+        ("bilbyui", "0039_inikeyvalue_processed"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='bilbyjob',
-            name='ini_string',
-            field=models.TextField(default=''),
+            model_name="bilbyjob",
+            name="ini_string",
+            field=models.TextField(default=""),
             preserve_default=False,
         ),
     ]

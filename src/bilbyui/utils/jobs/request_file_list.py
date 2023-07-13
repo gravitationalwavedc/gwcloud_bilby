@@ -31,9 +31,7 @@ def request_file_list(job, path, recursive, user_id=None):
         # * this file really sits under the working directory
         # * the path exists
         # * the path is a directory
-        if not dir_path.startswith(job_dir) \
-                or not os.path.exists(dir_path) \
-                or not os.path.isdir(dir_path):
+        if not dir_path.startswith(job_dir) or not os.path.exists(dir_path) or not os.path.isdir(dir_path):
             return False, "Files do not exist"
 
         # Get the list of files requested
@@ -46,24 +44,28 @@ def request_file_list(job, path, recursive, user_id=None):
                     # Construct the real path to this directory
                     real_file_name = os.path.join(root, item)
                     # Add the file entry
-                    file_list.append({
-                        # Remove the leading working directory
-                        'path': real_file_name[len(job_dir):],
-                        'isDir': True,
-                        'fileSize': os.path.getsize(real_file_name)
-                    })
+                    file_list.append(
+                        {
+                            # Remove the leading working directory
+                            "path": real_file_name[len(job_dir) :],
+                            "isDir": True,
+                            "fileSize": os.path.getsize(real_file_name),
+                        }
+                    )
 
                 for item in filenames:
                     # Construct the real path to this file
                     real_file_name = os.path.join(root, item)
                     # Add the file entry
                     try:
-                        file_list.append({
-                            # Remove the leading working directory
-                            'path': real_file_name[len(job_dir):],
-                            'isDir': False,
-                            'fileSize': os.path.getsize(real_file_name)
-                        })
+                        file_list.append(
+                            {
+                                # Remove the leading working directory
+                                "path": real_file_name[len(job_dir) :],
+                                "isDir": False,
+                                "fileSize": os.path.getsize(real_file_name),
+                            }
+                        )
                     except FileNotFoundError:
                         # Happens when trying to stat a symlink
                         pass
@@ -73,12 +75,14 @@ def request_file_list(job, path, recursive, user_id=None):
                 # Construct the real path to this file/directory
                 real_file_name = os.path.join(dir_path, item)
                 # Add the file entry
-                file_list.append({
-                    # Remove the leading slash
-                    'path': real_file_name[len(job_dir):],
-                    'isDir': os.path.isdir(real_file_name),
-                    'fileSize': os.path.getsize(real_file_name),
-                })
+                file_list.append(
+                    {
+                        # Remove the leading slash
+                        "path": real_file_name[len(job_dir) :],
+                        "isDir": os.path.isdir(real_file_name),
+                        "fileSize": os.path.getsize(real_file_name),
+                    }
+                )
 
         return True, file_list
 
@@ -88,38 +92,32 @@ def request_file_list(job, path, recursive, user_id=None):
 
     # Create the jwt token
     jwt_enc = jwt.encode(
-        {
-            'userId': user_id or job.user_id,
-            'exp': datetime.datetime.now() + datetime.timedelta(days=30)
-        },
+        {"userId": user_id or job.user_id, "exp": datetime.datetime.now() + datetime.timedelta(days=30)},
         settings.JOB_CONTROLLER_JWT_SECRET,
-        algorithm='HS256'
+        algorithm="HS256",
     )
 
     # Build the data object
-    data = {
-        'jobId': job.job_controller_id,
-        'recursive': recursive,
-        'path': path
-    }
+    data = {"jobId": job.job_controller_id, "recursive": recursive, "path": path}
 
     try:
         # Initiate the request to the job controller
         check_request_leak()
         result = requests.request(
-            "PATCH", f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
+            "PATCH",
+            f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
             data=json.dumps(data),
-            headers={
-                "Authorization": jwt_enc
-            }
+            headers={"Authorization": jwt_enc},
         )
 
         # Check that the request was successful
         if result.status_code != 200:
             # todo: Spruce the exception handling up a bit
             # Oops
-            msg = f"Error getting job file list, got error code: " \
-                  f"{result.status_code}\n\n{result.headers}\n\n{result.content}"
+            msg = (
+                f"Error getting job file list, got error code: "
+                f"{result.status_code}\n\n{result.headers}\n\n{result.content}"
+            )
             logging.error(msg)
             raise Exception(msg)
 

@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0038_rename_is_uploaded_job_bilbyjob_job_type'),
+        ("bilbyui", "0038_rename_is_uploaded_job_bilbyjob_job_type"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='inikeyvalue',
-            name='processed',
+            model_name="inikeyvalue",
+            name="processed",
             field=models.BooleanField(default=False),
         ),
     ]

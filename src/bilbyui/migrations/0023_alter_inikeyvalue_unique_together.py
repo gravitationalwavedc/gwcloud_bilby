@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0019_inikeyvalue'),
+        ("bilbyui", "0019_inikeyvalue"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='inikeyvalue',
-            unique_together={('job', 'key')},
+            name="inikeyvalue",
+            unique_together={("job", "key")},
         ),
     ]

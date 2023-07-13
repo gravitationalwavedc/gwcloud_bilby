@@ -10,8 +10,13 @@ from django.urls import reverse
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_job_upload import get_upload_token
-from bilbyui.tests.test_utils import silence_errors, create_test_upload_data, create_test_ini_string, \
-    get_file_download_tokens, get_files
+from bilbyui.tests.test_utils import (
+    silence_errors,
+    create_test_upload_data,
+    create_test_ini_string,
+    get_file_download_tokens,
+    get_files,
+)
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
@@ -23,35 +28,26 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
         self.client.authenticate(self.user)
 
-        token = get_upload_token(self.client).data['generateBilbyJobUploadToken']['token']
+        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
 
         # Create a new uploaded bilby job
         test_name = "myjob"
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string(
-            {
-                'label': test_name,
-                'outdir': './'
-            },
-            True
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
 
         test_file = SimpleUploadedFile(
-            name='test.tar.gz',
+            name="test.tar.gz",
             content=create_test_upload_data(test_ini_string, test_name),
-            content_type='application/gzip'
+            content_type="application/gzip",
         )
 
         test_input = {
             "input": {
                 "uploadToken": token,
-                "details": {
-                    "description": test_description,
-                    "private": test_private
-                },
-                "jobFile": test_file
+                "details": {"description": test_description, "private": test_private},
+                "jobFile": test_file,
             }
         }
 
@@ -65,10 +61,10 @@ class TestUploadedJobFileDownload(BilbyTestCase):
                   }
                 }
             """,
-            test_input
+            test_input,
         )
 
-        self.global_id = response.data['uploadBilbyJob']['result']['jobId']
+        self.global_id = response.data["uploadBilbyJob"]["result"]["jobId"]
         self.job = BilbyJob.objects.all().last()
 
         self.query = f"""
@@ -93,12 +89,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             }
             """
 
-        self.mut_input = {
-            'input': {
-                'jobId': self.global_id,
-                'downloadTokens': None
-            }
-        }
+        self.mut_input = {"input": {"jobId": self.global_id, "downloadTokens": None}}
 
         self.http_client = Client()
 
@@ -108,14 +99,11 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         return download_tokens, response
 
     def generate_download_id_from_token(self, token):
-        self.mut_input['input']['downloadTokens'] = [token]
+        self.mut_input["input"]["downloadTokens"] = [token]
 
-        response = self.client.execute(
-            self.mutation,
-            self.mut_input
-        )
+        response = self.client.execute(self.mutation, self.mut_input)
 
-        return response.data['generateFileDownloadIds']['result'][0]
+        return response.data["generateFileDownloadIds"]["result"][0]
 
     @silence_errors
     def test_no_token(self):
@@ -126,15 +114,12 @@ class TestUploadedJobFileDownload(BilbyTestCase):
     def test_invalid_token(self):
         download_tokens, _ = self.generate_file_download_tokens()
 
-        self.mut_input['input']['downloadTokens'] = [download_tokens[0]]
+        self.mut_input["input"]["downloadTokens"] = [download_tokens[0]]
 
-        response = self.client.execute(
-            self.mutation,
-            self.mut_input
-        )
+        response = self.client.execute(self.mutation, self.mut_input)
 
-        token = response.data['generateFileDownloadIds']['result'][0]
-        token = token + '_not_real'
+        token = response.data["generateFileDownloadIds"]["result"][0]
+        token = token + "_not_real"
 
         response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={token}')
         self.assertEqual(response.status_code, 404)
@@ -152,15 +137,15 @@ class TestUploadedJobFileDownload(BilbyTestCase):
 
             response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={token}')
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.headers['Content-Type'], 'application/octet-stream')
+            self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
             self.assertEqual(
-                response.headers['Content-Disposition'],
-                f'inline; filename="{os.path.basename(files[idx]["path"][1:])}"'
+                response.headers["Content-Disposition"],
+                f'inline; filename="{os.path.basename(files[idx]["path"][1:])}"',
             )
 
-            content = b''.join(list(response))
+            content = b"".join(list(response))
 
-            with open(os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]), 'rb') as f:
+            with open(os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]), "rb") as f:
                 self.assertEqual(content, f.read())
 
     @silence_errors
@@ -173,13 +158,13 @@ class TestUploadedJobFileDownload(BilbyTestCase):
 
             response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={token}&forceDownload')
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.headers['Content-Type'], 'application/octet-stream')
+            self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
             self.assertEqual(
-                response.headers['Content-Disposition'],
-                f'attachment; filename="{os.path.basename(files[idx]["path"][1:])}"'
+                response.headers["Content-Disposition"],
+                f'attachment; filename="{os.path.basename(files[idx]["path"][1:])}"',
             )
 
-            content = b''.join(list(response))
+            content = b"".join(list(response))
 
-            with open(os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]), 'rb') as f:
+            with open(os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]), "rb") as f:
                 self.assertEqual(content, f.read())

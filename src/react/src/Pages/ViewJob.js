@@ -33,14 +33,14 @@ const ViewJob = (props) => {
     const modifiable = harnessApi.currentUser.userId == userId;
 
     return (
-        <Container className="pt-5" fluid>
+        <Container className='pt-5' fluid>
             <SaveToast
                 saved={saved}
                 show={showNotification} 
                 message={toastMessage} 
                 onClose={() => setShowNotification(false)}
             />
-            <Row className="mb-3">
+            <Row className='mb-3'>
                 <Col md={{span:6, offset: 2}}>
                     <EditableJobName modifiable={modifiable} jobId={props.data.bilbyJob.id} value={details.name} />
                     <LabelDropdown 
@@ -57,8 +57,8 @@ const ViewJob = (props) => {
                             pathname: '/bilby/job-form/duplicate/',
                             state: { jobId: props.match.params.jobId}
                         }} 
-                        className="float-right" 
-                        activeClassName="selected" 
+                        className='float-right' 
+                        activeClassName='selected' 
                         match={props.match} 
                         router={props.router}
                         exact>
@@ -66,7 +66,7 @@ const ViewJob = (props) => {
                     </Link>
                 </Col>
             </Row>
-            <Row className="mb-3">
+            <Row className='mb-3'>
                 <Col md={{span:8, offset: 2}}>
                     <EditableDescription 
                         modifiable={modifiable} 
@@ -80,7 +80,7 @@ const ViewJob = (props) => {
 
                 </Col>
             </Row>
-            <Row className="mb-3">
+            <Row className='mb-3'>
                 <Col md={{span:8, offset: 2}}>
                     <PrivacyToggle 
                         jobId={props.match.params.jobId} 
@@ -90,17 +90,17 @@ const ViewJob = (props) => {
                     />
                 </Col>
             </Row>
-            <Tab.Container id="jobResultsTabs" defaultActiveKey="parameters">
+            <Tab.Container id='jobResultsTabs' defaultActiveKey='parameters'>
                 <Row>
                     <Col md={2}>
-                        <Nav className="flex-column">
+                        <Nav className='flex-column'>
                             <Nav.Item>
-                                <Nav.Link eventKey="parameters">
+                                <Nav.Link eventKey='parameters'>
                                     <h5>Parameters</h5>
                                 </Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
-                                <Nav.Link eventKey="results">
+                                <Nav.Link eventKey='results'>
                                     <h5>Results</h5>
                                 </Nav.Link>
                             </Nav.Item>
@@ -108,10 +108,10 @@ const ViewJob = (props) => {
                     </Col>
                     <Col md={8}>
                         <Tab.Content>
-                            <Tab.Pane eventKey="parameters">
+                            <Tab.Pane eventKey='parameters'>
                                 <Parameters params={params} {...props}/>
                             </Tab.Pane>
-                            <Tab.Pane eventKey="results">
+                            <Tab.Pane eventKey='results'>
                                 <Files {...props}/>
                             </Tab.Pane>
                         </Tab.Content>

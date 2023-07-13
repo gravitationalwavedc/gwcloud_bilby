@@ -22,8 +22,12 @@ class TestChangeJobDetails(BilbyTestCase):
         """
 
         self.job = BilbyJob.objects.create(
-            user_id=self.user.id, name="Test1", description="first job", job_controller_id=2, private=False,
-            ini_string=create_test_ini_string({'detectors': "['H1']"})
+            user_id=self.user.id,
+            name="Test1",
+            description="first job",
+            job_controller_id=2,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
 
         self.global_job_id = to_global_id("BilbyJobNode", self.job.id)
@@ -34,21 +38,12 @@ class TestChangeJobDetails(BilbyTestCase):
         owner of the job.
         """
         change_job_input = {
-            "input": {
-                "jobId": self.global_job_id,
-                "name": "New_job_name",
-                "description": "New job description"
-            }
+            "input": {"jobId": self.global_job_id, "name": "New_job_name", "description": "New job description"}
         }
 
         response = self.client.execute(self.mutation, change_job_input)
 
-        expected = {
-            "updateBilbyJob": {
-                "jobId": self.global_job_id,
-                "result": "Job saved!"
-            }
-        }
+        expected = {"updateBilbyJob": {"jobId": self.global_job_id, "result": "Job saved!"}}
 
         self.job.refresh_from_db()
 
@@ -66,16 +61,12 @@ class TestChangeJobDetails(BilbyTestCase):
         Try to update a bilby job with a name that contains symbols
         """
         change_job_input = {
-            "input": {
-                "jobId": self.global_job_id,
-                "name": "Test_job$",
-                "description": "New job description"
-            }
+            "input": {"jobId": self.global_job_id, "name": "Test_job$", "description": "New job description"}
         }
 
         response = self.client.execute(self.mutation, change_job_input)
 
-        self.assertDictEqual({'updateBilbyJob': None}, response.data)
+        self.assertDictEqual({"updateBilbyJob": None}, response.data)
         self.assertEqual(response.errors[0].message, "Job name must not contain any spaces or special characters.")
 
     @silence_errors
@@ -84,16 +75,12 @@ class TestChangeJobDetails(BilbyTestCase):
         Try to update a bilby job with a name that is too long
         """
         change_job_input = {
-            "input": {
-                "jobId": self.global_job_id,
-                "name": "a" * 50,
-                "description": "New job description"
-            }
+            "input": {"jobId": self.global_job_id, "name": "a" * 50, "description": "New job description"}
         }
 
         response = self.client.execute(self.mutation, change_job_input)
 
-        self.assertDictEqual({'updateBilbyJob': None}, response.data)
+        self.assertDictEqual({"updateBilbyJob": None}, response.data)
         self.assertEqual(response.errors[0].message, "Job name must be less than 30 characters long.")
 
     @silence_errors
@@ -101,15 +88,9 @@ class TestChangeJobDetails(BilbyTestCase):
         """
         Try to update a bilby job with a name that is too short
         """
-        change_job_input = {
-            "input": {
-                "jobId": self.global_job_id,
-                "name": "a",
-                "description": "New job description"
-            }
-        }
+        change_job_input = {"input": {"jobId": self.global_job_id, "name": "a", "description": "New job description"}}
 
         response = self.client.execute(self.mutation, change_job_input)
 
-        self.assertDictEqual({'updateBilbyJob': None}, response.data)
+        self.assertDictEqual({"updateBilbyJob": None}, response.data)
         self.assertEqual(response.errors[0].message, "Job name must be at least 5 characters long.")

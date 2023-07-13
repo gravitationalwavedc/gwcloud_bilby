@@ -4,45 +4,45 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0010_merge_20200514_0412'),
+        ("bilbyui", "0010_merge_20200514_0412"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Label',
+            name="Label",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=50)),
-                ('description', models.TextField(blank=True, null=True)),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("name", models.CharField(max_length=50)),
+                ("description", models.TextField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'bilby_label',
+                "db_table": "bilby_label",
             },
         ),
         migrations.AlterField(
-            model_name='samplerparameter',
-            name='name',
+            model_name="samplerparameter",
+            name="name",
             field=models.CharField(
                 choices=[
-                    ['nlive', 'Number of live points'],
-                    ['nact', 'Number of auto-correlation steps'],
-                    ['maxmcmc', 'Maximum number of steps'],
-                    ['walks', 'Minimum number of walks'],
-                    ['dlogz', 'Stopping criteria'],
-                    ['cpus', 'Number of CPUs to use for parallelisation']
+                    ["nlive", "Number of live points"],
+                    ["nact", "Number of auto-correlation steps"],
+                    ["maxmcmc", "Maximum number of steps"],
+                    ["walks", "Minimum number of walks"],
+                    ["dlogz", "Stopping criteria"],
+                    ["cpus", "Number of CPUs to use for parallelisation"],
                 ],
-                max_length=50),
+                max_length=50,
+            ),
         ),
         migrations.AlterField(
-            model_name='samplerparameter',
-            name='value',
+            model_name="samplerparameter",
+            name="value",
             field=models.FloatField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='bilbyjob',
-            name='labels',
-            field=models.ManyToManyField(to='bilbyui.Label'),
+            model_name="bilbyjob",
+            name="labels",
+            field=models.ManyToManyField(to="bilbyui.Label"),
         ),
     ]

@@ -50,11 +50,11 @@ const EditableJobName = ({modifiable, value, jobId}) => {
     return <React.Fragment>
         {modifiable ? 
             <EditableText 
-                name="job-name" 
+                name='job-name' 
                 value={value} 
                 onSave={(value) => handleSaveJobName(value)} 
                 viewProps={{className: 'h1'}}
-                hint="You can only use letters, numbers, underscores, and hyphens."
+                hint='You can only use letters, numbers, underscores, and hyphens.'
                 errors={errors}
             /> 
             : <h1>{value}</h1>}

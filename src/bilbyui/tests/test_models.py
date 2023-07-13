@@ -18,10 +18,10 @@ class TestBilbyJobModel(BilbyTestCase):
     def setUpTestData(cls):
         cls.job = BilbyJob.objects.create(
             user_id=1,
-            name='Test_Job',
-            description='Test job description',
+            name="Test_Job",
+            description="Test job description",
             private=False,
-            ini_string=create_test_ini_string({'detectors': "['H1']"})
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         cls.job.save()
 
@@ -30,7 +30,7 @@ class TestBilbyJobModel(BilbyTestCase):
             trigger_id="S123456a",
             nickname="GW123456",
             is_ligo_event=False,
-            gps_time=1126259462.391
+            gps_time=1126259462.391,
         )
 
     def test_update_privacy(self):
@@ -39,7 +39,7 @@ class TestBilbyJobModel(BilbyTestCase):
         """
         self.assertEqual(self.job.private, False)
 
-        user = GWCloudUser('bill')
+        user = GWCloudUser("bill")
         user.user_id = 1
 
         update_bilby_job(self.job.id, user, True, [])
@@ -54,7 +54,7 @@ class TestBilbyJobModel(BilbyTestCase):
         # A user who doesn't own the job shouldn't be able to change the event id
         self.assertEqual(self.job.event_id, None)
 
-        user = GWCloudUser('bill')
+        user = GWCloudUser("bill")
         user.user_id = self.job.user_id + 1
 
         with self.assertRaises(Exception):
@@ -88,29 +88,29 @@ class TestBilbyJobModel(BilbyTestCase):
         """
         Check that update_bilby_job view can update the name of a job
         """
-        self.assertEqual(self.job.name, 'Test_Job')
+        self.assertEqual(self.job.name, "Test_Job")
 
-        user = GWCloudUser('bill')
+        user = GWCloudUser("bill")
         user.user_id = 1
 
-        update_bilby_job(self.job.id, user, name='new_job')
+        update_bilby_job(self.job.id, user, name="new_job")
 
         self.job.refresh_from_db()
-        self.assertEqual(self.job.name, 'new_job')
+        self.assertEqual(self.job.name, "new_job")
 
     def test_update_description(self):
         """
         Check that update_bilby_job view can update the description of a job
         """
-        self.assertEqual(self.job.description, 'Test job description')
+        self.assertEqual(self.job.description, "Test job description")
 
-        user = GWCloudUser('bill')
+        user = GWCloudUser("bill")
         user.user_id = 1
 
-        update_bilby_job(self.job.id, user, description='new description')
+        update_bilby_job(self.job.id, user, description="new description")
 
         self.job.refresh_from_db()
-        self.assertEqual(self.job.description, 'new description')
+        self.assertEqual(self.job.description, "new description")
 
     def test_update_labels(self):
         """
@@ -119,32 +119,29 @@ class TestBilbyJobModel(BilbyTestCase):
 
         self.assertFalse(self.job.labels.exists())
 
-        user = GWCloudUser('bill')
+        user = GWCloudUser("bill")
         user.user_id = 1
 
-        update_bilby_job(self.job.id, user, False, ['Bad Run', 'Review Requested'])
+        update_bilby_job(self.job.id, user, False, ["Bad Run", "Review Requested"])
 
         self.job.refresh_from_db()
         self.assertQuerysetEqual(
             self.job.labels.all(),
-            list(map(repr, Label.objects.filter(name__in=['Bad Run', 'Review Requested']))),
-            ordered=False
+            list(map(repr, Label.objects.filter(name__in=["Bad Run", "Review Requested"]))),
+            ordered=False,
         )
 
     def test_as_dict_no_supporting_files(self):
         params = self.job.as_dict()
 
-        self.assertEqual(params['name'], self.job.name)
-        self.assertEqual(params['description'], self.job.description)
-        self.assertEqual(params['ini_string'], self.job.ini_string)
-        self.assertEqual(params['supporting_files'], [])
+        self.assertEqual(params["name"], self.job.name)
+        self.assertEqual(params["description"], self.job.description)
+        self.assertEqual(params["ini_string"], self.job.ini_string)
+        self.assertEqual(params["supporting_files"], [])
 
     def test_as_dict_supporting_files(self):
         supporting_file = SupportingFile.objects.create(
-            job=self.job,
-            file_type=SupportingFile.PRIOR,
-            key=None,
-            file_name='test.prior'
+            job=self.job, file_type=SupportingFile.PRIOR, key=None, file_name="test.prior"
         )
 
         params = self.job.as_dict()
@@ -152,41 +149,47 @@ class TestBilbyJobModel(BilbyTestCase):
         # Make sure the params can be encoded as json
         json.dumps(params)
 
-        self.assertEqual(params['name'], self.job.name)
-        self.assertEqual(params['description'], self.job.description)
-        self.assertEqual(params['ini_string'], self.job.ini_string)
-        self.assertDictEqual(params['supporting_files'][0], {
-            'type': supporting_file.file_type,
-            'key': supporting_file.key,
-            'file_name': supporting_file.file_name,
-            'token': str(supporting_file.download_token)
-        })
+        self.assertEqual(params["name"], self.job.name)
+        self.assertEqual(params["description"], self.job.description)
+        self.assertEqual(params["ini_string"], self.job.ini_string)
+        self.assertDictEqual(
+            params["supporting_files"][0],
+            {
+                "type": supporting_file.file_type,
+                "key": supporting_file.key,
+                "file_name": supporting_file.file_name,
+                "token": str(supporting_file.download_token),
+            },
+        )
 
         supporting_file2 = SupportingFile.objects.create(
-            job=self.job,
-            file_type=SupportingFile.CALIBRATION,
-            key='V1',
-            file_name='test.calib'
+            job=self.job, file_type=SupportingFile.CALIBRATION, key="V1", file_name="test.calib"
         )
 
         params = self.job.as_dict()
         json.dumps(params)
 
-        self.assertEqual(params['name'], self.job.name)
-        self.assertEqual(params['description'], self.job.description)
-        self.assertEqual(params['ini_string'], self.job.ini_string)
-        self.assertDictEqual(params['supporting_files'][0], {
-            'type': supporting_file.file_type,
-            'key': supporting_file.key,
-            'file_name': supporting_file.file_name,
-            'token': str(supporting_file.download_token)
-        })
-        self.assertDictEqual(params['supporting_files'][1], {
-            'type': supporting_file2.file_type,
-            'key': supporting_file2.key,
-            'file_name': supporting_file2.file_name,
-            'token': str(supporting_file2.download_token)
-        })
+        self.assertEqual(params["name"], self.job.name)
+        self.assertEqual(params["description"], self.job.description)
+        self.assertEqual(params["ini_string"], self.job.ini_string)
+        self.assertDictEqual(
+            params["supporting_files"][0],
+            {
+                "type": supporting_file.file_type,
+                "key": supporting_file.key,
+                "file_name": supporting_file.file_name,
+                "token": str(supporting_file.download_token),
+            },
+        )
+        self.assertDictEqual(
+            params["supporting_files"][1],
+            {
+                "type": supporting_file2.file_type,
+                "key": supporting_file2.key,
+                "file_name": supporting_file2.file_name,
+                "token": str(supporting_file2.download_token),
+            },
+        )
 
 
 class TestFileDownloadToken(BilbyTestCase):
@@ -194,10 +197,10 @@ class TestFileDownloadToken(BilbyTestCase):
     def setUpTestData(cls):
         cls.job = BilbyJob.objects.create(
             user_id=1,
-            name='Test Job',
-            description='Test job description',
+            name="Test Job",
+            description="Test job description",
             private=False,
-            ini_string=create_test_ini_string({'detectors': "['H1']"})
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         cls.job.save()
 
@@ -206,11 +209,11 @@ class TestFileDownloadToken(BilbyTestCase):
         # and the correct order of objects is returned
 
         paths = [
-            '/awesome_path1/data.txt',
-            '/awesome_path1/data1.txt',
-            '/awesome_path1/data2.txt',
-            '/awesome_path1/data3.txt',
-            '/awesome_path/data.txt'
+            "/awesome_path1/data.txt",
+            "/awesome_path1/data1.txt",
+            "/awesome_path1/data2.txt",
+            "/awesome_path1/data3.txt",
+            "/awesome_path/data.txt",
         ]
 
         before = timezone.now()
@@ -236,11 +239,11 @@ class TestFileDownloadToken(BilbyTestCase):
 
         # Test that objects created now are not removed
         paths = [
-            '/awesome_path1/data.txt',
-            '/awesome_path1/data1.txt',
-            '/awesome_path1/data2.txt',
-            '/awesome_path1/data3.txt',
-            '/awesome_path/data.txt'
+            "/awesome_path1/data.txt",
+            "/awesome_path1/data1.txt",
+            "/awesome_path1/data2.txt",
+            "/awesome_path1/data3.txt",
+            "/awesome_path/data.txt",
         ]
 
         FileDownloadToken.create(self.job, paths)
@@ -271,11 +274,11 @@ class TestFileDownloadToken(BilbyTestCase):
     def test_get_paths(self):
         # Test that getting paths with valid tokens returns a list of paths in order
         paths = [
-            '/awesome_path1/data.txt',
-            '/awesome_path1/data1.txt',
-            '/awesome_path1/data2.txt',
-            '/awesome_path1/data3.txt',
-            '/awesome_path/data.txt'
+            "/awesome_path1/data.txt",
+            "/awesome_path1/data1.txt",
+            "/awesome_path1/data2.txt",
+            "/awesome_path1/data3.txt",
+            "/awesome_path/data.txt",
         ]
 
         fd_tokens = FileDownloadToken.create(self.job, paths)
@@ -442,16 +445,15 @@ class TestSupportingFile(BilbyTestCase):
         self.parsed = {
             SupportingFile.PSD: [
                 {
-                    'H1': '/my/test/path/psd_h1.file',
-                    'V1': '/my/test/path/psd_v1.file',
+                    "H1": "/my/test/path/psd_h1.file",
+                    "V1": "/my/test/path/psd_v1.file",
                 }
             ],
-            SupportingFile.GPS: '/another/test/path/gps.file'
+            SupportingFile.GPS: "/another/test/path/gps.file",
         }
 
         self.job = BilbyJob.objects.create(
-            user_id=self.user.user_id,
-            ini_string=create_test_ini_string({'detectors': "['H1']"})
+            user_id=self.user.user_id, ini_string=create_test_ini_string({"detectors": "['H1']"})
         )
         self.after = timezone.now()
 
@@ -464,8 +466,7 @@ class TestSupportingFile(BilbyTestCase):
         for token in supporting_file_tokens:
             self.assertTrue(
                 SupportingFile.objects.filter(
-                    upload_token=token['token'],
-                    file_name=Path(token['file_path']).name
+                    upload_token=token["token"], file_name=Path(token["file_path"]).name
                 ).exists()
             )
 
@@ -534,7 +535,7 @@ class TestSupportingFile(BilbyTestCase):
         # uploaded supporting files.
 
         # Test that objects created now are not removed
-        tokens = [t['token'] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
+        tokens = [t["token"] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
 
         for t in tokens:
             self.assertIsNotNone(SupportingFile.get_by_upload_token(t))
@@ -560,7 +561,7 @@ class TestSupportingFile(BilbyTestCase):
         # uploaded supporting files.
 
         # Check that if all supporting files are uploaded, the job is not deleted
-        tokens = [t['token'] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
+        tokens = [t["token"] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
 
         self.assertEqual(SupportingFile.objects.count(), 3)
 

@@ -3,8 +3,11 @@ default:
     name: ubuntu:22.04
     entrypoint: ["/usr/bin/env"]
 
+stages:
+  - CI
+
 django-tests:
-  stage: test
+  stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -12,14 +15,6 @@ django-tests:
     - apt -y upgrade
     - cd src/
     - pip3 install -r requirements.txt
-  
-  cache:
-    key: build-cache
-    paths:
-      - src/requirements.txt
-  
-  after_script:
-    - cd src/
     - python3 development-manage.py jenkins --enable-coverage --coverage-rcfile=.coveragerc
 
   artifacts:
@@ -29,9 +24,8 @@ django-tests:
         path: src/reports/coverage.xml
       junit: src/reports/junit.xml
 
-
 npm-tests:
-  stage: test
+  stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -45,17 +39,6 @@ npm-tests:
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
     - eval "[ -f .nvmrc ] && nvm install && nvm use && npm install npm@8.5.5"
     - npm install
-
-  cache:
-    key: build-cache
-    paths:
-      - src/react/package-lock.json
-      - src/requirements.txt
-    
-  after_script:
-    - cd src/react/
-    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
-    - eval "[ -f .nvmrc ] && nvm use"
     - npm run relay
     - npm run test-ci
 
@@ -66,9 +49,8 @@ npm-tests:
         path: src/react/coverage/cobertura-coverage.xml
       junit: src/react/junit.xml
 
-
 bundle-tests:
-  stage: test
+  stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -79,14 +61,6 @@ bundle-tests:
     - cd src/bundle/
     - $HOME/miniconda/bin/conda env create -f conda-environment.yml -p venv || true
     - $HOME/miniconda/bin/conda env update --file conda-environment.yml --prune -p venv
-    
-  cache:
-    key: build-cache
-    paths:
-      - src/bundle/conda-environment.yml
-    
-  after_script:
-    - cd src/bundle/
     - $HOME/miniconda/bin/conda run -p venv coverage run -m xmlrunner discover --output-file ./junit.xml || true
     - $HOME/miniconda/bin/conda run -p venv coverage xml
 
@@ -97,8 +71,8 @@ bundle-tests:
         path: src/bundle/coverage.xml
       junit: src/bundle/junit.xml
 
-
 code-quality:
+  stage: CI
   image: docker:stable
   variables:
     DOCKER_DRIVER: overlay2
@@ -107,18 +81,20 @@ code-quality:
   services:
     - docker:stable-dind
   before_script: []
+
   script:
     - docker run
-        --env SOURCE_CODE="$PWD"
-        --volume "$PWD":/code
-        --volume /var/run/docker.sock:/var/run/docker.sock
-        "registry.gitlab.com/gitlab-org/ci-cd/codequality:$SP_VERSION" /code
+      --env SOURCE_CODE="$PWD"
+      --volume "$PWD":/code
+      --volume /var/run/docker.sock:/var/run/docker.sock
+      "registry.gitlab.com/gitlab-org/ci-cd/codequality:$SP_VERSION" /code
+
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
 
-
 flake8:
+  stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -129,3 +105,28 @@ flake8:
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
+
+black:
+  stage: CI
+  script:
+    - apt -y update
+    - apt -y install apt-utils
+    - apt -y install net-tools python3.10 python3-pip git curl wget
+    - apt -y upgrade
+    - pip3 install black
+    - black --check src/
+
+eslint:
+  stage: CI
+  script:
+    - apt -y update
+    - apt -y install apt-utils
+    - apt -y install net-tools python3.10 python3-pip git curl wget
+    - apt -y upgrade
+    - cd src/
+    - cd react/
+    - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
+    - eval "[ -f .nvmrc ] && nvm install && nvm use && npm install npm@8.5.5"
+    - npm install
+    - npx eslint src

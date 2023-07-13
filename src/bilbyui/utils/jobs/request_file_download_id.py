@@ -34,36 +34,31 @@ def request_file_download_ids(job, paths, user_id=None):
 
     # Create the jwt token
     jwt_enc = jwt.encode(
-        {
-            'userId': user_id or job.user_id,
-            'exp': datetime.datetime.now() + datetime.timedelta(minutes=5)
-        },
+        {"userId": user_id or job.user_id, "exp": datetime.datetime.now() + datetime.timedelta(minutes=5)},
         settings.JOB_CONTROLLER_JWT_SECRET,
-        algorithm='HS256'
+        algorithm="HS256",
     )
 
     # Generate the post payload
-    data = {
-        'jobId': job.job_controller_id,
-        'paths': paths
-    }
+    data = {"jobId": job.job_controller_id, "paths": paths}
 
     try:
         # Initiate the request to the job controller
         result = requests.request(
-            "POST", f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
+            "POST",
+            f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
             data=json.dumps(data),
-            headers={
-                "Authorization": jwt_enc
-            }
+            headers={"Authorization": jwt_enc},
         )
 
         # Check that the request was successful
         if result.status_code != 200:
             # todo: Spruce the exception handling up a bit
             # Oops
-            msg = f"Error getting job file download urls, got error code: " \
-                  f"{result.status_code}\n\n{result.headers}\n\n{result.content}"
+            msg = (
+                f"Error getting job file download urls, got error code: "
+                f"{result.status_code}\n\n{result.headers}\n\n{result.content}"
+            )
             logging.error(msg)
             raise Exception(msg)
 
@@ -71,7 +66,7 @@ def request_file_download_ids(job, paths, user_id=None):
         result = json.loads(result.content)
 
         # Return the file ids
-        return True, result['fileIds']
+        return True, result["fileIds"]
     except Exception:
         return False, "Error getting job file download url"
 

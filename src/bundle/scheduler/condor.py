@@ -24,7 +24,7 @@ class CondorScheduler(Scheduler):
         # Retry up to 5 times before failing, condor submit is quite flakey at times
         for attempt in range(1, 6):
             try:
-                submit = htcondor.Submit().from_dag(script, {'force': True})
+                submit = htcondor.Submit().from_dag(script, {"force": True})
                 result = htcondor.Schedd().submit(submit, count=1)
 
                 # Record the command and the output
@@ -49,11 +49,11 @@ class CondorScheduler(Scheduler):
         :return: A tuple with JobStatus, additional info as a string. None if no job status could be obtained
         """
 
-        p = Path(details['working_directory']) / details['submit_directory']
+        p = Path(details["working_directory"]) / details["submit_directory"]
 
         print(f"Trying to get status of job with working directory {p}...")
 
-        log_file = list(p.glob('*.submit.nodes.log'))
+        log_file = list(p.glob("*.submit.nodes.log"))
 
         if len(log_file) != 1:
             print(f"The number of .submit.nodes.log files was not 1 as expected, it was {len(log_file)}")
@@ -69,7 +69,7 @@ class CondorScheduler(Scheduler):
         # Find the most recent submit event and parse the log notes to find which job stage the submit
         # is for
         submit_event = list(filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events))[0]
-        notes = submit_event['LogNotes']
+        notes = submit_event["LogNotes"]
         stage = list(filter(lambda x: x.startswith("DAG Node:"), notes.splitlines()))
 
         # There should be exactly one stage found, which is the name of the job dag for the submitted job
@@ -85,7 +85,7 @@ class CondorScheduler(Scheduler):
         if latest_event.type == htcondor.JobEventType.SUBMIT:
             # The only time a job can be queued is when the most recent job that was submitted was the
             # generation stage, otherwise SUBMIT indicates the job is running
-            if stage.endswith('_generation_arg_0'):
+            if stage.endswith("_generation_arg_0"):
                 return JobStatus.QUEUED, "Job is queued"
             else:
                 return JobStatus.RUNNING, "Job is running"
@@ -99,7 +99,7 @@ class CondorScheduler(Scheduler):
         if latest_event.type in [
             htcondor.JobEventType.JOB_EVICTED,
             htcondor.JobEventType.JOB_HELD,
-            htcondor.JobEventType.JOB_RELEASED
+            htcondor.JobEventType.JOB_RELEASED,
         ]:
             return JobStatus.RUNNING, "Job is running"
 
@@ -115,17 +115,17 @@ class CondorScheduler(Scheduler):
         # Iterate over all submit events in order and find all stages that have been run
         submitted_stages = {}
         for event in filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events):
-            notes = event['LogNotes']
+            notes = event["LogNotes"]
             submitted_stages[event.cluster] = list(filter(lambda x: x.startswith("DAG Node:"), notes.splitlines()))[0]
 
-        plot_started = any(filter(lambda x: x.endswith('_plot_arg_0'), submitted_stages.values()))
+        plot_started = any(filter(lambda x: x.endswith("_plot_arg_0"), submitted_stages.values()))
 
         # Remove any stages that have finished, and verify their return codes
         for event in filter(lambda x: x.type == htcondor.JobEventType.JOB_TERMINATED, events):
             # Jobs that terminate normally and have a return value of 0 completed successfully, otherwise
             # some error has occurred
-            if (event["TerminatedNormally"]):
-                if event['ReturnValue'] != 0:
+            if event["TerminatedNormally"]:
+                if event["ReturnValue"] != 0:
                     return JobStatus.ERROR, f"Job terminated with return value {latest_event['ReturnValue']}"
             else:
                 # ???

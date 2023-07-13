@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0012_insert_default_labels'),
+        ("bilbyui", "0012_insert_default_labels"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='bilbyjob',
-            name='ini_string',
+            model_name="bilbyjob",
+            name="ini_string",
             field=models.TextField(blank=True, null=True),
         ),
     ]

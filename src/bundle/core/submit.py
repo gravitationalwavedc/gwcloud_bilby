@@ -55,7 +55,7 @@ def bilby_ini_to_args(ini):
     # Bilby pipe requires a real file in order to parse the ini file
     with NamedTemporaryFile() as f:
         # Write the temporary ini file
-        f.write(ini.encode('utf-8'))
+        f.write(ini.encode("utf-8"))
 
         # Make sure the data is written to the temporary file
         f.flush()
@@ -77,13 +77,13 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
     """
     for supporting_file in supporting_files:
         # Make sure that the output directory exists for the supporting file type
-        supporting_file_dir = Path(working_directory) / 'supporting_files' / supporting_file['type']
+        supporting_file_dir = Path(working_directory) / "supporting_files" / supporting_file["type"]
         supporting_file_dir.mkdir(exist_ok=True, parents=True)
 
         # Request the file from the GWCloud and write it to disk
         file_download_url = f"https://gwcloud.org.au/bilby/file_download/?fileId={supporting_file['token']}"
         response = requests.get(file_download_url, allow_redirects=True)
-        supporting_file_path = supporting_file_dir / supporting_file['file_name']
+        supporting_file_path = supporting_file_dir / supporting_file["file_name"]
         supporting_file_path.write_bytes(response.content)
 
         # Finally prepare the bilby args
@@ -95,31 +95,30 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
             "tsl": "timeslide_file",
             "inj": "injection_file",
             "nmr": "numerical_relativity_file",
-            "dml": "distance_marginalization_lookup_table"
+            "dml": "distance_marginalization_lookup_table",
         }
 
         # Need the path to the supporting file relative to the working directory
-        relative_supporting_file_path = f'./{Path(supporting_file_path).relative_to(working_directory)}'
+        relative_supporting_file_path = f"./{Path(supporting_file_path).relative_to(working_directory)}"
 
         # If this supporting file has a key, then the file is part of a dictionary, otherwise it's a single file
-        if supporting_file['key']:
+        if supporting_file["key"]:
             # Pseudocode
             # if not bilby_args.psd_dict:
             #     bilby_args.psd_dict = {}
             # bilby_args.psd_dict[key] = relative_path_to_psd_file
 
-            if not getattr(bilby_args, file_type_map[supporting_file['type']]):
-                setattr(bilby_args, file_type_map[supporting_file['type']], {})
+            if not getattr(bilby_args, file_type_map[supporting_file["type"]]):
+                setattr(bilby_args, file_type_map[supporting_file["type"]], {})
 
-            getattr(
-                bilby_args,
-                file_type_map[supporting_file['type']]
-            )[supporting_file['key']] = relative_supporting_file_path
+            getattr(bilby_args, file_type_map[supporting_file["type"]])[
+                supporting_file["key"]
+            ] = relative_supporting_file_path
         else:
             # Pseudocode
             # bilby_args.psd_dict = relative_path_to_psd_file
 
-            setattr(bilby_args, file_type_map[supporting_file['type']], relative_supporting_file_path)
+            setattr(bilby_args, file_type_map[supporting_file["type"]], relative_supporting_file_path)
 
 
 def prepare_ini_data(job_parameters, working_directory):
@@ -135,7 +134,7 @@ def prepare_ini_data(job_parameters, working_directory):
     job_parameters = json.loads(job_parameters)
 
     # Get the ini content
-    ini = job_parameters['ini_string']
+    ini = job_parameters["ini_string"]
 
     # First parse the ini file to args
     args = bilby_ini_to_args(ini)
@@ -216,8 +215,8 @@ def prepare_ini_data(job_parameters, working_directory):
     args.catch_waveform_errors = True
 
     # Configure supporting files
-    if 'supporting_files' in job_parameters and job_parameters['supporting_files']:
-        prepare_supporting_files(args, job_parameters['supporting_files'], working_directory)
+    if "supporting_files" in job_parameters and job_parameters["supporting_files"]:
+        prepare_supporting_files(args, job_parameters["supporting_files"], working_directory)
 
     return args
 
@@ -234,18 +233,18 @@ def run_data_generation(data_gen_command, wk_dir):
     # Get the error and output log paths
     error_file = None
     output_file = None
-    for bit in data_gen_command.split(' '):
-        if '--error=' in bit:
-            error_file = bit.split('--error=')[-1]
+    for bit in data_gen_command.split(" "):
+        if "--error=" in bit:
+            error_file = bit.split("--error=")[-1]
 
-        if '--output' in bit:
-            output_file = bit.split('--output=')[-1]
+        if "--output" in bit:
+            output_file = bit.split("--output=")[-1]
 
     # Get the last parameter to sbatch, which is the script to run to generate the data
-    data_gen_command = data_gen_command.split(' ')[-1]
+    data_gen_command = data_gen_command.split(" ")[-1]
 
     # Remove the closing brackets
-    data_gen_command = data_gen_command.replace(')', '')
+    data_gen_command = data_gen_command.replace(")", "")
 
     # Strip any newlines or whitespace
     data_gen_command = data_gen_command.strip()
@@ -253,11 +252,11 @@ def run_data_generation(data_gen_command, wk_dir):
     # Run the data generation
     os.sync()
     with subprocess.Popen(
-            f"/bin/bash {os.path.abspath(os.path.join(wk_dir, data_gen_command))}",
-            cwd=wk_dir,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=True
+        f"/bin/bash {os.path.abspath(os.path.join(wk_dir, data_gen_command))}",
+        cwd=wk_dir,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
     ) as p:
         p.wait()
 
@@ -281,7 +280,7 @@ def refactor_slurm_data_generation_step(slurm_script):
     :return: The data generation command
     """
     # Read the lines from the submit script
-    with open(slurm_script, 'r') as f:
+    with open(slurm_script, "r") as f:
         slines = f.readlines()
 
     # Find the line for data generation and the first echo after that, then remove the dependency from the following
@@ -293,32 +292,32 @@ def refactor_slurm_data_generation_step(slurm_script):
     echo_found = False
     for line in slines:
         # Check for the sbatch command to generate the data
-        if 'log_data_generation' in line:
+        if "log_data_generation" in line:
             data_gen_idx = line
             data_gen_command = line
-            generation_jid = data_gen_command.split('=')[0]
+            generation_jid = data_gen_command.split("=")[0]
 
             # Nothing more to do, exclude this line from the new sbatch script
             continue
 
         # Check for the first echo command after the sbatch command
-        if data_gen_idx and 'echo' in line and not echo_found:
+        if data_gen_idx and "echo" in line and not echo_found:
             echo_found = True
             # Nothing more to do, exclude this line from the new sbatch script
             continue
 
         # Check if this line is the next sbatch command using jid0 as a
-        if data_gen_idx and '--dependency=afterok:${' + generation_jid + '[-1]}' in line:
+        if data_gen_idx and "--dependency=afterok:${" + generation_jid + "[-1]}" in line:
             # Remove the dependenc
-            line = line.replace('--dependency=afterok:${' + generation_jid + '[-1]}', '')
+            line = line.replace("--dependency=afterok:${" + generation_jid + "[-1]}", "")
 
         new_lines.append(line)
 
     # Replace any triple newlines with double newlines
-    script_content = re.sub('\n\n+', '\n\n', ''.join(new_lines))
+    script_content = re.sub("\n\n+", "\n\n", "".join(new_lines))
 
     # Write the updated lines to the job submission script
-    with open(slurm_script, 'w') as f:
+    with open(slurm_script, "w") as f:
         f.write(script_content)
 
     return data_gen_command
@@ -348,7 +347,7 @@ def write_submission_scripts(inputs, wk_dir):
     # Return the path to the dag script if the scheduler is condor
     if settings.scheduler == EScheduler.CONDOR:
         # Adapted from https://github.com/jrbourbeau/pycondor/blob/master/pycondor/dagman.py#L286
-        return os.path.join(str(Path(wk_dir) / dag.submit_directory), f'{dag.dag_name}.submit')
+        return os.path.join(str(Path(wk_dir) / dag.submit_directory), f"{dag.dag_name}.submit")
 
     return None
 
@@ -449,14 +448,14 @@ def submit(details, job_parameters):
     # Create a new job to store details
     with chdir_lock, set_directory(wk_dir):
         job = {
-            'job_id': 0,
-            'submit_id': submit_bash_id,
-            'working_directory': wk_dir,
-            'submit_directory': inputs.submit_directory
+            "job_id": 0,
+            "submit_id": submit_bash_id,
+            "working_directory": wk_dir,
+            "submit_directory": inputs.submit_directory,
         }
 
     # Save the job in the database
     create_or_update_job(job)
 
     # return the job id
-    return job['job_id']
+    return job["job_id"]

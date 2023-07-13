@@ -33,8 +33,8 @@ const EditableDescription = ({modifiable, value, jobId}) => {
     return <React.Fragment>
         {modifiable ? 
             <EditableText 
-                name="description" 
-                type="textarea"
+                name='description' 
+                type='textarea'
                 value={value} 
                 onSave={(value) => handleSaveDescription(value)} 
                 viewProps={{className: 'p'}}

@@ -5,20 +5,16 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0026_auto_20211210_0412'),
+        ("bilbyui", "0026_auto_20211210_0412"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='bilbyjob',
-            name='event_id',
+            model_name="bilbyjob",
+            name="event_id",
             field=models.ForeignKey(
-                default=None,
-                null=True,
-                on_delete=django.db.models.deletion.SET_NULL,
-                to='bilbyui.eventid'
+                default=None, null=True, on_delete=django.db.models.deletion.SET_NULL, to="bilbyui.eventid"
             ),
         ),
     ]

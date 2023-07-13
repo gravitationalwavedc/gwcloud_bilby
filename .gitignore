@@ -10,6 +10,7 @@ src/react/coverage
 .coverage
 .DS_Store
 src/react/junit.xml
+src/react/eslint.xml
 src/react/data/schema.json
 src/job_uploads/
 src/bundle/coverage.xml

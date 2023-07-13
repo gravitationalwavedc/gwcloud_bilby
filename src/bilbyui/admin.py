@@ -5,12 +5,12 @@ from .models import BilbyJob, EventID, Label, IniKeyValue
 
 @admin.register(Label)
 class LabelAdmin(admin.ModelAdmin):
-    fields = ['name', 'description']
+    fields = ["name", "description"]
 
 
 @admin.register(EventID)
 class EventIDAdmin(admin.ModelAdmin):
-    fields = ['event_id', 'trigger_id', 'nickname', 'gps_time']
+    fields = ["event_id", "trigger_id", "nickname", "gps_time"]
 
 
 class IniKeyValueAdmin(admin.TabularInline):
@@ -28,7 +28,9 @@ class IniKeyValueAdmin(admin.TabularInline):
 
 @admin.register(BilbyJob)
 class BilbyJobAdmin(admin.ModelAdmin):
-    fields = ['name', 'description', 'private', 'job_controller_id', 'labels', 'ini_string', 'is_ligo_job']
-    filter_horizontal = ('labels',)
-    readonly_fields = ('creation_time', 'last_updated')
-    inlines = [IniKeyValueAdmin, ]
+    fields = ["name", "description", "private", "job_controller_id", "labels", "ini_string", "is_ligo_job"]
+    filter_horizontal = ("labels",)
+    readonly_fields = ("creation_time", "last_updated")
+    inlines = [
+        IniKeyValueAdmin,
+    ]

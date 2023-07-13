@@ -10,13 +10,13 @@ describe('editable description component', () => {
 
     it('should render', () => {
         expect.hasAssertions();
-        render(<EditableDescription value="Testing" />); 
+        render(<EditableDescription value='Testing' />); 
         expect(screen.getByText('Testing')).toBeInTheDocument();
     });
 
     it('should call a mutation when changed', async () => {
         expect.hasAssertions();
-        const { container } = render(<EditableDescription modifiable={true} value="Testing" jobId={1} />);
+        const { container } = render(<EditableDescription modifiable={true} value='Testing' jobId={1} />);
         userEvent.click(screen.getByText('edit'));
         userEvent.type(screen.getByDisplayValue('Testing'), '-new-value');
         await waitFor(() => userEvent.click(container.getElementsByClassName('save-button')[0]));

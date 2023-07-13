@@ -4,19 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bilbyui', '0034_change_preferred_label_to_official'),
+        ("bilbyui", "0034_change_preferred_label_to_official"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='bilbyjob',
-            options={'ordering': ('-last_updated', 'name')},
+            name="bilbyjob",
+            options={"ordering": ("-last_updated", "name")},
         ),
         migrations.AddField(
-            model_name='eventid',
-            name='gps_time',
+            model_name="eventid",
+            name="gps_time",
             field=models.FloatField(default=1126259462.391),
         ),
     ]

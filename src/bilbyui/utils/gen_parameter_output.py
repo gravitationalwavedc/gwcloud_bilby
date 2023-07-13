@@ -6,12 +6,20 @@ from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.input import Input
 from bilby_pipe.utils import logger
 
-from bilbyui.types import JobParameterOutput, JobDetailsOutput, ChannelsOutput, DataOutput, DetectorOutput, \
-    PriorOutput, SamplerOutput, WaveformOutput
+from bilbyui.types import (
+    JobParameterOutput,
+    JobDetailsOutput,
+    ChannelsOutput,
+    DataOutput,
+    DetectorOutput,
+    PriorOutput,
+    SamplerOutput,
+    WaveformOutput,
+)
 from bilbyui.utils.ini_utils import bilby_ini_string_to_args
 
 # Override the log level so it's silent
-logger.setLevel('CRITICAL')
+logger.setLevel("CRITICAL")
 
 
 def to_dec(val):
@@ -47,31 +55,31 @@ def generate_parameter_output(job):
     :result: The complete JobParameterOutput
     """
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
-    args = bilby_ini_string_to_args(job.ini_string.encode('utf-8'))
+    args = bilby_ini_string_to_args(job.ini_string.encode("utf-8"))
     args.idx = None
     args.ini = None
 
     # Sanitize the output directory
-    if args.outdir == '.':
+    if args.outdir == ".":
         args.outdir = "./"
 
     # Sanitize supporting files for the DataGenerationInput step. None of the supporting files are required for the
     # parameter generation when querying a job.
     sanitized_fields = [
-        'psd_dict',
-        'spline_calibration_envelope_dict',
-        'gps_file',
-        'timeslide_file',
-        'injection_file',
-        'numerical_relativity_file',
-        'distance_marginalization_lookup_table',
-        'data_dict'
+        "psd_dict",
+        "spline_calibration_envelope_dict",
+        "gps_file",
+        "timeslide_file",
+        "injection_file",
+        "numerical_relativity_file",
+        "distance_marginalization_lookup_table",
+        "data_dict",
     ]
 
     # Prior files can be defaults (like 4s, 32s etc), if it's one of the defaults - then the prior file is valid, so
     # leave the prior file as is.
     if args.prior_file not in Input([], []).get_default_prior_files():
-        sanitized_fields.append('prior_file')
+        sanitized_fields.append("prior_file")
 
     for field in sanitized_fields:
         if hasattr(args, field):
@@ -83,9 +91,9 @@ def generate_parameter_output(job):
     channels = ChannelsOutput()
     if parser.channel_dict:
         for attr, key in (
-                ('hanford_channel', 'H1'),
-                ('livingston_channel', 'L1'),
-                ('virgo_channel', 'V1'),
+            ("hanford_channel", "H1"),
+            ("livingston_channel", "L1"),
+            ("virgo_channel", "V1"),
         ):
             setattr(channels, attr, parser.channel_dict.get(key, None))
 
@@ -94,7 +102,7 @@ def generate_parameter_output(job):
         data_choice="simulated" if args.n_simulation else "real",
         # trigger_time = None or str representing the decimal value
         trigger_time=to_dec(args.trigger_time),
-        channels=channels
+        channels=channels,
     )
 
     # Detector
@@ -104,11 +112,7 @@ def generate_parameter_output(job):
         duration=to_dec(parser.duration),
         sampling_frequency=to_dec(parser.sampling_frequency),
     )
-    for k, v in {
-        ('hanford', 'H1'),
-        ('livingston', 'L1'),
-        ('virgo', 'V1')
-    }:
+    for k, v in {("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")}:
         if v in parser.detectors:
             setattr(detector, k, True)
             setattr(detector, f"{k}_minimum_frequency", to_dec(parser.minimum_frequency_dict[v]))
@@ -130,10 +134,7 @@ def generate_parameter_output(job):
     parser.sampler = args.sampler
     parser.request_cpus = args.request_cpus
     parser.sampler_kwargs = args.sampler_kwargs
-    sampler = SamplerOutput(
-        sampler_choice=parser.sampler,
-        cpus=args.request_cpus
-    )
+    sampler = SamplerOutput(sampler_choice=parser.sampler, cpus=args.request_cpus)
 
     for k, v in parser.sampler_kwargs.items():
         setattr(sampler, k, to_dec(v))
@@ -145,19 +146,13 @@ def generate_parameter_output(job):
     elif parser.frequency_domain_source_model == "lal_binary_neutron_star":
         model = "binaryNeutronStar"
 
-    waveform = WaveformOutput(
-        model=model
-    )
+    waveform = WaveformOutput(model=model)
 
     return JobParameterOutput(
-        details=JobDetailsOutput(
-            name=job.name,
-            description=job.description,
-            private=job.private
-        ),
+        details=JobDetailsOutput(name=job.name, description=job.description, private=job.private),
         data=data,
         detector=detector,
         prior=prior,
         sampler=sampler,
-        waveform=waveform
+        waveform=waveform,
     )
