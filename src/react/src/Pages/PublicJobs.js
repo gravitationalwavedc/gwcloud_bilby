@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPaginationContainer, graphql } from 'react-relay';
-import { Alert, Card, Container, Col } from 'react-bootstrap';
+import { Card, Container, Col } from 'react-bootstrap';
 import JobTable from '../Components/JobTable';
 import JobsHeading from '../Components/JobsHeading';
 import JobSearchForm from '../Components/JobSearchForm';
 import { INFINITE_SCROLL_CHUNK_SIZE } from '../constants';
 
-const PublicJobs = ({ data, match, router, relay, isAuthenticated }) => {
+const PublicJobs = ({ data, match, router, relay }) => {
     const [search, setSearch] = useState('*');
     const [timeRange, setTimeRange] = useState('all');
     const [order, setOrder] = useState();
@@ -39,7 +39,6 @@ const PublicJobs = ({ data, match, router, relay, isAuthenticated }) => {
                     link={{ text: 'Switch to my jobs', path: '/bilby/job-list/' }}
                     match={match}
                     router={router}
-                    isAuthenticated={isAuthenticated}
                 />
                 <Card className="gw-form-card">
                     <Card.Body>
@@ -63,11 +62,6 @@ const PublicJobs = ({ data, match, router, relay, isAuthenticated }) => {
                         />
                     </Card.Body>
                 </Card>
-                {!isAuthenticated && (
-                    <Alert variant='light'>
-                        Showing only public jobs. Log in with your LIGO.ORG credentials to see embargoed jobs.
-                    </Alert>
-                )}
             </Col>
         </Container>
     );
@@ -125,7 +119,7 @@ export default createPaginationContainer(
                 count: totalCount,
             };
         },
-        getVariables(_, { count, cursor }) {
+        getVariables({ count, cursor }) {
             return {
                 count,
                 cursor,
