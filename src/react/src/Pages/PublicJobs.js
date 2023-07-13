@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPaginationContainer, graphql } from 'react-relay';
-import { Card, Container, Col } from 'react-bootstrap';
+import { Alert, Card, Container, Col } from 'react-bootstrap';
 import JobTable from '../Components/JobTable';
 import JobsHeading from '../Components/JobsHeading';
 import JobSearchForm from '../Components/JobSearchForm';
@@ -125,7 +125,7 @@ export default createPaginationContainer(
                 count: totalCount,
             };
         },
-        getVariables(_, { count, cursor }, {}) {
+        getVariables(_, { count, cursor }) {
             return {
                 count,
                 cursor,
