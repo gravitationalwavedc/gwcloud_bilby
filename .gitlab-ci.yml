@@ -99,7 +99,7 @@ bundle-tests:
       junit: src/bundle/junit.xml
 
 code-quality:
-  stage: code quality
+  stage: CI
   image: docker:stable
   variables:
     DOCKER_DRIVER: overlay2
@@ -119,7 +119,7 @@ code-quality:
       codequality: gl-code-quality-report.json
 
 flake8:
-  stage: lint python
+  stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -132,7 +132,7 @@ flake8:
       codequality: gl-code-quality-report.json
 
 black:
-  stage: lint python
+  stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -142,7 +142,7 @@ black:
     - black --check src/
 
 eslint:
-  stage: lint javascript
+  stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
