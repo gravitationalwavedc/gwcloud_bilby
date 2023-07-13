@@ -132,7 +132,7 @@ eslint:
 
 prettier:
   stage: CI
-  image: node:18-alpine
+  image: node:14
   script:
     - cd src/react/
     - npm install --legacy-peer-deps
