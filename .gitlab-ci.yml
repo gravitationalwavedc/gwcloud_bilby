@@ -135,5 +135,5 @@ prettier:
   image: node:18-alpine
   script:
     - cd src/react/
-    - npm install
+    - npm install --legacy-peer-deps
     - npx prettier --check src
