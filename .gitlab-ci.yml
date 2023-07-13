@@ -4,15 +4,10 @@ default:
     entrypoint: ["/usr/bin/env"]
 
 stages:
-  - .pre
-  - build
-  - test
-  - lint python
-  - lint javascript
-  - code quality
+  - CI
 
 django-tests:
-  stage: test
+  stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -38,7 +33,7 @@ django-tests:
       junit: src/reports/junit.xml
 
 npm-tests:
-  stage: test
+  stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -74,7 +69,7 @@ npm-tests:
       junit: src/react/junit.xml
 
 bundle-tests:
-  stage: test
+  stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
@@ -171,3 +166,4 @@ eslint:
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
     - eval "[ -f .nvmrc ] && nvm use"
     - npx eslint src
+    - echo $?
