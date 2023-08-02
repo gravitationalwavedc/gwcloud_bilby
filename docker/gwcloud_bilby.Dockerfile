@@ -35,7 +35,8 @@ FROM nginx:latest as static
 
 # Install needed packages
 RUN apt-get update
-RUN apt-get install -y rsync
+RUN apt-get install -y curl python3.10 python3-pip rsync
+RUN apt-get -y upgrade
 
 # Copy the bilby source code in to the container
 COPY src /src
@@ -48,8 +49,11 @@ COPY --from=django /src/schema.json /src/react/data/
 
 # Build webpack bundle
 RUN mkdir /src/static
-RUN curl https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
-RUN . ~/.nvm/nvm.sh && cd /src/react/ && nvm install && nvm use && npm install npm@8.5.5 && npm install && npm run relay && npm run build
+# RUN curl https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
+# RUN . ~/.nvm/nvm.sh && cd /src/react/ && nvm install && nvm use && npm install npm@8.5.5 && npm install && npm run relay && npm run build
+
+RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && cd /src/react/ && nvm install && nvm use && npm install --legacy-peer-deps && npm run relay && npm run build
 
 # Copy the javascript bundle
 RUN rsync -arv /src/static/ /static/
