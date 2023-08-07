@@ -31,8 +31,6 @@ const PublicJobs = ({ data, match, router, relay, isAuthenticated }) => {
         }
     };
 
-    console.log(isAuthenticated, 'yes');
-
     return (
         <Container fluid>
             <Col md={{ offset: 1, span: 10 }} className="mb-5">
