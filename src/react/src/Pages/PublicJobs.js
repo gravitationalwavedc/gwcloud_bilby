@@ -6,7 +6,7 @@ import JobsHeading from '../Components/JobsHeading';
 import JobSearchForm from '../Components/JobSearchForm';
 import { INFINITE_SCROLL_CHUNK_SIZE } from '../constants';
 
-const PublicJobs = ({ data, match, router, relay }) => {
+const PublicJobs = ({ data, match, router, relay, isAuthenticated }) => {
     const [search, setSearch] = useState('*');
     const [timeRange, setTimeRange] = useState('all');
     const [order, setOrder] = useState();
@@ -31,6 +31,8 @@ const PublicJobs = ({ data, match, router, relay }) => {
         }
     };
 
+    console.log(isAuthenticated, 'yes');
+
     return (
         <Container fluid>
             <Col md={{ offset: 1, span: 10 }} className="mb-5">
@@ -39,6 +41,7 @@ const PublicJobs = ({ data, match, router, relay }) => {
                     link={{ text: 'Switch to my jobs', path: '/bilby/job-list/' }}
                     match={match}
                     router={router}
+                    isAuthenticated={isAuthenticated}
                 />
                 <Card className="gw-form-card">
                     <Card.Body>
