@@ -11,13 +11,16 @@ const TRACKING_ID = 'UA-219714075-1';
 ReactGA.initialize(TRACKING_ID, { testMode: process.env.NODE_ENV === 'test' });
 
 export const handlePublicRender = ({ Component, props }) => {
-    if (!Component || !props) return <Loading />;
+    if (!Component || !props) {
+        return <Loading />;
+    }
 
     // Everyone loves hax
-    if (props.location !== undefined && props.match === undefined)
+    if (props.location !== undefined && props.match === undefined) {
         props.match = {
             location: props.location,
         };
+    }
 
     props.isAuthenticated = harnessApi.hasAuthToken();
 
