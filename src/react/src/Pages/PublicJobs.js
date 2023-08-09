@@ -120,7 +120,7 @@ export default createPaginationContainer(
                 count: totalCount,
             };
         },
-        getVariables({ count, cursor }) {
+        getVariables(props, { count, cursor }) {
             return {
                 count,
                 cursor,
