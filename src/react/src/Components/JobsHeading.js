@@ -27,5 +27,4 @@ const JobsHeading = ({ match, router, heading, link, isAuthenticated }) => (
         )}
     </h1>
 );
-
 export default JobsHeading;

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createPaginationContainer, graphql } from 'react-relay';
-import { Card, Container, Col } from 'react-bootstrap';
+import { Alert, Card, Container, Col } from 'react-bootstrap';
 import JobTable from '../Components/JobTable';
 import JobsHeading from '../Components/JobsHeading';
 import JobSearchForm from '../Components/JobSearchForm';
 import { INFINITE_SCROLL_CHUNK_SIZE } from '../constants';
+import Link from 'found/Link';
 
 const PublicJobs = ({ data, match, router, relay, isAuthenticated }) => {
     const [search, setSearch] = useState('*');
@@ -41,6 +42,15 @@ const PublicJobs = ({ data, match, router, relay, isAuthenticated }) => {
                     router={router}
                     isAuthenticated={isAuthenticated}
                 />
+                {!isAuthenticated && (
+                    <Alert variant="light">
+                        Showing only public jobs.{' '}
+                        <Link to="/auth/" match={match} router={router}>
+                            Log in with your LIGO.ORG credentials to see embargoed jobs
+                        </Link>
+                        .
+                    </Alert>
+                )}
                 <Card className="gw-form-card">
                     <Card.Body>
                         <JobSearchForm
