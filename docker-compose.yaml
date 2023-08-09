@@ -37,7 +37,7 @@ services:
       dockerfile: ./docker/gwcloud_bilby.Dockerfile
       context: .
       target: static
-    image: nexus.gwdc.org.au/docker/gwcloud_bilby_static:0.46
+    image: nexus.gwdc.org.au/docker/gwcloud_bilby_static:0.47
     container_name: gwcloud_bilby_static
     ports:
       - "8000"
