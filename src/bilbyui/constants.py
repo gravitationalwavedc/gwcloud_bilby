@@ -4,12 +4,12 @@ class BilbyJobType:
     NORMAL = 0
     # Job was created via a job upload
     UPLOADED = 1
-    # Job was created via a gwosc job upload
-    GWOSC = 2
+    # Job is a external result job
+    EXTERNAL = 2
 
 
 BILBY_JOB_TYPE_CHOICES = (
     (BilbyJobType.NORMAL, "Normal Job"),
     (BilbyJobType.UPLOADED, "Uploaded Job"),
-    (BilbyJobType.GWOSC, "GWOSC Job"),
+    (BilbyJobType.EXTERNAL, "External Job"),
 )
