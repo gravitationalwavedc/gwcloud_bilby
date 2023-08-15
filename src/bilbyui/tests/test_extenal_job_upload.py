@@ -1,16 +1,10 @@
-import json
-import os.path
-import uuid
-from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 
-from bilbyui.models import BilbyJob, IniKeyValue, SupportingFile, ExternalBilbyJob
-from bilbyui.tests.test_utils import create_test_ini_string, compare_ini_kvs, silence_errors, create_test_upload_data
+from bilbyui.models import BilbyJob, ExternalBilbyJob
+from bilbyui.tests.test_utils import create_test_ini_string, compare_ini_kvs, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
