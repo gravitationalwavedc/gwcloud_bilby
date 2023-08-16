@@ -386,6 +386,16 @@ def bilby_job_delete_signal(sender, instance, using, **kwargs):
     instance.elastic_search_remove()
 
 
+class ExternalBilbyJob(models.Model):
+    """
+    This model stores information about bilby jobs that have external results. For example a job
+    where the data file is stored on Zenodo
+    """
+
+    job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE)
+    url = models.URLField()
+
+
 class SupportingFile(models.Model):
     """
     This model stores information about supporting files for bilby jobs. This can include PSD, Calibration, Prior, GPS,

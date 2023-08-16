@@ -44,6 +44,7 @@ from .views import (
     update_event_id,
     upload_bilby_job,
     upload_supporting_files,
+    upload_external_bilby_job,
 )
 
 
@@ -663,6 +664,27 @@ class UploadSupportingFilesMutation(relay.ClientIDMutation):
         return UploadSupportingFilesMutation(result=SupportingFileUploadResult(result=success))
 
 
+class UploadExternalBilbyJobMutation(relay.ClientIDMutation):
+    class Input:
+        details = JobDetailsInput()
+        ini_file = graphene.String(required=True)
+        result_url = graphene.String(required=True)
+
+    result = graphene.Field(BilbyJobCreationResult)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, details, ini_file, result_url):
+        # Try uploading the external bilby job
+        bilby_job = upload_external_bilby_job(info.context.user, details, ini_file, result_url)
+
+        # Convert the bilby job id to a global id
+        job_id = to_global_id("BilbyJobNode", bilby_job.id)
+
+        # Return the bilby job id to the client
+        return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
+
+
 class Mutation(graphene.ObjectType):
     new_bilby_job = BilbyJobMutation.Field()
     new_bilby_job_from_ini_string = BilbyJobFromIniStringMutation.Field()
@@ -673,3 +695,4 @@ class Mutation(graphene.ObjectType):
     update_event_id = UpdateEventIDMutation.Field()
     delete_event_id = DeleteEventIDMutation.Field()
     upload_supporting_files = UploadSupportingFilesMutation.Field()
+    upload_external_bilby_job = UploadExternalBilbyJobMutation.Field()

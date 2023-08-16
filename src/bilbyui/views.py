@@ -17,7 +17,7 @@ from django.db import transaction
 from django.http import Http404, FileResponse
 
 from .constants import BilbyJobType
-from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile
+from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile, ExternalBilbyJob
 from .utils.embargo import should_embargo_job
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 
@@ -568,6 +568,52 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
         # Job is validated and uploaded, return the job
         return bilby_job
+
+
+def upload_external_bilby_job(user, details, ini_file, result_url):
+    # Parse the ini file to check it's validity
+    args = bilby_ini_string_to_args(ini_file.encode("utf-8"))
+
+    trigger_time = float(args.trigger_time) if args.trigger_time is not None else None
+    n_simulation = args.n_simulation if args.n_simulation is not None else None
+    if should_embargo_job(user, trigger_time, n_simulation):
+        raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
+
+    validate_job_name(details.name)
+    args.label = details.name
+
+    args.idx = None
+    args.ini = None
+
+    # Strip the prior, gps, timeslide, and injection file
+    # as DataGenerationInput has trouble without the actual file existing
+
+    # Don't change the prior file if it's one of the defaults
+    if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
+        args.prior_file = None
+
+    args.gps_file = None
+    args.timeslide_file = None
+    args.injection_file = None
+    args.psd_dict = None
+
+    # Convert the modified arguments back to an ini string
+    ini_string = bilby_args_to_ini_string(args)
+
+    # Create the bilby job
+    bilby_job = BilbyJob.objects.create(
+        user_id=user.user_id,
+        name=args.label,
+        description=details.description,
+        private=details.private,
+        ini_string=ini_string,
+        job_type=BilbyJobType.UPLOADED,
+    )
+
+    # Create the relevant External Bilby Job record as well
+    ExternalBilbyJob.objects.create(job=bilby_job, url=result_url)
+
+    return bilby_job
 
 
 def file_download_job_file(request, fdl):
