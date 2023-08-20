@@ -5,7 +5,7 @@ import { harnessApi } from '../../index';
 import { IS_DEV } from '../../Utils/misc';
 import { jobTypes } from '../../Utils/jobHelpers';
 
-const downloadUrl = 'https://gwcloud.org.au/job/apiv1/file/?fileId=';
+const downloadUrl = 'https://jobcontroller.adacs.org.au/job/apiv1/file/?fileId=';
 const uploadedJobDownloadUrl = IS_DEV
     ? 'http://localhost:8001/file_download/?fileId='
     : 'https://gwcloud.org.au/bilby/file_download/?fileId=';
