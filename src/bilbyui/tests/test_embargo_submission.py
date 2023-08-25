@@ -11,7 +11,7 @@ from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 
 User = get_user_model()
 
-MOCK_EMBARGO_START_TIME = 1126259462.391
+MOCK_EMBARGO_START_TIME = 1128678900.4
 
 
 class TestBilbyEmbargoPermissions(BilbyTestCase):
@@ -190,6 +190,9 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             (MOCK_EMBARGO_START_TIME + 1, 1),
             (MOCK_EMBARGO_START_TIME - 1, 0),
             (MOCK_EMBARGO_START_TIME - 1, 1),
+            ('GW151226', 1),
+            ('GW150914', 0),
+            ('GW150914', 1),
         ]:
             ini_string = create_test_ini_string(
                 config_dict={"trigger-time": trigger_time, "n-simulation": n_simulation}, complete=True
@@ -209,18 +212,26 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             job = BilbyJob.objects.get(pk=job_id)
             job.delete()
 
-        ini_string = create_test_ini_string(
-            config_dict={"trigger-time": MOCK_EMBARGO_START_TIME + 1, "n-simulation": 0}, complete=True
-        )
-        self.params["input"]["params"]["iniString"]["iniString"] = ini_string
-        response = self.client.execute(self.query, self.params)
+        for trigger_time, n_simulation in [
+            (MOCK_EMBARGO_START_TIME + 1, 0),
+            ('GW151226', 0),
+        ]:
+            ini_string = create_test_ini_string(
+                config_dict={"trigger-time": trigger_time, "n-simulation": n_simulation}, complete=True
+            )
+            self.params["input"]["params"]["iniString"]["iniString"] = ini_string
+            response = self.client.execute(self.query, self.params)
 
-        self.assertDictEqual(self.expected_none, response.data, "create bilbyJob mutation returned unexpected data.")
+            self.assertDictEqual(
+                self.expected_none,
+                response.data,
+                "create bilbyJob mutation returned unexpected data."
+            )
 
-        self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
+            self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
 
-        # Check that no job was created
-        self.assertFalse(BilbyJob.objects.all().exists())
+            # Check that no job was created
+            self.assertFalse(BilbyJob.objects.all().exists())
 
     @silence_errors
     @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
@@ -233,6 +244,10 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             (MOCK_EMBARGO_START_TIME + 1, 1),
             (MOCK_EMBARGO_START_TIME - 1, 0),
             (MOCK_EMBARGO_START_TIME - 1, 1),
+            ('GW151226', 0),
+            ('GW151226', 1),
+            ('GW150914', 0),
+            ('GW150914', 1),
         ]:
             ini_string = create_test_ini_string(
                 config_dict={"trigger-time": trigger_time, "n-simulation": n_simulation}, complete=True
