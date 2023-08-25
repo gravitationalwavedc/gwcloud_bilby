@@ -190,9 +190,9 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             (MOCK_EMBARGO_START_TIME + 1, 1),
             (MOCK_EMBARGO_START_TIME - 1, 0),
             (MOCK_EMBARGO_START_TIME - 1, 1),
-            ('GW151226', 1),
-            ('GW150914', 0),
-            ('GW150914', 1),
+            ("GW151226", 1),
+            ("GW150914", 0),
+            ("GW150914", 1),
         ]:
             ini_string = create_test_ini_string(
                 config_dict={"trigger-time": trigger_time, "n-simulation": n_simulation}, complete=True
@@ -214,7 +214,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
 
         for trigger_time, n_simulation in [
             (MOCK_EMBARGO_START_TIME + 1, 0),
-            ('GW151226', 0),
+            ("GW151226", 0),
         ]:
             ini_string = create_test_ini_string(
                 config_dict={"trigger-time": trigger_time, "n-simulation": n_simulation}, complete=True
@@ -223,9 +223,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             response = self.client.execute(self.query, self.params)
 
             self.assertDictEqual(
-                self.expected_none,
-                response.data,
-                "create bilbyJob mutation returned unexpected data."
+                self.expected_none, response.data, "create bilbyJob mutation returned unexpected data."
             )
 
             self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
@@ -244,10 +242,10 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             (MOCK_EMBARGO_START_TIME + 1, 1),
             (MOCK_EMBARGO_START_TIME - 1, 0),
             (MOCK_EMBARGO_START_TIME - 1, 1),
-            ('GW151226', 0),
-            ('GW151226', 1),
-            ('GW150914', 0),
-            ('GW150914', 1),
+            ("GW151226", 0),
+            ("GW151226", 1),
+            ("GW150914", 0),
+            ("GW150914", 1),
         ]:
             ini_string = create_test_ini_string(
                 config_dict={"trigger-time": trigger_time, "n-simulation": n_simulation}, complete=True

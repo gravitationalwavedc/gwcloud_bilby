@@ -42,7 +42,7 @@ class TestEmbargoJobUpload(BilbyTestCase):
                 "trigger-time": trigger_time,
                 "n-simulation": n_simulation,
             },
-            complete=True
+            complete=True,
         )
 
         test_input = {
@@ -64,9 +64,9 @@ class TestEmbargoJobUpload(BilbyTestCase):
             (MOCK_EMBARGO_START_TIME + 1, 1),
             (MOCK_EMBARGO_START_TIME - 1, 0),
             (MOCK_EMBARGO_START_TIME - 1, 1),
-            ('GW151226', 1),
-            ('GW150914', 0),
-            ('GW150914', 1),
+            ("GW151226", 1),
+            ("GW150914", 0),
+            ("GW150914", 1),
         ]:
             response = self.upload_job(trigger_time, n_simulation)
 
@@ -83,13 +83,11 @@ class TestEmbargoJobUpload(BilbyTestCase):
 
         for trigger_time, n_simulation in [
             (MOCK_EMBARGO_START_TIME + 1, 0),
-            ('GW151226', 0),
+            ("GW151226", 0),
         ]:
             response = self.upload_job(trigger_time, n_simulation)
             self.assertDictEqual(
-                self.expected_none,
-                response.data,
-                "create bilbyJob mutation returned unexpected data."
+                self.expected_none, response.data, "create bilbyJob mutation returned unexpected data."
             )
 
             self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
@@ -108,10 +106,10 @@ class TestEmbargoJobUpload(BilbyTestCase):
             (MOCK_EMBARGO_START_TIME + 1, 1),
             (MOCK_EMBARGO_START_TIME - 1, 0),
             (MOCK_EMBARGO_START_TIME - 1, 1),
-            ('GW151226', 0),
-            ('GW151226', 1),
-            ('GW150914', 0),
-            ('GW150914', 1),
+            ("GW151226", 0),
+            ("GW151226", 1),
+            ("GW150914", 0),
+            ("GW150914", 1),
         ]:
             response = self.upload_job(trigger_time, n_simulation)
 
