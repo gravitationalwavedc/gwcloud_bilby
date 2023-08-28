@@ -15,6 +15,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import Http404, FileResponse
+from gwosc.datasets import event_gps
 
 from .constants import BilbyJobType
 from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile, ExternalBilbyJob
@@ -32,6 +33,20 @@ def validate_job_name(name):
     pattern = re.compile(r"^[0-9a-z_-]+\Z", flags=re.IGNORECASE | re.ASCII)
     if not pattern.match(name):
         raise Exception("Job name must not contain any spaces or special characters.")
+
+
+def embargo_from_args(user, args):
+    try:
+        trigger_time = float(args.trigger_time)
+    except ValueError:  # If trigger time is not able to be converted to a float
+        try:
+            trigger_time = event_gps(args.trigger_time)
+        except ValueError:  # If event_gps cannot find the event, raises a ValueError
+            trigger_time = None
+    except TypeError:
+        trigger_time = None
+    n_simulation = args.n_simulation if args.n_simulation is not None else None
+    return should_embargo_job(user, trigger_time, n_simulation)
 
 
 def create_bilby_job(user, params):
@@ -315,9 +330,7 @@ def create_bilby_job_from_ini_string(user, params):
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
     args = bilby_ini_string_to_args(params.ini_string.ini_string.encode("utf-8"))
 
-    trigger_time = float(args.trigger_time) if args.trigger_time is not None else None
-    n_simulation = args.n_simulation if args.n_simulation is not None else None
-    if should_embargo_job(user, trigger_time, n_simulation):
+    if embargo_from_args(user, args):
         raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
     if args.outdir == ".":
@@ -467,9 +480,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
         # Parse the ini file to check it's validity
         args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
 
-        trigger_time = float(args.trigger_time) if args.trigger_time is not None else None
-        n_simulation = args.n_simulation if args.n_simulation is not None else None
-        if should_embargo_job(user, trigger_time, n_simulation):
+        if embargo_from_args(user, args):
             raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
         validate_job_name(args.label)
@@ -574,9 +585,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
     # Parse the ini file to check it's validity
     args = bilby_ini_string_to_args(ini_file.encode("utf-8"))
 
-    trigger_time = float(args.trigger_time) if args.trigger_time is not None else None
-    n_simulation = args.n_simulation if args.n_simulation is not None else None
-    if should_embargo_job(user, trigger_time, n_simulation):
+    if embargo_from_args(user, args):
         raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
     validate_job_name(details.name)
