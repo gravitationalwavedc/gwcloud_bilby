@@ -28,9 +28,16 @@ const generateDownload = (url) => {
     document.body.removeChild(link);
 };
 
-const performFileDownload = (e, jobId, jobTypeId, token) => {
+const performFileDownload = (e, jobId, jobTypeId, token, filePath) => {
     e.preventDefault();
     e.target.classList.add('link-visited');
+
+    if (jobTypeId === jobTypes.EXTERNAL) {
+        // For external jobs, the filePath is the full URL to the remote end. Just generate the URL and send the user
+        // there
+        generateDownload(filePath);
+        return;
+    }
 
     if (jobTypeId === jobTypes.UPLOADED) {
         // For uploaded jobs, we can optionally skip the need to generate a download id
@@ -66,7 +73,13 @@ const ResultFile = ({ file, data, bilbyResultFiles }) => (
                 <a
                     href="#"
                     onClick={(e) =>
-                        performFileDownload(e, data.bilbyJob.id, bilbyResultFiles.jobType, file.downloadToken)
+                        performFileDownload(
+                            e,
+                            data.bilbyJob.id,
+                            bilbyResultFiles.jobType,
+                            file.downloadToken,
+                            file.path,
+                        )
                     }
                 >
                     {file.path}
@@ -74,7 +87,7 @@ const ResultFile = ({ file, data, bilbyResultFiles }) => (
             )}
         </td>
         <td>{file.isDir ? 'Directory' : 'File'}</td>
-        <td>{file.isDir ? '' : filesize(parseInt(file.fileSize), { round: 0 })}</td>
+        <td>{file.isDir || file.fileSize === null ? '' : filesize(parseInt(file.fileSize), { round: 0 })}</td>
     </tr>
 );
 
