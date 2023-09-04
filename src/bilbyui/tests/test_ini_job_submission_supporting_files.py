@@ -13,6 +13,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
 
+from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, SupportingFile
 from bilbyui.tests.test_utils import compare_ini_kvs, create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
@@ -127,6 +128,7 @@ class TestIniJobSubmission(BilbyTestCase):
         self.assertEqual(job.name, self.test_name)
         self.assertEqual(job.description, self.test_description)
         self.assertEqual(job.private, self.test_private)
+        self.assertEqual(job.job_type, BilbyJobType.NORMAL)
 
         # If there are no supporting files, then the job should have been submitted
         if not supporting_files.count():

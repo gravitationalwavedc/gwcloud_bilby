@@ -15,7 +15,7 @@ from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
 
 from .constants import BilbyJobType
-from .models import BilbyJob, BilbyJobUploadToken, EventID, FileDownloadToken, Label, SupportingFile
+from .models import BilbyJob, BilbyJobUploadToken, EventID, FileDownloadToken, Label, SupportingFile, ExternalBilbyJob
 from .status import JobStatus
 from .types import (
     BilbyJobCreationResult,
@@ -369,7 +369,7 @@ class Query(object):
                     job_node.labels = bilby_job.labels.all()
                     job_node.timestamp = job_controller_job["history"][0]["timestamp"]
 
-            elif bilby_job.job_type == BilbyJobType.UPLOADED:
+            elif bilby_job.job_type in [BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL]:
                 job_node.job_status = JobStatusType(
                     name=JobStatus.display_name(JobStatus.COMPLETED),
                     number=JobStatus.COMPLETED,
@@ -413,28 +413,32 @@ class Query(object):
         # Try to look up the job with the id provided
         job = BilbyJob.get_by_id(job_id, info.context.user)
 
-        # Fetch the file list from the job controller
-        success, files = job.get_file_list()
-        if not success:
-            raise Exception("Error getting file list. " + str(files))
+        if job.job_type == BilbyJobType.EXTERNAL:
+            # There is nothing special we have to do here. The frontend or API will handle the job_type.
+            result = [BilbyResultFile(path=ExternalBilbyJob.objects.get(job=job).url)]
+        else:
+            # Fetch the file list from the job controller
+            success, files = job.get_file_list()
+            if not success:
+                raise Exception("Error getting file list. " + str(files))
 
-        # Generate download tokens for the list of files
-        paths = [f["path"] for f in filter(lambda x: not x["isDir"], files)]
-        tokens = FileDownloadToken.create(job, paths)
+            # Generate download tokens for the list of files
+            paths = [f["path"] for f in filter(lambda x: not x["isDir"], files)]
+            tokens = FileDownloadToken.create(job, paths)
 
-        # Generate a dict that can be used to query the generated tokens
-        token_dict = {tk.path: tk.token for tk in tokens}
+            # Generate a dict that can be used to query the generated tokens
+            token_dict = {tk.path: tk.token for tk in tokens}
 
-        # Build the resulting file list and send it back to the client
-        result = [
-            BilbyResultFile(
-                path=f["path"],
-                is_dir=f["isDir"],
-                file_size=Decimal(f["fileSize"]),
-                download_token=token_dict[f["path"]] if f["path"] in token_dict else None,
-            )
-            for f in files
-        ]
+            # Build the resulting file list and send it back to the client
+            result = [
+                BilbyResultFile(
+                    path=f["path"],
+                    is_dir=f["isDir"],
+                    file_size=Decimal(f["fileSize"]),
+                    download_token=token_dict[f["path"]] if f["path"] in token_dict else None,
+                )
+                for f in files
+            ]
 
         return BilbyResultFiles(files=result, job_type=job.job_type)
 

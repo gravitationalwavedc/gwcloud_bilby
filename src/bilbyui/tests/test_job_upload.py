@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 
+from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, IniKeyValue, SupportingFile
 from bilbyui.tests.test_utils import create_test_ini_string, compare_ini_kvs, silence_errors, create_test_upload_data
 from bilbyui.tests.testcases import BilbyTestCase
@@ -125,6 +126,7 @@ class TestJobUpload(BilbyTestCase):
         self.assertEqual(job.name, test_name)
         self.assertEqual(job.description, test_description)
         self.assertEqual(job.private, test_private)
+        self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
 
         # Check that the output directories and ini file were correctly created
         job_dir = job.get_upload_directory()
@@ -172,6 +174,7 @@ class TestJobUpload(BilbyTestCase):
         self.assertEqual(job.name, test_name)
         self.assertEqual(job.description, test_description)
         self.assertEqual(job.private, test_private)
+        self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
 
         # Check that the output directories and ini file were correctly created
         job_dir = job.get_upload_directory()
@@ -516,6 +519,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         self.assertEqual(job.name, self.test_name)
         self.assertEqual(job.description, self.test_description)
         self.assertEqual(job.private, self.test_private)
+        self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
 
         # Check that the output directories and ini file were correctly created
         job_dir = job.get_upload_directory()

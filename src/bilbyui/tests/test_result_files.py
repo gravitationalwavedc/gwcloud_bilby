@@ -10,7 +10,7 @@ from django.utils import timezone
 from graphql_relay import to_global_id
 
 from bilbyui.constants import BilbyJobType
-from bilbyui.models import FileDownloadToken, BilbyJob
+from bilbyui.models import FileDownloadToken, BilbyJob, ExternalBilbyJob
 from bilbyui.tests.test_job_upload import get_upload_token
 from bilbyui.tests.test_utils import silence_errors, create_test_upload_data, create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
@@ -262,3 +262,51 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
 
         self.assertEqual(response.data["generateFileDownloadIds"], None)
         self.assertEqual(str(response.errors[0]), "At least one token was invalid or expired.")
+
+
+class TestExternalJobResultFiles(BilbyTestCase):
+    def setUp(self):
+        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
+
+        self.job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Test1",
+            description="first job",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            job_type=BilbyJobType.EXTERNAL,
+        )
+
+        self.external_job = ExternalBilbyJob.objects.create(job=self.job, url="https://www.example.com/test/file")
+
+        self.global_id = to_global_id("BilbyJobNode", self.job.id)
+
+        self.query = f"""
+            query {{
+                bilbyResultFiles (jobId: "{self.global_id}") {{
+                    files {{
+                        path
+                        isDir
+                        fileSize
+                        downloadToken
+                    }}
+                    jobType
+                }}
+            }}
+            """
+
+    @silence_errors
+    def test_uploaded_job(self):
+        # Iterate twice, first iteration is anonymous user, second is authenticated user
+        self.client.authenticate(None)
+        for _ in range(2):
+            response = self.client.execute(self.query)
+
+            self.assertEqual(response.data["bilbyResultFiles"]["jobType"], BilbyJobType.EXTERNAL)
+            self.assertEqual(len(response.data["bilbyResultFiles"]["files"]), 1)
+            self.assertDictEqual(
+                response.data["bilbyResultFiles"]["files"][0],
+                {"path": self.external_job.url, "isDir": None, "fileSize": None, "downloadToken": None},
+            )
+
+            self.client.authenticate(self.user)
