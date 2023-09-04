@@ -81,7 +81,7 @@ const ResultFile = ({ file, data, bilbyResultFiles }) => (
             )}
         </td>
         <td>{file.isDir ? 'Directory' : 'File'}</td>
-        <td>{file.isDir && file.fileSize !== null ? '' : filesize(parseInt(file.fileSize), { round: 0 })}</td>
+        <td>{file.isDir || file.fileSize === null ? '' : filesize(parseInt(file.fileSize), { round: 0 })}</td>
     </tr>
 );
 
