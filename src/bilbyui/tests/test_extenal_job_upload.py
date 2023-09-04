@@ -3,6 +3,7 @@ from tempfile import TemporaryDirectory
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
+from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, ExternalBilbyJob
 from bilbyui.tests.test_utils import create_test_ini_string, compare_ini_kvs, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
@@ -87,6 +88,7 @@ class TestExternalJobUpload(BilbyTestCase):
         self.assertEqual(job.name, test_name)
         self.assertEqual(job.description, test_description)
         self.assertEqual(job.private, test_private)
+        self.assertEqual(job.job_type, BilbyJobType.EXTERNAL)
 
         # Check that the external job record was created
         self.assertEqual(ExternalBilbyJob.objects.filter(job=job, url=test_input["input"]["resultUrl"]).count(), 1)

@@ -616,7 +616,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
         description=details.description,
         private=details.private,
         ini_string=ini_string,
-        job_type=BilbyJobType.UPLOADED,
+        job_type=BilbyJobType.EXTERNAL,
     )
 
     # Create the relevant External Bilby Job record as well

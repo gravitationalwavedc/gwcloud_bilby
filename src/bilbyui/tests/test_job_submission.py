@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.test import testcases
 from django.test.utils import override_settings
 
+from bilbyui.constants import BilbyJobType
 from bilbyui.models import IniKeyValue, BilbyJob, EventID
 from bilbyui.tests.test_utils import compare_ini_kvs, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
@@ -103,6 +104,7 @@ class TestJobSubmission(BilbyTestCase):
         self.assertEqual(job.name, _params["details"]["name"])
         self.assertEqual(job.description, _params["details"]["description"])
         self.assertEqual(job.private, _params["details"]["private"])
+        self.assertEqual(job.job_type, BilbyJobType.NORMAL)
 
         # Double check that the k/v's were correctly created
         self.assertEqual(
@@ -284,6 +286,7 @@ class TestJobSubmission(BilbyTestCase):
         self.assertEqual(job.name, _params["details"]["name"])
         self.assertEqual(job.description, _params["details"]["description"])
         self.assertEqual(job.private, _params["details"]["private"])
+        self.assertEqual(job.job_type, BilbyJobType.NORMAL)
 
         # Double check that the k/v's were correctly created
         self.assertEqual(
