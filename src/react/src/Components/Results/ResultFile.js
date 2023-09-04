@@ -73,7 +73,13 @@ const ResultFile = ({ file, data, bilbyResultFiles }) => (
                 <a
                     href="#"
                     onClick={(e) =>
-                        performFileDownload(e, data.bilbyJob.id, bilbyResultFiles.jobType, file.downloadToken, file.path)
+                        performFileDownload(
+                            e,
+                            data.bilbyJob.id,
+                            bilbyResultFiles.jobType,
+                            file.downloadToken,
+                            file.path,
+                        )
                     }
                 >
                     {file.path}
