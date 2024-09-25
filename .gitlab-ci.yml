@@ -1,6 +1,6 @@
 default:
   image:
-    name: ubuntu:22.04
+    name: ubuntu:24.04
     entrypoint: ["/usr/bin/env"]
 
 stages:
@@ -11,11 +11,12 @@ django-tests:
   script:
     - apt -y update
     - apt -y install apt-utils
-    - apt -y install net-tools python3.10 python3-pip git curl wget
+    - apt -y install net-tools python3.12 python3-venv git curl wget python3-dev build-essential python3-setuptools
     - apt -y upgrade
     - cd src/
-    - pip3 install -r requirements.txt
-    - python3 development-manage.py jenkins --enable-coverage --coverage-rcfile=.coveragerc
+    - /usr/bin/python3.12 -m venv /src/venv
+    - /src/venv/bin/pip3 install -r requirements.txt
+    - /src/venv/bin/python3 development-manage.py jenkins --enable-coverage --coverage-rcfile=.coveragerc
 
   artifacts:
     reports:
@@ -29,11 +30,12 @@ npm-tests:
   script:
     - apt -y update
     - apt -y install apt-utils
-    - apt -y install net-tools python3.10 python3-pip git curl wget
+    - apt -y install net-tools python3.12 python3-venv git curl wget python3-dev build-essential python3-setuptools
     - apt -y upgrade
     - cd src/
-    - pip3 install -r requirements.txt
-    - python3 development-manage.py graphql_schema
+    - /usr/bin/python3.12 -m venv /src/venv
+    - /src/venv/bin/pip3 install -r requirements.txt
+    - /src/venv/bin/python3 development-manage.py graphql_schema
     - cd react/
     - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
@@ -54,7 +56,7 @@ bundle-tests:
   script:
     - apt -y update
     - apt -y install apt-utils
-    - apt -y install net-tools python3.10 python3-pip git curl wget
+    - apt -y install net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
     - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$HOME/miniconda.sh"
     - bash "$HOME/miniconda.sh" -b -p "$HOME/miniconda"
@@ -73,13 +75,13 @@ bundle-tests:
 
 code-quality:
   stage: CI
-  image: docker:stable
+  image: docker:25
   variables:
     DOCKER_DRIVER: overlay2
     SP_VERSION: 0.85.26
   allow_failure: true
   services:
-    - docker:stable-dind
+    - docker:25-dind
   before_script: []
 
   script:
@@ -98,10 +100,11 @@ flake8:
   script:
     - apt -y update
     - apt -y install apt-utils
-    - apt -y install net-tools python3.10 python3-pip git curl wget
+    - apt -y install net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
-    - pip3 install flake8-gl-codeclimate
-    - flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json src/
+    - /usr/bin/python3.12 -m venv /src/venv
+    - /src/venv/bin/pip3 install flake8-gl-codeclimate
+    - /src/venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json src/
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
@@ -111,17 +114,18 @@ black:
   script:
     - apt -y update
     - apt -y install apt-utils
-    - apt -y install net-tools python3.10 python3-pip git curl wget
+    - apt -y install net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
-    - pip3 install black
-    - black --check src/
+    - /usr/bin/python3.12 -m venv /src/venv
+    - /src/venv/bin/pip3 install black
+    - /src/venv/bin/black --check src/
 
 eslint:
   stage: CI
   script:
     - apt -y update
     - apt -y install apt-utils
-    - apt -y install net-tools python3.10 python3-pip git curl wget
+    - apt -y install net-tools python3.12 python3-venv git curl wget python3-setuptools build-essential
     - apt -y upgrade
     - cd src/react/
     - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
@@ -135,7 +139,7 @@ prettier:
   script:
     - apt -y update
     - apt -y install apt-utils
-    - apt -y install net-tools python3.10 python3-pip git curl wget
+    - apt -y install net-tools python3.12 python3-venv git curl wget python3-setuptools build-essential
     - apt -y upgrade
     - cd src/react/
     - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
