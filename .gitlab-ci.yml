@@ -75,13 +75,13 @@ bundle-tests:
 
 code-quality:
   stage: CI
-  image: docker:stable
+  image: docker:25
   variables:
     DOCKER_DRIVER: overlay2
     SP_VERSION: 0.85.26
   allow_failure: true
   services:
-    - docker:stable-dind
+    - docker:25-dind
   before_script: []
 
   script:
