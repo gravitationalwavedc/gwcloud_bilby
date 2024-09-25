@@ -617,4 +617,4 @@ class TestSupportingFile(BilbyTestCase):
         sf.save()
 
         # Now the supporting file should be returned by get_by_download_token
-        self.assertEquals(SupportingFile.get_by_download_token(sf.download_token).id, sf.id)
+        self.assertEqual(SupportingFile.get_by_download_token(sf.download_token).id, sf.id)
