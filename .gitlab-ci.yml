@@ -100,7 +100,7 @@ flake8:
   script:
     - apt -y update
     - apt -y install apt-utils
-    - apt -y install net-tools python3.10 python3-venv git curl wget
+    - apt -y install net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
     - /usr/bin/python3.12 -m venv /src/venv
     - /src/venv/bin/pip3 install flake8-gl-codeclimate
