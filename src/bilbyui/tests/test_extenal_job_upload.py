@@ -97,7 +97,7 @@ class TestExternalJobUpload(BilbyTestCase):
 class TestExternalJobUploadLigoPermissions(BilbyTestCase):
     def setUp(self):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-
+        test_private = True
         self.mutation = """
             mutation ExternalJobUploadMutation($input: UploadExternalBilbyJobMutationInput!) {
               uploadExternalBilbyJob(input: $input) {
@@ -110,7 +110,7 @@ class TestExternalJobUploadLigoPermissions(BilbyTestCase):
 
         self.params = {
             "input": {
-                "details": {"name": "test_name", "description": "test_description", "private": "test_private"},
+                "details": {"name": "test_name", "description": "test_description", "private": test_private},
                 "iniFile": None,
                 "resultUrl": "https://www.example.com/",
             }

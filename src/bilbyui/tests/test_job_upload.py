@@ -75,7 +75,7 @@ class TestJobUpload(BilbyTestCase):
 
         test_input = {
             "input": {
-                "uploadToken": uuid.uuid4(),
+                "uploadToken": str(uuid.uuid4()),
                 "details": {"name": test_name, "description": test_description, "private": test_private},
                 "jobFile": test_file,
             }
@@ -370,6 +370,8 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
 
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
 
+        test_private = False
+
         self.mutation = """
             mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
               uploadBilbyJob(input: $input) {
@@ -381,7 +383,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
         """
 
         self.params = {
-            "input": {"details": {"description": "test_description", "private": "test_private"}, "jobFile": None}
+            "input": {"details": {"description": "test_description", "private": test_private}, "jobFile": None}
         }
 
         self.expected_one = {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
