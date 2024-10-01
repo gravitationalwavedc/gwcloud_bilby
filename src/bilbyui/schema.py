@@ -259,7 +259,7 @@ class Query(object):
     def resolve_public_bilby_jobs(self, info, **kwargs):
         # Parse the cursor if it was provided and set the first offset to be used by the database search
         if "after" in kwargs:
-            kwargs["after"] = int(from_global_id(kwargs["after"])[1])
+            kwargs["after"] = int(from_global_id(kwargs["after"])[1]) if kwargs["after"] is not None else 0
 
         es = elasticsearch.Elasticsearch(
             hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY, verify_certs=False
