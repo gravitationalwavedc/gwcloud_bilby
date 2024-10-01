@@ -139,17 +139,17 @@ class TestEmbargoFilter(BilbyTestCase):
         input_qs = BilbyJob.objects.all()
         self.user.is_anonymous = True
         self.user.is_ligo = False
-        self.assertQuerysetEqual(input_qs, map(repr, embargo_filter(input_qs, self.user)))
+        self.assertQuerysetEqual(input_qs, embargo_filter(input_qs, self.user))
 
         self.user.is_ligo = True
-        self.assertQuerysetEqual(input_qs, map(repr, embargo_filter(input_qs, self.user)))
+        self.assertQuerysetEqual(input_qs, embargo_filter(input_qs, self.user))
 
         self.user.is_anonymous = False
         self.user.is_ligo = False
-        self.assertQuerysetEqual(input_qs, map(repr, embargo_filter(input_qs, self.user)))
+        self.assertQuerysetEqual(input_qs, embargo_filter(input_qs, self.user))
 
         self.user.is_ligo = True
-        self.assertQuerysetEqual(input_qs, map(repr, embargo_filter(input_qs, self.user)))
+        self.assertQuerysetEqual(input_qs, embargo_filter(input_qs, self.user))
 
     @override_settings(EMBARGO_START_TIME=1.5)
     def test_with_embargo(self):
@@ -159,19 +159,19 @@ class TestEmbargoFilter(BilbyTestCase):
         self.user.is_anonymous = True
         self.user.is_ligo = False
         self.assertQuerysetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]), map(repr, embargo_filter(input_qs, self.user))
+            BilbyJob.objects.filter(pk__in=[1, 2, 3]), embargo_filter(input_qs, self.user)
         )
 
         self.user.is_ligo = True
         self.assertQuerysetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]), map(repr, embargo_filter(input_qs, self.user))
+            BilbyJob.objects.filter(pk__in=[1, 2, 3]), embargo_filter(input_qs, self.user)
         )
 
         self.user.is_anonymous = False
         self.user.is_ligo = False
         self.assertQuerysetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]), map(repr, embargo_filter(input_qs, self.user))
+            BilbyJob.objects.filter(pk__in=[1, 2, 3]), embargo_filter(input_qs, self.user)
         )
 
         self.user.is_ligo = True
-        self.assertQuerysetEqual(input_qs, map(repr, embargo_filter(input_qs, self.user)))
+        self.assertQuerysetEqual(input_qs, embargo_filter(input_qs, self.user))

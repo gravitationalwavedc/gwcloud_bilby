@@ -6,13 +6,14 @@ from bilbyui.models import AnonymousMetrics
 
 class AnonymousMetricsMiddleware(object):
     def resolve(self, next, root, info, **args):
+        # Get the tracking header and split it by space to get the persistent and session ids
+        header = info.context.headers.get("X-Correlation-Id", None)
+
         # If the tracking headers are not passed through, or the user is authenticated, then there is nothing more to
         # do. Also ignore any paths that aren't the top level (ie, nodes and fields)
-        if "X-Correlation-ID" not in info.context.headers or info.context.user.is_authenticated or len(info.path) > 1:
+        if header is None or info.context.user.is_authenticated or info.path.prev is not None:
             return next(root, info, **args)
 
-        # Get the tracking header and split it by space to get the persistent and session ids
-        header = info.context.headers["X-Correlation-ID"]
 
         # Check that a space exists in the header to separate the ids
         if " " not in header:
@@ -34,7 +35,7 @@ class AnonymousMetricsMiddleware(object):
         AnonymousMetrics.objects.create(
             public_id=ids[0],
             session_id=ids[1],
-            request=info.path[0],  # We only care about the top level object type being requested
+            request=info.path.key,  # We only care about the top level object type being requested
             params=json.dumps(args),
         )
 
