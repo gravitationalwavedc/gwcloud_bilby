@@ -1,4 +1,4 @@
-FROM python:3.10 as django
+FROM python:3.12 as django
 ENV PYTHONUNBUFFERED 1
 
 # Update the container and install the required packages

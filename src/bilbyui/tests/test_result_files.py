@@ -134,7 +134,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
         )
 
         self.assertEqual(response.data["generateFileDownloadIds"], None)
-        self.assertEqual(str(response.errors[0]), "At least one token was invalid or expired.")
+        self.assertEqual(str(response.errors[0].message), "At least one token was invalid or expired.")
 
 
 @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
@@ -261,7 +261,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
         )
 
         self.assertEqual(response.data["generateFileDownloadIds"], None)
-        self.assertEqual(str(response.errors[0]), "At least one token was invalid or expired.")
+        self.assertEqual(str(response.errors[0].message), "At least one token was invalid or expired.")
 
 
 class TestExternalJobResultFiles(BilbyTestCase):

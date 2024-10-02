@@ -150,7 +150,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
         self.assertEqual(str(metric.public_id), self.public_id)
         self.assertEqual(str(metric.session_id), self.session_id)
         self.assertEqual(metric.request, "publicBilbyJobs")
-        params = {"first": self.variables["count"], "time_range": self.variables["timeRange"]}
+        params = {"first": self.variables["count"], "time_range": self.variables["timeRange"], "search": None}
         self.assertDictEqual(json.loads(metric.params), params)
         self.assertTrue(now < metric.timestamp < then)
 

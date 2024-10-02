@@ -125,9 +125,10 @@ class TestBilbyJobModel(BilbyTestCase):
         update_bilby_job(self.job.id, user, False, ["Bad Run", "Review Requested"])
 
         self.job.refresh_from_db()
-        self.assertQuerysetEqual(
+
+        self.assertQuerySetEqual(
             self.job.labels.all(),
-            list(map(repr, Label.objects.filter(name__in=["Bad Run", "Review Requested"]))),
+            Label.objects.filter(name__in=["Bad Run", "Review Requested"]),
             ordered=False,
         )
 

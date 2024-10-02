@@ -146,7 +146,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "input": {
                     "supportingFiles": [
                         {
-                            "fileToken": token,
+                            "fileToken": str(token),
                             "supportingFile": SimpleUploadedFile(name="test.tar.gz", content=content.encode("utf-8")),
                         }
                         for token in tokens
@@ -155,7 +155,6 @@ class TestIniJobSubmission(BilbyTestCase):
             }
 
             response = self.client.execute(self.supporting_file_mutation, file_input)
-
             self.assertTrue(response.data["uploadSupportingFiles"]["result"]["result"])
 
         job.refresh_from_db()
