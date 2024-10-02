@@ -11,7 +11,7 @@ requests
 django4-jenkins
 black
 flake8
-coverage
+coverage<5
 munch
 pyopenssl
 bilby_pipe

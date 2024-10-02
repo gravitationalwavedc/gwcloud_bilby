@@ -55,7 +55,7 @@ corner==2.2.2
     #   bilby
     #   bilby-pipe
     #   pesummary
-coverage==7.6.1
+coverage==4.5.4
     # via -r requirements.in
 cryptography==43.0.1
     # via
