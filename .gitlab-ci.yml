@@ -16,7 +16,6 @@ django-tests:
     - cd src/
     - /usr/bin/python3.12 -m venv /src/venv
     - /src/venv/bin/pip3 install -r requirements.txt
-    - mkdir -p static
     - mkdir -p job_uploads/upload
     - /src/venv/bin/python3 development-manage.py jenkins --enable-coverage --coverage-rcfile=.coveragerc
 
