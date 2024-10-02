@@ -1,4 +1,4 @@
-django<5
+django
 graphene-django
 graphene-file-upload
 pip-tools
