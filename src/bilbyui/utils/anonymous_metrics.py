@@ -14,7 +14,6 @@ class AnonymousMetricsMiddleware(object):
         if header is None or info.context.user.is_authenticated or info.path.prev is not None:
             return next(root, info, **args)
 
-
         # Check that a space exists in the header to separate the ids
         if " " not in header:
             return next(root, info, **args)

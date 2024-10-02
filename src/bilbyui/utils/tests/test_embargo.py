@@ -158,20 +158,14 @@ class TestEmbargoFilter(BilbyTestCase):
         input_qs = BilbyJob.objects.all()
         self.user.is_anonymous = True
         self.user.is_ligo = False
-        self.assertQuerySetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]), embargo_filter(input_qs, self.user)
-        )
+        self.assertQuerySetEqual(BilbyJob.objects.filter(pk__in=[1, 2, 3]), embargo_filter(input_qs, self.user))
 
         self.user.is_ligo = True
-        self.assertQuerySetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]), embargo_filter(input_qs, self.user)
-        )
+        self.assertQuerySetEqual(BilbyJob.objects.filter(pk__in=[1, 2, 3]), embargo_filter(input_qs, self.user))
 
         self.user.is_anonymous = False
         self.user.is_ligo = False
-        self.assertQuerySetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]), embargo_filter(input_qs, self.user)
-        )
+        self.assertQuerySetEqual(BilbyJob.objects.filter(pk__in=[1, 2, 3]), embargo_filter(input_qs, self.user))
 
         self.user.is_ligo = True
         self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))
