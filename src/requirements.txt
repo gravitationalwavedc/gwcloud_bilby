@@ -78,7 +78,7 @@ django==5.1.1
     #   django-cors-headers
     #   django-filter
     #   django-graphql-jwt
-    #   django-jenkins
+    #   django4-jenkins
     #   graphene-django
 django-cors-headers==4.4.0
     # via -r requirements.in
@@ -86,7 +86,7 @@ django-filter==24.3
     # via -r requirements.in
 django-graphql-jwt==0.4.0
     # via -r requirements.in
-django-jenkins==0.110.0
+django4-jenkins==1.0.0
     # via -r requirements.in
 dqsegdb2==1.2.1
     # via gwpy

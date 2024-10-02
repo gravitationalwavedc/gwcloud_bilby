@@ -8,7 +8,7 @@ django-graphql-jwt
 python-jwt
 pyjwt
 requests
-django-jenkins
+django4-jenkins
 black
 flake8
 coverage
