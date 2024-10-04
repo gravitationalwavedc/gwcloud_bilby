@@ -165,12 +165,6 @@ class BilbyJobNode(DjangoObjectType):
             return {"name": "Unknown", "number": 0, "data": "Unknown"}
 
 
-class UserDetails(graphene.ObjectType):
-    username = graphene.String()
-
-    def resolve_username(parent, info):
-        return "Todo"
-
 
 class BilbyResultFile(graphene.ObjectType):
     path = graphene.String()
@@ -232,8 +226,6 @@ class Query(object):
     all_event_ids = graphene.List(EventIDType)
 
     bilby_result_files = graphene.Field(BilbyResultFiles, job_id=graphene.ID(required=True))
-
-    gwclouduser = graphene.Field(UserDetails)
 
     generate_bilby_job_upload_token = graphene.Field(GenerateBilbyJobUploadToken)
 
