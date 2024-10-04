@@ -165,7 +165,6 @@ class BilbyJobNode(DjangoObjectType):
             return {"name": "Unknown", "number": 0, "data": "Unknown"}
 
 
-
 class BilbyResultFile(graphene.ObjectType):
     path = graphene.String()
     is_dir = graphene.Boolean()
@@ -396,7 +395,7 @@ class Query(object):
         after_value = int((kwargs.get("after") or -1) + 1)
         # If it is zero (due to being passed as b64 with a value of zero)
         # This is different to if it is zero due to being None
-        if(kwargs.get("after") == 0):
+        if kwargs.get("after") == 0:
             after_value = 1
         real_result = [None] * after_value
         real_result.extend(result)
