@@ -523,7 +523,6 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         # Should return no results because the number of results returned from elastic search are now a different
         # length to those returned after the embargo filter is applied
         response = self.client.execute(self.public_bilby_job_query, variables)
-
         self.assertDictEqual(
             response.data, {"publicBilbyJobs": {"edges": []}}, "publicBilbyJobs query returned unexpected data."
         )

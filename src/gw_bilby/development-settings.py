@@ -22,5 +22,5 @@ ELASTIC_SEARCH_HOST = "http://localhost:9200"
 
 try:
     from .local import *
-except Exception as e:
-    print(f"Unable to load local.py settings because {e}")
+except ImportError:
+    pass
