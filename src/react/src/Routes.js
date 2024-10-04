@@ -17,9 +17,6 @@ function getRoutes() {
                 Component={PublicJobs}
                 query={graphql`
                     query Routes_HomePage_Query($count: Int!, $cursor: String, $search: String, $timeRange: String) {
-                        gwclouduser {
-                            username
-                        }
                         ...PublicJobs_data
                     }
                 `}

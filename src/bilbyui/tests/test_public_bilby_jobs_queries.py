@@ -410,7 +410,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_embargo(self, request_job_filter, elasticsearch_search):
-        variables = {"count": 50, "search": None, "timeRange": "all"}
+        variables = {"count": 50, "search": None, "timeRange": "all", "after": None}
 
         # Should return expected results
         response = self.client.execute(self.public_bilby_job_query, variables)
