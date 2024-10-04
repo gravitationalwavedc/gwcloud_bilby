@@ -258,8 +258,13 @@ class Query(object):
 
     def resolve_public_bilby_jobs(self, info, **kwargs):
         # Parse the cursor if it was provided and set the first offset to be used by the database search
-        if "after" in kwargs:
-            kwargs["after"] = int(from_global_id(kwargs["after"])[1]) if kwargs["after"] is not None else 0
+        # Sometimes the relay resolver fills out all kwarg parameters, but sometimes
+        # it doesn't, most likely becuase it hates happiness and all that is good
+        # This ensures that "after" is either an int (from a b64 string) or None
+        if kwargs.get("after", None) is None:
+            kwargs["after"] = None
+        else:
+            kwargs["after"] = int(from_global_id(kwargs["after"])[1])
 
         es = elasticsearch.Elasticsearch(
             hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY, verify_certs=False
@@ -300,7 +305,7 @@ class Query(object):
             index=settings.ELASTIC_SEARCH_INDEX,
             q=q,
             size=kwargs["first"] + 1,
-            from_=kwargs.get("after", 0),
+            from_=kwargs.get("after") or 0,
             sort="job.lastUpdatedTime:desc",
         )
 
@@ -396,7 +401,11 @@ class Query(object):
         # Furthermore, arrayconnections with offset 0 or 1 are functionally the same, this is why we add a +1 to the
         # value from after if it is provided, otherwise we use 0 (-1 + 1) if no after value is provided.
 
-        after_value = int(kwargs.get("after", -1) + 1)
+        after_value = int((kwargs.get("after") or -1) + 1)
+        # If it is zero (due to being passed as b64 with a value of zero)
+        # This is different to if it is zero due to being None
+        if(kwargs.get("after") == 0):
+            after_value = 1
         real_result = [None] * after_value
         real_result.extend(result)
 
