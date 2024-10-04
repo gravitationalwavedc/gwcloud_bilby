@@ -273,7 +273,7 @@ class BilbyJob(models.Model):
 
     def save(self, *args, **kwargs):
         # There must be an ini string
-        assert self.ini_string
+        assert self.ini_string, f"Job {self.id} - {self.name} is missing ini string"
 
         super().save(*args, **kwargs)
 
