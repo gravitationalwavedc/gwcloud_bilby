@@ -173,8 +173,6 @@ class BilbyResultFile(graphene.ObjectType):
 
 
 class BilbyResultFiles(graphene.ObjectType):
-    class Meta:
-        interfaces = (relay.Node,)
 
     class Input:
         job_id = graphene.ID()
