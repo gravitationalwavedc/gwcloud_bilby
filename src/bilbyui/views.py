@@ -30,7 +30,7 @@ def validate_job_name(name):
     if len(name) > 255:
         raise Exception("Job name must be less than 255 characters long.")
 
-    pattern = re.compile(r"^[0-9a-z_-]+\Z", flags=re.IGNORECASE | re.ASCII)
+    pattern = re.compile(r"^[0-9a-z:_-]+\Z", flags=re.IGNORECASE | re.ASCII)
     if not pattern.match(name):
         raise Exception("Job name must not contain any spaces or special characters.")
 
@@ -618,6 +618,9 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
         ini_string=ini_string,
         job_type=BilbyJobType.EXTERNAL,
     )
+
+    if user.user_id == settings.GWOSC_INGEST_USER:
+        bilby_job.labels.set([Label.objects.get(name="Official")])
 
     # Create the relevant External Bilby Job record as well
     ExternalBilbyJob.objects.create(job=bilby_job, url=result_url)
