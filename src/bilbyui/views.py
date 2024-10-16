@@ -27,8 +27,8 @@ def validate_job_name(name):
     if len(name) < 5:
         raise Exception("Job name must be at least 5 characters long.")
 
-    if len(name) > 30:
-        raise Exception("Job name must be less than 30 characters long.")
+    if len(name) > 255:
+        raise Exception("Job name must be less than 255 characters long.")
 
     pattern = re.compile(r"^[0-9a-z_-]+\Z", flags=re.IGNORECASE | re.ASCII)
     if not pattern.match(name):

@@ -58,6 +58,7 @@ def generate_parameter_output(job):
     args = bilby_ini_string_to_args(job.ini_string.encode("utf-8"))
     args.idx = None
     args.ini = None
+    args.conda_env = None
 
     # Sanitize the output directory
     if args.outdir == ".":
