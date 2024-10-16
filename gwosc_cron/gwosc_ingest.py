@@ -1,6 +1,7 @@
 from gwcloud_python import GWCloud
 import h5py
 import requests
+from tempfile import NamedTemporaryFile
 
 EVENTNAME_SEPERATOR = "--"
 
@@ -33,7 +34,7 @@ if len(not_found) == 0:
     exit()
 
 event_name = not_found[0]
-print(all_events[event_name]["jsonurl"])
+print(f"{event_name}: {all_events[event_name]["jsonurl"]}")
 r = requests.get(all_events[event_name]["jsonurl"])
 event_json = r.json()
 parameters = event_json["events"][event_name]['parameters']
@@ -45,36 +46,34 @@ if not found:
 h5url = found["data_url"]
 local_file_path = f"/tmp/{event_name}.h5"
 print("Saving h5 file")
-with requests.get(h5url, stream=True) as r:
-    r.raise_for_status()
-    with open(local_file_path, 'wb') as f:
+
+with NamedTemporaryFile(mode="rb+") as f:
+    with requests.get(h5url, stream=True) as r:
+        r.raise_for_status()
         for chunk in r.iter_content(chunk_size=8192):
             f.write(chunk)
-print("Saved")
+    print("Saved")
 
-# local_file_path = "/home/owen/code/adacs/gwcloud/gwcloud_bilby/gwosc_cron/GW230529_181500-v1.h5"
+    # Load the h5 file, and read in the bilby ini file(s)
+    with h5py.File(f) as h5:
+        for toplevel_key in h5.keys():
+            if 'config_file' in h5[toplevel_key] and 'config' in h5[toplevel_key]['config_file']:
+                print(f"config_file found: {toplevel_key}")
+                config = h5[toplevel_key]['config_file']['config']
+                ini_lines = []
+                for k in config.keys():
+                    ini_lines.append(f"{k}={config[k][0].decode('utf-8')}")
+                ini_str = "\n".join(ini_lines)
+                try:
+                    job = gwc.upload_external_job(f"{event_name}{EVENTNAME_SEPERATOR}{toplevel_key}", toplevel_key, False, ini_str, h5url)
+                    print(f"BilbyJob {job.id} created 😊")
+                except Exception as e:
+                    print("Failed to create BilbyJob 😠")
+                    print(e)
+                    pass
+            else:
+                print(f"config_file not found: {toplevel_key}")
 
-# Load the h5 file, and read in the bilby ini file(s)
-with h5py.File(local_file_path) as h5:
-    for toplevel_key in h5.keys():
-        if 'config_file' in h5[toplevel_key] and 'config' in h5[toplevel_key]['config_file']:
-            print(f"config_file found: {toplevel_key}")
-            config = h5[toplevel_key]['config_file']['config']
-            ini_lines = []
-            for k in config.keys():
-                ini_lines.append(f"{k}={config[k][0].decode('utf-8')}")
-            ini_str = "\n".join(ini_lines)
-            try:
-                job = gwc.upload_external_job(f"{event_name}{EVENTNAME_SEPERATOR}{toplevel_key}", toplevel_key, False, ini_str, h5url)
-                print(f"BilbyJob {job.id} created 😊")
-            except Exception as e:
-                print("Failed to create BilbyJob 😠")
-                print(e)
-                pass
-        else:
-            print(f"config_file not found: {toplevel_key}")
+print("Deleted temp h5")
 
 
-
-# delete h5 file
-# although do we need to do this if we're rerunning the image each time
