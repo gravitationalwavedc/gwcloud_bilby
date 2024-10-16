@@ -1,15 +1,17 @@
 from gwcloud_python import GWCloud
 import h5py
 import requests
+from traceback import print_exception
 from tempfile import NamedTemporaryFile
+
+from local import *
 
 EVENTNAME_SEPERATOR = "--"
 
-# this is the localhost:8000 token
-# note that you may need to manually modify the APIToken 'app' value 
+# note that you may need to manually modify the APIToken 'app' value if running locally
 # since when you create a token it has the 'app' set to gwcloud but we're 
 # accessing it through localhost:8000 which confuses the project detection regex
-gwc = GWCloud(gwcloud_token, auth_endpoint="http://localhost:8000/graphql", endpoint="http://localhost:8001/graphql")
+gwc = GWCloud(GWCLOUD_TOKEN, auth_endpoint=AUTH_ENDPOINT, endpoint=ENDPOINT)
 
 GWOSC_BASE_URL = "https://gwosc.org/"
 
@@ -69,8 +71,7 @@ with NamedTemporaryFile(mode="rb+") as f:
                     print(f"BilbyJob {job.id} created 😊")
                 except Exception as e:
                     print("Failed to create BilbyJob 😠")
-                    print(e)
-                    pass
+                    print_exception(e)
             else:
                 print(f"config_file not found: {toplevel_key}")
 
