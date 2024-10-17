@@ -1,10 +1,17 @@
 from gwcloud_python import GWCloud
+import os
 import h5py
 import requests
 from traceback import print_exception
 from tempfile import NamedTemporaryFile
 
-from local import *
+try:
+    from local import *
+except ImportError:
+    print("No local.py file found, loading settings from env")
+    GWCLOUD_TOKEN = os.getenv("GWCLOUD_TOKEN")
+    AUTH_ENDPOINT = os.getenv("AUTH_ENDPOINT")
+    ENDPOINT = os.getenv("ENDPOINT")
 
 EVENTNAME_SEPERATOR = "--"
 
@@ -48,17 +55,18 @@ if len(found) != 1:
     exit()
 h5url = found[0]["data_url"]
 local_file_path = f"/tmp/{event_name}.h5"
-print("Saving h5 file")
+print("Downloading h5 file")
 
 with NamedTemporaryFile(mode="rb+") as f:
     with requests.get(h5url, stream=True) as r:
         r.raise_for_status()
         for chunk in r.iter_content(chunk_size=8192):
             f.write(chunk)
-    print("Saved")
+    print("Download complete")
 
     # Load the h5 file, and read in the bilby ini file(s)
     with h5py.File(f) as h5:
+        print(f"Found keys: {list(h5.keys())}")
         for toplevel_key in h5.keys():
             if 'config_file' in h5[toplevel_key] and 'config' in h5[toplevel_key]['config_file']:
                 print(f"config_file found: {toplevel_key}")
@@ -76,4 +84,4 @@ with NamedTemporaryFile(mode="rb+") as f:
             else:
                 print(f"config_file not found: {toplevel_key}")
 
-print("Deleted temp h5")
+print("Deleted temp h5 file")
