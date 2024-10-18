@@ -7,6 +7,7 @@ import requests
 from traceback import print_exception
 from tempfile import NamedTemporaryFile
 
+
 print(f"==== gwosc_ingest cronjob {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} ====")
 try:
     from local import *
@@ -19,6 +20,13 @@ except ImportError:
 EVENTNAME_SEPERATOR = "--"
 
 GWOSC_BASE_URL = "https://gwosc.org/"
+
+con = sqlite3.connect(DB_PATH)
+con.row_factory = sqlite3.Row
+cur = con.cursor()
+def save_sqlite_job(job_id, success):
+    cur.execute("INSERT INTO completed_jobs (job_id, success) VALUES (?, ?)", (job_id, success))
+    con.commit()
 
 # note that you may need to manually modify the APIToken 'app' value if running locally
 # since when you create a token it has the 'app' set to gwcloud but we're 
@@ -38,11 +46,8 @@ full_gwcloud_events = [n.name for n in gwc.get_official_job_list()]
 gwcloud_events = list(set([n.split(EVENTNAME_SEPERATOR)[0] for n in full_gwcloud_events if len(n.split(EVENTNAME_SEPERATOR))>1]))
 print(f"GWCloud events found: {len(gwcloud_events)}")
 
-# collect list of events from sqlite db
-con = sqlite3.connect(DB_PATH)
-con.row_factory = sqlite3.Row
-cur = con.cursor()
 
+# collect list of events from sqlite db
 cur.execute("CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
 sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
 sqlite_events = [j["job_id"] for j in sqlite_rows.fetchall()]
@@ -66,20 +71,28 @@ parameters = event_json["events"][event_name]['parameters']
 found = [v for v in parameters.values() if v['is_preferred']]
 if len(found) != 1:
     print(f"Unable to find preferred job for {event_name} 😠")
-    cur.execute("INSERT INTO completed_jobs (job_id, success) VALUES (?, ?)", (event_name, False))
-    con.commit()
+    save_sqlite_job(event_name, False)
     # print("This will continue to fail forever until a fix is implemented to skip this bad job")
     exit()
 h5url = found[0]["data_url"]
-local_file_path = f"/tmp/{event_name}.h5"
+if h5url == "":
+    print(f"Preferred job for {event_name} does not contain a dataurl 😠")
+    save_sqlite_job(event_name, False)
+    exit()
 print("Downloading h5 file")
 
 all_succeeded = True
 with NamedTemporaryFile(mode="rb+") as f:
-    with requests.get(h5url, stream=True) as r:
-        r.raise_for_status()
-        for chunk in r.iter_content(chunk_size=8192):
-            f.write(chunk)
+    try:
+        with requests.get(h5url, stream=True) as r:
+            r.raise_for_status()
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+    except Exception:
+        print(f"Downloading {h5url} failed 😠")
+        save_sqlite_job(event_name, False)
+        raise
+
     print("Download complete")
 
     # Load the h5 file, and read in the bilby ini file(s)
@@ -99,10 +112,10 @@ with NamedTemporaryFile(mode="rb+") as f:
                 except Exception as e:
                     all_succeeded = False
                     print("Failed to create BilbyJob 😠")
+                    # we don't just raise here as we want to potentially upload other jobs
                     print_exception(e)
             else:
                 print(f"config_file not found: {toplevel_key}")
 
-cur.execute("INSERT INTO completed_jobs (job_id, success) VALUES (?, ?)", (event_name, all_succeeded))
-con.commit()
+save_sqlite_job(event_name, all_succeeded)
 print("Deleted temp h5 file")
