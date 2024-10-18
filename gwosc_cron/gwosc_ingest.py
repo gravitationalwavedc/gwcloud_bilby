@@ -1,5 +1,6 @@
 from gwcloud_python import GWCloud
 import os
+import re
 import sqlite3
 from datetime import datetime
 import h5py
@@ -46,6 +47,9 @@ full_gwcloud_events = [n.name for n in gwc.get_official_job_list()]
 gwcloud_events = list(set([n.split(EVENTNAME_SEPERATOR)[0] for n in full_gwcloud_events if len(n.split(EVENTNAME_SEPERATOR))>1]))
 print(f"GWCloud events found: {len(gwcloud_events)}")
 
+# fetch event_ids from gwcloud and turn them into a dict
+full_gwcloud_event_ids = gwc.get_all_event_ids()
+gwcloud_event_ids = {z.event_id:z for z in full_gwcloud_event_ids}
 
 # collect list of events from sqlite db
 cur.execute("CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
@@ -68,6 +72,9 @@ print(f"{event_name}: {all_events[event_name]["jsonurl"]}")
 r = requests.get(all_events[event_name]["jsonurl"])
 event_json = r.json()
 parameters = event_json["events"][event_name]['parameters']
+common_name = event_json["events"][event_name]['commonName']
+gps = event_json["events"][event_name]["GPS"]
+gracedb_id = event_json["events"][event_name]["gracedb_id"]
 found = [v for v in parameters.values() if v['is_preferred']]
 if len(found) != 1:
     print(f"Unable to find preferred job for {event_name} 😠")
@@ -79,9 +86,23 @@ if h5url == "":
     print(f"Preferred job for {event_name} does not contain a dataurl 😠")
     save_sqlite_job(event_name, False)
     exit()
-print("Downloading h5 file")
 
+# See if there is already an event_id for this event
+event_id = None
+if re.match(r'^GW\d{6}_\d{6}$', common_name):
+    event_id = gwcloud_event_ids.get(common_name, None)
+    if event_id is None:
+        # we need to create one
+        event_id = gwc.create_event_id(common_name, gps, gracedb_id)
+        print(f"Created a new event_id: {common_name}")
+    else:
+        print(f"event_id already found: {common_name}")
+else:
+    print(f"{common_name} is not a valid event_id, uploading job without one")
+
+print("Downloading h5 file")
 all_succeeded = True
+none_succeeded = True
 with NamedTemporaryFile(mode="rb+") as f:
     try:
         with requests.get(h5url, stream=True) as r:
@@ -109,6 +130,12 @@ with NamedTemporaryFile(mode="rb+") as f:
                 try:
                     job = gwc.upload_external_job(f"{event_name}{EVENTNAME_SEPERATOR}{toplevel_key}", toplevel_key, False, ini_str, h5url)
                     print(f"BilbyJob {job.id} created 😊")
+                    if event_id is not None:
+                        job.set_event_id(event_id)
+                        print(f" and set event_id to {event_id.event_id}")
+                    else:
+                        print(" and has no event_id")
+                    none_succeeded = False
                 except Exception as e:
                     all_succeeded = False
                     print("Failed to create BilbyJob 😠")
@@ -117,5 +144,5 @@ with NamedTemporaryFile(mode="rb+") as f:
             else:
                 print(f"config_file not found: {toplevel_key}")
 
-save_sqlite_job(event_name, all_succeeded)
+save_sqlite_job(event_name, all_succeeded and not none_succeeded)
 print("Deleted temp h5 file")
