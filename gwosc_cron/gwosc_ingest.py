@@ -1,10 +1,13 @@
 from gwcloud_python import GWCloud
 import os
+import sqlite3
+from datetime import datetime
 import h5py
 import requests
 from traceback import print_exception
 from tempfile import NamedTemporaryFile
 
+print(f"==== gwosc_ingest cronjob {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} ====")
 try:
     from local import *
 except ImportError:
@@ -35,8 +38,20 @@ full_gwcloud_events = [n.name for n in gwc.get_official_job_list()]
 gwcloud_events = list(set([n.split(EVENTNAME_SEPERATOR)[0] for n in full_gwcloud_events if len(n.split(EVENTNAME_SEPERATOR))>1]))
 print(f"GWCloud events found: {len(gwcloud_events)}")
 
+# collect list of events from sqlite db
+con = sqlite3.connect(DB_PATH)
+con.row_factory = sqlite3.Row
+cur = con.cursor()
+
+cur.execute("CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+sqlite_events = [j["job_id"] for j in sqlite_rows.fetchall()]
+
+print(f"sqlite events found: {len(sqlite_events)}")
+print(f"Potential bad runs found: {len(sqlite_events) - len(gwcloud_events)}")
+
 # Find non-matching dataset names
-not_found = [j for j in gwosc_events if j not in gwcloud_events]
+not_found = [j for j in gwosc_events if j not in sqlite_events]
 print(f"Not matching events: {len(not_found)}")
 
 if len(not_found) == 0:
@@ -51,12 +66,15 @@ parameters = event_json["events"][event_name]['parameters']
 found = [v for v in parameters.values() if v['is_preferred']]
 if len(found) != 1:
     print(f"Unable to find preferred job for {event_name} 😠")
-    print("This will continue to fail forever until a fix is implemented to skip this bad job")
+    cur.execute("INSERT INTO completed_jobs (job_id, success) VALUES (?, ?)", (event_name, False))
+    con.commit()
+    # print("This will continue to fail forever until a fix is implemented to skip this bad job")
     exit()
 h5url = found[0]["data_url"]
 local_file_path = f"/tmp/{event_name}.h5"
 print("Downloading h5 file")
 
+all_succeeded = True
 with NamedTemporaryFile(mode="rb+") as f:
     with requests.get(h5url, stream=True) as r:
         r.raise_for_status()
@@ -79,9 +97,12 @@ with NamedTemporaryFile(mode="rb+") as f:
                     job = gwc.upload_external_job(f"{event_name}{EVENTNAME_SEPERATOR}{toplevel_key}", toplevel_key, False, ini_str, h5url)
                     print(f"BilbyJob {job.id} created 😊")
                 except Exception as e:
+                    all_succeeded = False
                     print("Failed to create BilbyJob 😠")
                     print_exception(e)
             else:
                 print(f"config_file not found: {toplevel_key}")
 
+cur.execute("INSERT INTO completed_jobs (job_id, success) VALUES (?, ?)", (event_name, all_succeeded))
+con.commit()
 print("Deleted temp h5 file")
