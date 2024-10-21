@@ -2,4 +2,5 @@ gwosc
 gwcloud-python
 pip-tools
 requests
+responses
 h5py
