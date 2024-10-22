@@ -49,7 +49,7 @@ class TestGWOSCCron(unittest.TestCase):
         })
 
         # make the file available for download
-        with open("text_fixtures/good.h5", 'rb') as f:
+        with open("test_fixtures/good.h5", 'rb') as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
@@ -99,7 +99,7 @@ class TestGWOSCCron(unittest.TestCase):
         })
 
         # make the file available for download
-        with open("text_fixtures/no_configs.h5", 'rb') as f:
+        with open("test_fixtures/no_configs.h5", 'rb') as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
@@ -153,7 +153,7 @@ class TestGWOSCCron(unittest.TestCase):
         })
 
         # make the file available for download
-        with open("text_fixtures/no_configs.h5", 'rb') as f:
+        with open("test_fixtures/no_configs.h5", 'rb') as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
@@ -211,7 +211,7 @@ class TestGWOSCCron(unittest.TestCase):
         })
 
         # make the file available for download
-        with open("text_fixtures/no_configs.h5", 'rb') as f:
+        with open("test_fixtures/no_configs.h5", 'rb') as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
@@ -387,7 +387,7 @@ class TestGWOSCCron(unittest.TestCase):
         })
 
         # make the file available for download
-        with open("text_fixtures/good.h5", 'rb') as f:
+        with open("test_fixtures/good.h5", 'rb') as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001_123456.h5", h5data)
 
@@ -440,7 +440,7 @@ class TestGWOSCCron(unittest.TestCase):
         gwc.return_value.get_all_event_ids.return_value = [specific_event_id]
 
         # make the file available for download
-        with open("text_fixtures/good.h5", 'rb') as f:
+        with open("test_fixtures/good.h5", 'rb') as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001_123456.h5", h5data)
 
@@ -488,7 +488,7 @@ class TestGWOSCCron(unittest.TestCase):
         })
 
         # make the file available for download
-        with open("text_fixtures/good.h5", 'rb') as f:
+        with open("test_fixtures/good.h5", 'rb') as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
@@ -542,7 +542,7 @@ class TestGWOSCCron(unittest.TestCase):
         })
 
         # make the file available for download
-        with open("text_fixtures/multiple_configs.h5", 'rb') as f:
+        with open("test_fixtures/multiple_configs.h5", 'rb') as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
@@ -595,7 +595,7 @@ class TestGWOSCCron(unittest.TestCase):
         })
 
         # make the file available for download
-        with open("text_fixtures/multiple_configs.h5", 'rb') as f:
+        with open("test_fixtures/multiple_configs.h5", 'rb') as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
@@ -650,7 +650,7 @@ class TestGWOSCCron(unittest.TestCase):
         })
 
         # make the file available for download
-        with open("text_fixtures/good.h5", 'rb') as f:
+        with open("test_fixtures/good.h5", 'rb') as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
