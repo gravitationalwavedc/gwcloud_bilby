@@ -1,10 +1,11 @@
 from io import StringIO
 from requests.exceptions import HTTPError
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, call
 import responses
 import sqlite3
 from collections import namedtuple
+from gwdc_python.exceptions import GWDCUnknownException
 
 import gwosc_ingest
 
@@ -16,10 +17,10 @@ gwosc_ingest.ENDPOINT="https://bilby/graphql"
 
 @unittest.mock.patch("gwosc_ingest.GWCloud", autospec=True)
 class TestGWOSCCron(unittest.TestCase):
-    def setUp(self) -> None:
+    def setUp(self):
+        # reject modernity, return to monkeypatch sqlite3.connect
         self.con = sqlite3.connect(":memory:")
         gwosc_ingest.sqlite3.connect = lambda x: self.con
-        pass
 
     @responses.activate
     def test_normal(self, gwc):
@@ -460,32 +461,228 @@ class TestGWOSCCron(unittest.TestCase):
             specific_event_id
         )
 
+    @responses.activate
     def test_dont_duplicate_jobs(self, gwc):
         """If a file already has a matching bilbyJob, deal with it"""
-        pass
+        responses.add(responses.GET, "https://gwosc.org/eventapi/json/allevents", json={
+            "events": {
+                "GW000001": {
+                    "jsonurl": "https://test.org/GW000001.json"
+                }
+            }
+        })
+        responses.add(responses.GET, "https://test.org/GW000001.json", json={
+            "events": {
+                "GW000001": {
+                    "commonName": "GW000001",
+                    "GPS": 1729400000,
+                    "gracedb_id": "S123456z",
+                    "parameters": {
+                        "AAAAA": {
+                            "is_preferred": True,
+                            "data_url": "https://test.org/GW000001.h5",
+                        }
+                    }
+                }
+            }
+        })
 
+        # make the file available for download
+        with open("text_fixtures/good.h5", 'rb') as f:
+            h5data = f.read()
+        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+
+        # Pretend that the job has already been created
+        gwc.return_value.upload_external_job.side_effect = GWDCUnknownException("Duplicate job")
+
+        stdout = StringIO()
+        # Do the thing, Zhu Li
+        with patch('sys.stdout', new = stdout):
+            gwosc_ingest.check_and_download()
+
+        # has the job completed?
+        gwc.return_value.upload_external_job.assert_called_once_with('GW000001--IMRPhenom', 'IMRPhenom', False, 'VALID=good', 'https://test.org/GW000001.h5')
+
+        # Has it made a record of this job in sqlite?
+        cur = self.con.cursor()
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+        sqlite_rows = sqlite_rows.fetchall()
+
+        self.assertEqual(len(sqlite_rows), 1)
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        # not, it should have failed
+        self.assertEqual(sqlite_rows[0]["success"], 0)
+
+        self.assertIn("Failed to create BilbyJob", stdout.getvalue())
+
+    @responses.activate
     def test_multiple_bilbyjobs(self, gwc):
         """If a h5 file contains multiple config_files, create multiple bilbyJobs"""
-        pass
+        responses.add(responses.GET, "https://gwosc.org/eventapi/json/allevents", json={
+            "events": {
+                "GW000001": {
+                    "jsonurl": "https://test.org/GW000001.json"
+                }
+            }
+        })
+        responses.add(responses.GET, "https://test.org/GW000001.json", json={
+            "events": {
+                "GW000001": {
+                    "commonName": "GW000001",
+                    "GPS": 1729400000,
+                    "gracedb_id": "S123456z",
+                    "parameters": {
+                        "AAAAA": {
+                            "is_preferred": True,
+                            "data_url": "https://test.org/GW000001.h5",
+                        }
+                    }
+                }
+            }
+        })
 
+        # make the file available for download
+        with open("text_fixtures/multiple_configs.h5", 'rb') as f:
+            h5data = f.read()
+        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+
+
+        stdout = StringIO()
+        # Do the thing, Zhu Li
+        with patch('sys.stdout', new = stdout):
+            gwosc_ingest.check_and_download()
+
+        # has the job completed?
+        calls = [
+            call('GW000001--IMRPhenom', 'IMRPhenom', False, 'VALID=good', 'https://test.org/GW000001.h5'),
+            call('GW000001--IMRPhenom2ElectricBoogaloo', 'IMRPhenom2ElectricBoogaloo', False, 'VALID=good', 'https://test.org/GW000001.h5')
+        ]
+        gwc.return_value.upload_external_job.assert_has_calls(calls, any_order=True)
+
+        # Has it made a record of this job in sqlite?
+        cur = self.con.cursor()
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+        sqlite_rows = sqlite_rows.fetchall()
+
+        self.assertEqual(len(sqlite_rows), 1)
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["success"], 1)
+
+    @responses.activate
     def test_skip_if_present(self, gwc):
         """If a job is already in sqlite, skip it"""
-        pass
+        responses.add(responses.GET, "https://gwosc.org/eventapi/json/allevents", json={
+            "events": {
+                "GW000001": {
+                    "jsonurl": "https://test.org/GW000001.json"
+                }
+            }
+        })
+        responses.add(responses.GET, "https://test.org/GW000001.json", json={
+            "events": {
+                "GW000001": {
+                    "commonName": "GW000001",
+                    "GPS": 1729400000,
+                    "gracedb_id": "S123456z",
+                    "parameters": {
+                        "AAAAA": {
+                            "is_preferred": True,
+                            "data_url": "https://test.org/GW000001.h5",
+                        }
+                    }
+                }
+            }
+        })
 
+        # make the file available for download
+        with open("text_fixtures/multiple_configs.h5", 'rb') as f:
+            h5data = f.read()
+        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+
+
+        # Add the 'job history' to sqlite
+        self.con.row_factory = sqlite3.Row
+        cur = self.con.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        cur.execute("INSERT INTO completed_jobs (job_id, success) VALUES (?, ?)", ("GW000001", True))
+
+        stdout = StringIO()
+        # Do the thing, Zhu Li
+        with self.assertRaises(SystemExit):
+            with patch('sys.stdout', new = stdout):
+                gwosc_ingest.check_and_download()
+
+        # Has it made a record of this job in sqlite?
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+        sqlite_rows = sqlite_rows.fetchall()
+
+        self.assertEqual(len(sqlite_rows), 1)
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["success"], 1)
+
+        # Did it tell us why it did nothing?
+        self.assertIn("Nothing to do", stdout.getvalue())
+
+    @responses.activate
     def test_no_dataurl(self, gwc):
         """If a preferred job doesn't contain a dataurl, skip it"""
+        responses.add(responses.GET, "https://gwosc.org/eventapi/json/allevents", json={
+            "events": {
+                "GW000001": {
+                    "jsonurl": "https://test.org/GW000001.json"
+                }
+            }
+        })
+        responses.add(responses.GET, "https://test.org/GW000001.json", json={
+            "events": {
+                "GW000001": {
+                    "commonName": "GW000001",
+                    "GPS": 1729400000,
+                    "gracedb_id": "S123456z",
+                    "parameters": {
+                        "AAAAA": {
+                            "is_preferred": True,
+                            "data_url": "",
+                        }
+                    }
+                }
+            }
+        })
+
+        # make the file available for download
+        with open("text_fixtures/good.h5", 'rb') as f:
+            h5data = f.read()
+        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+
+
+        stdout = StringIO()
+        # Do the thing, Zhu Li
+        with self.assertRaises(SystemExit):
+            with patch('sys.stdout', new = stdout):
+                gwosc_ingest.check_and_download()
+
+        # has the job completed?
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        # Has it made a record of this job in sqlite?
+        cur = self.con.cursor()
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+        sqlite_rows = sqlite_rows.fetchall()
+
+        self.assertEqual(len(sqlite_rows), 1)
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["success"], 0)
+
+        # Did it tell us why it failed?
+        self.assertIn("does not contain a dataurl", stdout.getvalue())
+
+
+
+    def test_bad_ini(self, gwc):
+        """If an ini file is invalid, skip it"""
+        # If an ini file is bad, an exception is returned by GWCloud when submitting the job.
+        # Thus, this test is identical to TestGWOSCCron.test_dont_duplicate_jobs
         pass
 
+
     # need to test that the bilby server adds the official tag when a job is submitted by the GWOSC_INGEST_USER
-        
-
-# What do we need to test
-# - Can download a file and store it in the database
-# - Can download a file and _not_ store it in the database (but save a failed job in sqlite)
-# - What if the downloaded file is unavailable?
-# - Creates a event_id if none is found
-# - Doesn't create an event_id if one is already present
-# - Doesn't create a BilbyJob if one is already present
-# - Creates multiple bilbyJobs if the h5 file has multiple potential bilbyJobs
-# - Skips a job if one is already present in sqlite
-

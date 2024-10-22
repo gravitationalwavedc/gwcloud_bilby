@@ -86,8 +86,8 @@ def check_and_download():
         save_sqlite_job(event_name, False)
         # print("This will continue to fail forever until a fix is implemented to skip this bad job")
         exit()
-    h5url = found[0]["data_url"]
-    if h5url == "":
+    h5url = found[0].get("data_url")
+    if h5url == "" or h5url is None:
         print(f"Preferred job for {event_name} does not contain a dataurl 😠")
         save_sqlite_job(event_name, False)
         exit()
