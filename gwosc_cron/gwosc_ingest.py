@@ -23,6 +23,7 @@ def check_and_download():
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
+    cur.execute("CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
 
     def save_sqlite_job(job_id, success):
         cur.execute("INSERT INTO completed_jobs (job_id, success) VALUES (?, ?)", (job_id, success))
@@ -36,6 +37,9 @@ def check_and_download():
 
 # Collect list of events from GWOSC
     r = requests.get("https://gwosc.org/eventapi/json/allevents")
+    if r.status_code != 200:
+        print(f"Unable to fetch allevents json (status: {r.status_code})")
+        exit()
     all_events = r.json()["events"]
     gwosc_events = list(all_events.keys())
     print(f"GWOSC events found: {len(gwosc_events)}")
@@ -51,7 +55,6 @@ def check_and_download():
     gwcloud_event_ids = {z.event_id:z for z in full_gwcloud_event_ids}
 
 # collect list of events from sqlite db
-    cur.execute("CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
     sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
     sqlite_events = [j["job_id"] for j in sqlite_rows.fetchall()]
 
@@ -69,6 +72,9 @@ def check_and_download():
     event_name = not_found[0]
     print(f"{event_name}: {all_events[event_name]["jsonurl"]}")
     r = requests.get(all_events[event_name]["jsonurl"])
+    if r.status_code != 200:
+        print(f"Unable to fetch event json (status: {r.status_code}, event: {event_name}, url: {all_events[event_name]["jsonurl"]})")
+        exit()
     event_json = r.json()
     parameters = event_json["events"][event_name]['parameters']
     common_name = event_json["events"][event_name]['commonName']
@@ -110,7 +116,6 @@ def check_and_download():
                     f.write(chunk)
         except Exception:
             print(f"Downloading {h5url} failed 😠")
-            save_sqlite_job(event_name, False)
             raise
 
         print("Download complete")
