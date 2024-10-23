@@ -22,6 +22,13 @@ class TestGWOSCCron(unittest.TestCase):
         self.con = sqlite3.connect(":memory:")
         gwosc_ingest.sqlite3.connect = lambda x: self.con
 
+    def tearDown(self):
+        # This shouldn't be needed, but yet it is
+        # Because for some reason, the setUp shares the connection object
+        # despite the fact that it should be reating a new one
+        cur = self.con.cursor()
+        cur.execute("DROP TABLE IF EXISTS 'completed_jobs'")
+
     @responses.activate
     def test_normal(self, gwc):
         """Assuming a normal h5 file with 1 config, does it save it to bilby correctly"""
@@ -496,9 +503,11 @@ class TestGWOSCCron(unittest.TestCase):
         gwc.return_value.upload_external_job.side_effect = GWDCUnknownException("Duplicate job")
 
         stdout = StringIO()
+        stderr = StringIO()
         # Do the thing, Zhu Li
         with patch('sys.stdout', new = stdout):
-            gwosc_ingest.check_and_download()
+            with patch('sys.stderr', new = stderr):
+                gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with('GW000001--IMRPhenom', 'IMRPhenom', False, 'VALID=good', 'https://test.org/GW000001.h5')
