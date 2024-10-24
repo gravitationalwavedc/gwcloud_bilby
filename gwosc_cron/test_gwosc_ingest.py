@@ -693,5 +693,56 @@ class TestGWOSCCron(unittest.TestCase):
         # Thus, this test is identical to TestGWOSCCron.test_dont_duplicate_jobs
         pass
 
+    @responses.activate
+    def test_colon_name(self, gwc):
+        """If a job name contains weird characters, make it safe for SLURM (even though these 
+        jobs aren't submitted to slurm, it's easier to ensure that ALL jobs comply with those 
+        requirements rather than have special checks for external jobs)"""
+        responses.add(responses.GET, "https://gwosc.org/eventapi/json/allevents", json={
+            "events": {
+                "GW000001": {
+                    "jsonurl": "https://test.org/GW000001.json"
+                }
+            }
+        })
+        responses.add(responses.GET, "https://test.org/GW000001.json", json={
+            "events": {
+                "GW000001": {
+                    "commonName": "GW000001",
+                    "GPS": 1729400000,
+                    "gracedb_id": "S123456z",
+                    "parameters": {
+                        "AAAAA": {
+                            "is_preferred": True,
+                            "data_url": "https://test.org/GW000001.h5",
+                        }
+                    }
+                }
+            }
+        })
+
+        # make the file available for download
+        with open("test_fixtures/colon.h5", 'rb') as f:
+            h5data = f.read()
+        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+
+
+        stdout = StringIO()
+        # Do the thing, Zhu Li
+        with patch('sys.stdout', new = stdout):
+            gwosc_ingest.check_and_download()
+
+        # has the job completed?
+        gwc.return_value.upload_external_job.assert_called_once_with('GW000001--IMRPhenom-Test-3', 'IMRPhenom:Test~3', False, 'VALID=good', 'https://test.org/GW000001.h5')
+
+        # Has it made a record of this job in sqlite?
+        cur = self.con.cursor()
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+        sqlite_rows = sqlite_rows.fetchall()
+
+        self.assertEqual(len(sqlite_rows), 1)
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["success"], 1)
+
 
     # need to test that the bilby server adds the official tag when a job is submitted by the GWOSC_INGEST_USER

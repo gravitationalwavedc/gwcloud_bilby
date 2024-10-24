@@ -30,7 +30,7 @@ def validate_job_name(name):
     if len(name) > 255:
         raise Exception("Job name must be less than 255 characters long.")
 
-    pattern = re.compile(r"^[0-9a-z:_-]+\Z", flags=re.IGNORECASE | re.ASCII)
+    pattern = re.compile(r"^[0-9a-z_-]+\Z", flags=re.IGNORECASE | re.ASCII)
     if not pattern.match(name):
         raise Exception("Job name must not contain any spaces or special characters.")
 

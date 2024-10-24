@@ -18,6 +18,12 @@ except ImportError:
 
 EVENTNAME_SEPERATOR = "--"
 
+def fix_job_name(name):
+    return re.sub("[^a-z0-9_-]", "-", name, flags=re.IGNORECASE)
+
+def build_bilbyjob_name(event_name, config_name):
+    return fix_job_name(f"{event_name}{EVENTNAME_SEPERATOR}{config_name}")
+
 def check_and_download():
     print(f"==== gwosc_ingest cronjob {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} ====")
     con = sqlite3.connect(DB_PATH)
@@ -41,13 +47,13 @@ def check_and_download():
         print(f"Unable to fetch allevents json (status: {r.status_code})")
         exit()
     all_events = r.json()["events"]
-    gwosc_events = list(all_events.keys())
+    gwosc_events = [ fix_job_name(k) for k in all_events.keys()]
     print(f"GWOSC events found: {len(gwosc_events)}")
 
 # Collect list of events from GWCloud
     full_gwcloud_events = [n.name for n in gwc.get_official_job_list()]
 # Only those which follow the format EVENT_NAME--RUN_TYPE are considered to have a valid EVENT_NAME
-    gwcloud_events = list(set([n.split(EVENTNAME_SEPERATOR)[0] for n in full_gwcloud_events if len(n.split(EVENTNAME_SEPERATOR))>1]))
+    gwcloud_events = list(set([fix_job_name(n.split(EVENTNAME_SEPERATOR)[0]) for n in full_gwcloud_events if len(n.split(EVENTNAME_SEPERATOR))>1]))
     print(f"GWCloud events found: {len(gwcloud_events)}")
 
 # fetch event_ids from gwcloud and turn them into a dict
@@ -132,7 +138,7 @@ def check_and_download():
                         ini_lines.append(f"{k}={config[k][0].decode('utf-8')}")
                     ini_str = "\n".join(ini_lines)
                     try:
-                        job = gwc.upload_external_job(f"{event_name}{EVENTNAME_SEPERATOR}{toplevel_key}", toplevel_key, False, ini_str, h5url)
+                        job = gwc.upload_external_job(build_bilbyjob_name(event_name, toplevel_key), toplevel_key, False, ini_str, h5url)
                         print(f"BilbyJob {job.id} created 😊")
                         if event_id is not None:
                             job.set_event_id(event_id)
