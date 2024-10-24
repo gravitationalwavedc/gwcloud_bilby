@@ -171,3 +171,17 @@ cronjob-black:
     - /usr/bin/python3.12 -m venv /gwosc_cron/venv
     - /gwosc_cron/venv/bin/pip3 install black
     - /gwosc_cron/venv/bin/black --check gwosc_cron/
+
+cronjob-flake8:
+  stage: CI
+  script:
+    - apt -y update
+    - apt -y install apt-utils
+    - apt -y install net-tools python3.12 python3-venv git curl wget
+    - apt -y upgrade
+    - /usr/bin/python3.12 -m venv /gwosc_cron/venv
+    - /gwosc_cron/venv/bin/pip3 install flake8-gl-codeclimate
+    - /gwosc_cron/venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json gwosc_cron/
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json

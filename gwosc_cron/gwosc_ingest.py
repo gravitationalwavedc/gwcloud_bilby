@@ -9,12 +9,13 @@ from traceback import print_exception
 from tempfile import NamedTemporaryFile
 
 try:
-    from local import *
+    from local import DB_PATH, GWCLOUD_TOKEN, AUTH_ENDPOINT, ENDPOINT
 except ImportError:
     print("No local.py file found, loading settings from env")
     GWCLOUD_TOKEN = os.getenv("GWCLOUD_TOKEN")
     AUTH_ENDPOINT = os.getenv("AUTH_ENDPOINT")
     ENDPOINT = os.getenv("ENDPOINT")
+    DB_PATH = os.getenv("DB_PATH")
 
 EVENTNAME_SEPERATOR = "--"
 
@@ -35,7 +36,7 @@ def check_and_download():
     con.row_factory = sqlite3.Row
     cur = con.cursor()
     cur.execute(
-        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)" # noqa
     )
 
     def save_sqlite_job(job_id, success):
@@ -55,6 +56,7 @@ def check_and_download():
     if r.status_code != 200:
         print(f"Unable to fetch allevents json (status: {r.status_code})")
         exit()
+
     all_events = r.json()["events"]
     gwosc_events = [fix_job_name(k) for k in all_events.keys()]
     print(f"GWOSC events found: {len(gwosc_events)}")
@@ -97,9 +99,10 @@ def check_and_download():
     r = requests.get(all_events[event_name]["jsonurl"])
     if r.status_code != 200:
         print(
-            f"Unable to fetch event json (status: {r.status_code}, event: {event_name}, url: {all_events[event_name]["jsonurl"]})"
+            f"Unable to fetch event json (status: {r.status_code}, event: {event_name}, url: {all_events[event_name]["jsonurl"]})" # noqa
         )
         exit()
+
     event_json = r.json()
     parameters = event_json["events"][event_name]["parameters"]
     common_name = event_json["events"][event_name]["commonName"]
@@ -111,6 +114,7 @@ def check_and_download():
         save_sqlite_job(event_name, False)
         # print("This will continue to fail forever until a fix is implemented to skip this bad job")
         exit()
+
     h5url = found[0].get("data_url")
     if h5url == "" or h5url is None:
         print(f"Preferred job for {event_name} does not contain a dataurl 😠")
