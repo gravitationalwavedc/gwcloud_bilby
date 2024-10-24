@@ -171,6 +171,9 @@ GWCLOUD_AUTH_API_URL = "http://localhost:8000/graphql"
 # The IDs of users who are allowed to create EventIDs
 PERMITTED_EVENT_CREATION_USER_IDS = []
 
+# The ID of the user which submits official GWOSC jobs
+GWOSC_INGEST_USER = None
+
 # The expiry of BilbyJobUploadTokens (in seconds)
 BILBY_JOB_UPLOAD_TOKEN_EXPIRY = 60 * 60 * 24
 

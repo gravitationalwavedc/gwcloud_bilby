@@ -94,6 +94,61 @@ class TestExternalJobUpload(BilbyTestCase):
         self.assertEqual(ExternalBilbyJob.objects.filter(job=job, url=test_input["input"]["resultUrl"]).count(), 1)
 
 
+    @override_settings(GWOSC_INGEST_USER=1)
+    def test_gwosc_ingest_upload(self):
+        test_name = "myjob"
+        test_description = "Test Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name}, True)
+
+        test_input = {
+            "input": {
+                "details": {"name": test_name, "description": test_description, "private": test_private},
+                "iniFile": test_ini_string,
+                "resultUrl": "https://www.example.com/",
+            }
+        }
+
+        response = self.client.execute(self.mutation, test_input)
+
+        expected = {"uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertDictEqual(expected, response.data)
+
+        job = BilbyJob.objects.all().last()
+
+        # It should add the "Official" label if it was added by the GWOSC_INGEST_USER
+        self.assertEqual(job.labels.first().name, "Official")
+
+    @override_settings(GWOSC_INGEST_USER=3)
+    def test_not_gwosc_ingest_upload(self):
+        test_name = "myjob"
+        test_description = "Test Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name}, True)
+
+        test_input = {
+            "input": {
+                "details": {"name": test_name, "description": test_description, "private": test_private},
+                "iniFile": test_ini_string,
+                "resultUrl": "https://www.example.com/",
+            }
+        }
+
+        response = self.client.execute(self.mutation, test_input)
+
+        expected = {"uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertDictEqual(expected, response.data)
+
+        job = BilbyJob.objects.all().last()
+
+        # It should _not_ add the "Official" label (or any label) if it was _not_ added by the GWOSC_INGEST_USER
+        self.assertEqual(job.labels.count(), 0)
+
+
 class TestExternalJobUploadLigoPermissions(BilbyTestCase):
     def setUp(self):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
