@@ -700,7 +700,7 @@ class TestGWOSCCron(unittest.TestCase):
         self.con.row_factory = sqlite3.Row
         cur = self.con.cursor()
         cur.execute(
-            "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)" # noqa
+            "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"  # noqa
         )
         cur.execute(
             "INSERT INTO completed_jobs (job_id, success) VALUES (?, ?)",

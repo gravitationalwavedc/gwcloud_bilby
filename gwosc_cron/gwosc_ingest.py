@@ -36,7 +36,7 @@ def check_and_download():
     con.row_factory = sqlite3.Row
     cur = con.cursor()
     cur.execute(
-        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)" # noqa
+        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"  # noqa
     )
 
     def save_sqlite_job(job_id, success):
@@ -99,7 +99,7 @@ def check_and_download():
     r = requests.get(all_events[event_name]["jsonurl"])
     if r.status_code != 200:
         print(
-            f"Unable to fetch event json (status: {r.status_code}, event: {event_name}, url: {all_events[event_name]["jsonurl"]})" # noqa
+            f"Unable to fetch event json (status: {r.status_code}, event: {event_name}, url: {all_events[event_name]["jsonurl"]})"  # noqa
         )
         exit()
 
