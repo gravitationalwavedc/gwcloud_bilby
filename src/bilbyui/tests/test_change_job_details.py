@@ -75,13 +75,13 @@ class TestChangeJobDetails(BilbyTestCase):
         Try to update a bilby job with a name that is too long
         """
         change_job_input = {
-            "input": {"jobId": self.global_job_id, "name": "a" * 50, "description": "New job description"}
+            "input": {"jobId": self.global_job_id, "name": "a" * 500, "description": "New job description"}
         }
 
         response = self.client.execute(self.mutation, change_job_input)
 
         self.assertDictEqual({"updateBilbyJob": None}, response.data)
-        self.assertEqual(response.errors[0].message, "Job name must be less than 30 characters long.")
+        self.assertEqual(response.errors[0].message, "Job name must be less than 255 characters long.")
 
     @silence_errors
     def test_change_job_name_too_short(self):

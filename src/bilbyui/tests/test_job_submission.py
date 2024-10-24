@@ -670,13 +670,13 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
 
     @silence_errors
     def test_invalid_job_name_too_long(self):
-        self.params["input"]["params"]["details"]["name"] = "a" * 50
+        self.params["input"]["params"]["details"]["name"] = "a" * 500
 
         response = self.client.execute(self.mutation, self.params)
 
         self.assertDictEqual({"newBilbyJob": None}, response.data, "create bilbyJob mutation returned unexpected data.")
 
-        self.assertEqual(response.errors[0].message, "Job name must be less than 30 characters long.")
+        self.assertEqual(response.errors[0].message, "Job name must be less than 255 characters long.")
 
     @silence_errors
     def test_invalid_job_name_too_short(self):
@@ -704,18 +704,18 @@ class TestJobNameValidation(testcases.TestCase):
 
         # Test name too long
         with self.assertRaises(Exception) as ex:
-            validate_job_name("a" * 31)
+            validate_job_name("a" * 256)
 
-        self.assertEqual(str(ex.exception), "Job name must be less than 30 characters long.")
+        self.assertEqual(str(ex.exception), "Job name must be less than 255 characters long.")
 
         with self.assertRaises(Exception) as ex:
             validate_job_name("a" * 3000)
 
-        self.assertEqual(str(ex.exception), "Job name must be less than 30 characters long.")
+        self.assertEqual(str(ex.exception), "Job name must be less than 255 characters long.")
 
         # Test valid name length
         try:
-            for i in range(5, 30):
+            for i in range(5, 255):
                 validate_job_name("a" * i)
         except Exception:
             self.fail("validate_job_name raised an exception when it should not have")
