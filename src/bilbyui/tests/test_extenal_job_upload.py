@@ -93,7 +93,6 @@ class TestExternalJobUpload(BilbyTestCase):
         # Check that the external job record was created
         self.assertEqual(ExternalBilbyJob.objects.filter(job=job, url=test_input["input"]["resultUrl"]).count(), 1)
 
-
     @override_settings(GWOSC_INGEST_USER=1)
     def test_gwosc_ingest_upload(self):
         test_name = "myjob"
