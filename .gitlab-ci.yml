@@ -148,3 +148,15 @@ prettier:
     - eval "[ -f .nvmrc ] && nvm install && nvm use"
     - npm install --legacy-peer-deps
     - npx prettier --check src
+
+cronjob-tests:
+  stage: CI
+  script:
+    - apt -y update
+    - apt -y install apt-utils
+    - apt -y install net-tools python3.12 python3-venv git curl wget python3-dev build-essential python3-setuptools
+    - apt -y upgrade
+    - cd gwosc_cron/
+    - /usr/bin/python3.12 -m venv /gwosc_cron/venv
+    - /gwosc_cron/venv/bin/pip3 install -r requirements.txt
+    - /src/venv/bin/python3 unittest
