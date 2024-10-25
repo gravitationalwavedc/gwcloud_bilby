@@ -1062,6 +1062,33 @@ class TestJobUploadNameValidation(BilbyTestCase):
 
         self.assertEqual(response.errors[0].message, "Job name must not contain any spaces or special characters.")
 
+    @silence_errors
+    def test_invalid_job_name_too_long(self):
+        test_name = "a" * 500
+
+        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
+
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "input": {
+                "uploadToken": token,
+                "details": {"description": "a description", "private": True},
+                "jobFile": test_file,
+            }
+        }
+
+        response = self.client.execute(self.mutation, test_input)
+
+        self.assertDictEqual({"uploadBilbyJob": None}, response.data)
+
+        self.assertEqual(response.errors[0].message, "Job name must be less than 255 characters long.")
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_invalid_job_name_too_short(self):

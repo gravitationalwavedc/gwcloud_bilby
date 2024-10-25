@@ -230,6 +230,9 @@ def create_test_upload_data(
     if supporting_files is None:
         supporting_files = []
 
+    # If the job label is too long, it will attempt to create invalid files
+    job_label = job_label[:30]
+
     # Create a temporary directory to add job data to
     with TemporaryDirectory() as d:
         if ini_content and not no_ini_file:
