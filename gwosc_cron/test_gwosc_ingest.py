@@ -19,14 +19,13 @@ gwosc_ingest.ENDPOINT = "https://bilby/graphql"
 class TestGWOSCCron(unittest.TestCase):
     def setUp(self):
         self.con = sqlite3.connect(":memory:")
-        self.con_patch = patch('sqlite3.connect', lambda x: self.con)
+        self.con_patch = patch("sqlite3.connect", lambda x: self.con)
 
         self.stdout = StringIO()
-        self.stdout_patch = patch('sys.stdout', new = self.stdout)
+        self.stdout_patch = patch("sys.stdout", new=self.stdout)
 
         self.stderr = StringIO()
-        self.stderr_patch = patch('sys.stderr', new = self.stderr)
-
+        self.stderr_patch = patch("sys.stderr", new=self.stderr)
 
     @responses.activate
     def test_normal(self, gwc):
@@ -364,7 +363,9 @@ class TestGWOSCCron(unittest.TestCase):
 
         # Do[n't do] the thing, Zhu Li
         # Also mock stderr so it doesn't dump the exception to test output
-        with self.con_patch, self.stdout_patch, self.assertRaises(SystemExit), self.stderr_patch:
+        with self.con_patch, self.stdout_patch, self.assertRaises(
+            SystemExit
+        ), self.stderr_patch:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
