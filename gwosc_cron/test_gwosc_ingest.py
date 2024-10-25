@@ -18,16 +18,8 @@ gwosc_ingest.ENDPOINT = "https://bilby/graphql"
 @unittest.mock.patch("gwosc_ingest.GWCloud", autospec=True)
 class TestGWOSCCron(unittest.TestCase):
     def setUp(self):
-        # reject modernity, return to monkeypatch sqlite3.connect
         self.con = sqlite3.connect(":memory:")
-        gwosc_ingest.sqlite3.connect = lambda x: self.con
 
-    def tearDown(self):
-        # This shouldn't be needed, but yet it is
-        # Because for some reason, the setUp shares the connection object
-        # despite the fact that it should be reating a new one
-        cur = self.con.cursor()
-        cur.execute("DROP TABLE IF EXISTS 'completed_jobs'")
 
     @responses.activate
     def test_normal(self, gwc):
@@ -67,7 +59,8 @@ class TestGWOSCCron(unittest.TestCase):
         stdout = StringIO()
         # Do the thing, Zhu Li
         with patch("sys.stdout", new=stdout):
-            gwosc_ingest.check_and_download()
+            with patch('sqlite3.connect', new=lambda x: self.con):
+                gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
@@ -125,7 +118,8 @@ class TestGWOSCCron(unittest.TestCase):
         stdout = StringIO()
         # Do the thing, Zhu Li
         with patch("sys.stdout", new=stdout):
-            gwosc_ingest.check_and_download()
+            with patch('sqlite3.connect', new=lambda x: self.con):
+                gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
@@ -183,7 +177,8 @@ class TestGWOSCCron(unittest.TestCase):
         # Do[n't do] the thing, Zhu Li
         with self.assertRaises(SystemExit):
             with patch("sys.stdout", new=stdout):
-                gwosc_ingest.check_and_download()
+                with patch('sqlite3.connect', new=lambda x: self.con):
+                    gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
@@ -244,7 +239,8 @@ class TestGWOSCCron(unittest.TestCase):
         # Do[n't do] the thing, Zhu Li
         with self.assertRaises(SystemExit):
             with patch("sys.stdout", new=stdout):
-                gwosc_ingest.check_and_download()
+                with patch('sqlite3.connect', new=lambda x: self.con):
+                    gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
@@ -281,7 +277,8 @@ class TestGWOSCCron(unittest.TestCase):
         # Do[n't do] the thing, Zhu Li
         with self.assertRaises(SystemExit):
             with patch("sys.stdout", new=stdout):
-                gwosc_ingest.check_and_download()
+                with patch('sqlite3.connect', new=lambda x: self.con):
+                    gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
@@ -321,7 +318,8 @@ class TestGWOSCCron(unittest.TestCase):
         # Do[n't do] the thing, Zhu Li
         with self.assertRaises(SystemExit):
             with patch("sys.stdout", new=stdout):
-                gwosc_ingest.check_and_download()
+                with patch('sqlite3.connect', new=lambda x: self.con):
+                    gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
@@ -377,7 +375,8 @@ class TestGWOSCCron(unittest.TestCase):
         # Do[n't do] the thing, Zhu Li
         with self.assertRaises(SystemExit):
             with patch("sys.stdout", new=stdout):
-                gwosc_ingest.check_and_download()
+                with patch('sqlite3.connect', new=lambda x: self.con):
+                    gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
@@ -437,7 +436,8 @@ class TestGWOSCCron(unittest.TestCase):
         stdout = StringIO()
         # Do the thing, Zhu Li
         with patch("sys.stdout", new=stdout):
-            gwosc_ingest.check_and_download()
+            with patch('sqlite3.connect', new=lambda x: self.con):
+                gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
@@ -505,7 +505,8 @@ class TestGWOSCCron(unittest.TestCase):
         stdout = StringIO()
         # Do the thing, Zhu Li
         with patch("sys.stdout", new=stdout):
-            gwosc_ingest.check_and_download()
+            with patch('sqlite3.connect', new=lambda x: self.con):
+                gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
@@ -569,7 +570,8 @@ class TestGWOSCCron(unittest.TestCase):
         # Do the thing, Zhu Li
         with patch("sys.stdout", new=stdout):
             with patch("sys.stderr", new=stderr):
-                gwosc_ingest.check_and_download()
+                with patch('sqlite3.connect', new=lambda x: self.con):
+                    gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
@@ -630,7 +632,8 @@ class TestGWOSCCron(unittest.TestCase):
         stdout = StringIO()
         # Do the thing, Zhu Li
         with patch("sys.stdout", new=stdout):
-            gwosc_ingest.check_and_download()
+            with patch('sqlite3.connect', new=lambda x: self.con):
+                gwosc_ingest.check_and_download()
 
         # has the job completed?
         calls = [
@@ -710,7 +713,8 @@ class TestGWOSCCron(unittest.TestCase):
         # Do the thing, Zhu Li
         with self.assertRaises(SystemExit):
             with patch("sys.stdout", new=stdout):
-                gwosc_ingest.check_and_download()
+                with patch('sqlite3.connect', new=lambda x: self.con):
+                    gwosc_ingest.check_and_download()
 
         # Has it made a record of this job in sqlite?
         sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
@@ -762,7 +766,8 @@ class TestGWOSCCron(unittest.TestCase):
         # Do the thing, Zhu Li
         with self.assertRaises(SystemExit):
             with patch("sys.stdout", new=stdout):
-                gwosc_ingest.check_and_download()
+                with patch('sqlite3.connect', new=lambda x: self.con):
+                    gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
@@ -825,7 +830,8 @@ class TestGWOSCCron(unittest.TestCase):
         stdout = StringIO()
         # Do the thing, Zhu Li
         with patch("sys.stdout", new=stdout):
-            gwosc_ingest.check_and_download()
+            with patch('sqlite3.connect', new=lambda x: self.con):
+                gwosc_ingest.check_and_download()
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
