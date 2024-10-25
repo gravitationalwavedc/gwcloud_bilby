@@ -87,36 +87,38 @@ def check_and_download():
     print(f"Potential bad runs found: {len(sqlite_events) - len(gwcloud_events)}")
 
     # Find non-matching dataset names
-    not_found = [j for j in gwosc_events if j not in sqlite_events]
-    print(f"Not matching events: {len(not_found)}")
+    jobs_delta = [j for j in gwosc_events if j not in sqlite_events]
+    print(f"Not matching events: {len(jobs_delta)}")
 
-    if len(not_found) == 0:
+    if len(jobs_delta) == 0:
         print("Nothing to do 😊")
         exit()
 
-    event_name = not_found[0]
+    event_name = jobs_delta[0]
     print(f"{event_name}: {all_events[event_name]["jsonurl"]}")
     r = requests.get(all_events[event_name]["jsonurl"])
     if r.status_code != 200:
         print(
-            f"Unable to fetch event json (status: {r.status_code}, event: {event_name}, url: {all_events[event_name]["jsonurl"]})"  # noqa
+            f"Unable to fetch event json (status: {r.status_code}, event: "
+            f"{event_name}, url: {all_events[event_name]["jsonurl"]})"
         )
+        # We assume this is a transient issue and don't mark the job as failed
         exit()
 
     event_json = r.json()
-    parameters = event_json["events"][event_name]["parameters"]
-    common_name = event_json["events"][event_name]["commonName"]
-    gps = event_json["events"][event_name]["GPS"]
-    gracedb_id = event_json["events"][event_name]["gracedb_id"]
+    event_json = event_json["events"][event_name]
+    parameters = event_json["parameters"]
+    common_name = event_json["commonName"]
+    gps = event_json["GPS"]
+    gracedb_id = event_json["gracedb_id"]
     found = [v for v in parameters.values() if v["is_preferred"]]
     if len(found) != 1:
         print(f"Unable to find preferred job for {event_name} 😠")
         save_sqlite_job(event_name, False)
-        # print("This will continue to fail forever until a fix is implemented to skip this bad job")
         exit()
 
     h5url = found[0].get("data_url")
-    if h5url == "" or h5url is None:
+    if not h5url:
         print(f"Preferred job for {event_name} does not contain a dataurl 😠")
         save_sqlite_job(event_name, False)
         exit()
@@ -145,7 +147,8 @@ def check_and_download():
                     f.write(chunk)
         except Exception:
             print(f"Downloading {h5url} failed 😠")
-            raise
+            # we assume that this is a transient issue and don't mark the job as failed
+            exit()
 
         print("Download complete")
 
@@ -186,6 +189,13 @@ def check_and_download():
                 else:
                     print(f"config_file not found: {toplevel_key}")
 
+    # If we've iterated all the potential BilbyJobs, save the info to the sqlite database
+    #
+    # The job is considered successful if _all_ of the bilby configs found were able
+    # to be successfully submitted, _and_ there was at least one job submitted.
+    #
+    # If no jobs were submitted, it is considered "unsuccessful" even though its most
+    # likely a problem with data missing from the h5 file or event json
     save_sqlite_job(event_name, all_succeeded and not none_succeeded)
     print("Deleted temp h5 file")
 

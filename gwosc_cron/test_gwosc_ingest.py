@@ -1,5 +1,4 @@
 from io import StringIO
-from requests.exceptions import HTTPError
 import unittest
 from unittest.mock import patch, call
 import responses
@@ -90,7 +89,7 @@ class TestGWOSCCron(unittest.TestCase):
 
     @responses.activate
     def test_none_found(self, gwc):
-        """Assuming a valid h5 file with no valid configs, does it not save it to bilby correctly"""
+        """Assuming a valid h5 file with no valid configs (ini parameters), it should not create a bilby job"""
         responses.add(
             responses.GET,
             "https://gwosc.org/eventapi/json/allevents",
@@ -376,7 +375,7 @@ class TestGWOSCCron(unittest.TestCase):
 
         stdout = StringIO()
         # Do[n't do] the thing, Zhu Li
-        with self.assertRaises(HTTPError):
+        with self.assertRaises(SystemExit):
             with patch("sys.stdout", new=stdout):
                 gwosc_ingest.check_and_download()
 
@@ -845,5 +844,3 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(len(sqlite_rows), 1)
         self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
         self.assertEqual(sqlite_rows[0]["success"], 1)
-
-    # need to test that the bilby server adds the official tag when a job is submitted by the GWOSC_INGEST_USER

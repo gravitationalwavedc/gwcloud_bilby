@@ -161,6 +161,13 @@ cronjob-tests:
     - /gwosc_cron/venv/bin/pip3 install -r requirements.txt
     - /gwosc_cron/venv/bin/python3 -m unittest
 
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: src/reports/coverage.xml
+      junit: src/reports/junit.xml
+
 cronjob-black:
   stage: CI
   script:
