@@ -1,4 +1,4 @@
-from io import StringIO
+import logging
 import unittest
 from unittest.mock import patch, call
 import responses
@@ -20,12 +20,6 @@ class TestGWOSCCron(unittest.TestCase):
     def setUp(self):
         self.con = sqlite3.connect(":memory:")
         self.con_patch = patch("sqlite3.connect", lambda x: self.con)
-
-        self.stdout = StringIO()
-        self.stdout_patch = patch("sys.stdout", new=self.stdout)
-
-        self.stderr = StringIO()
-        self.stderr_patch = patch("sys.stderr", new=self.stderr)
 
     @responses.activate
     def test_normal(self, gwc):
@@ -63,7 +57,7 @@ class TestGWOSCCron(unittest.TestCase):
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
         # Do the thing, Zhu Li
-        with self.con_patch, self.stdout_patch:
+        with self.con_patch:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -120,7 +114,7 @@ class TestGWOSCCron(unittest.TestCase):
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
         # Do the thing, Zhu Li
-        with self.con_patch, self.stdout_patch:
+        with self.con_patch:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -176,7 +170,9 @@ class TestGWOSCCron(unittest.TestCase):
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
         # Do[n't do] the thing, Zhu Li
-        with self.con_patch, self.stdout_patch, self.assertRaises(SystemExit):
+        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
+            level=logging.ERROR
+        ) as logs:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -193,7 +189,7 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(sqlite_rows[0]["success"], 0)
 
         # does it tell us why it failed?
-        self.assertIn("Unable to find preferred job", self.stdout.getvalue())
+        self.assertIn("Unable to find preferred job", logs.output[0])
 
     @responses.activate
     def test_too_many_preferred(self, gwc):
@@ -235,7 +231,9 @@ class TestGWOSCCron(unittest.TestCase):
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
         # Do[n't do] the thing, Zhu Li
-        with self.con_patch, self.stdout_patch, self.assertRaises(SystemExit):
+        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
+            level=logging.ERROR
+        ) as logs:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -252,15 +250,13 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(sqlite_rows[0]["success"], 0)
 
         # does it tell us why it failed?
-        self.assertIn("Unable to find preferred job", self.stdout.getvalue())
+        self.assertIn("Unable to find preferred job", logs.output[0])
 
     @responses.activate
     def test_download_allevents_error(self, gwc):
         """What happens if any part of the download process fails due to external problems?
         Specifically,
             - Downloading the allevents json
-            - Downloading the specific event json
-            - Downloading the h5 file
         """
         responses.add(
             responses.GET,
@@ -270,7 +266,9 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Do[n't do] the thing, Zhu Li
-        with self.con_patch, self.stdout_patch, self.assertRaises(SystemExit):
+        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
+            level=logging.ERROR
+        ) as logs:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -285,7 +283,7 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(len(sqlite_rows), 0)
 
         # does it tell us why it failed?
-        self.assertIn("Unable to fetch allevents json", self.stdout.getvalue())
+        self.assertIn("Unable to fetch allevents json", logs.output[0])
 
     @responses.activate
     def test_download_specific_event_error(self, gwc):
@@ -308,7 +306,9 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Do[n't do] the thing, Zhu Li
-        with self.con_patch, self.stdout_patch, self.assertRaises(SystemExit):
+        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
+            level=logging.ERROR
+        ) as logs:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -323,7 +323,7 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(len(sqlite_rows), 0)
 
         # does it tell us why it failed?
-        self.assertIn("Unable to fetch event json", self.stdout.getvalue())
+        self.assertIn("Unable to fetch event json", logs.output[0])
 
     @responses.activate
     def test_download_h5_error(self, gwc):
@@ -363,9 +363,9 @@ class TestGWOSCCron(unittest.TestCase):
 
         # Do[n't do] the thing, Zhu Li
         # Also mock stderr so it doesn't dump the exception to test output
-        with self.con_patch, self.stdout_patch, self.assertRaises(
-            SystemExit
-        ), self.stderr_patch:
+        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
+            level=logging.ERROR
+        ) as logs:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -380,9 +380,7 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(len(sqlite_rows), 0)
 
         # does it tell us why it failed?
-        self.assertIn(
-            "Downloading https://test.org/GW000001.h5 failed", self.stdout.getvalue()
-        )
+        self.assertIn("Downloading https://test.org/GW000001.h5 failed", logs.output[0])
 
     @responses.activate
     def test_creates_event_id(self, gwc):
@@ -424,7 +422,7 @@ class TestGWOSCCron(unittest.TestCase):
         responses.add(responses.GET, "https://test.org/GW000001_123456.h5", h5data)
 
         # Do the thing, Zhu Li
-        with self.con_patch, self.stdout_patch:
+        with self.con_patch:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -491,7 +489,7 @@ class TestGWOSCCron(unittest.TestCase):
         responses.add(responses.GET, "https://test.org/GW000001_123456.h5", h5data)
 
         # Do the thing, Zhu Li
-        with self.con_patch, self.stdout_patch:
+        with self.con_patch:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -553,7 +551,7 @@ class TestGWOSCCron(unittest.TestCase):
 
         # Do the thing, Zhu Li
         # Also mock stderr so it doesn't dump the exception to test output
-        with self.con_patch, self.stdout_patch, self.stderr_patch:
+        with self.con_patch, self.assertLogs(level=logging.ERROR) as logs:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -575,7 +573,7 @@ class TestGWOSCCron(unittest.TestCase):
         # not, it should have failed
         self.assertEqual(sqlite_rows[0]["success"], 0)
 
-        self.assertIn("Failed to create BilbyJob", self.stdout.getvalue())
+        self.assertIn("Failed to create BilbyJob", logs.output[0])
 
     @responses.activate
     def test_multiple_bilbyjobs(self, gwc):
@@ -613,7 +611,7 @@ class TestGWOSCCron(unittest.TestCase):
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
         # Do the thing, Zhu Li
-        with self.con_patch, self.stdout_patch:
+        with self.con_patch:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -691,7 +689,9 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Do the thing, Zhu Li
-        with self.con_patch, self.stdout_patch, self.assertRaises(SystemExit):
+        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
+            level=logging.INFO
+        ) as logs:
             gwosc_ingest.check_and_download()
 
         # Has it made a record of this job in sqlite?
@@ -703,7 +703,7 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(sqlite_rows[0]["success"], 1)
 
         # Did it tell us why it did nothing?
-        self.assertIn("Nothing to do", self.stdout.getvalue())
+        self.assertIn("Nothing to do 😊", logs.output[-1])
 
     @responses.activate
     def test_no_dataurl(self, gwc):
@@ -741,7 +741,9 @@ class TestGWOSCCron(unittest.TestCase):
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
         # Do the thing, Zhu Li
-        with self.con_patch, self.stdout_patch, self.assertRaises(SystemExit):
+        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
+            level=logging.ERROR
+        ) as logs:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -757,7 +759,7 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(sqlite_rows[0]["success"], 0)
 
         # Did it tell us why it failed?
-        self.assertIn("does not contain a dataurl", self.stdout.getvalue())
+        self.assertIn("does not contain a dataurl", logs.output[0])
 
     def test_bad_ini(self, gwc):
         """If an ini file is invalid, skip it"""
@@ -803,7 +805,7 @@ class TestGWOSCCron(unittest.TestCase):
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
         # Do the thing, Zhu Li
-        with self.con_patch, self.stdout_patch:
+        with self.con_patch:
             gwosc_ingest.check_and_download()
 
         # has the job completed?
