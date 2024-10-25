@@ -34,6 +34,8 @@ def check_and_download():
     )
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
+    print(con)
+    print(id(con))
     cur = con.cursor()
     cur.execute(
         "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"  # noqa
@@ -145,8 +147,9 @@ def check_and_download():
                 r.raise_for_status()
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-        except Exception:
+        except Exception as e:
             print(f"Downloading {h5url} failed 😠")
+            print_exception(e)
             # we assume that this is a transient issue and don't mark the job as failed
             exit()
 
