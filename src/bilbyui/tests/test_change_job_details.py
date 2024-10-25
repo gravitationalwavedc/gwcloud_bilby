@@ -75,7 +75,11 @@ class TestChangeJobDetails(BilbyTestCase):
         Try to update a bilby job with a name that is too long
         """
         change_job_input = {
-            "input": {"jobId": self.global_job_id, "name": "a" * 500, "description": "New job description"}
+            "input": {
+                "jobId": self.global_job_id,
+                "name": "aa" * BilbyJob._meta.get_field("name").max_length,
+                "description": "New job description",
+            }
         }
 
         response = self.client.execute(self.mutation, change_job_input)

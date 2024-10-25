@@ -24,11 +24,14 @@ from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 
 
 def validate_job_name(name):
+    # This constraint is not enforced in the database
     if len(name) < 5:
         raise Exception("Job name must be at least 5 characters long.")
 
-    if len(name) > 255:
-        raise Exception("Job name must be less than 255 characters long.")
+    max_len = BilbyJob._meta.get_field("name").max_length
+    # this one is
+    if len(name) > max_len:
+        raise Exception(f"Job name must be less than {max_len} characters long.")
 
     pattern = re.compile(r"^[0-9a-z_-]+\Z", flags=re.IGNORECASE | re.ASCII)
     if not pattern.match(name):
