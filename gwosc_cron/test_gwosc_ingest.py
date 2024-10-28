@@ -21,23 +21,27 @@ class TestGWOSCCron(unittest.TestCase):
         self.con = sqlite3.connect(":memory:")
         self.con_patch = patch("sqlite3.connect", lambda x: self.con)
 
-    @responses.activate
-    def test_normal(self, gwc):
-        """Assuming a normal h5 file with 1 config, does it save it to bilby correctly"""
+    def add_allevents_response(self):
         responses.add(
             responses.GET,
             "https://gwosc.org/eventapi/json/allevents",
             json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
+                "events": {
+                    "GW000001_123456": {
+                        "jsonurl": "https://test.org/GW000001_123456.json"
+                    }
+                }
             },
         )
+
+    def add_event_response(self):
         responses.add(
             responses.GET,
-            "https://test.org/GW000001.json",
+            "https://test.org/GW000001_123456.json",
             json={
                 "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
@@ -51,10 +55,18 @@ class TestGWOSCCron(unittest.TestCase):
             },
         )
 
+    def add_file_response(self, filename="good.h5"):
         # make the file available for download
-        with open("test_fixtures/good.h5", "rb") as f:
+        with open(f"test_fixtures/{filename}", "rb") as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+
+    @responses.activate
+    def test_normal(self, gwc):
+        """Assuming a normal h5 file with 1 config, does it save it to bilby correctly"""
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response()
 
         # Do the thing, Zhu Li
         with self.con_patch:
@@ -62,7 +74,7 @@ class TestGWOSCCron(unittest.TestCase):
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
-            "GW000001--IMRPhenom",
+            "GW000001_123456--IMRPhenom",
             "IMRPhenom",
             False,
             "VALID=good",
@@ -75,43 +87,15 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         self.assertEqual(sqlite_rows[0]["success"], 1)
 
     @responses.activate
     def test_none_found(self, gwc):
         """Assuming a valid h5 file with no valid configs (ini parameters), it should not create a bilby job"""
-        responses.add(
-            responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001.json",
-            json={
-                "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
-                        "GPS": 1729400000,
-                        "gracedb_id": "S123456z",
-                        "parameters": {
-                            "AAAAA": {
-                                "is_preferred": True,
-                                "data_url": "https://test.org/GW000001.h5",
-                            }
-                        },
-                    }
-                }
-            },
-        )
-
-        # make the file available for download
-        with open("test_fixtures/no_configs.h5", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response("no_configs.h5")
 
         # Do the thing, Zhu Li
         with self.con_patch:
@@ -126,27 +110,21 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         # better not have
         self.assertEqual(sqlite_rows[0]["success"], 0)
 
     @responses.activate
     def test_no_preferred(self, gwc):
         """Assuming there are no is_preferred parameters, does it not save anything"""
+        self.add_allevents_response()
         responses.add(
             responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001.json",
+            "https://test.org/GW000001_123456.json",
             json={
                 "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
@@ -164,11 +142,6 @@ class TestGWOSCCron(unittest.TestCase):
             },
         )
 
-        # make the file available for download
-        with open("test_fixtures/no_configs.h5", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
-
         # Do[n't do] the thing, Zhu Li
         with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
             level=logging.ERROR
@@ -184,7 +157,7 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         # better not have
         self.assertEqual(sqlite_rows[0]["success"], 0)
 
@@ -194,20 +167,14 @@ class TestGWOSCCron(unittest.TestCase):
     @responses.activate
     def test_too_many_preferred(self, gwc):
         """More than 1 preferred h5 file found"""
+        self.add_allevents_response()
         responses.add(
             responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001.json",
+            "https://test.org/GW000001_123456.json",
             json={
                 "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
@@ -225,11 +192,6 @@ class TestGWOSCCron(unittest.TestCase):
             },
         )
 
-        # make the file available for download
-        with open("test_fixtures/no_configs.h5", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
-
         # Do[n't do] the thing, Zhu Li
         with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
             level=logging.ERROR
@@ -245,7 +207,7 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         # better not have
         self.assertEqual(sqlite_rows[0]["success"], 0)
 
@@ -291,16 +253,10 @@ class TestGWOSCCron(unittest.TestCase):
         Specifically,
             - Downloading the specific event json
         """
+        self.add_allevents_response()
         responses.add(
             responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001.json",
+            "https://test.org/GW000001_123456.json",
             json={"error": True},
             status=500,
         )
@@ -331,32 +287,8 @@ class TestGWOSCCron(unittest.TestCase):
         Specifically,
             - The h5 file is missing
         """
-        responses.add(
-            responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001.json",
-            json={
-                "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
-                        "GPS": 1729400000,
-                        "gracedb_id": "S123456z",
-                        "parameters": {
-                            "AAAAA": {
-                                "is_preferred": True,
-                                "data_url": "https://test.org/GW000001.h5",
-                            },
-                        },
-                    }
-                }
-            },
-        )
+        self.add_allevents_response()
+        self.add_event_response()
 
         # make the file _un_available for download
         responses.add(responses.GET, "https://test.org/GW000001.h5", status=404)
@@ -385,41 +317,9 @@ class TestGWOSCCron(unittest.TestCase):
     @responses.activate
     def test_creates_event_id(self, gwc):
         """If a file has a valid event_id we haven't encountered before, create one"""
-        responses.add(
-            responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {
-                    "GW000001_123456": {
-                        "jsonurl": "https://test.org/GW000001_123456.json"
-                    }
-                }
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001_123456.json",
-            json={
-                "events": {
-                    "GW000001_123456": {
-                        "commonName": "GW000001_123456",
-                        "GPS": 1729400000,
-                        "gracedb_id": "S123456z",
-                        "parameters": {
-                            "AAAAA": {
-                                "is_preferred": True,
-                                "data_url": "https://test.org/GW000001_123456.h5",
-                            }
-                        },
-                    }
-                }
-            },
-        )
-
-        # make the file available for download
-        with open("test_fixtures/good.h5", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001_123456.h5", h5data)
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response()
 
         # Do the thing, Zhu Li
         with self.con_patch:
@@ -431,7 +331,7 @@ class TestGWOSCCron(unittest.TestCase):
             "IMRPhenom",
             False,
             "VALID=good",
-            "https://test.org/GW000001_123456.h5",
+            "https://test.org/GW000001.h5",
         )
 
         # Did it create a new event_id
@@ -447,46 +347,14 @@ class TestGWOSCCron(unittest.TestCase):
     @responses.activate
     def test_doesnt_create_event_id(self, gwc):
         """If a file has a valid event_id that exists, behave normally"""
-        responses.add(
-            responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {
-                    "GW000001_123456": {
-                        "jsonurl": "https://test.org/GW000001_123456.json"
-                    }
-                }
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001_123456.json",
-            json={
-                "events": {
-                    "GW000001_123456": {
-                        "commonName": "GW000001_123456",
-                        "GPS": 1729400000,
-                        "gracedb_id": "S123456z",
-                        "parameters": {
-                            "AAAAA": {
-                                "is_preferred": True,
-                                "data_url": "https://test.org/GW000001_123456.h5",
-                            }
-                        },
-                    }
-                }
-            },
-        )
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response()
 
         # mock that this event_id is already in the DB
         event_id = namedtuple("event_id", ["event_id"])
         specific_event_id = event_id("GW000001_123456")
         gwc.return_value.get_all_event_ids.return_value = [specific_event_id]
-
-        # make the file available for download
-        with open("test_fixtures/good.h5", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001_123456.h5", h5data)
 
         # Do the thing, Zhu Li
         with self.con_patch:
@@ -498,7 +366,7 @@ class TestGWOSCCron(unittest.TestCase):
             "IMRPhenom",
             False,
             "VALID=good",
-            "https://test.org/GW000001_123456.h5",
+            "https://test.org/GW000001.h5",
         )
 
         # Did it _not_ create a new event_id
@@ -512,37 +380,9 @@ class TestGWOSCCron(unittest.TestCase):
     @responses.activate
     def test_dont_duplicate_jobs(self, gwc):
         """If a file already has a matching bilbyJob, deal with it"""
-        responses.add(
-            responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001.json",
-            json={
-                "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
-                        "GPS": 1729400000,
-                        "gracedb_id": "S123456z",
-                        "parameters": {
-                            "AAAAA": {
-                                "is_preferred": True,
-                                "data_url": "https://test.org/GW000001.h5",
-                            }
-                        },
-                    }
-                }
-            },
-        )
-
-        # make the file available for download
-        with open("test_fixtures/good.h5", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response()
 
         # Pretend that the job has already been created
         gwc.return_value.upload_external_job.side_effect = GWDCUnknownException(
@@ -556,7 +396,7 @@ class TestGWOSCCron(unittest.TestCase):
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
-            "GW000001--IMRPhenom",
+            "GW000001_123456--IMRPhenom",
             "IMRPhenom",
             False,
             "VALID=good",
@@ -569,7 +409,7 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         # not, it should have failed
         self.assertEqual(sqlite_rows[0]["success"], 0)
 
@@ -578,37 +418,9 @@ class TestGWOSCCron(unittest.TestCase):
     @responses.activate
     def test_multiple_bilbyjobs(self, gwc):
         """If a h5 file contains multiple config_files, create multiple bilbyJobs"""
-        responses.add(
-            responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001.json",
-            json={
-                "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
-                        "GPS": 1729400000,
-                        "gracedb_id": "S123456z",
-                        "parameters": {
-                            "AAAAA": {
-                                "is_preferred": True,
-                                "data_url": "https://test.org/GW000001.h5",
-                            }
-                        },
-                    }
-                }
-            },
-        )
-
-        # make the file available for download
-        with open("test_fixtures/multiple_configs.h5", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response("multiple_configs.h5")
 
         # Do the thing, Zhu Li
         with self.con_patch:
@@ -617,14 +429,14 @@ class TestGWOSCCron(unittest.TestCase):
         # has the job completed?
         calls = [
             call(
-                "GW000001--IMRPhenom",
+                "GW000001_123456--IMRPhenom",
                 "IMRPhenom",
                 False,
                 "VALID=good",
                 "https://test.org/GW000001.h5",
             ),
             call(
-                "GW000001--IMRPhenom2ElectricBoogaloo",
+                "GW000001_123456--IMRPhenom2ElectricBoogaloo",
                 "IMRPhenom2ElectricBoogaloo",
                 False,
                 "VALID=good",
@@ -639,43 +451,15 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         self.assertEqual(sqlite_rows[0]["success"], 1)
 
     @responses.activate
     def test_skip_if_present(self, gwc):
         """If a job is already in sqlite, skip it"""
-        responses.add(
-            responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001.json",
-            json={
-                "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
-                        "GPS": 1729400000,
-                        "gracedb_id": "S123456z",
-                        "parameters": {
-                            "AAAAA": {
-                                "is_preferred": True,
-                                "data_url": "https://test.org/GW000001.h5",
-                            }
-                        },
-                    }
-                }
-            },
-        )
-
-        # make the file available for download
-        with open("test_fixtures/multiple_configs.h5", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response()
 
         # Add the 'job history' to sqlite
         self.con.row_factory = sqlite3.Row
@@ -685,7 +469,7 @@ class TestGWOSCCron(unittest.TestCase):
         )
         cur.execute(
             "INSERT INTO completed_jobs (job_id, success) VALUES (?, ?)",
-            ("GW000001", True),
+            ("GW000001_123456", True),
         )
 
         # Do the thing, Zhu Li
@@ -699,7 +483,7 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         self.assertEqual(sqlite_rows[0]["success"], 1)
 
         # Did it tell us why it did nothing?
@@ -708,20 +492,14 @@ class TestGWOSCCron(unittest.TestCase):
     @responses.activate
     def test_no_dataurl(self, gwc):
         """If a preferred job doesn't contain a dataurl, skip it"""
+        self.add_allevents_response()
         responses.add(
             responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001.json",
+            "https://test.org/GW000001_123456.json",
             json={
                 "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
@@ -734,11 +512,6 @@ class TestGWOSCCron(unittest.TestCase):
                 }
             },
         )
-
-        # make the file available for download
-        with open("test_fixtures/good.h5", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
         # Do the thing, Zhu Li
         with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
@@ -755,7 +528,7 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         self.assertEqual(sqlite_rows[0]["success"], 0)
 
         # Did it tell us why it failed?
@@ -772,37 +545,9 @@ class TestGWOSCCron(unittest.TestCase):
         """If a job name contains weird characters, make it safe for SLURM (even though these
         jobs aren't submitted to slurm, it's easier to ensure that ALL jobs comply with those
         requirements rather than have special checks for external jobs)"""
-        responses.add(
-            responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
-            },
-        )
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001.json",
-            json={
-                "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
-                        "GPS": 1729400000,
-                        "gracedb_id": "S123456z",
-                        "parameters": {
-                            "AAAAA": {
-                                "is_preferred": True,
-                                "data_url": "https://test.org/GW000001.h5",
-                            }
-                        },
-                    }
-                }
-            },
-        )
-
-        # make the file available for download
-        with open("test_fixtures/colon.h5", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response("colon.h5")
 
         # Do the thing, Zhu Li
         with self.con_patch:
@@ -810,7 +555,7 @@ class TestGWOSCCron(unittest.TestCase):
 
         # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
-            "GW000001--IMRPhenom-Test-3",
+            "GW000001_123456--IMRPhenom-Test-3",
             "IMRPhenom:Test~3",
             False,
             "VALID=good",
@@ -823,5 +568,5 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001")
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         self.assertEqual(sqlite_rows[0]["success"], 1)
