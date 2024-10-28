@@ -316,7 +316,7 @@ class TestGWOSCCron(unittest.TestCase):
 
     @responses.activate
     def test_creates_event_id(self, gwc):
-        """If a file has a valid event_id we haven't encountered before, create one"""
+        """If a job has a valid event_id we haven't encountered before, create one"""
         self.add_allevents_response()
         self.add_event_response()
         self.add_file_response()
@@ -346,7 +346,7 @@ class TestGWOSCCron(unittest.TestCase):
 
     @responses.activate
     def test_doesnt_create_event_id(self, gwc):
-        """If a file has a valid event_id that exists, behave normally"""
+        """If a job has a valid event_id that already exists, behave normally"""
         self.add_allevents_response()
         self.add_event_response()
         self.add_file_response()
@@ -376,6 +376,67 @@ class TestGWOSCCron(unittest.TestCase):
         gwc.return_value.upload_external_job.return_value.set_event_id.assert_called_once_with(
             specific_event_id
         )
+
+    @responses.activate
+    def test_invalid_event_id(self, gwc):
+        """If a file does not have a valid event ID, don't create one"""
+        # We add these manually instead of using the helper functions because the helper
+        # functions have implcit valid event IDs
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json={
+                "events": {
+                    "GW000001": {
+                        "jsonurl": "https://test.org/GW000001.json"
+                    }
+                }
+            },
+        )
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001.json",
+            json={
+                "events": {
+                    "GW000001": {
+                        "commonName": "GW000001",
+                        "GPS": 1729400000,
+                        "gracedb_id": "S123456z",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": True,
+                                "data_url": "https://test.org/GW000001.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        # make the file available for download
+        with open(f"test_fixtures/good.h5", "rb") as f:
+            h5data = f.read()
+        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+
+
+        # Do the thing, Zhu Li
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        # has the job completed?
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW000001--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW000001.h5",
+        )
+
+        # Did it _not_ create a new event_id
+        gwc.return_value.create_event_id.assert_not_called()
+
+        # Has it set the event id on the job?
+        gwc.return_value.upload_external_job.return_value.set_event_id.assert_not_called()
+
 
     @responses.activate
     def test_dont_duplicate_jobs(self, gwc):
