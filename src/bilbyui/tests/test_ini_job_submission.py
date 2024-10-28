@@ -222,7 +222,7 @@ class TestIniJobSubmissionNameValidation(BilbyTestCase):
 
     @silence_errors
     def test_invalid_job_name_too_long(self):
-        test_name = "a" * 50
+        test_name = "aa" * BilbyJob._meta.get_field("name").max_length
 
         test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']"})
 
@@ -241,7 +241,7 @@ class TestIniJobSubmissionNameValidation(BilbyTestCase):
             {"newBilbyJobFromIniString": None}, response.data, "create bilbyJob mutation returned unexpected data."
         )
 
-        self.assertEqual(response.errors[0].message, "Job name must be less than 30 characters long.")
+        self.assertEqual(response.errors[0].message, "Job name must be less than 255 characters long.")
 
     @silence_errors
     def test_invalid_job_name_too_short(self):

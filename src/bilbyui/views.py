@@ -24,11 +24,14 @@ from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 
 
 def validate_job_name(name):
+    # This constraint is not enforced in the database
     if len(name) < 5:
         raise Exception("Job name must be at least 5 characters long.")
 
-    if len(name) > 30:
-        raise Exception("Job name must be less than 30 characters long.")
+    max_len = BilbyJob._meta.get_field("name").max_length
+    # this one is
+    if len(name) > max_len:
+        raise Exception(f"Job name must be less than {max_len} characters long.")
 
     pattern = re.compile(r"^[0-9a-z_-]+\Z", flags=re.IGNORECASE | re.ASCII)
     if not pattern.match(name):
@@ -618,6 +621,9 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
         ini_string=ini_string,
         job_type=BilbyJobType.EXTERNAL,
     )
+
+    if user.user_id == settings.GWOSC_INGEST_USER:
+        bilby_job.labels.set([Label.objects.get(name="Official")])
 
     # Create the relevant External Bilby Job record as well
     ExternalBilbyJob.objects.create(job=bilby_job, url=result_url)

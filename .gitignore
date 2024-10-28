@@ -17,3 +17,6 @@ src/bundle/coverage.xml
 src/bundle/junit.xml
 outdir/
 *.npz
+/gwosc_cron/junit.xml
+/gwosc_cron/coverage.xml
+/src/reports/
