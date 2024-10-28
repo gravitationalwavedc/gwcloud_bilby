@@ -166,8 +166,8 @@ cronjob-tests:
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: src/reports/coverage.xml
-      junit: src/reports/junit.xml
+        path: gwosc_cron/coverage.xml
+      junit: gwosc_cron/junit.xml
 
 cronjob-black:
   stage: CI
