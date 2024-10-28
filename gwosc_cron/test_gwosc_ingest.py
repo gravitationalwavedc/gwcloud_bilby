@@ -386,11 +386,7 @@ class TestGWOSCCron(unittest.TestCase):
             responses.GET,
             "https://gwosc.org/eventapi/json/allevents",
             json={
-                "events": {
-                    "GW000001": {
-                        "jsonurl": "https://test.org/GW000001.json"
-                    }
-                }
+                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
             },
         )
         responses.add(
@@ -417,7 +413,6 @@ class TestGWOSCCron(unittest.TestCase):
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
-
         # Do the thing, Zhu Li
         with self.con_patch:
             gwosc_ingest.check_and_download()
@@ -436,7 +431,6 @@ class TestGWOSCCron(unittest.TestCase):
 
         # Has it set the event id on the job?
         gwc.return_value.upload_external_job.return_value.set_event_id.assert_not_called()
-
 
     @responses.activate
     def test_dont_duplicate_jobs(self, gwc):
