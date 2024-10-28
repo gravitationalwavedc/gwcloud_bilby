@@ -409,7 +409,7 @@ class TestGWOSCCron(unittest.TestCase):
             },
         )
         # make the file available for download
-        with open(f"test_fixtures/good.h5", "rb") as f:
+        with open("test_fixtures/good.h5", "rb") as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
