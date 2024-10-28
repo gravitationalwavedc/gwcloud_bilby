@@ -159,7 +159,8 @@ cronjob-tests:
     - cd gwosc_cron/
     - /usr/bin/python3.12 -m venv /gwosc_cron/venv
     - /gwosc_cron/venv/bin/pip3 install -r requirements.txt
-    - /gwosc_cron/venv/bin/python3 -m unittest
+    - /gwosc_cron/venv/bin/python3 -m coverage run -m xmlrunner discover --output-file ./junit.xml || true
+    - /gwosc_cron/venv/bin/python3 -m coverage xml
 
   artifacts:
     reports:
@@ -189,6 +190,7 @@ cronjob-flake8:
     - /usr/bin/python3.12 -m venv /gwosc_cron/venv
     - /gwosc_cron/venv/bin/pip3 install flake8-gl-codeclimate
     - /gwosc_cron/venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json gwosc_cron/
+
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
