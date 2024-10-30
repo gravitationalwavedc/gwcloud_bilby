@@ -648,3 +648,60 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(len(sqlite_rows), 1)
         self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         self.assertEqual(sqlite_rows[0]["success"], 0)
+
+    @responses.activate
+    def test_special_symbols_event(self, gwc):
+        """If the event json contains symbols which can't be in a bilby job name, do we handle it safely"""
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json={
+                "events": {
+                    "GW000001.123456": {
+                        "jsonurl": "https://test.org/GW000001.123456.json"
+                    }
+                }
+            },
+        )
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001.123456.json",
+            json={
+                "events": {
+                    "GW000001.123456": {
+                        "commonName": "GW000001.123456",
+                        "GPS": 1729400000,
+                        "gracedb_id": "S123456z",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": True,
+                                "data_url": "https://test.org/GW000001.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        self.add_file_response()
+
+        # Do the thing, Zhu Li
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        # has the job completed?
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW000001-123456--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW000001.h5",
+        )
+
+        # Has it made a record of this job in sqlite?
+        cur = self.con.cursor()
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+        sqlite_rows = sqlite_rows.fetchall()
+
+        self.assertEqual(len(sqlite_rows), 1)
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001.123456")
+        self.assertEqual(sqlite_rows[0]["success"], 1)

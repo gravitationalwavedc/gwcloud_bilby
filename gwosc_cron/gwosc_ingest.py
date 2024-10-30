@@ -59,7 +59,7 @@ def check_and_download():
         exit()
 
     all_events = r.json()["events"]
-    gwosc_events = [fix_job_name(k) for k in all_events.keys()]
+    gwosc_events = [k for k in all_events.keys()]
     logging.info(f"GWOSC events found: {len(gwosc_events)}")
 
     # Collect list of events from GWCloud
