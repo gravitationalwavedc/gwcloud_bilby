@@ -625,3 +625,26 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(len(sqlite_rows), 1)
         self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         self.assertEqual(sqlite_rows[0]["success"], 1)
+
+    @responses.activate
+    def test_bad_h5(self, gwc):
+        """If a h5 file contains a top level key that _isn't_ a group, do we fail safely"""
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response("bad.h5")
+
+        # Do the thing, Zhu Li
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        # did it not attempt to add a job
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        # Has it made a record of this job in sqlite?
+        cur = self.con.cursor()
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+        sqlite_rows = sqlite_rows.fetchall()
+
+        self.assertEqual(len(sqlite_rows), 1)
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
+        self.assertEqual(sqlite_rows[0]["success"], 0)
