@@ -20,3 +20,4 @@ outdir/
 /gwosc_cron/junit.xml
 /gwosc_cron/coverage.xml
 /src/reports/
+.env

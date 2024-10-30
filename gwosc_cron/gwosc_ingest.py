@@ -8,6 +8,7 @@ import requests
 from tempfile import NamedTemporaryFile
 import logging
 
+logging.getLogger().setLevel(logging.INFO)
 try:
     from local import DB_PATH, GWCLOUD_TOKEN, AUTH_ENDPOINT, ENDPOINT
 except ImportError:
