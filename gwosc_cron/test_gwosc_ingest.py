@@ -689,6 +689,7 @@ class TestGWOSCCron(unittest.TestCase):
             gwosc_ingest.check_and_download()
 
         # has the job completed?
+        # and is it saved under a bilby-safe name?
         gwc.return_value.upload_external_job.assert_called_once_with(
             "GW000001-123456--IMRPhenom",
             "IMRPhenom",
@@ -698,6 +699,7 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Has it made a record of this job in sqlite?
+        # and is it saved under the original event ID in sqlite?
         cur = self.con.cursor()
         sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
         sqlite_rows = sqlite_rows.fetchall()
