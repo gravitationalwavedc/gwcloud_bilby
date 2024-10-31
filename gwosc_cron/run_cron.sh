@@ -3,4 +3,4 @@
 # And created a sqlite.db file
 # And created a .env file
 source .env
-docker run --env-file .env --mount type=bind,src="$HOST_DB_PATH",target="$DB_PATH" gwosc_ingest
+docker run --env-file .env --network=host --mount type=bind,src="$HOST_DB_PATH",target="$DB_PATH" gwosc_ingest

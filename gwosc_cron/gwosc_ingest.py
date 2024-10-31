@@ -59,7 +59,7 @@ def check_and_download():
         exit()
 
     all_events = r.json()["events"]
-    gwosc_events = [fix_job_name(k) for k in all_events.keys()]
+    gwosc_events = [k for k in all_events.keys()]
     logging.info(f"GWOSC events found: {len(gwosc_events)}")
 
     # Collect list of events from GWCloud
@@ -162,8 +162,13 @@ def check_and_download():
             logging.info(f"Found keys: {list(h5.keys())}")
             for toplevel_key in h5.keys():
                 if (
-                    "config_file" in h5[toplevel_key]
+                    isinstance(h5[toplevel_key], h5py.Group)
+                    and "config_file" in h5[toplevel_key]
+                    and isinstance(h5[toplevel_key]["config_file"], h5py.Group)
                     and "config" in h5[toplevel_key]["config_file"]
+                    and isinstance(
+                        h5[toplevel_key]["config_file"]["config"], h5py.Group
+                    )
                 ):
                     logging.info(f"config_file found: {toplevel_key}")
                     config = h5[toplevel_key]["config_file"]["config"]
