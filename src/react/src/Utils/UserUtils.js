@@ -1,5 +1,8 @@
-import { harnessApi } from '../index';
 
-const isLigoUser = () => harnessApi && harnessApi.currentUser && harnessApi.currentUser.isLigoUser;
+// TODO: harnessApi
+
+// const isLigoUser = () => harnessApi && harnessApi.currentUser && harnessApi.currentUser.isLigoUser;
+
+const isLigoUser = () => false;
 
 export { isLigoUser };

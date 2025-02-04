@@ -1,0 +1,22 @@
+// Tabs
+.nav-link[role=tab] {
+   color: $gray-300;
+   margin: 1rem 0;
+
+   p {
+      margin: 0;
+   }
+
+   &.active {
+      border-left: 4px solid $blue-600;
+      color: $blue-600;
+   }
+
+   &:hover:not(.active) {
+      color: $blue-400;
+   }
+
+   &:focus {
+      outline: none;
+   }
+}

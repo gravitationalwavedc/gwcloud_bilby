@@ -1,0 +1,34 @@
+// Fix layout issue with Form error messages
+p.text-danger.small {
+   margin-bottom: 0;
+}
+
+// Inputs
+.form-group {
+     min-height: 94px;
+
+     &.form-initial-height {
+         min-height: initial;
+     }
+
+    .form-control, 
+    .custom-select,
+    .gw-select__control {
+        border: none;
+        box-shadow: $shadow-inner;
+        background-color: $gray-200;
+    }
+
+    .input-group-text {
+        border: none;
+    }
+}
+
+// Buttons
+.btn-primary {
+   box-shadow: $shadow-md;
+
+   &:hover {
+        box-shadow: $shadow-base;
+   }
+}

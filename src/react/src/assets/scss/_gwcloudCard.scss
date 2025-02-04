@@ -1,0 +1,67 @@
+// GW Form Card
+.gw-form-card.card {
+    background-color: $white;
+    border: none;
+    box-shadow: $shadow-md;
+    margin-bottom: 1rem;
+    border-top: 4px solid $blue;
+
+    &.disabled {
+      background-color: $gray-100;
+      color: $gray-300;
+      box-shadow: none;
+      border: 1px solid $gray-200;
+      border-top: 4px solid $gray-300;
+    }
+}
+
+// Form Card Inputs
+.gw-form-card.card {
+   .form-group {
+      .form-control, 
+      .custom-select,
+      .gw-select__control {
+           border: none;
+           box-shadow: $shadow-inner;
+           background-color: $gray-200;
+      }
+   
+      .form-control:disabled,
+      .gw-select__control.gw-select__control--is-disabled {
+         background-color: $gray-200;
+         color: #999999;
+      }
+   }
+}
+
+// Detector Card
+.gw-detector-card.card {
+   background-color: $white;
+   margin-bottom: 1rem;
+
+   .card-header {
+       margin-top: -55px;
+       border: none;
+       background-color: rgba($blue-100, 0.8);
+       z-index: 100;
+   }
+
+   img {
+      height: 100px;
+      object-fit: cover;
+   }
+
+   &.active {
+      box-shadow: $shadow-md;
+   }
+
+   &:not(.active) {
+      background-color: $gray-100;
+      color: $gray-300;
+      filter: none;
+      img {
+          z-index: 1;
+          filter: grayscale(100%);
+      }
+   }
+}

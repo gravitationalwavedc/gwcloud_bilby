@@ -1,0 +1,10 @@
+// Custom styles
+.navbar-brand-link {
+   color: $blue-500;
+   font-family: $font-family-special;
+
+   &:hover {
+       text-decoration: none;
+       color: $blue-800;
+   }
+}

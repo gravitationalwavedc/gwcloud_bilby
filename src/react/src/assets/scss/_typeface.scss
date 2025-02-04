@@ -1,0 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display&display=swap');
+
+// GWCloud fonts
+$font-family-special: 'Playfair Display', serif;
+$font-family-sans-serif: 'Lato', sans-serif;
+
+.special-font {
+   font-family: $font-family-special;
+}
+
+.login-logo {
+  font-family: $font-family-special;
+  font-size: 4rem;
+}
