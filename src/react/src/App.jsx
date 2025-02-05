@@ -21,7 +21,6 @@ import { Resolver } from 'found-relay';
 
 function App() {
 
-  console.log("app run")
   const Router = createFarceRouter({
 
     historyProtocol: new BrowserProtocol(),

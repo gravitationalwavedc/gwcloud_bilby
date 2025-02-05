@@ -7,9 +7,7 @@ import JobSearchForm from '../Components/JobSearchForm';
 import { INFINITE_SCROLL_CHUNK_SIZE } from '../constants';
 import Link from 'found/Link';
 
-console.log("publicJobs load")
 const PublicJobs = ({ data, match, router, relay, isAuthenticated }) => {
-  console.log("publicJobs run")
   const [search, setSearch] = useState('*');
   const [timeRange, setTimeRange] = useState('all');
   const [order, setOrder] = useState();

@@ -3,7 +3,6 @@ import Loading from './Components/Loading';
 import { RedirectException } from 'found';
 import ReactGA from 'react-ga';
 
-console.log(Loading);
 // TODO: harnessApi
 const harnessApi = {
   hasAuthToken: () => true
@@ -18,13 +17,9 @@ ReactGA.initialize(TRACKING_ID, { testMode: process.env.NODE_ENV === 'test' });
 export const handlePublicRender = ({ Component, props } = {}) => {
   if (!Component || !props) {
 
-    console.log("handlePublicRender failed")
     return <Loading />;
   }
 
-  console.log("handlePublicRender suc")
-  console.log(Component)
-  console.log(props)
   // Everyone loves hax
   if (props.location !== undefined && props.match === undefined) {
     props.match = {

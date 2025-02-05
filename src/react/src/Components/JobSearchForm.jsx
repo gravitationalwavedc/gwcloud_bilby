@@ -10,7 +10,6 @@ export default function JobSearchForm({ search, setSearch, timeRange, setTimeRan
     { text: 'Past month', value: '1m' },
     { text: 'Past year', value: '1y' },
   ];
-  console.log(Form)
 
 
   return (
