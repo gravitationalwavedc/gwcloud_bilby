@@ -62,7 +62,7 @@ const ViewJob = (props) => {
           <Link
             as={Button}
             to={{
-              pathname: '/bilby/job-form/duplicate/',
+              pathname: '/job-form/duplicate/',
               state: { jobId: props.match.params.jobId },
             }}
             className="float-right"

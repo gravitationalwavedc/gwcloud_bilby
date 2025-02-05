@@ -8,7 +8,7 @@ import environment from '../../environment';
 const downloadUrl = 'https://jobcontroller.adacs.org.au/job/apiv1/file/?fileId=';
 const uploadedJobDownloadUrl = IS_DEV
   ? 'http://localhost:8001/file_download/?fileId='
-  : 'https://gwcloud.org.au/bilby/file_download/?fileId=';
+  : 'https://gwcloud.org.au/file_download/?fileId=';
 
 const getFileDownloadIdMutation = graphql`
     mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {

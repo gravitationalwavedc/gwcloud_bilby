@@ -41,7 +41,7 @@ const MyJobs = ({ data, match, router, relay }) => {
             <Link
               as={Button}
               variant="outline-primary"
-              to="/bilby/"
+              to="/"
               exact
               match={match}
               router={router}
@@ -49,7 +49,7 @@ const MyJobs = ({ data, match, router, relay }) => {
             >
               Switch to public jobs
             </Link>
-            <Link as={Button} to="/bilby/job-form/" exact match={match} router={router}>
+            <Link as={Button} to="/job-form/" exact match={match} router={router}>
               <HiOutlinePlus size={18} className="mb-1 mr-1" />
               Start a new job
             </Link>

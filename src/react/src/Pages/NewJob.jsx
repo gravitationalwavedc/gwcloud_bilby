@@ -103,7 +103,7 @@ const NewJob = ({ initialValues, router, data }) => {
       variables: variables,
       onCompleted: (response, errors) => {
         if (!errors) {
-          router.replace(`/bilby/job-results/${response.newBilbyJob.result.jobId}/`);
+          router.replace(`/job-results/${response.newBilbyJob.result.jobId}/`);
         }
       },
     });
