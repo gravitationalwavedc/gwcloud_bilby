@@ -1,5 +1,5 @@
 import React from 'react';
-import { Col, Row, Form, InputGroup, FormLabel } from 'react-bootstrap';
+import { Col, Form, InputGroup } from 'react-bootstrap';
 import { HiOutlineSearch } from 'react-icons/hi';
 
 export default function JobSearchForm({ search, setSearch, timeRange, setTimeRange }) {
@@ -11,17 +11,18 @@ export default function JobSearchForm({ search, setSearch, timeRange, setTimeRan
     { text: 'Past year', value: '1y' },
   ];
 
-
   return (
     <Form onSubmit={(e) => e.preventDefault()}>
-      <Row>
+      <Form.Row>
         <Col lg={3}>
           <Form.Group controlId="searchJobs" className="form-initial-height">
-            <FormLabel visuallyHidden>Search</FormLabel>
+            <Form.Label srOnly>Search</Form.Label>
             <InputGroup>
-              <InputGroup.Text>
-                <HiOutlineSearch />
-              </InputGroup.Text>
+              <InputGroup.Prepend>
+                <InputGroup.Text>
+                  <HiOutlineSearch />
+                </InputGroup.Text>
+              </InputGroup.Prepend>
               <Form.Control
                 placeholder="Find a job..."
                 value={search}
@@ -32,11 +33,12 @@ export default function JobSearchForm({ search, setSearch, timeRange, setTimeRan
         </Col>
         <Col lg={2}>
           <Form.Group controlId="timeRange" className="form-initial-height">
-            <FormLabel visuallyHidden>Time</FormLabel>
+            <Form.Label srOnly>Time</Form.Label>
             <Form.Control
               as="select"
               value={timeRange}
               onChange={({ target }) => setTimeRange(target.value)}
+              custom
             >
               {timeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -46,7 +48,8 @@ export default function JobSearchForm({ search, setSearch, timeRange, setTimeRan
             </Form.Control>
           </Form.Group>
         </Col>
-      </Row>
+      </Form.Row>
     </Form>
   );
 }
+

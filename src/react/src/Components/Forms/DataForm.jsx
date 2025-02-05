@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Col, Row, Form } from 'react-bootstrap';
+import { Button, CardDeck, Col, Row, Form } from 'react-bootstrap';
 import Input from './Atoms/Input';
 import RadioGroup from './Atoms/RadioGroup';
 import DetectorCard from './DetectorCard';
@@ -103,11 +103,11 @@ const DataForm = ({ formik, handlePageChange, data }) => {
           </FormCard>
         </Col>
       </Row>
-      <div class="card-deck mb-3">
+      <CardDeck className="mb-3">
         <DetectorCard channelOptions={hanford} title="Hanford" image={hanfordImg} formik={formik} />
         <DetectorCard channelOptions={livingston} title="Livingston" image={livingstonImg} formik={formik} />
         <DetectorCard channelOptions={virgo} title="Virgo" image={virgoImg} formik={formik} />
-      </div>
+      </CardDeck>
       <Row>
         <Col>
           <Button onClick={() => handlePageChange('signal')}>Save and continue</Button>
@@ -124,3 +124,4 @@ export default createFragmentContainer(DataForm, {
         }
     `,
 });
+
