@@ -1,12 +1,15 @@
 import graphene
 import bilbyui.schema
+import adacs_sso_plugin.schema
 
 
-class Query(bilbyui.schema.Query, graphene.ObjectType):
+class Query(bilbyui.schema.Query, adacs_sso_plugin.schema.Query, graphene.ObjectType):
     pass
 
 
-class Mutation(bilbyui.schema.Mutation, graphene.ObjectType):
+class Mutation(
+    bilbyui.schema.Mutation, adacs_sso_plugin.schema.Mutation, graphene.ObjectType
+):
     pass
 
 
