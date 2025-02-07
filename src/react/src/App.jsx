@@ -28,7 +28,14 @@ function App() {
     historyMiddlewares: [queryMiddleware],
     routeConfig: makeRouteConfig(
       <>
-        <Route path="/" Component={Layout}>
+        <Route path="/" Component={Layout}
+          query={graphql`
+                query App_Layout_Query {
+                    ...Layout_sessionUser
+                }
+          `}
+          render={handlePublicRender}
+        >
           <Route
             Component={PublicJobs}
             query={graphql`

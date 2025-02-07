@@ -5,7 +5,7 @@ import ReactGA from 'react-ga';
 
 // TODO: harnessApi
 const harnessApi = {
-  hasAuthToken: () => true
+  hasAuthToken: () => false
 }
 
 //Initialise Google Analytics
