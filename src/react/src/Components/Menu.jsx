@@ -5,6 +5,7 @@ import Nav from 'react-bootstrap/Nav';
 import { HiOutlineUserCircle, HiOutlineLogout, HiOutlineCode } from 'react-icons/hi';
 import GWCloudLogo from '../assets/images/GWCloud-logo-primary200.png';
 
+
 // TODO: logout
 const logout = () => void 0;
 
@@ -26,7 +27,7 @@ const subMenu = (name) => {
         <Navbar.Text className="justify-content-end mr-3">
           <HiOutlineUserCircle style={iconStyle} /> {name}
         </Navbar.Text>
-        <Nav.Link onClick={() => logout()}>
+        <Nav.Link href={`${import.meta.env.VITE_BACKEND_URL}/sso/logout/`}>
           <HiOutlineLogout style={iconStyle} /> Logout
         </Nav.Link>
       </Nav>
@@ -35,7 +36,7 @@ const subMenu = (name) => {
 
   return (
     <Nav>
-      <a href="http://localhost:5000/accounts/login/?next=client.gwcloud_bilby_dev">Login</a>
+      <a href={`${import.meta.env.VITE_BACKEND_URL}/sso/login/`}>Login</a>
     </Nav>
   );
 };

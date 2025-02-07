@@ -6,7 +6,7 @@ import relay from 'vite-plugin-relay'
 export default defineConfig({
   plugins: [react(), relay],
   server: {
-    port: 3002,
+    port: 3000,
     strictPort: true,
   }
 })

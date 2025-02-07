@@ -1,12 +1,11 @@
 import React from 'react';
 import { commitMutation, createFragmentContainer, graphql } from 'react-relay';
 import { filesize } from 'filesize';
-import { IS_DEV } from '../../Utils/misc';
 import { jobTypes } from '../../Utils/jobHelpers';
 import environment from '../../environment';
 
 const downloadUrl = 'https://jobcontroller.adacs.org.au/job/apiv1/file/?fileId=';
-const uploadedJobDownloadUrl = IS_DEV
+const uploadedJobDownloadUrl = import.meta.env.DEV
   ? 'http://localhost:8001/file_download/?fileId='
   : 'https://gwcloud.org.au/file_download/?fileId=';
 

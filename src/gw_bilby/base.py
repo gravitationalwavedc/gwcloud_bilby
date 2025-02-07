@@ -51,6 +51,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "adacs_sso_plugin.middleware.ADACSSSOMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -134,7 +135,6 @@ EMAIL_PORT = 25
 
 GRAPHENE = {
     "SCHEMA": "gw_bilby.schema.schema",
-    "SCHEMA_OUTPUT": "react/data/schema.json",  # defaults to schema.json,
     "SCHEMA_OUTPUT": "react/data/schema.graphql",  # defaults to schema.json,
     "SCHEMA_INDENT": 2,  # Defaults to None (displays all data on a single line),
     "MIDDLEWARE": [
@@ -143,10 +143,7 @@ GRAPHENE = {
     ],
 }
 
-AUTHENTICATION_BACKENDS = [
-    "graphql_jwt.backends.JSONWebTokenBackend",
-    "django.contrib.auth.backends.ModelBackend",
-]
+AUTHENTICATION_BACKENDS = ["adacs_sso_plugin.backend.ADACSSSOBackend"]
 
 
 def jwt_get_user_by_payload_override(payload):
