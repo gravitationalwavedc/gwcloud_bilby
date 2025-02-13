@@ -65,7 +65,7 @@ def check_and_download():
         none_succeeded=-1,
     ):
         cur.execute(
-            "INSERT INTO completed_jobs (job_id, success,common_name, catalog_shortname, reason, reason_data, all_succeeded, none_succeeded) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO completed_jobs (job_id, common_name, catalog_shortname, success, reason, reason_data, all_succeeded, none_succeeded) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 job_id,
                 common_name,
