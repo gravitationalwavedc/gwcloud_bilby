@@ -6,11 +6,12 @@ RUN apt-get -y install python3-dev build-essential curl
 
 WORKDIR /
 
-# Copy in the script
-COPY gwosc_ingest.py gwosc_ingest.py
-COPY requirements.txt requirements.txt
 
 # Install requirements
+COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r /requirements.txt
+
+# Copy in the script
+COPY gwosc_ingest.py gwosc_ingest.py
 
 ENTRYPOINT ["python", "gwosc_ingest.py"]
