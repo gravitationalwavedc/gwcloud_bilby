@@ -148,14 +148,14 @@ def check_and_download():
     gps = event_json["GPS"]
     gracedb_id = event_json["gracedb_id"]
 
-    # Check if this should be skipped
+    # Check if this should be skipped for being in the wrong type of catalog
     ignore_patterns = [
         "marginal",
         "preliminary",
         "initial_ligo_virgo",
     ]
     for pattern in ignore_patterns:
-        if re.match(pattern, common_name, flags=re.IGNORECASE):
+        if re.search(pattern, catalog_shortname, flags=re.IGNORECASE):
             save_sqlite_job(
                 event_name,
                 common_name,
