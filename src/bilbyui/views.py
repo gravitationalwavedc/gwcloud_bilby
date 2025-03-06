@@ -18,7 +18,14 @@ from django.http import Http404, FileResponse
 from gwosc.datasets import event_gps
 
 from .constants import BilbyJobType
-from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile, ExternalBilbyJob
+from .models import (
+    BilbyJob,
+    Label,
+    EventID,
+    FileDownloadToken,
+    SupportingFile,
+    ExternalBilbyJob,
+)
 from .utils.embargo import should_embargo_job
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 
@@ -53,7 +60,9 @@ def embargo_from_args(user, args):
 
 
 def create_bilby_job(user, params):
-    if should_embargo_job(user, float(params.data.trigger_time), params.data.data_choice == "simulated"):
+    if should_embargo_job(
+        user, float(params.data.trigger_time), params.data.data_choice == "simulated"
+    ):
         raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
     validate_job_name(params.details.name)
@@ -71,8 +80,12 @@ def create_bilby_job(user, params):
     for k, v in {("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")}:
         if getattr(params.detector, k):
             detectors.append(v)
-            maximum_frequencies[v] = str(getattr(params.detector, k + "_maximum_frequency"))
-            minimum_frequencies[v] = str(getattr(params.detector, k + "_minimum_frequency"))
+            maximum_frequencies[v] = str(
+                getattr(params.detector, k + "_maximum_frequency")
+            )
+            minimum_frequencies[v] = str(
+                getattr(params.detector, k + "_minimum_frequency")
+            )
             channels[v] = getattr(params.data.channels, k + "_channel")
 
     # Set the run type as simulation if required
@@ -204,10 +217,14 @@ def create_bilby_job(user, params):
 
         ini_string = f.read().decode("utf-8")
 
-    event_id = EventID.get_by_event_id(params.data.event_id, user) if params.data.event_id else None
+    event_id = (
+        EventID.get_by_event_id(params.data.event_id, user)
+        if params.data.event_id
+        else None
+    )
 
     bilby_job = BilbyJob.objects.create(
-        user_id=user.user_id,
+        user_id=user.id,
         name=params.details.name,
         description=params.details.description,
         private=params.details.private,
@@ -223,7 +240,9 @@ def create_bilby_job(user, params):
     return bilby_job
 
 
-def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict):
+def parse_supporting_files(
+    parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict
+):
     """
     Given a DataGenerationInput object, parser, this function will generate a dictionary representing any supporting
     files from the input, and then remove those supporting files from the parser. The other parameter is a
@@ -304,7 +323,9 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
             setattr(args, config_name, None)
 
         else:
-            logging.error(f"Got unknown supporting file type for {config_name}: {str(config)}")
+            logging.error(
+                f"Got unknown supporting file type for {config_name}: {str(config)}"
+            )
 
     return supporting_files
 
@@ -375,7 +396,9 @@ def create_bilby_job_from_ini_string(user, params):
     bilby_job.save()
 
     # Save any supporting file records
-    supporting_file_details = SupportingFile.save_from_parsed(bilby_job, supporting_files)
+    supporting_file_details = SupportingFile.save_from_parsed(
+        bilby_job, supporting_files
+    )
 
     # Submit the job to the job controller if there are no supporting files
     if not bilby_job.has_supporting_files():
@@ -384,17 +407,21 @@ def create_bilby_job_from_ini_string(user, params):
     return bilby_job, supporting_file_details
 
 
-def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, name=None, description=None):
+def update_bilby_job(
+    job_id, user, private=None, labels=None, event_id=None, name=None, description=None
+):
     bilby_job = BilbyJob.get_by_id(job_id, user)
 
-    if user.user_id == bilby_job.user_id:
+    if user.id == bilby_job.user_id:
         if labels is not None:
             # Preserve protected labels
             protected_labels = bilby_job.labels.filter(protected=True)
             bilby_job.labels.set(Label.filter_by_name(labels) | protected_labels)
 
         if event_id is not None:
-            bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
+            bilby_job.event_id = (
+                None if event_id == "" else EventID.objects.get(event_id=event_id)
+            )
 
         if private is not None:
             bilby_job.private = private
@@ -410,8 +437,10 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
 
         return "Job saved!"
 
-    elif user.user_id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
-        bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
+    elif user.id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
+        bilby_job.event_id = (
+            None if event_id == "" else EventID.objects.get(event_id=event_id)
+        )
 
         bilby_job.save()
 
@@ -432,9 +461,13 @@ def upload_bilby_job(user, upload_token, details, job_file):
     os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
 
     # Write out the uploaded job to disk and unpack the archive to a temporary staging directory
-    with TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir, NamedTemporaryFile(
-        dir=settings.JOB_UPLOAD_STAGING_DIR, suffix=".tar.gz"
-    ) as job_upload_file, UploadedFile(job_file) as django_job_file:
+    with (
+        TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir,
+        NamedTemporaryFile(
+            dir=settings.JOB_UPLOAD_STAGING_DIR, suffix=".tar.gz"
+        ) as job_upload_file,
+        UploadedFile(job_file) as django_job_file,
+    ):
         # Write the uploaded file to the temporary file
         for c in django_job_file.chunks():
             job_upload_file.write(c)
@@ -449,7 +482,9 @@ def upload_bilby_job(user, upload_token, details, job_file):
         )
         out, err = p.communicate()
 
-        logging.info(f"Unpacking uploaded job archive {job_file.name} had return code {p.returncode}")
+        logging.info(
+            f"Unpacking uploaded job archive {job_file.name} had return code {p.returncode}"
+        )
         logging.info(f"stdout: {out}")
         logging.info(f"stderr: {err}")
 
@@ -459,12 +494,15 @@ def upload_bilby_job(user, upload_token, details, job_file):
         # Validate the directory structure, this should include 'data', 'result', and 'results_page' at minimum
         for directory in ["data", "result", "results_page"]:
             if not os.path.isdir(os.path.join(job_staging_dir, directory)):
-                raise Exception(f"Invalid directory structure, expected directory ./{directory} to exist.")
+                raise Exception(
+                    f"Invalid directory structure, expected directory ./{directory} to exist."
+                )
 
         # Find the config complete ini
         ini_file = list(
             filter(
-                lambda x: os.path.isfile(os.path.join(job_staging_dir, x)) and x.endswith("_config_complete.ini"),
+                lambda x: os.path.isfile(os.path.join(job_staging_dir, x))
+                and x.endswith("_config_complete.ini"),
                 os.listdir(job_staging_dir),
             )
         )
@@ -545,23 +583,33 @@ def upload_bilby_job(user, upload_token, details, job_file):
             bilby_job.save()
 
             # Save any supporting file records
-            supporting_file_details = SupportingFile.save_from_parsed(bilby_job, supporting_files, uploaded=True)
+            supporting_file_details = SupportingFile.save_from_parsed(
+                bilby_job, supporting_files, uploaded=True
+            )
 
             # Check that the job directory exists for this supporting file
-            supporting_file_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(bilby_job.id)
+            supporting_file_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(
+                bilby_job.id
+            )
             supporting_file_dir.mkdir(exist_ok=True, parents=True)
 
             # Make sure the source supporting file exists
             for supporting_file in supporting_file_details:
                 source_file = Path(job_staging_dir) / supporting_file["file_path"]
                 if not source_file.is_file():
-                    raise Exception(f"Supporting file {supporting_file['file_path']} does not exist.")
+                    raise Exception(
+                        f"Supporting file {supporting_file['file_path']} does not exist."
+                    )
 
                 # Because we're in a transaction here, the bulk_create in `SupportingFile.save_from_parsed` isn't saved
                 # so we need to fetch it again from the database to get the inserted ID
-                supporting_file_instance = SupportingFile.objects.get(download_token=supporting_file["download_token"])
+                supporting_file_instance = SupportingFile.objects.get(
+                    download_token=supporting_file["download_token"]
+                )
                 source_file = Path(job_staging_dir) / supporting_file["file_path"]
-                shutil.copyfile(source_file, supporting_file_dir / str(supporting_file_instance.id))
+                shutil.copyfile(
+                    source_file, supporting_file_dir / str(supporting_file_instance.id)
+                )
 
             # Now we have the bilby job id, we can move the staging directory to the actual job directory
             job_dir = bilby_job.get_upload_directory()
@@ -569,11 +617,16 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
             # Finally generate the archive.tar.gz file
             p = subprocess.Popen(
-                ["tar", "-cvf", "archive.tar.gz", "."], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=job_dir
+                ["tar", "-cvf", "archive.tar.gz", "."],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=job_dir,
             )
             out, err = p.communicate()
 
-            logging.info(f"Packing uploaded job archive for {job_file.name} had return code {p.returncode}")
+            logging.info(
+                f"Packing uploaded job archive for {job_file.name} had return code {p.returncode}"
+            )
             logging.info(f"stdout: {out}")
             logging.info(f"stderr: {err}")
 
@@ -622,7 +675,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
         job_type=BilbyJobType.EXTERNAL,
     )
 
-    if user.user_id == settings.GWOSC_INGEST_USER:
+    if user.id == settings.GWOSC_INGEST_USER:
         bilby_job.labels.set([Label.objects.get(name="Official")])
 
     # Create the relevant External Bilby Job record as well
@@ -694,7 +747,9 @@ def file_download(request):
         raise Http404
 
 
-def create_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
+def create_event_id(
+    user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False
+):
     EventID.create(
         event_id=event_id,
         trigger_id=trigger_id,
@@ -706,7 +761,9 @@ def create_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is
     return f"EventID {event_id} succesfully created!"
 
 
-def update_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=None):
+def update_event_id(
+    user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=None
+):
     event = EventID.get_by_event_id(event_id, user)
     event.update(
         trigger_id=trigger_id,
@@ -730,7 +787,9 @@ def delete_event_id(user, event_id):
 
 def upload_supporting_files(upload_tokens, uploaded_supporting_files):
     # Check that the job directory exists for this supporting file
-    for upload_token, uploaded_supporting_file in zip(upload_tokens, uploaded_supporting_files):
+    for upload_token, uploaded_supporting_file in zip(
+        upload_tokens, uploaded_supporting_files
+    ):
         job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(upload_token.job.id)
         os.makedirs(job_dir, exist_ok=True)
 
@@ -745,7 +804,9 @@ def upload_supporting_files(upload_tokens, uploaded_supporting_files):
         upload_token.save()
 
         # Check if there are any supporting uploads left for this job and submit the job if required
-        if not SupportingFile.get_unuploaded_supporting_files(upload_token.job).exists():
+        if not SupportingFile.get_unuploaded_supporting_files(
+            upload_token.job
+        ).exists():
             # All supporting files have been uploaded, now launch the job
             upload_token.job.submit()
 

@@ -48,7 +48,9 @@ class Label(models.Model):
         :param include_protected: If protected labels should be included
         :return: QuerySet of filtered Labels
         """
-        return cls.objects.filter(name__in=labels, protected__in=[False, include_protected])
+        return cls.objects.filter(
+            name__in=labels, protected__in=[False, include_protected]
+        )
 
     def __str__(self):
         return f"Label: {self.name}"
@@ -66,13 +68,21 @@ class EventID(models.Model):
         blank=False,
         null=False,
         unique=True,
-        validators=[RegexValidator(regex=r"^GW\d{6}_\d{6}$", message="Must be of the form GW123456_123456")],
+        validators=[
+            RegexValidator(
+                regex=r"^GW\d{6}_\d{6}$", message="Must be of the form GW123456_123456"
+            )
+        ],
     )
     trigger_id = models.CharField(
         max_length=15,
         blank=True,
         null=True,
-        validators=[RegexValidator(regex=r"^S\d{6}[a-z]{1,2}$", message="Must be of the form S123456a")],
+        validators=[
+            RegexValidator(
+                regex=r"^S\d{6}[a-z]{1,2}$", message="Must be of the form S123456a"
+            )
+        ],
     )
     nickname = models.CharField(max_length=20, blank=True, null=True)
     is_ligo_event = models.BooleanField(default=False)
@@ -96,15 +106,23 @@ class EventID(models.Model):
             return cls.objects.exclude(is_ligo_event=True)
 
     @classmethod
-    def create(cls, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
+    def create(
+        cls, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False
+    ):
         event = cls(
-            event_id=event_id, trigger_id=trigger_id, nickname=nickname, is_ligo_event=is_ligo_event, gps_time=gps_time
+            event_id=event_id,
+            trigger_id=trigger_id,
+            nickname=nickname,
+            is_ligo_event=is_ligo_event,
+            gps_time=gps_time,
         )
         event.clean_fields()  # Validate IDs
         event.save()
         return event
 
-    def update(self, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=False):
+    def update(
+        self, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=False
+    ):
         if gps_time is not None:
             self.gps_time = gps_time
         if trigger_id is not None:
@@ -148,13 +166,17 @@ class BilbyJob(models.Model):
     job_controller_id = models.IntegerField(default=None, blank=True, null=True)
 
     labels = models.ManyToManyField(Label)
-    event_id = models.ForeignKey(EventID, default=None, null=True, on_delete=models.SET_NULL)
+    event_id = models.ForeignKey(
+        EventID, default=None, null=True, on_delete=models.SET_NULL
+    )
     # is_ligo_job indicates if the job has been run using proprietary data. If running a real job with GWOSC, this will
     # be set to False, otherwise a real data job using channels other than GWOSC will result in this value being True
     is_ligo_job = models.BooleanField(default=False)
 
     # The type of job
-    job_type = models.IntegerField(default=BilbyJobType.NORMAL, choices=BILBY_JOB_TYPE_CHOICES)
+    job_type = models.IntegerField(
+        default=BilbyJobType.NORMAL, choices=BILBY_JOB_TYPE_CHOICES
+    )
 
     # The cluster (as a string) that this job was submitted to. This is mainly used to track the cluster that the job
     # should be uploaded to once the supporting files are uploaded
@@ -176,7 +198,7 @@ class BilbyJob(models.Model):
         job = cls.objects.get(id=bid)
 
         # Users can only access the job if it is public or (the user is authenticated AND the user also owns the job)
-        if job.private and (user.is_anonymous or user.user_id != job.user_id):
+        if job.private and (user.is_anonymous or user.id != job.user_id):
             raise Exception("Permission Denied")
 
         return job
@@ -193,7 +215,7 @@ class BilbyJob(models.Model):
         if user.is_anonymous:
             raise Exception("Permission Denied")
 
-        return embargo_filter(qs.filter(user_id=user.user_id), user)
+        return embargo_filter(qs.filter(user_id=user.id), user)
 
     @classmethod
     def public_bilby_job_filter(cls, qs, user):
@@ -226,10 +248,15 @@ class BilbyJob(models.Model):
 
         if not is_ligo_user(user):
             # If the job is not a ligo job and (the job is the current user's job or the job is public)
-            return embargo_filter(qs.filter(Q(is_ligo_job=False) & (Q(user_id=user.user_id) | Q(private=False))), user)
+            return embargo_filter(
+                qs.filter(
+                    Q(is_ligo_job=False) & (Q(user_id=user.id) | Q(private=False))
+                ),
+                user,
+            )
 
         # If the job is the current user's job or the job is public
-        return embargo_filter(qs.filter(Q(user_id=user.user_id) | Q(private=False)), user)
+        return embargo_filter(qs.filter(Q(user_id=user.id) | Q(private=False)), user)
 
     @classmethod
     def prune_supporting_files_jobs(cls):
@@ -237,7 +264,9 @@ class BilbyJob(models.Model):
         This function removes any jobs that have supporting files that have not been uploaded within the time specified
         by UPLOAD_SUPPORTING_FILE_EXPIRY
         """
-        removal_time = timezone.now() - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY)
+        removal_time = timezone.now() - timezone.timedelta(
+            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY
+        )
 
         expired_supporting_file_job_ids = SupportingFile.objects.filter(
             job__creation_time__lt=removal_time, upload_token__isnull=False
@@ -318,7 +347,9 @@ class BilbyJob(models.Model):
             return
 
         es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY, verify_certs=False
+            hosts=[settings.ELASTIC_SEARCH_HOST],
+            api_key=settings.ELASTIC_SEARCH_API_KEY,
+            verify_certs=False,
         )
 
         # Get the user details for this job
@@ -327,20 +358,26 @@ class BilbyJob(models.Model):
 
         # Generate the document for insertion or update in elastic search
         doc = {
-            "user": {
-                "firstName": user["firstName"],
-                "lastName": user["lastName"],
-            },
+            "user": {"name": user["name"]},
             "job": {
                 "name": self.name,
                 "description": self.description,
                 "creationTime": self.creation_time,
                 "lastUpdatedTime": self.last_updated,
             },
-            "labels": [{"name": label.name, "description": label.description} for label in self.labels.all()],
+            "labels": [
+                {"name": label.name, "description": label.description}
+                for label in self.labels.all()
+            ],
             "eventId": None,
-            "ini": {kv.key: json.loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=False)},
-            "params": {kv.key: json.loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=True)},
+            "ini": {
+                kv.key: json.loads(kv.value)
+                for kv in self.inikeyvalue_set.filter(processed=False)
+            },
+            "params": {
+                kv.key: json.loads(kv.value)
+                for kv in self.inikeyvalue_set.filter(processed=True)
+            },
             "_private_info_": {"userId": self.user_id, "private": self.private},
         }
 
@@ -367,7 +404,9 @@ class BilbyJob(models.Model):
             return
 
         es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY, verify_certs=False
+            hosts=[settings.ELASTIC_SEARCH_HOST],
+            api_key=settings.ELASTIC_SEARCH_API_KEY,
+            verify_certs=False,
         )
 
         es.delete(index=settings.ELASTIC_SEARCH_INDEX, id=self.id)
@@ -423,7 +462,9 @@ class SupportingFile(models.Model):
     # The original file name (WITHOUT A PATH)
     file_name = models.TextField()
     # The file upload token. This token is set to None once the supporting file has been uploaded
-    upload_token = models.UUIDField(unique=True, null=True, default=uuid.uuid4, db_index=True)
+    upload_token = models.UUIDField(
+        unique=True, null=True, default=uuid.uuid4, db_index=True
+    )
     # The file download token
     download_token = models.UUIDField(unique=True, default=uuid.uuid4, db_index=True)
 
@@ -449,14 +490,26 @@ class SupportingFile(models.Model):
                         result_files.append({"file_path": f})
 
                         bulk_items.append(
-                            cls(job=bilby_job, file_type=supporting_file_type, key=k, file_name=Path(f).name, **extra)
+                            cls(
+                                job=bilby_job,
+                                file_type=supporting_file_type,
+                                key=k,
+                                file_name=Path(f).name,
+                                **extra,
+                            )
                         )
 
             elif type(details) is str:
                 result_files.append({"file_path": details})
 
                 bulk_items.append(
-                    cls(job=bilby_job, file_type=supporting_file_type, key=None, file_name=Path(details).name, **extra)
+                    cls(
+                        job=bilby_job,
+                        file_type=supporting_file_type,
+                        key=None,
+                        file_name=Path(details).name,
+                        **extra,
+                    )
                 )
 
         created = cls.objects.bulk_create(bulk_items)
@@ -570,7 +623,8 @@ class FileDownloadToken(models.Model):
         Removes any expired tokens from the database
         """
         cls.objects.filter(
-            created__lt=timezone.now() - datetime.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY)
+            created__lt=timezone.now()
+            - datetime.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY)
         ).delete()
 
     @classmethod
@@ -584,7 +638,10 @@ class FileDownloadToken(models.Model):
         cls.prune()
 
         # Get all objects matching the list of tokens
-        objects = {str(rec.token): rec.path for rec in cls.objects.filter(job=job, token__in=tokens)}
+        objects = {
+            str(rec.token): rec.path
+            for rec in cls.objects.filter(job=job, token__in=tokens)
+        }
 
         # Generate the list and return
         return [objects[str(tok)] if str(tok) in objects else None for tok in tokens]
@@ -629,7 +686,7 @@ class BilbyJobUploadToken(models.Model):
         cls.prune()
 
         # Next create and return a new token instance
-        return cls.objects.create(user_id=user.user_id, is_ligo=user.is_ligo)
+        return cls.objects.create(user_id=user.id, is_ligo=user.is_ligo)
 
     @classmethod
     def prune(cls):
@@ -637,7 +694,8 @@ class BilbyJobUploadToken(models.Model):
         Removes any expired tokens from the database
         """
         cls.objects.filter(
-            created__lt=timezone.now() - datetime.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY)
+            created__lt=timezone.now()
+            - datetime.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY)
         ).delete()
 
 
