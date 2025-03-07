@@ -92,7 +92,7 @@ class EventID(models.Model):
     def get_by_event_id(cls, event_id, user):
         event = cls.objects.get(event_id=event_id)
 
-        if event.is_ligo_event and (user.is_anonymous or not user.is_ligo):
+        if event.is_ligo_event and not is_ligo_user(user):
             raise Exception("Permission Denied")
 
         return event
@@ -686,7 +686,7 @@ class BilbyJobUploadToken(models.Model):
         cls.prune()
 
         # Next create and return a new token instance
-        return cls.objects.create(user_id=user.id, is_ligo=user.is_ligo)
+        return cls.objects.create(user_id=user.id, is_ligo=is_ligo_user(user))
 
     @classmethod
     def prune(cls):

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core import mail
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 
 
 def check_request_leak():
@@ -18,4 +19,7 @@ def check_request_leak_decorator(fn):
 
 
 def is_ligo_user(user):
-    return not user.is_anonymous and user.is_ligo
+    return (
+        not user.is_anonymous
+        and user.authentication_method == AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
+    )

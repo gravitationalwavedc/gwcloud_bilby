@@ -36,7 +36,8 @@ class BilbyTestCase(GraphQLTestCase):
         # We always want to see the full diff when an error occurs.
         self.maxDiff = None
 
-    def default_authenticate(self):
+    # Log in as a user. Any parameters can be overwritten with **kwargs
+    def authenticate(self, **kwargs):
         self.client.authenticate(
             {
                 "is_authenticated": True,
@@ -47,5 +48,16 @@ class BilbyTestCase(GraphQLTestCase):
                 "authentication_method": "password",
                 "authenticated_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
                 "fetched_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
+                **kwargs,
             }
         )
+
+    # Deprecated function name redirect
+    def assertResponseHasNoErrors(self, resp, msg=None):
+        return self.assertResponseNoErrors(resp, msg)
+
+    # Add a .data parameter as a result of doing a query
+    def query(self, *args, **kwargs):
+        response = super().query(*args, **kwargs)
+        response.data = response.json().get("data", None)
+        return response
