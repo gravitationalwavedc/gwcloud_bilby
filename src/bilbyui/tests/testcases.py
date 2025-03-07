@@ -66,10 +66,8 @@ class BilbyTestCase(GraphQLTestCase):
     def query(self, *args, **kwargs):
         response = super().query(*args, **kwargs)
         response_json = response.json()
-        if "data" in response_json:
-            response.data = response_json["data"]
-        if "errors" in response_json:
-            response.errors = response_json["errors"]
+        response.data = response_json["data"] if "data" in response_json else None
+        response.errors = response_json["errors"] if "errors" in response_json else None
         return response
 
     def get_upload_token(self):

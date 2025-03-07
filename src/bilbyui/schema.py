@@ -147,7 +147,7 @@ class BilbyJobNode(DjangoObjectType):
         return qs
 
     def resolve_user(parent, info):
-        user = info.context.users.get(parent.id, None)
+        user = info.context.users.get(parent.user_id, None)
         if user:
             return user["name"]
         return "Unknown User"
