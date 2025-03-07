@@ -97,10 +97,10 @@ class TestAnonymousMetrics(LiveServerTestCase):
         }
 
     def elasticsearch_search_mock(*args, **kwargs):
-        user = ADACSUser(**BilbyTestCase.DEFAULT_USER)
+        user = {"name": "buffy summers", "id": 1}
 
         jobs = []
-        for job in BilbyJob.objects.filter(user_id=user.id):
+        for job in BilbyJob.objects.filter(user_id=user["id"]):
             doc = {"_source": generate_elastic_doc(job, user), "_id": job.id}
             jobs.append(doc)
 
