@@ -385,7 +385,7 @@ def create_bilby_job_from_ini_string(user, params):
     ini_string = bilby_args_to_ini_string(args)
 
     bilby_job = BilbyJob(
-        user_id=user.user_id,
+        user_id=user.id,
         name=params.details.name,
         description=params.details.description,
         private=params.details.private,
