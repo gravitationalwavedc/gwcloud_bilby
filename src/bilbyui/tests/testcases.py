@@ -32,6 +32,17 @@ class BilbyTestCase(GraphQLTestCase):
     GRAPHQL_URL = "/graphql"
     client_class = ADACSSSOGraphqlSessionClient
 
+    DEFAULT_USER = {
+        "is_authenticated": True,
+        "id": 1,
+        "name": "buffy summers",
+        "primary_email": "slayer@gmail.com",
+        "emails": ["slayer@gmail.com"],
+        "authentication_method": "password",
+        "authenticated_at": 0,
+        "fetched_at": 0,
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # We always want to see the full diff when an error occurs.
@@ -41,12 +52,7 @@ class BilbyTestCase(GraphQLTestCase):
     # Log in as a user. Any parameters can be overwritten with **kwargs
     def authenticate(self, **kwargs):
         user_dict = {
-            "is_authenticated": True,
-            "id": 1,
-            "name": "buffy summers",
-            "primary_email": "slayer@gmail.com",
-            "emails": ["slayer@gmail.com"],
-            "authentication_method": "password",
+            **BilbyTestCase.DEFAULT_USER,
             "authenticated_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
             "fetched_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
             **kwargs,

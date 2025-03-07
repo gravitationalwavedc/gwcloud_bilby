@@ -380,7 +380,7 @@ class Query(object):
             bilby_job = BilbyJob.get_by_id(record["_id"], info.context.user)
 
             job_node = BilbyPublicJobNode(
-                user=f"{job['user']['firstName']} {job['user']['lastName']}",
+                user=job["user"]["name"],
                 name=job["job"]["name"],
                 description=job["job"]["description"],
                 event_id=EventIDType.get_node(info, id=bilby_job.event_id.id)
