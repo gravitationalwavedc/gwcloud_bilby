@@ -1,3 +1,4 @@
+from adacs_sso_plugin.adacs_user import ADACSAnonymousUser, ADACSUser
 from django.test import override_settings
 from gw_bilby.schema import schema
 
@@ -35,22 +36,27 @@ class BilbyTestCase(GraphQLTestCase):
         super().__init__(*args, **kwargs)
         # We always want to see the full diff when an error occurs.
         self.maxDiff = None
+        self.user = ADACSAnonymousUser()
 
     # Log in as a user. Any parameters can be overwritten with **kwargs
     def authenticate(self, **kwargs):
-        self.client.authenticate(
-            {
-                "is_authenticated": True,
-                "id": 1,
-                "name": "buffy summers",
-                "primary_email": "slayer@gmail.com",
-                "emails": ["slayer@gmail.com"],
-                "authentication_method": "password",
-                "authenticated_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
-                "fetched_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
-                **kwargs,
-            }
-        )
+        user_dict = {
+            "is_authenticated": True,
+            "id": 1,
+            "name": "buffy summers",
+            "primary_email": "slayer@gmail.com",
+            "emails": ["slayer@gmail.com"],
+            "authentication_method": "password",
+            "authenticated_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
+            "fetched_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
+            **kwargs,
+        }
+        self.client.authenticate(user_dict)
+        self.user = ADACSUser(**user_dict)
+
+    def deauthenticate(self):
+        self.client.deauthenticate()
+        self.user = ADACSAnonymousUser()
 
     # Deprecated function name redirect
     def assertResponseHasNoErrors(self, resp, msg=None):
@@ -59,5 +65,22 @@ class BilbyTestCase(GraphQLTestCase):
     # Add a .data parameter as a result of doing a query
     def query(self, *args, **kwargs):
         response = super().query(*args, **kwargs)
-        response.data = response.json().get("data", None)
+        response_json = response.json()
+        if "data" in response_json:
+            response.data = response_json["data"]
+        if "errors" in response_json:
+            response.errors = response_json["errors"]
         return response
+
+    def get_upload_token(self):
+        generate_job_upload_token_mutation = """
+            query GenerateBilbyJobUploadToken {
+            generateBilbyJobUploadToken {
+                token
+            }
+            }
+        """
+
+        response = self.query(generate_job_upload_token_mutation)
+
+        return response.data["generateBilbyJobUploadToken"]["token"]
