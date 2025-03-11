@@ -3,12 +3,13 @@ from django.test import override_settings
 from gw_bilby.schema import schema
 
 from graphene_django.utils.testing import GraphQLTestCase
+from graphene_file_upload.django.testing import GraphQLFileUploadTestMixin
 import datetime
 from adacs_sso_plugin.test_client import ADACSSSOGraphqlSessionClient
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
-class BilbyTestCase(GraphQLTestCase):
+class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
     """
     Bilby test classes should inherit from this class.
 
@@ -71,6 +72,13 @@ class BilbyTestCase(GraphQLTestCase):
     # Add a .data parameter as a result of doing a query
     def query(self, *args, **kwargs):
         response = super().query(*args, **kwargs)
+        response_json = response.json()
+        response.data = response_json["data"] if "data" in response_json else None
+        response.errors = response_json["errors"] if "errors" in response_json else None
+        return response
+
+    def file_query(self, *args, **kwargs):
+        response = super().file_query(*args, **kwargs)
         response_json = response.json()
         response.data = response_json["data"] if "data" in response_json else None
         response.errors = response_json["errors"] if "errors" in response_json else None
