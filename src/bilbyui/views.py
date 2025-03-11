@@ -667,7 +667,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
 
     # Create the bilby job
     bilby_job = BilbyJob.objects.create(
-        user_id=user.user_id,
+        user_id=user.id,
         name=args.label,
         description=details.description,
         private=details.private,
