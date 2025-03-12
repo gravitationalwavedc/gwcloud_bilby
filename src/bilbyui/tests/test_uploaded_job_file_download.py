@@ -9,7 +9,6 @@ from django.test import override_settings
 from django.urls import reverse
 
 from bilbyui.models import BilbyJob
-from bilbyui.tests.test_job_upload import get_upload_token
 from bilbyui.tests.test_utils import (
     silence_errors,
     create_test_upload_data,
@@ -45,14 +44,13 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.query(
+        response = self.file_query(
             """
                 mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
                   uploadBilbyJob(input: $input) {
@@ -63,6 +61,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
                 }
             """,
             input_data=test_input,
+            files=test_files,
         )
 
         self.global_id = response.data["uploadBilbyJob"]["result"]["jobId"]
@@ -90,7 +89,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             }
             """
 
-        self.mut_input = {"input": {"jobId": self.global_id, "downloadTokens": None}}
+        self.mut_input = {"jobId": self.global_id, "downloadTokens": None}
 
         self.http_client = Client()
 
@@ -100,9 +99,9 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         return download_tokens, response
 
     def generate_download_id_from_token(self, token):
-        self.mut_input["input"]["downloadTokens"] = [token]
+        self.mut_input["downloadTokens"] = [token]
 
-        response = self.query(self.mutation_string, self.mut_input)
+        response = self.query(self.mutation_string, input_data=self.mut_input)
 
         return response.data["generateFileDownloadIds"]["result"][0]
 
@@ -115,9 +114,9 @@ class TestUploadedJobFileDownload(BilbyTestCase):
     def test_invalid_token(self):
         download_tokens, _ = self.generate_file_download_tokens()
 
-        self.mut_input["input"]["downloadTokens"] = [download_tokens[0]]
+        self.mut_input["downloadTokens"] = [download_tokens[0]]
 
-        response = self.query(self.mutation_string, self.mut_input)
+        response = self.query(self.mutation_string, input_data=self.mut_input)
 
         token = response.data["generateFileDownloadIds"]["result"][0]
         token = token + "_not_real"
