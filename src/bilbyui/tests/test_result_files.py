@@ -11,7 +11,6 @@ from graphql_relay import to_global_id
 
 from bilbyui.constants import BilbyJobType
 from bilbyui.models import FileDownloadToken, BilbyJob, ExternalBilbyJob
-from bilbyui.tests.test_job_upload import get_upload_token
 from bilbyui.tests.test_utils import (
     silence_errors,
     create_test_upload_data,
@@ -86,7 +85,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
     )
     def test_not_uploaded_job(self, request_file_list, request_file_download_id_mock):
         # Iterate twice, first is unauthenticated user, second is authenticated user
-        self.client.authenticate(None)
+        self.deauthenticate()
         for _ in range(2):
             # Clean up any file download tokens
             FileDownloadToken.objects.all().delete()
@@ -185,14 +184,13 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(
+        response = self.file_query(
             """
                 mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
                   uploadBilbyJob(input: $input) {
@@ -202,13 +200,14 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
                   }
                 }
             """,
-            test_input,
+            input_data=test_input,
+            files=test_files,
         )
 
         self.global_id = response.data["uploadBilbyJob"]["result"]["jobId"]
         self.job = BilbyJob.objects.all().last()
 
-        self.query = f"""
+        self.query_string = f"""
             query {{
                 bilbyResultFiles (jobId: "{self.global_id}") {{
                     files {{
@@ -222,7 +221,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
             }}
             """
 
-        self.mutation = """
+        self.mutation_string = """
                 mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
                     generateFileDownloadIds(input: $input) {
                         result
@@ -236,12 +235,12 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
         self.job.save()
 
         # Iterate twice, first iteration is anonymous user, second is authenticated user
-        self.client.authenticate(None)
+        self.deauthenticate()
         for _ in range(2):
             # Clean up any file download tokens
             FileDownloadToken.objects.all().delete()
 
-            response = self.client.execute(self.query)
+            response = self.query(self.query_string)
 
             files = response.data["bilbyResultFiles"]["files"]
 
@@ -264,17 +263,15 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
                 f["downloadToken"] for f in filter(lambda x: not x["isDir"], files)
             ]
 
-            self.client.authenticate(self.user)
+            self.authenticate()
 
-        self.client.authenticate(None)
+        self.deauthenticate()
         for _ in range(2):
-            response = self.client.execute(
-                self.mutation,
-                {
-                    "input": {
-                        "jobId": self.global_id,
-                        "downloadTokens": [download_tokens[0]],
-                    }
+            response = self.query(
+                self.mutation_string,
+                input_data={
+                    "jobId": self.global_id,
+                    "downloadTokens": [download_tokens[0]],
                 },
             )
 
@@ -284,9 +281,9 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
                 response.data["generateFileDownloadIds"]["result"], [download_tokens[0]]
             )
 
-            response = self.client.execute(
-                self.mutation,
-                {"input": {"jobId": self.global_id, "downloadTokens": download_tokens}},
+            response = self.query(
+                self.mutation_string,
+                input_data={"jobId": self.global_id, "downloadTokens": download_tokens},
             )
 
             # Make sure that the result is the same as the download tokens
@@ -294,7 +291,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
                 response.data["generateFileDownloadIds"]["result"], download_tokens
             )
 
-            self.client.authenticate(self.user)
+            self.authenticate()
 
         # Expire one of the FileDownloadTokens
         tk = FileDownloadToken.objects.all()[1]
@@ -303,26 +300,22 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
         )
         tk.save()
 
-        response = self.client.execute(
-            self.mutation,
-            {"input": {"jobId": self.global_id, "downloadTokens": download_tokens}},
+        response = self.query(
+            self.mutation_string,
+            input_data={"jobId": self.global_id, "downloadTokens": download_tokens},
         )
 
         self.assertEqual(response.data["generateFileDownloadIds"], None)
         self.assertEqual(
-            str(response.errors[0].message),
+            str(response.errors[0]["message"]),
             "At least one token was invalid or expired.",
         )
 
 
 class TestExternalJobResultFiles(BilbyTestCase):
     def setUp(self):
-        self.user = User.objects.create(
-            username="buffy", first_name="buffy", last_name="summers"
-        )
-
         self.job = BilbyJob.objects.create(
-            user_id=self.user.id,
+            user_id=1,
             name="Test1",
             description="first job",
             private=False,
@@ -336,7 +329,7 @@ class TestExternalJobResultFiles(BilbyTestCase):
 
         self.global_id = to_global_id("BilbyJobNode", self.job.id)
 
-        self.query = f"""
+        self.query_string = f"""
             query {{
                 bilbyResultFiles (jobId: "{self.global_id}") {{
                     files {{
@@ -353,9 +346,9 @@ class TestExternalJobResultFiles(BilbyTestCase):
     @silence_errors
     def test_uploaded_job(self):
         # Iterate twice, first iteration is anonymous user, second is authenticated user
-        self.client.authenticate(None)
+        self.deauthenticate()
         for _ in range(2):
-            response = self.client.execute(self.query)
+            response = self.query(self.query_string)
 
             self.assertEqual(
                 response.data["bilbyResultFiles"]["jobType"], BilbyJobType.EXTERNAL
@@ -371,4 +364,4 @@ class TestExternalJobResultFiles(BilbyTestCase):
                 },
             )
 
-            self.client.authenticate(self.user)
+            self.authenticate()
