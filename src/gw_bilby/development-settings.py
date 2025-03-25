@@ -30,7 +30,7 @@ LOGOUT_REDIRECT_URL = "http://localhost:3000/"
 
 # adacs-sso settings
 ADACS_SSO_CLIENT_NAME = "gwcloud_bilby_dev"
-ADACS_SSO_AUTH_HOST = "http://localhost:5000"
+ADACS_SSO_AUTH_HOST = "http://localhost:8000"
 
 try:
     from .local import *

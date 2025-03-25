@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "bilbyui.apps.BilbyUiConfig",
     "graphene_django",
     "django_jenkins",
+    "adacs_sso_plugin",
 ]
 
 MIDDLEWARE = [

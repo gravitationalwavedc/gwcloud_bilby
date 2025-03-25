@@ -20,6 +20,6 @@ def request_lookup_users(ids):
 
     try:
         resp = auth_request("get_users", {"ids": ids})
-        return True, resp
+        return True, resp["users"]
     except Exception:
         return False, "Error filtering users"
