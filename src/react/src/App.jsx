@@ -1,6 +1,7 @@
 import React from 'react';
 import MyJobs from './Pages/MyJobs';
 import PublicJobs from './Pages/PublicJobs';
+import APIToken from './Pages/APIToken';
 import { graphql, RelayEnvironmentProvider } from 'react-relay';
 import NewJob from './Pages/NewJob';
 import DuplicateJobForm from './Components/Forms/DuplicateJobForm';
@@ -102,6 +103,16 @@ function App() {
             prepareVariables={(params) => ({
               jobId: params.jobId,
             })}
+            render={handlePrivateRender}
+          />
+          <Route
+            path="api-token"
+            Component={APIToken}
+            query={graphql`
+                  query App_APIToken_Query {
+                    ...APIToken_data
+                  }
+            `}
             render={handlePrivateRender}
           />
         </Route>
