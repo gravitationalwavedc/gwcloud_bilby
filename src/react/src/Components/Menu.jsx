@@ -2,7 +2,8 @@ import React from 'react';
 import { Link } from 'found';
 import Navbar from 'react-bootstrap/Navbar';
 import Nav from 'react-bootstrap/Nav';
-import { HiOutlineUserCircle, HiOutlineLogout, HiOutlineCode, HiOutlineChip } from 'react-icons/hi';
+import { HiOutlineUserCircle, HiOutlineLogout, HiOutlineCode } from 'react-icons/hi';
+import { BsKey } from "react-icons/bs";
 import GWCloudLogo from '../assets/images/GWCloud-logo-primary200.png';
 
 
@@ -28,7 +29,7 @@ const subMenu = (name) => {
           className="justify-content-end mr-3"
           href="/api-token"
         >
-          <HiOutlineChip style={iconStyle} /> API Tokens
+          <BsKey style={iconStyle} /> API Tokens
         </Nav.Link>
         <Navbar.Text className="justify-content-end mr-3">
           <HiOutlineUserCircle style={iconStyle} /> {name}
