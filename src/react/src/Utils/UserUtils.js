@@ -1,8 +1,7 @@
+import { getSessionUser } from '../sessionUser'
 
-// TODO: harnessApi
-
-// const isLigoUser = () => harnessApi && harnessApi.currentUser && harnessApi.currentUser.isLigoUser;
-
-const isLigoUser = () => false;
+const isLigoUser = () => {
+  return getSessionUser().authenticationMethod === 'ligo_shibboleth';
+};
 
 export { isLigoUser };

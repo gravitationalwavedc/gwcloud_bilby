@@ -93,7 +93,6 @@ function App() {
           />
           <Route
             path="job-results/:jobId/"
-            // environment={environment}
             Component={ViewJob}
             query={graphql`
                     query App_ViewJob_Query($jobId: ID!) {

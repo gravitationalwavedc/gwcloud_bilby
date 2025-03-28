@@ -2,11 +2,7 @@ import React from 'react';
 import Loading from './Components/Loading';
 import { RedirectException } from 'found';
 import ReactGA from 'react-ga';
-
-// TODO: harnessApi
-const harnessApi = {
-  hasAuthToken: () => false
-}
+import { getSessionUser } from './sessionUser';
 
 //Initialise Google Analytics
 const TRACKING_ID = 'UA-219714075-1';
@@ -15,6 +11,7 @@ const TRACKING_ID = 'UA-219714075-1';
 ReactGA.initialize(TRACKING_ID, { testMode: process.env.NODE_ENV === 'test' });
 
 export const handlePublicRender = ({ Component, props } = {}) => {
+  console.log("handlePublicrender")
   if (!Component || !props) {
 
     return <Loading />;
@@ -27,7 +24,7 @@ export const handlePublicRender = ({ Component, props } = {}) => {
     };
   }
 
-  props.isAuthenticated = harnessApi.hasAuthToken();
+  props.isAuthenticated = getSessionUser().isAuthenticated;
 
   ReactGA.pageview(props.match.location.pathname);
 
@@ -37,7 +34,11 @@ export const handlePublicRender = ({ Component, props } = {}) => {
 export const handlePrivateRender = (props) => {
   if (!harnessApi.hasAuthToken()) {
     throw new RedirectException('/auth/?next=' + props.match.location.pathname, 401);
+  if (!getSessionUser().isAuthenticated) {
+    window.location.replace(`${import.meta.env.VITE_BACKEND_URL}/sso/login?next=${props.match.location.pathname}`);
+  } else {
+
+    return handlePublicRender(props);
   }
 
-  return handlePublicRender(props);
 };
