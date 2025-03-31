@@ -1,16 +1,3 @@
-let user = {
-  isAuthenticated: false,
-  name: '',
-  authenticationMethod: null,
-  pk: null,
-};
+import { createContext } from 'react';
 
-export function getSessionUser() {
-  return user;
-}
-
-export function setSessionUser(newUser) {
-  user = newUser;
-}
-
-window.user = user;
+export const UserContext = createContext(null);

@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import Loading from './Components/Loading';
-import { RedirectException } from 'found';
 import ReactGA from 'react-ga';
-import { getSessionUser } from './sessionUser';
+import { UserContext } from './sessionUser';
 
 //Initialise Google Analytics
 const TRACKING_ID = 'UA-219714075-1';
@@ -10,35 +9,41 @@ const TRACKING_ID = 'UA-219714075-1';
 // ReactGA.initialize(trackingID, { debug: true });
 ReactGA.initialize(TRACKING_ID, { testMode: process.env.NODE_ENV === 'test' });
 
-export const handlePublicRender = ({ Component, props } = {}) => {
-  console.log("handlePublicrender")
-  if (!Component || !props) {
-
+export const handlePublicRender = (props) => {
+  if (!props.Component || !props.props) {
     return <Loading />;
   }
 
   // Everyone loves hax
-  if (props.location !== undefined && props.match === undefined) {
-    props.match = {
+  if (props.props.location !== undefined && props.props.match === undefined) {
+    props.props.match = {
       location: props.location,
     };
   }
 
-  props.isAuthenticated = getSessionUser().isAuthenticated;
 
-  ReactGA.pageview(props.match.location.pathname);
+  ReactGA.pageview(props.props.match.location.pathname);
 
-  return <Component data={props} {...props} />;
+  return <props.Component data={props.props} {...props.props} />;
+};
+
+// The extra layer of redirection means we can use hooks
+export function PrivateComponent(props) {
+  const user = useContext(UserContext);
+  if (user === null) {
+    // The user object hasn't been populated yet.
+    return <Loading />
+  }
+  if (!user.isAuthenticated) {
+    // Redirect, but in the meantime show a loading spinner
+    window.location.replace(`${import.meta.env.VITE_BACKEND_URL}/sso/login?next=${props.match.location.pathname}`);
+    return <Loading />
+  } else {
+    // Show a normal component
+    return handlePublicRender(props);
+  }
 };
 
 export const handlePrivateRender = (props) => {
-  if (!harnessApi.hasAuthToken()) {
-    throw new RedirectException('/auth/?next=' + props.match.location.pathname, 401);
-  if (!getSessionUser().isAuthenticated) {
-    window.location.replace(`${import.meta.env.VITE_BACKEND_URL}/sso/login?next=${props.match.location.pathname}`);
-  } else {
-
-    return handlePublicRender(props);
-  }
-
-};
+  return <PrivateComponent {...props} />
+}

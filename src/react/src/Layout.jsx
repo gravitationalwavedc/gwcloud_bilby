@@ -1,23 +1,19 @@
 import React from 'react';
 import Menu from './Components/Menu';
 
-import { getSessionUser, setSessionUser } from './sessionUser';
+import { UserContext } from './sessionUser';
 import { createFragmentContainer } from 'react-relay';
 import { graphql } from 'react-relay';
 
 const Layout = ({ children, data }) => {
 
-  console.log("Layout renderr")
-  setSessionUser(data.sessionUser)
-  const sessionUser = getSessionUser()
-
   return (
-    <>
-      <header><Menu name={sessionUser.name} /></header>
+    <UserContext.Provider value={data.sessionUser}>
+      <header><Menu name={data.sessionUser.name} /></header>
       <main className="h-100" style={{ paddingTop: '64px' }}>
         {children}
       </main >
-    </>)
+    </UserContext.Provider>)
 }
 
 
