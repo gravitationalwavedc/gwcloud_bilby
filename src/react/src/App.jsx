@@ -21,6 +21,8 @@ import {
 } from 'found';
 import { Resolver } from 'found-relay';
 
+
+
 function App() {
 
   const Router = createFarceRouter({
@@ -48,7 +50,6 @@ function App() {
               timeRange: 'all',
               count: INFINITE_SCROLL_CHUNK_SIZE,
             })}
-            // environment={environment}
             render={handlePublicRender}
           />
           <Route
@@ -60,7 +61,6 @@ function App() {
                         ...DataForm_data
                     }
                 `}
-          // environment={environment}
           />
           <Route
             path="job-form/duplicate/"
@@ -72,7 +72,6 @@ function App() {
             prepareVariables={(_, { location }) => ({
               jobId: location.state && location.state.jobId ? location.state.jobId : '',
             })}
-            environment={environment}
             Component={DuplicateJobForm}
             render={handlePrivateRender}
           />
@@ -87,7 +86,6 @@ function App() {
               count: INFINITE_SCROLL_CHUNK_SIZE,
               timeRange: 'all',
             })}
-            // environment={environment}
             Component={MyJobs}
             render={handlePrivateRender}
           />
