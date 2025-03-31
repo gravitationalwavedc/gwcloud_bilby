@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Button, Card, Form } from 'react-bootstrap';
 import CreatableSelect from 'react-select/creatable';
 import Input from './Atoms/Input';
 import { isLigoUser } from '../../Utils/UserUtils';
+import { UserContext } from '../../sessionUser';
 
 const DetectorCard = ({ image, title, formik, channelOptions }) => {
     const [options, setOptions] = useState(channelOptions);
+    const user = useContext(UserContext);
 
     const identifier = title.toLowerCase();
     const maximumFrequencyId = identifier + 'MaximumFrequency';
@@ -18,7 +20,7 @@ const DetectorCard = ({ image, title, formik, channelOptions }) => {
         formik.setFieldValue(identifier, !isActive);
     };
 
-    const channelSelectValue = isLigoUser()
+    const channelSelectValue = isLigoUser(user)
         ? {
               value: formik.values[channelId],
               label: formik.values[channelId],
@@ -56,7 +58,7 @@ const DetectorCard = ({ image, title, formik, channelOptions }) => {
                     <CreatableSelect
                         className="gw-select"
                         classNamePrefix="gw-select"
-                        isDisabled={!isActive || !isLigoUser()}
+                        isDisabled={!isActive || !isLigoUser(user)}
                         onChange={handleChange}
                         options={options}
                         value={channelSelectValue}

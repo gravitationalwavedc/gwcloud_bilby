@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { graphql, createFragmentContainer } from 'react-relay';
 import { Row, Nav, Col, Button, Container, Tab } from 'react-bootstrap';
 import moment from 'moment';
@@ -12,19 +12,15 @@ import PrivacyToggle from '../Components/Results/PrivacyToggle';
 import StatusDisplay from '../Components/Results/StatusDisplay';
 import SaveToast from '../Components/Results/SaveToast';
 import BilbyJobEventIDDropdown from '../Components/Results/BilbyJobEventIDDropdown';
+import { UserContext } from '../sessionUser';
 
 
-// TODO: harnessApi
-const harnessApi = {
-  currentUser: {
-    userId: 0
-  }
-}
 
 const ViewJob = (props) => {
   const [saved, setSaved] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const user = useContext(UserContext);
 
   const onSave = (saved, message) => {
     setSaved(saved);
@@ -36,8 +32,8 @@ const ViewJob = (props) => {
   const { details } = params;
 
   const updated = moment.utc(lastUpdated, 'YYYY-MM-DD HH:mm:ss UTC').local().format('llll');
+  const modifiable = user.pk === userId;
 
-  const modifiable = harnessApi.currentUser.userId == userId;
 
   return (
     <Container className="pt-5" fluid>

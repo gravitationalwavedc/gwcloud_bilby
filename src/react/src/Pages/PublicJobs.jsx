@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { createPaginationContainer, graphql } from 'react-relay';
 import { Alert, Card, Container, Col } from 'react-bootstrap';
 import JobTable from '../Components/JobTable';
 import JobsHeading from '../Components/JobsHeading';
 import JobSearchForm from '../Components/JobSearchForm';
 import { INFINITE_SCROLL_CHUNK_SIZE } from '../constants';
-import { getSessionUser } from '../sessionUser';
 import Link from 'found/Link';
+import { UserContext } from '../sessionUser';
 
 const PublicJobs = ({ data, match, router, relay, }) => {
+  const user = useContext(UserContext);
   const [search, setSearch] = useState('*');
   const [timeRange, setTimeRange] = useState('all');
   const [order, setOrder] = useState();
   const [direction, setDirection] = useState('descending');
-  const { isAuthenticated } = getSessionUser()
+  const isAuthenticated = user.isAuthenticated;
 
   useEffect(() => handleSearchChange(), [search, timeRange, direction, order]);
 
