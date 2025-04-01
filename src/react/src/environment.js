@@ -4,7 +4,7 @@ import { RelayNetworkLayer, urlMiddleware } from 'react-relay-network-modern';
 import 'regenerator-runtime/runtime';
 
 const network = new RelayNetworkLayer([urlMiddleware({
-  url: () => 'http://localhost:8001/graphql',
+  url: () => `${import.meta.env.VITE_BACKEND_URL}/graphql`,
   credentials: 'same-origin',
 }), (next) => async (req) => {
   req.fetchOpts.credentials = 'same-origin'; // allow to send cookies (sending credentials to same domains)
