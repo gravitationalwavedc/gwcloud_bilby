@@ -36,7 +36,7 @@ export function PrivateComponent(props) {
   }
   if (!user.isAuthenticated) {
     // Redirect, but in the meantime show a loading spinner
-    window.location.replace(`${import.meta.env.VITE_BACKEND_URL}/sso/login?next=${props.match.location.pathname}`);
+    window.location.replace(`${import.meta.env.VITE_BACKEND_URL}/sso/login/?next=${import.meta.env.VITE_FRONTEND_URL}${props.match.location.pathname}`);
     return <Loading />
   } else {
     // Show a normal component
