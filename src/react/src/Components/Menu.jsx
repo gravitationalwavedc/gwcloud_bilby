@@ -7,8 +7,6 @@ import { BsKey } from "react-icons/bs";
 import GWCloudLogo from '../assets/images/GWCloud-logo-primary200.png';
 
 
-// TODO: logout
-const logout = () => void 0;
 
 const iconStyle = {
   height: '20px',

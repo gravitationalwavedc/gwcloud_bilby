@@ -20,10 +20,7 @@ const APIToken = ({ data }) => {
       onCompleted: (response, errors) => {
         if (response && response.deleteApiToken.success === true) {
           setTokens(tokens.filter(e => e.token !== uuid))
-        } else {
-          console.error(errors);
         }
-
       }
     })
   }
@@ -40,8 +37,6 @@ const APIToken = ({ data }) => {
             token: response.createApiToken.token,
             lastUsed: Date.now(),
           }, ...tokens])
-        } else {
-          console.error(errors)
         }
       }
     });
