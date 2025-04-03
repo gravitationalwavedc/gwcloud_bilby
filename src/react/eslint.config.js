@@ -3,9 +3,10 @@ import globals from 'globals'
 import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import { defineConfig } from 'eslint/config';
 
-export default [
-  { ignores: ['dist'] },
+export default defineConfig([
+  { ignores: ['dist', '**/__generated__/**', '**/__tests__/**'] },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
@@ -35,4 +36,4 @@ export default [
       ],
     },
   },
-]
+]);
