@@ -9,9 +9,8 @@ const DuplicateJobForm = (props) => {
     const initialValues = parseJobParams(params);
 
     initialValues['name'] = `Copy-of-${initialValues.name}`;
-    initialValues[
-        'description'
-    ] = `A duplicate job of ${initialValues.name}. Original description: ${initialValues.description}`;
+    initialValues['description'] =
+        `A duplicate job of ${initialValues.name}. Original description: ${initialValues.description}`;
 
     return <NewJob initialValues={initialValues} {...props} />;
 };
