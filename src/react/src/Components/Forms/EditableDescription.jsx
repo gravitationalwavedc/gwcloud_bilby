@@ -13,35 +13,35 @@ const mutation = graphql`
 `;
 
 const EditableDescription = ({ modifiable, value, jobId }) => {
-  const handleSaveDescription = (newValue) => {
-    const variables = {
-      input: {
-        jobId: jobId,
-        description: newValue,
-      },
+    const handleSaveDescription = (newValue) => {
+        const variables = {
+            input: {
+                jobId: jobId,
+                description: newValue,
+            },
+        };
+
+        commitMutation(environment, {
+            mutation: mutation,
+            variables: variables,
+        });
     };
 
-    commitMutation(environment, {
-      mutation: mutation,
-      variables: variables,
-    });
-  };
-
-  return (
-    <>
-      {modifiable ? (
-        <EditableText
-          name="description"
-          type="textarea"
-          value={value}
-          onSave={(value) => handleSaveDescription(value)}
-          viewProps={{ className: 'p' }}
-        />
-      ) : (
-        <p>{value}</p>
-      )}
-    </>
-  );
+    return (
+        <>
+            {modifiable ? (
+                <EditableText
+                    name="description"
+                    type="textarea"
+                    value={value}
+                    onSave={(value) => handleSaveDescription(value)}
+                    viewProps={{ className: 'p' }}
+                />
+            ) : (
+                <p>{value}</p>
+            )}
+        </>
+    );
 };
 
 export default EditableDescription;
