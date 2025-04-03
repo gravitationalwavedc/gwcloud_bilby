@@ -97,9 +97,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
                     self.files[i]["downloadToken"] = None
                 else:
                     self.files[i]["downloadToken"] = str(
-                        FileDownloadToken.objects.get(
-                            job=self.job, path=f["path"]
-                        ).token
+                        FileDownloadToken.objects.get(job=self.job, path=f["path"]).token
                     )
 
             expected = {
@@ -110,9 +108,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
             }
             self.assertDictEqual(response.data, expected)
 
-            download_tokens = [
-                f["downloadToken"] for f in filter(lambda x: not x["isDir"], self.files)
-            ]
+            download_tokens = [f["downloadToken"] for f in filter(lambda x: not x["isDir"], self.files)]
 
             self.authenticate()
 
@@ -145,9 +141,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
 
         # Expire one of the FileDownloadTokens
         tk = FileDownloadToken.objects.all()[1]
-        tk.created = timezone.now() - timezone.timedelta(
-            seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1
-        )
+        tk.created = timezone.now() - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1)
         tk.save()
 
         response = self.query(
@@ -173,9 +167,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string(
-            {"label": test_name, "detectors": "['H1']", "outdir": "./"}, True
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']", "outdir": "./"}, True)
 
         test_file = SimpleUploadedFile(
             name="test.tar.gz",
@@ -248,20 +240,12 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
                 if f["isDir"]:
                     files[i]["downloadToken"] = None
                 else:
-                    files[i]["downloadToken"] = str(
-                        FileDownloadToken.objects.get(
-                            job=self.job, path=f["path"]
-                        ).token
-                    )
+                    files[i]["downloadToken"] = str(FileDownloadToken.objects.get(job=self.job, path=f["path"]).token)
 
-            expected = {
-                "bilbyResultFiles": {"files": files, "jobType": BilbyJobType.UPLOADED}
-            }
+            expected = {"bilbyResultFiles": {"files": files, "jobType": BilbyJobType.UPLOADED}}
             self.assertDictEqual(response.data, expected)
 
-            download_tokens = [
-                f["downloadToken"] for f in filter(lambda x: not x["isDir"], files)
-            ]
+            download_tokens = [f["downloadToken"] for f in filter(lambda x: not x["isDir"], files)]
 
             self.authenticate()
 
@@ -277,9 +261,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
 
             # Make sure the result is the same as the download token
             self.assertEqual(len(response.data["generateFileDownloadIds"]["result"]), 1)
-            self.assertEqual(
-                response.data["generateFileDownloadIds"]["result"], [download_tokens[0]]
-            )
+            self.assertEqual(response.data["generateFileDownloadIds"]["result"], [download_tokens[0]])
 
             response = self.query(
                 self.mutation_string,
@@ -287,17 +269,13 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
             )
 
             # Make sure that the result is the same as the download tokens
-            self.assertEqual(
-                response.data["generateFileDownloadIds"]["result"], download_tokens
-            )
+            self.assertEqual(response.data["generateFileDownloadIds"]["result"], download_tokens)
 
             self.authenticate()
 
         # Expire one of the FileDownloadTokens
         tk = FileDownloadToken.objects.all()[1]
-        tk.created = timezone.now() - timezone.timedelta(
-            seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1
-        )
+        tk.created = timezone.now() - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1)
         tk.save()
 
         response = self.query(
@@ -323,9 +301,7 @@ class TestExternalJobResultFiles(BilbyTestCase):
             job_type=BilbyJobType.EXTERNAL,
         )
 
-        self.external_job = ExternalBilbyJob.objects.create(
-            job=self.job, url="https://www.example.com/test/file"
-        )
+        self.external_job = ExternalBilbyJob.objects.create(job=self.job, url="https://www.example.com/test/file")
 
         self.global_id = to_global_id("BilbyJobNode", self.job.id)
 
@@ -350,9 +326,7 @@ class TestExternalJobResultFiles(BilbyTestCase):
         for _ in range(2):
             response = self.query(self.query_string)
 
-            self.assertEqual(
-                response.data["bilbyResultFiles"]["jobType"], BilbyJobType.EXTERNAL
-            )
+            self.assertEqual(response.data["bilbyResultFiles"]["jobType"], BilbyJobType.EXTERNAL)
             self.assertEqual(len(response.data["bilbyResultFiles"]["files"]), 1)
             self.assertDictEqual(
                 response.data["bilbyResultFiles"]["files"][0],

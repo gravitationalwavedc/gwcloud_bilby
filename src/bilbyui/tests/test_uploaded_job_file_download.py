@@ -33,9 +33,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string(
-            {"label": test_name, "outdir": "./"}, True
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
 
         test_file = SimpleUploadedFile(
             name="test.tar.gz",
@@ -121,14 +119,10 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         token = response.data["generateFileDownloadIds"]["result"][0]
         token = token + "_not_real"
 
-        response = self.http_client.get(
-            f"{reverse(viewname='file_download')}?fileId={token}"
-        )
+        response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={token}")
         self.assertEqual(response.status_code, 404)
 
-        response = self.http_client.get(
-            f"{reverse(viewname='file_download')}?fileId={uuid.uuid4()}"
-        )
+        response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={uuid.uuid4()}")
         self.assertEqual(response.status_code, 404)
 
     @silence_errors
@@ -139,13 +133,9 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         for idx in range(len(files)):
             token = self.generate_download_id_from_token(download_tokens[idx])
 
-            response = self.http_client.get(
-                f"{reverse(viewname='file_download')}?fileId={token}"
-            )
+            response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={token}")
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(
-                response.headers["Content-Type"], "application/octet-stream"
-            )
+            self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
             self.assertEqual(
                 response.headers["Content-Disposition"],
                 f'inline; filename="{os.path.basename(files[idx]["path"][1:])}"',
@@ -167,13 +157,9 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         for idx in range(len(files)):
             token = self.generate_download_id_from_token(download_tokens[idx])
 
-            response = self.http_client.get(
-                f"{reverse(viewname='file_download')}?fileId={token}&forceDownload"
-            )
+            response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={token}&forceDownload")
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(
-                response.headers["Content-Type"], "application/octet-stream"
-            )
+            self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
             self.assertEqual(
                 response.headers["Content-Disposition"],
                 f'attachment; filename="{os.path.basename(files[idx]["path"][1:])}"',

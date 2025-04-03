@@ -7,9 +7,7 @@ class Query(bilbyui.schema.Query, adacs_sso_plugin.schema.Query, graphene.Object
     pass
 
 
-class Mutation(
-    bilbyui.schema.Mutation, adacs_sso_plugin.schema.Mutation, graphene.ObjectType
-):
+class Mutation(bilbyui.schema.Mutation, adacs_sso_plugin.schema.Mutation, graphene.ObjectType):
     pass
 
 

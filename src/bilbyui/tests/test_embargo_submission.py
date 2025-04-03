@@ -17,9 +17,7 @@ MOCK_EMBARGO_START_TIME = 1128678900.4
 
 class TestBilbyEmbargoPermissions(BilbyTestCase):
     def setUp(self):
-        self.user = User.objects.create(
-            username="buffy", first_name="buffy", last_name="summers"
-        )
+        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
 
         self.params = {
             "params": {
@@ -102,9 +100,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             self.set_trigger_time_and_data_choice(trigger_time, data_choice)
             response = self.query(self.query_string, input_data=self.params)
 
-            self.assertResponseHasNoErrors(
-                response, "mutation should not have returned errors due to embargo"
-            )
+            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
             self.assertTrue("jobId" in response.data["newBilbyJob"]["result"])
@@ -124,9 +120,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             "create bilbyJob mutation returned unexpected data.",
         )
 
-        self.assertResponseHasErrors(
-            response, "mutation should have returned errors due to embargo"
-        )
+        self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
 
         # Check that no job was created
         self.assertFalse(BilbyJob.objects.all().exists())
@@ -134,9 +128,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
     @silence_errors
     @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
     def test_ligo_user_embargo(self):
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         for trigger_time, data_choice in [
             (str(MOCK_EMBARGO_START_TIME + 1), "real"),
@@ -147,9 +139,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             self.set_trigger_time_and_data_choice(trigger_time, data_choice)
             response = self.query(self.query_string, input_data=self.params)
 
-            self.assertResponseHasNoErrors(
-                response, "mutation should not have returned errors due to embargo"
-            )
+            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
             self.assertTrue("jobId" in response.data["newBilbyJob"]["result"])
@@ -218,18 +208,12 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
 
             response = self.query(self.query_string, input_data=self.params)
 
-            self.assertResponseHasNoErrors(
-                response, "mutation should not have returned errors due to embargo"
-            )
+            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
-            self.assertTrue(
-                "jobId" in response.data["newBilbyJobFromIniString"]["result"]
-            )
+            self.assertTrue("jobId" in response.data["newBilbyJobFromIniString"]["result"])
 
-            _, job_id = from_global_id(
-                response.data["newBilbyJobFromIniString"]["result"]["jobId"]
-            )
+            _, job_id = from_global_id(response.data["newBilbyJobFromIniString"]["result"]["jobId"])
 
             # Check job_id maps to correct job
             job = BilbyJob.objects.get(pk=job_id)
@@ -255,9 +239,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
                 "create bilbyJob mutation returned unexpected data.",
             )
 
-            self.assertResponseHasErrors(
-                response, "mutation should have returned errors due to embargo"
-            )
+            self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
 
             # Check that no job was created
             self.assertFalse(BilbyJob.objects.all().exists())
@@ -266,9 +248,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
     def test_ligo_user_embargo(self):
         # Test checks that a LIGO user does not create a LIGO job if the data is real and channels are GWOSC
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         for trigger_time, n_simulation in [
             (MOCK_EMBARGO_START_TIME + 1, 0),
@@ -291,18 +271,12 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
 
             response = self.query(self.query_string, input_data=self.params)
 
-            self.assertResponseHasNoErrors(
-                response, "mutation should not have returned errors due to embargo"
-            )
+            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
-            self.assertTrue(
-                "jobId" in response.data["newBilbyJobFromIniString"]["result"]
-            )
+            self.assertTrue("jobId" in response.data["newBilbyJobFromIniString"]["result"])
 
-            _, job_id = from_global_id(
-                response.data["newBilbyJobFromIniString"]["result"]["jobId"]
-            )
+            _, job_id = from_global_id(response.data["newBilbyJobFromIniString"]["result"]["jobId"])
 
             # Check job_id maps to correct job
             job = BilbyJob.objects.get(pk=job_id)

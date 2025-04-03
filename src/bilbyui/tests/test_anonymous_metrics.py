@@ -119,15 +119,9 @@ class TestAnonymousMetrics(LiveServerTestCase):
         return True, jobs
 
     @silence_errors
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def _request(
-        self, query, variables, request_job_filter, elasticsearch_search, headers=None
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def _request(self, query, variables, request_job_filter, elasticsearch_search, headers=None):
         if headers is None:
             headers = {}
 
@@ -143,9 +137,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
         content = json.loads(request.content)
 
         if "errors" in content:
-            raise Exception(
-                f"Error returned when it should not have been {content['errors']}"
-            )
+            raise Exception(f"Error returned when it should not have been {content['errors']}")
 
         return content.get("data", None)
 
@@ -153,9 +145,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
         headers = {"X-Correlation-ID": f"{self.public_id} {self.session_id}"}
 
         now = timezone.now()
-        result = self._request(
-            self.public_bilby_job_query, self.variables, headers=headers
-        )
+        result = self._request(self.public_bilby_job_query, self.variables, headers=headers)
         then = timezone.now()
 
         self.assertDictEqual(result, self.public_bilby_job_expected)
@@ -184,9 +174,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
     def test_anonymous_request_no_space_in_header(self):
         headers = {"X-Correlation-ID": f"{self.public_id}{self.session_id}"}
 
-        result = self._request(
-            self.public_bilby_job_query, self.variables, headers=headers
-        )
+        result = self._request(self.public_bilby_job_query, self.variables, headers=headers)
         self.assertDictEqual(result, self.public_bilby_job_expected)
 
         self.assertEqual(AnonymousMetrics.objects.all().count(), 0)
@@ -194,21 +182,15 @@ class TestAnonymousMetrics(LiveServerTestCase):
     def test_anonymous_request_not_enough_uuids(self):
         headers = {"X-Correlation-ID": f"{self.public_id} "}
 
-        result = self._request(
-            self.public_bilby_job_query, self.variables, headers=headers
-        )
+        result = self._request(self.public_bilby_job_query, self.variables, headers=headers)
         self.assertDictEqual(result, self.public_bilby_job_expected)
 
         self.assertEqual(AnonymousMetrics.objects.all().count(), 0)
 
     def test_anonymous_request_too_many_uuids(self):
-        headers = {
-            "X-Correlation-ID": f"{self.public_id} {self.public_id} {self.session_id}"
-        }
+        headers = {"X-Correlation-ID": f"{self.public_id} {self.public_id} {self.session_id}"}
 
-        result = self._request(
-            self.public_bilby_job_query, self.variables, headers=headers
-        )
+        result = self._request(self.public_bilby_job_query, self.variables, headers=headers)
         self.assertDictEqual(result, self.public_bilby_job_expected)
 
         self.assertEqual(AnonymousMetrics.objects.all().count(), 0)
@@ -216,9 +198,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
     def test_anonymous_request_invalid_uuids(self):
         headers = {"X-Correlation-ID": f"{self.public_id[0:-2]} {self.public_id}"}
 
-        result = self._request(
-            self.public_bilby_job_query, self.variables, headers=headers
-        )
+        result = self._request(self.public_bilby_job_query, self.variables, headers=headers)
         self.assertDictEqual(result, self.public_bilby_job_expected)
 
         self.assertEqual(AnonymousMetrics.objects.all().count(), 0)

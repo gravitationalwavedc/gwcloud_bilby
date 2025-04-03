@@ -21,9 +21,7 @@ User = get_user_model()
 
 class TestIniJobSubmission(BilbyTestCase):
     def setUp(self):
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         self.mutation_string = """
             mutation NewIniJobMutation($input: BilbyJobFromIniStringMutationInput!) {
@@ -43,18 +41,14 @@ class TestIniJobSubmission(BilbyTestCase):
 
     @patch("bilbyui.models.submit_job")
     def test_ini_job_submission(self, mock_api_call):
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         mock_api_call.return_value = {"jobId": 4321}
         test_name = "Test_Name"
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string(
-            {"label": test_name, "detectors": "['H1']"}
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']"})
 
         test_input = {
             "params": {
@@ -69,9 +63,7 @@ class TestIniJobSubmission(BilbyTestCase):
 
         response = self.query(self.mutation_string, input_data=test_input)
 
-        expected = {
-            "newBilbyJobFromIniString": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}
-        }
+        expected = {"newBilbyJobFromIniString": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
         self.assertDictEqual(
             expected,
@@ -90,9 +82,7 @@ class TestIniJobSubmission(BilbyTestCase):
 
         # Check that ini labels are correctly set to the job name passed to the job details
         test_name = "Test_Name1"
-        test_ini_string = create_test_ini_string(
-            {"label": "Not the real job name", "detectors": "['H1']"}
-        )
+        test_ini_string = create_test_ini_string({"label": "Not the real job name", "detectors": "['H1']"})
 
         test_input = {
             "params": {
@@ -107,9 +97,7 @@ class TestIniJobSubmission(BilbyTestCase):
 
         response = self.query(self.mutation_string, input_data=test_input)
 
-        expected = {
-            "newBilbyJobFromIniString": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjI="}}
-        }
+        expected = {"newBilbyJobFromIniString": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjI="}}}
 
         self.assertDictEqual(
             expected,
@@ -130,9 +118,7 @@ class TestIniJobSubmission(BilbyTestCase):
     @override_settings(CLUSTERS=["default", "another"])
     @override_settings(ALLOW_HTTP_LEAKS=True)
     def test_cluster_submission(self):
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         return_result = {"jobId": 1122}
 
@@ -147,9 +133,7 @@ class TestIniJobSubmission(BilbyTestCase):
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string(
-            {"label": test_name, "detectors": "['H1']"}
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']"})
 
         test_input = {
             "params": {
@@ -165,9 +149,7 @@ class TestIniJobSubmission(BilbyTestCase):
         # First test no cluster - this should default to 'default'
         response = self.query(self.mutation_string, input_data=test_input)
 
-        expected = {
-            "newBilbyJobFromIniString": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}
-        }
+        expected = {"newBilbyJobFromIniString": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
         self.assertDictEqual(
             expected,
@@ -189,9 +171,7 @@ class TestIniJobSubmission(BilbyTestCase):
         test_input["params"]["details"]["cluster"] = "default"
         response = self.query(self.mutation_string, input_data=test_input)
 
-        expected = {
-            "newBilbyJobFromIniString": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjI="}}
-        }
+        expected = {"newBilbyJobFromIniString": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjI="}}}
 
         self.assertDictEqual(
             expected,
@@ -209,9 +189,7 @@ class TestIniJobSubmission(BilbyTestCase):
         test_input["params"]["details"]["cluster"] = "another"
         response = self.query(self.mutation_string, input_data=test_input)
 
-        expected = {
-            "newBilbyJobFromIniString": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjM="}}
-        }
+        expected = {"newBilbyJobFromIniString": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjM="}}}
 
         self.assertDictEqual(
             expected,
@@ -253,9 +231,7 @@ class TestIniJobSubmissionNameValidation(BilbyTestCase):
     def test_invalid_job_name_symbols(self):
         test_name = "Test_Name$"
 
-        test_ini_string = create_test_ini_string(
-            {"label": test_name, "detectors": "['H1']"}
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']"})
 
         test_input = {
             "params": {
@@ -285,9 +261,7 @@ class TestIniJobSubmissionNameValidation(BilbyTestCase):
     def test_invalid_job_name_too_long(self):
         test_name = "aa" * BilbyJob._meta.get_field("name").max_length
 
-        test_ini_string = create_test_ini_string(
-            {"label": test_name, "detectors": "['H1']"}
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']"})
 
         test_input = {
             "params": {
@@ -317,9 +291,7 @@ class TestIniJobSubmissionNameValidation(BilbyTestCase):
     def test_invalid_job_name_too_short(self):
         test_name = "a"
 
-        test_ini_string = create_test_ini_string(
-            {"label": test_name, "detectors": "['H1']"}
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']"})
 
         test_input = {
             "params": {

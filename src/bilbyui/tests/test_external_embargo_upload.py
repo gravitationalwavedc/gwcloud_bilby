@@ -17,9 +17,7 @@ MOCK_EMBARGO_START_TIME = 1128678900.4
 
 class TestEmbargoJobUpload(BilbyTestCase):
     def setUp(self):
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         self.mutation_string = """
             mutation ExternalJobUploadMutation($input: UploadExternalBilbyJobMutationInput!) {
@@ -77,13 +75,9 @@ class TestEmbargoJobUpload(BilbyTestCase):
         ]:
             response = self.upload_job(trigger_time, n_simulation)
 
-            self.assertTrue(
-                "jobId" in response.data["uploadExternalBilbyJob"]["result"]
-            )
+            self.assertTrue("jobId" in response.data["uploadExternalBilbyJob"]["result"])
 
-            _, job_id = from_global_id(
-                response.data["uploadExternalBilbyJob"]["result"]["jobId"]
-            )
+            _, job_id = from_global_id(response.data["uploadExternalBilbyJob"]["result"]["jobId"])
 
             self.assertEqual(BilbyJob.objects.count(), 1)
             self.assertEqual(ExternalBilbyJob.objects.count(), 1)
@@ -103,9 +97,7 @@ class TestEmbargoJobUpload(BilbyTestCase):
                 "create bilbyJob mutation returned unexpected data.",
             )
 
-            self.assertResponseHasErrors(
-                response, "mutation should have returned errors due to embargo"
-            )
+            self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
 
             # Check that no job was created
             self.assertFalse(BilbyJob.objects.all().exists())
@@ -117,9 +109,7 @@ class TestEmbargoJobUpload(BilbyTestCase):
         EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME,
     )
     def test_ligo_user_embargo(self):
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         for trigger_time, n_simulation in [
             (MOCK_EMBARGO_START_TIME + 1, 0),
@@ -133,13 +123,9 @@ class TestEmbargoJobUpload(BilbyTestCase):
         ]:
             response = self.upload_job(trigger_time, n_simulation)
 
-            self.assertTrue(
-                "jobId" in response.data["uploadExternalBilbyJob"]["result"]
-            )
+            self.assertTrue("jobId" in response.data["uploadExternalBilbyJob"]["result"])
 
-            _, job_id = from_global_id(
-                response.data["uploadExternalBilbyJob"]["result"]["jobId"]
-            )
+            _, job_id = from_global_id(response.data["uploadExternalBilbyJob"]["result"]["jobId"])
 
             self.assertEqual(BilbyJob.objects.count(), 1)
             self.assertEqual(ExternalBilbyJob.objects.count(), 1)

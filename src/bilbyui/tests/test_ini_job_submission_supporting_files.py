@@ -28,9 +28,7 @@ User = get_user_model()
 
 class TestIniJobSubmission(BilbyTestCase):
     def setUp(self):
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         self.mutation_string = """
             mutation NewIniJobMutation($input: BilbyJobFromIniStringMutationInput!) {
@@ -80,9 +78,7 @@ class TestIniJobSubmission(BilbyTestCase):
         self.http_client = Client()
 
     @patch("bilbyui.models.submit_job")
-    def mock_ini_job_submission_with_supporting_files(
-        self, test_ini_string, file_names, config_names, mock_api_call
-    ):
+    def mock_ini_job_submission_with_supporting_files(self, test_ini_string, file_names, config_names, mock_api_call):
         """
         This function is called by subsequent tests and performs the bulk of the actual testing and asserting. It's
         main flow is basically the following:
@@ -111,14 +107,10 @@ class TestIniJobSubmission(BilbyTestCase):
         expected_supporting_files = []
 
         for v in file_names:
-            sf = supporting_files.filter(
-                key=v[0], file_name=Path(v[1]).name, file_type=v[2]
-            )
+            sf = supporting_files.filter(key=v[0], file_name=Path(v[1]).name, file_type=v[2])
             self.assertTrue(sf.exists())
 
-            expected_supporting_files.append(
-                {"filePath": v[1], "token": str(sf.first().upload_token)}
-            )
+            expected_supporting_files.append({"filePath": v[1], "token": str(sf.first().upload_token)})
 
         expected = {
             "newBilbyJobFromIniString": {
@@ -129,12 +121,8 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         }
 
-        response.data["newBilbyJobFromIniString"]["result"]["supportingFiles"].sort(
-            key=lambda x: x["token"]
-        )
-        expected["newBilbyJobFromIniString"]["result"]["supportingFiles"].sort(
-            key=lambda x: x["token"]
-        )
+        response.data["newBilbyJobFromIniString"]["result"]["supportingFiles"].sort(key=lambda x: x["token"])
+        expected["newBilbyJobFromIniString"]["result"]["supportingFiles"].sort(key=lambda x: x["token"])
 
         self.assertDictEqual(
             expected,
@@ -160,21 +148,14 @@ class TestIniJobSubmission(BilbyTestCase):
 
         # Now all files, checking that the job is only submitted once the last file upload has completed.
         def upload_supporting_files(tokens):
-            content = "".join(
-                secrets.choice(string.ascii_uppercase + string.digits)
-                for _ in range(128)
-            )
+            content = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(128))
 
             input_data = {"supportingFiles": []}
             files = {}
             for idx, token in enumerate(tokens):
-                input_data["supportingFiles"].append(
-                    {"fileToken": str(token), "supportingFile": None}
-                )
-                files[f"input.supportingFiles.{idx}.supportingFile"] = (
-                    SimpleUploadedFile(
-                        name="test.tar.gz", content=content.encode("utf-8")
-                    )
+                input_data["supportingFiles"].append({"fileToken": str(token), "supportingFile": None})
+                files[f"input.supportingFiles.{idx}.supportingFile"] = SimpleUploadedFile(
+                    name="test.tar.gz", content=content.encode("utf-8")
                 )
 
             response = self.file_query(
@@ -473,9 +454,7 @@ class TestIniJobSubmission(BilbyTestCase):
             }
         )
 
-        self.mock_ini_job_submission_with_supporting_files(
-            test_ini_string, [], "distance_marginalization_lookup_table"
-        )
+        self.mock_ini_job_submission_with_supporting_files(test_ini_string, [], "distance_marginalization_lookup_table")
 
     def test_ini_job_submission_supporting_file_data_dict_1(self):
         test_ini_string = create_test_ini_string(
@@ -594,9 +573,7 @@ class TestIniJobSubmission(BilbyTestCase):
     @silence_errors
     def test_download_supporting_files_invalid_token(self):
         # Test that using an invalid token raises an error
-        response = self.http_client.get(
-            f'{reverse(viewname="file_download")}?fileId={str(uuid.uuid4())}'
-        )
+        response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={str(uuid.uuid4())}')
         self.assertEqual(response.status_code, 404)
 
     def test_download_supporting_files_valid_token_force_download(self):
@@ -621,18 +598,12 @@ class TestIniJobSubmission(BilbyTestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
-        self.assertEqual(
-            response.headers["Content-Disposition"], 'attachment; filename="V1-psd.dat"'
-        )
+        self.assertEqual(response.headers["Content-Disposition"], 'attachment; filename="V1-psd.dat"')
 
         content = b"".join(list(response))
 
         # Get the supporting file path
-        file_path = (
-            Path(settings.SUPPORTING_FILE_UPLOAD_DIR)
-            / str(supporting_file.job.id)
-            / str(supporting_file.id)
-        )
+        file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)
 
         with open(str(file_path), "rb") as f:
             self.assertEqual(content, f.read())
@@ -654,23 +625,15 @@ class TestIniJobSubmission(BilbyTestCase):
 
         supporting_file = SupportingFile.objects.last()
 
-        response = self.http_client.get(
-            f'{reverse(viewname="file_download")}?fileId={supporting_file.download_token}'
-        )
+        response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={supporting_file.download_token}')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
-        self.assertEqual(
-            response.headers["Content-Disposition"], 'inline; filename="V1-psd.dat"'
-        )
+        self.assertEqual(response.headers["Content-Disposition"], 'inline; filename="V1-psd.dat"')
 
         content = b"".join(list(response))
 
         # Get the supporting file path
-        file_path = (
-            Path(settings.SUPPORTING_FILE_UPLOAD_DIR)
-            / str(supporting_file.job.id)
-            / str(supporting_file.id)
-        )
+        file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)
 
         with open(str(file_path), "rb") as f:
             self.assertEqual(content, f.read())

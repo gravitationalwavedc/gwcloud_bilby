@@ -120,55 +120,29 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(
-                job=job, key="gaussian_noise", processed=False
-            ).value,
+            IniKeyValue.objects.get(job=job, key="gaussian_noise", processed=False).value,
             json.dumps(True),
         )
 
-        self.assertEqual(
-            IniKeyValue.objects.get(job=job, key="n_simulation").value, json.dumps(1)
-        )
+        self.assertEqual(IniKeyValue.objects.get(job=job, key="n_simulation").value, json.dumps(1))
 
         self.assertDictEqual(
-            literal_eval(
-                json.loads(
-                    IniKeyValue.objects.get(
-                        job=job, key="channel_dict", processed=False
-                    ).value
-                )
-            ),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict", processed=False).value)),
             {"H1": "GWOSC", "L1": "GWOSC"},
         )
 
         self.assertDictEqual(
-            literal_eval(
-                IniKeyValue.objects.get(
-                    job=job, key="channel_dict", processed=True
-                ).value
-            ),
+            literal_eval(IniKeyValue.objects.get(job=job, key="channel_dict", processed=True).value),
             {"H1": "GWOSC", "L1": "GWOSC"},
         )
 
         self.assertEqual(
-            sorted(
-                json.loads(
-                    IniKeyValue.objects.get(
-                        job=job, key="detectors", processed=False
-                    ).value
-                )
-            ),
+            sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=False).value)),
             sorted(["'H1'", "'L1'"]),
         )
 
         self.assertEqual(
-            sorted(
-                json.loads(
-                    IniKeyValue.objects.get(
-                        job=job, key="detectors", processed=True
-                    ).value
-                )
-            ),
+            sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=True).value)),
             sorted(["H1", "L1"]),
         )
 
@@ -183,56 +157,32 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(
-                job=job, key="sampling_frequency", processed=False
-            ).value,
+            IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=False).value,
             json.dumps(float(_params["detector"]["samplingFrequency"])),
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(
-                job=job, key="sampling_frequency", processed=True
-            ).value,
+            IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=True).value,
             json.dumps(float(_params["detector"]["samplingFrequency"])),
         )
 
         self.assertDictEqual(
-            literal_eval(
-                json.loads(
-                    IniKeyValue.objects.get(
-                        job=job, key="maximum_frequency", processed=False
-                    ).value
-                )
-            ),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=False).value)),
             {"H1": "1024", "L1": "1024"},
         )
 
         self.assertEqual(
-            literal_eval(
-                IniKeyValue.objects.get(
-                    job=job, key="maximum_frequency", processed=True
-                ).value
-            ),
+            literal_eval(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=True).value),
             1024,
         )
 
         self.assertDictEqual(
-            literal_eval(
-                json.loads(
-                    IniKeyValue.objects.get(
-                        job=job, key="minimum_frequency", processed=False
-                    ).value
-                )
-            ),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=False).value)),
             {"H1": "20", "L1": "20"},
         )
 
         self.assertEqual(
-            literal_eval(
-                IniKeyValue.objects.get(
-                    job=job, key="minimum_frequency", processed=True
-                ).value
-            ),
+            literal_eval(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=True).value),
             20,
         )
 
@@ -252,9 +202,9 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertTrue(
-            literal_eval(
-                IniKeyValue.objects.get(job=job, key="prior_file", processed=True).value
-            ).endswith("bilby_pipe/data_files/4s.prior")
+            literal_eval(IniKeyValue.objects.get(job=job, key="prior_file", processed=True).value).endswith(
+                "bilby_pipe/data_files/4s.prior"
+            )
         )
 
         self.assertEqual(
@@ -263,16 +213,12 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(
-                job=job, key="frequency_domain_source_model", processed=True
-            ).value,
+            IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=True).value,
             json.dumps("lal_binary_black_hole"),
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(
-                job=job, key="frequency_domain_source_model", processed=False
-            ).value,
+            IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=False).value,
             json.dumps("lal_binary_black_hole"),
         )
 
@@ -374,9 +320,7 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(
-                job=job, key="gaussian_noise", processed=False
-            ).value,
+            IniKeyValue.objects.get(job=job, key="gaussian_noise", processed=False).value,
             json.dumps(False),
         )
 
@@ -386,44 +330,22 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertDictEqual(
-            literal_eval(
-                json.loads(
-                    IniKeyValue.objects.get(
-                        job=job, key="channel_dict", processed=False
-                    ).value
-                )
-            ),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="channel_dict", processed=False).value)),
             {"H1": "GWOSC", "L1": "GWOSC"},
         )
 
         self.assertDictEqual(
-            literal_eval(
-                IniKeyValue.objects.get(
-                    job=job, key="channel_dict", processed=True
-                ).value
-            ),
+            literal_eval(IniKeyValue.objects.get(job=job, key="channel_dict", processed=True).value),
             {"H1": "GWOSC", "L1": "GWOSC"},
         )
 
         self.assertEqual(
-            sorted(
-                json.loads(
-                    IniKeyValue.objects.get(
-                        job=job, key="detectors", processed=False
-                    ).value
-                )
-            ),
+            sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=False).value)),
             sorted(["'H1'", "'L1'"]),
         )
 
         self.assertEqual(
-            sorted(
-                json.loads(
-                    IniKeyValue.objects.get(
-                        job=job, key="detectors", processed=True
-                    ).value
-                )
-            ),
+            sorted(json.loads(IniKeyValue.objects.get(job=job, key="detectors", processed=True).value)),
             sorted(["H1", "L1"]),
         )
 
@@ -438,56 +360,32 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(
-                job=job, key="sampling_frequency", processed=False
-            ).value,
+            IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=False).value,
             json.dumps(float(_params["detector"]["samplingFrequency"])),
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(
-                job=job, key="sampling_frequency", processed=True
-            ).value,
+            IniKeyValue.objects.get(job=job, key="sampling_frequency", processed=True).value,
             json.dumps(float(_params["detector"]["samplingFrequency"])),
         )
 
         self.assertDictEqual(
-            literal_eval(
-                json.loads(
-                    IniKeyValue.objects.get(
-                        job=job, key="maximum_frequency", processed=False
-                    ).value
-                )
-            ),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=False).value)),
             {"H1": "1024", "L1": "1024"},
         )
 
         self.assertEqual(
-            literal_eval(
-                IniKeyValue.objects.get(
-                    job=job, key="maximum_frequency", processed=True
-                ).value
-            ),
+            literal_eval(IniKeyValue.objects.get(job=job, key="maximum_frequency", processed=True).value),
             1024,
         )
 
         self.assertDictEqual(
-            literal_eval(
-                json.loads(
-                    IniKeyValue.objects.get(
-                        job=job, key="minimum_frequency", processed=False
-                    ).value
-                )
-            ),
+            literal_eval(json.loads(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=False).value)),
             {"H1": "20", "L1": "20"},
         )
 
         self.assertEqual(
-            literal_eval(
-                IniKeyValue.objects.get(
-                    job=job, key="minimum_frequency", processed=True
-                ).value
-            ),
+            literal_eval(IniKeyValue.objects.get(job=job, key="minimum_frequency", processed=True).value),
             20,
         )
 
@@ -507,9 +405,9 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertTrue(
-            literal_eval(
-                IniKeyValue.objects.get(job=job, key="prior_file", processed=True).value
-            ).endswith("bilby_pipe/data_files/4s.prior")
+            literal_eval(IniKeyValue.objects.get(job=job, key="prior_file", processed=True).value).endswith(
+                "bilby_pipe/data_files/4s.prior"
+            )
         )
 
         self.assertEqual(
@@ -518,16 +416,12 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(
-                job=job, key="frequency_domain_source_model", processed=False
-            ).value,
+            IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=False).value,
             json.dumps("lal_binary_black_hole"),
         )
 
         self.assertEqual(
-            IniKeyValue.objects.get(
-                job=job, key="frequency_domain_source_model", processed=True
-            ).value,
+            IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=True).value,
             json.dumps("lal_binary_black_hole"),
         )
 
@@ -840,9 +734,7 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
 
     @silence_errors
     def test_invalid_job_name_too_long(self):
-        self.params["input"]["params"]["details"]["name"] = (
-            "aa" * BilbyJob._meta.get_field("name").max_length
-        )
+        self.params["input"]["params"]["details"]["name"] = "aa" * BilbyJob._meta.get_field("name").max_length
 
         response = self.query(self.mutation_string, input_data=self.params["input"])
 
@@ -881,31 +773,23 @@ class TestJobNameValidation(testcases.TestCase):
         with self.assertRaises(Exception) as ex:
             validate_job_name("")
 
-        self.assertEqual(
-            str(ex.exception), "Job name must be at least 5 characters long."
-        )
+        self.assertEqual(str(ex.exception), "Job name must be at least 5 characters long.")
 
         with self.assertRaises(Exception) as ex:
             validate_job_name("1234")
 
-        self.assertEqual(
-            str(ex.exception), "Job name must be at least 5 characters long."
-        )
+        self.assertEqual(str(ex.exception), "Job name must be at least 5 characters long.")
 
         # Test name too long
         with self.assertRaises(Exception) as ex:
             validate_job_name("a" * (BilbyJob._meta.get_field("name").max_length + 1))
 
-        self.assertEqual(
-            str(ex.exception), "Job name must be less than 255 characters long."
-        )
+        self.assertEqual(str(ex.exception), "Job name must be less than 255 characters long.")
 
         with self.assertRaises(Exception) as ex:
             validate_job_name("a" * 3000)
 
-        self.assertEqual(
-            str(ex.exception), "Job name must be less than 255 characters long."
-        )
+        self.assertEqual(str(ex.exception), "Job name must be less than 255 characters long.")
 
         # Test valid name length
         try:
@@ -928,9 +812,7 @@ class TestJobNameValidation(testcases.TestCase):
                 try:
                     validate_job_name("a" * 10 + char)
                 except Exception:
-                    self.fail(
-                        "validate_job_name raised an exception when it should not have"
-                    )
+                    self.fail("validate_job_name raised an exception when it should not have")
 
             else:
                 # Any invalid character code should raise an exception

@@ -128,15 +128,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         return True, jobs
 
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def test_public_bilby_jobs_query_no_cursor(
-        self, request_job_filter, elasticsearch_search
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_no_cursor(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private and owned by a different user
         BilbyJob.objects.create(
             user_id=self.user.id + 1,
@@ -177,23 +171,15 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         self.assertEqual(request_job_filter.mock_calls[0].args[0], 0)
         self.assertEqual(request_job_filter.mock_calls[1].args[0], self.user.id)
 
-        self.assertEqual(
-            list(request_job_filter.mock_calls[0].kwargs["ids"]), [1234, 2345]
-        )
-        self.assertEqual(
-            list(request_job_filter.mock_calls[1].kwargs["ids"]), [1234, 2345]
-        )
+        self.assertEqual(list(request_job_filter.mock_calls[0].kwargs["ids"]), [1234, 2345])
+        self.assertEqual(list(request_job_filter.mock_calls[1].kwargs["ids"]), [1234, 2345])
 
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=request_job_filter_mock_missing_record,
     )
-    def test_public_bilby_jobs_query_missing_job_controller_job(
-        self, request_job_filter, elasticsearch_search
-    ):
+    def test_public_bilby_jobs_query_missing_job_controller_job(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private and owned by a different user
         BilbyJob.objects.create(
             user_id=self.user.id + 1,
@@ -205,12 +191,10 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         variables = {"count": 50, "search": None, "timeRange": "all"}
 
-        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"][
-            "jobStatus"
-        ]["name"] = "Unknown"
-        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"][
-            "timestamp"
-        ] = str(self.job2.creation_time)
+        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"]["jobStatus"]["name"] = "Unknown"
+        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"]["timestamp"] = str(
+            self.job2.creation_time
+        )
 
         # Loop twice, the first loop the user will not be authenticated, the second loop the user will be authenticated
         for _ in range(2):
@@ -238,19 +222,11 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         self.assertEqual(request_job_filter.mock_calls[0].args[0], 0)
 
-        self.assertEqual(
-            list(request_job_filter.mock_calls[0].kwargs["ids"]), [1234, 2345]
-        )
+        self.assertEqual(list(request_job_filter.mock_calls[0].kwargs["ids"]), [1234, 2345])
 
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def test_public_bilby_jobs_query_test_cursor_count(
-        self, request_job_filter, elasticsearch_search
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_test_cursor_count(self, request_job_filter, elasticsearch_search):
         # Loop twice, the first loop the user will not be authenticated, the second loop the user will be authenticated
         for _ in range(2):
             variables = {
@@ -334,12 +310,8 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             # Authenticate the user now for the second iteration
             self.authenticate()
 
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_uploaded(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private.
         BilbyJob.objects.create(
@@ -357,12 +329,12 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         self.job2.job_type = BilbyJobType.UPLOADED
         self.job2.save()
 
-        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"][
-            "timestamp"
-        ] = str(self.job2.creation_time)
-        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][1]["node"][
-            "timestamp"
-        ] = str(self.job1.creation_time)
+        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"]["timestamp"] = str(
+            self.job2.creation_time
+        )
+        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][1]["node"]["timestamp"] = str(
+            self.job1.creation_time
+        )
 
         variables = {"count": 50, "search": None, "timeRange": "all"}
 
@@ -382,15 +354,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             self.authenticate()
 
     @silence_errors
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def test_public_bilby_jobs_unknown_job_type(
-        self, request_job_filter, elasticsearch_search
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_unknown_job_type(self, request_job_filter, elasticsearch_search):
         BilbyJob.objects.all().delete()
 
         BilbyJob.objects.create(
@@ -414,15 +380,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             "publicBilbyJobs query returned unexpected data.",
         )
 
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def test_public_bilby_jobs_query_private_info(
-        self, request_job_filter, elasticsearch_search
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_private_info(self, request_job_filter, elasticsearch_search):
         for term in [
             "_private_info_.private:true",
             "_private_info_.userId:50",
@@ -438,15 +398,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 "publicBilbyJobs query returned unexpected data.",
             )
 
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def test_public_bilby_jobs_query_time_ranges(
-        self, request_job_filter, elasticsearch_search
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_time_ranges(self, request_job_filter, elasticsearch_search):
         for time_range in ["1d", "1w", "1m", "1y", "all"]:
             variables = {"count": 50, "search": None, "timeRange": time_range}
 
@@ -483,9 +437,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     delta = timedelta(days=365)
 
                 regex = re.compile('job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')  # noqa: W605
-                _from, to = regex.search(
-                    elasticsearch_search.mock_calls[-1].kwargs["q"]
-                ).groups()
+                _from, to = regex.search(elasticsearch_search.mock_calls[-1].kwargs["q"]).groups()
 
                 _from = datetime.fromisoformat(_from)
                 to = datetime.fromisoformat(to)
@@ -497,15 +449,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 self.assertEqual((to - _from), delta)
 
     @override_settings(EMBARGO_START_TIME=1234)
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def test_public_bilby_jobs_query_embargo(
-        self, request_job_filter, elasticsearch_search
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_embargo(self, request_job_filter, elasticsearch_search):
         variables = {"count": 50, "search": None, "timeRange": "all", "after": None}
 
         # Should return expected results
@@ -523,15 +469,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         )
 
     @override_settings(EMBARGO_START_TIME=1234)
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def test_public_bilby_jobs_query_combine_all(
-        self, request_job_filter, elasticsearch_search
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_combine_all(self, request_job_filter, elasticsearch_search):
         variables = {
             "count": 50,
             "search": "test",
@@ -549,9 +489,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         )
 
         regex = re.compile('job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')  # noqa: W605
-        _from, to = regex.search(
-            elasticsearch_search.mock_calls[-1].kwargs["q"]
-        ).groups()
+        _from, to = regex.search(elasticsearch_search.mock_calls[-1].kwargs["q"]).groups()
 
         _from = datetime.fromisoformat(_from)
         to = datetime.fromisoformat(to)
@@ -577,15 +515,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         )
 
     @silence_errors
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def test_public_bilby_jobs_query_invalid_time_range(
-        self, request_job_filter, elasticsearch_search
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_invalid_time_range(self, request_job_filter, elasticsearch_search):
         variables = {"count": 50, "search": None, "timeRange": "invalid"}
 
         # Should return no results
@@ -596,9 +528,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             "publicBilbyJobs query returned unexpected data.",
         )
 
-        self.assertEqual(
-            response.errors[0]["message"], "Unexpected timeRange value invalid"
-        )
+        self.assertEqual(response.errors[0]["message"], "Unexpected timeRange value invalid")
 
     @mock.patch(
         "elasticsearch.Elasticsearch.search",
@@ -616,15 +546,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         )
 
     @override_settings(EMBARGO_START_TIME=1234)
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def test_public_bilby_jobs_query_embargo_violation(
-        self, request_job_filter, elasticsearch_search
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_embargo_violation(self, request_job_filter, elasticsearch_search):
         variables = {"count": 50, "search": None, "timeRange": "all"}
 
         # Update the trigger time for one of the jobs to be after the embargo time
@@ -642,15 +566,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             "publicBilbyJobs query returned unexpected data.",
         )
 
-    @mock.patch(
-        "elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock
-    )
-    @mock.patch(
-        "bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock
-    )
-    def test_public_bilby_jobs_query_private_violation(
-        self, request_job_filter, elasticsearch_search
-    ):
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_private_violation(self, request_job_filter, elasticsearch_search):
         variables = {"count": 50, "search": None, "timeRange": "all"}
 
         # Update the trigger time for one of the jobs to be after the embargo time

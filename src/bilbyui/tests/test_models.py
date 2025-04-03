@@ -264,9 +264,7 @@ class TestFileDownloadToken(BilbyTestCase):
 
         # Check objects just inside the deletion time are not deleted
         for r in FileDownloadToken.objects.all():
-            r.created = after - timezone.timedelta(
-                seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY - 1
-            )
+            r.created = after - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY - 1)
             r.save()
 
         FileDownloadToken.prune()
@@ -275,9 +273,7 @@ class TestFileDownloadToken(BilbyTestCase):
 
         # Check objects just outside the deletion time are deleted
         for r in FileDownloadToken.objects.all():
-            r.created = after - timezone.timedelta(
-                seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1
-            )
+            r.created = after - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1)
             r.save()
 
         FileDownloadToken.prune()
@@ -314,9 +310,7 @@ class TestFileDownloadToken(BilbyTestCase):
         # Check that prune works as expected
         # Check objects just inside the deletion time are not deleted
         for r in FileDownloadToken.objects.all():
-            r.created = after - timezone.timedelta(
-                seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY - 1
-            )
+            r.created = after - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY - 1)
             r.save()
 
         result = FileDownloadToken.get_paths(self.job, tokens)
@@ -326,9 +320,7 @@ class TestFileDownloadToken(BilbyTestCase):
 
         # Set one object outside the expiry window
         r = FileDownloadToken.objects.all()[2]
-        r.created = after - timezone.timedelta(
-            seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1
-        )
+        r.created = after - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1)
         r.save()
 
         result = FileDownloadToken.get_paths(self.job, tokens)
@@ -341,9 +333,7 @@ class TestFileDownloadToken(BilbyTestCase):
 
         # Check objects just outside the deletion time are deleted
         for r in FileDownloadToken.objects.all():
-            r.created = after - timezone.timedelta(
-                seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1
-            )
+            r.created = after - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1)
             r.save()
 
         result = FileDownloadToken.get_paths(self.job, tokens)
@@ -391,9 +381,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
 
         # Check objects just inside the deletion time are not deleted
         r = BilbyJobUploadToken.objects.last()
-        r.created = after - timezone.timedelta(
-            seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY - 1
-        )
+        r.created = after - timezone.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY - 1)
         r.save()
 
         BilbyJobUploadToken.prune()
@@ -401,9 +389,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
         self.assertEqual(BilbyJobUploadToken.objects.all().count(), 1)
 
         # Check objects just outside the deletion time are deleted
-        r.created = after - timezone.timedelta(
-            seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY + 1
-        )
+        r.created = after - timezone.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY + 1)
         r.save()
 
         BilbyJobUploadToken.prune()
@@ -427,9 +413,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
         # Check that prune works as expected
         # Check objects just inside the deletion time are not deleted
         r = BilbyJobUploadToken.objects.last()
-        r.created = after - timezone.timedelta(
-            seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY - 1
-        )
+        r.created = after - timezone.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY - 1)
         r.save()
 
         result = BilbyJobUploadToken.get_by_token(token)
@@ -440,9 +424,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
 
         # Set the object outside the expiry window
         r = BilbyJobUploadToken.objects.last()
-        r.created = after - timezone.timedelta(
-            seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY + 1
-        )
+        r.created = after - timezone.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY + 1)
         r.save()
 
         result = BilbyJobUploadToken.get_by_token(token)
@@ -504,9 +486,7 @@ class TestSupportingFile(BilbyTestCase):
         self.assertEqual(BilbyJob.objects.all().count(), 1)
 
         # Check objects just inside the deletion time are not deleted
-        self.job.creation_time = self.after - timezone.timedelta(
-            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1
-        )
+        self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
         self.job.save()
 
         BilbyJob.prune_supporting_files_jobs()
@@ -514,9 +494,7 @@ class TestSupportingFile(BilbyTestCase):
         self.assertEqual(BilbyJob.objects.all().count(), 1)
 
         # Check objects just outside the deletion time are deleted
-        self.job.creation_time = self.after - timezone.timedelta(
-            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1
-        )
+        self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
         self.job.save()
 
         BilbyJob.prune_supporting_files_jobs()
@@ -541,9 +519,7 @@ class TestSupportingFile(BilbyTestCase):
         self.assertEqual(BilbyJob.objects.all().count(), 1)
 
         # Check objects just inside the deletion time are not deleted
-        self.job.creation_time = self.after - timezone.timedelta(
-            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1
-        )
+        self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
         self.job.save()
 
         BilbyJob.prune_supporting_files_jobs()
@@ -551,9 +527,7 @@ class TestSupportingFile(BilbyTestCase):
         self.assertEqual(BilbyJob.objects.all().count(), 1)
 
         # Check objects just outside the deletion time are not deleted if all supporting files are uploaded
-        self.job.creation_time = self.after - timezone.timedelta(
-            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1
-        )
+        self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
         self.job.save()
 
         BilbyJob.prune_supporting_files_jobs()
@@ -565,26 +539,20 @@ class TestSupportingFile(BilbyTestCase):
         # uploaded supporting files.
 
         # Test that objects created now are not removed
-        tokens = [
-            t["token"] for t in SupportingFile.save_from_parsed(self.job, self.parsed)
-        ]
+        tokens = [t["token"] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
 
         for t in tokens:
             self.assertIsNotNone(SupportingFile.get_by_upload_token(t))
 
         # Check objects just inside the deletion time are not deleted
-        self.job.creation_time = self.after - timezone.timedelta(
-            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1
-        )
+        self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
         self.job.save()
 
         for t in tokens:
             self.assertIsNotNone(SupportingFile.get_by_upload_token(t))
 
         # Check objects just outside the deletion time are deleted
-        self.job.creation_time = self.after - timezone.timedelta(
-            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1
-        )
+        self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
         self.job.save()
 
         for t in tokens:
@@ -597,9 +565,7 @@ class TestSupportingFile(BilbyTestCase):
         # uploaded supporting files.
 
         # Check that if all supporting files are uploaded, the job is not deleted
-        tokens = [
-            t["token"] for t in SupportingFile.save_from_parsed(self.job, self.parsed)
-        ]
+        tokens = [t["token"] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
 
         self.assertEqual(SupportingFile.objects.count(), 3)
 
@@ -613,9 +579,7 @@ class TestSupportingFile(BilbyTestCase):
         self.assertTrue(BilbyJob.objects.filter(id=self.job.id).exists())
 
         # Check objects just inside the deletion time are not deleted
-        self.job.creation_time = self.after - timezone.timedelta(
-            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1
-        )
+        self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
         self.job.save()
 
         for t in tokens:
@@ -624,9 +588,7 @@ class TestSupportingFile(BilbyTestCase):
         self.assertTrue(BilbyJob.objects.filter(id=self.job.id).exists())
 
         # Check objects just outside the deletion time are not deleted if all supporting files are uploaded
-        self.job.creation_time = self.after - timezone.timedelta(
-            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1
-        )
+        self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
         self.job.save()
 
         for t in tokens:
@@ -659,6 +621,4 @@ class TestSupportingFile(BilbyTestCase):
         sf.save()
 
         # Now the supporting file should be returned by get_by_download_token
-        self.assertEqual(
-            SupportingFile.get_by_download_token(sf.download_token).id, sf.id
-        )
+        self.assertEqual(SupportingFile.get_by_download_token(sf.download_token).id, sf.id)

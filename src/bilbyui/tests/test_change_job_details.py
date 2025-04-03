@@ -44,15 +44,11 @@ class TestChangeJobDetails(BilbyTestCase):
 
         response = self.query(self.mutation_string, input_data=change_job_input)
 
-        expected = {
-            "updateBilbyJob": {"jobId": self.global_job_id, "result": "Job saved!"}
-        }
+        expected = {"updateBilbyJob": {"jobId": self.global_job_id, "result": "Job saved!"}}
 
         self.job.refresh_from_db()
 
-        self.assertIsNone(
-            response.errors, f"Mutation returned errors: {response.errors}"
-        )
+        self.assertIsNone(response.errors, f"Mutation returned errors: {response.errors}")
         self.assertIsNotNone(response.data, "Mutation query returned nothing.")
         self.assertDictEqual(
             expected,

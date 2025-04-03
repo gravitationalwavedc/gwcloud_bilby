@@ -91,9 +91,7 @@ class TestRequestFileListUploaded(BilbyTestCase):
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string(
-            {"label": test_name, "detectors": "['H1']", "outdir": "./"}, True
-        )
+        test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']", "outdir": "./"}, True)
 
         test_file = SimpleUploadedFile(
             name="test.tar.gz",
@@ -130,17 +128,13 @@ class TestRequestFileListUploaded(BilbyTestCase):
         result = request_file_list(self.job, "../test/", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(
-            self.job, "../../../../../../../../../bin/bash", True, self.job.user_id
-        )
+        result = request_file_list(self.job, "../../../../../../../../../bin/bash", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
         result = request_file_list(self.job, "../data/", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
-        result = request_file_list(
-            self.job, "./data/../../test/", True, self.job.user_id
-        )
+        result = request_file_list(self.job, "./data/../../test/", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
         result = request_file_list(self.job, "./data", True, self.job.user_id)
@@ -150,9 +144,7 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertEqual(result[0], True)
 
         # Test "the path exists"
-        result = request_file_list(
-            self.job, "./data_not_exist/", True, self.job.user_id
-        )
+        result = request_file_list(self.job, "./data_not_exist/", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
         result = request_file_list(self.job, "data_not_exist", True, self.job.user_id)
@@ -168,9 +160,7 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertEqual(result[0], True)
 
         # Test "the path is a directory"
-        result = request_file_list(
-            self.job, "myjob_config_complete.ini", True, self.job.user_id
-        )
+        result = request_file_list(self.job, "myjob_config_complete.ini", True, self.job.user_id)
         self.assertEqual(result, (False, "Files do not exist"))
 
         result = request_file_list(
@@ -186,17 +176,11 @@ class TestRequestFileListUploaded(BilbyTestCase):
 
         # Test recursive file list
         result = request_file_list(self.job, "", True, self.job.user_id)
-        self.assertTrue(
-            len(list(filter(lambda x: "overview.html" in x["path"], result[1])))
-        )
+        self.assertTrue(len(list(filter(lambda x: "overview.html" in x["path"], result[1]))))
 
         # Test non-recursive file list
         result = request_file_list(self.job, "", False, self.job.user_id)
-        self.assertFalse(
-            len(list(filter(lambda x: "overview.html" in x["path"], result[1])))
-        )
+        self.assertFalse(len(list(filter(lambda x: "overview.html" in x["path"], result[1]))))
 
         result = request_file_list(self.job, "results_page", True, self.job.user_id)
-        self.assertTrue(
-            len(list(filter(lambda x: "overview.html" in x["path"], result[1])))
-        )
+        self.assertTrue(len(list(filter(lambda x: "overview.html" in x["path"], result[1]))))

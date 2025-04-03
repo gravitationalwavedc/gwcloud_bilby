@@ -18,9 +18,7 @@ User = get_user_model()
 
 class TestExternalJobUpload(BilbyTestCase):
     def setUp(self):
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         self.mutation_string = """
             mutation ExternalJobUploadMutation($input: UploadExternalBilbyJobMutationInput!) {
@@ -90,9 +88,7 @@ class TestExternalJobUpload(BilbyTestCase):
 
         response = self.query(self.mutation_string, input_data=test_input)
 
-        expected = {
-            "uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}
-        }
+        expected = {"uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
         self.assertDictEqual(expected, response.data)
 
@@ -107,9 +103,7 @@ class TestExternalJobUpload(BilbyTestCase):
 
         # Check that the external job record was created
         self.assertEqual(
-            ExternalBilbyJob.objects.filter(
-                job=job, url=test_input["resultUrl"]
-            ).count(),
+            ExternalBilbyJob.objects.filter(job=job, url=test_input["resultUrl"]).count(),
             1,
         )
 
@@ -133,9 +127,7 @@ class TestExternalJobUpload(BilbyTestCase):
 
         response = self.query(self.mutation_string, input_data=test_input)
 
-        expected = {
-            "uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}
-        }
+        expected = {"uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
         self.assertDictEqual(expected, response.data)
 
@@ -164,9 +156,7 @@ class TestExternalJobUpload(BilbyTestCase):
 
         response = self.query(self.mutation_string, input_data=test_input)
 
-        expected = {
-            "uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}
-        }
+        expected = {"uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
         self.assertDictEqual(expected, response.data)
 
@@ -199,9 +189,7 @@ class TestExternalJobUploadLigoPermissions(BilbyTestCase):
             "resultUrl": "https://www.example.com/",
         }
 
-        self.expected_one = {
-            "uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}
-        }
+        self.expected_one = {"uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
         self.expected_none = {"uploadExternalBilbyJob": None}
 
@@ -234,9 +222,7 @@ class TestExternalJobUploadLigoPermissions(BilbyTestCase):
     @silence_errors
     def test_ligo_user_with_gwosc(self):
         # This test checks that a non LIGO user can still create non LIGO jobs
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         ini_string = create_test_ini_string(
             config_dict={
@@ -263,9 +249,7 @@ class TestExternalJobUploadLigoPermissions(BilbyTestCase):
     def test_ligo_user_with_non_gwosc(self):
         # Test that LIGO users can make jobs with proprietary channels
         # Now if the channels are proprietary, the ligo user should be able to create jobs
-        self.authenticate(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         for channel_dict in [
             {"H1": "GDS-CALIB_STRAIN", "L1": "GWOSC", "V1": "GWOSC"},
@@ -280,9 +264,7 @@ class TestExternalJobUploadLigoPermissions(BilbyTestCase):
             self.params["iniFile"] = ini_string
             response = self.query(self.mutation_string, input_data=self.params)
 
-            self.assertTrue(
-                "jobId" in response.data["uploadExternalBilbyJob"]["result"]
-            )
+            self.assertTrue("jobId" in response.data["uploadExternalBilbyJob"]["result"])
 
             # Check that the job is marked as proprietary
             job = BilbyJob.objects.all().last()

@@ -16,9 +16,7 @@ class TestElasticSearch(BilbyTestCase):
     def setUp(self):
         # Normally we don't have any User objects
         # But this test uses the presence or absense of User.objects[0] for various things
-        self.user = User.objects.create(
-            username="buffy", first_name="buffy", last_name="summers"
-        )
+        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
 
     def request_lookup_users_mock(*args, **kwargs):
         user = User.objects.first()
@@ -34,9 +32,7 @@ class TestElasticSearch(BilbyTestCase):
         side_effect=request_elasticsearch_update_mock_raises,
     )
     @mock.patch("elasticsearch.Elasticsearch.index")
-    @mock.patch(
-        "bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock
-    )
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_create_document_basic(
         self,
         lookup_users_mock,
@@ -79,18 +75,14 @@ class TestElasticSearch(BilbyTestCase):
         self.assertEqual(doc["labels"], [])
         self.assertEqual(doc["eventId"], None)
 
-        self.assertDictEqual(
-            elasticsearch_index_mock.mock_calls[0].kwargs["document"], doc
-        )
+        self.assertDictEqual(elasticsearch_index_mock.mock_calls[0].kwargs["document"], doc)
 
     @mock.patch(
         "elasticsearch.Elasticsearch.update",
         side_effect=request_elasticsearch_update_mock_raises,
     )
     @mock.patch("elasticsearch.Elasticsearch.index")
-    @mock.patch(
-        "bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock
-    )
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_create_document_complete(
         self,
         lookup_users_mock,
@@ -105,12 +97,8 @@ class TestElasticSearch(BilbyTestCase):
         """
         from bilbyui.models import BilbyJob, EventID, Label
 
-        label1 = Label.objects.create(
-            name="label 1", description="my label 1", protected=True
-        )
-        label2 = Label.objects.create(
-            name="label 2", description="my label 2", protected=False
-        )
+        label1 = Label.objects.create(name="label 1", description="my label 1", protected=True)
+        label2 = Label.objects.create(name="label 2", description="my label 2", protected=False)
 
         event_id = EventID.create(
             "GW123456_123456",
@@ -152,17 +140,11 @@ class TestElasticSearch(BilbyTestCase):
         self.assertNotEqual(doc["labels"], [])
         self.assertNotEqual(doc["eventId"], None)
 
-        self.assertDictEqual(
-            elasticsearch_index_mock.mock_calls[-1].kwargs["document"], doc
-        )
+        self.assertDictEqual(elasticsearch_index_mock.mock_calls[-1].kwargs["document"], doc)
 
     @mock.patch("elasticsearch.Elasticsearch.update")
-    @mock.patch(
-        "bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock
-    )
-    def test_job_save_update_document(
-        self, lookup_users_mock, elasticsearch_update_mock
-    ):
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_job_save_update_document(self, lookup_users_mock, elasticsearch_update_mock):
         """
         Test that update is called with the expected document
         """
@@ -200,12 +182,8 @@ class TestElasticSearch(BilbyTestCase):
         self.assertDictEqual(elasticsearch_update_mock.mock_calls[0].kwargs["doc"], doc)
 
     @mock.patch("elasticsearch.Elasticsearch.update")
-    @mock.patch(
-        "bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock
-    )
-    def test_job_save_event_id_update(
-        self, lookup_users_mock, elasticsearch_update_mock
-    ):
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_job_save_event_id_update(self, lookup_users_mock, elasticsearch_update_mock):
         """
         Test that if we update an event id associated with a job, that the job's elastic search update
         is triggered
@@ -242,9 +220,7 @@ class TestElasticSearch(BilbyTestCase):
         )
 
     @mock.patch("elasticsearch.Elasticsearch.update")
-    @mock.patch(
-        "bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock
-    )
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_label_update(self, lookup_users_mock, elasticsearch_update_mock):
         """
         Test that if we update a label associated with a job, that the job's elastic search update
@@ -252,9 +228,7 @@ class TestElasticSearch(BilbyTestCase):
         """
         from bilbyui.models import BilbyJob, Label
 
-        label1 = Label.objects.create(
-            name="label 1", description="my label 1", protected=True
-        )
+        label1 = Label.objects.create(name="label 1", description="my label 1", protected=True)
 
         job = BilbyJob.objects.create(
             user_id=self.user.id,
@@ -280,12 +254,8 @@ class TestElasticSearch(BilbyTestCase):
 
     @mock.patch("elasticsearch.Elasticsearch.delete")
     @mock.patch("elasticsearch.Elasticsearch.update")
-    @mock.patch(
-        "bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock
-    )
-    def test_job_delete_remove_document(
-        self, request_lookup_users, elastic_search_update, elastic_search_delete
-    ):
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_job_delete_remove_document(self, request_lookup_users, elastic_search_update, elastic_search_delete):
         """
         Test that when a bilby job is deleted, the elastic search record is also deleted
         """
