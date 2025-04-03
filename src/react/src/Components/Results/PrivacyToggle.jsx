@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { commitMutation, createFragmentContainer, graphql } from 'react-relay';
 import { Form } from 'react-bootstrap';
 import environment from '../../environment';

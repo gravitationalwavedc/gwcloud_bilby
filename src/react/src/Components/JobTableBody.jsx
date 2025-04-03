@@ -1,4 +1,3 @@
-import React from 'react';
 import JobBadges from './JobBadges';
 import { Row, Container, Col } from 'react-bootstrap';
 import Link from 'found/Link';

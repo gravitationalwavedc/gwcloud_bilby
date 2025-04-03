@@ -1,4 +1,3 @@
-import React from 'react';
 import { Button, Col, Row, Form } from 'react-bootstrap';
 import Input from './Atoms/Input';
 import FormCard from './FormCard';

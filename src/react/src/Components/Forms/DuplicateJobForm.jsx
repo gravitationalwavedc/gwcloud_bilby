@@ -1,4 +1,3 @@
-import React from 'react';
 import { graphql, createFragmentContainer } from 'react-relay';
 import NewJob from '../../Pages/NewJob';
 import parseJobParams from '../../Utils/ParseJobParams';

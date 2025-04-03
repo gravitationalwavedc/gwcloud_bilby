@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'found';
 import Navbar from 'react-bootstrap/Navbar';
 import Nav from 'react-bootstrap/Nav';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPaginationContainer, graphql } from 'react-relay';
 import { Button, Card, Container, Col, Row } from 'react-bootstrap';
 import { HiOutlinePlus } from 'react-icons/hi';

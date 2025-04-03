@@ -1,4 +1,3 @@
-import React from 'react';
 import { getStatusType } from '../getVariants';
 import { Row, Col } from 'react-bootstrap';
 

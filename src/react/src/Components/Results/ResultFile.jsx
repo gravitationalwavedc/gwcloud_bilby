@@ -1,4 +1,3 @@
-import React from 'react';
 import { commitMutation, createFragmentContainer, graphql } from 'react-relay';
 import { filesize } from 'filesize';
 import { jobTypes } from '../../Utils/jobHelpers';

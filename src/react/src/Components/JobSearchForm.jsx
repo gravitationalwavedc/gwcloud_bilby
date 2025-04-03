@@ -1,4 +1,3 @@
-import React from 'react';
 import { Col, Form, InputGroup } from 'react-bootstrap';
 import { HiOutlineSearch } from 'react-icons/hi';
 

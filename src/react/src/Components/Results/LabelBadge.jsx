@@ -1,4 +1,3 @@
-import React from 'react';
 import { HiOutlineX } from 'react-icons/hi';
 import { Badge } from 'react-bootstrap';
 import { getBadgeType } from '../getVariants';

@@ -6,7 +6,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
-  { ignores: ['dist', '**/__generated__/**', '**/__tests__/**'] },
+  { ignores: ['dist', '**/__generated__/**', '**/__tests__/**', 'jest/**.js'] },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
@@ -34,6 +34,11 @@ export default defineConfig([
         'warn',
         { allowConstantExport: true },
       ],
+      // For now, leave this off
+      // The update to react has caused a lot of previously passing (and totally fine)
+      // code to start reporting errors
+      'react/prop-types': 'warn',
+
     },
   },
 ]);

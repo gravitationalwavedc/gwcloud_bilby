@@ -1,4 +1,3 @@
-import React from 'react';
 import { Button } from 'react-bootstrap';
 import { HiOutlinePlus } from 'react-icons/hi';
 import Link from 'found/Link';

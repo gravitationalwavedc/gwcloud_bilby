@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createFragmentContainer, commitMutation, graphql } from 'react-relay';
 import { Row, Col, Dropdown } from 'react-bootstrap';
 import LabelBadge from './LabelBadge';

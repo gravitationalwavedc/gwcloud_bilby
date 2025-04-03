@@ -1,4 +1,3 @@
-import React from 'react';
 import { Form } from 'react-bootstrap';
 
 const Input = ({ formik, title, name, type, ...rest }) => (

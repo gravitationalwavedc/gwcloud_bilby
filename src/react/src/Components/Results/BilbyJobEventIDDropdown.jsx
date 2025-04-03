@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { commitMutation, createFragmentContainer, graphql } from 'react-relay';
 import 'react-bootstrap-typeahead/css/Typeahead.css';
 import EventIDDropdown from './EventIDDropdown';
