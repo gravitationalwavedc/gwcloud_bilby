@@ -11,12 +11,8 @@ ALLOWED_HOSTS = ["*"]
 EMAIL_HOST = "mail.swin.edu.au"
 EMAIL_PORT = 25
 
-GWCLOUD_JOB_CONTROLLER_API_URL = (
-    "http://adacs-job-controller.jobcontroller.svc.cluster.local:8000/job/apiv1"
-)
-ELASTIC_SEARCH_HOST = (
-    "https://elasticsearch-master.elastic-stack.svc.cluster.local:9200"
-)
+GWCLOUD_JOB_CONTROLLER_API_URL = "http://adacs-job-controller.jobcontroller.svc.cluster.local:8000/job/apiv1"
+ELASTIC_SEARCH_HOST = "https://elasticsearch-master.elastic-stack.svc.cluster.local:9200"
 
 # On both login and logout, redirect to the frontend react app
 LOGIN_REDIRECT_URL = "/"
