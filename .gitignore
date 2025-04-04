@@ -12,8 +12,6 @@ src/react/coverage
 src/react/junit.xml
 src/react/eslint.xml
 src/react/data/schema.graphql
-# Ignored for now
-src/react.bk/*
 src/job_uploads/
 src/bundle/coverage.xml
 src/bundle/junit.xml
