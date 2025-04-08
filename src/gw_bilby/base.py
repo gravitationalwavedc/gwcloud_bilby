@@ -187,6 +187,6 @@ CLUSTERS = ["ozstar"]
 EMBARGO_START_TIME = None
 
 # The elastic search details used by gwcloud
-ELASTIC_SEARCH_INDEX = "gwcloud-bilbyjob-newauth"
+ELASTIC_SEARCH_INDEX = "gwcloud-bilbyjob"
 ELASTIC_SEARCH_HOST = "http://localhost:9200"
 ELASTIC_SEARCH_API_KEY = "very secure key"
