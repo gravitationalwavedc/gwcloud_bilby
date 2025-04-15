@@ -22,7 +22,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "^zzul@u)rxayk67^%3kf^59!pw&-vfv0lnv6#6h)w6!eyjzz!g"
 JOB_CONTROLLER_JWT_SECRET = SECRET_KEY
-AUTH_SERVICE_JWT_SECRET = SECRET_KEY
 DB_SEARCH_SERVICE_JWT_SECRET = SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
