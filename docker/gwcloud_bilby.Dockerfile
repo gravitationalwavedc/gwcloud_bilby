@@ -1,28 +1,53 @@
-FROM python:3.12 as django
+FROM python:3.12 AS base
 ENV PYTHONUNBUFFERED 1
 
 # Update the container and install the required packages
-RUN apt-get update
-RUN apt-get -y install python3-virtualenv default-libmysqlclient-dev python3-dev build-essential curl
+RUN apt-get update \
+  && apt-get install --no-install-recommends -y \
+  curl netcat-traditional\
+  && apt-get clean \
+  && rm -rf /var/lib/apt-lists/* \
+  && apt-get autoremove --purge -y
+
+
+FROM base AS django-builder
+
+RUN apt-get update \
+  && apt-get install --no-install-recommends -y \
+  python3-virtualenv default-libmysqlclient-dev python3-dev build-essential git pkg-config \
+  && apt-get clean \
+  && rm -rf /var/lib/apt-lists/* \
+  && apt-get autoremove --purge -y
+
+
+RUN virtualenv -p python3 /venv
+COPY ./src/requirements.txt /requirements.txt
+
+# Activate and install the django requirements (mysqlclient requires python3-dev and build-essential)
+RUN . /venv/bin/activate \
+  && pip install -r /requirements.txt \
+  && pip install mysqlclient gunicorn
 
 # Copy the source code in to the container
-COPY src /src
+COPY ./src /src
+
+# Ensure host venv and javascript is removed
+RUN rm -Rf /src/venv /src/react
+
+# Generate the graphql schema
+RUN . /venv/bin/activate \
+  && python src/development-manage.py graphql_schema --out /src/schema.json
+
+
+FROM base as django-runner
+
+COPY --from=django-builder /src /src
+COPY --from=django-builder /venv /venv
+
 COPY ./runserver.sh /runserver.sh
 RUN chmod +x /runserver.sh
 
-# Create python virtualenv
-RUN rm -Rf /src/venv
-RUN virtualenv -p python3 /src/venv
-
-# Activate and install the django requirements (mysqlclient requires python3-dev and build-essential)
-RUN . /src/venv/bin/activate && pip install -r /src/requirements.txt && pip install mysqlclient && pip install gunicorn && python src/development-manage.py graphql_schema --out /src/schema.json
-
-# Clean up unneeded packages
-RUN apt-get remove --purge -y build-essential python3-dev
-RUN apt-get autoremove --purge -y
-
-# Don't need any of the javascipt code now
-RUN rm -Rf /src/react
+RUN mkdir -p /job_data/upload
 
 # Expose the port and set the run script
 EXPOSE 8000
@@ -31,46 +56,27 @@ EXPOSE 8000
 WORKDIR /src
 CMD [ "/runserver.sh" ]
 
-FROM nginx:latest as static
-
-# Install needed packages
-RUN apt-get update
-RUN apt-get install -y curl python3.10 python3-pip rsync
-RUN apt-get -y upgrade
+FROM node:23.6.1 as static-builder
 
 # Copy the bilby source code in to the container
-COPY src /src
+COPY ./src/react /react
 
 # Copy the bilby source in to the container
-WORKDIR /
+WORKDIR /react
 
 # Copy the generate bilby schema
-COPY --from=django /src/schema.json /src/react/data/
+COPY --from=django-builder /src/schema.json /react/data/
 
-# Build webpack bundle
-RUN mkdir /src/static
-# RUN curl https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
-# RUN . ~/.nvm/nvm.sh && cd /src/react/ && nvm install && nvm use && npm install npm@8.5.5 && npm install && npm run relay && npm run build
+RUN npm install --legacy-peer-deps \
+  && npm run relay \
+  && npm run build
 
-RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
-RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && cd /src/react/ && nvm install && nvm use && npm install --legacy-peer-deps && npm run relay && npm run build
 
-# Copy the javascript bundle
-RUN rsync -arv /src/static/ /static/
+FROM nginx:latest as static-runner
 
-# Don't need any of the javascipt code now
-RUN rm -Rf /src
-RUN rm -Rf ~/.nvm/
+COPY --from=static-builder /react/dist /static
 
-RUN apt-get remove -y --purge rsync
-RUN apt-get autoremove --purge -y
-
-RUN rm -Rf /gwcloud_bilby
-
-ADD ./nginx/static.conf /etc/nginx/conf.d/nginx.conf
+COPY ./nginx/nginx.conf /etc/nginx/conf.d/nginx.conf
 
 EXPOSE 8000
 
-FROM nginx:latest as nginx
-ADD ./nginx/nginx.conf /etc/nginx/conf.d/nginx.conf
-EXPOSE 8000
