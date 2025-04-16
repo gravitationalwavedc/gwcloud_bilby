@@ -28,6 +28,7 @@ services:
     depends_on:
       - django
 
+
   db:
     image: mysql:8.4.3
     container_name: gwcloud_bilby_mysql

@@ -20,7 +20,7 @@ RUN apt-get update \
   && apt-get autoremove --purge -y
 
 
-RUN virtualenv -p python3 /venv
+RUN virtualenv -p python3.12 /venv
 COPY ./src/requirements.txt /requirements.txt
 
 # Activate and install the django requirements (mysqlclient requires python3-dev and build-essential)
