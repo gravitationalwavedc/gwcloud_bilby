@@ -57,7 +57,7 @@ class TestElasticSearch(BilbyTestCase):
 
         # request_lookup_users should have been called once with an array containing only the user id
         self.assertEqual(lookup_users_mock.call_count, 1)
-        self.assertEqual(lookup_users_mock.mock_calls[0].args, ([1], 0))
+        self.assertEqual(lookup_users_mock.mock_calls[0].args, ([1],))
 
         # Update should have been called once, which then raises elasticsearch.NotFoundError
         self.assertEqual(elasticsearch_update_mock_raises.call_count, 1)
@@ -161,7 +161,7 @@ class TestElasticSearch(BilbyTestCase):
 
         # request_lookup_users should have been called once with an array containing only the user id
         self.assertEqual(lookup_users_mock.call_count, 1)
-        self.assertEqual(lookup_users_mock.mock_calls[0].args, ([1], 0))
+        self.assertEqual(lookup_users_mock.mock_calls[0].args, ([1],))
 
         # Update should have been called once
         self.assertEqual(elasticsearch_update_mock.call_count, 1)
