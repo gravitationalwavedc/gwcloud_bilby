@@ -19,3 +19,5 @@ responses
 pyhumps
 elasticsearch
 git+https://gitlab.com/CAS-eResearch/internal/adacs-sso-plugin.git
+adacs-django-playwright
+pytest-playwright

@@ -7,7 +7,7 @@ INSTALLED_APPS += ("corsheaders",)
 
 # For requests to include credentials (i.e., http-only cookies) the
 # CORS_ALLOWED_ORIGINS must not be ['*']
-CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
+CORS_ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:4173"]
 CORS_ALLOW_CREDENTIALS = True
 
 MIDDLEWARE.append("corsheaders.middleware.CorsMiddleware")
@@ -30,7 +30,10 @@ LOGOUT_REDIRECT_URL = "http://localhost:3000/"
 
 # adacs-sso settings
 ADACS_SSO_CLIENT_NAME = "gwcloud_bilby_dev"
-ADACS_SSO_AUTH_HOST = "http://localhost:8000"
+ADACS_SSO_AUTH_HOST = "http://localhost:5000"
+
+TEST_NON_SERIALIZED_APPS = ['django.contrib.contenttypes',
+                            'django.contrib.auth']
 
 try:
     from .local import *
