@@ -9,7 +9,6 @@ from django.test import override_settings
 from django.urls import reverse
 
 from bilbyui.models import BilbyJob
-from bilbyui.tests.test_job_upload import get_upload_token
 from bilbyui.tests.test_utils import (
     silence_errors,
     create_test_upload_data,
@@ -25,10 +24,9 @@ User = get_user_model()
 @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
 class TestUploadedJobFileDownload(BilbyTestCase):
     def setUp(self):
-        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user)
+        self.authenticate()
 
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
+        token = self.get_upload_token()
 
         # Create a new uploaded bilby job
         test_name = "myjob"
@@ -44,14 +42,13 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(
+        response = self.file_query(
             """
                 mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
                   uploadBilbyJob(input: $input) {
@@ -61,13 +58,14 @@ class TestUploadedJobFileDownload(BilbyTestCase):
                   }
                 }
             """,
-            test_input,
+            input_data=test_input,
+            files=test_files,
         )
 
         self.global_id = response.data["uploadBilbyJob"]["result"]["jobId"]
         self.job = BilbyJob.objects.all().last()
 
-        self.query = f"""
+        self.query_string = f"""
             query {{
                 bilbyResultFiles (jobId: "{self.global_id}") {{
                     files {{
@@ -81,7 +79,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             }}
             """
 
-        self.mutation = """
+        self.mutation_string = """
             mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
                 generateFileDownloadIds(input: $input) {
                     result
@@ -89,42 +87,42 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             }
             """
 
-        self.mut_input = {"input": {"jobId": self.global_id, "downloadTokens": None}}
+        self.mut_input = {"jobId": self.global_id, "downloadTokens": None}
 
         self.http_client = Client()
 
     def generate_file_download_tokens(self):
-        response = self.client.execute(self.query)
+        response = self.query(self.query_string)
         download_tokens = get_file_download_tokens(response)
         return download_tokens, response
 
     def generate_download_id_from_token(self, token):
-        self.mut_input["input"]["downloadTokens"] = [token]
+        self.mut_input["downloadTokens"] = [token]
 
-        response = self.client.execute(self.mutation, self.mut_input)
+        response = self.query(self.mutation_string, input_data=self.mut_input)
 
         return response.data["generateFileDownloadIds"]["result"][0]
 
     @silence_errors
     def test_no_token(self):
-        response = self.http_client.get(f'{reverse(viewname="file_download")}')
+        response = self.http_client.get(f"{reverse(viewname='file_download')}")
         self.assertEqual(response.status_code, 404)
 
     @silence_errors
     def test_invalid_token(self):
         download_tokens, _ = self.generate_file_download_tokens()
 
-        self.mut_input["input"]["downloadTokens"] = [download_tokens[0]]
+        self.mut_input["downloadTokens"] = [download_tokens[0]]
 
-        response = self.client.execute(self.mutation, self.mut_input)
+        response = self.query(self.mutation_string, input_data=self.mut_input)
 
         token = response.data["generateFileDownloadIds"]["result"][0]
         token = token + "_not_real"
 
-        response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={token}')
+        response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={token}")
         self.assertEqual(response.status_code, 404)
 
-        response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={uuid.uuid4()}')
+        response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={uuid.uuid4()}")
         self.assertEqual(response.status_code, 404)
 
     @silence_errors
@@ -135,7 +133,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         for idx in range(len(files)):
             token = self.generate_download_id_from_token(download_tokens[idx])
 
-            response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={token}')
+            response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={token}")
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
             self.assertEqual(
@@ -145,7 +143,10 @@ class TestUploadedJobFileDownload(BilbyTestCase):
 
             content = b"".join(list(response))
 
-            with open(os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]), "rb") as f:
+            with open(
+                os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]),
+                "rb",
+            ) as f:
                 self.assertEqual(content, f.read())
 
     @silence_errors
@@ -156,7 +157,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         for idx in range(len(files)):
             token = self.generate_download_id_from_token(download_tokens[idx])
 
-            response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={token}&forceDownload')
+            response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={token}&forceDownload")
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
             self.assertEqual(
@@ -166,5 +167,8 @@ class TestUploadedJobFileDownload(BilbyTestCase):
 
             content = b"".join(list(response))
 
-            with open(os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]), "rb") as f:
+            with open(
+                os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]),
+                "rb",
+            ) as f:
                 self.assertEqual(content, f.read())

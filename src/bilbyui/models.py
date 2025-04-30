@@ -82,7 +82,7 @@ class EventID(models.Model):
     def get_by_event_id(cls, event_id, user):
         event = cls.objects.get(event_id=event_id)
 
-        if event.is_ligo_event and (user.is_anonymous or not user.is_ligo):
+        if event.is_ligo_event and not is_ligo_user(user):
             raise Exception("Permission Denied")
 
         return event
@@ -98,7 +98,11 @@ class EventID(models.Model):
     @classmethod
     def create(cls, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
         event = cls(
-            event_id=event_id, trigger_id=trigger_id, nickname=nickname, is_ligo_event=is_ligo_event, gps_time=gps_time
+            event_id=event_id,
+            trigger_id=trigger_id,
+            nickname=nickname,
+            is_ligo_event=is_ligo_event,
+            gps_time=gps_time,
         )
         event.clean_fields()  # Validate IDs
         event.save()
@@ -176,7 +180,7 @@ class BilbyJob(models.Model):
         job = cls.objects.get(id=bid)
 
         # Users can only access the job if it is public or (the user is authenticated AND the user also owns the job)
-        if job.private and (user.is_anonymous or user.user_id != job.user_id):
+        if job.private and (user.is_anonymous or user.id != job.user_id):
             raise Exception("Permission Denied")
 
         return job
@@ -193,7 +197,7 @@ class BilbyJob(models.Model):
         if user.is_anonymous:
             raise Exception("Permission Denied")
 
-        return embargo_filter(qs.filter(user_id=user.user_id), user)
+        return embargo_filter(qs.filter(user_id=user.id), user)
 
     @classmethod
     def public_bilby_job_filter(cls, qs, user):
@@ -226,10 +230,13 @@ class BilbyJob(models.Model):
 
         if not is_ligo_user(user):
             # If the job is not a ligo job and (the job is the current user's job or the job is public)
-            return embargo_filter(qs.filter(Q(is_ligo_job=False) & (Q(user_id=user.user_id) | Q(private=False))), user)
+            return embargo_filter(
+                qs.filter(Q(is_ligo_job=False) & (Q(user_id=user.id) | Q(private=False))),
+                user,
+            )
 
         # If the job is the current user's job or the job is public
-        return embargo_filter(qs.filter(Q(user_id=user.user_id) | Q(private=False)), user)
+        return embargo_filter(qs.filter(Q(user_id=user.id) | Q(private=False)), user)
 
     @classmethod
     def prune_supporting_files_jobs(cls):
@@ -318,19 +325,18 @@ class BilbyJob(models.Model):
             return
 
         es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY, verify_certs=False
+            hosts=[settings.ELASTIC_SEARCH_HOST],
+            api_key=settings.ELASTIC_SEARCH_API_KEY,
+            verify_certs=False,
         )
 
         # Get the user details for this job
-        _, users = request_lookup_users([self.user_id], 0)
+        _, users = request_lookup_users([self.user_id])
         user = users[0]
 
         # Generate the document for insertion or update in elastic search
         doc = {
-            "user": {
-                "firstName": user["firstName"],
-                "lastName": user["lastName"],
-            },
+            "user": {"name": user["name"]},
             "job": {
                 "name": self.name,
                 "description": self.description,
@@ -367,7 +373,9 @@ class BilbyJob(models.Model):
             return
 
         es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY, verify_certs=False
+            hosts=[settings.ELASTIC_SEARCH_HOST],
+            api_key=settings.ELASTIC_SEARCH_API_KEY,
+            verify_certs=False,
         )
 
         es.delete(index=settings.ELASTIC_SEARCH_INDEX, id=self.id)
@@ -449,14 +457,26 @@ class SupportingFile(models.Model):
                         result_files.append({"file_path": f})
 
                         bulk_items.append(
-                            cls(job=bilby_job, file_type=supporting_file_type, key=k, file_name=Path(f).name, **extra)
+                            cls(
+                                job=bilby_job,
+                                file_type=supporting_file_type,
+                                key=k,
+                                file_name=Path(f).name,
+                                **extra,
+                            )
                         )
 
             elif type(details) is str:
                 result_files.append({"file_path": details})
 
                 bulk_items.append(
-                    cls(job=bilby_job, file_type=supporting_file_type, key=None, file_name=Path(details).name, **extra)
+                    cls(
+                        job=bilby_job,
+                        file_type=supporting_file_type,
+                        key=None,
+                        file_name=Path(details).name,
+                        **extra,
+                    )
                 )
 
         created = cls.objects.bulk_create(bulk_items)
@@ -629,7 +649,7 @@ class BilbyJobUploadToken(models.Model):
         cls.prune()
 
         # Next create and return a new token instance
-        return cls.objects.create(user_id=user.user_id, is_ligo=user.is_ligo)
+        return cls.objects.create(user_id=user.id, is_ligo=is_ligo_user(user))
 
     @classmethod
     def prune(cls):

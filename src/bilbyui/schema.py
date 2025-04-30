@@ -15,7 +15,15 @@ from graphql_jwt.decorators import login_required
 from graphql_relay.node.node import from_global_id, to_global_id
 
 from .constants import BilbyJobType
-from .models import BilbyJob, BilbyJobUploadToken, EventID, FileDownloadToken, Label, SupportingFile, ExternalBilbyJob
+from .models import (
+    BilbyJob,
+    BilbyJobUploadToken,
+    EventID,
+    FileDownloadToken,
+    Label,
+    SupportingFile,
+    ExternalBilbyJob,
+)
 from .status import JobStatus
 from .types import (
     BilbyJobCreationResult,
@@ -112,14 +120,14 @@ class BilbyJobNode(DjangoObjectType):
     @classmethod
     def get_queryset(parent, queryset, info):
         user = info.context.user
-        user_id = user.user_id if user.is_authenticated else 0
+        user_id = user.id if user.is_authenticated else 0
 
         qs = BilbyJob.bilby_job_filter(queryset, user)
 
         # Query any users from this queryset in one go
         user_ids = set(qs.values_list("user_id", flat=True))
-        _, users = request_lookup_users(list(user_ids), user_id)
-        info.context.users = dict(zip([user["userId"] for user in users], [user for user in users]))
+        _, users = request_lookup_users(list(user_ids))
+        info.context.users = dict(zip([user["id"] for user in users], [user for user in users]))
 
         # Query any job controller information in one go - exclude any job controller ids that are not set
         job_controller_ids = set(qs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
@@ -131,7 +139,7 @@ class BilbyJobNode(DjangoObjectType):
     def resolve_user(parent, info):
         user = info.context.users.get(parent.user_id, None)
         if user:
-            return f"{user['firstName']} {user['lastName']}"
+            return user["name"]
         return "Unknown User"
 
     def resolve_last_updated(parent, info):
@@ -160,7 +168,11 @@ class BilbyJobNode(DjangoObjectType):
                 info.context.job_controller_jobs.get(parent.job_controller_id, None)["history"]
             )
 
-            return {"name": status_name, "number": status_number, "date": status_date.strftime("%Y-%m-%d %H:%M:%S UTC")}
+            return {
+                "name": status_name,
+                "number": status_number,
+                "date": status_date.strftime("%Y-%m-%d %H:%M:%S UTC"),
+            }
         except Exception:
             return {"name": "Unknown", "number": 0, "data": "Unknown"}
 
@@ -173,7 +185,6 @@ class BilbyResultFile(graphene.ObjectType):
 
 
 class BilbyResultFiles(graphene.ObjectType):
-
     class Input:
         job_id = graphene.ID()
 
@@ -256,7 +267,9 @@ class Query(object):
             kwargs["after"] = int(from_global_id(kwargs["after"])[1])
 
         es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST], api_key=settings.ELASTIC_SEARCH_API_KEY, verify_certs=False
+            hosts=[settings.ELASTIC_SEARCH_HOST],
+            api_key=settings.ELASTIC_SEARCH_API_KEY,
+            verify_certs=False,
         )
 
         # If no search term is provided, return all records via a wildcard
@@ -327,7 +340,7 @@ class Query(object):
             job_controller_jobs = {
                 job_controller_ids[job["id"]]: job
                 for job in request_job_filter(
-                    info.context.user.user_id if info.context.user.is_authenticated else 0,
+                    info.context.user.id if info.context.user.is_authenticated else 0,
                     ids=job_controller_ids.keys(),
                 )[1]
             }
@@ -340,7 +353,7 @@ class Query(object):
             bilby_job = BilbyJob.get_by_id(record["_id"], info.context.user)
 
             job_node = BilbyPublicJobNode(
-                user=f"{job['user']['firstName']} {job['user']['lastName']}",
+                user=job["user"]["name"],
                 name=job["job"]["name"],
                 description=job["job"]["description"],
                 event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
@@ -456,7 +469,7 @@ class EventIDMutation(relay.ClientIDMutation):
     def mutate_and_get_payload(cls, root, info, **kwargs):
         user = info.context.user
 
-        if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
+        if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
             raise Exception("User is not permitted to create EventIDs")
 
         message = create_event_id(user, **kwargs)
@@ -479,7 +492,7 @@ class UpdateEventIDMutation(relay.ClientIDMutation):
     def mutate_and_get_payload(cls, root, info, **kwargs):
         user = info.context.user
 
-        if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
+        if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
             raise Exception("User is not permitted to modify EventIDs")
 
         message = update_event_id(user, **kwargs)
@@ -498,7 +511,7 @@ class DeleteEventIDMutation(relay.ClientIDMutation):
     def mutate_and_get_payload(cls, root, info, event_id):
         user = info.context.user
 
-        if user.user_id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
+        if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
             raise Exception("User is not permitted to delete EventIDs")
 
         message = delete_event_id(user, event_id)

@@ -2,15 +2,22 @@ import json
 import uuid
 from pathlib import Path
 
+from bilbyui.utils.misc import is_ligo_user
 from django.conf import settings
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from bilbyui.models import BilbyJob, Label, FileDownloadToken, BilbyJobUploadToken, SupportingFile, EventID
+from bilbyui.models import (
+    BilbyJob,
+    Label,
+    FileDownloadToken,
+    BilbyJobUploadToken,
+    SupportingFile,
+    EventID,
+)
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import update_bilby_job
-from gw_bilby.jwt_tools import GWCloudUser
 
 
 class TestBilbyJobModel(BilbyTestCase):
@@ -39,10 +46,9 @@ class TestBilbyJobModel(BilbyTestCase):
         """
         self.assertEqual(self.job.private, False)
 
-        user = GWCloudUser("bill")
-        user.user_id = 1
+        self.authenticate()
 
-        update_bilby_job(self.job.id, user, True, [])
+        update_bilby_job(self.job.id, self.user, True, [])
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.private, True)
@@ -54,19 +60,18 @@ class TestBilbyJobModel(BilbyTestCase):
         # A user who doesn't own the job shouldn't be able to change the event id
         self.assertEqual(self.job.event_id, None)
 
-        user = GWCloudUser("bill")
-        user.user_id = self.job.user_id + 1
+        self.authenticate(id=2)
 
         with self.assertRaises(Exception):
-            update_bilby_job(self.job.id, user, event_id=self.event_id.event_id)
+            update_bilby_job(self.job.id, self.user, event_id=self.event_id.event_id)
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.event_id, None)
 
         # If the user owns the job, they should be able to set the event id
-        user.user_id = self.job.user_id
+        self.user.id = self.job.user_id
 
-        update_bilby_job(self.job.id, user, event_id=self.event_id.event_id)
+        update_bilby_job(self.job.id, self.user, event_id=self.event_id.event_id)
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.event_id, self.event_id)
@@ -76,10 +81,10 @@ class TestBilbyJobModel(BilbyTestCase):
         self.job.event_id = None
         self.job.save()
 
-        user.user_id = self.job.user_id + 1
+        self.user.id = self.job.user_id + 1
 
-        with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[user.user_id]):
-            update_bilby_job(self.job.id, user, event_id=self.event_id.event_id)
+        with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[self.user.id]):
+            update_bilby_job(self.job.id, self.user, event_id=self.event_id.event_id)
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.event_id, self.event_id)
@@ -90,10 +95,9 @@ class TestBilbyJobModel(BilbyTestCase):
         """
         self.assertEqual(self.job.name, "Test_Job")
 
-        user = GWCloudUser("bill")
-        user.user_id = 1
+        self.authenticate()
 
-        update_bilby_job(self.job.id, user, name="new_job")
+        update_bilby_job(self.job.id, self.user, name="new_job")
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.name, "new_job")
@@ -104,10 +108,9 @@ class TestBilbyJobModel(BilbyTestCase):
         """
         self.assertEqual(self.job.description, "Test job description")
 
-        user = GWCloudUser("bill")
-        user.user_id = 1
+        self.authenticate()
 
-        update_bilby_job(self.job.id, user, description="new description")
+        update_bilby_job(self.job.id, self.user, description="new description")
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.description, "new description")
@@ -119,10 +122,9 @@ class TestBilbyJobModel(BilbyTestCase):
 
         self.assertFalse(self.job.labels.exists())
 
-        user = GWCloudUser("bill")
-        user.user_id = 1
+        self.authenticate()
 
-        update_bilby_job(self.job.id, user, False, ["Bad Run", "Review Requested"])
+        update_bilby_job(self.job.id, self.user, False, ["Bad Run", "Review Requested"])
 
         self.job.refresh_from_db()
 
@@ -142,7 +144,10 @@ class TestBilbyJobModel(BilbyTestCase):
 
     def test_as_dict_supporting_files(self):
         supporting_file = SupportingFile.objects.create(
-            job=self.job, file_type=SupportingFile.PRIOR, key=None, file_name="test.prior"
+            job=self.job,
+            file_type=SupportingFile.PRIOR,
+            key=None,
+            file_name="test.prior",
         )
 
         params = self.job.as_dict()
@@ -164,7 +169,10 @@ class TestBilbyJobModel(BilbyTestCase):
         )
 
         supporting_file2 = SupportingFile.objects.create(
-            job=self.job, file_type=SupportingFile.CALIBRATION, key="V1", file_name="test.calib"
+            job=self.job,
+            file_type=SupportingFile.CALIBRATION,
+            key="V1",
+            file_name="test.calib",
         )
 
         params = self.job.as_dict()
@@ -335,15 +343,9 @@ class TestFileDownloadToken(BilbyTestCase):
         self.assertFalse(FileDownloadToken.objects.all().exists())
 
 
-class TestBilbyJobUploadToken(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        class TestUser:
-            def __init__(self):
-                self.is_ligo = False
-                self.user_id = 1234
-
-        cls.user = TestUser()
+class TestBilbyJobUploadToken(BilbyTestCase):
+    def setUp(self):
+        self.authenticate()
 
     def test_create(self):
         # Test that a token can correctly be created for uploading a bilby job
@@ -352,16 +354,16 @@ class TestBilbyJobUploadToken(TestCase):
         result = BilbyJobUploadToken.create(self.user)
         after = timezone.now()
 
-        self.assertEqual(result.user_id, self.user.user_id)
-        self.assertEqual(result.is_ligo, self.user.is_ligo)
+        self.assertEqual(result.user_id, self.user.id)
+        self.assertEqual(result.is_ligo, is_ligo_user(self.user))
         self.assertTrue(result.token)
         self.assertTrue(before < result.created < after)
 
         self.assertEqual(BilbyJobUploadToken.objects.count(), 1)
 
         result = BilbyJobUploadToken.objects.last()
-        self.assertEqual(result.user_id, self.user.user_id)
-        self.assertEqual(result.is_ligo, self.user.is_ligo)
+        self.assertEqual(result.user_id, self.user.id)
+        self.assertEqual(result.is_ligo, is_ligo_user(self.user))
         self.assertTrue(result.token)
         self.assertTrue(before < result.created < after)
 
@@ -403,8 +405,8 @@ class TestBilbyJobUploadToken(TestCase):
 
         result = BilbyJobUploadToken.get_by_token(token)
 
-        self.assertEqual(result.user_id, self.user.user_id)
-        self.assertEqual(result.is_ligo, self.user.is_ligo)
+        self.assertEqual(result.user_id, self.user.id)
+        self.assertEqual(result.is_ligo, is_ligo_user(self.user))
         self.assertTrue(result.token)
         self.assertTrue(before < result.created < after)
 
@@ -416,8 +418,8 @@ class TestBilbyJobUploadToken(TestCase):
 
         result = BilbyJobUploadToken.get_by_token(token)
 
-        self.assertEqual(result.user_id, self.user.user_id)
-        self.assertEqual(result.is_ligo, self.user.is_ligo)
+        self.assertEqual(result.user_id, self.user.id)
+        self.assertEqual(result.is_ligo, is_ligo_user(self.user))
         self.assertTrue(result.token)
 
         # Set the object outside the expiry window
@@ -454,7 +456,8 @@ class TestSupportingFile(BilbyTestCase):
         }
 
         self.job = BilbyJob.objects.create(
-            user_id=self.user.user_id, ini_string=create_test_ini_string({"detectors": "['H1']"})
+            user_id=self.user.user_id,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         self.after = timezone.now()
 

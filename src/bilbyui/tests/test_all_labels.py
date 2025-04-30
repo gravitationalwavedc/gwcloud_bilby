@@ -20,7 +20,7 @@ class TestAllLabels(BilbyTestCase):
                     }
                 }
                 """
-        response = self.client.execute(query)
+        response = self.query(query)
         expected = {
             "allLabels": {
                 "edges": [
@@ -45,7 +45,13 @@ class TestAllLabels(BilbyTestCase):
                             "protected": False,
                         }
                     },
-                    {"node": {"name": "Reviewed", "description": "This run has been reviewed.", "protected": False}},
+                    {
+                        "node": {
+                            "name": "Reviewed",
+                            "description": "This run has been reviewed.",
+                            "protected": False,
+                        }
+                    },
                     {
                         "node": {
                             "name": "Official",
@@ -68,6 +74,5 @@ class TestAllLabels(BilbyTestCase):
 
     def test_get_all_labels(self):
         # An authenticated user should be able to get all the labels
-        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user)
+        self.authenticate()
         self.make_request()

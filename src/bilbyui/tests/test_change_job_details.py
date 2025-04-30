@@ -9,10 +9,9 @@ User = get_user_model()
 
 class TestChangeJobDetails(BilbyTestCase):
     def setUp(self):
-        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user)
+        self.authenticate()
 
-        self.mutation = """
+        self.mutation_string = """
             mutation UpdateBilbyJobMutation($input: UpdateBilbyJobMutationInput!) {
                 updateBilbyJob(input: $input) {
                     result
@@ -38,10 +37,12 @@ class TestChangeJobDetails(BilbyTestCase):
         owner of the job.
         """
         change_job_input = {
-            "input": {"jobId": self.global_job_id, "name": "New_job_name", "description": "New job description"}
+            "jobId": self.global_job_id,
+            "name": "New_job_name",
+            "description": "New job description",
         }
 
-        response = self.client.execute(self.mutation, change_job_input)
+        response = self.query(self.mutation_string, input_data=change_job_input)
 
         expected = {"updateBilbyJob": {"jobId": self.global_job_id, "result": "Job saved!"}}
 
@@ -50,7 +51,9 @@ class TestChangeJobDetails(BilbyTestCase):
         self.assertIsNone(response.errors, f"Mutation returned errors: {response.errors}")
         self.assertIsNotNone(response.data, "Mutation query returned nothing.")
         self.assertDictEqual(
-            expected, response.data, "Change Job Details mutation returned the wrong jobid or threw an error."
+            expected,
+            response.data,
+            "Change Job Details mutation returned the wrong jobid or threw an error.",
         )
         self.assertEqual(self.job.description, "New job description")
         self.assertEqual(self.job.name, "New_job_name")
@@ -61,13 +64,18 @@ class TestChangeJobDetails(BilbyTestCase):
         Try to update a bilby job with a name that contains symbols
         """
         change_job_input = {
-            "input": {"jobId": self.global_job_id, "name": "Test_job$", "description": "New job description"}
+            "jobId": self.global_job_id,
+            "name": "Test_job$",
+            "description": "New job description",
         }
 
-        response = self.client.execute(self.mutation, change_job_input)
+        response = self.query(self.mutation_string, input_data=change_job_input)
 
         self.assertDictEqual({"updateBilbyJob": None}, response.data)
-        self.assertEqual(response.errors[0].message, "Job name must not contain any spaces or special characters.")
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Job name must not contain any spaces or special characters.",
+        )
 
     @silence_errors
     def test_change_job_name_too_long(self):
@@ -75,26 +83,34 @@ class TestChangeJobDetails(BilbyTestCase):
         Try to update a bilby job with a name that is too long
         """
         change_job_input = {
-            "input": {
-                "jobId": self.global_job_id,
-                "name": "aa" * BilbyJob._meta.get_field("name").max_length,
-                "description": "New job description",
-            }
+            "jobId": self.global_job_id,
+            "name": "aa" * BilbyJob._meta.get_field("name").max_length,
+            "description": "New job description",
         }
 
-        response = self.client.execute(self.mutation, change_job_input)
+        response = self.query(self.mutation_string, input_data=change_job_input)
 
         self.assertDictEqual({"updateBilbyJob": None}, response.data)
-        self.assertEqual(response.errors[0].message, "Job name must be less than 255 characters long.")
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Job name must be less than 255 characters long.",
+        )
 
     @silence_errors
     def test_change_job_name_too_short(self):
         """
         Try to update a bilby job with a name that is too short
         """
-        change_job_input = {"input": {"jobId": self.global_job_id, "name": "a", "description": "New job description"}}
+        change_job_input = {
+            "jobId": self.global_job_id,
+            "name": "a",
+            "description": "New job description",
+        }
 
-        response = self.client.execute(self.mutation, change_job_input)
+        response = self.query(self.mutation_string, input_data=change_job_input)
 
         self.assertDictEqual({"updateBilbyJob": None}, response.data)
-        self.assertEqual(response.errors[0].message, "Job name must be at least 5 characters long.")
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Job name must be at least 5 characters long.",
+        )

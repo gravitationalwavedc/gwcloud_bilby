@@ -3,6 +3,8 @@ import uuid
 from unittest import mock
 
 import requests
+from adacs_sso_plugin.adacs_user import ADACSUser
+from bilbyui.tests.testcases import BilbyTestCase
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import LiveServerTestCase
 from django.test import override_settings
@@ -10,8 +12,11 @@ from django.utils import timezone
 from graphql_relay import to_global_id
 
 from bilbyui.models import BilbyJob, AnonymousMetrics
-from bilbyui.tests.test_utils import silence_errors, create_test_ini_string, generate_elastic_doc
-from gw_bilby.jwt_tools import GWCloudUser
+from bilbyui.tests.test_utils import (
+    silence_errors,
+    create_test_ini_string,
+    generate_elastic_doc,
+)
 
 User = get_user_model()
 
@@ -19,7 +24,7 @@ User = get_user_model()
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class TestAnonymousMetrics(LiveServerTestCase):
     def setUp(self):
-        self.user = User.objects.create(username="bill", first_name="Bill", last_name="Nye")
+        self.user = ADACSUser(**BilbyTestCase.DEFAULT_USER)
         self.public_id = str(uuid.uuid4())
         self.session_id = str(uuid.uuid4())
 
@@ -72,7 +77,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
                             "name": "Test2",
                             "jobStatus": {"name": "Completed"},
                             "timestamp": "2020-01-01 12:00:00 UTC",
-                            "user": "Bill Nye",
+                            "user": "buffy summers",
                         }
                     },
                     {
@@ -84,7 +89,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
                                 "name": "Completed",
                             },
                             "timestamp": "2020-01-01 12:00:00 UTC",
-                            "user": "Bill Nye",
+                            "user": "buffy summers",
                         }
                     },
                 ]
@@ -92,14 +97,10 @@ class TestAnonymousMetrics(LiveServerTestCase):
         }
 
     def elasticsearch_search_mock(*args, **kwargs):
-        user = User.objects.all().first()
-        gwuser = GWCloudUser(user.username)
-        gwuser.user_id = user.id
-        gwuser.first_name = user.first_name
-        gwuser.last_name = user.last_name
+        user = {"name": "buffy summers", "id": 1}
 
         jobs = []
-        for job in BilbyJob.objects.filter(user_id=user.id):
+        for job in BilbyJob.objects.filter(user_id=user["id"]):
             doc = {"_source": generate_elastic_doc(job, user), "_id": job.id}
             jobs.append(doc)
 
@@ -107,9 +108,12 @@ class TestAnonymousMetrics(LiveServerTestCase):
 
     def request_job_filter_mock(*args, **kwargs):
         jobs = []
-        for job in BilbyJob.objects.filter(user_id=User.objects.all().first().id):
+        for job in BilbyJob.objects.filter(user_id=1):
             jobs.append(
-                {"id": job.job_controller_id, "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}]}
+                {
+                    "id": job.job_controller_id,
+                    "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+                }
             )
 
         return True, jobs
@@ -124,7 +128,10 @@ class TestAnonymousMetrics(LiveServerTestCase):
         request_params = {"json": {"query": query, "variables": variables}}
 
         request = requests.request(
-            method="POST", url=self.live_server_url + "/graphql", headers=headers, **request_params
+            method="POST",
+            url=self.live_server_url + "/graphql",
+            headers=headers,
+            **request_params,
         )
 
         content = json.loads(request.content)
@@ -150,7 +157,11 @@ class TestAnonymousMetrics(LiveServerTestCase):
         self.assertEqual(str(metric.public_id), self.public_id)
         self.assertEqual(str(metric.session_id), self.session_id)
         self.assertEqual(metric.request, "publicBilbyJobs")
-        params = {"first": self.variables["count"], "time_range": self.variables["timeRange"], "search": None}
+        params = {
+            "first": self.variables["count"],
+            "time_range": self.variables["timeRange"],
+            "search": None,
+        }
         self.assertDictEqual(json.loads(metric.params), params)
         self.assertTrue(now < metric.timestamp < then)
 

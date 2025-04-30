@@ -8,8 +8,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 
 from bilbyui.models import BilbyJob
-from bilbyui.tests.test_job_upload import get_upload_token
-from bilbyui.tests.test_utils import silence_errors, create_test_ini_string, create_test_upload_data
+from bilbyui.tests.test_utils import (
+    silence_errors,
+    create_test_ini_string,
+    create_test_upload_data,
+)
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.jobs.request_file_list import request_file_list
 
@@ -31,7 +34,11 @@ class TestRequestFileListNotUploaded(BilbyTestCase):
     def test_request_file_list_not_uploaded(self):
         # Set up responses before any call to request
         # See https://github.com/getsentry/responses/pull/375
-        self.responses.add(responses.PATCH, f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/", status=400)
+        self.responses.add(
+            responses.PATCH,
+            f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
+            status=400,
+        )
 
         return_result = [
             {"path": "/a", "isDir": True, "fileSize": 0},
@@ -75,10 +82,9 @@ class TestRequestFileListNotUploaded(BilbyTestCase):
 @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
 class TestRequestFileListUploaded(BilbyTestCase):
     def setUp(self):
-        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user)
+        self.authenticate()
 
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
+        token = self.get_upload_token()
 
         # Create a new uploaded bilby job
         test_name = "myjob"
@@ -94,14 +100,14 @@ class TestRequestFileListUploaded(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
         }
 
-        self.client.execute(
+        test_files = {"input.jobFile": test_file}
+
+        self.file_query(
             """
                 mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
                   uploadBilbyJob(input: $input) {
@@ -111,7 +117,8 @@ class TestRequestFileListUploaded(BilbyTestCase):
                   }
                 }
             """,
-            test_input,
+            input_data=test_input,
+            files=test_files,
         )
 
         self.job = BilbyJob.objects.all().last()
@@ -157,7 +164,10 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertEqual(result, (False, "Files do not exist"))
 
         result = request_file_list(
-            self.job, "data/H1_myjob_generation_frequency_domain_data.png", True, self.job.user_id
+            self.job,
+            "data/H1_myjob_generation_frequency_domain_data.png",
+            True,
+            self.job.user_id,
         )
         self.assertEqual(result, (False, "Files do not exist"))
 

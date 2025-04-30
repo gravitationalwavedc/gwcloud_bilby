@@ -1,28 +1,15 @@
-from django.test import testcases, override_settings
-from graphql_jwt.testcases import JSONWebTokenClient
+from adacs_sso_plugin.adacs_user import ADACSAnonymousUser, ADACSUser
+from django.test import override_settings
 from gw_bilby.schema import schema
-from graphql_jwt.shortcuts import get_token
-from graphql_jwt.settings import jwt_settings
 
-
-class BilbyJSONWebTokenClient(JSONWebTokenClient):
-    """Bilby test client with a custom authentication method."""
-
-    def authenticate(self, user, is_ligo=False):
-        """Payload for authentication in bilby requires a special userID parameter."""
-
-        if user:
-            self._credentials = {
-                jwt_settings.JWT_AUTH_HEADER_NAME: "{0} {1}".format(
-                    jwt_settings.JWT_AUTH_HEADER_PREFIX, get_token(user, userId=user.id, isLigo=is_ligo)
-                ),
-            }
-        else:
-            self._credentials = {}
+from graphene_django.utils.testing import GraphQLTestCase
+from graphene_file_upload.django.testing import GraphQLFileUploadTestMixin
+import datetime
+from adacs_sso_plugin.test_client import ADACSSSOSessionClient
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
-class BilbyTestCase(testcases.TestCase):
+class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
     """
     Bilby test classes should inherit from this class.
 
@@ -44,18 +31,68 @@ class BilbyTestCase(testcases.TestCase):
 
     GRAPHQL_SCHEMA = schema
     GRAPHQL_URL = "/graphql"
-    client_class = BilbyJSONWebTokenClient
+    client_class = ADACSSSOSessionClient
+
+    DEFAULT_USER = {
+        "is_authenticated": True,
+        "id": 1,
+        "name": "buffy summers",
+        "primary_email": "slayer@gmail.com",
+        "emails": ["slayer@gmail.com"],
+        "authentication_method": "password",
+        "authenticated_at": 0,
+        "fetched_at": 0,
+    }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # We always want to see the full diff when an error occurs.
         self.maxDiff = None
+        self.user = ADACSAnonymousUser()
 
+    # Log in as a user. Any parameters can be overwritten with **kwargs
+    def authenticate(self, **kwargs):
+        user_dict = {
+            **BilbyTestCase.DEFAULT_USER,
+            "authenticated_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
+            "fetched_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
+            **kwargs,
+        }
+        self.client.authenticate(user_dict)
+        self.user = ADACSUser(**user_dict)
+
+    def deauthenticate(self):
+        self.client.deauthenticate()
+        self.user = ADACSAnonymousUser()
+
+    # Deprecated function name redirect
     def assertResponseHasNoErrors(self, resp, msg=None):
-        """Semi-borrowed from graphene_django.utils.testing
-        They also check status_code, which we don't have access to"""
-        self.assertIsNone(resp.errors, msg or resp)
+        return self.assertResponseNoErrors(resp, msg)
 
-    def assertResponseHasErrors(self, resp, msg=None):
-        """Borrowed from graphene_django.utils.testing"""
-        self.assertIsNotNone(resp.errors, msg or resp)
+    # Add a .data parameter as a result of doing a query
+    def query(self, *args, **kwargs):
+        response = super().query(*args, **kwargs)
+        response_json = response.json()
+        response.data = response_json["data"] if "data" in response_json else None
+        response.errors = response_json["errors"] if "errors" in response_json else None
+        return response
+
+    def file_query(self, *args, **kwargs):
+        response = super().file_query(*args, **kwargs)
+        response_json = response.json()
+        response.data = response_json["data"] if "data" in response_json else None
+        response.errors = response_json["errors"] if "errors" in response_json else None
+        return response
+
+    def get_upload_token(self):
+        generate_job_upload_token_mutation = """
+            query GenerateBilbyJobUploadToken {
+            generateBilbyJobUploadToken {
+                token
+            }
+            }
+        """
+
+        response = self.query(generate_job_upload_token_mutation)
+
+        return response.data["generateBilbyJobUploadToken"]["token"]

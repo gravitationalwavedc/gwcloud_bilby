@@ -307,8 +307,7 @@ def get_files(response):
 def generate_elastic_doc(job, user):
     doc = {
         "user": {
-            "firstName": user.first_name,
-            "lastName": user.last_name,
+            "name": user["name"],
         },
         "job": {
             "name": job.name,

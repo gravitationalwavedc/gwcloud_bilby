@@ -11,7 +11,7 @@ src/react/coverage
 .DS_Store
 src/react/junit.xml
 src/react/eslint.xml
-src/react/data/schema.json
+src/react/data/schema.graphql
 src/job_uploads/
 src/bundle/coverage.xml
 src/bundle/junit.xml
@@ -21,3 +21,4 @@ outdir/
 /gwosc_cron/coverage.xml
 /src/reports/
 .env
+.tmuxinator.yml

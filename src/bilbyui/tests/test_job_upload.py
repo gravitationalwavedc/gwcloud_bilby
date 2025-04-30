@@ -11,32 +11,23 @@ from django.test import override_settings
 
 from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, IniKeyValue, SupportingFile
-from bilbyui.tests.test_utils import create_test_ini_string, compare_ini_kvs, silence_errors, create_test_upload_data
+from bilbyui.tests.test_utils import (
+    create_test_ini_string,
+    compare_ini_kvs,
+    silence_errors,
+    create_test_upload_data,
+)
 from bilbyui.tests.testcases import BilbyTestCase
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 
 User = get_user_model()
 
 
-def get_upload_token(client):
-    generate_job_upload_token_mutation = """
-        query GenerateBilbyJobUploadToken {
-          generateBilbyJobUploadToken {
-            token
-          }
-        }
-    """
-
-    response = client.execute(generate_job_upload_token_mutation)
-
-    return response
-
-
 class TestJobUpload(BilbyTestCase):
     def setUp(self):
-        self.user = User.objects.create(username="bill", first_name="bill", last_name="nye")
-        self.client.authenticate(self.user, is_ligo=True)
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
-        self.mutation = """
+        self.mutation_string = """
             mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
               uploadBilbyJob(input: $input) {
                 result {
@@ -50,12 +41,24 @@ class TestJobUpload(BilbyTestCase):
     @silence_errors
     def test_job_upload_unauthorised_user(self):
         # Test user not logged in
-        self.client.authenticate(None)
+        self.deauthenticate()
 
-        response = get_upload_token(self.client)
-        self.assertEqual(response.errors[0].message, "You do not have permission to perform this action")
+        generate_job_upload_token_mutation = """
+            query GenerateBilbyJobUploadToken {
+            generateBilbyJobUploadToken {
+                token
+            }
+            }
+        """
 
-        self.client.authenticate(self.user, is_ligo=True)
+        response = self.query(generate_job_upload_token_mutation)
+
+        self.assertEqual(
+            response.errors[0]["message"],
+            "You do not have permission to perform this action",
+        )
+
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         test_name = "Test Name"
         test_description = "Test Description"
@@ -74,24 +77,25 @@ class TestJobUpload(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": str(uuid.uuid4()),
-                "details": {"name": test_name, "description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": str(uuid.uuid4()),
+            "details": {
+                "name": test_name,
+                "description": test_description,
+                "private": test_private,
+            },
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(self.mutation, test_input)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
-        self.assertEqual(response.errors[0].message, "Job upload token is invalid or expired.")
-
+        self.assertEqual(response.errors[0]["message"], "Job upload token is invalid or expired.")
         self.assertDictEqual({"uploadBilbyJob": None}, response.data)
-
         self.assertFalse(BilbyJob.objects.all().exists())
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_success(self):
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
+        token = self.get_upload_token()
 
         test_name = "myjob"
         test_description = "Test Description"
@@ -106,14 +110,13 @@ class TestJobUpload(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(self.mutation, test_input)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
         expected = {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
@@ -140,7 +143,7 @@ class TestJobUpload(BilbyTestCase):
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_success_outdir_replace(self):
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
+        token = self.get_upload_token()
 
         test_name = "another_job"
         test_description = "Another Description"
@@ -155,14 +158,13 @@ class TestJobUpload(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(self.mutation, test_input)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
         expected = {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
@@ -190,7 +192,7 @@ class TestJobUpload(BilbyTestCase):
     @silence_errors
     def test_job_upload_missing_data(self):
         for missing_dir in ["data", "result", "results_page"]:
-            token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
+            token = self.get_upload_token()
 
             test_name = missing_dir
             test_description = f"{missing_dir} Description"
@@ -210,17 +212,20 @@ class TestJobUpload(BilbyTestCase):
             )
 
             test_input = {
-                "input": {
-                    "uploadToken": token,
-                    "details": {"description": test_description, "private": test_private},
-                    "jobFile": test_file,
-                }
+                "uploadToken": token,
+                "details": {
+                    "description": test_description,
+                    "private": test_private,
+                },
+                "jobFile": None,
             }
+            test_files = {"input.jobFile": test_file}
 
-            response = self.client.execute(self.mutation, test_input)
+            response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
             self.assertEqual(
-                f"Invalid directory structure, expected directory ./{missing_dir} to exist.", response.errors[0].message
+                f"Invalid directory structure, expected directory ./{missing_dir} to exist.",
+                response.errors[0]["message"],
             )
 
             self.assertFalse(BilbyJob.objects.all().exists())
@@ -228,8 +233,7 @@ class TestJobUpload(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_upload_missing_ini(self):
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
-
+        token = self.get_upload_token()
         test_name = "missing_ini"
         test_description = "Missing Ini Description"
         test_private = False
@@ -248,18 +252,17 @@ class TestJobUpload(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(self.mutation, test_input)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
         self.assertEqual(
             "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one.",
-            response.errors[0].message,
+            response.errors[0]["message"],
         )
 
         self.assertFalse(BilbyJob.objects.all().exists())
@@ -267,7 +270,7 @@ class TestJobUpload(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_upload_many_ini(self):
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
+        token = self.get_upload_token()
 
         test_name = "missing_ini"
         test_description = "Missing Ini Description"
@@ -287,18 +290,16 @@ class TestJobUpload(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
         }
-
-        response = self.client.execute(self.mutation, test_input)
+        test_files = {"input.jobFile": test_file}
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
         self.assertEqual(
             "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one.",
-            response.errors[0].message,
+            response.errors[0]["message"],
         )
 
         self.assertFalse(BilbyJob.objects.all().exists())
@@ -306,8 +307,7 @@ class TestJobUpload(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_invalid_tar_gz_name(self):
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
-
+        token = self.get_upload_token()
         test_name = "invalid_tar_gz_name"
         test_description = "Invalid .tar.gz Name Description"
         test_private = False
@@ -326,40 +326,43 @@ class TestJobUpload(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(self.mutation, test_input)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
-        self.assertEqual("Job upload should be a tar.gz file", response.errors[0].message)
+        self.assertEqual("Job upload should be a tar.gz file", response.errors[0]["message"])
 
         self.assertFalse(BilbyJob.objects.all().exists())
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_corrupt_tar_gz(self):
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
+        token = self.get_upload_token()
 
         test_description = "Corrupt .tar.gz Description"
         test_private = False
 
-        test_file = SimpleUploadedFile(name="test.tar.gz", content=b"1234567abcdefg", content_type="application/gzip")
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=b"1234567abcdefg",
+            content_type="application/gzip",
+        )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": test_description, "private": test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
         }
 
-        response = self.client.execute(self.mutation, test_input)
+        test_files = {"input.jobFile": test_file}
 
-        self.assertEqual("Invalid or corrupt tar.gz file", response.errors[0].message)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertEqual("Invalid or corrupt tar.gz file", response.errors[0]["message"])
 
         self.assertFalse(BilbyJob.objects.all().exists())
 
@@ -368,11 +371,9 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
     def setUp(self):
         self.maxDiff = 9999
 
-        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-
         test_private = False
 
-        self.mutation = """
+        self.mutation_string = """
             mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
               uploadBilbyJob(input: $input) {
                 result {
@@ -383,7 +384,8 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
         """
 
         self.params = {
-            "input": {"details": {"description": "test_description", "private": test_private}, "jobFile": None}
+            "details": {"description": "test_description", "private": test_private},
+            "jobFile": None,
         }
 
         self.expected_one = {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
@@ -393,23 +395,35 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
     @silence_errors
     def test_non_ligo_user_with_gwosc(self):
         # Test checks that a LIGO user does not create a LIGO job if the data is real and channels are GWOSC
-        self.client.authenticate(self.user, is_ligo=False)
+        self.authenticate()
 
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
-        self.params["input"]["uploadToken"] = token
+        token = self.get_upload_token()
+        self.params["uploadToken"] = token
 
         ini_string = create_test_ini_string(
-            config_dict={"label": "testjob", "n-simulation": 0, "channel-dict": {"H1": "GWOSC", "L1": "GWOSC"}},
+            config_dict={
+                "label": "testjob",
+                "n-simulation": 0,
+                "channel-dict": {"H1": "GWOSC", "L1": "GWOSC"},
+            },
             complete=True,
         )
 
-        self.params["input"]["jobFile"] = SimpleUploadedFile(
-            name="test.tar.gz", content=create_test_upload_data(ini_string, "testjob"), content_type="application/gzip"
+        test_files = {
+            "input.jobFile": SimpleUploadedFile(
+                name="test.tar.gz",
+                content=create_test_upload_data(ini_string, "testjob"),
+                content_type="application/gzip",
+            )
+        }
+
+        response = self.file_query(self.mutation_string, input_data=self.params, files=test_files)
+
+        self.assertDictEqual(
+            self.expected_one,
+            response.data,
+            "create bilbyJob mutation returned unexpected data.",
         )
-
-        response = self.client.execute(self.mutation, self.params)
-
-        self.assertDictEqual(self.expected_one, response.data, "create bilbyJob mutation returned unexpected data.")
 
         # Check that the job is marked as not proprietary
         self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
@@ -417,23 +431,35 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
     @silence_errors
     def test_ligo_user_with_gwosc(self):
         # This test checks that a non LIGO user can still create non LIGO jobs
-        self.client.authenticate(self.user, is_ligo=True)
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
-        self.params["input"]["uploadToken"] = token
+        token = self.get_upload_token()
+        self.params["uploadToken"] = token
 
         ini_string = create_test_ini_string(
-            config_dict={"label": "testjob", "n-simulation": 0, "channel-dict": {"H1": "GWOSC", "L1": "GWOSC"}},
+            config_dict={
+                "label": "testjob",
+                "n-simulation": 0,
+                "channel-dict": {"H1": "GWOSC", "L1": "GWOSC"},
+            },
             complete=True,
         )
 
-        self.params["input"]["jobFile"] = SimpleUploadedFile(
-            name="test.tar.gz", content=create_test_upload_data(ini_string, "testjob"), content_type="application/gzip"
+        test_files = {
+            "input.jobFile": SimpleUploadedFile(
+                name="test.tar.gz",
+                content=create_test_upload_data(ini_string, "testjob"),
+                content_type="application/gzip",
+            )
+        }
+
+        response = self.file_query(self.mutation_string, input_data=self.params, files=test_files)
+
+        self.assertDictEqual(
+            self.expected_one,
+            response.data,
+            "create bilbyJob mutation returned unexpected data.",
         )
-
-        response = self.client.execute(self.mutation, self.params)
-
-        self.assertDictEqual(self.expected_one, response.data, "create bilbyJob mutation returned unexpected data.")
 
         # Check that the job is marked as not proprietary
         self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
@@ -442,10 +468,10 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
     def test_ligo_user_with_non_gwosc(self):
         # Test that LIGO users can make jobs with proprietary channels
         # Now if the channels are proprietary, the ligo user should be able to create jobs
-        self.client.authenticate(self.user, is_ligo=True)
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
-        self.params["input"]["uploadToken"] = token
+        token = self.get_upload_token()
+        self.params["uploadToken"] = token
 
         for channel_dict in [
             {"H1": "GDS-CALIB_STRAIN", "L1": "GWOSC", "V1": "GWOSC"},
@@ -453,16 +479,19 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
             {"H1": "GWOSC", "L1": "GWOSC", "V1": "Hrec_hoft_16384Hz"},
         ]:
             ini_string = create_test_ini_string(
-                {"label": "testjob", "n-simulation": 0, "channel-dict": channel_dict}, complete=True
+                {"label": "testjob", "n-simulation": 0, "channel-dict": channel_dict},
+                complete=True,
             )
 
-            self.params["input"]["jobFile"] = SimpleUploadedFile(
-                name="test.tar.gz",
-                content=create_test_upload_data(ini_string, "testjob"),
-                content_type="application/gzip",
-            )
+            test_files = {
+                "input.jobFile": SimpleUploadedFile(
+                    name="test.tar.gz",
+                    content=create_test_upload_data(ini_string, "testjob"),
+                    content_type="application/gzip",
+                )
+            }
 
-            response = self.client.execute(self.mutation, self.params)
+            response = self.file_query(self.mutation_string, input_data=self.params, files=test_files)
 
             self.assertTrue("jobId" in response.data["uploadBilbyJob"]["result"])
 
@@ -474,10 +503,9 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
 
 class TestJobUploadSupportingFiles(BilbyTestCase):
     def setUp(self):
-        self.user = User.objects.create(username="bill", first_name="bill", last_name="nye")
-        self.client.authenticate(self.user, is_ligo=True)
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
-        self.mutation = """
+        self.mutation_string = """
             mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
               uploadBilbyJob(input: $input) {
                 result {
@@ -487,8 +515,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
             }
         """
 
-        self.token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
-
+        self.token = self.get_upload_token()
         self.test_name = "myjob"
         self.test_description = "Test Description"
         self.test_private = False
@@ -501,14 +528,16 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": self.token,
-                "details": {"description": self.test_description, "private": self.test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": self.token,
+            "details": {
+                "description": self.test_description,
+                "private": self.test_private,
+            },
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(self.mutation, test_input)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
         expected = {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
 
@@ -539,7 +568,12 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_failure_file_not_exists(self):
         test_ini_string = create_test_ini_string(
-            {"label": self.test_name, "outdir": "./", "psd-dict": "{V1:./supporting_files/psd/V1-psd.dat}"}, True
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "psd-dict": "{V1:./supporting_files/psd/V1-psd.dat}",
+            },
+            True,
         )
 
         supporting_files = ["supporting_files/psd/V1-psd.dat1"]
@@ -551,14 +585,16 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": self.token,
-                "details": {"description": self.test_description, "private": self.test_private},
-                "jobFile": test_file,
-            }
+            "uploadToken": self.token,
+            "details": {
+                "description": self.test_description,
+                "private": self.test_private,
+            },
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(self.mutation, test_input)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
         expected = {"uploadBilbyJob": None}
 
@@ -570,7 +606,12 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_psd1(self):
         test_ini_string = create_test_ini_string(
-            {"label": self.test_name, "outdir": "./", "psd-dict": "{V1:./supporting_files/psd/V1-psd.dat}"}, True
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "psd-dict": "{V1:./supporting_files/psd/V1-psd.dat}",
+            },
+            True,
         )
 
         supporting_files = ["supporting_files/psd/V1-psd.dat"]
@@ -578,7 +619,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["psd_dict"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -602,12 +646,18 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
             True,
         )
 
-        supporting_files = ["supporting_files/psd/V1-psd.dat", "supporting_files/psd/H1-psd.dat"]
+        supporting_files = [
+            "supporting_files/psd/V1-psd.dat",
+            "supporting_files/psd/H1-psd.dat",
+        ]
 
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["psd_dict"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -631,12 +681,19 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
             True,
         )
 
-        supporting_files = ["supporting_files/psd/V1-psd.dat", "psd/H1-psd.dat", "L1-psd.dat"]
+        supporting_files = [
+            "supporting_files/psd/V1-psd.dat",
+            "psd/H1-psd.dat",
+            "L1-psd.dat",
+        ]
 
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["psd_dict"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -665,7 +722,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["spline_calibration_envelope_dict"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -690,12 +750,18 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
             True,
         )
 
-        supporting_files = ["./supporting_files/calib/L1-calib.dat", "./supporting_files/calib/V1-calib.dat"]
+        supporting_files = [
+            "./supporting_files/calib/L1-calib.dat",
+            "./supporting_files/calib/V1-calib.dat",
+        ]
 
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["spline_calibration_envelope_dict"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -730,7 +796,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["spline_calibration_envelope_dict"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -746,7 +815,12 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_prior(self):
         test_ini_string = create_test_ini_string(
-            {"label": self.test_name, "outdir": "./", "prior-file": "./supporting_files/prior/myprior.prior"}, True
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "prior-file": "./supporting_files/prior/myprior.prior",
+            },
+            True,
         )
 
         supporting_files = ["./supporting_files/prior/myprior.prior"]
@@ -754,7 +828,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["prior_file"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -770,7 +847,12 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_gps(self):
         test_ini_string = create_test_ini_string(
-            {"label": self.test_name, "outdir": "./", "gps-file": "./supporting_files/gps/gps.dat"}, True
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "gps-file": "./supporting_files/gps/gps.dat",
+            },
+            True,
         )
 
         supporting_files = ["./supporting_files/gps/gps.dat"]
@@ -778,7 +860,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["gps_file"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -794,7 +879,11 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_timeslide(self):
         test_ini_string = create_test_ini_string(
-            {"label": self.test_name, "outdir": "./", "timeslide-file": "./supporting_files/timeslide/timeslide.dat"},
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "timeslide-file": "./supporting_files/timeslide/timeslide.dat",
+            },
             True,
         )
 
@@ -803,7 +892,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["timeslide_file"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -819,7 +911,11 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_injection(self):
         test_ini_string = create_test_ini_string(
-            {"label": self.test_name, "outdir": "./", "injection-file": "./supporting_files/injection/injection.dat"},
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "injection-file": "./supporting_files/injection/injection.dat",
+            },
             True,
         )
 
@@ -828,7 +924,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["injection_file"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -844,7 +943,11 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_numerical_relativity(self):
         test_ini_string = create_test_ini_string(
-            {"label": self.test_name, "outdir": "./", "numerical-relativity-file": "./supporting_files/nrf/nrf.dat"},
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "numerical-relativity-file": "./supporting_files/nrf/nrf.dat",
+            },
             True,
         )
 
@@ -853,7 +956,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["numerical_relativity_file"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -882,7 +988,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["distance_marginalization_lookup_table"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -893,12 +1002,20 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         for supporting_file in job.supportingfile_set.all():
             self.assertTrue((job_dir / str(supporting_file.id)).is_file())
 
-            self.assertEqual(supporting_file.file_type, SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE)
+            self.assertEqual(
+                supporting_file.file_type,
+                SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE,
+            )
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_data_dict_1(self):
         test_ini_string = create_test_ini_string(
-            {"label": self.test_name, "outdir": "./", "data-dict": "{H1: ./supporting_files/dat/h1.gwf}"}, True
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "data-dict": "{H1: ./supporting_files/dat/h1.gwf}",
+            },
+            True,
         )
 
         supporting_files = ["./supporting_files/dat/h1.gwf"]
@@ -906,7 +1023,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["data_dict"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -930,12 +1050,18 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
             True,
         )
 
-        supporting_files = ["./supporting_files/dat/h1.gwf", "./supporting_files/dat/l1.gwf"]
+        supporting_files = [
+            "./supporting_files/dat/h1.gwf",
+            "./supporting_files/dat/l1.gwf",
+        ]
 
         job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["data_dict"])
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -1006,7 +1132,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         )
 
         # There should be a supporting file record for each supporting file
-        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
 
         # File should exist in the unpacked archive
         for supporting_file in supporting_files:
@@ -1020,10 +1149,9 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
 class TestJobUploadNameValidation(BilbyTestCase):
     def setUp(self):
-        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user)
+        self.authenticate()
 
-        self.mutation = """
+        self.mutation_string = """
                 mutation JobUploadMutation($input: UploadBilbyJobMutationInput!) {
                   uploadBilbyJob(input: $input) {
                     result {
@@ -1038,7 +1166,7 @@ class TestJobUploadNameValidation(BilbyTestCase):
     def test_invalid_job_name_symbols(self):
         test_name = "Test_Name$"
 
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
+        token = self.get_upload_token()
 
         test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
 
@@ -1049,25 +1177,26 @@ class TestJobUploadNameValidation(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": "a description", "private": True},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": "a description", "private": True},
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(self.mutation, test_input)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
         self.assertDictEqual({"uploadBilbyJob": None}, response.data)
 
-        self.assertEqual(response.errors[0].message, "Job name must not contain any spaces or special characters.")
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Job name must not contain any spaces or special characters.",
+        )
 
     @silence_errors
     def test_invalid_job_name_too_long(self):
         test_name = "aa" * BilbyJob._meta.get_field("name").max_length
 
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
-
+        token = self.get_upload_token()
         test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
 
         test_file = SimpleUploadedFile(
@@ -1075,27 +1204,29 @@ class TestJobUploadNameValidation(BilbyTestCase):
             content=create_test_upload_data(test_ini_string, test_name),
             content_type="application/gzip",
         )
+        test_files = {"input.jobFile": test_file}
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": "a description", "private": True},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": "a description", "private": True},
+            "jobFile": None,
         }
 
-        response = self.client.execute(self.mutation, test_input)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
         self.assertDictEqual({"uploadBilbyJob": None}, response.data)
 
-        self.assertEqual(response.errors[0].message, "Job name must be less than 255 characters long.")
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Job name must be less than 255 characters long.",
+        )
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_invalid_job_name_too_short(self):
         test_name = "a"
 
-        token = get_upload_token(self.client).data["generateBilbyJobUploadToken"]["token"]
+        token = self.get_upload_token()
 
         test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
 
@@ -1106,15 +1237,14 @@ class TestJobUploadNameValidation(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "uploadToken": token,
-                "details": {"description": "a description", "private": True},
-                "jobFile": test_file,
-            }
+            "uploadToken": token,
+            "details": {"description": "a description", "private": True},
+            "jobFile": None,
         }
+        test_files = {"input.jobFile": test_file}
 
-        response = self.client.execute(self.mutation, test_input)
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
         self.assertDictEqual({"uploadBilbyJob": None}, response.data)
 
-        self.assertEqual(response.errors[0].message, "Job name must be at least 5 characters long.")
+        self.assertEqual(response.errors[0]["message"], "Job name must be at least 5 characters long.")

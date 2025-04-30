@@ -11,5 +11,6 @@ class Command(BaseCommand):
             try:
                 job.save()
                 print(f"Job {job.id} - {job.name} has been ingested into elastic search")
-            except Exception:
+            except Exception as e:
+                print(e)
                 print(f"Job {job.id} - {job.name} could not be ingested - perhaps it has an empty ini_string")

@@ -8,6 +8,7 @@ from graphql_relay.node.node import from_global_id
 from bilbyui.models import BilbyJob, ExternalBilbyJob
 from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 
 User = get_user_model()
 
@@ -16,10 +17,9 @@ MOCK_EMBARGO_START_TIME = 1128678900.4
 
 class TestEmbargoJobUpload(BilbyTestCase):
     def setUp(self):
-        self.user = User.objects.create(username="bill", first_name="bill", last_name="nye")
-        self.client.authenticate(self.user, is_ligo=True)
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
-        self.mutation = """
+        self.mutation_string = """
             mutation ExternalJobUploadMutation($input: UploadExternalBilbyJobMutationInput!) {
               uploadExternalBilbyJob(input: $input) {
                 result {
@@ -46,19 +46,24 @@ class TestEmbargoJobUpload(BilbyTestCase):
         )
 
         test_input = {
-            "input": {
-                "details": {"name": test_name, "description": test_description, "private": test_private},
-                "iniFile": test_ini_string,
-                "resultUrl": "https://www.example.com/",
-            }
+            "details": {
+                "name": test_name,
+                "description": test_description,
+                "private": test_private,
+            },
+            "iniFile": test_ini_string,
+            "resultUrl": "https://www.example.com/",
         }
 
-        return self.client.execute(self.mutation, test_input)
+        return self.query(self.mutation_string, input_data=test_input)
 
     @silence_errors
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
+    @override_settings(
+        JOB_UPLOAD_DIR=TemporaryDirectory().name,
+        EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME,
+    )
     def test_non_ligo_user_embargo(self):
-        self.client.authenticate(self.user, is_ligo=False)
+        self.authenticate()
 
         for trigger_time, n_simulation in [
             (MOCK_EMBARGO_START_TIME + 1, 1),
@@ -87,7 +92,9 @@ class TestEmbargoJobUpload(BilbyTestCase):
         ]:
             response = self.upload_job(trigger_time, n_simulation)
             self.assertDictEqual(
-                self.expected_none, response.data, "create bilbyJob mutation returned unexpected data."
+                self.expected_none,
+                response.data,
+                "create bilbyJob mutation returned unexpected data.",
             )
 
             self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
@@ -97,9 +104,12 @@ class TestEmbargoJobUpload(BilbyTestCase):
             self.assertFalse(ExternalBilbyJob.objects.all().exists())
 
     @silence_errors
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
+    @override_settings(
+        JOB_UPLOAD_DIR=TemporaryDirectory().name,
+        EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME,
+    )
     def test_ligo_user_embargo(self):
-        self.client.authenticate(self.user, is_ligo=True)
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         for trigger_time, n_simulation in [
             (MOCK_EMBARGO_START_TIME + 1, 0),

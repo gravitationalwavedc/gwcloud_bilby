@@ -18,7 +18,14 @@ from django.http import Http404, FileResponse
 from gwosc.datasets import event_gps
 
 from .constants import BilbyJobType
-from .models import BilbyJob, Label, EventID, FileDownloadToken, SupportingFile, ExternalBilbyJob
+from .models import (
+    BilbyJob,
+    Label,
+    EventID,
+    FileDownloadToken,
+    SupportingFile,
+    ExternalBilbyJob,
+)
 from .utils.embargo import should_embargo_job
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 
@@ -207,7 +214,7 @@ def create_bilby_job(user, params):
     event_id = EventID.get_by_event_id(params.data.event_id, user) if params.data.event_id else None
 
     bilby_job = BilbyJob.objects.create(
-        user_id=user.user_id,
+        user_id=user.id,
         name=params.details.name,
         description=params.details.description,
         private=params.details.private,
@@ -364,7 +371,7 @@ def create_bilby_job_from_ini_string(user, params):
     ini_string = bilby_args_to_ini_string(args)
 
     bilby_job = BilbyJob(
-        user_id=user.user_id,
+        user_id=user.id,
         name=params.details.name,
         description=params.details.description,
         private=params.details.private,
@@ -387,7 +394,7 @@ def create_bilby_job_from_ini_string(user, params):
 def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, name=None, description=None):
     bilby_job = BilbyJob.get_by_id(job_id, user)
 
-    if user.user_id == bilby_job.user_id:
+    if user.id == bilby_job.user_id:
         if labels is not None:
             # Preserve protected labels
             protected_labels = bilby_job.labels.filter(protected=True)
@@ -410,7 +417,7 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
 
         return "Job saved!"
 
-    elif user.user_id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
+    elif user.id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
         bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
 
         bilby_job.save()
@@ -432,9 +439,11 @@ def upload_bilby_job(user, upload_token, details, job_file):
     os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
 
     # Write out the uploaded job to disk and unpack the archive to a temporary staging directory
-    with TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir, NamedTemporaryFile(
-        dir=settings.JOB_UPLOAD_STAGING_DIR, suffix=".tar.gz"
-    ) as job_upload_file, UploadedFile(job_file) as django_job_file:
+    with (
+        TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir,
+        NamedTemporaryFile(dir=settings.JOB_UPLOAD_STAGING_DIR, suffix=".tar.gz") as job_upload_file,
+        UploadedFile(job_file) as django_job_file,
+    ):
         # Write the uploaded file to the temporary file
         for c in django_job_file.chunks():
             job_upload_file.write(c)
@@ -569,7 +578,10 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
             # Finally generate the archive.tar.gz file
             p = subprocess.Popen(
-                ["tar", "-cvf", "archive.tar.gz", "."], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=job_dir
+                ["tar", "-cvf", "archive.tar.gz", "."],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=job_dir,
             )
             out, err = p.communicate()
 
@@ -614,7 +626,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
 
     # Create the bilby job
     bilby_job = BilbyJob.objects.create(
-        user_id=user.user_id,
+        user_id=user.id,
         name=args.label,
         description=details.description,
         private=details.private,
@@ -622,7 +634,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
         job_type=BilbyJobType.EXTERNAL,
     )
 
-    if user.user_id == settings.GWOSC_INGEST_USER:
+    if user.id == settings.GWOSC_INGEST_USER:
         bilby_job.labels.set([Label.objects.get(name="Official")])
 
     # Create the relevant External Bilby Job record as well

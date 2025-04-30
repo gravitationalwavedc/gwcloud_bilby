@@ -1,5 +1,5 @@
-import { harnessApi } from '../index';
-
-const isLigoUser = () => harnessApi && harnessApi.currentUser && harnessApi.currentUser.isLigoUser;
+const isLigoUser = (user) => {
+    return user.authenticationMethod === 'ligo_shibboleth';
+};
 
 export { isLigoUser };

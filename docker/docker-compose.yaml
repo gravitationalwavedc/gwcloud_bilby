@@ -1,0 +1,57 @@
+version: '3'
+
+services:
+  django:
+    build:
+      dockerfile: ./docker/gwcloud_bilby.Dockerfile
+      context: ..
+      target: django-runner
+    container_name: gwcloud_bilby_django
+    restart: unless-stopped
+    env_file: ../.env
+    ports:
+      - "8000"
+    depends_on:
+      - db
+      - elasticsearch
+
+
+  static:
+    build:
+      dockerfile: ./docker/gwcloud_bilby.Dockerfile
+      context: ..
+      target: static-runner
+    container_name: gwcloud_bilby_static
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      - django
+
+
+  db:
+    image: mysql:8.4.3
+    container_name: gwcloud_bilby_mysql
+    restart: unless-stopped
+    env_file: ../.env
+    volumes:
+      - ./db:/var/lib/mysql
+
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.1
+    container_name: gwcloud_bilby_elasticsearch
+    restart: unless-stopped
+    ports:
+      - "9200"
+      - "9300"
+    environment:
+      - "discovery.type=single-node"
+      - "xpack.security.enabled=true"
+    volumes:
+     - ./es:/usr/share/elasticsearch/data
+    deploy:
+      resources:
+        limits:
+          memory: "2g"
+

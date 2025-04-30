@@ -8,6 +8,7 @@ from graphql_relay.node.node import from_global_id
 from bilbyui.models import BilbyJob
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 
 User = get_user_model()
 
@@ -19,51 +20,53 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
 
         self.params = {
-            "input": {
-                "params": {
-                    "details": {
-                        "name": "test_job_for_GW12345",
-                        "description": "Test description 1234",
-                        "private": True,
+            "params": {
+                "details": {
+                    "name": "test_job_for_GW12345",
+                    "description": "Test description 1234",
+                    "private": True,
+                },
+                # "calibration": None,
+                "data": {
+                    "dataChoice": "real",
+                    "triggerTime": "1126259462.391",
+                    "channels": {
+                        "hanfordChannel": "GWOSC",
+                        "livingstonChannel": "GWOSC",
+                        "virgoChannel": "GWOSC",
                     },
-                    # "calibration": None,
-                    "data": {
-                        "dataChoice": "real",
-                        "triggerTime": "1126259462.391",
-                        "channels": {"hanfordChannel": "GWOSC", "livingstonChannel": "GWOSC", "virgoChannel": "GWOSC"},
-                    },
-                    "detector": {
-                        "hanford": True,
-                        "hanfordMinimumFrequency": "20",
-                        "hanfordMaximumFrequency": "1024",
-                        "livingston": True,
-                        "livingstonMinimumFrequency": "20",
-                        "livingstonMaximumFrequency": "1024",
-                        "virgo": False,
-                        "virgoMinimumFrequency": "20",
-                        "virgoMaximumFrequency": "1024",
-                        "duration": "4",
-                        "samplingFrequency": "512",
-                    },
-                    # "injection": {},
-                    # "likelihood": {},
-                    "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
-                    "sampler": {
-                        "nlive": 1000,
-                        "nact": 10,
-                        "maxmcmc": 5000,
-                        "walks": 1000,
-                        "dlogz": "0.1",
-                        "cpus": 1,
-                        "samplerChoice": "dynesty",
-                    },
-                    "waveform": {"model": None},
-                }
+                },
+                "detector": {
+                    "hanford": True,
+                    "hanfordMinimumFrequency": "20",
+                    "hanfordMaximumFrequency": "1024",
+                    "livingston": True,
+                    "livingstonMinimumFrequency": "20",
+                    "livingstonMaximumFrequency": "1024",
+                    "virgo": False,
+                    "virgoMinimumFrequency": "20",
+                    "virgoMaximumFrequency": "1024",
+                    "duration": "4",
+                    "samplingFrequency": "512",
+                },
+                # "injection": {},
+                # "likelihood": {},
+                "prior": {"priorDefault": "4s"},
+                # "postProcessing": {},
+                "sampler": {
+                    "nlive": 1000,
+                    "nact": 10,
+                    "maxmcmc": 5000,
+                    "walks": 1000,
+                    "dlogz": "0.1",
+                    "cpus": 1,
+                    "samplerChoice": "dynesty",
+                },
+                "waveform": {"model": None},
             }
         }
 
-        self.query = """
+        self.query_string = """
             mutation NewJobMutation($input: BilbyJobMutationInput!) {
                 newBilbyJob(input: $input) {
                     result {
@@ -81,13 +84,13 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
         self.mock_api_call.return_value = {"jobId": 4321}
 
     def set_trigger_time_and_data_choice(self, trigger_time, data_choice):
-        self.params["input"]["params"]["data"]["triggerTime"] = trigger_time
-        self.params["input"]["params"]["data"]["dataChoice"] = data_choice
+        self.params["params"]["data"]["triggerTime"] = trigger_time
+        self.params["params"]["data"]["dataChoice"] = data_choice
 
     @silence_errors
     @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
     def test_non_ligo_user_embargo(self):
-        self.client.authenticate(self.user, is_ligo=False)
+        self.authenticate()
 
         for trigger_time, data_choice in [
             (str(MOCK_EMBARGO_START_TIME + 1), "simulated"),
@@ -95,7 +98,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             (str(MOCK_EMBARGO_START_TIME - 1), "simulated"),
         ]:
             self.set_trigger_time_and_data_choice(trigger_time, data_choice)
-            response = self.client.execute(self.query, self.params)
+            response = self.query(self.query_string, input_data=self.params)
 
             self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
@@ -109,9 +112,13 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             job.delete()
 
         self.set_trigger_time_and_data_choice(str(MOCK_EMBARGO_START_TIME + 1), "real")
-        response = self.client.execute(self.query, self.params)
+        response = self.query(self.query_string, input_data=self.params)
 
-        self.assertDictEqual(self.expected_none, response.data, "create bilbyJob mutation returned unexpected data.")
+        self.assertDictEqual(
+            self.expected_none,
+            response.data,
+            "create bilbyJob mutation returned unexpected data.",
+        )
 
         self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
 
@@ -121,7 +128,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
     @silence_errors
     @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
     def test_ligo_user_embargo(self):
-        self.client.authenticate(self.user, is_ligo=True)
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         for trigger_time, data_choice in [
             (str(MOCK_EMBARGO_START_TIME + 1), "real"),
@@ -130,7 +137,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             (str(MOCK_EMBARGO_START_TIME - 1), "simulated"),
         ]:
             self.set_trigger_time_and_data_choice(trigger_time, data_choice)
-            response = self.client.execute(self.query, self.params)
+            response = self.query(self.query_string, input_data=self.params)
 
             self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
@@ -148,22 +155,18 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
     def setUp(self):
         self.maxDiff = 9999
 
-        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-
         self.params = {
-            "input": {
-                "params": {
-                    "details": {
-                        "name": "test_job_for_GW12345",
-                        "description": "Test description 1234",
-                        "private": True,
-                    },
-                    "iniString": {"iniString": None},
-                }
+            "params": {
+                "details": {
+                    "name": "test_job_for_GW12345",
+                    "description": "Test description 1234",
+                    "private": True,
+                },
+                "iniString": {"iniString": None},
             }
         }
 
-        self.query = """
+        self.query_string = """
             mutation NewJobMutation($input: BilbyJobFromIniStringMutationInput!) {
                 newBilbyJobFromIniString(input: $input) {
                     result {
@@ -184,7 +187,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
     def test_non_ligo_user_embargo(self):
         # Test checks that a LIGO user does not create a LIGO job if the data is real and channels are GWOSC
-        self.client.authenticate(self.user, is_ligo=False)
+        self.authenticate()
 
         for trigger_time, n_simulation in [
             (MOCK_EMBARGO_START_TIME + 1, 1),
@@ -195,11 +198,15 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             ("GW150914", 1),
         ]:
             ini_string = create_test_ini_string(
-                config_dict={"trigger-time": trigger_time, "n-simulation": n_simulation}, complete=True
+                config_dict={
+                    "trigger-time": trigger_time,
+                    "n-simulation": n_simulation,
+                },
+                complete=True,
             )
-            self.params["input"]["params"]["iniString"]["iniString"] = ini_string
+            self.params["params"]["iniString"]["iniString"] = ini_string
 
-            response = self.client.execute(self.query, self.params)
+            response = self.query(self.query_string, input_data=self.params)
 
             self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
@@ -217,13 +224,19 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             ("GW151226", 0),
         ]:
             ini_string = create_test_ini_string(
-                config_dict={"trigger-time": trigger_time, "n-simulation": n_simulation}, complete=True
+                config_dict={
+                    "trigger-time": trigger_time,
+                    "n-simulation": n_simulation,
+                },
+                complete=True,
             )
-            self.params["input"]["params"]["iniString"]["iniString"] = ini_string
-            response = self.client.execute(self.query, self.params)
+            self.params["params"]["iniString"]["iniString"] = ini_string
+            response = self.query(self.query_string, input_data=self.params)
 
             self.assertDictEqual(
-                self.expected_none, response.data, "create bilbyJob mutation returned unexpected data."
+                self.expected_none,
+                response.data,
+                "create bilbyJob mutation returned unexpected data.",
             )
 
             self.assertResponseHasErrors(response, "mutation should have returned errors due to embargo")
@@ -235,7 +248,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
     def test_ligo_user_embargo(self):
         # Test checks that a LIGO user does not create a LIGO job if the data is real and channels are GWOSC
-        self.client.authenticate(self.user, is_ligo=True)
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
         for trigger_time, n_simulation in [
             (MOCK_EMBARGO_START_TIME + 1, 0),
@@ -248,11 +261,15 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             ("GW150914", 1),
         ]:
             ini_string = create_test_ini_string(
-                config_dict={"trigger-time": trigger_time, "n-simulation": n_simulation}, complete=True
+                config_dict={
+                    "trigger-time": trigger_time,
+                    "n-simulation": n_simulation,
+                },
+                complete=True,
             )
-            self.params["input"]["params"]["iniString"]["iniString"] = ini_string
+            self.params["params"]["iniString"]["iniString"] = ini_string
 
-            response = self.client.execute(self.query, self.params)
+            response = self.query(self.query_string, input_data=self.params)
 
             self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)

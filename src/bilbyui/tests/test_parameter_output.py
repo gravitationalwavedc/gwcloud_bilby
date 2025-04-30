@@ -26,15 +26,15 @@ def rand_string(num_chars):
 
 class TestJobSubmission(BilbyTestCase):
     def setUp(self):
+        # Normally we don't have any User objects
+        # But this test uses the presence or absense of User.objects[0] for various things
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
-        self.client.authenticate(self.user, True)
+        self.authenticate()
 
     def request_lookup_users_mock(*args, **kwargs):
         user = User.objects.first()
         if user:
-            return True, [
-                {"userId": user.id, "username": user.username, "firstName": user.first_name, "lastName": user.last_name}
-            ]
+            return True, [{"id": user.id, "name": "buffy summers"}]
         return False, []
 
     @patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
@@ -47,55 +47,53 @@ class TestJobSubmission(BilbyTestCase):
             mock_api_call.return_value = {"jobId": job_index + 10}
 
             params = {
-                "input": {
-                    "params": {
-                        "details": {
-                            "name": rand_string(20),
-                            "description": rand_string(128),
-                            "private": True,
+                "params": {
+                    "details": {
+                        "name": rand_string(20),
+                        "description": rand_string(128),
+                        "private": True,
+                    },
+                    # "calibration": None,
+                    "data": {
+                        "dataChoice": random.choice(["real", "simulated"]),
+                        "triggerTime": str(to_dec(float(rand_float(1126200000, 118200000)))),
+                        "channels": {
+                            "hanfordChannel": random.choice(["GWOSC", "GDS-CALIB_STRAIN"]),
+                            "livingstonChannel": random.choice(["GWOSC", "GDS-CALIB_STRAIN"]),
+                            "virgoChannel": random.choice(["GWOSC", "Hrec_hoft_16384Hz"]),
                         },
-                        # "calibration": None,
-                        "data": {
-                            "dataChoice": random.choice(["real", "simulated"]),
-                            "triggerTime": str(to_dec(float(rand_float(1126200000, 118200000)))),
-                            "channels": {
-                                "hanfordChannel": random.choice(["GWOSC", "GDS-CALIB_STRAIN"]),
-                                "livingstonChannel": random.choice(["GWOSC", "GDS-CALIB_STRAIN"]),
-                                "virgoChannel": random.choice(["GWOSC", "Hrec_hoft_16384Hz"]),
-                            },
-                        },
-                        "detector": {
-                            "hanford": True,
-                            "hanfordMinimumFrequency": str(to_dec(float(rand_float(10, 900)))),
-                            "hanfordMaximumFrequency": str(to_dec(float(rand_float(1000, 20000)))),
-                            "livingston": random.choice([True, False]),
-                            "livingstonMinimumFrequency": str(to_dec(float(rand_float(10, 900)))),
-                            "livingstonMaximumFrequency": str(to_dec(float(rand_float(1000, 20000)))),
-                            "virgo": random.choice([True, False]),
-                            "virgoMinimumFrequency": str(to_dec(float(rand_float(10, 900)))),
-                            "virgoMaximumFrequency": str(to_dec(float(rand_float(1000, 20000)))),
-                            "duration": random.choice(["4", "8", "16", "32", "64", "128"]),
-                            "samplingFrequency": random.choice(["512", "1024", "2048", "4096", "8192", "16384"]),
-                        },
-                        # "injection": {},
-                        # "likelihood": {},
-                        "prior": {"priorDefault": random.choice(["4s", "8s", "16s", "32s", "64s", "128s"])},
-                        # "postProcessing": {},
-                        "sampler": {
-                            "nlive": rand_int(100, 10000),
-                            "nact": rand_int(1, 100),
-                            "maxmcmc": rand_int(1000, 10000),
-                            "walks": rand_int(100, 10000),
-                            "dlogz": str(to_dec(float(rand_float(0.1, 1)))),
-                            "cpus": rand_int(1, 32),
-                            "samplerChoice": "dynesty",
-                        },
-                        "waveform": {"model": random.choice([None, "binaryNeutronStar", "binaryBlackHole"])},
-                    }
+                    },
+                    "detector": {
+                        "hanford": True,
+                        "hanfordMinimumFrequency": str(to_dec(float(rand_float(10, 900)))),
+                        "hanfordMaximumFrequency": str(to_dec(float(rand_float(1000, 20000)))),
+                        "livingston": random.choice([True, False]),
+                        "livingstonMinimumFrequency": str(to_dec(float(rand_float(10, 900)))),
+                        "livingstonMaximumFrequency": str(to_dec(float(rand_float(1000, 20000)))),
+                        "virgo": random.choice([True, False]),
+                        "virgoMinimumFrequency": str(to_dec(float(rand_float(10, 900)))),
+                        "virgoMaximumFrequency": str(to_dec(float(rand_float(1000, 20000)))),
+                        "duration": random.choice(["4", "8", "16", "32", "64", "128"]),
+                        "samplingFrequency": random.choice(["512", "1024", "2048", "4096", "8192", "16384"]),
+                    },
+                    # "injection": {},
+                    # "likelihood": {},
+                    "prior": {"priorDefault": random.choice(["4s", "8s", "16s", "32s", "64s", "128s"])},
+                    # "postProcessing": {},
+                    "sampler": {
+                        "nlive": rand_int(100, 10000),
+                        "nact": rand_int(1, 100),
+                        "maxmcmc": rand_int(1000, 10000),
+                        "walks": rand_int(100, 10000),
+                        "dlogz": str(to_dec(float(rand_float(0.1, 1)))),
+                        "cpus": rand_int(1, 32),
+                        "samplerChoice": "dynesty",
+                    },
+                    "waveform": {"model": random.choice([None, "binaryNeutronStar", "binaryBlackHole"])},
                 }
             }
 
-            response = self.client.execute(
+            response = self.query(
                 """
                 mutation NewJobMutation($input: BilbyJobMutationInput!) {
                   newBilbyJob(input: $input) {
@@ -105,14 +103,14 @@ class TestJobSubmission(BilbyTestCase):
                   }
                 }
                 """,
-                params,
+                input_data=params,
             )
 
             self.assertTrue("jobId" in response.data["newBilbyJob"]["result"])
 
             job_id = response.data["newBilbyJob"]["result"]["jobId"]
 
-            response = self.client.execute(
+            response = self.query(
                 f"""
                 query {{
                     bilbyJob(id:"{job_id}"){{
@@ -171,40 +169,40 @@ class TestJobSubmission(BilbyTestCase):
                 """
             )
 
-            min_vals = [Decimal(params["input"]["params"]["detector"]["hanfordMinimumFrequency"])]
+            min_vals = [Decimal(params["params"]["detector"]["hanfordMinimumFrequency"])]
 
-            max_vals = [Decimal(params["input"]["params"]["detector"]["hanfordMaximumFrequency"])]
+            max_vals = [Decimal(params["params"]["detector"]["hanfordMaximumFrequency"])]
 
-            if params["input"]["params"]["detector"]["livingston"]:
-                min_vals.append(Decimal(params["input"]["params"]["detector"]["livingstonMinimumFrequency"]))
-                max_vals.append(Decimal(params["input"]["params"]["detector"]["livingstonMaximumFrequency"]))
+            if params["params"]["detector"]["livingston"]:
+                min_vals.append(Decimal(params["params"]["detector"]["livingstonMinimumFrequency"]))
+                max_vals.append(Decimal(params["params"]["detector"]["livingstonMaximumFrequency"]))
 
-            if params["input"]["params"]["detector"]["virgo"]:
-                min_vals.append(Decimal(params["input"]["params"]["detector"]["virgoMinimumFrequency"]))
-                max_vals.append(Decimal(params["input"]["params"]["detector"]["virgoMaximumFrequency"]))
+            if params["params"]["detector"]["virgo"]:
+                min_vals.append(Decimal(params["params"]["detector"]["virgoMinimumFrequency"]))
+                max_vals.append(Decimal(params["params"]["detector"]["virgoMaximumFrequency"]))
 
-            if not params["input"]["params"]["detector"]["livingston"]:
-                params["input"]["params"]["data"]["channels"]["livingstonChannel"] = None
-                params["input"]["params"]["detector"]["livingstonMinimumFrequency"] = str(min(min_vals))
-                params["input"]["params"]["detector"]["livingstonMaximumFrequency"] = str(max(max_vals))
+            if not params["params"]["detector"]["livingston"]:
+                params["params"]["data"]["channels"]["livingstonChannel"] = None
+                params["params"]["detector"]["livingstonMinimumFrequency"] = str(min(min_vals))
+                params["params"]["detector"]["livingstonMaximumFrequency"] = str(max(max_vals))
 
-            if not params["input"]["params"]["detector"]["virgo"]:
-                params["input"]["params"]["data"]["channels"]["virgoChannel"] = None
-                params["input"]["params"]["detector"]["virgoMinimumFrequency"] = str(min(min_vals))
-                params["input"]["params"]["detector"]["virgoMaximumFrequency"] = str(max(max_vals))
+            if not params["params"]["detector"]["virgo"]:
+                params["params"]["data"]["channels"]["virgoChannel"] = None
+                params["params"]["detector"]["virgoMinimumFrequency"] = str(min(min_vals))
+                params["params"]["detector"]["virgoMaximumFrequency"] = str(max(max_vals))
 
-            if not params["input"]["params"]["waveform"]["model"]:
-                params["input"]["params"]["waveform"]["model"] = "binaryBlackHole"
+            if not params["params"]["waveform"]["model"]:
+                params["params"]["waveform"]["model"] = "binaryBlackHole"
 
             expected = {
                 "bilbyJob": {
                     "id": job_id,
-                    "name": params["input"]["params"]["details"]["name"],
+                    "name": params["params"]["details"]["name"],
                     "userId": 1,
-                    "description": params["input"]["params"]["details"]["description"],
+                    "description": params["params"]["details"]["description"],
                     "jobControllerId": job_index + 10,
-                    "private": params["input"]["params"]["details"]["private"],
-                    "params": params["input"]["params"],
+                    "private": params["params"]["details"]["private"],
+                    "params": params["params"],
                 }
             }
 

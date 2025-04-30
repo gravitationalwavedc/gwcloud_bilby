@@ -14,24 +14,30 @@ User = get_user_model()
 @override_settings(IGNORE_ELASTIC_SEARCH=False)
 class TestElasticSearch(BilbyTestCase):
     def setUp(self):
+        # Normally we don't have any User objects
+        # But this test uses the presence or absense of User.objects[0] for various things
         self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
 
     def request_lookup_users_mock(*args, **kwargs):
         user = User.objects.first()
         if user:
-            return True, [
-                {"userId": user.id, "username": user.username, "firstName": user.first_name, "lastName": user.last_name}
-            ]
+            return True, [{"id": user.id, "name": "buffy summers"}]
         return False, []
 
     def request_elasticsearch_update_mock_raises(*args, **kwargs):
         raise elasticsearch.NotFoundError("Exists", None, None)
 
-    @mock.patch("elasticsearch.Elasticsearch.update", side_effect=request_elasticsearch_update_mock_raises)
+    @mock.patch(
+        "elasticsearch.Elasticsearch.update",
+        side_effect=request_elasticsearch_update_mock_raises,
+    )
     @mock.patch("elasticsearch.Elasticsearch.index")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_create_document_basic(
-        self, lookup_users_mock, elasticsearch_index_mock, elasticsearch_update_mock_raises
+        self,
+        lookup_users_mock,
+        elasticsearch_index_mock,
+        elasticsearch_update_mock_raises,
     ):
         """
         Test that if we create a job, the elastic search index function is called as expected.
@@ -51,28 +57,37 @@ class TestElasticSearch(BilbyTestCase):
 
         # request_lookup_users should have been called once with an array containing only the user id
         self.assertEqual(lookup_users_mock.call_count, 1)
-        self.assertEqual(lookup_users_mock.mock_calls[0].args, ([1], 0))
+        self.assertEqual(lookup_users_mock.mock_calls[0].args, ([1],))
 
         # Update should have been called once, which then raises elasticsearch.NotFoundError
         self.assertEqual(elasticsearch_update_mock_raises.call_count, 1)
 
         # Verify the document
-        self.assertEqual(elasticsearch_index_mock.mock_calls[0].kwargs["index"], settings.ELASTIC_SEARCH_INDEX)
+        self.assertEqual(
+            elasticsearch_index_mock.mock_calls[0].kwargs["index"],
+            settings.ELASTIC_SEARCH_INDEX,
+        )
         self.assertEqual(elasticsearch_index_mock.mock_calls[0].kwargs["id"], job.id)
 
         # Make sure this test has no labels or an event id
-        doc = generate_elastic_doc(job, self.user)
+        doc = generate_elastic_doc(job, {"name": "buffy summers"})
 
         self.assertEqual(doc["labels"], [])
         self.assertEqual(doc["eventId"], None)
 
         self.assertDictEqual(elasticsearch_index_mock.mock_calls[0].kwargs["document"], doc)
 
-    @mock.patch("elasticsearch.Elasticsearch.update", side_effect=request_elasticsearch_update_mock_raises)
+    @mock.patch(
+        "elasticsearch.Elasticsearch.update",
+        side_effect=request_elasticsearch_update_mock_raises,
+    )
     @mock.patch("elasticsearch.Elasticsearch.index")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_create_document_complete(
-        self, lookup_users_mock, elasticsearch_index_mock, elasticsearch_update_mock_raises
+        self,
+        lookup_users_mock,
+        elasticsearch_index_mock,
+        elasticsearch_update_mock_raises,
     ):
         """
         Test that if we create a job with event id and labels, that the elastic search index function
@@ -86,7 +101,11 @@ class TestElasticSearch(BilbyTestCase):
         label2 = Label.objects.create(name="label 2", description="my label 2", protected=False)
 
         event_id = EventID.create(
-            "GW123456_123456", 12345678, trigger_id="S123456a", nickname="Test Nick", is_ligo_event=True
+            "GW123456_123456",
+            12345678,
+            trigger_id="S123456a",
+            nickname="Test Nick",
+            is_ligo_event=True,
         )
 
         job = BilbyJob.objects.create(
@@ -109,11 +128,14 @@ class TestElasticSearch(BilbyTestCase):
         self.assertEqual(elasticsearch_update_mock_raises.call_count, 3)
 
         # Verify the document
-        self.assertEqual(elasticsearch_index_mock.mock_calls[-1].kwargs["index"], settings.ELASTIC_SEARCH_INDEX)
+        self.assertEqual(
+            elasticsearch_index_mock.mock_calls[-1].kwargs["index"],
+            settings.ELASTIC_SEARCH_INDEX,
+        )
         self.assertEqual(elasticsearch_index_mock.mock_calls[-1].kwargs["id"], job.id)
 
         # Make sure this test has no labels or an event id
-        doc = generate_elastic_doc(job, self.user)
+        doc = generate_elastic_doc(job, {"name": "buffy summers"})
 
         self.assertNotEqual(doc["labels"], [])
         self.assertNotEqual(doc["eventId"], None)
@@ -139,17 +161,20 @@ class TestElasticSearch(BilbyTestCase):
 
         # request_lookup_users should have been called once with an array containing only the user id
         self.assertEqual(lookup_users_mock.call_count, 1)
-        self.assertEqual(lookup_users_mock.mock_calls[0].args, ([1], 0))
+        self.assertEqual(lookup_users_mock.mock_calls[0].args, ([1],))
 
         # Update should have been called once
         self.assertEqual(elasticsearch_update_mock.call_count, 1)
 
         # Verify the document
-        self.assertEqual(elasticsearch_update_mock.mock_calls[0].kwargs["index"], settings.ELASTIC_SEARCH_INDEX)
+        self.assertEqual(
+            elasticsearch_update_mock.mock_calls[0].kwargs["index"],
+            settings.ELASTIC_SEARCH_INDEX,
+        )
         self.assertEqual(elasticsearch_update_mock.mock_calls[0].kwargs["id"], job.id)
 
         # Make sure this test has no labels or an event id
-        doc = generate_elastic_doc(job, self.user)
+        doc = generate_elastic_doc(job, {"name": "buffy summers"})
 
         self.assertEqual(doc["labels"], [])
         self.assertEqual(doc["eventId"], None)
@@ -166,7 +191,11 @@ class TestElasticSearch(BilbyTestCase):
         from bilbyui.models import BilbyJob, EventID
 
         event_id = EventID.create(
-            "GW123456_123456", 12345678, trigger_id="S123456a", nickname="Test Nick", is_ligo_event=True
+            "GW123456_123456",
+            12345678,
+            trigger_id="S123456a",
+            nickname="Test Nick",
+            is_ligo_event=True,
         )
 
         job = BilbyJob.objects.create(
@@ -186,7 +215,8 @@ class TestElasticSearch(BilbyTestCase):
         self.assertEqual(elasticsearch_update_mock.call_count, 2)
 
         self.assertDictEqual(
-            elasticsearch_update_mock.mock_calls[-1].kwargs["doc"], generate_elastic_doc(job, self.user)
+            elasticsearch_update_mock.mock_calls[-1].kwargs["doc"],
+            generate_elastic_doc(job, {"name": "buffy summers"}),
         )
 
     @mock.patch("elasticsearch.Elasticsearch.update")
@@ -218,7 +248,8 @@ class TestElasticSearch(BilbyTestCase):
         self.assertEqual(elasticsearch_update_mock.call_count, 3)
 
         self.assertDictEqual(
-            elasticsearch_update_mock.mock_calls[-1].kwargs["doc"], generate_elastic_doc(job, self.user)
+            elasticsearch_update_mock.mock_calls[-1].kwargs["doc"],
+            generate_elastic_doc(job, {"name": "buffy summers"}),
         )
 
     @mock.patch("elasticsearch.Elasticsearch.delete")
@@ -244,5 +275,6 @@ class TestElasticSearch(BilbyTestCase):
         job.delete()
 
         self.assertDictEqual(
-            elastic_search_delete.mock_calls[0].kwargs, {"index": settings.ELASTIC_SEARCH_INDEX, "id": job_id}
+            elastic_search_delete.mock_calls[0].kwargs,
+            {"index": settings.ELASTIC_SEARCH_INDEX, "id": job_id},
         )
