@@ -31,12 +31,11 @@ RUN . /venv/bin/activate \
 # Copy the source code in to the container
 COPY ./src /src
 
-# Ensure host venv and javascript is removed
-RUN rm -Rf /src/venv /src/react
+WORKDIR /src
 
 # Generate the graphql schema
 RUN . /venv/bin/activate \
-  && python src/development-manage.py graphql_schema --out /src/schema.json
+  && python development-manage.py graphql_schema
 
 
 FROM base as django-runner
@@ -46,8 +45,6 @@ COPY --from=django-builder /venv /venv
 
 COPY ./runserver.sh /runserver.sh
 RUN chmod +x /runserver.sh
-
-RUN mkdir -p /job_data/upload
 
 # Expose the port and set the run script
 EXPOSE 8000
@@ -65,7 +62,7 @@ COPY ./src/react /react
 WORKDIR /react
 
 # Copy the generate bilby schema
-COPY --from=django-builder /src/schema.json /react/data/
+COPY --from=django-builder /src/react/data/schema.graphql /react/data/schema.graphql
 
 RUN npm install --legacy-peer-deps \
   && npm run relay \
