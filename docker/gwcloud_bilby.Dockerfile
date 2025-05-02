@@ -1,4 +1,6 @@
 FROM python:3.12.6 AS base
+# Deliberately pinned to 3.12.6 due to a breaking change
+# See https://gitlab.com/CAS-eResearch/GWDC/gwcloud_bilby/-/merge_requests/142 to discover the true meaning of suffering
 ENV PYTHONUNBUFFERED 1
 
 # Update the container and install the required packages
