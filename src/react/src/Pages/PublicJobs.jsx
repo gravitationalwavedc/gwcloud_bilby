@@ -48,7 +48,7 @@ const PublicJobs = ({ data, match, router, relay }) => {
                 {!isAuthenticated && (
                     <Alert variant="light">
                         Showing only public jobs.{' '}
-                        <Link to="/auth/" match={match} router={router}>
+                        <Link to={`${import.meta.env.VITE_BACKEND_URL}/sso/login/`} match={match} router={router}>
                             Log in with your LIGO.ORG credentials to see embargoed jobs
                         </Link>
                         .
