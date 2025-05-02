@@ -1,4 +1,4 @@
-FROM python:3.12 AS base
+FROM python:3.12.6 AS base
 ENV PYTHONUNBUFFERED 1
 
 # Update the container and install the required packages
