@@ -51,7 +51,7 @@ def check_and_download():
     con.row_factory = sqlite3.Row
     cur = con.cursor()
     cur.execute(
-        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reason TEXT, reason_data TEXT, catalog_shortname TEXT,common_name, all_succeeded INT, none_succeeded INT)"  # noqa
+        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reason TEXT, reason_data TEXT, catalog_shortname TEXT,common_name, all_succeeded INT, none_succeeded INT, is_latest_version BOOLEAN)"  # noqa
     )
 
     def save_sqlite_job(
@@ -60,18 +60,20 @@ def check_and_download():
         catalog_shortname,
         success,
         reason,
+        is_latest_version,
         reason_data="",
         all_succeeded=-1,
         none_succeeded=-1,
     ):
         cur.execute(
-            "INSERT INTO completed_jobs (job_id, common_name, catalog_shortname, success, reason, reason_data, all_succeeded, none_succeeded) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO completed_jobs (job_id, common_name, catalog_shortname, success, reason, is_latest_version, reason_data, all_succeeded, none_succeeded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 job_id,
                 common_name,
                 catalog_shortname,
                 success,
                 reason,
+                is_latest_version,
                 reason_data,
                 all_succeeded,
                 none_succeeded,
@@ -128,6 +130,7 @@ def check_and_download():
         exit()
 
     event_name = jobs_delta[0]
+
     logger.info(f"{event_name}: {all_events[event_name]['jsonurl']}")
 
     r = requests.get(all_events[event_name]["jsonurl"])
@@ -144,6 +147,17 @@ def check_and_download():
     parameters = event_json["parameters"]
     common_name = event_json["commonName"]
     catalog_shortname = event_json["catalog.shortName"]
+
+    shared_common_names = [
+        k for k, v in all_events.items() if v["commonName"] == common_name
+    ]
+    is_latest_version = True
+    if len(shared_common_names) > 1:
+        versions_available = [
+            int(re.search(r"-v(\d+)$", cn).groups()[0]) for cn in shared_common_names
+        ]
+        current_version = int(re.search(r"-v(\d+)$", event_name).groups()[0])
+        is_latest_version = current_version == max(versions_available)
 
     gps = event_json["GPS"]
     gracedb_id = event_json["gracedb_id"]
@@ -165,6 +179,7 @@ def check_and_download():
                 catalog_shortname,
                 False,
                 "ignored_event",
+                is_latest_version,
                 pattern,
             )
             exit()
@@ -173,14 +188,21 @@ def check_and_download():
     if len(found) != 1:
         logger.error(f"Unable to find preferred job for {event_name} 😠")
         save_sqlite_job(
-            event_name, common_name, catalog_shortname, False, "no preferred job"
+            event_name,
+            common_name,
+            catalog_shortname,
+            False,
+            "no preferred job",
+            is_latest_version,
         )
         exit()
 
     h5url = found[0].get("data_url")
     if not h5url:
         logger.error(f"Preferred job for {event_name} does not contain a dataurl 😠")
-        save_sqlite_job(event_name, common_name, catalog_shortname, False, "no dataurl")
+        save_sqlite_job(
+            event_name, common_name, catalog_shortname, False, "no dataurl", -1
+        )
         exit()
 
     # See if there is already an event_id for this event
@@ -197,6 +219,7 @@ def check_and_download():
         logger.info(f"{common_name} is not a valid event_id, uploading job without one")
 
     logger.info("Downloading h5 file")
+    logger.info(h5url)
     all_succeeded = True
     none_succeeded = True
     with NamedTemporaryFile(mode="rb+") as f:
@@ -266,6 +289,7 @@ def check_and_download():
         catalog_shortname,
         all_succeeded and not none_succeeded,
         "completed_submit",
+        is_latest_version,
         "",
         all_succeeded,
         none_succeeded,

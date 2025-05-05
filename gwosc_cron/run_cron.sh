@@ -4,4 +4,4 @@
 # And created a .env file
 source .env
 touch ./gwosc_ingest.log
-docker run --env-file .env --network=host --mount type=bind,src="$HOST_DB_PATH",target="$DB_PATH" --mount type=bind,src="./gwosc_ingest.log",target="/gwosc_ingest.log" gwosc_ingest
+sudo docker run --env-file .env --network=host --mount type=bind,src="$HOST_DB_PATH",target="$DB_PATH" --mount type=bind,src="./gwosc_ingest.log",target="/gwosc_ingest.log" gwosc_ingest
