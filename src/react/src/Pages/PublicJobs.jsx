@@ -5,7 +5,6 @@ import JobTable from '../Components/JobTable';
 import JobsHeading from '../Components/JobsHeading';
 import JobSearchForm from '../Components/JobSearchForm';
 import { INFINITE_SCROLL_CHUNK_SIZE } from '../constants';
-import Link from 'found/Link';
 import { UserContext } from '../sessionUser';
 
 const PublicJobs = ({ data, match, router, relay }) => {
@@ -48,9 +47,9 @@ const PublicJobs = ({ data, match, router, relay }) => {
                 {!isAuthenticated && (
                     <Alert variant="light">
                         Showing only public jobs.{' '}
-                        <Link to={`${import.meta.env.VITE_BACKEND_URL}/sso/login/`} match={match} router={router}>
+                        <a href={`${import.meta.env.VITE_BACKEND_URL}/sso/login/`}>
                             Log in with your LIGO.ORG credentials to see embargoed jobs
-                        </Link>
+                        </a>
                         .
                     </Alert>
                 )}
