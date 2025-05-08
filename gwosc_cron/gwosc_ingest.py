@@ -28,7 +28,6 @@ try:
 except ImportError:
     logger.info("No local.py file found, loading settings from env")
     GWCLOUD_TOKEN = os.getenv("GWCLOUD_TOKEN")
-    AUTH_ENDPOINT = os.getenv("AUTH_ENDPOINT")
     ENDPOINT = os.getenv("ENDPOINT")
     DB_PATH = os.getenv("DB_PATH")
 
@@ -84,7 +83,7 @@ def check_and_download():
     # note that you may need to manually modify the APIToken 'app' value if running locally
     # since when you create a token it has the 'app' set to gwcloud but we're
     # accessing it through localhost:8000 which confuses the project detection regex
-    gwc = GWCloud(GWCLOUD_TOKEN, auth_endpoint=AUTH_ENDPOINT, endpoint=ENDPOINT)
+    gwc = GWCloud(GWCLOUD_TOKEN, endpoint=ENDPOINT)
 
     # Collect list of events from GWOSC
     r = requests.get("https://gwosc.org/eventapi/json/allevents")
