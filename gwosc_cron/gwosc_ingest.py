@@ -80,9 +80,6 @@ def check_and_download():
         )
         con.commit()
 
-    # note that you may need to manually modify the APIToken 'app' value if running locally
-    # since when you create a token it has the 'app' set to gwcloud but we're
-    # accessing it through localhost:8000 which confuses the project detection regex
     gwc = GWCloud(GWCLOUD_TOKEN, endpoint=ENDPOINT)
 
     # Collect list of events from GWOSC
