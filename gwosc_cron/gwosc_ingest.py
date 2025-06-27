@@ -42,6 +42,12 @@ def build_bilbyjob_name(event_name, config_name):
     return fix_job_name(f"{event_name}{EVENTNAME_SEPERATOR}{config_name}")
 
 
+def create_table(cursor):
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reason TEXT, reason_data TEXT, catalog_shortname TEXT,common_name, all_succeeded INT, none_succeeded INT, is_latest_version BOOLEAN)"  # noqa
+    )
+
+
 def check_and_download():
     logger.info(
         f"==== gwosc_ingest cronjob {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===="
@@ -49,9 +55,7 @@ def check_and_download():
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
-    cur.execute(
-        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reason TEXT, reason_data TEXT, catalog_shortname TEXT,common_name, all_succeeded INT, none_succeeded INT, is_latest_version BOOLEAN)"  # noqa
-    )
+    create_table(cur)
 
     def save_sqlite_job(
         job_id,

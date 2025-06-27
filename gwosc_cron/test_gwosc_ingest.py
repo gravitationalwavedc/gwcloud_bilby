@@ -90,8 +90,13 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
-        self.assertEqual(sqlite_rows[0]["success"], 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        self.assertEqual(row["success"], 1)
+        self.assertEqual(row["reason"], "completed_submit")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
 
     @responses.activate
     def test_none_found(self, gwc):
@@ -113,9 +118,14 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
         # better not have
-        self.assertEqual(sqlite_rows[0]["success"], 0)
+        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["reason"], "completed_submit")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
 
     @responses.activate
     def test_no_preferred(self, gwc):
@@ -163,9 +173,14 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
         # better not have
-        self.assertEqual(sqlite_rows[0]["success"], 0)
+        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["reason"], "no preferred job")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
 
         # does it tell us why it failed?
         self.assertIn("Unable to find preferred job", logs.output[0])
@@ -216,9 +231,14 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
         # better not have
-        self.assertEqual(sqlite_rows[0]["success"], 0)
+        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["reason"], "no preferred job")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
 
         # does it tell us why it failed?
         self.assertIn("Unable to find preferred job", logs.output[0])
@@ -404,6 +424,7 @@ class TestGWOSCCron(unittest.TestCase):
                 "events": {
                     "GW000001": {
                         "commonName": "GW000001",
+                        "catalog.shortName": "GWTC-3-confident",
                         "jsonurl": "https://test.org/GW000001.json",
                     }
                 }
@@ -485,9 +506,14 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
-        # not, it should have failed
-        self.assertEqual(sqlite_rows[0]["success"], 0)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        # better not have
+        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["reason"], "completed_submit")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
 
         self.assertIn("Failed to create BilbyJob", logs.output[0])
 
@@ -527,8 +553,14 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
-        self.assertEqual(sqlite_rows[0]["success"], 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        # better not have
+        self.assertEqual(row["success"], 1)
+        self.assertEqual(row["reason"], "completed_submit")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
 
     @responses.activate
     def test_skip_if_present(self, gwc):
@@ -540,12 +572,21 @@ class TestGWOSCCron(unittest.TestCase):
         # Add the 'job history' to sqlite
         self.con.row_factory = sqlite3.Row
         cur = self.con.cursor()
+        gwosc_ingest.create_table(cur)
+        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reason TEXT, reason_data TEXT, catalog_shortname TEXT,common_name, all_succeeded INT, none_succeeded INT, is_latest_version BOOLEAN)"  # noqa
         cur.execute(
-            "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"  # noqa
-        )
-        cur.execute(
-            "INSERT INTO completed_jobs (job_id, success) VALUES (?, ?)",
-            ("GW000001_123456", True),
+            "INSERT INTO completed_jobs (job_id, success, reason, reason_data, catalog_shortname, common_name, all_succeeded, none_succeeded, is_latest_version ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "GW000001_123456",
+                True,
+                "completed_submit",
+                "",
+                "GWTC-3-confident",
+                "GW00001_123456",
+                1,
+                0,
+                1,
+            ),
         )
 
         # Do the thing, Zhu Li
@@ -609,8 +650,13 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
-        self.assertEqual(sqlite_rows[0]["success"], 0)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["reason"], "no dataurl")
+        self.assertEqual(row["is_latest_version"], -1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
 
         # Did it tell us why it failed?
         self.assertIn("does not contain a dataurl", logs.output[0])
@@ -649,8 +695,13 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
-        self.assertEqual(sqlite_rows[0]["success"], 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        self.assertEqual(row["success"], 1)
+        self.assertEqual(row["reason"], "completed_submit")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
 
     @responses.activate
     def test_bad_h5(self, gwc):
@@ -672,8 +723,13 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
-        self.assertEqual(sqlite_rows[0]["success"], 0)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["reason"], "completed_submit")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
 
     @responses.activate
     def test_special_symbols_event(self, gwc):
@@ -733,5 +789,10 @@ class TestGWOSCCron(unittest.TestCase):
         sqlite_rows = sqlite_rows.fetchall()
 
         self.assertEqual(len(sqlite_rows), 1)
-        self.assertEqual(sqlite_rows[0]["job_id"], "GW000001.123456")
-        self.assertEqual(sqlite_rows[0]["success"], 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001.123456")
+        self.assertEqual(row["success"], 1)
+        self.assertEqual(row["reason"], "completed_submit")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001.123456")
