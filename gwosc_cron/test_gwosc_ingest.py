@@ -28,7 +28,9 @@ class TestGWOSCCron(unittest.TestCase):
             json={
                 "events": {
                     "GW000001_123456": {
-                        "jsonurl": "https://test.org/GW000001_123456.json"
+                        "commonName": "GW00001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "jsonurl": "https://test.org/GW000001_123456.json",
                     }
                 }
             },
@@ -42,6 +44,7 @@ class TestGWOSCCron(unittest.TestCase):
                 "events": {
                     "GW000001_123456": {
                         "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
@@ -125,6 +128,7 @@ class TestGWOSCCron(unittest.TestCase):
                 "events": {
                     "GW000001_123456": {
                         "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
@@ -143,9 +147,11 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Do[n't do] the thing, Zhu Li
-        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
-            level=logging.ERROR
-        ) as logs:
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit),
+            self.assertLogs(level=logging.ERROR) as logs,
+        ):
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -175,6 +181,7 @@ class TestGWOSCCron(unittest.TestCase):
                 "events": {
                     "GW000001_123456": {
                         "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
@@ -193,9 +200,11 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Do[n't do] the thing, Zhu Li
-        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
-            level=logging.ERROR
-        ) as logs:
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit),
+            self.assertLogs(level=logging.ERROR) as logs,
+        ):
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -228,9 +237,11 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Do[n't do] the thing, Zhu Li
-        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
-            level=logging.ERROR
-        ) as logs:
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit),
+            self.assertLogs(level=logging.ERROR) as logs,
+        ):
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -262,9 +273,11 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Do[n't do] the thing, Zhu Li
-        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
-            level=logging.ERROR
-        ) as logs:
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit),
+            self.assertLogs(level=logging.ERROR) as logs,
+        ):
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -295,9 +308,11 @@ class TestGWOSCCron(unittest.TestCase):
 
         # Do[n't do] the thing, Zhu Li
         # Also mock stderr so it doesn't dump the exception to test output
-        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
-            level=logging.ERROR
-        ) as logs:
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit),
+            self.assertLogs(level=logging.ERROR) as logs,
+        ):
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -386,7 +401,12 @@ class TestGWOSCCron(unittest.TestCase):
             responses.GET,
             "https://gwosc.org/eventapi/json/allevents",
             json={
-                "events": {"GW000001": {"jsonurl": "https://test.org/GW000001.json"}}
+                "events": {
+                    "GW000001": {
+                        "commonName": "GW000001",
+                        "jsonurl": "https://test.org/GW000001.json",
+                    }
+                }
             },
         )
         responses.add(
@@ -396,6 +416,7 @@ class TestGWOSCCron(unittest.TestCase):
                 "events": {
                     "GW000001": {
                         "commonName": "GW000001",
+                        "catalog.shortName": "GWTC-3-confident",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
@@ -528,9 +549,11 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Do the thing, Zhu Li
-        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
-            level=logging.INFO
-        ) as logs:
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit),
+            self.assertLogs(level=logging.INFO) as logs,
+        ):
             gwosc_ingest.check_and_download()
 
         # Has it made a record of this job in sqlite?
@@ -555,6 +578,7 @@ class TestGWOSCCron(unittest.TestCase):
                 "events": {
                     "GW000001_123456": {
                         "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
@@ -569,9 +593,11 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Do the thing, Zhu Li
-        with self.con_patch, self.assertRaises(SystemExit), self.assertLogs(
-            level=logging.ERROR
-        ) as logs:
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit),
+            self.assertLogs(level=logging.ERROR) as logs,
+        ):
             gwosc_ingest.check_and_download()
 
         # has the job completed?
@@ -658,7 +684,8 @@ class TestGWOSCCron(unittest.TestCase):
             json={
                 "events": {
                     "GW000001.123456": {
-                        "jsonurl": "https://test.org/GW000001.123456.json"
+                        "commonName": "GW000001.123456",
+                        "jsonurl": "https://test.org/GW000001.123456.json",
                     }
                 }
             },
@@ -670,6 +697,7 @@ class TestGWOSCCron(unittest.TestCase):
                 "events": {
                     "GW000001.123456": {
                         "commonName": "GW000001.123456",
+                        "catalog.shortName": "GWTC-3-confident",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
