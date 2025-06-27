@@ -170,7 +170,7 @@ def check_and_download():
     ]
     for pattern in ignore_patterns:
         if re.search(pattern, catalog_shortname, flags=re.IGNORECASE):
-            logger.info(
+            logger.error(
                 f"{event_name} ignored due to matching /{pattern}/ in catalog_shortname ({catalog_shortname})"
             )
             save_sqlite_job(

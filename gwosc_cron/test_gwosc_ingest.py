@@ -8,6 +8,10 @@ from gwdc_python.exceptions import GWDCUnknownException
 
 import gwosc_ingest
 
+logger = logging.getLogger("gwosc_ingest")
+while logger.hasHandlers():
+    logger.removeHandler(logger.handlers[0])
+
 # Use test configuration
 gwosc_ingest.DB_PATH = ":memory:"
 gwosc_ingest.GWCLOUD_TOKEN = "VALID"
@@ -28,7 +32,7 @@ class TestGWOSCCron(unittest.TestCase):
             json={
                 "events": {
                     "GW000001_123456": {
-                        "commonName": "GW00001_123456",
+                        "commonName": "GW000001_123456",
                         "catalog.shortName": "GWTC-3-confident",
                         "jsonurl": "https://test.org/GW000001_123456.json",
                     }
@@ -58,11 +62,11 @@ class TestGWOSCCron(unittest.TestCase):
             },
         )
 
-    def add_file_response(self, filename="good.h5"):
+    def add_file_response(self, filename="good.h5", url_path="GW000001.h5"):
         # make the file available for download
         with open(f"test_fixtures/{filename}", "rb") as f:
             h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+        responses.add(responses.GET, f"https://test.org/{url_path}", h5data)
 
     @responses.activate
     def test_normal(self, gwc):
@@ -582,7 +586,7 @@ class TestGWOSCCron(unittest.TestCase):
                 "completed_submit",
                 "",
                 "GWTC-3-confident",
-                "GW00001_123456",
+                "GW000001_123456",
                 1,
                 0,
                 1,
