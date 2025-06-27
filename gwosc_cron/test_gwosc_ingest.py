@@ -5,6 +5,7 @@ import responses
 import sqlite3
 from collections import namedtuple
 from gwdc_python.exceptions import GWDCUnknownException
+from parameterized import parameterized
 
 import gwosc_ingest
 
@@ -800,3 +801,195 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(row["is_latest_version"], 1)
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001.123456")
+
+    @parameterized.expand(
+        ["GWTC-3-marginal", "O1_O2-Preliminary", "Initial_LIGO_Virgo"]
+    )
+    @responses.activate
+    def test_ignored_names(self, gwc, catalog_shortname):
+        """If the event is in a catalog which we ignore, then we shouldn't submit it"""
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json={
+                "events": {
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": catalog_shortname,
+                        "jsonurl": "https://test.org/GW000001_123456.json",
+                    }
+                }
+            },
+        )
+
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001_123456.json",
+            json={
+                "events": {
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": catalog_shortname,
+                        "GPS": 1729400000,
+                        "gracedb_id": "S123456z",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": True,
+                                "data_url": "https://test.org/GW000001.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        self.add_file_response()
+
+        # Do[n't do] the thing, Zhu Li
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit),
+            self.assertLogs(level=logging.ERROR) as logs,
+        ):
+            gwosc_ingest.check_and_download()
+
+        # has the job completed?
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        # Has it made a record of this job in sqlite?
+        cur = self.con.cursor()
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+        sqlite_rows = sqlite_rows.fetchall()
+
+        self.assertEqual(len(sqlite_rows), 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        # better not have
+        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["reason"], "ignored_event")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], catalog_shortname)
+        self.assertEqual(row["common_name"], "GW000001_123456")
+
+        # does it tell us why it failed?
+        self.assertIn("ignored due to matching", logs.output[0])
+
+    @responses.activate
+    def test_not_latest_version(self, gwc):
+        """If the event is not the latest one for that event, then we can ignore it safely"""
+
+        # allevents json
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json={
+                "events": {
+                    "GW000001_123456-v1": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "jsonurl": "https://test.org/GW000001_123456-v1.json",
+                    },
+                    "GW000001_123456-v2": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "jsonurl": "https://test.org/GW000001_123456-v2.json",
+                    },
+                }
+            },
+        )
+
+        # 2 events json
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001_123456-v1.json",
+            json={
+                "events": {
+                    "GW000001_123456-v1": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "GPS": 1729400000,
+                        "gracedb_id": "S123456z",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": True,
+                                "data_url": "https://test.org/GW000001.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001_123456-v2.json",
+            json={
+                "events": {
+                    "GW000001_123456-v2": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "GPS": 1729400000,
+                        "gracedb_id": "S123456z",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": True,
+                                "data_url": "https://test.org/GW000002.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        self.add_file_response("bad.h5")
+        self.add_file_response("good.h5", "GW000002.h5")
+
+        # First request should fail
+        # Do[n't do] the thing, Zhu Li
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        # has the job completed?
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        # Has it made a record of this job in sqlite?
+        cur = self.con.cursor()
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+        sqlite_rows = sqlite_rows.fetchall()
+
+        self.assertEqual(len(sqlite_rows), 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456-v1")
+        # better not have
+        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["reason"], "completed_submit")
+        # This is fine
+        self.assertEqual(row["is_latest_version"], 0)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
+
+        # Now, if we repeat the submit, it should submit the second one with no issues
+        # Do the thing, Zhu Li
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        # has the job completed?
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW000001_123456-v2--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW000002.h5",
+        )
+
+        # Has it made a record of this job in sqlite?
+        cur = self.con.cursor()
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
+        sqlite_rows = sqlite_rows.fetchall()
+
+        self.assertEqual(len(sqlite_rows), 2)
+        row = sqlite_rows[1]
+        self.assertEqual(row["job_id"], "GW000001_123456-v2")
+        self.assertEqual(row["success"], 1)
+        self.assertEqual(row["reason"], "completed_submit")
+        # This is fine
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
