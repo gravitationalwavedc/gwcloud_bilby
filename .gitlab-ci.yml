@@ -62,9 +62,9 @@ bundle-tests:
     - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$HOME/miniconda.sh"
     - bash "$HOME/miniconda.sh" -b -p "$HOME/miniconda"
     - cd src/bundle/
-    - $HOME/miniconda/bin/conda env create -f conda-environment.yml -p venv || true
+    - $HOME/miniconda/bin/conda env create -f conda-environment.yml -p venv
     - $HOME/miniconda/bin/conda env update --file conda-environment.yml --prune -p venv
-    - $HOME/miniconda/bin/conda run -p venv coverage run -m xmlrunner discover --output-file ./junit.xml || true
+    - $HOME/miniconda/bin/conda run -p venv coverage run -m xmlrunner discover --output-file ./junit.xml
     - $HOME/miniconda/bin/conda run -p venv coverage xml
 
   artifacts:
@@ -159,7 +159,7 @@ cronjob-tests:
     - cd gwosc_cron/
     - /usr/bin/python3.12 -m venv /gwosc_cron/venv
     - /gwosc_cron/venv/bin/pip3 install -r requirements.txt
-    - /gwosc_cron/venv/bin/python3 -m coverage run -m xmlrunner discover --output-file ./junit.xml || true
+    - /gwosc_cron/venv/bin/python3 -m coverage run -m xmlrunner discover --output-file ./junit.xml
     - /gwosc_cron/venv/bin/python3 -m coverage xml
 
   artifacts:
