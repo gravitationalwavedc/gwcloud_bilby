@@ -991,5 +991,5 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(row["reason"], "completed_submit")
         # This is fine
         self.assertEqual(row["is_latest_version"], 1)
-        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["catalog_shortname"], "GWTC-2-confident")
         self.assertEqual(row["common_name"], "GW000001_123456")
