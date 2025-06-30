@@ -98,8 +98,6 @@ npm install
 
 You will need to run in two seperate terminals - one for the django host and one for the react dev-server.
 
-**NOTE** You will also need to be running the react-host and gwcloud_auth locally.
-
 ### django
 
 ```bash
@@ -114,7 +112,7 @@ python development-manage.py runserver 8001
 # in src/react directory
 npm use
 npm run relay
-npm run start
+npm run dev
 ```
 
 ## Other commands
