@@ -110,11 +110,7 @@ function App() {
                         `}
                         render={handlePrivateRender}
                     />
-                    <Route
-                        path="*"
-                        Component={NotFound}
-                        render={handlePublicRender}
-                    />
+                    <Route path="*" Component={NotFound} render={handlePublicRender} />
                 </Route>
             </>,
         ),
