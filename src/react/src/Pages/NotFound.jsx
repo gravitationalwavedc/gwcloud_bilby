@@ -22,34 +22,30 @@ const NotFound = ({ match, router }) => {
 
                         <Row className="justify-content-center">
                             <Col xs="auto">
-                                <div className="d-grid gap-2 d-md-block">
-                                    <Link to="/" match={match} router={router}>
-                                        <Button variant="primary" size="lg" className="me-md-2 mb-2 mb-md-0">
+                                <div className="text-center">
+                                    <Link to="/" match={match} router={router} className="m-2">
+                                        <Button variant="primary" size="lg">
                                             Public Jobs
                                         </Button>
                                     </Link>
 
                                     {isAuthenticated ? (
                                         <>
-                                            <Link to="/job-list" match={match} router={router}>
-                                                <Button
-                                                    variant="outline-primary"
-                                                    size="lg"
-                                                    className="me-md-2 mb-2 mb-md-0"
-                                                >
+                                            <Link to="/job-list" match={match} router={router} className="m-2">
+                                                <Button variant="outline-primary" size="lg">
                                                     My Jobs
                                                 </Button>
                                             </Link>
-                                            <Link to="/job-form" match={match} router={router}>
-                                                <Button variant="outline-primary" size="lg" className="mb-2 mb-md-0">
+                                            <Link to="/job-form" match={match} router={router} className="m-2">
+                                                <Button variant="outline-primary" size="lg">
                                                     Create New Job
                                                 </Button>
                                             </Link>
                                         </>
                                     ) : (
-                                        <a href={`${import.meta.env.VITE_BACKEND_URL}/sso/login/`}>
-                                            <Button variant="outline-primary" size="lg" className="mb-2 mb-md-0">
-                                                Login with LIGO.ORG
+                                        <a href={`${import.meta.env.VITE_BACKEND_URL}/sso/login/`} className="m-2">
+                                            <Button variant="outline-primary" size="lg">
+                                                Login
                                             </Button>
                                         </a>
                                     )}
