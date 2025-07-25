@@ -6,6 +6,7 @@ import NewJob from './Pages/NewJob';
 import DuplicateJobForm from './Components/Forms/DuplicateJobForm';
 import Layout from './Layout';
 import ViewJob from './Pages/ViewJob';
+import NotFound from './Pages/NotFound';
 import { INFINITE_SCROLL_CHUNK_SIZE } from './constants';
 import { handlePrivateRender, handlePublicRender } from './routeHandlers';
 import './assets/scss/theme.scss';
@@ -109,6 +110,7 @@ function App() {
                         `}
                         render={handlePrivateRender}
                     />
+                    <Route path="*" Component={NotFound} render={handlePublicRender} />
                 </Route>
             </>,
         ),
