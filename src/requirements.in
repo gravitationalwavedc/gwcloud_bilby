@@ -18,4 +18,4 @@ bilby_pipe
 responses
 pyhumps
 elasticsearch
-git+https://gitlab.com/CAS-eResearch/internal/adacs-sso-plugin.git
+git+https://gitlab.com/CAS-eResearch/internal/adacs-sso-plugin.git@v0.3.2

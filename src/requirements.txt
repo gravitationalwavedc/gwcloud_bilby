@@ -4,7 +4,7 @@
 #
 #    pip-compile
 #
-adacs-sso-plugin @ git+https://gitlab.com/CAS-eResearch/internal/adacs-sso-plugin.git
+adacs-sso-plugin @ git+https://gitlab.com/CAS-eResearch/internal/adacs-sso-plugin.git@v0.3.2
     # via -r requirements.in
 asgiref==3.8.1
     # via
