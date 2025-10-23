@@ -11,6 +11,7 @@ from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import convert_string_to_dict
 from django.conf import settings
+from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
@@ -429,8 +430,6 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
 
 
 def upload_bilby_job(user, upload_token, details, job_file):
-    is_ligo_job = False
-
     # Check that the uploaded file is a tar.gz file
     if not job_file.name.endswith("tar.gz"):
         raise Exception("Job upload should be a tar.gz file")
@@ -492,8 +491,30 @@ def upload_bilby_job(user, upload_token, details, job_file):
         # Parse the ini file to check it's validity
         args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
 
+        # Check if this job would be embargoed for non-LIGO users
+        # If so, it should be marked as a LIGO job
         if embargo_from_args(user, args):
             raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
+
+        # Determine if this is a LIGO job based on embargo status
+        # If the job would be embargoed for non-LIGO users, it's a LIGO job
+        try:
+            trigger_time = float(args.trigger_time)
+        except (ValueError, TypeError):
+            try:
+                trigger_time = event_gps(args.trigger_time)
+            except ValueError:
+                trigger_time = None
+        n_simulation = args.n_simulation if args.n_simulation is not None else None
+
+        # Create a mock non-LIGO user to check if this job would be embargoed
+        # We need to determine if this job should be marked as a LIGO job by checking
+        # whether it would be embargoed for non-LIGO users. If it would be embargoed,
+        # then it contains proprietary data and should be marked as a LIGO job.
+        mock_user = AnonymousUser()
+        mock_user.is_ligo_user = lambda: False
+
+        is_ligo_job = should_embargo_job(mock_user, trigger_time, n_simulation)
 
         validate_job_name(args.label)
 
@@ -641,6 +662,145 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
     ExternalBilbyJob.objects.create(job=bilby_job, url=result_url)
 
     return bilby_job
+
+
+def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
+    """
+    Upload a bilby job with HDF5 result file and INI configuration file.
+
+    This function creates an UPLOADED job type with the actual HDF5 result file
+    and INI configuration file stored in GWCloud's internal storage.
+
+    Args:
+        user: The user uploading the job
+        upload_token: The upload token for authentication
+        details: Job details (name, description, private, etc.)
+        hdf5_file: The HDF5 result file
+        ini_file: The INI configuration file
+
+    Returns:
+        BilbyJob: The created bilby job
+    """
+    # Check that the uploaded files are the correct types
+    if not hdf5_file.name.endswith((".hdf5", ".h5")):
+        raise Exception("HDF5 file should have .hdf5 or .h5 extension")
+
+    if not ini_file.name.endswith(".ini"):
+        raise Exception("INI file should have .ini extension")
+
+    # Check that the job upload directory exists
+    os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
+
+    # Create a temporary staging directory for the job
+    with TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir:
+        # Create the required directory structure
+        for directory in ["data", "result", "results_page"]:
+            os.makedirs(os.path.join(job_staging_dir, directory), exist_ok=True)
+
+        # Save the HDF5 file to the result directory
+        hdf5_path = os.path.join(job_staging_dir, "result", "result.hdf5")
+        with open(hdf5_path, "wb") as f:
+            for chunk in hdf5_file.chunks():
+                f.write(chunk)
+
+        # Save the INI file with the correct naming convention
+        job_name = details.name
+        ini_filename = f"{job_name}_config_complete.ini"
+        ini_path = os.path.join(job_staging_dir, ini_filename)
+        with open(ini_path, "wb") as f:
+            for chunk in ini_file.chunks():
+                f.write(chunk)
+
+        # Read and parse the INI file
+        with open(ini_path, "r") as f:
+            ini_content = f.read()
+
+        # Parse the ini file to check it's validity
+        args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
+
+        # Check if this job would be embargoed for non-LIGO users
+        if embargo_from_args(user, args):
+            raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
+
+        # Determine if this is a LIGO job based on embargo status
+        try:
+            trigger_time = float(args.trigger_time)
+        except (ValueError, TypeError):
+            try:
+                trigger_time = event_gps(args.trigger_time)
+            except ValueError:
+                trigger_time = None
+        n_simulation = args.n_simulation if args.n_simulation is not None else None
+
+        # Create a mock non-LIGO user to check if this job would be embargoed
+        # We need to determine if this job should be marked as a LIGO job by checking
+        # whether it would be embargoed for non-LIGO users. If it would be embargoed,
+        # then it contains proprietary data and should be marked as a LIGO job.
+        mock_user = AnonymousUser()
+        mock_user.is_ligo_user = lambda: False
+
+        is_ligo_job = should_embargo_job(mock_user, trigger_time, n_simulation)
+
+        validate_job_name(args.label)
+
+        # Override the output directory
+        args.outdir = "./"
+
+        # Strip the prior, gps, timeslide, and injection file
+        # as DataGenerationInput has trouble without the actual file existing
+        # For HDF5 uploads, these files don't actually exist as physical files
+
+        # Don't change the prior file if it's one of the defaults
+        if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
+            args.prior_file = None
+
+        args.gps_file = None
+        args.timeslide_file = None
+        args.injection_file = None
+        args.psd_dict = None
+
+        # TODO: Better handle supporting files for HDF5 uploads if it's even possible
+        # For now, we skip supporting files since they don't exist as physical files
+        # in HDF5 uploads - the data might be embedded in the HDF5 file itself?
+
+        # Convert the modified arguments back to an ini string
+        ini_string = bilby_args_to_ini_string(args)
+
+        with transaction.atomic():
+            # Create the bilby job
+            bilby_job = BilbyJob(
+                user_id=upload_token.user_id,
+                name=args.label,
+                description=details.description,
+                private=details.private,
+                ini_string=ini_string,
+                is_ligo_job=is_ligo_job,
+                job_type=BilbyJobType.UPLOADED,
+            )
+            bilby_job.save()
+
+            # Move the staging directory to the actual job directory
+            job_dir = bilby_job.get_upload_directory()
+            shutil.move(job_staging_dir, job_dir)
+
+            # Generate the archive.tar.gz file
+            p = subprocess.Popen(
+                ["tar", "-cvf", "archive.tar.gz", "."],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=job_dir,
+            )
+            out, err = p.communicate()
+
+            logging.info(f"Packing uploaded HDF5 job archive for {job_name} had return code {p.returncode}")
+            logging.info(f"stdout: {out}")
+            logging.info(f"stderr: {err}")
+
+            if p.returncode != 0:
+                raise Exception("Unable to repack the uploaded HDF5 job")
+
+        # Job is validated and uploaded, return the job
+        return bilby_job
 
 
 def file_download_job_file(request, fdl):

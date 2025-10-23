@@ -130,6 +130,9 @@ class TestJobUpload(BilbyTestCase):
         self.assertEqual(job.description, test_description)
         self.assertEqual(job.private, test_private)
         self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
+        # Check that is_ligo_job is set correctly based on embargo status
+        # For a job without trigger_time or with simulated data, it should be False
+        self.assertFalse(job.is_ligo_job, "Job without embargoed data should not be marked as LIGO job")
 
         # Check that the output directories and ini file were correctly created
         job_dir = job.get_upload_directory()
@@ -365,6 +368,140 @@ class TestJobUpload(BilbyTestCase):
         self.assertEqual("Invalid or corrupt tar.gz file", response.errors[0]["message"])
 
         self.assertFalse(BilbyJob.objects.all().exists())
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
+    def test_job_upload_embargoed_ligo_job(self):
+        """Test that jobs with embargoed data are marked as LIGO jobs."""
+        token = self.get_upload_token()
+
+        test_name = "embargoed_job"
+        test_description = "Test Embargoed Job"
+        test_private = False
+
+        # Create an INI string with trigger_time after embargo start time
+        test_ini_string = create_test_ini_string(
+            {
+                "label": test_name,
+                "outdir": "./",
+                "trigger-time": "2.0",  # After embargo start time
+                "n-simulation": "0",  # Real data, not simulated
+            },
+            True,
+        )
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        expected = {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertDictEqual(expected, response.data)
+
+        # Check that the job was created with is_ligo_job=True
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertTrue(job.is_ligo_job, "Job should be marked as LIGO job due to embargoed data")
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
+    def test_job_upload_non_embargoed_job(self):
+        """Test that jobs with non-embargoed data are not marked as LIGO jobs."""
+        token = self.get_upload_token()
+
+        test_name = "non_embargoed_job"
+        test_description = "Test Non-Embargoed Job"
+        test_private = False
+
+        # Create an INI string with trigger_time before embargo start time
+        test_ini_string = create_test_ini_string(
+            {
+                "label": test_name,
+                "outdir": "./",
+                "trigger-time": "0.5",  # Before embargo start time
+                "n-simulation": "0",  # Real data, not simulated
+            },
+            True,
+        )
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        expected = {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertDictEqual(expected, response.data)
+
+        # Check that the job was created with is_ligo_job=False
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertFalse(job.is_ligo_job, "Job should not be marked as LIGO job for non-embargoed data")
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
+    def test_job_upload_simulated_data(self):
+        """Test that jobs with simulated data are not marked as LIGO jobs, even if trigger_time is after embargo."""
+        token = self.get_upload_token()
+
+        test_name = "simulated_job"
+        test_description = "Test Simulated Job"
+        test_private = False
+
+        # Create an INI string with trigger_time after embargo start time but simulated data
+        test_ini_string = create_test_ini_string(
+            {
+                "label": test_name,
+                "outdir": "./",
+                "trigger-time": "2.0",  # After embargo start time
+                "n-simulation": "1",  # Simulated data
+            },
+            True,
+        )
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        expected = {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertDictEqual(expected, response.data)
+
+        # Check that the job was created with is_ligo_job=False (simulated data should not be LIGO job)
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertFalse(
+            job.is_ligo_job, "Simulated data job should not be marked as LIGO job even with embargoed trigger time"
+        )
 
 
 class TestJobUploadLigoPermissions(BilbyTestCase):
@@ -1248,3 +1385,257 @@ class TestJobUploadNameValidation(BilbyTestCase):
         self.assertDictEqual({"uploadBilbyJob": None}, response.data)
 
         self.assertEqual(response.errors[0]["message"], "Job name must be at least 5 characters long.")
+
+
+class TestHdf5JobUpload(BilbyTestCase):
+    def setUp(self):
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+
+        self.mutation_string = """
+            mutation JobUploadMutation($input: UploadHdf5BilbyJobMutationInput!) {
+                uploadHdf5BilbyJob(input: $input) {
+                    result {
+                        jobId
+                    }
+                }
+            }
+        """
+
+    def get_upload_token(self):
+        """Get an upload token for testing."""
+        response = self.query(
+            """
+            query {
+                generateBilbyJobUploadToken {
+                    token
+                }
+            }
+            """
+        )
+        return response.data["generateBilbyJobUploadToken"]["token"]
+
+    def create_test_hdf5_file(self, content=b"fake_hdf5_content"):
+        """Create a test HDF5 file."""
+        return SimpleUploadedFile(
+            name="test.hdf5",
+            content=content,
+            content_type="application/octet-stream",
+        )
+
+    def create_test_ini_file(self, ini_content):
+        """Create a test INI file."""
+        return SimpleUploadedFile(
+            name="test.ini",
+            content=ini_content.encode("utf-8"),
+            content_type="text/plain",
+        )
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_hdf5_job_upload_success(self):
+        """Test successful HDF5 job upload."""
+        token = self.get_upload_token()
+
+        test_name = "hdf5_job"
+        test_description = "Test HDF5 Job"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+        hdf5_file = self.create_test_hdf5_file()
+        ini_file = self.create_test_ini_file(test_ini_string)
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"name": test_name, "description": test_description, "private": test_private},
+            "hdf5File": None,
+            "iniFile": None,
+        }
+        test_files = {
+            "input.hdf5File": hdf5_file,
+            "input.iniFile": ini_file,
+        }
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        expected = {"uploadHdf5BilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertDictEqual(expected, response.data)
+
+        # Check that the job was created correctly
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertEqual(job.description, test_description)
+        self.assertEqual(job.private, test_private)
+        self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
+        # Check that is_ligo_job is set correctly based on embargo status
+        # For a job without trigger_time or with simulated data, it should be False
+        self.assertFalse(job.is_ligo_job, "Job without embargoed data should not be marked as LIGO job")
+
+        # Check that the files were uploaded correctly
+        job_dir = job.get_upload_directory()
+        self.assertTrue(os.path.isdir(job_dir))
+        self.assertTrue(os.path.isdir(os.path.join(job_dir, "data")))
+        self.assertTrue(os.path.isdir(os.path.join(job_dir, "result")))
+        self.assertTrue(os.path.isdir(os.path.join(job_dir, "results_page")))
+        self.assertTrue(os.path.isfile(os.path.join(job_dir, "result", "result.hdf5")))
+        self.assertTrue(os.path.isfile(os.path.join(job_dir, f"{test_name}_config_complete.ini")))
+        self.assertTrue(os.path.isfile(os.path.join(job_dir, "archive.tar.gz")))
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_hdf5_job_upload_invalid_hdf5_extension(self):
+        """Test HDF5 job upload with invalid file extension."""
+        token = self.get_upload_token()
+
+        test_name = "hdf5_job"
+        test_description = "Test HDF5 Job"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+        hdf5_file = SimpleUploadedFile(
+            name="test.txt",  # Wrong extension
+            content=b"fake_content",
+            content_type="text/plain",
+        )
+        ini_file = self.create_test_ini_file(test_ini_string)
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"name": test_name, "description": test_description, "private": test_private},
+            "hdf5File": None,
+            "iniFile": None,
+        }
+        test_files = {
+            "input.hdf5File": hdf5_file,
+            "input.iniFile": ini_file,
+        }
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        # The mutation should return None due to the exception being raised
+        self.assertIsNone(response.data["uploadHdf5BilbyJob"])
+        self.assertTrue(hasattr(response, "errors"))
+        self.assertIn("HDF5 file should have .hdf5 or .h5 extension", str(response.errors))
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_hdf5_job_upload_invalid_ini_extension(self):
+        """Test HDF5 job upload with invalid INI file extension."""
+        token = self.get_upload_token()
+
+        test_name = "hdf5_job"
+        test_description = "Test HDF5 Job"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+        hdf5_file = self.create_test_hdf5_file()
+        ini_file = SimpleUploadedFile(
+            name="test.txt",  # Wrong extension
+            content=test_ini_string.encode("utf-8"),
+            content_type="text/plain",
+        )
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"name": test_name, "description": test_description, "private": test_private},
+            "hdf5File": None,
+            "iniFile": None,
+        }
+        test_files = {
+            "input.hdf5File": hdf5_file,
+            "input.iniFile": ini_file,
+        }
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        # The mutation should return None due to the exception being raised
+        self.assertIsNone(response.data["uploadHdf5BilbyJob"])
+        self.assertTrue(hasattr(response, "errors"))
+        self.assertIn("INI file should have .ini extension", str(response.errors))
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
+    def test_hdf5_job_upload_embargoed_ligo_job(self):
+        """Test that HDF5 jobs with embargoed data are marked as LIGO jobs."""
+        token = self.get_upload_token()
+
+        test_name = "hdf5_embargoed_job"
+        test_description = "Test HDF5 Embargoed Job"
+        test_private = False
+
+        # Create an INI string with trigger_time after embargo start time
+        test_ini_string = create_test_ini_string(
+            {
+                "label": test_name,
+                "outdir": "./",
+                "trigger-time": "2.0",  # After embargo start time
+                "n-simulation": "0",  # Real data, not simulated
+            },
+            True,
+        )
+
+        hdf5_file = self.create_test_hdf5_file()
+        ini_file = self.create_test_ini_file(test_ini_string)
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"name": test_name, "description": test_description, "private": test_private},
+            "hdf5File": None,
+            "iniFile": None,
+        }
+        test_files = {
+            "input.hdf5File": hdf5_file,
+            "input.iniFile": ini_file,
+        }
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        expected = {"uploadHdf5BilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertDictEqual(expected, response.data)
+
+        # Check that the job was created with is_ligo_job=True
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertTrue(job.is_ligo_job, "HDF5 job should be marked as LIGO job due to embargoed data")
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
+    def test_hdf5_job_upload_non_embargoed_job(self):
+        """Test that HDF5 jobs with non-embargoed data are not marked as LIGO jobs."""
+        token = self.get_upload_token()
+
+        test_name = "hdf5_non_embargoed_job"
+        test_description = "Test HDF5 Non-Embargoed Job"
+        test_private = False
+
+        # Create an INI string with trigger_time before embargo start time
+        test_ini_string = create_test_ini_string(
+            {
+                "label": test_name,
+                "outdir": "./",
+                "trigger-time": "0.5",  # Before embargo start time
+                "n-simulation": "0",  # Real data, not simulated
+            },
+            True,
+        )
+
+        hdf5_file = self.create_test_hdf5_file()
+        ini_file = self.create_test_ini_file(test_ini_string)
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"name": test_name, "description": test_description, "private": test_private},
+            "hdf5File": None,
+            "iniFile": None,
+        }
+        test_files = {
+            "input.hdf5File": hdf5_file,
+            "input.iniFile": ini_file,
+        }
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        expected = {"uploadHdf5BilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertDictEqual(expected, response.data)
+
+        # Check that the job was created with is_ligo_job=False
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertFalse(job.is_ligo_job, "HDF5 job should not be marked as LIGO job for non-embargoed data")
