@@ -45,18 +45,90 @@ def validate_job_name(name):
         raise Exception("Job name must not contain any spaces or special characters.")
 
 
-def embargo_from_args(user, args):
+def check_job_embargo_status(user, args):
+    """
+    Check if a job should be embargoed based on user and job arguments.
+
+    This function serves two distinct purposes depending on the context:
+
+    1. UPLOAD PERMISSION CHECK (when user is the actual uploader):
+       - Used in upload functions (upload_bilby_job, upload_external_bilby_job, upload_hdf5_bilby_job)
+       - Determines if the current user is allowed to upload this specific job
+       - LIGO users can upload embargoed jobs, non-LIGO users cannot
+       - Throws exception if non-LIGO user tries to upload embargoed data
+
+    2. JOB CLASSIFICATION CHECK (when user is None):
+       - Used in _create_bilby_job_record to determine the is_ligo_job flag
+       - Simulates a non-LIGO user to determine if the job contains proprietary LIGO data
+       - If the job would be embargoed for a non-LIGO user, it contains LIGO data
+       - This flag controls job visibility: non-LIGO users can't see LIGO data jobs
+
+    The embargo logic considers:
+    - trigger_time: Jobs with trigger_time >= EMBARGO_START_TIME are embargoed
+    - n_simulation: Simulated jobs (n_simulation != 0) are never embargoed
+    - user status: LIGO users bypass embargo restrictions
+
+    Args:
+        user: The user object. If None, treats as non-LIGO user for embargo checking.
+        args: Parsed INI arguments containing trigger_time and n_simulation
+
+    Returns:
+        bool: True if the job should be embargoed, False otherwise.
+    """
+    # Parse trigger_time from INI args - can be a float or event name like "GW150914"
     try:
         trigger_time = float(args.trigger_time)
     except ValueError:  # If trigger time is not able to be converted to a float
         try:
-            trigger_time = event_gps(args.trigger_time)
+            trigger_time = event_gps(args.trigger_time)  # Try to resolve event name to GPS time
         except ValueError:  # If event_gps cannot find the event, raises a ValueError
             trigger_time = None
     except TypeError:
         trigger_time = None
+
+    # Parse n_simulation from INI args - determines if job uses simulated data
     n_simulation = args.n_simulation if args.n_simulation is not None else None
+    # Convert to boolean for embargo checking (0 = False, non-zero = True)
+    if n_simulation is not None:
+        n_simulation = bool(int(n_simulation))
+
+    # Delegate to the core embargo logic in utils/embargo.py
     return should_embargo_job(user, trigger_time, n_simulation)
+
+
+def _parse_and_validate_ini(ini_content):
+    """Parse INI content and return validated args."""
+    args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
+    validate_job_name(args.label)
+    return args
+
+
+def _create_bilby_job_record(user, details, args, job_type, ini_string=None):
+    """Create a BilbyJob record with common logic."""
+    if ini_string is None:
+        ini_string = bilby_args_to_ini_string(args)
+
+    # Check if this job would be embargoed for non-LIGO users.
+    # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
+    # We pass None as the user parameter to simulate a non-LIGO user, which allows us
+    # to determine if the job contains embargoed data regardless of who is actually uploading it.
+    is_ligo_job = check_job_embargo_status(None, args)
+
+    bilby_job = BilbyJob.objects.create(
+        user_id=user.id,
+        name=args.label,
+        description=details.description,
+        private=details.private,
+        ini_string=ini_string,
+        job_type=job_type,
+        is_ligo_job=is_ligo_job,
+    )
+
+    # Set official label for GWOSC ingest user
+    if user.id == settings.GWOSC_INGEST_USER:
+        bilby_job.labels.set([Label.objects.get(name="Official")])
+
+    return bilby_job
 
 
 def create_bilby_job(user, params):
@@ -340,7 +412,7 @@ def create_bilby_job_from_ini_string(user, params):
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
     args = bilby_ini_string_to_args(params.ini_string.ini_string.encode("utf-8"))
 
-    if embargo_from_args(user, args):
+    if check_job_embargo_status(user, args):
         raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
     if args.outdir == ".":
@@ -487,46 +559,12 @@ def upload_bilby_job(user, upload_token, details, job_file):
         with open(os.path.join(job_staging_dir, ini_file), "r") as f:
             ini_content = f.read()
 
-        # Parse the ini file to check it's validity
-        args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
+        # Parse and validate the INI file
+        args = _parse_and_validate_ini(ini_content)
 
-        # STEP 1: Check if this job would be embargoed for the current user
-        # This determines whether the current user is allowed to upload this job.
-        # LIGO users can upload embargoed jobs, non-LIGO users cannot.
-        if embargo_from_args(user, args):
-            raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
-
-        # STEP 2: Determine if this job contains LIGO data (is_ligo_job flag)
-        # This is separate from the upload permission check above.
-        # We need to determine if the job contains proprietary LIGO data by checking
-        # whether it would be embargoed for non-LIGO users.
-        #
-        # Extract trigger_time and n_simulation from the INI args
-        try:
-            trigger_time = float(args.trigger_time)
-        except (ValueError, TypeError):
-            try:
-                trigger_time = event_gps(args.trigger_time)
-            except ValueError:
-                trigger_time = None
-        n_simulation = args.n_simulation if args.n_simulation is not None else None
-
-        # Check if this job would be embargoed for non-LIGO users.
-        # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
-        # We pass None as the user parameter to should_embargo_job() to simulate
-        # a non-LIGO user, which allows us to determine if the job contains
-        # embargoed data regardless of who is actually uploading it.
-        is_ligo_job = should_embargo_job(None, trigger_time, n_simulation)
-
-        # However, if all channels are GWOSC, then it's not proprietary LIGO data
-        # even if it would be embargoed for non-LIGO users
-        if is_ligo_job and hasattr(args, "channel_dict") and args.channel_dict:
-            # Check if all channels are GWOSC
-            all_gwosc = all(channel == "GWOSC" for channel in args.channel_dict.values())
-            if all_gwosc:
-                is_ligo_job = False
-
-        validate_job_name(args.label)
+        # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
+        if check_job_embargo_status(user, args):
+            raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
 
         args.idx = None
         args.ini = None
@@ -572,16 +610,10 @@ def upload_bilby_job(user, upload_token, details, job_file):
             # * The final move of the staging directory to the job directory raises an exception (Disk full etc)
             # * The generation of the archive.tar.gz file fails (Disk full etc)
 
-            # Create the bilby job
-            bilby_job = BilbyJob(
-                user_id=upload_token.user_id,
-                name=args.label,
-                description=details.description,
-                private=details.private,
-                ini_string=ini_string,
-                is_ligo_job=is_ligo_job,
-                job_type=BilbyJobType.UPLOADED,
-            )
+            # Create the bilby job record
+            bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.UPLOADED, ini_string)
+            # Override the user_id to use the upload token's user
+            bilby_job.user_id = upload_token.user_id
             bilby_job.save()
 
             # Save any supporting file records
@@ -628,20 +660,20 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
 
 def upload_external_bilby_job(user, details, ini_file, result_url):
-    # Parse the ini file to check it's validity
-    args = bilby_ini_string_to_args(ini_file.encode("utf-8"))
+    # Parse and validate the INI file
+    args = _parse_and_validate_ini(ini_file)
 
-    if embargo_from_args(user, args):
-        raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
+    # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
+    if check_job_embargo_status(user, args):
+        raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
 
-    validate_job_name(details.name)
+    # Set the job name from details
     args.label = details.name
-
-    args.idx = None
-    args.ini = None
 
     # Strip the prior, gps, timeslide, and injection file
     # as DataGenerationInput has trouble without the actual file existing
+    args.idx = None
+    args.ini = None
 
     # Don't change the prior file if it's one of the defaults
     if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
@@ -652,21 +684,8 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
     args.injection_file = None
     args.psd_dict = None
 
-    # Convert the modified arguments back to an ini string
-    ini_string = bilby_args_to_ini_string(args)
-
-    # Create the bilby job
-    bilby_job = BilbyJob.objects.create(
-        user_id=user.id,
-        name=args.label,
-        description=details.description,
-        private=details.private,
-        ini_string=ini_string,
-        job_type=BilbyJobType.EXTERNAL,
-    )
-
-    if user.id == settings.GWOSC_INGEST_USER:
-        bilby_job.labels.set([Label.objects.get(name="Official")])
+    # Create the bilby job record
+    bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.EXTERNAL)
 
     # Create the relevant External Bilby Job record as well
     ExternalBilbyJob.objects.create(job=bilby_job, url=result_url)
@@ -725,46 +744,12 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         with open(ini_path, "r") as f:
             ini_content = f.read()
 
-        # Parse the ini file to check it's validity
-        args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
+        # Parse and validate the INI file
+        args = _parse_and_validate_ini(ini_content)
 
-        # STEP 1: Check if this job would be embargoed for the current user
-        # This determines whether the current user is allowed to upload this job.
-        # LIGO users can upload embargoed jobs, non-LIGO users cannot.
-        if embargo_from_args(user, args):
-            raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
-
-        # STEP 2: Determine if this job contains LIGO data (is_ligo_job flag)
-        # This is separate from the upload permission check above.
-        # We need to determine if the job contains proprietary LIGO data by checking
-        # whether it would be embargoed for non-LIGO users.
-        #
-        # Extract trigger_time and n_simulation from the INI args
-        try:
-            trigger_time = float(args.trigger_time)
-        except (ValueError, TypeError):
-            try:
-                trigger_time = event_gps(args.trigger_time)
-            except ValueError:
-                trigger_time = None
-        n_simulation = args.n_simulation if args.n_simulation is not None else None
-
-        # Check if this job would be embargoed for non-LIGO users.
-        # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
-        # We pass None as the user parameter to should_embargo_job() to simulate
-        # a non-LIGO user, which allows us to determine if the job contains
-        # embargoed data regardless of who is actually uploading it.
-        is_ligo_job = should_embargo_job(None, trigger_time, n_simulation)
-
-        # However, if all channels are GWOSC, then it's not proprietary LIGO data
-        # even if it would be embargoed for non-LIGO users
-        if is_ligo_job and hasattr(args, "channel_dict") and args.channel_dict:
-            # Check if all channels are GWOSC
-            all_gwosc = all(channel == "GWOSC" for channel in args.channel_dict.values())
-            if all_gwosc:
-                is_ligo_job = False
-
-        validate_job_name(args.label)
+        # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
+        if check_job_embargo_status(user, args):
+            raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
 
         # Override the output directory
         args.outdir = "./"
@@ -790,16 +775,10 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         ini_string = bilby_args_to_ini_string(args)
 
         with transaction.atomic():
-            # Create the bilby job
-            bilby_job = BilbyJob(
-                user_id=upload_token.user_id,
-                name=args.label,
-                description=details.description,
-                private=details.private,
-                ini_string=ini_string,
-                is_ligo_job=is_ligo_job,
-                job_type=BilbyJobType.UPLOADED,
-            )
+            # Create the bilby job record
+            bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.UPLOADED, ini_string)
+            # Override the user_id to use the upload token's user
+            bilby_job.user_id = upload_token.user_id
             bilby_job.save()
 
             # Move the staging directory to the actual job directory

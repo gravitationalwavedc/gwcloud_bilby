@@ -739,7 +739,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         self.assertEqual(BilbyJob.objects.count(), 0)
         self.assertEqual(SupportingFile.objects.count(), 0)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_psd1(self):
         test_ini_string = create_test_ini_string(
             {
@@ -771,7 +771,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.PSD)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_psd2(self):
         test_ini_string = create_test_ini_string(
             {
@@ -806,7 +806,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.PSD)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_psd3(self):
         test_ini_string = create_test_ini_string(
             {
@@ -842,7 +842,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.PSD)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_calibration1(self):
         test_ini_string = create_test_ini_string(
             {
@@ -874,7 +874,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.CALIBRATION)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_calibration2(self):
         test_ini_string = create_test_ini_string(
             {
@@ -910,7 +910,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.CALIBRATION)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_calibration3(self):
         test_ini_string = create_test_ini_string(
             {
@@ -948,7 +948,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.CALIBRATION)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_prior(self):
         test_ini_string = create_test_ini_string(
             {
@@ -980,7 +980,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.PRIOR)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_gps(self):
         test_ini_string = create_test_ini_string(
             {
@@ -1012,7 +1012,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.GPS)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_timeslide(self):
         test_ini_string = create_test_ini_string(
             {
@@ -1044,7 +1044,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.TIME_SLIDE)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_injection(self):
         test_ini_string = create_test_ini_string(
             {
@@ -1076,7 +1076,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.INJECTION)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_numerical_relativity(self):
         test_ini_string = create_test_ini_string(
             {
@@ -1108,7 +1108,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.NUMERICAL_RELATIVITY)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_distance_marginalization(self):
         test_ini_string = create_test_ini_string(
             {
@@ -1143,7 +1143,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
                 SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE,
             )
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_data_dict_1(self):
         test_ini_string = create_test_ini_string(
             {
@@ -1175,7 +1175,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.DATA)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_data_dict_2(self):
         test_ini_string = create_test_ini_string(
             {
@@ -1210,7 +1210,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
             self.assertEqual(supporting_file.file_type, SupportingFile.DATA)
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_all(self):
         test_ini_string = create_test_ini_string(
             {
