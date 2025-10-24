@@ -565,7 +565,6 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
         # Check that the job is marked as not proprietary
         self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
 
-    @silence_errors
     def test_ligo_user_with_gwosc(self):
         # This test checks that a non LIGO user can still create non LIGO jobs
         self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])

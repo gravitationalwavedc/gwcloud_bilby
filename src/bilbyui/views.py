@@ -500,7 +500,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
         # This is separate from the upload permission check above.
         # We need to determine if the job contains proprietary LIGO data by checking
         # whether it would be embargoed for non-LIGO users.
-        # 
+        #
         # Extract trigger_time and n_simulation from the INI args
         try:
             trigger_time = float(args.trigger_time)
@@ -517,6 +517,14 @@ def upload_bilby_job(user, upload_token, details, job_file):
         # a non-LIGO user, which allows us to determine if the job contains
         # embargoed data regardless of who is actually uploading it.
         is_ligo_job = should_embargo_job(None, trigger_time, n_simulation)
+
+        # However, if all channels are GWOSC, then it's not proprietary LIGO data
+        # even if it would be embargoed for non-LIGO users
+        if is_ligo_job and hasattr(args, "channel_dict") and args.channel_dict:
+            # Check if all channels are GWOSC
+            all_gwosc = all(channel == "GWOSC" for channel in args.channel_dict.values())
+            if all_gwosc:
+                is_ligo_job = False
 
         validate_job_name(args.label)
 
@@ -730,7 +738,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         # This is separate from the upload permission check above.
         # We need to determine if the job contains proprietary LIGO data by checking
         # whether it would be embargoed for non-LIGO users.
-        # 
+        #
         # Extract trigger_time and n_simulation from the INI args
         try:
             trigger_time = float(args.trigger_time)
@@ -747,6 +755,14 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         # a non-LIGO user, which allows us to determine if the job contains
         # embargoed data regardless of who is actually uploading it.
         is_ligo_job = should_embargo_job(None, trigger_time, n_simulation)
+
+        # However, if all channels are GWOSC, then it's not proprietary LIGO data
+        # even if it would be embargoed for non-LIGO users
+        if is_ligo_job and hasattr(args, "channel_dict") and args.channel_dict:
+            # Check if all channels are GWOSC
+            all_gwosc = all(channel == "GWOSC" for channel in args.channel_dict.values())
+            if all_gwosc:
+                is_ligo_job = False
 
         validate_job_name(args.label)
 

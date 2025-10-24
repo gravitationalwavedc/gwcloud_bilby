@@ -44,15 +44,15 @@ def qs_embargo_filter(qs):
 def should_embargo_job(user, trigger_time, simulated):
     """
     Determine if a job should be embargoed based on user, trigger time, and simulation status.
-    
+
     Args:
         user: The user object. If None, treats as non-LIGO user for embargo checking.
         trigger_time: The GPS trigger time of the job (float or None).
         simulated: Whether the job uses simulated data (True/False or None).
-        
+
     Returns:
         bool: True if the job should be embargoed, False otherwise.
-        
+
     Note:
         - If user is None, treats as non-LIGO user (subject to embargo)
         - Simulated jobs are never embargoed
@@ -68,6 +68,9 @@ def should_embargo_job(user, trigger_time, simulated):
         return False
 
     if trigger_time is None:
+        return False
+
+    if settings.EMBARGO_START_TIME is None:
         return False
 
     if trigger_time < settings.EMBARGO_START_TIME:
