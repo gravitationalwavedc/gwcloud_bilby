@@ -91,6 +91,16 @@ class TestShouldEmbargoJob(BilbyTestCase):
         self.assertFalse(should_embargo_job(self.user, None, True))
         self.assertFalse(should_embargo_job(self.user, None, False))
 
+    @override_settings(EMBARGO_START_TIME=1.5)
+    def test_with_embargo_none_user(self):
+        # When user is None, should treat as non-LIGO user for embargo checking
+        self.assertFalse(should_embargo_job(None, 1.0, True))
+        self.assertFalse(should_embargo_job(None, 1.0, False))
+        self.assertFalse(should_embargo_job(None, 2.0, True))
+        self.assertTrue(should_embargo_job(None, 2.0, False))
+        self.assertFalse(should_embargo_job(None, None, True))
+        self.assertFalse(should_embargo_job(None, None, False))
+
 
 class TestEmbargoFilter(BilbyTestCase):
     def setUp(self):

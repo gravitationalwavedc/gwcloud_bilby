@@ -11,7 +11,6 @@ from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import convert_string_to_dict
 from django.conf import settings
-from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
@@ -491,13 +490,18 @@ def upload_bilby_job(user, upload_token, details, job_file):
         # Parse the ini file to check it's validity
         args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
 
-        # Check if this job would be embargoed for non-LIGO users
-        # If so, it should be marked as a LIGO job
+        # STEP 1: Check if this job would be embargoed for the current user
+        # This determines whether the current user is allowed to upload this job.
+        # LIGO users can upload embargoed jobs, non-LIGO users cannot.
         if embargo_from_args(user, args):
             raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
-        # Determine if this is a LIGO job based on embargo status
-        # If the job would be embargoed for non-LIGO users, it's a LIGO job
+        # STEP 2: Determine if this job contains LIGO data (is_ligo_job flag)
+        # This is separate from the upload permission check above.
+        # We need to determine if the job contains proprietary LIGO data by checking
+        # whether it would be embargoed for non-LIGO users.
+        # 
+        # Extract trigger_time and n_simulation from the INI args
         try:
             trigger_time = float(args.trigger_time)
         except (ValueError, TypeError):
@@ -507,14 +511,12 @@ def upload_bilby_job(user, upload_token, details, job_file):
                 trigger_time = None
         n_simulation = args.n_simulation if args.n_simulation is not None else None
 
-        # Create a mock non-LIGO user to check if this job would be embargoed
-        # We need to determine if this job should be marked as a LIGO job by checking
-        # whether it would be embargoed for non-LIGO users. If it would be embargoed,
-        # then it contains proprietary data and should be marked as a LIGO job.
-        mock_user = AnonymousUser()
-        mock_user.is_ligo_user = lambda: False
-
-        is_ligo_job = should_embargo_job(mock_user, trigger_time, n_simulation)
+        # Check if this job would be embargoed for non-LIGO users.
+        # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
+        # We pass None as the user parameter to should_embargo_job() to simulate
+        # a non-LIGO user, which allows us to determine if the job contains
+        # embargoed data regardless of who is actually uploading it.
+        is_ligo_job = should_embargo_job(None, trigger_time, n_simulation)
 
         validate_job_name(args.label)
 
@@ -718,11 +720,18 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         # Parse the ini file to check it's validity
         args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
 
-        # Check if this job would be embargoed for non-LIGO users
+        # STEP 1: Check if this job would be embargoed for the current user
+        # This determines whether the current user is allowed to upload this job.
+        # LIGO users can upload embargoed jobs, non-LIGO users cannot.
         if embargo_from_args(user, args):
             raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
-        # Determine if this is a LIGO job based on embargo status
+        # STEP 2: Determine if this job contains LIGO data (is_ligo_job flag)
+        # This is separate from the upload permission check above.
+        # We need to determine if the job contains proprietary LIGO data by checking
+        # whether it would be embargoed for non-LIGO users.
+        # 
+        # Extract trigger_time and n_simulation from the INI args
         try:
             trigger_time = float(args.trigger_time)
         except (ValueError, TypeError):
@@ -732,14 +741,12 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
                 trigger_time = None
         n_simulation = args.n_simulation if args.n_simulation is not None else None
 
-        # Create a mock non-LIGO user to check if this job would be embargoed
-        # We need to determine if this job should be marked as a LIGO job by checking
-        # whether it would be embargoed for non-LIGO users. If it would be embargoed,
-        # then it contains proprietary data and should be marked as a LIGO job.
-        mock_user = AnonymousUser()
-        mock_user.is_ligo_user = lambda: False
-
-        is_ligo_job = should_embargo_job(mock_user, trigger_time, n_simulation)
+        # Check if this job would be embargoed for non-LIGO users.
+        # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
+        # We pass None as the user parameter to should_embargo_job() to simulate
+        # a non-LIGO user, which allows us to determine if the job contains
+        # embargoed data regardless of who is actually uploading it.
+        is_ligo_job = should_embargo_job(None, trigger_time, n_simulation)
 
         validate_job_name(args.label)
 
