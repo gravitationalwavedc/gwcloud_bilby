@@ -53,6 +53,7 @@ from .views import (
     upload_bilby_job,
     upload_supporting_files,
     upload_external_bilby_job,
+    upload_hdf5_bilby_job,
 )
 
 
@@ -700,6 +701,33 @@ class UploadExternalBilbyJobMutation(relay.ClientIDMutation):
         return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
 
 
+class UploadHdf5BilbyJobMutation(relay.ClientIDMutation):
+    class Input:
+        upload_token = graphene.String()
+        details = JobDetailsInput()
+        hdf5_file = Upload(required=True)
+        ini_file = Upload(required=True)
+
+    result = graphene.Field(BilbyJobCreationResult)
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, upload_token, details, hdf5_file, ini_file):
+        # Get the token being used to perform the upload - this will return None if the token doesn't exist or
+        # is expired
+        token = BilbyJobUploadToken.get_by_token(upload_token)
+        if not token:
+            raise GraphQLError("Job upload token is invalid or expired.")
+
+        # Try uploading the bilby job with HDF5 file
+        bilby_job = upload_hdf5_bilby_job(info.context.user, token, details, hdf5_file, ini_file)
+
+        # Convert the bilby job id to a global id
+        job_id = to_global_id("BilbyJobNode", bilby_job.id)
+
+        # Return the bilby job id to the client
+        return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
+
+
 class Mutation(graphene.ObjectType):
     new_bilby_job = BilbyJobMutation.Field()
     new_bilby_job_from_ini_string = BilbyJobFromIniStringMutation.Field()
@@ -711,3 +739,4 @@ class Mutation(graphene.ObjectType):
     delete_event_id = DeleteEventIDMutation.Field()
     upload_supporting_files = UploadSupportingFilesMutation.Field()
     upload_external_bilby_job = UploadExternalBilbyJobMutation.Field()
+    upload_hdf5_bilby_job = UploadHdf5BilbyJobMutation.Field()

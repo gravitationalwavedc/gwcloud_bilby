@@ -45,18 +45,90 @@ def validate_job_name(name):
         raise Exception("Job name must not contain any spaces or special characters.")
 
 
-def embargo_from_args(user, args):
+def check_job_embargo_status(user, args):
+    """
+    Check if a job should be embargoed based on user and job arguments.
+
+    This function serves two distinct purposes depending on the context:
+
+    1. UPLOAD PERMISSION CHECK (when user is the actual uploader):
+       - Used in upload functions (upload_bilby_job, upload_external_bilby_job, upload_hdf5_bilby_job)
+       - Determines if the current user is allowed to upload this specific job
+       - LIGO users can upload embargoed jobs, non-LIGO users cannot
+       - Throws exception if non-LIGO user tries to upload embargoed data
+
+    2. JOB CLASSIFICATION CHECK (when user is None):
+       - Used in _create_bilby_job_record to determine the is_ligo_job flag
+       - Simulates a non-LIGO user to determine if the job contains proprietary LIGO data
+       - If the job would be embargoed for a non-LIGO user, it contains LIGO data
+       - This flag controls job visibility: non-LIGO users can't see LIGO data jobs
+
+    The embargo logic considers:
+    - trigger_time: Jobs with trigger_time >= EMBARGO_START_TIME are embargoed
+    - n_simulation: Simulated jobs (n_simulation != 0) are never embargoed
+    - user status: LIGO users bypass embargo restrictions
+
+    Args:
+        user: The user object. If None, treats as non-LIGO user for embargo checking.
+        args: Parsed INI arguments containing trigger_time and n_simulation
+
+    Returns:
+        bool: True if the job should be embargoed, False otherwise.
+    """
+    # Parse trigger_time from INI args - can be a float or event name like "GW150914"
     try:
         trigger_time = float(args.trigger_time)
     except ValueError:  # If trigger time is not able to be converted to a float
         try:
-            trigger_time = event_gps(args.trigger_time)
+            trigger_time = event_gps(args.trigger_time)  # Try to resolve event name to GPS time
         except ValueError:  # If event_gps cannot find the event, raises a ValueError
             trigger_time = None
     except TypeError:
         trigger_time = None
+
+    # Parse n_simulation from INI args - determines if job uses simulated data
     n_simulation = args.n_simulation if args.n_simulation is not None else None
+    # Convert to boolean for embargo checking (0 = False, non-zero = True)
+    if n_simulation is not None:
+        n_simulation = bool(int(n_simulation))
+
+    # Delegate to the core embargo logic in utils/embargo.py
     return should_embargo_job(user, trigger_time, n_simulation)
+
+
+def _parse_and_validate_ini(ini_content):
+    """Parse INI content and return validated args."""
+    args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
+    validate_job_name(args.label)
+    return args
+
+
+def _create_bilby_job_record(user, details, args, job_type, ini_string=None):
+    """Create a BilbyJob record with common logic."""
+    if ini_string is None:
+        ini_string = bilby_args_to_ini_string(args)
+
+    # Check if this job would be embargoed for non-LIGO users.
+    # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
+    # We pass None as the user parameter to simulate a non-LIGO user, which allows us
+    # to determine if the job contains embargoed data regardless of who is actually uploading it.
+    is_ligo_job = check_job_embargo_status(None, args)
+
+    bilby_job = BilbyJob.objects.create(
+        user_id=user.id,
+        name=args.label,
+        description=details.description,
+        private=details.private,
+        ini_string=ini_string,
+        job_type=job_type,
+        is_ligo_job=is_ligo_job,
+    )
+
+    # Set official label for GWOSC ingest user
+    if user.id == settings.GWOSC_INGEST_USER:
+        bilby_job.labels.set([Label.objects.get(name="Official")])
+
+    return bilby_job
 
 
 def create_bilby_job(user, params):
@@ -340,7 +412,7 @@ def create_bilby_job_from_ini_string(user, params):
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
     args = bilby_ini_string_to_args(params.ini_string.ini_string.encode("utf-8"))
 
-    if embargo_from_args(user, args):
+    if check_job_embargo_status(user, args):
         raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
     if args.outdir == ".":
@@ -429,8 +501,6 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
 
 
 def upload_bilby_job(user, upload_token, details, job_file):
-    is_ligo_job = False
-
     # Check that the uploaded file is a tar.gz file
     if not job_file.name.endswith("tar.gz"):
         raise Exception("Job upload should be a tar.gz file")
@@ -489,13 +559,12 @@ def upload_bilby_job(user, upload_token, details, job_file):
         with open(os.path.join(job_staging_dir, ini_file), "r") as f:
             ini_content = f.read()
 
-        # Parse the ini file to check it's validity
-        args = bilby_ini_string_to_args(ini_content.encode("utf-8"))
+        # Parse and validate the INI file
+        args = _parse_and_validate_ini(ini_content)
 
-        if embargo_from_args(user, args):
-            raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
-
-        validate_job_name(args.label)
+        # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
+        if check_job_embargo_status(user, args):
+            raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
 
         args.idx = None
         args.ini = None
@@ -541,16 +610,10 @@ def upload_bilby_job(user, upload_token, details, job_file):
             # * The final move of the staging directory to the job directory raises an exception (Disk full etc)
             # * The generation of the archive.tar.gz file fails (Disk full etc)
 
-            # Create the bilby job
-            bilby_job = BilbyJob(
-                user_id=upload_token.user_id,
-                name=args.label,
-                description=details.description,
-                private=details.private,
-                ini_string=ini_string,
-                is_ligo_job=is_ligo_job,
-                job_type=BilbyJobType.UPLOADED,
-            )
+            # Create the bilby job record
+            bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.UPLOADED, ini_string)
+            # Override the user_id to use the upload token's user
+            bilby_job.user_id = upload_token.user_id
             bilby_job.save()
 
             # Save any supporting file records
@@ -597,20 +660,20 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
 
 def upload_external_bilby_job(user, details, ini_file, result_url):
-    # Parse the ini file to check it's validity
-    args = bilby_ini_string_to_args(ini_file.encode("utf-8"))
+    # Parse and validate the INI file
+    args = _parse_and_validate_ini(ini_file)
 
-    if embargo_from_args(user, args):
-        raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
+    # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
+    if check_job_embargo_status(user, args):
+        raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
 
-    validate_job_name(details.name)
+    # Set the job name from details
     args.label = details.name
-
-    args.idx = None
-    args.ini = None
 
     # Strip the prior, gps, timeslide, and injection file
     # as DataGenerationInput has trouble without the actual file existing
+    args.idx = None
+    args.ini = None
 
     # Don't change the prior file if it's one of the defaults
     if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
@@ -621,26 +684,125 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
     args.injection_file = None
     args.psd_dict = None
 
-    # Convert the modified arguments back to an ini string
-    ini_string = bilby_args_to_ini_string(args)
-
-    # Create the bilby job
-    bilby_job = BilbyJob.objects.create(
-        user_id=user.id,
-        name=args.label,
-        description=details.description,
-        private=details.private,
-        ini_string=ini_string,
-        job_type=BilbyJobType.EXTERNAL,
-    )
-
-    if user.id == settings.GWOSC_INGEST_USER:
-        bilby_job.labels.set([Label.objects.get(name="Official")])
+    # Create the bilby job record
+    bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.EXTERNAL)
 
     # Create the relevant External Bilby Job record as well
     ExternalBilbyJob.objects.create(job=bilby_job, url=result_url)
 
     return bilby_job
+
+
+def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
+    """
+    Upload a bilby job with HDF5 result file and INI configuration file.
+
+    This function creates an UPLOADED job type with the actual HDF5 result file
+    and INI configuration file stored in GWCloud's internal storage.
+
+    Args:
+        user: The user uploading the job
+        upload_token: The upload token for authentication
+        details: Job details (name, description, private, etc.)
+        hdf5_file: The HDF5 result file
+        ini_file: The INI configuration file
+
+    Returns:
+        BilbyJob: The created bilby job
+    """
+    # Check that the uploaded files are the correct types
+    if not hdf5_file.name.endswith((".hdf5", ".h5")):
+        raise Exception("HDF5 file should have .hdf5 or .h5 extension")
+
+    if not ini_file.name.endswith(".ini"):
+        raise Exception("INI file should have .ini extension")
+
+    # Check that the job upload directory exists
+    os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
+
+    # Create a temporary staging directory for the job
+    with TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir:
+        # Create the required directory structure
+        for directory in ["data", "result", "results_page"]:
+            os.makedirs(os.path.join(job_staging_dir, directory), exist_ok=True)
+
+        # Save the HDF5 file to the result directory
+        hdf5_path = os.path.join(job_staging_dir, "result", "result.hdf5")
+        with open(hdf5_path, "wb") as f:
+            for chunk in hdf5_file.chunks():
+                f.write(chunk)
+
+        # Save the INI file with the correct naming convention
+        job_name = details.name
+        ini_filename = f"{job_name}_config_complete.ini"
+        ini_path = os.path.join(job_staging_dir, ini_filename)
+        with open(ini_path, "wb") as f:
+            for chunk in ini_file.chunks():
+                f.write(chunk)
+
+        # Read and parse the INI file
+        with open(ini_path, "r") as f:
+            ini_content = f.read()
+
+        # Parse and validate the INI file
+        args = _parse_and_validate_ini(ini_content)
+
+        # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
+        if check_job_embargo_status(user, args):
+            raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
+
+        # Override the output directory
+        args.outdir = "./"
+
+        # Strip the prior, gps, timeslide, and injection file
+        # as DataGenerationInput has trouble without the actual file existing
+        # For HDF5 uploads, these files don't actually exist as physical files
+
+        # Don't change the prior file if it's one of the defaults
+        if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
+            args.prior_file = None
+
+        args.gps_file = None
+        args.timeslide_file = None
+        args.injection_file = None
+        args.psd_dict = None
+
+        # TODO: Better handle supporting files for HDF5 uploads if it's even possible
+        # For now, we skip supporting files since they don't exist as physical files
+        # in HDF5 uploads - the data might be embedded in the HDF5 file itself?
+
+        # Convert the modified arguments back to an ini string
+        ini_string = bilby_args_to_ini_string(args)
+
+        with transaction.atomic():
+            # Create the bilby job record
+            bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.UPLOADED, ini_string)
+            # Override the user_id to use the upload token's user
+            bilby_job.user_id = upload_token.user_id
+            bilby_job.save()
+
+            # Move the staging directory to the actual job directory
+            job_dir = bilby_job.get_upload_directory()
+            shutil.move(job_staging_dir, job_dir)
+
+            # Generate the archive.tar.gz file
+            p = subprocess.Popen(
+                ["tar", "-cvf", "archive.tar.gz", "."],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=job_dir,
+            )
+            out, err = p.communicate()
+
+            logging.info(f"Packing uploaded HDF5 job archive for {job_name} had return code {p.returncode}")
+            logging.info(f"stdout: {out}")
+            logging.info(f"stderr: {err}")
+
+            if p.returncode != 0:
+                raise Exception("Unable to repack the uploaded HDF5 job")
+
+        # Job is validated and uploaded, return the job
+        return bilby_job
 
 
 def file_download_job_file(request, fdl):
