@@ -1,0 +1,7 @@
+gwcloud-python>=2.0.0
+cbcflow
+requests
+coverage
+parameterized
+unittest-xml-reporting
+PyJWT
