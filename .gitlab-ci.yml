@@ -16,6 +16,7 @@ stages:
     - apt -y install apt-utils net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
 
+# Use for any job that runs poetry install (build-essential needed for compiling wheels).
 .apt_build:
   script:
     - apt -y update
@@ -96,7 +97,7 @@ flake8:
   variables:
     POETRY_VIRTUALENVS_IN_PROJECT: "true"
   script:
-    - !reference [.apt_base, script]
+    - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_src, script]
     - src/.venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json src/
@@ -109,7 +110,7 @@ black:
   variables:
     POETRY_VIRTUALENVS_IN_PROJECT: "true"
   script:
-    - !reference [.apt_base, script]
+    - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_src, script]
     - src/.venv/bin/black --check src/
@@ -213,7 +214,7 @@ cronjob-black:
   variables:
     POETRY_VIRTUALENVS_IN_PROJECT: "true"
   script:
-    - !reference [.apt_base, script]
+    - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_cron, script]
     - gwosc_cron/.venv/bin/black --check gwosc_cron/
@@ -223,7 +224,7 @@ cronjob-flake8:
   variables:
     POETRY_VIRTUALENVS_IN_PROJECT: "true"
   script:
-    - !reference [.apt_base, script]
+    - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_cron, script]
     - gwosc_cron/.venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json gwosc_cron/
