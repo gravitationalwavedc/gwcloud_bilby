@@ -1,11 +1,14 @@
 import datetime
 import json
+import logging
 
 import jwt
 import requests
 from django.conf import settings
 
 from bilbyui.utils.misc import check_request_leak_decorator
+
+logger = logging.getLogger(__name__)
 
 
 @check_request_leak_decorator
@@ -34,30 +37,30 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
     if end_time_gt:
         qs.append("endTimeGt=" + str(round(end_time_gt.timestamp())))
 
-    print(f"""{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?{"&".join(qs)}""")
+    url = f"""{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?{"&".join(qs)}"""
+    logger.debug(f"Requesting job filter for user {user_id}: {url}")
 
     try:
         # Initiate the request to the job controller
         result = requests.request(
             "GET",
-            f"""{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?{"&".join(qs)}""",
+            url,
             headers={"Authorization": jwt_enc},
+            timeout=30,
         )
 
         # Check that the request was successful
         if result.status_code != 200:
             # Oops
-            msg = (
-                f"Error getting job status, got error code: "
-                f"{result.status_code}\n\n{result.headers}\n\n{result.content}"
-            )
-            print(msg)
+            msg = f"Error getting job filter for user {user_id}, got error code: {result.status_code}: {result.content}"
+            logger.error(msg)
             raise Exception(msg)
 
         # Parse the response from the job controller
         result = json.loads(result.content)
 
+        logger.debug(f"Successfully retrieved {len(result)} jobs for user {user_id}")
         return "OK", result
     except Exception as e:
-        print(e)
+        logger.error(f"Error getting job filter for user {user_id}: {str(e)}", exc_info=True)
         return "UNKNOWN", "Error getting job status"
