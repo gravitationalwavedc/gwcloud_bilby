@@ -49,13 +49,15 @@ class TestBilbyJobQueries(BilbyTestCase):
 
     def job_request(self, *fields):
         field_str = "\n".join(fields)
-        return self.query(f"""
+        return self.query(
+            f"""
             query {{
                 bilbyJob(id:"{self.global_id}"){{
                     {field_str}
                 }}
             }}
-            """)
+            """
+        )
 
     def request_lookup_users_mock(*args, **kwargs):
         user = User.objects.first()

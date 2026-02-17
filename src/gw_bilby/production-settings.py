@@ -23,8 +23,6 @@ ADACS_SSO_CLIENT_NAME = "gwcloud_bilby"
 ADACS_SSO_AUTH_HOST = "https://sso.adacs.org.au"
 
 # Logging configuration
-import os
-
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -85,9 +83,6 @@ LOGGING = {
         },
     },
 }
-
-# Ensure log directory exists
-os.makedirs("/var/log/gwcloud_bilby", exist_ok=True)
 
 try:
     from .environment import *  # noqa: F401, F403

@@ -1402,13 +1402,15 @@ class TestHdf5JobUpload(BilbyTestCase):
 
     def get_upload_token(self):
         """Get an upload token for testing."""
-        response = self.query("""
+        response = self.query(
+            """
             query {
                 generateBilbyJobUploadToken {
                     token
                 }
             }
-            """)
+            """
+        )
         return response.data["generateBilbyJobUploadToken"]["token"]
 
     def create_test_hdf5_file(self, content=b"fake_hdf5_content"):

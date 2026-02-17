@@ -46,7 +46,7 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
             "GET",
             url,
             headers={"Authorization": jwt_enc},
-            timeout=30,
+            timeout=10,
         )
 
         # Check that the request was successful

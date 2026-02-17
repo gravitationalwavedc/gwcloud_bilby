@@ -40,7 +40,7 @@ def request_job_status(job, user_id=None):
             "GET",
             f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?jobIds={job.job_controller_id}",
             headers={"Authorization": jwt_enc},
-            timeout=30,
+            timeout=10,
         )
 
         # Check that the request was successful

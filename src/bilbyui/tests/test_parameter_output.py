@@ -110,7 +110,8 @@ class TestJobSubmission(BilbyTestCase):
 
             job_id = response.data["newBilbyJob"]["result"]["jobId"]
 
-            response = self.query(f"""
+            response = self.query(
+                f"""
                 query {{
                     bilbyJob(id:"{job_id}"){{
                         id
@@ -165,7 +166,8 @@ class TestJobSubmission(BilbyTestCase):
                         }}
                     }}
                 }}
-                """)
+                """
+            )
 
             min_vals = [Decimal(params["params"]["detector"]["hanfordMinimumFrequency"])]
 

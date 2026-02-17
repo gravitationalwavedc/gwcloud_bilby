@@ -55,7 +55,7 @@ def request_file_download_ids(job, paths, user_id=None):
             f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
             data=json.dumps(data),
             headers={"Authorization": jwt_enc},
-            timeout=30,
+            timeout=10,
         )
 
         # Check that the request was successful

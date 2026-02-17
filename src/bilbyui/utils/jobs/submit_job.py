@@ -51,7 +51,7 @@ def submit_job(user_id, params, cluster):
             settings.GWCLOUD_JOB_CONTROLLER_API_URL + "/job/",
             data=json.dumps(data),
             headers={"Authorization": jwt_enc},
-            timeout=30,
+            timeout=10,
         )
 
         # Check that the request was successful
