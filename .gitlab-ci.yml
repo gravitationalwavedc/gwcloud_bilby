@@ -79,11 +79,15 @@ code-quality:
   image: docker:25
   variables:
     DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: tcp://docker:2375
     SP_VERSION: 0.85.26
   allow_failure: true
   services:
-    - docker:25-dind
-  before_script: []
+    - name: docker:25-dind
+      alias: docker
+  before_script:
+    - until docker info 2>/dev/null; do echo "Waiting for Docker..."; sleep 1; done
 
   script:
     - docker run
