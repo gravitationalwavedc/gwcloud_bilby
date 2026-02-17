@@ -9,7 +9,6 @@ from tempfile import NamedTemporaryFile
 import logging
 import sys
 
-
 logger = logging.getLogger("gwosc_ingest")
 logger.setLevel(logging.DEBUG)
 
