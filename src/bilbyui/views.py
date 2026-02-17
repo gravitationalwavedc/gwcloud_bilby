@@ -7,6 +7,8 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import bilby_pipe
+
+logger = logging.getLogger(__name__)
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import convert_string_to_dict
@@ -132,7 +134,10 @@ def _create_bilby_job_record(user, details, args, job_type, ini_string=None):
 
 
 def create_bilby_job(user, params):
+    logger.info(f"User {user.id} creating Bilby job: {params.details.name}")
+
     if should_embargo_job(user, float(params.data.trigger_time), params.data.data_choice == "simulated"):
+        logger.warning(f"User {user.id} attempted to run real job on embargoed data: {params.details.name}")
         raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
 
     validate_job_name(params.details.name)
@@ -285,21 +290,27 @@ def create_bilby_job(user, params):
 
     event_id = EventID.get_by_event_id(params.data.event_id, user) if params.data.event_id else None
 
-    bilby_job = BilbyJob.objects.create(
-        user_id=user.id,
-        name=params.details.name,
-        description=params.details.description,
-        private=params.details.private,
-        is_ligo_job=is_ligo_job,
-        ini_string=ini_string,
-        cluster=params.details.cluster,
-        event_id=event_id,
-    )
+    try:
+        bilby_job = BilbyJob.objects.create(
+            user_id=user.id,
+            name=params.details.name,
+            description=params.details.description,
+            private=params.details.private,
+            is_ligo_job=is_ligo_job,
+            ini_string=ini_string,
+            cluster=params.details.cluster,
+            event_id=event_id,
+        )
+        logger.info(f"Created Bilby job {bilby_job.id} for user {user.id}")
 
-    # Submit the job to the job controller
-    bilby_job.submit()
+        # Submit the job to the job controller
+        bilby_job.submit()
+        logger.info(f"Successfully submitted job {bilby_job.id} to job controller")
 
-    return bilby_job
+        return bilby_job
+    except Exception as e:
+        logger.error(f"Failed to create/submit job for user {user.id}: {str(e)}", exc_info=True)
+        raise
 
 
 def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict):
@@ -501,8 +512,11 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
 
 
 def upload_bilby_job(user, upload_token, details, job_file):
+    logger.info(f"User {user.id} uploading Bilby job: {details.name}, file: {job_file.name}")
+
     # Check that the uploaded file is a tar.gz file
     if not job_file.name.endswith("tar.gz"):
+        logger.error(f"User {user.id} attempted to upload non-tar.gz file: {job_file.name}")
         raise Exception("Job upload should be a tar.gz file")
 
     # Check that the job upload directory exists
@@ -528,9 +542,9 @@ def upload_bilby_job(user, upload_token, details, job_file):
         )
         out, err = p.communicate()
 
-        logging.info(f"Unpacking uploaded job archive {job_file.name} had return code {p.returncode}")
-        logging.info(f"stdout: {out}")
-        logging.info(f"stderr: {err}")
+        logger.info(f"Unpacking uploaded job archive {job_file.name} had return code {p.returncode}")
+        logger.debug(f"stdout: {out}")
+        logger.debug(f"stderr: {err}")
 
         if p.returncode != 0:
             raise Exception("Invalid or corrupt tar.gz file")
@@ -648,23 +662,28 @@ def upload_bilby_job(user, upload_token, details, job_file):
             )
             out, err = p.communicate()
 
-            logging.info(f"Packing uploaded job archive for {job_file.name} had return code {p.returncode}")
-            logging.info(f"stdout: {out}")
-            logging.info(f"stderr: {err}")
+            logger.info(f"Packing uploaded job archive for {job_file.name} had return code {p.returncode}")
+            logger.debug(f"stdout: {out}")
+            logger.debug(f"stderr: {err}")
 
             if p.returncode != 0:
+                logger.error(f"Failed to repack uploaded job for user {user.id}")
                 raise Exception("Unable to repack the uploaded job")
 
         # Job is validated and uploaded, return the job
+        logger.info(f"Successfully uploaded and created job {bilby_job.id} for user {user.id}")
         return bilby_job
 
 
 def upload_external_bilby_job(user, details, ini_file, result_url):
+    logger.info(f"User {user.id} uploading external Bilby job: {details.name} from {result_url}")
+
     # Parse and validate the INI file
     args = _parse_and_validate_ini(ini_file)
 
     # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
     if check_job_embargo_status(user, args):
+        logger.warning(f"User {user.id} attempted to upload external job on embargoed data")
         raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
 
     # Set the job name from details
@@ -690,6 +709,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
     # Create the relevant External Bilby Job record as well
     ExternalBilbyJob.objects.create(job=bilby_job, url=result_url)
 
+    logger.info(f"Successfully uploaded external job {bilby_job.id} for user {user.id}")
     return bilby_job
 
 

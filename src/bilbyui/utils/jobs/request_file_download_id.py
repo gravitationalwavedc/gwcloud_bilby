@@ -8,6 +8,8 @@ from django.conf import settings
 
 from bilbyui.utils.misc import check_request_leak_decorator
 
+logger = logging.getLogger(__name__)
+
 
 @check_request_leak_decorator
 def request_file_download_ids(job, paths, user_id=None):
@@ -28,13 +30,17 @@ def request_file_download_ids(job, paths, user_id=None):
 
     :return: tuple(result -> bool, details)
     """
+    user = user_id or job.user_id
+    logger.info(f"User {user} requesting file download IDs for job {job.id}: {len(paths)} files")
+
     # Make sure that the job was actually submitted (Might be in a draft state?)
     if not job.job_controller_id:
+        logger.warning(f"Job {job.id} has no job_controller_id - not submitted")
         return False, "Job not submitted"
 
     # Create the jwt token
     jwt_enc = jwt.encode(
-        {"userId": user_id or job.user_id, "exp": datetime.datetime.now() + datetime.timedelta(minutes=5)},
+        {"userId": user, "exp": datetime.datetime.now() + datetime.timedelta(minutes=5)},
         settings.JOB_CONTROLLER_JWT_SECRET,
         algorithm="HS256",
     )
@@ -49,6 +55,7 @@ def request_file_download_ids(job, paths, user_id=None):
             f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
             data=json.dumps(data),
             headers={"Authorization": jwt_enc},
+            timeout=10,
         )
 
         # Check that the request was successful
@@ -56,18 +63,20 @@ def request_file_download_ids(job, paths, user_id=None):
             # todo: Spruce the exception handling up a bit
             # Oops
             msg = (
-                f"Error getting job file download urls, got error code: "
-                f"{result.status_code}\n\n{result.headers}\n\n{result.content}"
+                f"Error getting file download URLs for job {job.id}, "
+                f"got error code: {result.status_code}: {result.content}"
             )
-            logging.error(msg)
+            logger.error(msg)
             raise Exception(msg)
 
         # Parse the response from the job controller
         result = json.loads(result.content)
 
+        logger.info(f"Successfully generated {len(result['fileIds'])} download IDs for job {job.id}")
         # Return the file ids
         return True, result["fileIds"]
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error getting file download URLs for job {job.id}: {str(e)}", exc_info=True)
         return False, "Error getting job file download url"
 
 

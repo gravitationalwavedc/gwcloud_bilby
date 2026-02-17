@@ -5,6 +5,14 @@ import parseJobParams from '../../Utils/ParseJobParams';
 const Parameters = (props) => {
     const params = props.params;
 
+    if (!params) {
+        return (
+            <p className="text-muted">
+                Parameters could not be loaded for this job (e.g. invalid or missing configuration).
+            </p>
+        );
+    }
+
     const result = parseJobParams(params);
 
     return <ReviewJob values={result} />;

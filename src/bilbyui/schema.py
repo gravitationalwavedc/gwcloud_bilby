@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+import logging
 
 import elasticsearch
 import graphene
@@ -55,6 +56,8 @@ from .views import (
     upload_external_bilby_job,
     upload_hdf5_bilby_job,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class LabelType(DjangoObjectType):
@@ -147,7 +150,14 @@ class BilbyJobNode(DjangoObjectType):
         return parent.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
 
     def resolve_params(parent, info):
-        return generate_parameter_output(parent)
+        try:
+            logger.debug(f"Generating parameters for job {parent.id}")
+            return generate_parameter_output(parent)
+        except Exception as e:
+            logger.error(
+                f"Failed to generate parameter output for job {parent.id}: {type(e).__name__}: {str(e)}", exc_info=True
+            )
+            return None
 
     def resolve_labels(parent, info):
         return parent.labels.all()
@@ -241,10 +251,12 @@ class Query(object):
     @login_required
     def resolve_generate_bilby_job_upload_token(self, info, **kwargs):
         user = info.context.user
+        logger.info(f"User {user.id} requesting job upload token")
 
         # Create a job upload token
         token = BilbyJobUploadToken.create(user)
 
+        logger.info(f"Generated upload token for user {user.id}")
         # Return the generated token
         return GenerateBilbyJobUploadToken(token=str(token.token))
 
@@ -258,6 +270,12 @@ class Query(object):
         return EventID.filter_by_ligo(is_ligo=is_ligo_user(info.context.user))
 
     def resolve_public_bilby_jobs(self, info, **kwargs):
+        user_id = info.context.user.id if info.context.user.is_authenticated else 0
+        search_term = kwargs.get("search", "*")
+        logger.info(
+            f"User {user_id} searching public jobs: search='{search_term}', time_range={kwargs.get('time_range')}"
+        )
+
         # Parse the cursor if it was provided and set the first offset to be used by the database search
         # Sometimes the relay resolver fills out all kwarg parameters, but sometimes
         # it doesn't, most likely becuase it hates happiness and all that is good
@@ -267,17 +285,22 @@ class Query(object):
         else:
             kwargs["after"] = int(from_global_id(kwargs["after"])[1])
 
-        es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST],
-            api_key=settings.ELASTIC_SEARCH_API_KEY,
-            verify_certs=False,
-        )
+        try:
+            es = elasticsearch.Elasticsearch(
+                hosts=[settings.ELASTIC_SEARCH_HOST],
+                api_key=settings.ELASTIC_SEARCH_API_KEY,
+                verify_certs=False,
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to Elasticsearch: {str(e)}", exc_info=True)
+            return []
 
         # If no search term is provided, return all records via a wildcard
         q = kwargs.get("search", "") or "*"
 
         # Prevent the user from searching in private info
         if "_private_info_" in q:
+            logger.warning(f"User {user_id} attempted to search private info")
             return []
 
         # Insert the time query
@@ -329,6 +352,7 @@ class Query(object):
 
         if qs_before.count() != qs_after.count():
             # Somehow user has made a query that violates the embargo or includes a private job. Return nothing.
+            logger.warning(f"User {user_id} query violated embargo or included private job")
             return []
 
         # Get a list of bilbyjobs and job controller ids
@@ -421,6 +445,8 @@ class Query(object):
     def resolve_bilby_result_files(self, info, **kwargs):
         # Get the model id of the bilby job
         _, job_id = from_global_id(kwargs.get("job_id"))
+        user_id = info.context.user.id if info.context.user.is_authenticated else 0
+        logger.info(f"User {user_id} requesting result files for job {job_id}")
 
         # Try to look up the job with the id provided
         job = BilbyJob.get_by_id(job_id, info.context.user)
@@ -432,6 +458,7 @@ class Query(object):
             # Fetch the file list from the job controller
             success, files = job.get_file_list()
             if not success:
+                logger.error(f"Failed to get file list for job {job_id}: {str(files)}")
                 raise Exception("Error getting file list. " + str(files))
 
             # Generate download tokens for the list of files
@@ -530,6 +557,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, params):
         user = info.context.user
+        logger.info(f"User {user.id} creating new Bilby job: {params.get('details', {}).get('name', 'unnamed')}")
 
         # Create the bilby job
         bilby_job = create_bilby_job(user, params)
@@ -537,6 +565,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
         # Convert the bilby job id to a global id
         job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
+        logger.info(f"Successfully created Bilby job {bilby_job.id} for user {user.id}")
         # Return the bilby job id to the client
         return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
 
@@ -551,6 +580,7 @@ class BilbyJobFromIniStringMutation(relay.ClientIDMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, params):
         user = info.context.user
+        logger.info(f"User {user.id} creating Bilby job from INI string")
 
         # Create the bilby job
         bilby_job, supporting_file_details = create_bilby_job_from_ini_string(user, params)
@@ -582,10 +612,13 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         user = info.context.user
 
         job_id = kwargs.pop("job_id")
+        job_model_id = from_global_id(job_id)[1]
+        logger.info(f"User {user.id} updating job {job_model_id}: {list(kwargs.keys())}")
 
         # Update privacy of bilby job
-        message = update_bilby_job(from_global_id(job_id)[1], user, **kwargs)
+        message = update_bilby_job(job_model_id, user, **kwargs)
 
+        logger.info(f"Successfully updated job {job_model_id} for user {user.id}")
         # Return the bilby job id to the client
         return UpdateBilbyJobMutation(result=message, job_id=job_id)
 
@@ -600,15 +633,19 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
     @classmethod
     def mutate_and_get_payload(cls, root, info, job_id, download_tokens):
         user = info.context.user
+        user_id = user.id if user.is_authenticated else 0
+        job_model_id = from_global_id(job_id)[1]
+        logger.info(f"User {user_id} requesting file download IDs for job {job_model_id}: {len(download_tokens)} files")
 
         # Get the job these file downloads are for
-        job = BilbyJob.get_by_id(from_global_id(job_id)[1], user)
+        job = BilbyJob.get_by_id(job_model_id, user)
 
         # Verify the download tokens and get the paths
         paths = FileDownloadToken.get_paths(job, download_tokens)
 
         # Check that all tokens were found
         if None in paths:
+            logger.warning(f"User {user_id} provided invalid/expired tokens for job {job_model_id}")
             raise GraphQLError("At least one token was invalid or expired.")
 
         # For uploaded jobs, we can just return the exact some download tokens - this function is basically a no-op
@@ -638,6 +675,8 @@ class UploadBilbyJobMutation(relay.ClientIDMutation):
 
     @classmethod
     def mutate_and_get_payload(cls, root, info, upload_token, details, job_file):
+        logger.info(f"Upload job mutation initiated with token {upload_token}: {details.get('name', 'unnamed')}")
+
         # Get the token being used to perform the upload - this will return None if the token doesn't exist or
         # is expired
         token = BilbyJobUploadToken.get_by_token(upload_token)
@@ -691,12 +730,16 @@ class UploadExternalBilbyJobMutation(relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, details, ini_file, result_url):
+        user = info.context.user
+        logger.info(f"User {user.id} uploading external Bilby job: {details.get('name', 'unnamed')} from {result_url}")
+
         # Try uploading the external bilby job
-        bilby_job = upload_external_bilby_job(info.context.user, details, ini_file, result_url)
+        bilby_job = upload_external_bilby_job(user, details, ini_file, result_url)
 
         # Convert the bilby job id to a global id
         job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
+        logger.info(f"Successfully uploaded external job {bilby_job.id} for user {user.id}")
         # Return the bilby job id to the client
         return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
 
@@ -712,10 +755,13 @@ class UploadHdf5BilbyJobMutation(relay.ClientIDMutation):
 
     @classmethod
     def mutate_and_get_payload(cls, root, info, upload_token, details, hdf5_file, ini_file):
+        logger.info(f"Upload HDF5 job mutation initiated with token {upload_token}: {details.get('name', 'unnamed')}")
+
         # Get the token being used to perform the upload - this will return None if the token doesn't exist or
         # is expired
         token = BilbyJobUploadToken.get_by_token(upload_token)
         if not token:
+            logger.warning(f"Invalid or expired upload token for HDF5 job: {upload_token}")
             raise GraphQLError("Job upload token is invalid or expired.")
 
         # Try uploading the bilby job with HDF5 file

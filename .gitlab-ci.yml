@@ -79,11 +79,15 @@ code-quality:
   image: docker:25
   variables:
     DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: tcp://docker:2375
     SP_VERSION: 0.85.26
   allow_failure: true
   services:
-    - docker:25-dind
-  before_script: []
+    - name: docker:25-dind
+      alias: docker
+  before_script:
+    - until docker info 2>/dev/null; do echo "Waiting for Docker..."; sleep 1; done
 
   script:
     - docker run
@@ -118,7 +122,8 @@ black:
     - apt -y install net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
     - /usr/bin/python3.12 -m venv /src/venv
-    - /src/venv/bin/pip3 install black
+    - BLACK_VERSION=$(grep -E '^black==' src/requirements.txt | sed 's/^black==//')
+    - /src/venv/bin/pip3 install "black==${BLACK_VERSION}"
     - /src/venv/bin/black --check src/
 
 eslint:
@@ -176,8 +181,9 @@ cronjob-black:
     - apt -y install apt-utils
     - apt -y install net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
+    - BLACK_VERSION=$(grep -E '^black==' src/requirements.txt | sed 's/^black==//')
     - /usr/bin/python3.12 -m venv /gwosc_cron/venv
-    - /gwosc_cron/venv/bin/pip3 install black
+    - /gwosc_cron/venv/bin/pip3 install "black==${BLACK_VERSION}"
     - /gwosc_cron/venv/bin/black --check gwosc_cron/
 
 cronjob-flake8:

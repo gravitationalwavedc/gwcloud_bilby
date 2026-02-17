@@ -1,6 +1,9 @@
 import json
+import logging
 
 from bilbyui.utils.ini_utils import bilby_ini_string_to_args
+
+logger = logging.getLogger(__name__)
 
 
 def parse_ini_file(job, ini_key_value_klass=None):
@@ -57,6 +60,6 @@ def parse_ini_file(job, ini_key_value_klass=None):
                 pass
 
     except Exception as e:
-        print(f"Bilby job error with job id {job.id}: {str(e)}")
+        logger.error(f"Error parsing INI file for job {job.id}: {str(e)}", exc_info=True)
 
     (ini_key_value_klass or IniKeyValue).objects.bulk_create(items)

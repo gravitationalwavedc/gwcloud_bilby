@@ -27,7 +27,7 @@ const ViewJob = (props) => {
     };
 
     const { params, lastUpdated, userId } = props.data.bilbyJob;
-    const { details } = params;
+    const details = params?.details ?? { name: '—', description: '', private: false };
 
     const updated = moment.utc(lastUpdated, 'YYYY-MM-DD HH:mm:ss UTC').local().format('llll');
     const modifiable = user.pk === userId;
@@ -112,7 +112,14 @@ const ViewJob = (props) => {
                     <Col md={8}>
                         <Tab.Content>
                             <Tab.Pane eventKey="parameters">
-                                <Parameters params={params} {...props} />
+                                {params ? (
+                                    <Parameters params={params} {...props} />
+                                ) : (
+                                    <p className="text-muted">
+                                        Parameters could not be loaded for this job (e.g. invalid or missing
+                                        configuration).
+                                    </p>
+                                )}
                             </Tab.Pane>
                             <Tab.Pane eventKey="results">
                                 <Files {...props} />

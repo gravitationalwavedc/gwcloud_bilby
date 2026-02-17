@@ -6,7 +6,6 @@ from scheduler.status import JobStatus
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-
 mock_from_dag_args = None
 mock_from_dag_kwargs = None
 mock_from_dag_result = None
