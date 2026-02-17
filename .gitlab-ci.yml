@@ -60,7 +60,7 @@ django-tests:
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_src, script]
     - mkdir -p src/job_uploads/upload src/reports
-    - cd src/ && .venv/bin/bash run_coverage.sh --parallel
+    - cd src/ && PATH=".venv/bin:$PATH" bash run_coverage.sh --parallel
     - cd src/ && .venv/bin/python -m coverage xml -o reports/coverage.xml
   # Match coverage.py "TOTAL ... 95%" line; capture group is the percentage (GitLab displays in MR/pipeline)
   coverage: '/TOTAL.+ (\d+%)/'
@@ -80,7 +80,7 @@ npm-tests:
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_src, script]
     - cd src/ && .venv/bin/python development-manage.py graphql_schema
-    - cd src/react/
+    - cd react/
     - !reference [.setup_nvm, script]
     - npm install --legacy-peer-deps
     - npm run relay
