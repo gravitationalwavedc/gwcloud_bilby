@@ -5,7 +5,7 @@ export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || pr
 
 # Recreate the graphql schema
 cd ./src
-venv/bin/python development-manage.py graphql_schema
+.venv/bin/python development-manage.py graphql_schema
 
 cd ../src/react
 nvm use
@@ -13,5 +13,5 @@ npm run relay
 npm run start &
 
 cd ..
-venv/bin/python development-manage.py migrate 
-venv/bin/python development-manage.py runserver 8001
+.venv/bin/python development-manage.py migrate
+.venv/bin/python development-manage.py runserver 8001

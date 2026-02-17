@@ -1,7 +1,6 @@
 [flake8]
 
 exclude =
-    # Ignore venv
-    venv
+    .venv
 
 max-line-length = 120

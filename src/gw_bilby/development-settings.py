@@ -32,6 +32,14 @@ LOGOUT_REDIRECT_URL = "http://localhost:3000/"
 ADACS_SSO_CLIENT_NAME = "gwcloud_bilby_dev"
 ADACS_SSO_AUTH_HOST = "http://localhost:8000"
 
+# ---------------------------------------------------------------------------
+# Test runner / JUnit XML output (dev/CI only)
+# ---------------------------------------------------------------------------
+
+TEST_RUNNER = "xmlrunner.extra.djangotestrunner.XMLTestRunner"
+TEST_OUTPUT_DIR = os.path.join(BASE_DIR, "reports")
+TEST_OUTPUT_FILE_NAME = "junit.xml"
+
 try:
     from .local import *
 except ImportError:

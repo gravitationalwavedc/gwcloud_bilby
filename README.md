@@ -4,31 +4,28 @@ GW Cloud Bilby module for running bilby jobs from the web.
 
 ## Installing locally
 
-### Virtualenv
+### Python (Poetry)
 
-- In the `src/` directory, set up a python virutalenv by running
+- Install [Poetry](https://python-poetry.org/docs/#installation) if you don't have it.
+
+- In the `src/` directory, install dependencies and create the virtualenv:
 
 ```bash
-virtualenv -p 3.12 venv
+cd src/
+poetry install
 ```
 
-- Use the virtualenv with
+- Run commands with the virtualenv via `poetry run` or activate it with:
 
 ```bash
-. venv/bin/active
-```
-
-- Install the requirements with
-
-```bash
-pip install -r requirements.txt
+. .venv/bin/activate
 ```
 
 - Migrate the database with
 
 ```bash
-# In the venv
-python development-manage.py migrate
+# From src/, with venv active or via poetry run
+poetry run python development-manage.py migrate
 ```
 
 ### Mysql
@@ -43,11 +40,11 @@ If you want to use actual data, you will need to install and configure mysql as 
 sudo apt-get install mysql-client mysql-server
 ```
 
-- Install the mysqlclient python package
+- Install the mysqlclient python package (e.g. with the Poetry venv active)
 
 ```bash
-# Inside the venv
-pip install mysqlclient
+# From src/
+poetry run pip install mysqlclient
 # note - you may need to install additional packages for this to work
 ```
 
@@ -64,8 +61,8 @@ mysql -u <username> -p gwcloud_bilby < <production_dump.sql>
 - Migrate the database
 
 ```bash
-# Inside the venv
-python development-manage.py migrate
+# From src/
+poetry run python development-manage.py migrate
 ```
 
 ### elasticsearch
@@ -102,8 +99,8 @@ You will need to run in two seperate terminals - one for the django host and one
 
 ```bash
 # In src/ directory
-. venv/bin/activate
-python development-manage.py runserver 8001
+poetry run python development-manage.py runserver 8001
+# or: . .venv/bin/activate && python development-manage.py runserver 8001
 ```
 
 ### react
@@ -120,15 +117,15 @@ npm run dev
 - To synchronise the django databases of jobs with the es instance
 
 ```bash
-# Inside the venv
-python development-manage.py es_ingest
+# From src/
+poetry run python development-manage.py es_ingest
 ```
 
 - To regenerate the graphql schema
 
 ```bash
-# Inside the venv
-python development-manage.py graphql_schema
+# From src/
+poetry run python development-manage.py graphql_schema
 ```
 
 - To recompile the graphql schema on the frontend

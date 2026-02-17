@@ -6,19 +6,63 @@ default:
 stages:
   - CI
 
-django-tests:
-  stage: CI
+# -----------------------------------------------------------------------------
+# Reusable script fragments (use with !reference [.job_name, script])
+# -----------------------------------------------------------------------------
+
+.apt_base:
   script:
     - apt -y update
-    - apt -y install apt-utils
-    - apt -y install net-tools python3.12 python3-venv git curl wget python3-dev build-essential python3-setuptools
+    - apt -y install apt-utils net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
-    - cd src/
-    - /usr/bin/python3.12 -m venv /src/venv
-    - /src/venv/bin/pip3 install -r requirements.txt
-    - mkdir -p job_uploads/upload
-    - /src/venv/bin/python3 development-manage.py jenkins --enable-coverage --coverage-rcfile=.coveragerc
 
+.apt_build:
+  script:
+    - apt -y update
+    - apt -y install apt-utils net-tools python3.12 python3-venv git curl wget python3-dev build-essential python3-setuptools
+    - apt -y upgrade
+
+.install_poetry:
+  script:
+    - curl -sSL https://install.python-poetry.org | python3 -
+    - export PATH="$HOME/.local/bin:$PATH"
+
+# Each fragment ends at repo root so job scripts can use paths from project root.
+.poetry_install_src:
+  script:
+    - cd src/
+    - poetry install
+    - cd ..
+
+.poetry_install_cron:
+  script:
+    - cd gwosc_cron/
+    - poetry install
+    - cd ..
+
+.setup_nvm:
+  script:
+    - curl -sSL https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
+    - eval "[ -f .nvmrc ] && nvm install && nvm use"
+
+# -----------------------------------------------------------------------------
+# Django / src (Poetry)
+# -----------------------------------------------------------------------------
+
+django-tests:
+  stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  script:
+    - !reference [.apt_build, script]
+    - !reference [.install_poetry, script]
+    - !reference [.poetry_install_src, script]
+    - mkdir -p src/job_uploads/upload src/reports
+    - cd src/ && .venv/bin/bash run_coverage.sh --parallel
+    - cd src/ && .venv/bin/python -m coverage xml -o reports/coverage.xml
+  # Match coverage.py "TOTAL ... 95%" line; capture group is the percentage (GitLab displays in MR/pipeline)
+  coverage: '/TOTAL.+ (\d+%)/'
   artifacts:
     reports:
       coverage_report:
@@ -28,23 +72,18 @@ django-tests:
 
 npm-tests:
   stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
   script:
-    - apt -y update
-    - apt -y install apt-utils
-    - apt -y install net-tools python3.12 python3-venv git curl wget python3-dev build-essential python3-setuptools
-    - apt -y upgrade
-    - cd src/
-    - /usr/bin/python3.12 -m venv /src/venv
-    - /src/venv/bin/pip3 install -r requirements.txt
-    - /src/venv/bin/python3 development-manage.py graphql_schema
-    - cd react/
-    - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
-    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
-    - eval "[ -f .nvmrc ] && nvm install && nvm use"
+    - !reference [.apt_build, script]
+    - !reference [.install_poetry, script]
+    - !reference [.poetry_install_src, script]
+    - cd src/ && .venv/bin/python development-manage.py graphql_schema
+    - cd src/react/
+    - !reference [.setup_nvm, script]
     - npm install --legacy-peer-deps
     - npm run relay
     - npm run test-ci
-
   artifacts:
     reports:
       coverage_report:
@@ -52,13 +91,37 @@ npm-tests:
         path: src/react/coverage/cobertura-coverage.xml
       junit: src/react/junit.xml
 
+flake8:
+  stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  script:
+    - !reference [.apt_base, script]
+    - !reference [.install_poetry, script]
+    - !reference [.poetry_install_src, script]
+    - src/.venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json src/
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+
+black:
+  stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  script:
+    - !reference [.apt_base, script]
+    - !reference [.install_poetry, script]
+    - !reference [.poetry_install_src, script]
+    - src/.venv/bin/black --check src/
+
+# -----------------------------------------------------------------------------
+# Bundle (Conda, unchanged)
+# -----------------------------------------------------------------------------
+
 bundle-tests:
   stage: CI
   script:
-    - apt -y update
-    - apt -y install apt-utils
-    - apt -y install net-tools python3.12 python3-venv git curl wget
-    - apt -y upgrade
+    - !reference [.apt_base, script]
     - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$HOME/miniconda.sh"
     - bash "$HOME/miniconda.sh" -b -p "$HOME/miniconda"
     - cd src/bundle/
@@ -66,13 +129,38 @@ bundle-tests:
     - $HOME/miniconda/bin/conda env update --file conda-environment.yml --prune -p venv
     - $HOME/miniconda/bin/conda run -p venv coverage run -m xmlrunner discover --output-file ./junit.xml
     - $HOME/miniconda/bin/conda run -p venv coverage xml
-
   artifacts:
     reports:
       coverage_report:
         coverage_format: cobertura
         path: src/bundle/coverage.xml
       junit: src/bundle/junit.xml
+
+# -----------------------------------------------------------------------------
+# React only (npm, no Poetry)
+# -----------------------------------------------------------------------------
+
+eslint:
+  stage: CI
+  script:
+    - !reference [.apt_build, script]
+    - cd src/react/
+    - !reference [.setup_nvm, script]
+    - npm install --legacy-peer-deps
+    - npx eslint src
+
+prettier:
+  stage: CI
+  script:
+    - !reference [.apt_build, script]
+    - cd src/react/
+    - !reference [.setup_nvm, script]
+    - npm install --legacy-peer-deps
+    - npx prettier --check src
+
+# -----------------------------------------------------------------------------
+# Code quality (Docker)
+# -----------------------------------------------------------------------------
 
 code-quality:
   stage: CI
@@ -95,78 +183,24 @@ code-quality:
       --volume "$PWD":/code
       --volume /var/run/docker.sock:/var/run/docker.sock
       "registry.gitlab.com/gitlab-org/ci-cd/codequality:$SP_VERSION" /code
-
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
 
-flake8:
-  stage: CI
-  script:
-    - apt -y update
-    - apt -y install apt-utils
-    - apt -y install net-tools python3.12 python3-venv git curl wget
-    - apt -y upgrade
-    - /usr/bin/python3.12 -m venv /src/venv
-    - /src/venv/bin/pip3 install flake8-gl-codeclimate
-    - /src/venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json src/
-  artifacts:
-    reports:
-      codequality: gl-code-quality-report.json
-
-black:
-  stage: CI
-  script:
-    - apt -y update
-    - apt -y install apt-utils
-    - apt -y install net-tools python3.12 python3-venv git curl wget
-    - apt -y upgrade
-    - /usr/bin/python3.12 -m venv /src/venv
-    - BLACK_VERSION=$(grep -E '^black==' src/requirements.txt | sed 's/^black==//')
-    - /src/venv/bin/pip3 install "black==${BLACK_VERSION}"
-    - /src/venv/bin/black --check src/
-
-eslint:
-  stage: CI
-  script:
-    - apt -y update
-    - apt -y install apt-utils
-    - apt -y install net-tools python3.12 python3-venv git curl wget python3-setuptools build-essential
-    - apt -y upgrade
-    - cd src/react/
-    - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
-    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
-    - eval "[ -f .nvmrc ] && nvm install && nvm use"
-    - npm install --legacy-peer-deps
-    - npx eslint src
-
-prettier:
-  stage: CI
-  script:
-    - apt -y update
-    - apt -y install apt-utils
-    - apt -y install net-tools python3.12 python3-venv git curl wget python3-setuptools build-essential
-    - apt -y upgrade
-    - cd src/react/
-    - curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
-    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
-    - eval "[ -f .nvmrc ] && nvm install && nvm use"
-    - npm install --legacy-peer-deps
-    - npx prettier --check src
+# -----------------------------------------------------------------------------
+# gwosc_cron (Poetry)
+# -----------------------------------------------------------------------------
 
 cronjob-tests:
   stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
   script:
-    - apt -y update
-    - apt -y install apt-utils
-    - apt -y install net-tools python3.12 python3-venv git curl wget python3-dev build-essential python3-setuptools
-    - apt -y upgrade
-    - cd gwosc_cron/
-    - /usr/bin/python3.12 -m venv /gwosc_cron/venv
-    - /gwosc_cron/venv/bin/pip3 install -r requirements.txt
-    - /gwosc_cron/venv/bin/python3 -m coverage run -m xmlrunner discover --output-file ./junit.xml
-    - /gwosc_cron/venv/bin/python3 -m coverage xml
-
+    - !reference [.apt_build, script]
+    - !reference [.install_poetry, script]
+    - !reference [.poetry_install_cron, script]
+    - cd gwosc_cron/ && .venv/bin/python -m coverage run -m xmlrunner discover --output-file ./junit.xml
+    - cd gwosc_cron/ && .venv/bin/python -m coverage xml
   artifacts:
     reports:
       coverage_report:
@@ -176,27 +210,23 @@ cronjob-tests:
 
 cronjob-black:
   stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
   script:
-    - apt -y update
-    - apt -y install apt-utils
-    - apt -y install net-tools python3.12 python3-venv git curl wget
-    - apt -y upgrade
-    - BLACK_VERSION=$(grep -E '^black==' src/requirements.txt | sed 's/^black==//')
-    - /usr/bin/python3.12 -m venv /gwosc_cron/venv
-    - /gwosc_cron/venv/bin/pip3 install "black==${BLACK_VERSION}"
-    - /gwosc_cron/venv/bin/black --check gwosc_cron/
+    - !reference [.apt_base, script]
+    - !reference [.install_poetry, script]
+    - !reference [.poetry_install_cron, script]
+    - gwosc_cron/.venv/bin/black --check gwosc_cron/
 
 cronjob-flake8:
   stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
   script:
-    - apt -y update
-    - apt -y install apt-utils
-    - apt -y install net-tools python3.12 python3-venv git curl wget
-    - apt -y upgrade
-    - /usr/bin/python3.12 -m venv /gwosc_cron/venv
-    - /gwosc_cron/venv/bin/pip3 install flake8-gl-codeclimate
-    - /gwosc_cron/venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json gwosc_cron/
-
+    - !reference [.apt_base, script]
+    - !reference [.install_poetry, script]
+    - !reference [.poetry_install_cron, script]
+    - gwosc_cron/.venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json gwosc_cron/
   artifacts:
     reports:
       codequality: gl-code-quality-report.json

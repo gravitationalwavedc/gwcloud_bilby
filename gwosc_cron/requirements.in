@@ -1,9 +1,0 @@
-gwosc
-gwcloud-python
-pip-tools
-requests
-responses
-h5py
-coverage
-unittest-xml-reporting
-parameterized
