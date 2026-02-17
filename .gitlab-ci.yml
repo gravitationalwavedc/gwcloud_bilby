@@ -122,7 +122,8 @@ black:
     - apt -y install net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
     - /usr/bin/python3.12 -m venv /src/venv
-    - /src/venv/bin/pip3 install -r src/requirements.txt
+    - BLACK_VERSION=$(grep -E '^black==' src/requirements.txt | sed 's/^black==//')
+    - /src/venv/bin/pip3 install "black==${BLACK_VERSION}"
     - /src/venv/bin/black --check src/
 
 eslint:
@@ -180,8 +181,9 @@ cronjob-black:
     - apt -y install apt-utils
     - apt -y install net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
+    - BLACK_VERSION=$(grep -E '^black==' src/requirements.txt | sed 's/^black==//')
     - /usr/bin/python3.12 -m venv /gwosc_cron/venv
-    - /gwosc_cron/venv/bin/pip3 install black
+    - /gwosc_cron/venv/bin/pip3 install "black==${BLACK_VERSION}"
     - /gwosc_cron/venv/bin/black --check gwosc_cron/
 
 cronjob-flake8:
