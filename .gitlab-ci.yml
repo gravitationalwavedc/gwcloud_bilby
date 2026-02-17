@@ -200,8 +200,7 @@ cronjob-tests:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_cron, script]
-    - cd gwosc_cron/ && .venv/bin/python -m coverage run -m xmlrunner discover --output-file ./junit.xml
-    - cd gwosc_cron/ && .venv/bin/python -m coverage xml
+    - cd gwosc_cron/ && .venv/bin/python -m coverage run -m xmlrunner discover --output-file ./junit.xml && .venv/bin/python -m coverage xml
   artifacts:
     reports:
       coverage_report:
