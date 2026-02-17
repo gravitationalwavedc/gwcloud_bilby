@@ -61,7 +61,7 @@ django-tests:
     - !reference [.poetry_install_src, script]
     - mkdir -p src/job_uploads/upload src/reports
     - cd src/ && PATH=".venv/bin:$PATH" bash run_coverage.sh --parallel
-    - cd src/ && .venv/bin/python -m coverage xml -o reports/coverage.xml
+    - .venv/bin/python -m coverage xml -o reports/coverage.xml
   # Match coverage.py "TOTAL ... 95%" line; capture group is the percentage (GitLab displays in MR/pipeline)
   coverage: '/TOTAL.+ (\d+%)/'
   artifacts:
