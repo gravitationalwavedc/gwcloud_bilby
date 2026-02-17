@@ -122,7 +122,7 @@ black:
     - apt -y install net-tools python3.12 python3-venv git curl wget
     - apt -y upgrade
     - /usr/bin/python3.12 -m venv /src/venv
-    - /src/venv/bin/pip3 install black
+    - /src/venv/bin/pip3 install -r src/requirements.txt
     - /src/venv/bin/black --check src/
 
 eslint:

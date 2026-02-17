@@ -63,4 +63,4 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
         return "OK", result
     except Exception as e:
         logger.error(f"Error getting job filter for user {user_id}: {str(e)}", exc_info=True)
-        return "UNKNOWN", "Error getting job status"
+        return "UNKNOWN", "Error getting job filter"

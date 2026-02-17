@@ -612,12 +612,13 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         user = info.context.user
 
         job_id = kwargs.pop("job_id")
-        logger.info(f"User {user.id} updating job {from_global_id(job_id)[1]}: {list(kwargs.keys())}")
+        job_model_id = from_global_id(job_id)[1]
+        logger.info(f"User {user.id} updating job {job_model_id}: {list(kwargs.keys())}")
 
         # Update privacy of bilby job
-        message = update_bilby_job(from_global_id(job_id)[1], user, **kwargs)
+        message = update_bilby_job(job_model_id, user, **kwargs)
 
-        logger.info(f"Successfully updated job {from_global_id(job_id)[1]} for user {user.id}")
+        logger.info(f"Successfully updated job {job_model_id} for user {user.id}")
         # Return the bilby job id to the client
         return UpdateBilbyJobMutation(result=message, job_id=job_id)
 
