@@ -48,9 +48,7 @@ def create_table(cursor):
 
 
 def check_and_download():
-    logger.info(
-        f"==== gwosc_ingest cronjob {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===="
-    )
+    logger.info(f"==== gwosc_ingest cronjob {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ====")
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
@@ -147,14 +145,10 @@ def check_and_download():
     common_name = event_json["commonName"]
     catalog_shortname = event_json["catalog.shortName"]
 
-    shared_common_names = [
-        k for k, v in all_events.items() if v["commonName"] == common_name
-    ]
+    shared_common_names = [k for k, v in all_events.items() if v["commonName"] == common_name]
     is_latest_version = True
     if len(shared_common_names) > 1:
-        versions_available = [
-            int(re.search(r"-v(\d+)$", cn).groups()[0]) for cn in shared_common_names
-        ]
+        versions_available = [int(re.search(r"-v(\d+)$", cn).groups()[0]) for cn in shared_common_names]
         current_version = int(re.search(r"-v(\d+)$", event_name).groups()[0])
         is_latest_version = current_version == max(versions_available)
 
@@ -169,9 +163,7 @@ def check_and_download():
     ]
     for pattern in ignore_patterns:
         if re.search(pattern, catalog_shortname, flags=re.IGNORECASE):
-            logger.error(
-                f"{event_name} ignored due to matching /{pattern}/ in catalog_shortname ({catalog_shortname})"
-            )
+            logger.error(f"{event_name} ignored due to matching /{pattern}/ in catalog_shortname ({catalog_shortname})")
             save_sqlite_job(
                 event_name,
                 common_name,
@@ -199,9 +191,7 @@ def check_and_download():
     h5url = found[0].get("data_url")
     if not h5url:
         logger.error(f"Preferred job for {event_name} does not contain a dataurl 😠")
-        save_sqlite_job(
-            event_name, common_name, catalog_shortname, False, "no dataurl", -1
-        )
+        save_sqlite_job(event_name, common_name, catalog_shortname, False, "no dataurl", -1)
         exit()
 
     # See if there is already an event_id for this event
@@ -243,9 +233,7 @@ def check_and_download():
                     and "config_file" in h5[toplevel_key]
                     and isinstance(h5[toplevel_key]["config_file"], h5py.Group)
                     and "config" in h5[toplevel_key]["config_file"]
-                    and isinstance(
-                        h5[toplevel_key]["config_file"]["config"], h5py.Group
-                    )
+                    and isinstance(h5[toplevel_key]["config_file"]["config"], h5py.Group)
                 ):
                     logger.info(f"config_file found: {toplevel_key}")
                     config = h5[toplevel_key]["config_file"]["config"]

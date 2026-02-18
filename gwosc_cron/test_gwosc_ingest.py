@@ -375,9 +375,7 @@ class TestGWOSCCron(unittest.TestCase):
         )
 
         # Did it create a new event_id
-        gwc.return_value.create_event_id.assert_called_once_with(
-            "GW000001_123456", 1729400000, "S123456z"
-        )
+        gwc.return_value.create_event_id.assert_called_once_with("GW000001_123456", 1729400000, "S123456z")
 
         # Has it set the event id on the job?
         gwc.return_value.upload_external_job.return_value.set_event_id.assert_called_once_with(
@@ -413,9 +411,7 @@ class TestGWOSCCron(unittest.TestCase):
         gwc.return_value.create_event_id.assert_not_called()
 
         # Has it set the event id on the job?
-        gwc.return_value.upload_external_job.return_value.set_event_id.assert_called_once_with(
-            specific_event_id
-        )
+        gwc.return_value.upload_external_job.return_value.set_event_id.assert_called_once_with(specific_event_id)
 
     @responses.activate
     def test_invalid_event_id(self, gwc):
@@ -487,9 +483,7 @@ class TestGWOSCCron(unittest.TestCase):
         self.add_file_response()
 
         # Pretend that the job has already been created
-        gwc.return_value.upload_external_job.side_effect = GWDCUnknownException(
-            "Duplicate job"
-        )
+        gwc.return_value.upload_external_job.side_effect = GWDCUnknownException("Duplicate job")
 
         # Do the thing, Zhu Li
         # Also mock stderr so it doesn't dump the exception to test output
@@ -802,9 +796,7 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001.123456")
 
-    @parameterized.expand(
-        ["GWTC-3-marginal", "O1_O2-Preliminary", "Initial_LIGO_Virgo"]
-    )
+    @parameterized.expand(["GWTC-3-marginal", "O1_O2-Preliminary", "Initial_LIGO_Virgo"])
     @responses.activate
     def test_ignored_names(self, gwc, catalog_shortname):
         """If the event is in a catalog which we ignore, then we shouldn't submit it"""
