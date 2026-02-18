@@ -246,24 +246,17 @@ sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100,
         # case of 'sample': 'rwalk'
         generate_parameter_output(job)
 
-    @patch("bilbyui.utils.gen_parameter_output.DataGenerationInput")
-    def test_generate_parameter_output_data_generation_input_requires_idx(self, mock_dgi):
-        # Regression: bilby-pipe DataGenerationInput asserts self.idx is not None. We must pass idx (e.g. 0)
-        # when creating DataGenerationInput with create_data=False, or the Parameters tab fails with AssertionError.
-        # Simulate the assertion so this test fails if our code passes idx=None.
-        def strict_init(args, *a, **kw):
-            if getattr(args, "idx", None) is None:
-                raise AssertionError("assert self.idx is not None")
-            return DataGenerationInput(args, *a, **kw)
-
-        mock_dgi.side_effect = strict_init
-
+    def test_generate_parameter_output_data_generation_input_requires_idx(self):
+        # Regression: bilby-pipe DataGenerationInput.generation_seed setter asserts self.idx is not None
+        # when args.generation_seed is set. We must pass idx=0. Including generation-seed in the ini
+        # triggers that code path so the test fails with bilby_pipe's AssertionError when idx is None.
         job = BilbyJob.objects.create(
             user_id=self.user.id,
             ini_string="""detectors=['H1']
 trigger-time=12345678
 outdir=./
-sampler=dynesty""",
+sampler=dynesty
+generation-seed=12345""",
         )
         job.save()
         result = generate_parameter_output(job)
