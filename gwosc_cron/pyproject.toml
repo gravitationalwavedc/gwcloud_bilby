@@ -11,15 +11,15 @@ gwosc = "*"
 gwcloud-python = "2.0.0"
 requests = "*"
 urllib3 = "<2"  # requests_toolbelt <1.0 (via gwcloud-python) needs urllib3 1.x (appengine)
-responses = "*"
 h5py = "*"
-coverage = "*"
-unittest-xml-reporting = "*"
-parameterized = "*"
 
 [tool.poetry.group.dev.dependencies]
 black = "25.1.0"
 flake8-gl-codeclimate = "*"
+responses = "*"
+coverage = "*"
+unittest-xml-reporting = "*"
+parameterized = "*"
 
 [build-system]
 requires = ["poetry-core"]

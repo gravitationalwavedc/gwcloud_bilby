@@ -25,10 +25,13 @@ responses = "*"
 pyhumps = "*"
 elasticsearch = "*"
 adacs-sso-plugin = {git = "https://gitlab.com/CAS-eResearch/internal/adacs-sso-plugin.git", tag = "v0.3.2"}
+gunicorn = "*"
+mysqlclient = "*"
 
 [tool.black]
 line-length = 120
 target-version = ["py312"]
+extend-exclude = "/react/"
 
 [tool.poetry.group.dev.dependencies]
 black = "25.1.0"

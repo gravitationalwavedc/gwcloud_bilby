@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir poetry \
   && poetry config virtualenvs.create false
 
 COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-dev --no-interaction --no-root
+RUN poetry install --without dev --no-interaction --no-root
 
 # Copy in the script
 COPY gwosc_ingest.py .

@@ -32,8 +32,7 @@ WORKDIR /src
 # Create in-project venv with Poetry and install production deps
 ENV POETRY_VIRTUALENVS_IN_PROJECT=true
 RUN poetry config virtualenvs.create true \
-  && poetry install --without dev --no-interaction --no-root \
-  && .venv/bin/pip install mysqlclient gunicorn
+  && poetry install --without dev --no-interaction --no-root
 
 # Copy the source code in to the container
 COPY ./src /src
