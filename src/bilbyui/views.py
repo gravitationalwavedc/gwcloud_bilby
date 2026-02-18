@@ -407,7 +407,9 @@ def bilby_ini_args_to_data_input(args):
     args.psd_dict = None
 
     # DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
-    args.idx = 0 if getattr(args, "generation_seed", None) is not None else getattr(args, "idx", None)
+    args.idx = getattr(args, "idx", None)
+    if getattr(args, "generation_seed", None) is not None and args.idx is None:
+        args.idx = 0
     args.ini = None
 
     if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
@@ -580,7 +582,9 @@ def upload_bilby_job(user, upload_token, details, job_file):
             raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
 
         # DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
-        args.idx = 0 if getattr(args, "generation_seed", None) is not None else getattr(args, "idx", None)
+        args.idx = getattr(args, "idx", None)
+        if getattr(args, "generation_seed", None) is not None and args.idx is None:
+            args.idx = 0
         args.ini = None
 
         # Override the output directory - since in the supported directory structure the output is always relative to
@@ -692,7 +696,9 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
     # Strip the prior, gps, timeslide, and injection file
     # as DataGenerationInput has trouble without the actual file existing
     # DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
-    args.idx = 0 if getattr(args, "generation_seed", None) is not None else getattr(args, "idx", None)
+    args.idx = getattr(args, "idx", None)
+    if getattr(args, "generation_seed", None) is not None and args.idx is None:
+        args.idx = 0
     args.ini = None
 
     # Don't change the prior file if it's one of the defaults
