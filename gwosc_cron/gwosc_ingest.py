@@ -136,7 +136,27 @@ def check_and_download():
             f"Unable to fetch event json (status: {r.status_code}, event: "
             f"{event_name}, url: {all_events[event_name]['jsonurl']})"
         )
-        # We assume this is a transient issue and don't mark the job as failed
+        # Record failure so pipeline doesn't jam retrying the same event forever
+        common_name = all_events[event_name].get("commonName", event_name)
+        catalog_shortname = all_events[event_name].get("catalog.shortName", "unknown")
+        shared_common_names = [k for k, v in all_events.items() if v.get("commonName") == common_name]
+        is_latest_version = -1
+        if len(shared_common_names) > 1:
+            try:
+                versions = [int(re.search(r"-v(\d+)$", cn).groups()[0]) for cn in shared_common_names]
+                current = int(re.search(r"-v(\d+)$", event_name).groups()[0])
+                is_latest_version = 1 if current == max(versions) else 0
+            except (AttributeError, ValueError):
+                pass
+        save_sqlite_job(
+            event_name,
+            common_name,
+            catalog_shortname,
+            False,
+            "event_json_fetch_failed",
+            is_latest_version,
+            f"{r.status_code}",
+        )
         exit()
 
     event_json = r.json()
@@ -217,9 +237,20 @@ def check_and_download():
                 r.raise_for_status()
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-        except Exception:
-            # we assume that this is a transient issue and don't mark the job as failed
+        except Exception as e:
             logger.critical(f"Downloading {h5url} failed 😠", exc_info=True)
+            # Record failure so pipeline doesn't jam retrying the same event forever
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            reason_data = str(status) if status is not None else str(e)[:200]
+            save_sqlite_job(
+                event_name,
+                common_name,
+                catalog_shortname,
+                False,
+                "h5_download_failed",
+                is_latest_version,
+                reason_data,
+            )
             exit()
 
         logger.info("Download complete")

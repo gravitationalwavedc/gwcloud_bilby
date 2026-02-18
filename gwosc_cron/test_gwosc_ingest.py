@@ -288,6 +288,8 @@ class TestGWOSCCron(unittest.TestCase):
         """What happens if any part of the download process fails due to external problems?
         Specifically,
             - Downloading the specific event json
+
+        The failure must be recorded in sqlite so the pipeline doesn't jam retrying forever.
         """
         self.add_allevents_response()
         responses.add(
@@ -308,22 +310,91 @@ class TestGWOSCCron(unittest.TestCase):
         # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
+        # Has it made a record of this job in sqlite? (required to prevent pipeline jam)
         cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
-        # better not have
-        self.assertEqual(len(sqlite_rows), 0)
+        cur.row_factory = sqlite3.Row
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs").fetchall()
+        self.assertEqual(len(sqlite_rows), 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["reason"], "event_json_fetch_failed")
+        self.assertIn("500", row["reason_data"])
 
         # does it tell us why it failed?
         self.assertIn("Unable to fetch event json", logs.output[0])
+
+    @responses.activate
+    def test_event_json_404_records_failure_and_pipeline_continues(self, gwc):
+        """Regression: 404 on event JSON must be recorded in DB so pipeline doesn't jam.
+        When the first event in delta returns 404, we must record the failure and allow
+        the next cron run to process the second event. Otherwise the pipeline gets stuck
+        forever retrying the same failing event.
+        """
+        # Two events: first returns 404 (like GW241110_124123-v1), second works
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json={
+                "events": {
+                    "GW241110_124123-v1": {
+                        "commonName": "GW241110_124123",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "jsonurl": "https://test.org/GW241110_124123-v1.json",
+                    },
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "jsonurl": "https://test.org/GW000001_123456.json",
+                    },
+                }
+            },
+        )
+        responses.add(responses.GET, "https://test.org/GW241110_124123-v1.json", status=404)
+        self.add_event_response()
+        self.add_file_response()
+
+        # First run: tries GW241110_124123-v1, gets 404
+        with self.con_patch, self.assertRaises(SystemExit):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        # CRITICAL: The failing event must be recorded so we don't retry it forever
+        cur = self.con.cursor()
+        cur.row_factory = sqlite3.Row
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs ORDER BY job_id").fetchall()
+        self.assertEqual(len(sqlite_rows), 1, "Failing event must be recorded to prevent pipeline jam")
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW241110_124123-v1")
+        self.assertEqual(row["success"], 0)
+        self.assertIn("event_json", row["reason"])
+        self.assertIn("404", row["reason_data"])
+
+        # Second run: should process GW000001_123456 (pipeline moved on)
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW000001_123456--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW000001.h5",
+        )
+
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs ORDER BY job_id").fetchall()
+        self.assertEqual(len(sqlite_rows), 2)
+        gw000_row = next(r for r in sqlite_rows if r["job_id"] == "GW000001_123456")
+        self.assertEqual(gw000_row["success"], 1)
 
     @responses.activate
     def test_download_h5_error(self, gwc):
         """What happens if any part of the download process fails due to external problems?
         Specifically,
             - The h5 file is missing
+
+        The failure must be recorded in sqlite so the pipeline doesn't jam retrying forever.
         """
         self.add_allevents_response()
         self.add_event_response()
@@ -343,13 +414,16 @@ class TestGWOSCCron(unittest.TestCase):
         # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
+        # Has it made a record of this job in sqlite? (required to prevent pipeline jam)
         cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
-        # better not have
-        self.assertEqual(len(sqlite_rows), 0)
+        cur.row_factory = sqlite3.Row
+        sqlite_rows = cur.execute("SELECT * FROM completed_jobs").fetchall()
+        self.assertEqual(len(sqlite_rows), 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["reason"], "h5_download_failed")
+        self.assertIn("404", row["reason_data"])
 
         # does it tell us why it failed?
         self.assertIn("Downloading https://test.org/GW000001.h5 failed", logs.output[0])
