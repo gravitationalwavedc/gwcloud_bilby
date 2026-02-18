@@ -51,20 +51,17 @@ class TestBilbyJobQueries(BilbyTestCase):
 
     def job_request(self, job_data):
         field_str = "\n".join(list(camelize(job_data).keys()))
-        return self.query(
-            f"""
+        return self.query(f"""
             query {{
                 bilbyJob(id:"{job_data["id"]}"){{
                     {field_str}
                 }}
             }}
-            """
-        )
+            """)
 
     def jobs_request(self):
         field_str = "\n".join(list(camelize(self.real_job_data).keys()))
-        return self.query(
-            f"""
+        return self.query(f"""
             query {{
                 bilbyJobs {{
                     edges {{
@@ -74,8 +71,7 @@ class TestBilbyJobQueries(BilbyTestCase):
                     }}
                 }}
             }}
-            """
-        )
+            """)
 
     def request_lookup_users_mock(*args, **kwargs):
         user = User.objects.first()

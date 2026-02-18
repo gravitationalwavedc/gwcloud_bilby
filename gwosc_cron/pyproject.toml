@@ -13,8 +13,12 @@ requests = "*"
 urllib3 = "<2"  # requests_toolbelt <1.0 (via gwcloud-python) needs urllib3 1.x (appengine)
 h5py = "*"
 
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
 [tool.poetry.group.dev.dependencies]
-black = "25.1.0"
+black = "*"
 flake8-gl-codeclimate = "*"
 responses = "*"
 coverage = "*"
