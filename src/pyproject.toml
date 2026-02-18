@@ -23,7 +23,8 @@ pyopenssl = "*"
 bilby-pipe = "*"
 responses = "*"
 pyhumps = "*"
-elasticsearch = "*"
+# Pinned to 8.x for compatibility with Elasticsearch server v8.8.1 (v9 client sends incompatible headers)
+elasticsearch = ">=8.0,<9"
 adacs-sso-plugin = {git = "https://gitlab.com/CAS-eResearch/internal/adacs-sso-plugin.git", tag = "v0.3.2"}
 gunicorn = "*"
 mysqlclient = "*"

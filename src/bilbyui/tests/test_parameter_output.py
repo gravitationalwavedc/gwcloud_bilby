@@ -3,6 +3,7 @@ import string
 from decimal import Decimal
 from unittest.mock import patch
 
+from bilby_pipe.data_generation import DataGenerationInput
 from django.contrib.auth import get_user_model
 
 from bilbyui.models import BilbyJob
@@ -244,3 +245,24 @@ sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100,
         # Generate the output params - bilby will raise an exception if the decimal parser isn't updated to handle the
         # case of 'sample': 'rwalk'
         generate_parameter_output(job)
+
+    def test_generate_parameter_output_data_generation_input_requires_idx(self):
+        # Regression: bilby-pipe DataGenerationInput.generation_seed setter asserts self.idx is not None
+        # when args.generation_seed is set. We must pass idx=0. Including generation-seed in the ini
+        # triggers that code path so the test fails with bilby_pipe's AssertionError when idx is None.
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            ini_string="""detectors=['H1']
+trigger-time=12345678
+outdir=./
+sampler=dynesty
+generation-seed=12345""",
+        )
+        job.save()
+        result = generate_parameter_output(job)
+        self.assertIsNotNone(result.details)
+        self.assertIsNotNone(result.data)
+        self.assertIsNotNone(result.detector)
+        self.assertIsNotNone(result.prior)
+        self.assertIsNotNone(result.sampler)
+        self.assertIsNotNone(result.waveform)

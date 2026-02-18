@@ -56,7 +56,10 @@ def generate_parameter_output(job):
     """
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
     args = bilby_ini_string_to_args(job.ini_string.encode("utf-8"))
-    args.idx = None
+    # DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
+    args.idx = getattr(args, "idx", None)
+    if getattr(args, "generation_seed", None) is not None and args.idx is None:
+        args.idx = 0
     args.ini = None
     args.conda_env = None
 
