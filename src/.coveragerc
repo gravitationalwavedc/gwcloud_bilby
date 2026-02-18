@@ -1,7 +1,13 @@
 [run]
+# Only measure coverage for code in the current directory (project code), not dependencies
+source = .
+# Required for parallel coverage: track child processes spawned by Django's --parallel
+parallel = true
+concurrency = multiprocessing,thread
 omit =
     # Omit the virtual env
     */venv/*
+    .venv/*
 
     # Ignore manage.py files
     ./*manage.py

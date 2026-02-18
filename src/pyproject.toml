@@ -1,18 +1,45 @@
+[tool.poetry]
+name = "gwcloud-bilby"
+version = "0.1.0"
+description = "GW Cloud Bilby module for running bilby jobs from the web"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+setuptools = "*"  # provides distutils for pycondor/bilby-pipe on Python 3.12+
+django = "*"
+graphene-django = "*"
+graphene-file-upload = "*"
+django-filter = "*"
+django-cors-headers = "*"
+django-graphql-jwt = "*"
+python-jwt = "*"
+pyjwt = "*"
+requests = "*"
+django4-jenkins = "*"
+munch = "*"
+pyopenssl = "*"
+bilby-pipe = "*"
+responses = "*"
+pyhumps = "*"
+elasticsearch = "*"
+adacs-sso-plugin = {git = "https://gitlab.com/CAS-eResearch/internal/adacs-sso-plugin.git", tag = "v0.3.2"}
+gunicorn = "*"
+mysqlclient = "*"
+
 [tool.black]
 line-length = 120
-target-version = ['py38', 'py39']
+target-version = ["py312"]
 extend-exclude = "/react/"
 
-[flake8]
-max-line-length = 120
-exclude = """
-  react
-  migrations
-  include
-  venv
-  outdir
-  job_uploads
-  development-manage.py
-  production-manage.py
-  bundle
-"""
+[tool.poetry.group.dev.dependencies]
+black = "25.1.0"
+flake8 = "*"
+flake8-gl-codeclimate = "*"
+coverage = "*"
+unittest-xml-reporting = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

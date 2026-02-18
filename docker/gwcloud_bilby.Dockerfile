@@ -16,19 +16,23 @@ FROM base AS django-builder
 
 RUN apt-get update \
   && apt-get install --no-install-recommends -y \
-  python3-virtualenv default-libmysqlclient-dev python3-dev build-essential git pkg-config \
+  python3-virtualenv default-libmysqlclient-dev python3-dev build-essential git pkg-config curl \
   && apt-get clean \
   && rm -rf /var/lib/apt-lists/* \
   && apt-get autoremove --purge -y
 
+# Install Poetry at system level so we can use it to create the project venv
+RUN pip install --no-cache-dir poetry
 
-RUN virtualenv -p python3.12 /venv
-COPY ./src/requirements.txt /requirements.txt
+# Copy dependency files first for better layer caching
+COPY ./src/pyproject.toml ./src/poetry.lock /src/
 
-# Activate and install the django requirements (mysqlclient requires python3-dev and build-essential)
-RUN . /venv/bin/activate \
-  && pip install -r /requirements.txt \
-  && pip install mysqlclient gunicorn
+WORKDIR /src
+
+# Create in-project venv with Poetry and install production deps
+ENV POETRY_VIRTUALENVS_IN_PROJECT=true
+RUN poetry config virtualenvs.create true \
+  && poetry install --without dev --no-interaction --no-root
 
 # Copy the source code in to the container
 COPY ./src /src
@@ -36,14 +40,12 @@ COPY ./src /src
 WORKDIR /src
 
 # Generate the graphql schema
-RUN . /venv/bin/activate \
-  && python development-manage.py graphql_schema
+RUN .venv/bin/python development-manage.py graphql_schema
 
 
 FROM base as django-runner
 
 COPY --from=django-builder /src /src
-COPY --from=django-builder /venv /venv
 
 COPY ./runserver.sh /runserver.sh
 RUN chmod +x /runserver.sh

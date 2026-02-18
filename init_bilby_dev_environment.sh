@@ -8,11 +8,7 @@ nvm use $(cat .nvmrc)
 npm install
 
 echo Set up python virtual env for bilby module
-cd ..
-virtualenv -p python3.8 venv
-
-venv/bin/pip install -r requirements.txt
-
-venv/bin/python development-manage.py migrate
+cd "$(dirname "$0")/src" && poetry install
+poetry run python development-manage.py migrate
 
 

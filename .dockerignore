@@ -1,5 +1,3 @@
 .git
 src/react/node_modules
-src/venv
-src/venv_linux
 src/bundle

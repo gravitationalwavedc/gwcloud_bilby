@@ -352,8 +352,8 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
             # error. Instead, we need to check if the provided marginalisation lookup table is one of the defaults, and
             # ignore it if it is. See get_distance_file_lookup_table() in
             # https://git.ligo.org/lscsoft/bilby_pipe/-/blob/master/bilby_pipe/input.py#L781
-
-            config = getattr(parser, config_name)
+            # From bilby_pipe 1.8+, DataGenerationInput may not expose this attribute; read from args if needed.
+            config = getattr(parser, config_name, None) or getattr(args, config_name, None)
             if config is None:
                 continue
 
@@ -366,11 +366,9 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
                 # marginalisation files.
                 continue
         else:
-            # Check if this configuration parameter is set in the parser
-            if not hasattr(parser, config_name):
-                continue
-
-            config = getattr(parser, config_name)
+            # Check if this configuration parameter is set in the parser or args (args is the argparse namespace;
+            # parser is DataGenerationInput and may not expose all attributes in newer bilby_pipe).
+            config = getattr(parser, config_name, None) or getattr(args, config_name, None)
             if config is None:
                 continue
 

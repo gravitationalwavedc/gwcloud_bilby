@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "gwosc-cron"
+version = "0.1.0"
+description = "GWOSC cron job utilities"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+gwosc = "*"
+gwcloud-python = "2.0.0"
+requests = "*"
+urllib3 = "<2"  # requests_toolbelt <1.0 (via gwcloud-python) needs urllib3 1.x (appengine)
+h5py = "*"
+
+[tool.poetry.group.dev.dependencies]
+black = "25.1.0"
+flake8-gl-codeclimate = "*"
+responses = "*"
+coverage = "*"
+unittest-xml-reporting = "*"
+parameterized = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
