@@ -3,6 +3,7 @@ import string
 from decimal import Decimal
 from unittest.mock import patch
 
+from bilby_pipe.data_generation import DataGenerationInput
 from django.contrib.auth import get_user_model
 
 from bilbyui.models import BilbyJob
@@ -253,9 +254,7 @@ sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100,
         def strict_init(args, *a, **kw):
             if getattr(args, "idx", None) is None:
                 raise AssertionError("assert self.idx is not None")
-            from bilby_pipe.data_generation import DataGenerationInput as RealDGI
-
-            return RealDGI(args, *a, **kw)
+            return DataGenerationInput(args, *a, **kw)
 
         mock_dgi.side_effect = strict_init
 
