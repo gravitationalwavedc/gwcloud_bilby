@@ -17,10 +17,11 @@ stages:
     - apt -y upgrade
 
 # Use for any job that runs poetry install (build-essential needed for compiling wheels).
+# default-libmysqlclient-dev + pkg-config required for building mysqlclient from source.
 .apt_build:
   script:
     - apt -y update
-    - apt -y install apt-utils net-tools python3.12 python3-venv git curl wget python3-dev build-essential python3-setuptools
+    - apt -y install apt-utils net-tools python3.12 python3-venv git curl wget python3-dev build-essential python3-setuptools pkg-config default-libmysqlclient-dev
     - apt -y upgrade
 
 .install_poetry:
