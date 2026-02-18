@@ -244,3 +244,33 @@ sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100,
         # Generate the output params - bilby will raise an exception if the decimal parser isn't updated to handle the
         # case of 'sample': 'rwalk'
         generate_parameter_output(job)
+
+    @patch("bilbyui.utils.gen_parameter_output.DataGenerationInput")
+    def test_generate_parameter_output_data_generation_input_requires_idx(self, mock_dgi):
+        # Regression: bilby-pipe DataGenerationInput asserts self.idx is not None. We must pass idx (e.g. 0)
+        # when creating DataGenerationInput with create_data=False, or the Parameters tab fails with AssertionError.
+        # Simulate the assertion so this test fails if our code passes idx=None.
+        def strict_init(args, *a, **kw):
+            if getattr(args, "idx", None) is None:
+                raise AssertionError("assert self.idx is not None")
+            from bilby_pipe.data_generation import DataGenerationInput as RealDGI
+
+            return RealDGI(args, *a, **kw)
+
+        mock_dgi.side_effect = strict_init
+
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            ini_string="""detectors=['H1']
+trigger-time=12345678
+outdir=./
+sampler=dynesty""",
+        )
+        job.save()
+        result = generate_parameter_output(job)
+        self.assertIsNotNone(result.details)
+        self.assertIsNotNone(result.data)
+        self.assertIsNotNone(result.detector)
+        self.assertIsNotNone(result.prior)
+        self.assertIsNotNone(result.sampler)
+        self.assertIsNotNone(result.waveform)

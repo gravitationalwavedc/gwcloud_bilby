@@ -279,10 +279,13 @@ class BilbyJob(models.Model):
         return f"Bilby Job: {self.name}"
 
     def save(self, *args, **kwargs):
-        # There must be an ini string
-        assert self.ini_string, f"Job {self.id} - {self.name} is missing ini string"
+        # Legacy or interrupted jobs may have NULL/empty ini_string; allow save but skip dependent updates
+        has_ini = bool(self.ini_string and self.ini_string.strip())
 
         super().save(*args, **kwargs)
+
+        if not has_ini:
+            return
 
         # Whenever a job is saved, we need to regenerate the ini k/v pairs
         parse_ini_file(self)
@@ -322,6 +325,9 @@ class BilbyJob(models.Model):
         Updates this bilby job entry in elastic search
         """
         if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
+            return
+        # Jobs with no ini_string (legacy/interrupted) have no parsed params to index
+        if not (self.ini_string and self.ini_string.strip()):
             return
 
         es = elasticsearch.Elasticsearch(
