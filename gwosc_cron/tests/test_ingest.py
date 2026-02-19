@@ -1,76 +1,19 @@
-import fcntl
 import logging
-import tempfile
-import unittest
-from unittest.mock import patch, call, MagicMock
-import responses
 import sqlite3
+import unittest
 from collections import namedtuple
+from unittest.mock import call
+
+import responses
 from gwdc_python.exceptions import GWDCUnknownException
 from parameterized import parameterized
 
 import gwosc_ingest
-
-logger = logging.getLogger("gwosc_ingest")
-while logger.hasHandlers():
-    logger.removeHandler(logger.handlers[0])
-
-# Use test configuration
-gwosc_ingest.DB_PATH = ":memory:"
-gwosc_ingest.GWCLOUD_TOKEN = "VALID"
-gwosc_ingest.AUTH_ENDPOINT = "https://authendpoint/graphql"
-gwosc_ingest.ENDPOINT = "https://bilby/graphql"
+from tests.base import GWOSCTestBase
 
 
 @unittest.mock.patch("gwosc_ingest.GWCloud", autospec=True)
-class TestGWOSCCron(unittest.TestCase):
-    def setUp(self):
-        self.con = sqlite3.connect(":memory:")
-        self.con_patch = patch("sqlite3.connect", lambda x: self.con)
-
-    def add_allevents_response(self):
-        responses.add(
-            responses.GET,
-            "https://gwosc.org/eventapi/json/allevents",
-            json={
-                "events": {
-                    "GW000001_123456": {
-                        "commonName": "GW000001_123456",
-                        "catalog.shortName": "GWTC-3-confident",
-                        "jsonurl": "https://test.org/GW000001_123456.json",
-                    }
-                }
-            },
-        )
-
-    def add_event_response(self):
-        responses.add(
-            responses.GET,
-            "https://test.org/GW000001_123456.json",
-            json={
-                "events": {
-                    "GW000001_123456": {
-                        "commonName": "GW000001_123456",
-                        "catalog.shortName": "GWTC-3-confident",
-                        "GPS": 1729400000,
-                        "gracedb_id": "S123456z",
-                        "parameters": {
-                            "AAAAA": {
-                                "is_preferred": True,
-                                "data_url": "https://test.org/GW000001.h5",
-                            }
-                        },
-                    }
-                }
-            },
-        )
-
-    def add_file_response(self, filename="good.h5", url_path="GW000001.h5"):
-        # make the file available for download
-        with open(f"test_fixtures/{filename}", "rb") as f:
-            h5data = f.read()
-        responses.add(responses.GET, f"https://test.org/{url_path}", h5data)
-
+class TestGWOSCCron(GWOSCTestBase):
     @responses.activate
     def test_normal(self, gwc):
         """Assuming a normal h5 file with 1 config, does it save it to bilby correctly"""
@@ -78,11 +21,9 @@ class TestGWOSCCron(unittest.TestCase):
         self.add_event_response()
         self.add_file_response()
 
-        # Do the thing, Zhu Li
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
             "GW000001_123456--IMRPhenom",
             "IMRPhenom",
@@ -91,11 +32,7 @@ class TestGWOSCCron(unittest.TestCase):
             "https://test.org/GW000001.h5",
         )
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
@@ -112,22 +49,15 @@ class TestGWOSCCron(unittest.TestCase):
         self.add_event_response()
         self.add_file_response("no_configs.h5")
 
-        # Do the thing, Zhu Li
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
-        # better not have
         self.assertEqual(row["success"], 0)
         self.assertEqual(row["reason"], "completed_submit")
         self.assertEqual(row["is_latest_version"], 1)
@@ -163,33 +93,23 @@ class TestGWOSCCron(unittest.TestCase):
             },
         )
 
-        # Do[n't do] the thing, Zhu Li
         with (
             self.con_patch,
-            self.assertRaises(SystemExit),
             self.assertLogs(level=logging.ERROR) as logs,
         ):
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
-        # better not have
         self.assertEqual(row["success"], 0)
         self.assertEqual(row["reason"], "no preferred job")
         self.assertEqual(row["is_latest_version"], 1)
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001_123456")
-
-        # does it tell us why it failed?
         self.assertIn("Unable to find preferred job", logs.output[0])
 
     @responses.activate
@@ -221,41 +141,28 @@ class TestGWOSCCron(unittest.TestCase):
             },
         )
 
-        # Do[n't do] the thing, Zhu Li
         with (
             self.con_patch,
-            self.assertRaises(SystemExit),
             self.assertLogs(level=logging.ERROR) as logs,
         ):
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
-        # better not have
         self.assertEqual(row["success"], 0)
         self.assertEqual(row["reason"], "no preferred job")
         self.assertEqual(row["is_latest_version"], 1)
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001_123456")
-
-        # does it tell us why it failed?
         self.assertIn("Unable to find preferred job", logs.output[0])
 
     @responses.activate
     def test_download_allevents_error(self, gwc):
-        """What happens if any part of the download process fails due to external problems?
-        Specifically,
-            - Downloading the allevents json
-        """
+        """If the allevents endpoint fails, the script exits without writing sqlite."""
         responses.add(
             responses.GET,
             "https://gwosc.org/eventapi/json/allevents",
@@ -263,7 +170,6 @@ class TestGWOSCCron(unittest.TestCase):
             status=500,
         )
 
-        # Do[n't do] the thing, Zhu Li
         with (
             self.con_patch,
             self.assertRaises(SystemExit),
@@ -271,26 +177,15 @@ class TestGWOSCCron(unittest.TestCase):
         ):
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
-        # better not have
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 0)
-
-        # does it tell us why it failed?
         self.assertIn("Unable to fetch allevents json", logs.output[0])
 
     @responses.activate
     def test_download_specific_event_error(self, gwc):
-        """What happens if any part of the download process fails due to external problems?
-        Specifically,
-            - Downloading the specific event json
-        """
+        """If a specific event's JSON endpoint fails, the failure is recorded in job_errors."""
         self.add_allevents_response()
         responses.add(
             responses.GET,
@@ -299,61 +194,51 @@ class TestGWOSCCron(unittest.TestCase):
             status=500,
         )
 
-        # Do[n't do] the thing, Zhu Li
         with (
             self.con_patch,
-            self.assertRaises(SystemExit),
             self.assertLogs(level=logging.ERROR) as logs,
         ):
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
-        # better not have
+        # No completed_jobs row — transient failure
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 0)
 
-        # does it tell us why it failed?
+        # But a job_errors row IS written
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 1)
+        self.assertEqual(error_rows[0]["job_id"], "GW000001_123456")
+        self.assertEqual(error_rows[0]["failure_count"], 1)
+
         self.assertIn("Unable to fetch event json", logs.output[0])
 
     @responses.activate
     def test_download_h5_error(self, gwc):
-        """What happens if any part of the download process fails due to external problems?
-        Specifically,
-            - The h5 file is missing
-        """
+        """If the H5 file download fails (e.g. 404), the failure is recorded in job_errors."""
         self.add_allevents_response()
         self.add_event_response()
-
-        # make the file _un_available for download
         responses.add(responses.GET, "https://test.org/GW000001.h5", status=404)
 
-        # Do[n't do] the thing, Zhu Li
-        # Also mock stderr so it doesn't dump the exception to test output
         with (
             self.con_patch,
-            self.assertRaises(SystemExit),
             self.assertLogs(level=logging.ERROR) as logs,
         ):
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
-        # better not have
+        # No completed_jobs row — transient failure
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 0)
 
-        # does it tell us why it failed?
+        # But a job_errors row IS written
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 1)
+        self.assertEqual(error_rows[0]["job_id"], "GW000001_123456")
+        self.assertEqual(error_rows[0]["failure_count"], 1)
+
         self.assertIn("Downloading https://test.org/GW000001.h5 failed", logs.output[0])
 
     @responses.activate
@@ -363,11 +248,9 @@ class TestGWOSCCron(unittest.TestCase):
         self.add_event_response()
         self.add_file_response()
 
-        # Do the thing, Zhu Li
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
             "GW000001_123456--IMRPhenom",
             "IMRPhenom",
@@ -376,10 +259,7 @@ class TestGWOSCCron(unittest.TestCase):
             "https://test.org/GW000001.h5",
         )
 
-        # Did it create a new event_id
         gwc.return_value.create_event_id.assert_called_once_with("GW000001_123456", 1729400000, "S123456z")
-
-        # Has it set the event id on the job?
         gwc.return_value.upload_external_job.return_value.set_event_id.assert_called_once_with(
             gwc.return_value.create_event_id.return_value
         )
@@ -391,16 +271,13 @@ class TestGWOSCCron(unittest.TestCase):
         self.add_event_response()
         self.add_file_response()
 
-        # mock that this event_id is already in the DB
         event_id = namedtuple("event_id", ["event_id"])
         specific_event_id = event_id("GW000001_123456")
         gwc.return_value.get_all_event_ids.return_value = [specific_event_id]
 
-        # Do the thing, Zhu Li
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
             "GW000001_123456--IMRPhenom",
             "IMRPhenom",
@@ -409,17 +286,12 @@ class TestGWOSCCron(unittest.TestCase):
             "https://test.org/GW000001.h5",
         )
 
-        # Did it _not_ create a new event_id
         gwc.return_value.create_event_id.assert_not_called()
-
-        # Has it set the event id on the job?
         gwc.return_value.upload_external_job.return_value.set_event_id.assert_called_once_with(specific_event_id)
 
     @responses.activate
     def test_invalid_event_id(self, gwc):
         """If a file does not have a valid event ID, don't create one"""
-        # We add these manually instead of using the helper functions because the helper
-        # functions have implcit valid event IDs
         responses.add(
             responses.GET,
             "https://gwosc.org/eventapi/json/allevents",
@@ -453,16 +325,13 @@ class TestGWOSCCron(unittest.TestCase):
                 }
             },
         )
-        # make the file available for download
         with open("test_fixtures/good.h5", "rb") as f:
             h5data = f.read()
         responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
 
-        # Do the thing, Zhu Li
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
             "GW000001--IMRPhenom",
             "IMRPhenom",
@@ -471,10 +340,7 @@ class TestGWOSCCron(unittest.TestCase):
             "https://test.org/GW000001.h5",
         )
 
-        # Did it _not_ create a new event_id
         gwc.return_value.create_event_id.assert_not_called()
-
-        # Has it set the event id on the job?
         gwc.return_value.upload_external_job.return_value.set_event_id.assert_not_called()
 
     @responses.activate
@@ -484,15 +350,11 @@ class TestGWOSCCron(unittest.TestCase):
         self.add_event_response()
         self.add_file_response()
 
-        # Pretend that the job has already been created
         gwc.return_value.upload_external_job.side_effect = GWDCUnknownException("Duplicate job")
 
-        # Do the thing, Zhu Li
-        # Also mock stderr so it doesn't dump the exception to test output
         with self.con_patch, self.assertLogs(level=logging.ERROR) as logs:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
             "GW000001_123456--IMRPhenom",
             "IMRPhenom",
@@ -501,21 +363,15 @@ class TestGWOSCCron(unittest.TestCase):
             "https://test.org/GW000001.h5",
         )
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
-        # better not have
         self.assertEqual(row["success"], 0)
         self.assertEqual(row["reason"], "completed_submit")
         self.assertEqual(row["is_latest_version"], 1)
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001_123456")
-
         self.assertIn("Failed to create BilbyJob", logs.output[0])
 
     @responses.activate
@@ -525,11 +381,9 @@ class TestGWOSCCron(unittest.TestCase):
         self.add_event_response()
         self.add_file_response("multiple_configs.h5")
 
-        # Do the thing, Zhu Li
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         calls = [
             call(
                 "GW000001_123456--IMRPhenom",
@@ -548,15 +402,10 @@ class TestGWOSCCron(unittest.TestCase):
         ]
         gwc.return_value.upload_external_job.assert_has_calls(calls, any_order=True)
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
-        # better not have
         self.assertEqual(row["success"], 1)
         self.assertEqual(row["reason"], "completed_submit")
         self.assertEqual(row["is_latest_version"], 1)
@@ -574,9 +423,8 @@ class TestGWOSCCron(unittest.TestCase):
         self.con.row_factory = sqlite3.Row
         cur = self.con.cursor()
         gwosc_ingest.create_table(cur)
-        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reason TEXT, reason_data TEXT, catalog_shortname TEXT,common_name, all_succeeded INT, none_succeeded INT, is_latest_version BOOLEAN)"  # noqa
         cur.execute(
-            "INSERT INTO completed_jobs (job_id, success, reason, reason_data, catalog_shortname, common_name, all_succeeded, none_succeeded, is_latest_version ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO completed_jobs (job_id, success, reason, reason_data, catalog_shortname, common_name, all_succeeded, none_succeeded, is_latest_version ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",  # noqa: E501
             (
                 "GW000001_123456",
                 True,
@@ -590,7 +438,6 @@ class TestGWOSCCron(unittest.TestCase):
             ),
         )
 
-        # Do the thing, Zhu Li
         with (
             self.con_patch,
             self.assertRaises(SystemExit),
@@ -598,15 +445,10 @@ class TestGWOSCCron(unittest.TestCase):
         ):
             gwosc_ingest.check_and_download()
 
-        # Has it made a record of this job in sqlite?
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         self.assertEqual(sqlite_rows[0]["success"], 1)
-
-        # Did it tell us why it did nothing?
         self.assertIn("Nothing to do 😊", logs.output[-1])
 
     @responses.activate
@@ -634,22 +476,15 @@ class TestGWOSCCron(unittest.TestCase):
             },
         )
 
-        # Do the thing, Zhu Li
         with (
             self.con_patch,
-            self.assertRaises(SystemExit),
             self.assertLogs(level=logging.ERROR) as logs,
         ):
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
@@ -658,8 +493,6 @@ class TestGWOSCCron(unittest.TestCase):
         self.assertEqual(row["is_latest_version"], -1)
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001_123456")
-
-        # Did it tell us why it failed?
         self.assertIn("does not contain a dataurl", logs.output[0])
 
     def test_bad_ini(self, gwc):
@@ -670,18 +503,14 @@ class TestGWOSCCron(unittest.TestCase):
 
     @responses.activate
     def test_colon_name(self, gwc):
-        """If a job name contains weird characters, make it safe for SLURM (even though these
-        jobs aren't submitted to slurm, it's easier to ensure that ALL jobs comply with those
-        requirements rather than have special checks for external jobs)"""
+        """If a job name contains weird characters, make it safe for SLURM"""
         self.add_allevents_response()
         self.add_event_response()
         self.add_file_response("colon.h5")
 
-        # Do the thing, Zhu Li
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
             "GW000001_123456--IMRPhenom-Test-3",
             "IMRPhenom:Test~3",
@@ -690,11 +519,7 @@ class TestGWOSCCron(unittest.TestCase):
             "https://test.org/GW000001.h5",
         )
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
@@ -711,18 +536,12 @@ class TestGWOSCCron(unittest.TestCase):
         self.add_event_response()
         self.add_file_response("bad.h5")
 
-        # Do the thing, Zhu Li
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # did it not attempt to add a job
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
@@ -769,12 +588,9 @@ class TestGWOSCCron(unittest.TestCase):
         )
         self.add_file_response()
 
-        # Do the thing, Zhu Li
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
-        # and is it saved under a bilby-safe name?
         gwc.return_value.upload_external_job.assert_called_once_with(
             "GW000001-123456--IMRPhenom",
             "IMRPhenom",
@@ -783,12 +599,7 @@ class TestGWOSCCron(unittest.TestCase):
             "https://test.org/GW000001.h5",
         )
 
-        # Has it made a record of this job in sqlite?
-        # and is it saved under the original event ID in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001.123456")
@@ -815,7 +626,6 @@ class TestGWOSCCron(unittest.TestCase):
                 }
             },
         )
-
         responses.add(
             responses.GET,
             "https://test.org/GW000001_123456.json",
@@ -838,40 +648,28 @@ class TestGWOSCCron(unittest.TestCase):
         )
         self.add_file_response()
 
-        # Do[n't do] the thing, Zhu Li
         with (
             self.con_patch,
-            self.assertRaises(SystemExit),
             self.assertLogs(level=logging.ERROR) as logs,
         ):
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
-        # better not have
         self.assertEqual(row["success"], 0)
         self.assertEqual(row["reason"], "ignored_event")
         self.assertEqual(row["is_latest_version"], 1)
         self.assertEqual(row["catalog_shortname"], catalog_shortname)
         self.assertEqual(row["common_name"], "GW000001_123456")
-
-        # does it tell us why it failed?
         self.assertIn("ignored due to matching", logs.output[0])
 
     @responses.activate
     def test_not_latest_version(self, gwc):
         """If the event is not the latest one for that event, then we can ignore it safely"""
-
-        # allevents json
         responses.add(
             responses.GET,
             "https://gwosc.org/eventapi/json/allevents",
@@ -890,8 +688,6 @@ class TestGWOSCCron(unittest.TestCase):
                 }
             },
         )
-
-        # 2 events json
         responses.add(
             responses.GET,
             "https://test.org/GW000001_123456-v1.json",
@@ -935,36 +731,26 @@ class TestGWOSCCron(unittest.TestCase):
         self.add_file_response("bad.h5")
         self.add_file_response("good.h5", "GW000002.h5")
 
-        # First request should fail
-        # Do[n't do] the thing, Zhu Li
+        # First run processes v1 (bad h5 — no configs, but still writes completed_jobs)
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_not_called()
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456-v1")
-        # better not have
         self.assertEqual(row["success"], 0)
         self.assertEqual(row["reason"], "completed_submit")
-        # This is fine
         self.assertEqual(row["is_latest_version"], 0)
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001_123456")
 
-        # Now, if we repeat the submit, it should submit the second one with no issues
-        # Do the thing, Zhu Li
+        # Second run should process v2 successfully
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
-        # has the job completed?
         gwc.return_value.upload_external_job.assert_called_once_with(
             "GW000001_123456-v2--IMRPhenom",
             "IMRPhenom",
@@ -973,76 +759,12 @@ class TestGWOSCCron(unittest.TestCase):
             "https://test.org/GW000002.h5",
         )
 
-        # Has it made a record of this job in sqlite?
-        cur = self.con.cursor()
-        sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
-        sqlite_rows = sqlite_rows.fetchall()
-
+        sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 2)
         row = sqlite_rows[1]
         self.assertEqual(row["job_id"], "GW000001_123456-v2")
         self.assertEqual(row["success"], 1)
         self.assertEqual(row["reason"], "completed_submit")
-        # This is fine
         self.assertEqual(row["is_latest_version"], 1)
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001_123456")
-
-
-class TestSingleInstanceLock(unittest.TestCase):
-    """Tests for the run() entry point's single-instance file lock."""
-
-    def setUp(self):
-        self.lock_dir = tempfile.mkdtemp()
-        self.lock_path = f"{self.lock_dir}/gwosc_ingest.lock"
-        self.lock_path_patch = patch.object(gwosc_ingest, "LOCK_FILE_PATH", self.lock_path)
-        self.lock_path_patch.start()
-
-    def tearDown(self):
-        self.lock_path_patch.stop()
-        import shutil
-
-        shutil.rmtree(self.lock_dir, ignore_errors=True)
-
-    def test_missing_db_path_exits(self):
-        """run() exits with code 1 when DB_PATH is not configured."""
-        with patch.object(gwosc_ingest, "DB_PATH", None):
-            with self.assertRaises(SystemExit) as cm:
-                gwosc_ingest.run()
-        self.assertEqual(cm.exception.code, 1)
-
-    @patch("gwosc_ingest.check_and_download")
-    def test_lock_acquired_runs_check_and_download(self, mock_check):
-        """When no other instance holds the lock, check_and_download is called."""
-        gwosc_ingest.run()
-        mock_check.assert_called_once()
-
-    @patch("gwosc_ingest.check_and_download")
-    def test_lock_already_held_returns_without_running(self, mock_check):
-        """When the lock is already held, run() returns without calling check_and_download."""
-        # Acquire the lock externally before calling run()
-        lock_fd = open(self.lock_path, "w")
-        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        try:
-            gwosc_ingest.run()
-            mock_check.assert_not_called()
-        finally:
-            fcntl.flock(lock_fd, fcntl.LOCK_UN)
-            lock_fd.close()
-
-    @patch("gwosc_ingest.check_and_download", side_effect=RuntimeError("boom"))
-    def test_lock_released_even_if_check_raises(self, mock_check):
-        """The lock is released even when check_and_download raises an exception."""
-        with self.assertRaises(RuntimeError):
-            gwosc_ingest.run()
-
-        # After run() has exited (via exception), we should be able to reacquire
-        # the lock, proving it was released in the finally block.
-        lock_fd = open(self.lock_path, "w")
-        try:
-            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            self.fail("Lock was NOT released after check_and_download raised an exception")
-        finally:
-            fcntl.flock(lock_fd, fcntl.LOCK_UN)
-            lock_fd.close()

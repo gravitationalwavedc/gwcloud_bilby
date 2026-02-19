@@ -34,6 +34,7 @@ except ImportError:
 
 EVENTNAME_SEPERATOR = "--"
 LOCK_FILE_PATH = str(Path(DB_PATH).with_suffix(".lock")) if DB_PATH else None
+MAX_RETRY_ATTEMPTS = 24
 
 
 def fix_job_name(name):
@@ -50,12 +51,35 @@ def create_table(cursor):
     )
 
 
+def create_job_errors_table(cursor):
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS job_errors (job_id TEXT PRIMARY KEY, failure_count INTEGER NOT NULL DEFAULT 0, last_failure TIMESTAMP, last_error TEXT)"  # noqa
+    )
+
+
+def record_job_failure(con, cursor, job_id, error_msg):
+    cursor.execute(
+        "INSERT INTO job_errors (job_id, failure_count, last_failure, last_error) VALUES (?, 1, CURRENT_TIMESTAMP, ?) "
+        "ON CONFLICT(job_id) DO UPDATE SET failure_count = failure_count + 1, last_failure = CURRENT_TIMESTAMP, last_error = ?",
+        (job_id, error_msg, error_msg),
+    )
+    con.commit()
+
+
+def get_job_failure_count(cursor, job_id):
+    row = cursor.execute("SELECT failure_count FROM job_errors WHERE job_id = ?", (job_id,)).fetchone()
+    if row is None:
+        return 0
+    return row["failure_count"] if isinstance(row, sqlite3.Row) else row[0]
+
+
 def check_and_download():
     logger.info(f"==== gwosc_ingest cronjob {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ====")
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
     create_table(cur)
+    create_job_errors_table(cur)
 
     def save_sqlite_job(
         job_id,
@@ -129,162 +153,194 @@ def check_and_download():
         logger.info("Nothing to do 😊")
         exit()
 
-    event_name = jobs_delta[0]
+    for event_name in jobs_delta:
+        # Check if this event has exceeded the maximum retry attempts
+        failure_count = get_job_failure_count(cur, event_name)
+        if failure_count >= MAX_RETRY_ATTEMPTS:
+            # Fetch last_error for reason_data
+            err_row = cur.execute("SELECT last_error FROM job_errors WHERE job_id = ?", (event_name,)).fetchone()
+            last_error = err_row["last_error"] if err_row else ""
+            logger.error(f"{event_name} has failed {failure_count} times, marking as permanently failed")
+            save_sqlite_job(
+                event_name,
+                all_events[event_name].get("commonName", ""),
+                all_events[event_name].get("catalog.shortName", ""),
+                False,
+                "max_retries_exceeded",
+                False,
+                last_error,
+            )
+            continue
 
-    logger.info(f"{event_name}: {all_events[event_name]['jsonurl']}")
+        logger.info(f"{event_name}: {all_events[event_name]['jsonurl']}")
 
-    r = requests.get(all_events[event_name]["jsonurl"])
-    if r.status_code != 200:
-        logger.critical(
-            f"Unable to fetch event json (status: {r.status_code}, event: "
-            f"{event_name}, url: {all_events[event_name]['jsonurl']})"
-        )
-        # We assume this is a transient issue and don't mark the job as failed
-        exit()
+        r = requests.get(all_events[event_name]["jsonurl"])
+        if r.status_code != 200:
+            error_msg = (
+                f"Unable to fetch event json (status: {r.status_code}, event: "
+                f"{event_name}, url: {all_events[event_name]['jsonurl']})"
+            )
+            logger.critical(error_msg)
+            record_job_failure(con, cur, event_name, error_msg)
+            continue
 
-    event_json = r.json()
-    event_json = event_json["events"][event_name]
-    parameters = event_json["parameters"]
-    common_name = event_json["commonName"]
-    catalog_shortname = event_json["catalog.shortName"]
+        event_json = r.json()
+        event_json = event_json["events"][event_name]
+        parameters = event_json["parameters"]
+        common_name = event_json["commonName"]
+        catalog_shortname = event_json["catalog.shortName"]
 
-    shared_common_names = [k for k, v in all_events.items() if v["commonName"] == common_name]
-    is_latest_version = True
-    if len(shared_common_names) > 1:
-        versions_available = [int(re.search(r"-v(\d+)$", cn).groups()[0]) for cn in shared_common_names]
-        current_version = int(re.search(r"-v(\d+)$", event_name).groups()[0])
-        is_latest_version = current_version == max(versions_available)
+        shared_common_names = [k for k, v in all_events.items() if v["commonName"] == common_name]
+        is_latest_version = True
+        if len(shared_common_names) > 1:
+            versions_available = [int(re.search(r"-v(\d+)$", cn).groups()[0]) for cn in shared_common_names]
+            current_version = int(re.search(r"-v(\d+)$", event_name).groups()[0])
+            is_latest_version = current_version == max(versions_available)
 
-    gps = event_json["GPS"]
-    gracedb_id = event_json["gracedb_id"]
+        gps = event_json["GPS"]
+        gracedb_id = event_json["gracedb_id"]
 
-    # Check if this should be skipped for being in the wrong type of catalog
-    ignore_patterns = [
-        "marginal",
-        "preliminary",
-        "initial_ligo_virgo",
-    ]
-    for pattern in ignore_patterns:
-        if re.search(pattern, catalog_shortname, flags=re.IGNORECASE):
-            logger.error(f"{event_name} ignored due to matching /{pattern}/ in catalog_shortname ({catalog_shortname})")
+        # Check if this should be skipped for being in the wrong type of catalog
+        ignore_patterns = [
+            "marginal",
+            "preliminary",
+            "initial_ligo_virgo",
+        ]
+        ignored = False
+        for pattern in ignore_patterns:
+            if re.search(pattern, catalog_shortname, flags=re.IGNORECASE):
+                logger.error(
+                    f"{event_name} ignored due to matching /{pattern}/ in catalog_shortname ({catalog_shortname})"
+                )
+                save_sqlite_job(
+                    event_name,
+                    common_name,
+                    catalog_shortname,
+                    False,
+                    "ignored_event",
+                    is_latest_version,
+                    pattern,
+                )
+                ignored = True
+                break
+        if ignored:
+            continue
+
+        found = [v for v in parameters.values() if v["is_preferred"]]
+        if len(found) != 1:
+            logger.error(f"Unable to find preferred job for {event_name} 😠")
             save_sqlite_job(
                 event_name,
                 common_name,
                 catalog_shortname,
                 False,
-                "ignored_event",
+                "no preferred job",
                 is_latest_version,
-                pattern,
             )
-            exit()
+            continue
 
-    found = [v for v in parameters.values() if v["is_preferred"]]
-    if len(found) != 1:
-        logger.error(f"Unable to find preferred job for {event_name} 😠")
+        h5url = found[0].get("data_url")
+        if not h5url:
+            logger.error(f"Preferred job for {event_name} does not contain a dataurl 😠")
+            save_sqlite_job(event_name, common_name, catalog_shortname, False, "no dataurl", -1)
+            continue
+
+        # See if there is already an event_id for this event
+        event_id = None
+        if re.match(r"^GW\d{6}_\d{6}$", common_name):
+            event_id = gwcloud_event_ids.get(common_name, None)
+            if event_id is None:
+                # we need to create one
+                event_id = gwc.create_event_id(common_name, gps, gracedb_id)
+                logger.info(f"Created a new event_id: {common_name}")
+            else:
+                logger.info(f"event_id already found: {common_name}")
+        else:
+            logger.info(f"{common_name} is not a valid event_id, uploading job without one")
+
+        logger.info("Downloading h5 file")
+        logger.info(h5url)
+        all_succeeded = True
+        none_succeeded = True
+        download_failed = False
+        with NamedTemporaryFile(mode="rb+") as f:
+            try:
+                with requests.get(h5url, stream=True) as r:
+                    r.raise_for_status()
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+            except Exception:
+                error_msg = f"Downloading {h5url} failed 😠"
+                logger.critical(error_msg, exc_info=True)
+                record_job_failure(con, cur, event_name, error_msg)
+                download_failed = True
+
+            if download_failed:
+                continue
+
+            logger.info("Download complete")
+
+            # Load the h5 file, and read in the bilby ini file(s)
+            with h5py.File(f) as h5:
+                logger.info(f"Found keys: {list(h5.keys())}")
+                for toplevel_key in h5.keys():
+                    if (
+                        isinstance(h5[toplevel_key], h5py.Group)
+                        and "config_file" in h5[toplevel_key]
+                        and isinstance(h5[toplevel_key]["config_file"], h5py.Group)
+                        and "config" in h5[toplevel_key]["config_file"]
+                        and isinstance(h5[toplevel_key]["config_file"]["config"], h5py.Group)
+                    ):
+                        logger.info(f"config_file found: {toplevel_key}")
+                        config = h5[toplevel_key]["config_file"]["config"]
+                        ini_lines = []
+                        for k in config.keys():
+                            ini_lines.append(f"{k}={config[k][0].decode('utf-8')}")
+                        ini_str = "\n".join(ini_lines)
+                        try:
+                            job = gwc.upload_external_job(
+                                build_bilbyjob_name(event_name, toplevel_key),
+                                toplevel_key,
+                                False,
+                                ini_str,
+                                h5url,
+                            )
+                            logger.info(f"BilbyJob {job.id} created 😊")
+                            if event_id is not None:
+                                job.set_event_id(event_id)
+                                logger.info(f" and set event_id to {event_id.event_id}")
+                            else:
+                                logger.info(" and has no event_id")
+                            none_succeeded = False
+                        except Exception:
+                            all_succeeded = False
+                            # we don't just raise here as we want to potentially upload other jobs
+                            logger.error("Failed to create BilbyJob 😠", exc_info=True)
+                    else:
+                        logger.info(f"config_file not found: {toplevel_key}")
+
+        # If we've iterated all the potential BilbyJobs, save the info to the sqlite database
+        #
+        # The job is considered successful if _all_ of the bilby configs found were able
+        # to be successfully submitted, _and_ there was at least one job submitted.
+        #
+        # If no jobs were submitted, it is considered "unsuccessful" even though its most
+        # likely a problem with data missing from the h5 file or event json
         save_sqlite_job(
             event_name,
             common_name,
             catalog_shortname,
-            False,
-            "no preferred job",
+            all_succeeded and not none_succeeded,
+            "completed_submit",
             is_latest_version,
+            "",
+            all_succeeded,
+            none_succeeded,
         )
-        exit()
+        logger.info("Deleted temp h5 file")
 
-    h5url = found[0].get("data_url")
-    if not h5url:
-        logger.error(f"Preferred job for {event_name} does not contain a dataurl 😠")
-        save_sqlite_job(event_name, common_name, catalog_shortname, False, "no dataurl", -1)
-        exit()
-
-    # See if there is already an event_id for this event
-    event_id = None
-    if re.match(r"^GW\d{6}_\d{6}$", common_name):
-        event_id = gwcloud_event_ids.get(common_name, None)
-        if event_id is None:
-            # we need to create one
-            event_id = gwc.create_event_id(common_name, gps, gracedb_id)
-            logger.info(f"Created a new event_id: {common_name}")
-        else:
-            logger.info(f"event_id already found: {common_name}")
-    else:
-        logger.info(f"{common_name} is not a valid event_id, uploading job without one")
-
-    logger.info("Downloading h5 file")
-    logger.info(h5url)
-    all_succeeded = True
-    none_succeeded = True
-    with NamedTemporaryFile(mode="rb+") as f:
-        try:
-            with requests.get(h5url, stream=True) as r:
-                r.raise_for_status()
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        except Exception:
-            # we assume that this is a transient issue and don't mark the job as failed
-            logger.critical(f"Downloading {h5url} failed 😠", exc_info=True)
-            exit()
-
-        logger.info("Download complete")
-
-        # Load the h5 file, and read in the bilby ini file(s)
-        with h5py.File(f) as h5:
-            logger.info(f"Found keys: {list(h5.keys())}")
-            for toplevel_key in h5.keys():
-                if (
-                    isinstance(h5[toplevel_key], h5py.Group)
-                    and "config_file" in h5[toplevel_key]
-                    and isinstance(h5[toplevel_key]["config_file"], h5py.Group)
-                    and "config" in h5[toplevel_key]["config_file"]
-                    and isinstance(h5[toplevel_key]["config_file"]["config"], h5py.Group)
-                ):
-                    logger.info(f"config_file found: {toplevel_key}")
-                    config = h5[toplevel_key]["config_file"]["config"]
-                    ini_lines = []
-                    for k in config.keys():
-                        ini_lines.append(f"{k}={config[k][0].decode('utf-8')}")
-                    ini_str = "\n".join(ini_lines)
-                    try:
-                        job = gwc.upload_external_job(
-                            build_bilbyjob_name(event_name, toplevel_key),
-                            toplevel_key,
-                            False,
-                            ini_str,
-                            h5url,
-                        )
-                        logger.info(f"BilbyJob {job.id} created 😊")
-                        if event_id is not None:
-                            job.set_event_id(event_id)
-                            logger.info(f" and set event_id to {event_id.event_id}")
-                        else:
-                            logger.info(" and has no event_id")
-                        none_succeeded = False
-                    except Exception:
-                        all_succeeded = False
-                        # we don't just raise here as we want to potentially upload other jobs
-                        logger.error("Failed to create BilbyJob 😠", exc_info=True)
-                else:
-                    logger.info(f"config_file not found: {toplevel_key}")
-
-    # If we've iterated all the potential BilbyJobs, save the info to the sqlite database
-    #
-    # The job is considered successful if _all_ of the bilby configs found were able
-    # to be successfully submitted, _and_ there was at least one job submitted.
-    #
-    # If no jobs were submitted, it is considered "unsuccessful" even though its most
-    # likely a problem with data missing from the h5 file or event json
-    save_sqlite_job(
-        event_name,
-        common_name,
-        catalog_shortname,
-        all_succeeded and not none_succeeded,
-        "completed_submit",
-        is_latest_version,
-        "",
-        all_succeeded,
-        none_succeeded,
-    )
-    logger.info("Deleted temp h5 file")
+        # Successfully processed one event — stop for this invocation
+        break
 
 
 def run():
