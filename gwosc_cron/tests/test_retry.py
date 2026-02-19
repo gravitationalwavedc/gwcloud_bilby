@@ -57,6 +57,32 @@ class TestRetryLogic(GWOSCTestBase):
         self.assertEqual(error_rows[0]["failure_count"], 1)
         self.assertIn("Unable to fetch event json", error_rows[0]["last_error"])
 
+    @responses.activate
+    def test_event_json_invalid_json_records_job_error(self, gwc):
+        """Event JSON returns 200 OK but with a non-JSON body → job_errors row with
+        failure_count=1 and no completed_jobs row.  Covers the 'blind spot' where
+        the server responds successfully but the body is malformed."""
+        self.add_allevents_response()
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001_123456.json",
+            body=b"this is not valid json <html>",
+            status=200,
+            content_type="text/html",
+        )
+
+        with self.con_patch, self.assertLogs(level=logging.ERROR):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_not_called()
+        self.assertEqual(len(self.get_completed_jobs()), 0)
+
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 1)
+        self.assertEqual(error_rows[0]["job_id"], "GW000001_123456")
+        self.assertEqual(error_rows[0]["failure_count"], 1)
+        self.assertIn("Unable to parse event json", error_rows[0]["last_error"])
+
     # ---- failure count increments ------------------------------------------
 
     @responses.activate
