@@ -1,5 +1,7 @@
 from gwcloud_python import GWCloud
+import fcntl
 import os
+from pathlib import Path
 import re
 import sqlite3
 from datetime import datetime
@@ -31,6 +33,7 @@ except ImportError:
     DB_PATH = os.getenv("DB_PATH")
 
 EVENTNAME_SEPERATOR = "--"
+LOCK_FILE_PATH = str(Path(DB_PATH).with_suffix(".lock")) if DB_PATH else None
 
 
 def fix_job_name(name):
@@ -284,5 +287,30 @@ def check_and_download():
     logger.info("Deleted temp h5 file")
 
 
+def run():
+    """Entry point that ensures only one instance runs at a time via an exclusive file lock.
+
+    If another instance already holds the lock, logs a message and returns immediately.
+    Exits with code 1 if DB_PATH is not configured.
+    """
+    if not DB_PATH:
+        logger.critical("DB_PATH is not set — this is a misconfiguration. Exiting.")
+        sys.exit(1)
+
+    lock_fd = open(LOCK_FILE_PATH, "w")
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        logger.info("Another instance is already running — skipping this run.")
+        lock_fd.close()
+        return
+
+    try:
+        check_and_download()
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        lock_fd.close()
+
+
 if __name__ == "__main__":
-    check_and_download()
+    run()
