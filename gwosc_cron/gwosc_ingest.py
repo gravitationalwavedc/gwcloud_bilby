@@ -70,7 +70,7 @@ def get_job_failure_count(cursor, job_id):
     row = cursor.execute("SELECT failure_count FROM job_errors WHERE job_id = ?", (job_id,)).fetchone()
     if row is None:
         return 0
-    return row["failure_count"] if isinstance(row, sqlite3.Row) else row[0]
+    return row["failure_count"]
 
 
 def check_and_download():
