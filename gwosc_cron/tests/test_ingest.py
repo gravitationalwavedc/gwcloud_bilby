@@ -2,14 +2,41 @@ import logging
 import sqlite3
 import unittest
 from collections import namedtuple
-from unittest.mock import call
+from unittest.mock import MagicMock, call, patch
 
+import h5py
 import responses
 from gwdc_python.exceptions import GWDCUnknownException
 from parameterized import parameterized
 
 import gwosc_ingest
 from tests.base import GWOSCTestBase
+
+
+class TestComputeIsLatestVersion(unittest.TestCase):
+    """Unit tests for compute_is_latest_version."""
+
+    def test_single_event_always_latest(self):
+        self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914", ["GW150914"]))
+
+    def test_versioned_latest(self):
+        names = ["GW150914-v1", "GW150914-v2"]
+        self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914-v2", names))
+        self.assertFalse(gwosc_ingest.compute_is_latest_version("GW150914-v1", names))
+
+    def test_unversioned_treated_as_v0_not_latest(self):
+        """An unversioned event is treated as v0, so it is NOT the latest when versioned
+        siblings exist."""
+        names = ["GW150914", "GW150914-v1"]
+        self.assertFalse(gwosc_ingest.compute_is_latest_version("GW150914", names))
+        self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914-v1", names))
+
+    def test_all_unversioned_siblings_all_latest(self):
+        """When no name in the group has a version suffix, all are tied at v0 and
+        every member is considered latest."""
+        names = ["GW150914", "GW150914_alt"]
+        self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914", names))
+        self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914_alt", names))
 
 
 @unittest.mock.patch("gwosc_ingest.GWCloud", autospec=True)
@@ -345,7 +372,11 @@ class TestGWOSCCron(GWOSCTestBase):
 
     @responses.activate
     def test_dont_duplicate_jobs(self, gwc):
-        """If a file already has a matching bilbyJob, deal with it"""
+        """If every upload fails (e.g. duplicate job), record a job_errors row for retry.
+
+        All-upload-failure is a transient error: the event is NOT written to
+        completed_jobs — it will be retried on the next cron run.
+        """
         self.add_allevents_response()
         self.add_event_response()
         self.add_file_response()
@@ -363,16 +394,95 @@ class TestGWOSCCron(GWOSCTestBase):
             "https://test.org/GW000001.h5",
         )
 
+        # Event is NOT permanently closed — it should be retried
+        self.assertEqual(len(self.get_completed_jobs()), 0)
+
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 1)
+        self.assertEqual(error_rows[0]["job_id"], "GW000001_123456")
+        self.assertEqual(error_rows[0]["failure_count"], 1)
+        self.assertIn("Failed to create BilbyJob", logs.output[0])
+
+    @responses.activate
+    def test_partial_upload_failure_is_permanent(self, gwc):
+        """If some configs upload successfully and others fail, the event is permanently
+        recorded as completed_submit with success=False (partial success).
+
+        Retrying would re-attempt the already-uploaded configs and produce duplicate
+        errors, so partial success is treated as a final state.
+        """
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response("multiple_configs.h5")
+
+        # First call succeeds, second raises
+        first_job = MagicMock()
+        first_job.id = 99
+        gwc.return_value.upload_external_job.side_effect = [
+            first_job,
+            GWDCUnknownException("second upload failed"),
+        ]
+
+        with self.con_patch, self.assertLogs(level=logging.ERROR):
+            gwosc_ingest.check_and_download()
+
+        self.assertEqual(gwc.return_value.upload_external_job.call_count, 2)
+
+        # Partial success → permanently written to completed_jobs
         sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 1)
         row = sqlite_rows[0]
         self.assertEqual(row["job_id"], "GW000001_123456")
-        self.assertEqual(row["success"], 0)
+        self.assertEqual(row["success"], 0)  # all_succeeded=False
         self.assertEqual(row["reason"], "completed_submit")
-        self.assertEqual(row["is_latest_version"], 1)
-        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
-        self.assertEqual(row["common_name"], "GW000001_123456")
-        self.assertIn("Failed to create BilbyJob", logs.output[0])
+        self.assertEqual(row["all_succeeded"], 0)
+        self.assertEqual(row["none_succeeded"], 0)  # at least one succeeded
+
+        # No entry in job_errors — this is intentionally permanent
+        self.assertEqual(len(self.get_job_errors()), 0)
+
+    @responses.activate
+    def test_h5_key_iteration_error_records_job_failure(self, gwc):
+        """An unexpected exception while reading H5 config data (e.g. corrupt node)
+        records a job_errors row for retry and does not crash the whole script."""
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response()
+
+        # Build a mock H5 object that passes all isinstance/membership checks but
+        # raises OSError when the config data is actually read.
+        mock_config = MagicMock()
+        mock_config.__class__ = h5py.Group
+        mock_config.keys.return_value = ["param1"]
+        mock_config.__getitem__ = MagicMock(side_effect=OSError("HDF5 corrupt node"))
+
+        mock_config_file_group = MagicMock()
+        mock_config_file_group.__class__ = h5py.Group
+        mock_config_file_group.__contains__ = MagicMock(return_value=True)
+        mock_config_file_group.__getitem__ = MagicMock(return_value=mock_config)
+
+        mock_toplevel_group = MagicMock()
+        mock_toplevel_group.__class__ = h5py.Group
+        mock_toplevel_group.__contains__ = MagicMock(return_value=True)
+        mock_toplevel_group.__getitem__ = MagicMock(return_value=mock_config_file_group)
+
+        mock_h5 = MagicMock()
+        mock_h5.keys.return_value = ["IMRPhenom"]
+        mock_h5.__getitem__ = MagicMock(return_value=mock_toplevel_group)
+        mock_h5.__enter__ = MagicMock(return_value=mock_h5)
+        mock_h5.__exit__ = MagicMock(return_value=False)
+
+        with self.con_patch, self.assertLogs(level=logging.ERROR), patch("h5py.File", return_value=mock_h5):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_not_called()
+        self.assertEqual(len(self.get_completed_jobs()), 0)
+
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 1)
+        self.assertEqual(error_rows[0]["job_id"], "GW000001_123456")
+        self.assertEqual(error_rows[0]["failure_count"], 1)
+        self.assertIn("Failed to read H5 config data", error_rows[0]["last_error"])
 
     @responses.activate
     def test_multiple_bilbyjobs(self, gwc):
@@ -496,9 +606,9 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertIn("does not contain a dataurl", logs.output[0])
 
     def test_bad_ini(self, gwc):
-        """If an ini file is invalid, skip it"""
-        # If an ini file is bad, an exception is returned by GWCloud when submitting the job.
-        # Thus, this test is identical to TestGWOSCCron.test_dont_duplicate_jobs
+        """If an ini file is invalid, the upload_external_job exception is caught.
+        The all-uploads-fail path now records a job_errors row for retry.
+        See test_dont_duplicate_jobs for the explicit coverage of this path."""
         pass
 
     @responses.activate

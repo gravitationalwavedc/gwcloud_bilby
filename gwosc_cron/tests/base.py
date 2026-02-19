@@ -18,12 +18,34 @@ gwosc_ingest.AUTH_ENDPOINT = "https://authendpoint/graphql"
 gwosc_ingest.ENDPOINT = "https://bilby/graphql"
 
 
+class _NonClosingConnection:
+    """Transparent proxy around a sqlite3 connection that silently ignores close().
+
+    Used in tests so that production code calling con.close() (e.g., before
+    sys.exit()) does not destroy the shared in-memory test connection, which
+    the test helpers still need to inspect after check_and_download() returns.
+    """
+
+    def __init__(self, con):
+        object.__setattr__(self, "_con", con)
+
+    # Intercept close() so the underlying connection stays usable in tests
+    def close(self):
+        pass
+
+    def __getattr__(self, attr):
+        return getattr(object.__getattribute__(self, "_con"), attr)
+
+    def __setattr__(self, attr, value):
+        setattr(object.__getattribute__(self, "_con"), attr, value)
+
+
 class GWOSCTestBase(unittest.TestCase):
     """Shared setUp and HTTP-response helpers for gwosc_ingest tests."""
 
     def setUp(self):
         self.con = sqlite3.connect(":memory:")
-        self.con_patch = patch("sqlite3.connect", lambda x: self.con)
+        self.con_patch = patch("sqlite3.connect", lambda x: _NonClosingConnection(self.con))
 
     # ---- single-event helpers ------------------------------------------------
 

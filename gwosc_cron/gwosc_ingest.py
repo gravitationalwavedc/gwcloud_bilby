@@ -37,6 +37,27 @@ LOCK_FILE_PATH = str(Path(DB_PATH).with_suffix(".lock")) if DB_PATH else None
 MAX_RETRY_ATTEMPTS = 24
 
 
+def compute_is_latest_version(event_name, shared_common_names):
+    """Return True if *event_name* is the latest-versioned name among *shared_common_names*.
+
+    An unversioned name (no ``-vN`` suffix) is treated as v0, so it will be
+    considered older than any explicitly versioned sibling.  If no name in the
+    group carries a version suffix at all, every member is treated as v0 and
+    all are considered equally "latest" (returns True).
+    """
+    if len(shared_common_names) <= 1:
+        return True
+
+    def _version(name):
+        match = re.search(r"-v(\d+)$", name)
+        # Unversioned names are treated as v0
+        return int(match.group(1)) if match else 0
+
+    current_version = _version(event_name)
+    all_versions = [_version(name) for name in shared_common_names]
+    return current_version == max(all_versions)
+
+
 def fix_job_name(name):
     return re.sub("[^a-z0-9_-]", "-", name, flags=re.IGNORECASE)
 
@@ -81,6 +102,13 @@ def check_and_download():
     create_table(cur)
     create_job_errors_table(cur)
 
+    try:
+        _check_and_download_inner(con, cur)
+    finally:
+        con.close()
+
+
+def _check_and_download_inner(con, cur):
     def save_sqlite_job(
         job_id,
         common_name,
@@ -111,10 +139,10 @@ def check_and_download():
     gwc = GWCloud(GWCLOUD_TOKEN, endpoint=ENDPOINT)
 
     # Collect list of events from GWOSC
-    r = requests.get("https://gwosc.org/eventapi/json/allevents")
+    r = requests.get("https://gwosc.org/eventapi/json/allevents", timeout=30)
     if r.status_code != 200:
         logger.critical(f"Unable to fetch allevents json (status: {r.status_code})")
-        exit()
+        sys.exit(1)
 
     all_events = r.json()["events"]
     gwosc_events = [k for k in all_events.keys()]
@@ -151,7 +179,7 @@ def check_and_download():
 
     if len(jobs_delta) == 0:
         logger.info("Nothing to do 😊")
-        exit()
+        sys.exit(0)
 
     for event_name in jobs_delta:
         # Check if this event has exceeded the maximum retry attempts
@@ -161,41 +189,48 @@ def check_and_download():
             err_row = cur.execute("SELECT last_error FROM job_errors WHERE job_id = ?", (event_name,)).fetchone()
             last_error = err_row["last_error"] if err_row else ""
             logger.error(f"{event_name} has failed {failure_count} times, marking as permanently failed")
+            _broken_common_name = all_events[event_name].get("commonName", "")
+            _broken_shared = [k for k, v in all_events.items() if v.get("commonName") == _broken_common_name]
+            _broken_is_latest = compute_is_latest_version(event_name, _broken_shared)
             save_sqlite_job(
                 event_name,
-                all_events[event_name].get("commonName", ""),
+                _broken_common_name,
                 all_events[event_name].get("catalog.shortName", ""),
                 False,
                 "max_retries_exceeded",
-                False,
+                _broken_is_latest,
                 last_error,
             )
             continue
 
         logger.info(f"{event_name}: {all_events[event_name]['jsonurl']}")
 
-        r = requests.get(all_events[event_name]["jsonurl"])
+        r = requests.get(all_events[event_name]["jsonurl"], timeout=30)
         if r.status_code != 200:
             error_msg = (
                 f"Unable to fetch event json (status: {r.status_code}, event: "
                 f"{event_name}, url: {all_events[event_name]['jsonurl']})"
             )
-            logger.critical(error_msg)
+            logger.error(error_msg)
             record_job_failure(con, cur, event_name, error_msg)
             continue
 
-        event_json = r.json()
+        try:
+            event_json = r.json()
+        except Exception:
+            error_msg = (
+                f"Unable to parse event json (event: {event_name}, " f"url: {all_events[event_name]['jsonurl']})"
+            )
+            logger.error(error_msg, exc_info=True)
+            record_job_failure(con, cur, event_name, error_msg)
+            continue
         event_json = event_json["events"][event_name]
         parameters = event_json["parameters"]
         common_name = event_json["commonName"]
         catalog_shortname = event_json["catalog.shortName"]
 
         shared_common_names = [k for k, v in all_events.items() if v["commonName"] == common_name]
-        is_latest_version = True
-        if len(shared_common_names) > 1:
-            versions_available = [int(re.search(r"-v(\d+)$", cn).groups()[0]) for cn in shared_common_names]
-            current_version = int(re.search(r"-v(\d+)$", event_name).groups()[0])
-            is_latest_version = current_version == max(versions_available)
+        is_latest_version = compute_is_latest_version(event_name, shared_common_names)
 
         gps = event_json["GPS"]
         gracedb_id = event_json["gracedb_id"]
@@ -251,8 +286,14 @@ def check_and_download():
             event_id = gwcloud_event_ids.get(common_name, None)
             if event_id is None:
                 # we need to create one
-                event_id = gwc.create_event_id(common_name, gps, gracedb_id)
-                logger.info(f"Created a new event_id: {common_name}")
+                try:
+                    event_id = gwc.create_event_id(common_name, gps, gracedb_id)
+                    logger.info(f"Created a new event_id: {common_name}")
+                except Exception:
+                    error_msg = f"Failed to create event_id for {common_name}"
+                    logger.error(error_msg, exc_info=True)
+                    record_job_failure(con, cur, event_name, error_msg)
+                    continue
             else:
                 logger.info(f"event_id already found: {common_name}")
         else:
@@ -265,13 +306,13 @@ def check_and_download():
         download_failed = False
         with NamedTemporaryFile(mode="rb+") as f:
             try:
-                with requests.get(h5url, stream=True) as r:
+                with requests.get(h5url, stream=True, timeout=(10, 300)) as r:
                     r.raise_for_status()
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
             except Exception:
                 error_msg = f"Downloading {h5url} failed 😠"
-                logger.critical(error_msg, exc_info=True)
+                logger.error(error_msg, exc_info=True)
                 record_job_failure(con, cur, event_name, error_msg)
                 download_failed = True
 
@@ -281,65 +322,97 @@ def check_and_download():
             logger.info("Download complete")
 
             # Load the h5 file, and read in the bilby ini file(s)
-            with h5py.File(f) as h5:
+            try:
+                h5_handle = h5py.File(f)
+            except Exception:
+                error_msg = f"Failed to open H5 file downloaded from {h5url}"
+                logger.error(error_msg, exc_info=True)
+                record_job_failure(con, cur, event_name, error_msg)
+                continue
+            h5_iteration_error = False
+            with h5_handle as h5:
                 logger.info(f"Found keys: {list(h5.keys())}")
                 for toplevel_key in h5.keys():
-                    if (
-                        isinstance(h5[toplevel_key], h5py.Group)
-                        and "config_file" in h5[toplevel_key]
-                        and isinstance(h5[toplevel_key]["config_file"], h5py.Group)
-                        and "config" in h5[toplevel_key]["config_file"]
-                        and isinstance(h5[toplevel_key]["config_file"]["config"], h5py.Group)
-                    ):
+                    try:
+                        if not (
+                            isinstance(h5[toplevel_key], h5py.Group)
+                            and "config_file" in h5[toplevel_key]
+                            and isinstance(h5[toplevel_key]["config_file"], h5py.Group)
+                            and "config" in h5[toplevel_key]["config_file"]
+                            and isinstance(h5[toplevel_key]["config_file"]["config"], h5py.Group)
+                        ):
+                            logger.info(f"config_file not found: {toplevel_key}")
+                            continue
+
                         logger.info(f"config_file found: {toplevel_key}")
                         config = h5[toplevel_key]["config_file"]["config"]
                         ini_lines = []
                         for k in config.keys():
                             ini_lines.append(f"{k}={config[k][0].decode('utf-8')}")
                         ini_str = "\n".join(ini_lines)
-                        try:
-                            job = gwc.upload_external_job(
-                                build_bilbyjob_name(event_name, toplevel_key),
-                                toplevel_key,
-                                False,
-                                ini_str,
-                                h5url,
-                            )
-                            logger.info(f"BilbyJob {job.id} created 😊")
-                            if event_id is not None:
-                                job.set_event_id(event_id)
-                                logger.info(f" and set event_id to {event_id.event_id}")
-                            else:
-                                logger.info(" and has no event_id")
-                            none_succeeded = False
-                        except Exception:
-                            all_succeeded = False
-                            # we don't just raise here as we want to potentially upload other jobs
-                            logger.error("Failed to create BilbyJob 😠", exc_info=True)
-                    else:
-                        logger.info(f"config_file not found: {toplevel_key}")
+                    except Exception:
+                        error_msg = f"Failed to read H5 config data for key {toplevel_key!r} in {h5url}"
+                        logger.error(error_msg, exc_info=True)
+                        record_job_failure(con, cur, event_name, error_msg)
+                        h5_iteration_error = True
+                        break
+
+                    try:
+                        job = gwc.upload_external_job(
+                            build_bilbyjob_name(event_name, toplevel_key),
+                            toplevel_key,
+                            False,
+                            ini_str,
+                            h5url,
+                        )
+                        logger.info(f"BilbyJob {job.id} created 😊")
+                        if event_id is not None:
+                            job.set_event_id(event_id)
+                            logger.info(f" and set event_id to {event_id.event_id}")
+                        else:
+                            logger.info(" and has no event_id")
+                        none_succeeded = False
+                    except Exception:
+                        all_succeeded = False
+                        # we don't just raise here as we want to potentially upload other jobs
+                        logger.error("Failed to create BilbyJob 😠", exc_info=True)
+
+            if h5_iteration_error:
+                continue
 
         # If we've iterated all the potential BilbyJobs, save the info to the sqlite database
         #
         # The job is considered successful if _all_ of the bilby configs found were able
         # to be successfully submitted, _and_ there was at least one job submitted.
         #
-        # If no jobs were submitted, it is considered "unsuccessful" even though its most
-        # likely a problem with data missing from the h5 file or event json
-        save_sqlite_job(
-            event_name,
-            common_name,
-            catalog_shortname,
-            all_succeeded and not none_succeeded,
-            "completed_submit",
-            is_latest_version,
-            "",
-            all_succeeded,
-            none_succeeded,
-        )
+        # If the H5 had recognised configs but every single upload failed (none_succeeded
+        # is still True and all_succeeded is False), that is a transient upload error —
+        # record it for retry rather than permanently closing the event.
+        #
+        # Partial success (some uploaded, some failed) is accepted permanently: retrying
+        # would hit duplicate-upload errors on the configs that already succeeded.
+        if not all_succeeded and none_succeeded:
+            error_msg = f"All BilbyJob uploads failed for {event_name} — will retry"
+            logger.error(error_msg)
+            record_job_failure(con, cur, event_name, error_msg)
+        else:
+            save_sqlite_job(
+                event_name,
+                common_name,
+                catalog_shortname,
+                all_succeeded and not none_succeeded,
+                "completed_submit",
+                is_latest_version,
+                "",
+                all_succeeded,
+                none_succeeded,
+            )
         logger.info("Deleted temp h5 file")
 
-        # Successfully processed one event — stop for this invocation
+        # One H5 processing attempt per invocation — whether the uploads succeeded,
+        # partially failed, or all failed, we stop here so the cron job doesn't
+        # consume too much time in a single pass.  Failed events remain in job_errors
+        # and will be retried on the next run.
         break
 
 
