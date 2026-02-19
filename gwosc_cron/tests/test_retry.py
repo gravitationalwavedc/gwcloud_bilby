@@ -94,18 +94,7 @@ class TestRetryLogic(GWOSCTestBase):
         self.add_event_response()
         self.add_file_response()
 
-        # Pre-seed job_errors at threshold - 1
-        with self.con_patch:
-            self.con.row_factory = None
-            cur = self.con.cursor()
-            gwosc_ingest.create_table(cur)
-            gwosc_ingest.create_job_errors_table(cur)
-            cur.execute(
-                "INSERT INTO job_errors (job_id, failure_count, last_failure, last_error) VALUES (?, ?, CURRENT_TIMESTAMP, ?)",  # noqa: E501
-                ("GW000001_123456", gwosc_ingest.MAX_RETRY_ATTEMPTS - 1, "previous error"),
-            )
-            self.con.commit()
-            self.con.row_factory = __import__("sqlite3").Row
+        self.seed_job_error("GW000001_123456", gwosc_ingest.MAX_RETRY_ATTEMPTS - 1, "previous error")
 
         with self.con_patch:
             gwosc_ingest.check_and_download()
@@ -123,18 +112,7 @@ class TestRetryLogic(GWOSCTestBase):
         """Pre-seed failure_count=24 → completed_jobs written with reason=max_retries_exceeded, no upload."""
         self.add_allevents_response()
 
-        # Pre-seed job_errors at threshold
-        with self.con_patch:
-            self.con.row_factory = None
-            cur = self.con.cursor()
-            gwosc_ingest.create_table(cur)
-            gwosc_ingest.create_job_errors_table(cur)
-            cur.execute(
-                "INSERT INTO job_errors (job_id, failure_count, last_failure, last_error) VALUES (?, ?, CURRENT_TIMESTAMP, ?)",  # noqa: E501
-                ("GW000001_123456", gwosc_ingest.MAX_RETRY_ATTEMPTS, "download failed"),
-            )
-            self.con.commit()
-            self.con.row_factory = __import__("sqlite3").Row
+        self.seed_job_error("GW000001_123456", gwosc_ingest.MAX_RETRY_ATTEMPTS, "download failed")
 
         with self.con_patch, self.assertLogs(level=logging.ERROR):
             gwosc_ingest.check_and_download()
@@ -230,18 +208,7 @@ class TestRetryLogic(GWOSCTestBase):
         self.add_second_event_response()
         self.add_second_file_response()
 
-        # Pre-seed first event at max retries
-        with self.con_patch:
-            self.con.row_factory = None
-            cur = self.con.cursor()
-            gwosc_ingest.create_table(cur)
-            gwosc_ingest.create_job_errors_table(cur)
-            cur.execute(
-                "INSERT INTO job_errors (job_id, failure_count, last_failure, last_error) VALUES (?, ?, CURRENT_TIMESTAMP, ?)",  # noqa: E501
-                ("GW000001_123456", gwosc_ingest.MAX_RETRY_ATTEMPTS, "persistent failure"),
-            )
-            self.con.commit()
-            self.con.row_factory = __import__("sqlite3").Row
+        self.seed_job_error("GW000001_123456", gwosc_ingest.MAX_RETRY_ATTEMPTS, "persistent failure")
 
         with self.con_patch, self.assertLogs(level=logging.ERROR):
             gwosc_ingest.check_and_download()
@@ -276,18 +243,7 @@ class TestRetryLogic(GWOSCTestBase):
         self.add_event_response()
         self.add_file_response()
 
-        # Pre-seed some failures
-        with self.con_patch:
-            self.con.row_factory = None
-            cur = self.con.cursor()
-            gwosc_ingest.create_table(cur)
-            gwosc_ingest.create_job_errors_table(cur)
-            cur.execute(
-                "INSERT INTO job_errors (job_id, failure_count, last_failure, last_error) VALUES (?, ?, CURRENT_TIMESTAMP, ?)",  # noqa: E501
-                ("GW000001_123456", 3, "temporary glitch"),
-            )
-            self.con.commit()
-            self.con.row_factory = __import__("sqlite3").Row
+        self.seed_job_error("GW000001_123456", 3, "temporary glitch")
 
         with self.con_patch:
             gwosc_ingest.check_and_download()
@@ -362,18 +318,7 @@ class TestRetryLogic(GWOSCTestBase):
         self.add_event_response(event_name="GW000003_111111", data_url="https://test.org/GW000003.h5")
         self.add_file_response(url_path="GW000003.h5")
 
-        # Pre-seed first event at max retries
-        with self.con_patch:
-            self.con.row_factory = None
-            cur = self.con.cursor()
-            gwosc_ingest.create_table(cur)
-            gwosc_ingest.create_job_errors_table(cur)
-            cur.execute(
-                "INSERT INTO job_errors (job_id, failure_count, last_failure, last_error) VALUES (?, ?, CURRENT_TIMESTAMP, ?)",  # noqa: E501
-                ("GW000001_123456", gwosc_ingest.MAX_RETRY_ATTEMPTS, "permanently broken"),
-            )
-            self.con.commit()
-            self.con.row_factory = __import__("sqlite3").Row
+        self.seed_job_error("GW000001_123456", gwosc_ingest.MAX_RETRY_ATTEMPTS, "permanently broken")
 
         with self.con_patch, self.assertLogs(level=logging.ERROR):
             gwosc_ingest.check_and_download()

@@ -119,3 +119,18 @@ class GWOSCTestBase(unittest.TestCase):
     def get_job_errors(self):
         cur = self.con.cursor()
         return cur.execute("SELECT * FROM job_errors").fetchall()
+
+    # ---- SQLite seeding helpers ---------------------------------------------
+
+    def seed_job_error(self, job_id, failure_count, last_error="seeded error"):
+        """Insert a pre-existing job_errors row, creating tables if needed."""
+        with self.con_patch:
+            cur = self.con.cursor()
+            gwosc_ingest.create_table(cur)
+            gwosc_ingest.create_job_errors_table(cur)
+            cur.execute(
+                "INSERT INTO job_errors (job_id, failure_count, last_failure, last_error)"
+                " VALUES (?, ?, CURRENT_TIMESTAMP, ?)",
+                (job_id, failure_count, last_error),
+            )
+            self.con.commit()
