@@ -189,16 +189,16 @@ def _check_and_download_inner(con, cur):
             err_row = cur.execute("SELECT last_error FROM job_errors WHERE job_id = ?", (event_name,)).fetchone()
             last_error = err_row["last_error"] if err_row else ""
             logger.error(f"{event_name} has failed {failure_count} times, marking as permanently failed")
-            _broken_common_name = all_events[event_name].get("commonName", "")
-            _broken_shared = [k for k, v in all_events.items() if v.get("commonName") == _broken_common_name]
-            _broken_is_latest = compute_is_latest_version(event_name, _broken_shared)
+            common_name = all_events[event_name].get("commonName", "")
+            shared_common_names = [k for k, v in all_events.items() if v.get("commonName") == common_name]
+            is_latest_version = compute_is_latest_version(event_name, shared_common_names)
             save_sqlite_job(
                 event_name,
-                _broken_common_name,
+                common_name,
                 all_events[event_name].get("catalog.shortName", ""),
                 False,
                 "max_retries_exceeded",
-                _broken_is_latest,
+                is_latest_version,
                 last_error,
             )
             continue
