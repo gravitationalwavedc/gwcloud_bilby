@@ -1,4 +1,4 @@
-name: /home/lewis/Projects/gwdc/gwcloud-bilby/src/bundle/venv
+name: gwcloud_bilby_bundle
 channels:
   - conda-forge
   - defaults
@@ -241,4 +241,4 @@ dependencies:
   - zipp=3.11.0=pyhd8ed1ab_0
   - zlib=1.2.13=h166bdaf_4
   - zstd=1.5.2=h6239696_4
-prefix: /home/lewis/Projects/gwdc/gwcloud-bilby/src/bundle/venv
+prefix: /home/lewis/Projects/gwdc/gwcloud_bilby/src/bundle/venv

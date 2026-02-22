@@ -4,11 +4,13 @@ import settings
 from scheduler.condor import CondorScheduler
 from scheduler.scheduler import EScheduler
 from scheduler.slurm import SlurmScheduler
-from settings import job_directory
 
 
 def working_directory(details, *args, **kwargs):
-    return str(Path(job_directory, str(details["job_id"])))
+    if isinstance(details, dict):
+        return str(Path(settings.job_directory, str(details["job_id"])))
+
+    return settings.default_working_directory
 
 
 def get_scheduler():
