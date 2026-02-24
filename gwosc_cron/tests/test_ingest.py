@@ -878,3 +878,109 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(row["is_latest_version"], 1)
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001_123456")
+
+    @responses.activate
+    def test_head_of_line_blocking(self, gwc):
+        """If the first event fails to upload, we should still process the second event."""
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json={
+                "events": {
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "jsonurl": "https://test.org/GW000001.json",
+                    },
+                    "GW000002_123456": {
+                        "commonName": "GW000002_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "jsonurl": "https://test.org/GW000002.json",
+                    },
+                }
+            },
+        )
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001.json",
+            json={
+                "events": {
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "GPS": 1729400000,
+                        "gracedb_id": "S123456z",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": True,
+                                "data_url": "https://test.org/GW000001.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000002.json",
+            json={
+                "events": {
+                    "GW000002_123456": {
+                        "commonName": "GW000002_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "GPS": 1729400001,
+                        "gracedb_id": "S123456y",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": True,
+                                "data_url": "https://test.org/GW000002.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        self.add_file_response("good.h5", "GW000001.h5")
+        self.add_file_response("good.h5", "GW000002.h5")
+
+        # First upload fails, second succeeds.
+        first_job = MagicMock()
+        first_job.id = 100
+        gwc.return_value.upload_external_job.side_effect = [
+            GWDCUnknownException("Duplicate job"),
+            first_job,
+        ]
+
+        with self.con_patch, self.assertLogs(level=logging.ERROR) as logs:
+            gwosc_ingest.check_and_download()
+
+        # Both jobs should have been attempted
+        calls = [
+            call(
+                "GW000001_123456--IMRPhenom",
+                "IMRPhenom",
+                False,
+                "VALID=good",
+                "https://test.org/GW000001.h5",
+            ),
+            call(
+                "GW000002_123456--IMRPhenom",
+                "IMRPhenom",
+                False,
+                "VALID=good",
+                "https://test.org/GW000002.h5",
+            ),
+        ]
+        gwc.return_value.upload_external_job.assert_has_calls(calls, any_order=False)
+
+        # First event shouldn't be completed, it should be in job_errors
+        sqlite_rows = self.get_completed_jobs()
+        self.assertEqual(len(sqlite_rows), 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000002_123456")
+        self.assertEqual(row["success"], 1)
+
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 1)
+        self.assertEqual(error_rows[0]["job_id"], "GW000001_123456")
+        self.assertEqual(error_rows[0]["failure_count"], 1)

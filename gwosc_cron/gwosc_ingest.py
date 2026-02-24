@@ -395,6 +395,7 @@ def _check_and_download_inner(con, cur):
             error_msg = f"All BilbyJob uploads failed for {event_name} — will retry"
             logger.error(error_msg)
             record_job_failure(con, cur, event_name, error_msg)
+            continue
         else:
             save_sqlite_job(
                 event_name,
@@ -407,13 +408,14 @@ def _check_and_download_inner(con, cur):
                 all_succeeded,
                 none_succeeded,
             )
-        logger.info("Deleted temp h5 file")
+            logger.info("Deleted temp h5 file")
 
-        # One H5 processing attempt per invocation — whether the uploads succeeded,
-        # partially failed, or all failed, we stop here so the cron job doesn't
-        # consume too much time in a single pass.  Failed events remain in job_errors
-        # and will be retried on the next run.
-        break
+            # One H5 processing attempt per invocation — if the event was successfully
+            # processed (whether that means uploads succeeded, partially failed, or it was
+            # intentionally ignored), we stop here so the cron job doesn't consume too
+            # much time in a single pass. Failed events (where everything failed) are skipped
+            # via `continue` above and will be retried on the next run.
+            break
 
 
 def run():
