@@ -1,7 +1,7 @@
 from urllib import request
 
-from django.conf import settings
 from django.db import migrations
+from django.conf import settings
 
 from bilbyui.utils.jobs.request_file_download_id import request_file_download_id
 from bilbyui.utils.jobs.request_file_list import request_file_list
