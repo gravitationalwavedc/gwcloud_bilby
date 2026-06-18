@@ -1,0 +1,36 @@
+<div class="mb-4">
+  <h1 data-field="name">{{ job.name }}</h1>
+
+  <p data-field="description">{{ job.description }}</p>
+
+  <div class="mb-2">
+    <span class="badge badge-primary">{{ status_name }}</span>
+    <span class="text-muted small ml-2">{{ status_date }}</span>
+  </div>
+
+  <div data-field="labels" class="mb-2">
+    {% for label in job.labels.all %}
+      <span class="badge badge-secondary mr-1">{{ label.name }}</span>
+    {% empty %}
+      <span class="text-muted">No labels</span>
+    {% endfor %}
+  </div>
+
+  <div data-field="event-id" class="mb-2">
+    <strong>Event ID:</strong>
+    {% if job.event_id %}
+      {{ job.event_id.event_id }}
+    {% else %}
+      <span class="text-muted">—</span>
+    {% endif %}
+  </div>
+
+  <div data-field="privacy" class="mb-2">
+    <strong>Privacy:</strong>
+    {% if job.private %}
+      Private
+    {% else %}
+      Public
+    {% endif %}
+  </div>
+</div>

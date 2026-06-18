@@ -1,0 +1,18 @@
+<table class="table">
+  <thead>
+    <tr>
+      <th>File Path</th>
+      <th>Type</th>
+      <th>File Size</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for file in files %}
+      {% include "bilbyui/_file_row.html" with file=file job=job %}
+    {% empty %}
+      <tr>
+        <td colspan="3" class="text-muted">No result files found.</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
