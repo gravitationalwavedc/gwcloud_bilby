@@ -28,7 +28,8 @@ from .models import (
     Label,
     SupportingFile,
 )
-from .services.jobs import update_job
+from .services.jobs import list_public_jobs, update_job
+from .status import JobStatus
 from .utils.embargo import should_embargo_job
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 from .utils.job_validation import validate_job_name
@@ -918,3 +919,74 @@ def upload_supporting_files(upload_tokens, uploaded_supporting_files):
 
 def _health_view(request):
     return TemplateResponse(request, "bilbyui/base.html", {"page_title": "htmx-bootstrap"})
+
+
+def _build_public_job_rows(public_jobs_result):
+    records = public_jobs_result["records"]
+    page_size = public_jobs_result["page_size"]
+    job_controller_jobs = public_jobs_result["job_controller_jobs"]
+    jobs = public_jobs_result["jobs"]
+
+    rows = []
+    for record in records[:page_size]:
+        bilby_job = jobs.get(int(record["_id"]))
+        if bilby_job is None:
+            continue
+
+        job_source = record["_source"]
+
+        if bilby_job.job_type == BilbyJobType.NORMAL:
+            if bilby_job.id not in job_controller_jobs:
+                status_name = "Unknown"
+            else:
+                job_controller_job = job_controller_jobs[bilby_job.id]
+                status_name = JobStatus.display_name(job_controller_job["history"][0]["state"])
+        elif bilby_job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
+            status_name = JobStatus.display_name(JobStatus.COMPLETED)
+        else:
+            status_name = "Unknown"
+
+        rows.append(
+            {
+                "id": bilby_job.id,
+                "user": job_source["user"]["name"],
+                "name": job_source["job"]["name"],
+                "description": job_source["job"]["description"] or "",
+                "status_name": status_name,
+                "labels": list(bilby_job.labels.all()),
+            }
+        )
+
+    return rows
+
+
+def public_jobs_view(request):
+    page = max(int(request.GET.get("page", 1)), 1)
+    search = request.GET.get("search", "")
+    time_range = request.GET.get("time_range", "all")
+
+    public_jobs_result = list_public_jobs(
+        request.user,
+        search=search,
+        time_range=time_range,
+        page=page,
+    )
+
+    context = {
+        "rows": _build_public_job_rows(public_jobs_result),
+        "search": search,
+        "time_range": time_range,
+        "page": page,
+        "has_next": public_jobs_result["has_next"],
+        "next_page": page + 1,
+        "user": request.user,
+    }
+
+    if request.headers.get("HX-Request") == "true":
+        return TemplateResponse(request, "bilbyui/_job_list_fragment.html", context)
+
+    return TemplateResponse(request, "bilbyui/public_jobs.html", context)
+
+
+def view_job_stub(request, job_id):
+    raise Http404
