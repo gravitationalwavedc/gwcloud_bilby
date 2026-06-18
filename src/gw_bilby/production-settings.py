@@ -21,7 +21,7 @@ EMAIL_PORT = 25
 GWCLOUD_JOB_CONTROLLER_API_URL = "https://jobcontroller.adacs.org.au/job/apiv1"
 ELASTIC_SEARCH_HOST = "http://elasticsearch:9200"
 
-# On both login and logout, redirect to the frontend react app
+# On both login and logout, redirect to the Django htmx frontend
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 

@@ -1,6 +1,1 @@
-plugins: 
-  eslint:
-    enabled: true
-    channel: "eslint-7"
-    config:
-      config: src/react/.eslintrc.json
+plugins: {}

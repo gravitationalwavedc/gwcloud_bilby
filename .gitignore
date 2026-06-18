@@ -6,13 +6,9 @@ venv
 db.sqlite3
 __generated__
 local.py
-src/react/coverage
 .coverage
 .coverage.*
 .DS_Store
-src/react/junit.xml
-src/react/eslint.xml
-src/react/data/schema.graphql
 src/job_uploads/
 src/bundle/coverage.xml
 src/bundle/junit.xml
@@ -30,4 +26,7 @@ outdir/
 AGENTS.md
 ARCHITECTURE.md
 docs
+!src/docs/
+!src/docs/data/
+!src/docs/data/.keep
 

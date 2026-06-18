@@ -1,4 +1,3 @@
 .git
-src/react/node_modules
 src/bundle
 src/staticfiles
