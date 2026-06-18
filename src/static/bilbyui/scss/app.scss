@@ -1,0 +1,4 @@
+// Entry point for compiling bilbyui/app.css.
+// Import order matches the former React app (theme.scss then styles.scss).
+@import "./theme";
+@import "./styles";

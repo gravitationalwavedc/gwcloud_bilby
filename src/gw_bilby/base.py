@@ -145,7 +145,7 @@ EMAIL_PORT = 25
 
 GRAPHENE = {
     "SCHEMA": "gw_bilby.schema.schema",
-    "SCHEMA_OUTPUT": "react/data/schema.graphql",  # defaults to schema.json,
+    "SCHEMA_OUTPUT": "docs/data/schema.graphql",
     "SCHEMA_INDENT": 2,  # Defaults to None (displays all data on a single line),
     "MIDDLEWARE": [
         "graphql_jwt.middleware.JSONWebTokenMiddleware",
