@@ -8,6 +8,7 @@ import sys
 def main():
     # Mock gwosc event resolution during testing to avoid network timeouts
     if "test" in sys.argv:
+
         class MockDatasets:
             @staticmethod
             def event_gps(event):
@@ -18,6 +19,7 @@ def main():
                 if event in event_map:
                     return event_map[event]
                 raise ValueError(f"Unknown event {event}")
+
         sys.modules["gwosc.datasets"] = MockDatasets
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gw_bilby.development-settings")
