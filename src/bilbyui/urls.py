@@ -56,4 +56,11 @@ urlpatterns = [
     ),
     path("jobs/<int:job_id>/", views.view_job_view, name="view_job"),
     path("jobs/", views.my_jobs_view, name="my_jobs"),
+    path("api-tokens/", views.api_token_view, name="api_tokens"),
+    path("api-tokens/create/", views.api_token_create, name="api_token_create"),
+    path(
+        "api-tokens/<int:token_id>/revoke/",
+        views.api_token_revoke,
+        name="api_token_revoke",
+    ),
 ]

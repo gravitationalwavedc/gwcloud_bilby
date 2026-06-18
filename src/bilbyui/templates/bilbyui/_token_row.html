@@ -1,0 +1,30 @@
+{% load humanize %}
+<div class="card gw-form-card mb-2{% if token.expired %} border-warning{% endif %}" data-token-id="{{ token.id }}">
+  <div class="card-body d-flex align-items-center justify-content-between">
+    <div>
+      <h5 class="mb-1">{{ token.name }}</h5>
+      <p class="mb-0">
+        <pre class="mb-0 d-inline">{{ token.shortcode }}...</pre>
+        <br>
+        {% if token.last_used %}
+          Last used {{ token.last_used|naturaltime }}
+        {% else %}
+          Never used
+        {% endif %}
+        <br>
+        {% if token.expiry %}
+          {% if token.expired %}
+            <span class="text-warning">Expired on {{ token.expiry|date:"j F Y" }}</span>
+          {% else %}
+            Expires on {{ token.expiry|date:"j F Y" }}
+          {% endif %}
+        {% endif %}
+      </p>
+    </div>
+    <form hx-post="{% url 'bilbyui:api_token_revoke' token_id=token.id %}"
+          hx-swap="none">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-danger">Revoke</button>
+    </form>
+  </div>
+</div>
