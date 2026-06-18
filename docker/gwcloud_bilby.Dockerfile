@@ -8,7 +8,7 @@ RUN apt-get update \
   && apt-get install --no-install-recommends -y \
   curl netcat-traditional\
   && apt-get clean \
-  && rm -rf /var/lib/apt-lists/* \
+  && rm -rf /var/lib/apt/lists/* \
   && apt-get autoremove --purge -y
 
 
@@ -18,7 +18,7 @@ RUN apt-get update \
   && apt-get install --no-install-recommends -y \
   python3-virtualenv default-libmysqlclient-dev python3-dev build-essential git pkg-config curl \
   && apt-get clean \
-  && rm -rf /var/lib/apt-lists/* \
+  && rm -rf /var/lib/apt/lists/* \
   && apt-get autoremove --purge -y
 
 # Install Poetry at system level so we can use it to create the project venv
@@ -67,7 +67,7 @@ RUN mkdir -p /www/static
 
 COPY --from=django-builder /src/staticfiles /www/static/
 
-COPY ./nginx/nginx.conf /etc/nginx/conf.d/nginx.conf
+COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 8000
 
