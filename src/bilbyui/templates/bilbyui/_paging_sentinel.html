@@ -1,6 +1,6 @@
 {% if has_next %}
 <div
-  hx-get="{% url 'bilbyui:public_jobs' %}?page={{ next_page }}&search={{ search }}&time_range={{ time_range }}"
+  hx-get="{% url jobs_list_url_name %}?page={{ next_page }}&search={{ search }}&time_range={{ time_range }}"
   hx-trigger="revealed"
   hx-swap="outerHTML"
   class="text-center text-muted my-3"

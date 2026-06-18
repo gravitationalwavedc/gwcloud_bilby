@@ -6,7 +6,7 @@
       class="form-control"
       placeholder="Find a job..."
       value="{{ search }}"
-      hx-get="{% url 'bilbyui:public_jobs' %}"
+      hx-get="{% url jobs_list_url_name %}"
       hx-trigger="input changed delay:300ms, search"
       hx-target="#job-list"
       hx-swap="innerHTML"
@@ -17,7 +17,7 @@
     <select
       name="time_range"
       class="form-control custom-select"
-      hx-get="{% url 'bilbyui:public_jobs' %}"
+      hx-get="{% url jobs_list_url_name %}"
       hx-trigger="change"
       hx-target="#job-list"
       hx-swap="innerHTML"
