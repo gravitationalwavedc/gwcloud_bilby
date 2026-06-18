@@ -1,0 +1,52 @@
+<div data-field="{{ field }}" id="field-{{ field }}-{{ job_id }}">
+  {% if editing %}
+    <form
+      hx-post="{% if field == 'name' %}{% url 'bilbyui:edit_job_name' job_id=job_id %}{% else %}{% url 'bilbyui:edit_job_description' job_id=job_id %}{% endif %}"
+      hx-target="#field-{{ field }}-{{ job_id }}"
+      hx-swap="outerHTML"
+    >
+      {% csrf_token %}
+      {% if field == "name" %}
+        <input
+          type="text"
+          name="name"
+          value="{{ value }}"
+          maxlength="30"
+          class="form-control"
+          autofocus
+        >
+      {% else %}
+        <textarea name="description" class="form-control" rows="3">{{ value }}</textarea>
+      {% endif %}
+      {% if error %}
+        <p class="text-danger small">{{ error }}</p>
+      {% endif %}
+      <button type="submit" class="btn btn-sm btn-primary">Save</button>
+      <button
+        type="button"
+        class="btn btn-sm btn-link"
+        hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field=field %}"
+        hx-target="#field-{{ field }}-{{ job_id }}"
+        hx-swap="outerHTML"
+      >Cancel</button>
+    </form>
+  {% else %}
+    {% if field == "name" %}
+      <h1{% if modifiable %}
+        hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field='name' %}?editing=1"
+        hx-target="#field-name-{{ job_id }}"
+        hx-trigger="click"
+        hx-swap="outerHTML"
+        style="cursor: pointer;"
+      {% endif %}>{{ value }}</h1>
+    {% else %}
+      <p{% if modifiable %}
+        hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field='description' %}?editing=1"
+        hx-target="#field-description-{{ job_id }}"
+        hx-trigger="click"
+        hx-swap="outerHTML"
+        style="cursor: pointer;"
+      {% endif %}>{{ value }}</p>
+    {% endif %}
+  {% endif %}
+</div>

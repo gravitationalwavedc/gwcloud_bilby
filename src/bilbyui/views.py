@@ -18,6 +18,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.template.response import TemplateResponse
+from django.views.decorators.http import require_POST
 from gwosc.datasets import event_gps
 
 from .constants import BilbyJobType
@@ -1139,6 +1140,7 @@ def view_job_view(request, job_id):
             "job": job,
             "status_name": status["status_name"],
             "status_date": status["status_date"],
+            "modifiable": request.user.id == job.user_id,
         },
     )
 
@@ -1172,6 +1174,79 @@ def view_job_results_partial(request, job_id):
         "bilbyui/_results.html",
         {"job": job, "files": _build_result_files(job)},
     )
+
+
+def _render_job_field_text(request, job, field, editing=False, error="", status=200, modifiable=None):
+    if modifiable is None:
+        modifiable = request.user.id == job.user_id
+    value = job.name if field == "name" else job.description
+    return TemplateResponse(
+        request,
+        "bilbyui/_job_field_text.html",
+        {
+            "field": field,
+            "value": value,
+            "job_id": job.id,
+            "editing": editing,
+            "error": error,
+            "modifiable": modifiable,
+        },
+        status=status,
+    )
+
+
+@login_required(login_url="/sso/login/")
+def view_job_field_partial(request, job_id, field):
+    job = _get_view_job_or_404(job_id, request.user)
+
+    if field not in ("name", "description"):
+        raise Http404
+
+    editing = request.GET.get("editing") == "1"
+    if editing and request.user.id != job.user_id:
+        raise Http404
+    return _render_job_field_text(request, job, field, editing=editing)
+
+
+@login_required(login_url="/sso/login/")
+@require_POST
+def edit_job_name(request, job_id):
+    job = _get_view_job_or_404(job_id, request.user)
+
+    if request.user.id != job.user_id:
+        raise Http404
+
+    name = request.POST.get("name", "")
+
+    try:
+        validate_job_name(name)
+    except Exception as e:
+        return _render_job_field_text(request, job, "name", editing=True, error=str(e), status=400)
+
+    update_job(job_id, request.user, name=name)
+    job.refresh_from_db()
+
+    response = _render_job_field_text(request, job, "name", editing=False)
+    response["HX-Trigger"] = "save-toast"
+    return response
+
+
+@login_required(login_url="/sso/login/")
+@require_POST
+def edit_job_description(request, job_id):
+    job = _get_view_job_or_404(job_id, request.user)
+
+    if request.user.id != job.user_id:
+        raise Http404
+
+    description = request.POST.get("description", "")
+
+    update_job(job_id, request.user, description=description)
+    job.refresh_from_db()
+
+    response = _render_job_field_text(request, job, "description", editing=False)
+    response["HX-Trigger"] = "save-toast"
+    return response
 
 
 @login_required(login_url="/sso/login/")

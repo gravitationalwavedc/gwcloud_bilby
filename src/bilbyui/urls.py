@@ -22,6 +22,17 @@ urlpatterns = [
         views.view_job_results_partial,
         name="view_job_results",
     ),
+    path(
+        "jobs/<int:job_id>/field/<str:field>/",
+        views.view_job_field_partial,
+        name="view_job_field_partial",
+    ),
+    path("jobs/<int:job_id>/edit/name/", views.edit_job_name, name="edit_job_name"),
+    path(
+        "jobs/<int:job_id>/edit/description/",
+        views.edit_job_description,
+        name="edit_job_description",
+    ),
     path("jobs/<int:job_id>/", views.view_job_view, name="view_job"),
     path("jobs/", views.my_jobs_view, name="my_jobs"),
 ]
