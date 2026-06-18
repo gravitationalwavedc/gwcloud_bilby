@@ -16,7 +16,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from gwosc.datasets import event_gps
 
@@ -29,11 +29,13 @@ from .models import (
     Label,
     SupportingFile,
 )
-from .services.jobs import list_public_jobs, list_user_jobs, update_job
+from .services.jobs import get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
 from .utils.embargo import should_embargo_job
+from .utils.gen_parameter_output import generate_parameter_output
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 from .utils.job_validation import validate_job_name
+from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
 
 
@@ -1059,5 +1061,133 @@ def my_jobs_view(request):
     return TemplateResponse(request, "bilbyui/my_jobs.html", context)
 
 
-def view_job_stub(request, job_id):
-    raise Http404
+def _get_view_job_or_404(job_id, user):
+    try:
+        job = get_job(job_id, user)
+    except BilbyJob.DoesNotExist:
+        raise Http404
+    except Exception:
+        raise Http404
+
+    if not BilbyJob.bilby_job_filter(BilbyJob.objects.filter(pk=job.id), user).exists():
+        raise Http404
+
+    return job
+
+
+def _get_job_status_context(job, user):
+    if job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
+        return {
+            "status_name": JobStatus.display_name(JobStatus.COMPLETED),
+            "status_date": job.last_updated,
+        }
+
+    if not job.job_controller_id:
+        return {"status_name": "Unknown", "status_date": job.last_updated}
+
+    _, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
+    if not job_controller_jobs:
+        return {"status_name": "Unknown", "status_date": job.last_updated}
+
+    job_controller_job = job_controller_jobs[0]
+    return {
+        "status_name": JobStatus.display_name(job_controller_job["history"][0]["state"]),
+        "status_date": job_controller_job["history"][0]["timestamp"],
+    }
+
+
+def _build_result_files(job):
+    if job.job_type == BilbyJobType.EXTERNAL:
+        external_job = ExternalBilbyJob.objects.get(job=job)
+        return [
+            {
+                "path": external_job.url,
+                "is_dir": False,
+                "file_size": None,
+                "download_token": None,
+            }
+        ]
+
+    success, files = job.get_file_list()
+    if not success:
+        return []
+
+    paths = [f["path"] for f in files if not f["isDir"]]
+    tokens = FileDownloadToken.create(job, paths)
+    token_dict = {token.path: token.token for token in tokens}
+
+    return [
+        {
+            "path": file_entry["path"],
+            "is_dir": file_entry["isDir"],
+            "file_size": file_entry["fileSize"],
+            "download_token": token_dict.get(file_entry["path"]),
+        }
+        for file_entry in files
+    ]
+
+
+@login_required(login_url="/sso/login/")
+def view_job_view(request, job_id):
+    job = _get_view_job_or_404(job_id, request.user)
+    status = _get_job_status_context(job, request.user)
+
+    return TemplateResponse(
+        request,
+        "bilbyui/view_job.html",
+        {
+            "job": job,
+            "status_name": status["status_name"],
+            "status_date": status["status_date"],
+        },
+    )
+
+
+@login_required(login_url="/sso/login/")
+def view_job_parameters_partial(request, job_id):
+    job = _get_view_job_or_404(job_id, request.user)
+
+    try:
+        params = generate_parameter_output(job)
+    except Exception as e:
+        logger.error(
+            f"Failed to generate parameter output for job {job.id}: {type(e).__name__}: {str(e)}",
+            exc_info=True,
+        )
+        params = None
+
+    return TemplateResponse(
+        request,
+        "bilbyui/_parameters.html",
+        {"job": job, "params": params},
+    )
+
+
+@login_required(login_url="/sso/login/")
+def view_job_results_partial(request, job_id):
+    job = _get_view_job_or_404(job_id, request.user)
+
+    return TemplateResponse(
+        request,
+        "bilbyui/_results.html",
+        {"job": job, "files": _build_result_files(job)},
+    )
+
+
+@login_required(login_url="/sso/login/")
+def file_download_redirect(request, job_id, token):
+    job = _get_view_job_or_404(job_id, request.user)
+
+    paths = FileDownloadToken.get_paths(job, [token])
+    if None in paths:
+        raise Http404
+
+    if job.job_type == BilbyJobType.UPLOADED:
+        download_id = str(token)
+    else:
+        success, result = request_file_download_ids(job, paths, user_id=request.user.id)
+        if not success:
+            raise Http404
+        download_id = result[0]
+
+    return HttpResponseRedirect(f"/file_download/?fileId={download_id}")

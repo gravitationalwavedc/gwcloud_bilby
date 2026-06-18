@@ -1,0 +1,58 @@
+{% extends "bilbyui/base.html" %}
+
+{% block title %}{{ job.name }} — GWCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="col-md-10 offset-md-1 mb-5 pt-5">
+    {% include "bilbyui/_view_job_header.html" %}
+
+    <div x-data="{ tab: 'parameters' }">
+      <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item">
+          <a
+            class="nav-link"
+            :class="{ active: tab === 'parameters' }"
+            href="#"
+            role="tab"
+            @click.prevent="tab = 'parameters'"
+          >
+            Parameters
+          </a>
+        </li>
+        <li class="nav-item">
+          <a
+            class="nav-link"
+            id="results-tab"
+            :class="{ active: tab === 'results' }"
+            href="#"
+            role="tab"
+            @click.prevent="tab = 'results'"
+          >
+            Results
+          </a>
+        </li>
+      </ul>
+
+      <div>
+        <div
+          x-show="tab === 'parameters'"
+          id="parameters-pane"
+          hx-get="{% url 'bilbyui:view_job_parameters' job_id=job.id %}"
+          hx-trigger="load once"
+          hx-swap="innerHTML"
+        >
+          Loading…
+        </div>
+        <div
+          x-show="tab === 'results'"
+          id="results-pane"
+          hx-get="{% url 'bilbyui:view_job_results' job_id=job.id %}"
+          hx-trigger="click once from:#results-tab"
+          hx-swap="innerHTML"
+        ></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

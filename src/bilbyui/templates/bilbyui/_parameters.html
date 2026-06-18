@@ -1,0 +1,129 @@
+{% if params %}
+  <div class="card gw-form-card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Data</h5>
+      <table class="table mb-0">
+        <tbody>
+          <tr>
+            <th>Data type</th>
+            <td class="text-right">{{ params.data.data_choice }}</td>
+          </tr>
+          <tr>
+            <th>Trigger time</th>
+            <td class="text-right">{{ params.data.trigger_time }}</td>
+          </tr>
+          <tr>
+            <th>Sampling frequency</th>
+            <td class="text-right">{{ params.detector.sampling_frequency }}</td>
+          </tr>
+          <tr>
+            <th>Signal duration</th>
+            <td class="text-right">{{ params.detector.duration }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card gw-form-card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Detectors</h5>
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>Detector</th>
+            <th>Active</th>
+            <th>Channel</th>
+            <th class="text-right">Minimum frequency</th>
+            <th class="text-right">Maximum frequency</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Hanford</td>
+            <td>{% if params.detector.hanford %}Activated{% else %}Deactivated{% endif %}</td>
+            <td>{{ params.data.channels.hanford_channel }}</td>
+            <td class="text-right">{{ params.detector.hanford_minimum_frequency }}</td>
+            <td class="text-right">{{ params.detector.hanford_maximum_frequency }}</td>
+          </tr>
+          <tr>
+            <td>Livingston</td>
+            <td>{% if params.detector.livingston %}Activated{% else %}Deactivated{% endif %}</td>
+            <td>{{ params.data.channels.livingston_channel }}</td>
+            <td class="text-right">{{ params.detector.livingston_minimum_frequency }}</td>
+            <td class="text-right">{{ params.detector.livingston_maximum_frequency }}</td>
+          </tr>
+          <tr>
+            <td>Virgo</td>
+            <td>{% if params.detector.virgo %}Activated{% else %}Deactivated{% endif %}</td>
+            <td>{{ params.data.channels.virgo_channel }}</td>
+            <td class="text-right">{{ params.detector.virgo_minimum_frequency }}</td>
+            <td class="text-right">{{ params.detector.virgo_maximum_frequency }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card gw-form-card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Signal &amp; Parameters</h5>
+      {% if params.waveform.model == "binaryBlackHole" %}
+        <h6>Binary black hole</h6>
+      {% elif params.waveform.model == "binaryNeutronStar" %}
+        <h6>Binary neutron star</h6>
+      {% else %}
+        <h6>{{ params.waveform.model }}</h6>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card gw-form-card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Priors</h5>
+      <h6>{{ params.prior.prior_default }}</h6>
+    </div>
+  </div>
+
+  <div class="card gw-form-card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Sampler Parameters</h5>
+      <table class="table mb-0">
+        <tbody>
+          <tr>
+            <th>Sampler</th>
+            <td class="text-right">{{ params.sampler.sampler_choice }}</td>
+          </tr>
+          <tr>
+            <th>Live points</th>
+            <td class="text-right">{{ params.sampler.nlive }}</td>
+          </tr>
+          <tr>
+            <th>Auto-correlation steps</th>
+            <td class="text-right">{{ params.sampler.nact }}</td>
+          </tr>
+          <tr>
+            <th>Maximum steps</th>
+            <td class="text-right">{{ params.sampler.maxmcmc }}</td>
+          </tr>
+          <tr>
+            <th>Walks</th>
+            <td class="text-right">{{ params.sampler.walks }}</td>
+          </tr>
+          <tr>
+            <th>dlogz</th>
+            <td class="text-right">{{ params.sampler.dlogz }}</td>
+          </tr>
+          <tr>
+            <th>CPUs</th>
+            <td class="text-right">{{ params.sampler.cpus }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% else %}
+  <p class="text-muted">
+    Parameters could not be loaded for this job (e.g. invalid or missing configuration).
+  </p>
+{% endif %}
