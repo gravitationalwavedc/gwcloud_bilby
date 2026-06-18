@@ -51,6 +51,21 @@ class Label(models.Model):
         """
         return cls.objects.filter(name__in=labels, protected__in=[False, include_protected])
 
+    @property
+    def badge_type(self):
+        variants = {
+            "Completed": "primary",
+            "Error": "danger",
+            "Running": "info",
+            "Unknown": "dark",
+            "Production Run": "success",
+            "Bad Run": "danger",
+            "Review Requested": "secondary",
+            "Reviewed": "info",
+            "Official": "warning",
+        }
+        return variants.get(self.name, "secondary")
+
     def __str__(self):
         return f"Label: {self.name}"
 

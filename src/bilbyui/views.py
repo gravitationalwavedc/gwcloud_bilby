@@ -1128,10 +1128,32 @@ def _build_result_files(job):
     ]
 
 
+def _available_labels_for_job(job):
+    job_label_names = set(job.labels.values_list("name", flat=True))
+    return Label.objects.filter(protected=False).exclude(name__in=job_label_names)
+
+
+def _render_job_field_labels(request, job, error="", status=200, modifiable=None):
+    if modifiable is None:
+        modifiable = request.user.id == job.user_id
+    return TemplateResponse(
+        request,
+        "bilbyui/_job_field_labels.html",
+        {
+            "job": job,
+            "available_labels": _available_labels_for_job(job) if modifiable else [],
+            "error": error,
+            "modifiable": modifiable,
+        },
+        status=status,
+    )
+
+
 @login_required(login_url="/sso/login/")
 def view_job_view(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
     status = _get_job_status_context(job, request.user)
+    modifiable = request.user.id == job.user_id
 
     return TemplateResponse(
         request,
@@ -1140,7 +1162,8 @@ def view_job_view(request, job_id):
             "job": job,
             "status_name": status["status_name"],
             "status_date": status["status_date"],
-            "modifiable": request.user.id == job.user_id,
+            "modifiable": modifiable,
+            "available_labels": _available_labels_for_job(job) if modifiable else [],
         },
     )
 
@@ -1273,6 +1296,38 @@ def edit_job_privacy(request, job_id):
     job.refresh_from_db()
 
     response = _render_job_field_privacy(request, job)
+    response["HX-Trigger"] = "save-toast"
+    return response
+
+
+@login_required(login_url="/sso/login/")
+@require_POST
+def edit_job_labels(request, job_id):
+    job = _get_view_job_or_404(job_id, request.user)
+
+    if request.user.id != job.user_id:
+        raise Http404
+
+    new_labels = set(request.POST.getlist("labels"))
+    if "add" in request.POST:
+        new_labels.add(request.POST["add"])
+    if "remove" in request.POST:
+        new_labels.discard(request.POST["remove"])
+
+    protected_names = set(job.labels.filter(protected=True).values_list("name", flat=True))
+    for name in protected_names:
+        if name not in new_labels:
+            return _render_job_field_labels(
+                request,
+                job,
+                error="Protected labels cannot be removed.",
+                status=400,
+            )
+
+    update_job(job_id, request.user, labels=list(new_labels))
+    job.refresh_from_db()
+
+    response = _render_job_field_labels(request, job)
     response["HX-Trigger"] = "save-toast"
     return response
 

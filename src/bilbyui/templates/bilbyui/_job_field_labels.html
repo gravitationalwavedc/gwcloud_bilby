@@ -1,0 +1,50 @@
+<div data-field="labels" class="mb-2">
+  {% if modifiable %}
+    <form id="labels-form-{{ job.id }}"
+          hx-post="{% url 'bilbyui:edit_job_labels' job_id=job.id %}"
+          hx-target="closest [data-field='labels']"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      {% for label in job.labels.all %}
+        <span class="badge badge-{{ label.badge_type }} mr-1">
+          {{ label.name }}
+          {% if not label.protected %}
+            <button type="submit"
+                    class="btn btn-link btn-sm text-light p-0 ml-1"
+                    name="remove"
+                    value="{{ label.name }}"
+                    aria-label="Remove {{ label.name }}">&times;</button>
+          {% endif %}
+        </span>
+        <input type="hidden" name="labels" value="{{ label.name }}" />
+      {% empty %}
+        <span class="text-muted">No labels</span>
+      {% endfor %}
+      {% if error %}
+        <p class="text-danger small mb-0">{{ error }}</p>
+      {% endif %}
+      {% if available_labels %}
+        <div class="dropdown d-inline">
+          <button class="btn btn-sm btn-link dropdown-toggle"
+                  type="button"
+                  data-toggle="dropdown"
+                  aria-haspopup="true"
+                  aria-expanded="false">
+            Add label
+          </button>
+          <div class="dropdown-menu">
+            {% for label in available_labels %}
+              {% include "bilbyui/_add_label_choice.html" with label=label job=job %}
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </form>
+  {% else %}
+    {% for label in job.labels.all %}
+      <span class="badge badge-{{ label.badge_type }} mr-1">{{ label.name }}</span>
+    {% empty %}
+      <span class="text-muted">No labels</span>
+    {% endfor %}
+  {% endif %}
+</div>

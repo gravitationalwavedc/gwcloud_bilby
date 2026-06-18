@@ -7,13 +7,7 @@
     <span class="text-muted small ml-2">{{ status_date }}</span>
   </div>
 
-  <div data-field="labels" class="mb-2">
-    {% for label in job.labels.all %}
-      <span class="badge badge-secondary mr-1">{{ label.name }}</span>
-    {% empty %}
-      <span class="text-muted">No labels</span>
-    {% endfor %}
-  </div>
+  {% include "bilbyui/_job_field_labels.html" with job=job available_labels=available_labels modifiable=modifiable %}
 
   <div data-field="event-id" class="mb-2">
     <strong>Event ID:</strong>
