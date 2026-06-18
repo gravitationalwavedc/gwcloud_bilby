@@ -42,6 +42,10 @@ WORKDIR /src
 # Generate the graphql schema
 RUN .venv/bin/python development-manage.py graphql_schema
 
+# Collect static assets for nginx (production manifest storage)
+ENV DJANGO_SETTINGS_MODULE=gw_bilby.collectstatic-settings
+RUN .venv/bin/python production-manage.py collectstatic --noinput
+
 
 FROM base as django-runner
 
@@ -57,25 +61,11 @@ EXPOSE 8000
 WORKDIR /src
 CMD [ "/runserver.sh" ]
 
-FROM node:23.6.1 as static-builder
-
-# Copy the bilby source code in to the container
-COPY ./src/react /react
-
-# Copy the bilby source in to the container
-WORKDIR /react
-
-# Copy the generate bilby schema
-COPY --from=django-builder /src/react/data/schema.graphql /react/data/schema.graphql
-
-RUN npm install --legacy-peer-deps \
-  && npm run relay \
-  && npm run build
-
-
 FROM nginx:latest as static-runner
 
-COPY --from=static-builder /react/dist /static
+RUN mkdir -p /www/static
+
+COPY --from=django-builder /src/staticfiles /www/static/
 
 COPY ./nginx/nginx.conf /etc/nginx/conf.d/nginx.conf
 

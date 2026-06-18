@@ -124,11 +124,20 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
-STATIC_ROOT = os.path.join(BASE_DIR, "static-files/")
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static/"),
 ]
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 EMAIL_FROM = "no-reply@gw-cloud.org"
 EMAIL_HOST = "mail.swin.edu.au"
