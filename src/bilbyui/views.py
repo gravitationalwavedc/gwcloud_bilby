@@ -1249,6 +1249,34 @@ def edit_job_description(request, job_id):
     return response
 
 
+def _render_job_field_privacy(request, job, status=200):
+    return TemplateResponse(
+        request,
+        "bilbyui/_job_field_privacy.html",
+        {"job": job},
+        status=status,
+    )
+
+
+@login_required(login_url="/sso/login/")
+@require_POST
+def edit_job_privacy(request, job_id):
+    job = _get_view_job_or_404(job_id, request.user)
+
+    if request.user.id != job.user_id:
+        raise Http404
+
+    # Checked checkbox means sharing (public); unchecked means private.
+    private = "private" not in request.POST
+
+    update_job(job_id, request.user, private=private)
+    job.refresh_from_db()
+
+    response = _render_job_field_privacy(request, job)
+    response["HX-Trigger"] = "save-toast"
+    return response
+
+
 @login_required(login_url="/sso/login/")
 def file_download_redirect(request, job_id, token):
     job = _get_view_job_or_404(job_id, request.user)

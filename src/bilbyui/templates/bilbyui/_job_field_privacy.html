@@ -1,0 +1,20 @@
+<div data-field="privacy">
+  <form id="privacy-form-{{ job.id }}">
+    {% csrf_token %}
+    <div class="form-check">
+      <input type="checkbox"
+             class="form-check-input"
+             name="private"
+             id="privacy-{{ job.id }}"
+             {% if not job.private %}checked{% endif %}
+             hx-post="{% url 'bilbyui:edit_job_privacy' job_id=job.id %}"
+             hx-target="closest [data-field='privacy']"
+             hx-swap="outerHTML"
+             hx-trigger="change"
+             hx-include="#privacy-form-{{ job.id }}" />
+      <label class="form-check-label" for="privacy-{{ job.id }}">
+        {% if job.is_ligo_job %}Share with LVK collaborators{% else %}Share publicly{% endif %}
+      </label>
+    </div>
+  </form>
+</div>

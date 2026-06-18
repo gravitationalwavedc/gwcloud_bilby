@@ -24,12 +24,7 @@
     {% endif %}
   </div>
 
-  <div data-field="privacy" class="mb-2">
-    <strong>Privacy:</strong>
-    {% if job.private %}
-      Private
-    {% else %}
-      Public
-    {% endif %}
+  <div class="mb-2">
+    {% include "bilbyui/_job_field_privacy.html" %}
   </div>
 </div>
