@@ -1,0 +1,6 @@
+<button type="submit" class="dropdown-item" name="add" value="{{ label.name }}">
+  <strong>{{ label.name }}</strong>
+  {% if label.description %}
+    <p class="mb-0 small text-muted">{{ label.description }}</p>
+  {% endif %}
+</button>
