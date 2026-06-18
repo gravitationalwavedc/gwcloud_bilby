@@ -21,8 +21,8 @@ class TestEditJobEventId(BilbyTestCase):
             private=False,
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "viewable_job"}),
         )
-        self.base_url = f"/htmx-preview/jobs/{self.job.id}/"
-        self.search_url = "/htmx-preview/event-ids/"
+        self.base_url = f"/jobs/{self.job.id}/"
+        self.search_url = "/event-ids/"
 
     def test_search_returns_matches(self):
         response = self.client.get(
@@ -96,7 +96,7 @@ class TestEditJobEventId(BilbyTestCase):
             private=True,
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "other_users_job"}),
         )
-        other_base_url = f"/htmx-preview/jobs/{other_job.id}/"
+        other_base_url = f"/jobs/{other_job.id}/"
 
         response = self.client.post(
             f"{other_base_url}edit/event-id/",

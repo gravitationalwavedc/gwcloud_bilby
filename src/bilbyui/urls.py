@@ -63,4 +63,5 @@ urlpatterns = [
         views.api_token_revoke,
         name="api_token_revoke",
     ),
+    path("<path:path>", views.not_found_view, name="not_found"),
 ]

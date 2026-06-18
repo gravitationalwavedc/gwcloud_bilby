@@ -115,7 +115,7 @@ def request_job_filter_mock(*args, **kwargs):
 
 
 class TestPublicJobsView(BilbyTestCase):
-    url = "/htmx-preview/"
+    url = "/"
 
     def setUp(self):
         self.deauthenticate()

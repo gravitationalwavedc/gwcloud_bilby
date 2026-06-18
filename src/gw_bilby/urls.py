@@ -25,6 +25,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("graphql", csrf_exempt(FileUploadGraphQLView.as_view(graphiql=True))),
     path("file_download/", bilbyui.views.file_download, name="file_download"),
-    path("htmx-preview/", include("bilbyui.urls")),
     path("sso/", include("adacs_sso_plugin.urls", namespace="sso")),
+    path("", include("bilbyui.urls")),
 ]
