@@ -1,7 +1,6 @@
 <div class="mb-4">
-  <h1 data-field="name">{{ job.name }}</h1>
-
-  <p data-field="description">{{ job.description }}</p>
+  {% include "bilbyui/_job_field_text.html" with field="name" value=job.name job_id=job.id editing=False modifiable=modifiable %}
+  {% include "bilbyui/_job_field_text.html" with field="description" value=job.description job_id=job.id editing=False modifiable=modifiable %}
 
   <div class="mb-2">
     <span class="badge badge-primary">{{ status_name }}</span>
