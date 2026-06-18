@@ -1,6 +1,5 @@
 import logging
 import os
-import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -29,23 +28,10 @@ from .models import (
     Label,
     SupportingFile,
 )
+from .services.jobs import update_job
 from .utils.embargo import should_embargo_job
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
-
-
-def validate_job_name(name):
-    # This constraint is not enforced in the database
-    if len(name) < 5:
-        raise Exception("Job name must be at least 5 characters long.")
-
-    max_len = BilbyJob._meta.get_field("name").max_length
-    # this one is
-    if len(name) > max_len:
-        raise Exception(f"Job name must be less than {max_len} characters long.")
-
-    pattern = re.compile(r"^[0-9a-z_-]+\Z", flags=re.IGNORECASE | re.ASCII)
-    if not pattern.match(name):
-        raise Exception("Job name must not contain any spaces or special characters.")
+from .utils.job_validation import validate_job_name
 
 
 def check_job_embargo_status(user, args):
@@ -477,40 +463,16 @@ def create_bilby_job_from_ini_string(user, params):
 
 
 def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, name=None, description=None):
-    bilby_job = BilbyJob.get_by_id(job_id, user)
-
-    if user.id == bilby_job.user_id:
-        if labels is not None:
-            # Preserve protected labels
-            protected_labels = bilby_job.labels.filter(protected=True)
-            bilby_job.labels.set(Label.filter_by_name(labels) | protected_labels)
-
-        if event_id is not None:
-            bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
-
-        if private is not None:
-            bilby_job.private = private
-
-        if name is not None:
-            validate_job_name(name)
-            bilby_job.name = name
-
-        if description is not None:
-            bilby_job.description = description
-
-        bilby_job.save()
-
-        return "Job saved!"
-
-    elif user.id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
-        bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
-
-        bilby_job.save()
-
-        return "Job saved"
-
-    else:
-        raise Exception("You must own the job to change it!")
+    _, message = update_job(
+        job_id,
+        user,
+        private=private,
+        labels=labels,
+        event_id=event_id,
+        name=name,
+        description=description,
+    )
+    return message
 
 
 def upload_bilby_job(user, upload_token, details, job_file):

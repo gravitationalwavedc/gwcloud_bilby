@@ -1,11 +1,8 @@
 import logging
-from datetime import timedelta
 from decimal import Decimal
 
-import elasticsearch
 import graphene
 from django.conf import settings
-from django.utils import timezone
 from django_filters import FilterSet, OrderingFilter
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
@@ -25,6 +22,9 @@ from .models import (
     Label,
     SupportingFile,
 )
+from .services.event_ids import get_event_id, list_event_ids_for_user
+from .services.jobs import get_job, list_public_jobs, update_job
+from .services.labels import list_labels
 from .status import JobStatus
 from .types import (
     BilbyJobCreationResult,
@@ -39,17 +39,14 @@ from .types import (
 )
 from .utils.auth.lookup_users import request_lookup_users
 from .utils.derive_job_status import derive_job_status
-from .utils.embargo import embargo_filter, user_subject_to_embargo
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
-from .utils.misc import is_ligo_user
 from .views import (
     create_bilby_job,
     create_bilby_job_from_ini_string,
     create_event_id,
     delete_event_id,
-    update_bilby_job,
     update_event_id,
     upload_bilby_job,
     upload_external_bilby_job,
@@ -261,16 +258,17 @@ class Query:
         return GenerateBilbyJobUploadToken(token=str(token.token))
 
     def resolve_all_labels(self, info, **kwargs):
-        return Label.all()
+        return list_labels()
 
     def resolve_event_id(self, info, event_id):
-        return EventID.get_by_event_id(event_id=event_id, user=info.context.user)
+        return get_event_id(event_id, info.context.user)
 
     def resolve_all_event_ids(self, info, **kwargs):
-        return EventID.filter_by_ligo(is_ligo=is_ligo_user(info.context.user))
+        return list_event_ids_for_user(info.context.user)
 
     def resolve_public_bilby_jobs(self, info, **kwargs):
-        user_id = info.context.user.id if info.context.user.is_authenticated else 0
+        user = info.context.user
+        user_id = user.id if user.is_authenticated else 0
         search_term = kwargs.get("search", "*")
         logger.info(
             f"User {user_id} searching public jobs: search='{search_term}', time_range={kwargs.get('time_range')}"
@@ -285,97 +283,29 @@ class Query:
         else:
             kwargs["after"] = int(from_global_id(kwargs["after"])[1])
 
-        try:
-            es = elasticsearch.Elasticsearch(
-                hosts=[settings.ELASTIC_SEARCH_HOST],
-                api_key=settings.ELASTIC_SEARCH_API_KEY,
-                verify_certs=False,
-            )
-        except Exception as e:
-            logger.error(f"Failed to connect to Elasticsearch: {str(e)}", exc_info=True)
-            return []
+        page_size = kwargs["first"]
+        offset = kwargs.get("after") or 0
 
-        # If no search term is provided, return all records via a wildcard
-        q = kwargs.get("search", "") or "*"
-
-        # Prevent the user from searching in private info
-        if "_private_info_" in q:
-            logger.warning(f"User {user_id} attempted to search private info")
-            return []
-
-        # Insert the time query
-        time_range = kwargs["time_range"]
-        if time_range != "all":
-            now = timezone.now()
-            if time_range == "1d":
-                then = now - timedelta(days=1)
-            elif time_range == "1w":
-                then = now - timedelta(days=7)
-            elif time_range == "1m":
-                then = now - timedelta(days=31)
-            elif time_range == "1y":
-                then = now - timedelta(days=365)
-            else:
-                raise Exception(f"Unexpected timeRange value {time_range}")
-
-            q = f'({q}) AND job.creationTime:["{then.isoformat()}" TO "{now.isoformat()}"]'
-
-        # Filter out any private jobs
-        q = f"({q}) AND _private_info_.private:false"
-
-        # If user is subject to an embargo - then apply the embargo as well
-        if user_subject_to_embargo(info.context.user):
-            q = f"({q}) AND (params.trigger_time:<{settings.EMBARGO_START_TIME} OR ini.n_simulation:>0)"
-
-        results = es.search(
-            index=settings.ELASTIC_SEARCH_INDEX,
-            q=q,
-            size=kwargs["first"] + 1,
-            from_=kwargs.get("after") or 0,
-            sort="job.lastUpdatedTime:desc",
+        public_jobs = list_public_jobs(
+            user,
+            search=kwargs.get("search", "") or "",
+            time_range=kwargs["time_range"],
+            page_size=page_size,
+            offset=offset,
         )
 
-        # Check that there were results
-        if not results["hits"]:
+        records = public_jobs["records"]
+        if not records:
             return []
 
-        records = results["hits"]["hits"]
-
-        # Double check the embargo and private jobs. Here we take the list of jobs returned by elastic search, then
-        # use the embargo filter on that and compare the number of jobs before and after the embargo. If this number
-        # doesn't match then something strange has happened.
-        qs_after = qs_before = BilbyJob.objects.filter(id__in=[record["_id"] for record in records])
-        if user_subject_to_embargo(info.context.user):
-            qs_after = embargo_filter(qs_before, info.context.user)
-
-        qs_after = qs_after.filter(private=False)
-
-        if qs_before.count() != qs_after.count():
-            # Somehow user has made a query that violates the embargo or includes a private job. Return nothing.
-            logger.warning(f"User {user_id} query violated embargo or included private job")
-            return []
-
-        # Get a list of bilbyjobs and job controller ids
-        jobs = {job.id: job for job in BilbyJob.objects.filter(id__in=[record["_id"] for record in records])}
-
-        # Get a list of job controller ids and fetch the results from the job controller
-        job_controller_ids = {job.job_controller_id: job.id for job in jobs.values() if job.job_controller_id}
-        job_controller_jobs = {}
-        if len(job_controller_ids):
-            job_controller_jobs = {
-                job_controller_ids[job["id"]]: job
-                for job in request_job_filter(
-                    info.context.user.id if info.context.user.is_authenticated else 0,
-                    ids=job_controller_ids.keys(),
-                )[1]
-            }
+        job_controller_jobs = public_jobs["job_controller_jobs"]
 
         # Parse the result in to graphql objects
         result = []
 
         for record in records:
             job = record["_source"]
-            bilby_job = BilbyJob.get_by_id(record["_id"], info.context.user)
+            bilby_job = get_job(record["_id"], user)
 
             job_node = BilbyPublicJobNode(
                 user=job["user"]["name"],
@@ -449,7 +379,7 @@ class Query:
         logger.info(f"User {user_id} requesting result files for job {job_id}")
 
         # Try to look up the job with the id provided
-        job = BilbyJob.get_by_id(job_id, info.context.user)
+        job = get_job(job_id, info.context.user)
 
         if job.job_type == BilbyJobType.EXTERNAL:
             # There is nothing special we have to do here. The frontend or API will handle the job_type.
@@ -616,7 +546,7 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         logger.info(f"User {user.id} updating job {job_model_id}: {list(kwargs.keys())}")
 
         # Update privacy of bilby job
-        message = update_bilby_job(job_model_id, user, **kwargs)
+        message = update_job(job_model_id, user, **kwargs)[1]
 
         logger.info(f"Successfully updated job {job_model_id} for user {user.id}")
         # Return the bilby job id to the client
@@ -638,7 +568,7 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
         logger.info(f"User {user_id} requesting file download IDs for job {job_model_id}: {len(download_tokens)} files")
 
         # Get the job these file downloads are for
-        job = BilbyJob.get_by_id(job_model_id, user)
+        job = get_job(job_model_id, user)
 
         # Verify the download tokens and get the paths
         paths = FileDownloadToken.get_paths(job, download_tokens)

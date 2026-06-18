@@ -129,7 +129,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         return True, jobs
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_no_cursor(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private and owned by a different user
         BilbyJob.objects.create(
@@ -176,7 +176,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch(
-        "bilbyui.schema.request_job_filter",
+        "bilbyui.services.jobs.request_job_filter",
         side_effect=request_job_filter_mock_missing_record,
     )
     def test_public_bilby_jobs_query_missing_job_controller_job(self, request_job_filter, elasticsearch_search):
@@ -225,7 +225,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         self.assertEqual(list(request_job_filter.mock_calls[0].kwargs["ids"]), [1234, 2345])
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_test_cursor_count(self, request_job_filter, elasticsearch_search):
         # Loop twice, the first loop the user will not be authenticated, the second loop the user will be authenticated
         for _ in range(2):
@@ -311,7 +311,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             self.authenticate()
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_uploaded(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private.
         BilbyJob.objects.create(
@@ -355,7 +355,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
     @silence_errors
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_unknown_job_type(self, request_job_filter, elasticsearch_search):
         BilbyJob.objects.all().delete()
 
@@ -381,7 +381,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         )
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_private_info(self, request_job_filter, elasticsearch_search):
         for term in [
             "_private_info_.private:true",
@@ -399,7 +399,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             )
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_time_ranges(self, request_job_filter, elasticsearch_search):
         for time_range in ["1d", "1w", "1m", "1y", "all"]:
             variables = {"count": 50, "search": None, "timeRange": time_range}
@@ -450,7 +450,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
     @override_settings(EMBARGO_START_TIME=1234)
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_embargo(self, request_job_filter, elasticsearch_search):
         variables = {"count": 50, "search": None, "timeRange": "all", "after": None}
 
@@ -470,7 +470,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
     @override_settings(EMBARGO_START_TIME=1234)
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_combine_all(self, request_job_filter, elasticsearch_search):
         variables = {
             "count": 50,
@@ -516,7 +516,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
     @silence_errors
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_invalid_time_range(self, request_job_filter, elasticsearch_search):
         variables = {"count": 50, "search": None, "timeRange": "invalid"}
 
@@ -547,7 +547,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
     @override_settings(EMBARGO_START_TIME=1234)
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_embargo_violation(self, request_job_filter, elasticsearch_search):
         variables = {"count": 50, "search": None, "timeRange": "all"}
 
@@ -567,7 +567,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         )
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_private_violation(self, request_job_filter, elasticsearch_search):
         variables = {"count": 50, "search": None, "timeRange": "all"}
 
