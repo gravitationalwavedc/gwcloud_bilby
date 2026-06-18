@@ -1,0 +1,39 @@
+{% load static %}
+<nav class="navbar navbar-expand navbar-light bg-light fixed-top">
+  <a class="navbar-brand navbar-brand-link mr-auto" href="/">
+    <img src="{% static 'bilbyui/images/GWCloud-logo-primary200.png' %}" alt="GWCloud" class="navbar-nav-icon">
+    GWCloud
+  </a>
+  <ul class="navbar-nav ml-auto flex-row">
+    {% if user.is_authenticated %}
+      <li class="nav-item">
+        <a class="nav-link mr-3" href="https://gwcloud-python.readthedocs.io/en/latest/gettingstarted.html" target="_blank" rel="noopener noreferrer">
+          <i class="bi bi-code-slash navbar-nav-icon" aria-hidden="true"></i>
+          Python API
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link mr-3" href="/api-tokens/">
+          <i class="bi bi-key navbar-nav-icon" aria-hidden="true"></i>
+          API Tokens
+        </a>
+      </li>
+      <li class="nav-item">
+        <span class="navbar-text mr-3">
+          <i class="bi bi-person-circle navbar-nav-icon" aria-hidden="true"></i>
+          {{ user.name }}
+        </span>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/sso/logout/">
+          <i class="bi bi-box-arrow-right navbar-nav-icon" aria-hidden="true"></i>
+          Logout
+        </a>
+      </li>
+    {% else %}
+      <li class="nav-item">
+        <a class="nav-link" href="/sso/login/">Login</a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>

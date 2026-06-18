@@ -21,3 +21,47 @@ class TestHtmxBootstrap(BilbyTestCase):
         response = self.client.get(self.health_url)
         content = response.content.decode()
         self.assertIn("alpine.min.js", content)
+
+    def test_navbar_anonymous_shows_login(self):
+        response = self.client.get(self.health_url)
+        content = response.content.decode()
+        self.assertIn('href="/sso/login/"', content)
+        self.assertIn("Login", content)
+        self.assertNotIn("API Tokens", content)
+        self.assertNotIn('href="/sso/logout/"', content)
+
+    def test_navbar_authenticated_shows_full_menu(self):
+        self.authenticate()
+        response = self.client.get(self.health_url)
+        content = response.content.decode()
+        self.assertIn("Python API", content)
+        self.assertIn("API Tokens", content)
+        self.assertIn(self.DEFAULT_USER["name"], content)
+        self.assertIn('href="/sso/logout/"', content)
+        self.assertNotIn('href="/sso/login/"', content)
+        self.assertIn("bi-code-slash", content)
+        self.assertIn("bi-key", content)
+        self.assertIn("bi-person-circle", content)
+        self.assertIn("bi-box-arrow-right", content)
+
+    def test_navbar_anonymous_has_no_auth_icons(self):
+        response = self.client.get(self.health_url)
+        content = response.content.decode()
+        self.assertNotIn("bi-code-slash", content)
+        self.assertNotIn("bi-box-arrow-right", content)
+
+    def test_base_template_includes_bootstrap_icons(self):
+        response = self.client.get(self.health_url)
+        content = response.content.decode()
+        self.assertIn("bootstrap-icons.min.css", content)
+
+    def test_navbar_logo_links_home(self):
+        response = self.client.get(self.health_url)
+        content = response.content.decode()
+        self.assertIn('class="navbar-brand navbar-brand-link mr-auto" href="/"', content)
+
+    def test_navbar_api_tokens_link(self):
+        self.authenticate()
+        response = self.client.get(self.health_url)
+        content = response.content.decode()
+        self.assertIn('href="/api-tokens/"', content)
