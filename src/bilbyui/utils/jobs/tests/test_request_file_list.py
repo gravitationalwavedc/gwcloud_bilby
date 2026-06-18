@@ -9,9 +9,9 @@ from django.test import override_settings
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import (
-    silence_errors,
     create_test_ini_string,
     create_test_upload_data,
+    silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.jobs.request_file_list import request_file_list

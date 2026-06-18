@@ -3,12 +3,11 @@ import string
 from decimal import Decimal
 from unittest.mock import patch
 
-from bilby_pipe.data_generation import DataGenerationInput
 from django.contrib.auth import get_user_model
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.gen_parameter_output import to_dec, generate_parameter_output
+from bilbyui.utils.gen_parameter_output import generate_parameter_output, to_dec
 
 User = get_user_model()
 

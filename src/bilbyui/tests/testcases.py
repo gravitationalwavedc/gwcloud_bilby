@@ -1,11 +1,12 @@
-from adacs_sso_plugin.adacs_user import ADACSAnonymousUser, ADACSUser
-from django.test import override_settings
-from gw_bilby.schema import schema
+import datetime
 
+from adacs_sso_plugin.adacs_user import ADACSAnonymousUser, ADACSUser
+from adacs_sso_plugin.test_client import ADACSSSOSessionClient
+from django.test import override_settings
 from graphene_django.utils.testing import GraphQLTestCase
 from graphene_file_upload.django.testing import GraphQLFileUploadTestMixin
-import datetime
-from adacs_sso_plugin.test_client import ADACSSSOSessionClient
+
+from gw_bilby.schema import schema
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)

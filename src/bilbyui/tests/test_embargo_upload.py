@@ -1,19 +1,18 @@
 from tempfile import TemporaryDirectory
 
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
-
 from graphql_relay.node.node import from_global_id
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import (
     create_test_ini_string,
-    silence_errors,
     create_test_upload_data,
+    silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
-from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 
 User = get_user_model()
 

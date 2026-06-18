@@ -1,9 +1,10 @@
-from django.db.models import Subquery, OuterRef, Q, FloatField
 from django.conf import settings
+from django.db.models import FloatField, OuterRef, Q, Subquery
 from django.db.models.functions import Cast
 
-from .misc import is_ligo_user
 from bilbyui import models
+
+from .misc import is_ligo_user
 
 
 def user_subject_to_embargo(user):

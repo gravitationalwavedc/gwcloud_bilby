@@ -5,7 +5,7 @@ import os
 import tarfile
 from collections import OrderedDict
 from pathlib import Path
-from tempfile import TemporaryDirectory, NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from bilbyui.models import IniKeyValue
 from bilbyui.utils.ini_utils import bilby_ini_string_to_args
@@ -277,7 +277,7 @@ def create_test_upload_data(
                 os.chdir(d)
 
                 # Walk the temporary directory and write the files to the archive
-                for root, dirs, files in os.walk("."):
+                for root, _, files in os.walk("."):
                     for file in files:
                         tar_handle.add(os.path.join(root, file))
 

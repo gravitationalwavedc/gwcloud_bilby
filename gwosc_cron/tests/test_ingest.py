@@ -951,7 +951,7 @@ class TestGWOSCCron(GWOSCTestBase):
             first_job,
         ]
 
-        with self.con_patch, self.assertLogs(level=logging.ERROR) as logs:
+        with self.con_patch, self.assertLogs(level=logging.ERROR):
             gwosc_ingest.check_and_download()
 
         # Both jobs should have been attempted

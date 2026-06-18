@@ -4,19 +4,19 @@ from unittest import mock
 
 import requests
 from adacs_sso_plugin.adacs_user import ADACSUser
-from bilbyui.tests.testcases import BilbyTestCase
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import LiveServerTestCase
 from django.test import override_settings
 from django.utils import timezone
 from graphql_relay import to_global_id
 
-from bilbyui.models import BilbyJob, AnonymousMetrics
+from bilbyui.models import AnonymousMetrics, BilbyJob
 from bilbyui.tests.test_utils import (
-    silence_errors,
     create_test_ini_string,
     generate_elastic_doc,
+    silence_errors,
 )
+from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
 

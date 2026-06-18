@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import BilbyJob, EventID, Label, IniKeyValue
+from .models import BilbyJob, EventID, IniKeyValue, Label
 
 
 @admin.register(Label)

@@ -1,13 +1,13 @@
 import os
 import sys
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest import TestCase
+from unittest.mock import Mock, patch
 
 import settings
 from scheduler.scheduler import EScheduler
 from scheduler.status import JobStatus
-from tempfile import TemporaryDirectory
-from unittest import TestCase
-from unittest.mock import patch, Mock
 
 
 class TestStatus(TestCase):

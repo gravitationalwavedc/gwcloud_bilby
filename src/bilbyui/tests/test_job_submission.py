@@ -10,7 +10,7 @@ from django.test import testcases
 from django.test.utils import override_settings
 
 from bilbyui.constants import BilbyJobType
-from bilbyui.models import IniKeyValue, BilbyJob, EventID
+from bilbyui.models import BilbyJob, EventID, IniKeyValue
 from bilbyui.tests.test_utils import compare_ini_kvs, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import validate_job_name

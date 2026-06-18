@@ -1,4 +1,3 @@
-from adacs_sso_plugin.adacs_user import ADACSUser
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 

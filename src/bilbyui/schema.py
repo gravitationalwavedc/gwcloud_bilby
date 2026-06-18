@@ -1,6 +1,6 @@
+import logging
 from datetime import timedelta
 from decimal import Decimal
-import logging
 
 import elasticsearch
 import graphene
@@ -20,26 +20,26 @@ from .models import (
     BilbyJob,
     BilbyJobUploadToken,
     EventID,
+    ExternalBilbyJob,
     FileDownloadToken,
     Label,
     SupportingFile,
-    ExternalBilbyJob,
 )
 from .status import JobStatus
 from .types import (
     BilbyJobCreationResult,
+    BilbyJobSupportingFile,
     JobDetailsInput,
     JobIniInput,
     JobParameterInput,
     JobParameterOutput,
     JobStatusType,
-    BilbyJobSupportingFile,
     SupportingFileUploadInput,
     SupportingFileUploadResult,
 )
 from .utils.auth.lookup_users import request_lookup_users
 from .utils.derive_job_status import derive_job_status
-from .utils.embargo import user_subject_to_embargo, embargo_filter
+from .utils.embargo import embargo_filter, user_subject_to_embargo
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
@@ -52,9 +52,9 @@ from .views import (
     update_bilby_job,
     update_event_id,
     upload_bilby_job,
-    upload_supporting_files,
     upload_external_bilby_job,
     upload_hdf5_bilby_job,
+    upload_supporting_files,
 )
 
 logger = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class UserBilbyJobFilter(FilterSet):
     @property
     def qs(self):
         user = self.request.user
-        return BilbyJob.user_bilby_job_filter(super(UserBilbyJobFilter, self).qs, user)
+        return BilbyJob.user_bilby_job_filter(super().qs, user)
 
 
 class PublicBilbyJobFilter(FilterSet):
@@ -105,7 +105,7 @@ class PublicBilbyJobFilter(FilterSet):
     @property
     def qs(self):
         user = self.request.user
-        return BilbyJob.public_bilby_job_filter(super(PublicBilbyJobFilter, self).qs, user)
+        return BilbyJob.public_bilby_job_filter(super().qs, user)
 
 
 class BilbyJobNode(DjangoObjectType):
@@ -228,7 +228,7 @@ class GenerateBilbyJobUploadToken(graphene.ObjectType):
     token = graphene.String()
 
 
-class Query(object):
+class Query:
     bilby_job = relay.Node.Field(BilbyJobNode)
     bilby_jobs = DjangoFilterConnectionField(BilbyJobNode, filterset_class=UserBilbyJobFilter)
     public_bilby_jobs = relay.ConnectionField(

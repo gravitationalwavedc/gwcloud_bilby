@@ -1,14 +1,13 @@
 from tempfile import TemporaryDirectory
 
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
 from django.test import override_settings
-
 from graphql_relay.node.node import from_global_id
 
 from bilbyui.models import BilbyJob, ExternalBilbyJob
 from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
-from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 
 User = get_user_model()
 

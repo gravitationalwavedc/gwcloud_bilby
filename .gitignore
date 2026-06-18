@@ -23,3 +23,12 @@ outdir/
 /src/reports/
 .env
 .tmuxinator.yml
+
+# Agent/harness generated files
+/.agents/
+/AGENTS.md
+/ARCHITECTURE.md
+/HTMX_MIGRATION_ISSUES.md
+/docs/
+/src/bilbyui/AGENTS.md
+/src/react/AGENTS.md

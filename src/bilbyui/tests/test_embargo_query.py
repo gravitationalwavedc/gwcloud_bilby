@@ -1,14 +1,14 @@
+from unittest import mock
+
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
 from django.test import override_settings
-
 from graphql_relay.node.node import to_global_id
+from humps import camelize
+
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
-from unittest import mock
-from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
-
-from humps import camelize
 
 User = get_user_model()
 

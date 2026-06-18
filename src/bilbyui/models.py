@@ -14,6 +14,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from bilbyui.utils.jobs.request_file_list import request_file_list
+
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
 from .utils.auth.lookup_users import request_lookup_users
 from .utils.embargo import embargo_filter
@@ -488,7 +489,7 @@ class SupportingFile(models.Model):
         created = cls.objects.bulk_create(bulk_items)
 
         # Map the tokens for the created files to the returned supporting files details
-        for i, v in enumerate(created):
+        for i, _ in enumerate(created):
             result_files[i]["token"] = created[i].upload_token
             result_files[i]["download_token"] = created[i].download_token
 

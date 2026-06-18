@@ -1,15 +1,16 @@
-from gwcloud_python import GWCloud
 import fcntl
+import logging
 import os
-from pathlib import Path
 import re
 import sqlite3
+import sys
 from datetime import datetime
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+
 import h5py
 import requests
-from tempfile import NamedTemporaryFile
-import logging
-import sys
+from gwcloud_python import GWCloud
 
 logger = logging.getLogger("gwosc_ingest")
 logger.setLevel(logging.DEBUG)
@@ -25,7 +26,7 @@ logger.addHandler(fh)
 logger.addHandler(sh)
 
 try:
-    from local import DB_PATH, GWCLOUD_TOKEN, AUTH_ENDPOINT, ENDPOINT
+    from local import DB_PATH, ENDPOINT, GWCLOUD_TOKEN
 except ImportError:
     logger.info("No local.py file found, loading settings from env")
     GWCLOUD_TOKEN = os.getenv("GWCLOUD_TOKEN")
@@ -218,9 +219,7 @@ def _check_and_download_inner(con, cur):
         try:
             event_json = r.json()
         except Exception:
-            error_msg = (
-                f"Unable to parse event json (event: {event_name}, " f"url: {all_events[event_name]['jsonurl']})"
-            )
+            error_msg = f"Unable to parse event json (event: {event_name}, url: {all_events[event_name]['jsonurl']})"
             logger.error(error_msg, exc_info=True)
             record_job_failure(con, cur, event_name, error_msg)
             continue

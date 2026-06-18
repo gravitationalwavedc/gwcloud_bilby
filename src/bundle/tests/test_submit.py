@@ -2,17 +2,16 @@ import json
 import os
 import subprocess
 import sys
-
-from scheduler.scheduler import EScheduler
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-from testfixtures import compare, Replacer
+import settings
+from scheduler.scheduler import EScheduler
+from testfixtures import Replacer, compare
 from testfixtures.mock import call
 from testfixtures.popen import MockPopen
 
-import settings
 from tests.utils import args_to_bilby_ini
 
 update_job_result = None
@@ -108,7 +107,7 @@ class TestSubmit(TestCase):
                 self.assertEqual(f.read(), b"stderr test")
 
             # Check that the master slurm script was correctly modified
-            with open(os.path.join(td, "submit", "slurm_test-real_master.sh"), "r") as f:
+            with open(os.path.join(td, "submit", "slurm_test-real_master.sh")) as f:
                 self.assertEqual(
                     f.read(),
                     """#!/bin/bash
@@ -131,7 +130,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 )
 
                 # Check that the ini file was correctly updated
-                with open(os.path.join(td, "test-real_config_complete.ini"), "r") as f:
+                with open(os.path.join(td, "test-real_config_complete.ini")) as f:
                     from core.submit import bilby_ini_to_args
 
                     args = bilby_ini_to_args(f.read())
@@ -209,7 +208,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
             )
 
             # Check that the master slurm script was correctly modified
-            with open(os.path.join(td, "submit", "slurm_test-simulated_master.sh"), "r") as f:
+            with open(os.path.join(td, "submit", "slurm_test-simulated_master.sh")) as f:
                 self.assertEqual(
                     f.read(),
                     """#!/bin/bash
@@ -236,7 +235,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 )
 
                 # Check that the ini file was correctly updated
-                with open(os.path.join(td, "test-simulated_config_complete.ini"), "r") as f:
+                with open(os.path.join(td, "test-simulated_config_complete.ini")) as f:
                     from core.submit import bilby_ini_to_args
 
                     args = bilby_ini_to_args(f.read())
@@ -313,7 +312,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
             )
 
             # Check that the master slurm script was correctly modified
-            with open(os.path.join(td, "submit", "slurm_test-simulated-submission-failure_master.sh"), "r") as f:
+            with open(os.path.join(td, "submit", "slurm_test-simulated-submission-failure_master.sh")) as f:
                 self.assertEqual(
                     f.read(),
                     """#!/bin/bash
@@ -340,7 +339,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 )
 
                 # Check that the ini file was correctly updated
-                with open(os.path.join(td, "test-simulated-submission-failure_config_complete.ini"), "r") as f:
+                with open(os.path.join(td, "test-simulated-submission-failure_config_complete.ini")) as f:
                     from core.submit import bilby_ini_to_args
 
                     args = bilby_ini_to_args(f.read())
@@ -393,7 +392,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
             self.assertEqual(update_job_result["submit_directory"], "./submit")
 
             # Check that the master slurm script was correctly modified
-            with open(os.path.join(td, "submit", "dag_test-real.submit"), "r") as f:
+            with open(os.path.join(td, "submit", "dag_test-real.submit")) as f:
                 self.assertEqual(
                     f.read(),
                     """JOB test-real_data0_12345678-0_generation_arg_0 ./submit/test-real_data0_12345678-0_generation.submit
@@ -412,7 +411,7 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
                 )
 
                 # Check that the ini file was correctly updated
-                with open(os.path.join(td, "test-real_config_complete.ini"), "r") as f:
+                with open(os.path.join(td, "test-real_config_complete.ini")) as f:
                     from core.submit import bilby_ini_to_args
 
                     args = bilby_ini_to_args(f.read())
@@ -472,7 +471,7 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
             self.assertEqual(update_job_result["submit_directory"], "./submit")
 
             # Check that the master slurm script was correctly modified
-            with open(os.path.join(td, "submit", "dag_test-simulated.submit"), "r") as f:
+            with open(os.path.join(td, "submit", "dag_test-simulated.submit")) as f:
                 self.assertEqual(
                     f.read(),
                     """JOB test-simulated_data0_87654321-0_generation_arg_0 ./submit/test-simulated_data0_87654321-0_generation.submit
@@ -491,7 +490,7 @@ Parent test-simulated_data0_87654321-0_analysis_H1V1_arg_0 Child test-simulated_
                 )
 
                 # Check that the ini file was correctly updated
-                with open(os.path.join(td, "test-simulated_config_complete.ini"), "r") as f:
+                with open(os.path.join(td, "test-simulated_config_complete.ini")) as f:
                     from core.submit import bilby_ini_to_args
 
                     args = bilby_ini_to_args(f.read())

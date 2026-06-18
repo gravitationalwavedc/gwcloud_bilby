@@ -2,11 +2,12 @@ import secrets
 import shutil
 import string
 import uuid
+from math import ceil
 from pathlib import Path
 from unittest.mock import patch
-from math import ceil
 
 import responses
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -21,7 +22,6 @@ from bilbyui.tests.test_utils import (
     silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
-from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 
 User = get_user_model()
 
@@ -573,7 +573,7 @@ class TestIniJobSubmission(BilbyTestCase):
     @silence_errors
     def test_download_supporting_files_invalid_token(self):
         # Test that using an invalid token raises an error
-        response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={str(uuid.uuid4())}')
+        response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={str(uuid.uuid4())}")
         self.assertEqual(response.status_code, 404)
 
     def test_download_supporting_files_valid_token_force_download(self):
@@ -594,7 +594,7 @@ class TestIniJobSubmission(BilbyTestCase):
         supporting_file = SupportingFile.objects.last()
 
         response = self.http_client.get(
-            f'{reverse(viewname="file_download")}?fileId={supporting_file.download_token}&forceDownload'
+            f"{reverse(viewname='file_download')}?fileId={supporting_file.download_token}&forceDownload"
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
@@ -625,7 +625,7 @@ class TestIniJobSubmission(BilbyTestCase):
 
         supporting_file = SupportingFile.objects.last()
 
-        response = self.http_client.get(f'{reverse(viewname="file_download")}?fileId={supporting_file.download_token}')
+        response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={supporting_file.download_token}")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
         self.assertEqual(response.headers["Content-Disposition"], 'inline; filename="V1-psd.dat"')

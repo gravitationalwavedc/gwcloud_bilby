@@ -1,7 +1,8 @@
 import re
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from unittest import mock
 
+from adacs_sso_plugin.adacs_user import ADACSUser
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import override_settings
@@ -16,7 +17,6 @@ from bilbyui.tests.test_utils import (
     silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
-from adacs_sso_plugin.adacs_user import ADACSUser
 
 User = get_user_model()
 

@@ -1,8 +1,9 @@
-from bilbyui.tests.test_utils import silence_errors, create_test_ini_string
-from bilbyui.tests.testcases import BilbyTestCase
-from graphql_relay.node.node import to_global_id
 from django.contrib.auth import get_user_model
+from graphql_relay.node.node import to_global_id
+
 from bilbyui.models import BilbyJob
+from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
+from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
 

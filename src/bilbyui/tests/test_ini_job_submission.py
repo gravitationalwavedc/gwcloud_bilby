@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 import responses
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test.utils import override_settings
@@ -14,7 +15,6 @@ from bilbyui.tests.test_utils import (
     silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
-from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 
 User = get_user_model()
 
