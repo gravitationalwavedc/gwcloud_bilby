@@ -12,6 +12,7 @@ from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import convert_string_to_dict
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
@@ -28,11 +29,12 @@ from .models import (
     Label,
     SupportingFile,
 )
-from .services.jobs import list_public_jobs, update_job
+from .services.jobs import list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
 from .utils.embargo import should_embargo_job
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 from .utils.job_validation import validate_job_name
+from .utils.jobs.request_job_filter import request_job_filter
 
 
 def check_job_embargo_status(user, args):
@@ -960,6 +962,44 @@ def _build_public_job_rows(public_jobs_result):
     return rows
 
 
+def _build_user_job_rows(user_jobs_result, user):
+    jobs = user_jobs_result["jobs"]
+    page_size = user_jobs_result["page_size"]
+
+    job_controller_ids = {job.job_controller_id: job.id for job in jobs if job.job_controller_id}
+    job_controller_jobs = {}
+    if job_controller_ids:
+        job_controller_jobs = {
+            job_controller_ids[job["id"]]: job for job in request_job_filter(user.id, ids=job_controller_ids.keys())[1]
+        }
+
+    rows = []
+    for bilby_job in jobs[:page_size]:
+        if bilby_job.job_type == BilbyJobType.NORMAL:
+            if bilby_job.id not in job_controller_jobs:
+                status_name = "Unknown"
+            else:
+                job_controller_job = job_controller_jobs[bilby_job.id]
+                status_name = JobStatus.display_name(job_controller_job["history"][0]["state"])
+        elif bilby_job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
+            status_name = JobStatus.display_name(JobStatus.COMPLETED)
+        else:
+            status_name = "Unknown"
+
+        rows.append(
+            {
+                "id": bilby_job.id,
+                "user": user.name,
+                "name": bilby_job.name,
+                "description": bilby_job.description or "",
+                "status_name": status_name,
+                "labels": list(bilby_job.labels.all()),
+            }
+        )
+
+    return rows
+
+
 def public_jobs_view(request):
     page = max(int(request.GET.get("page", 1)), 1)
     search = request.GET.get("search", "")
@@ -980,12 +1020,43 @@ def public_jobs_view(request):
         "has_next": public_jobs_result["has_next"],
         "next_page": page + 1,
         "user": request.user,
+        "jobs_list_url_name": "bilbyui:public_jobs",
     }
 
     if request.headers.get("HX-Request") == "true":
         return TemplateResponse(request, "bilbyui/_job_list_fragment.html", context)
 
     return TemplateResponse(request, "bilbyui/public_jobs.html", context)
+
+
+@login_required(login_url="/sso/login/")
+def my_jobs_view(request):
+    page = max(int(request.GET.get("page", 1)), 1)
+    search = request.GET.get("search", "")
+    time_range = request.GET.get("time_range", "all")
+
+    user_jobs_result = list_user_jobs(
+        request.user,
+        search=search,
+        time_range=time_range,
+        page=page,
+    )
+
+    context = {
+        "rows": _build_user_job_rows(user_jobs_result, request.user),
+        "search": search,
+        "time_range": time_range,
+        "page": page,
+        "has_next": user_jobs_result["has_next"],
+        "next_page": page + 1,
+        "user": request.user,
+        "jobs_list_url_name": "bilbyui:my_jobs",
+    }
+
+    if request.headers.get("HX-Request") == "true":
+        return TemplateResponse(request, "bilbyui/_job_list_fragment.html", context)
+
+    return TemplateResponse(request, "bilbyui/my_jobs.html", context)
 
 
 def view_job_stub(request, job_id):
