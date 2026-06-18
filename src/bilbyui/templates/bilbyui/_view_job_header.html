@@ -9,14 +9,7 @@
 
   {% include "bilbyui/_job_field_labels.html" with job=job available_labels=available_labels modifiable=modifiable %}
 
-  <div data-field="event-id" class="mb-2">
-    <strong>Event ID:</strong>
-    {% if job.event_id %}
-      {{ job.event_id.event_id }}
-    {% else %}
-      <span class="text-muted">—</span>
-    {% endif %}
-  </div>
+  {% include "bilbyui/_job_field_event_id.html" with job=job modifiable=modifiable %}
 
   <div class="mb-2">
     {% include "bilbyui/_job_field_privacy.html" %}

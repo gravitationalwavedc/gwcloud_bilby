@@ -1,0 +1,14 @@
+<li class="list-group-item p-0">
+  <form hx-post="{% url 'bilbyui:edit_job_event_id' job_id=job.id %}"
+        hx-target="closest [data-field='event-id']"
+        hx-swap="outerHTML"
+        class="mb-0">
+    {% csrf_token %}
+    <input type="hidden" name="event_id" value="{{ event.event_id }}" />
+    <button type="submit" class="btn btn-link text-left w-100 p-3">
+      <span class="d-block">Event ID: {{ event.event_id }}</span>
+      {% if event.trigger_id %}<span class="d-block text-muted small">Trigger ID: {{ event.trigger_id }}</span>{% endif %}
+      {% if event.nickname %}<span class="d-block text-muted small">Nickname: {{ event.nickname }}</span>{% endif %}
+    </button>
+  </form>
+</li>
