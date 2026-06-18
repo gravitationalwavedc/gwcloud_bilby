@@ -1,0 +1,19 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ page_title|default:"GWCloud Bilby" }}</title>
+  <link rel="stylesheet" href="{% static 'bilbyui/app.css' %}">
+</head>
+<body>
+  <header>
+    <img src="{% static 'bilbyui/images/GWCloud-logo-primary200.png' %}" alt="GWCloud">
+    <a href="/sso/login/">Log in</a>
+    <a href="/sso/logout/">Log out</a>
+  </header>
+  {% block content %}{% endblock %}
+  <script defer src="{% static 'bilbyui/htmx.min.js' %}"></script>
+  <script defer src="{% static 'bilbyui/alpine.min.js' %}"></script>
+</body>
+</html>

@@ -17,6 +17,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.http import FileResponse, Http404
+from django.template.response import TemplateResponse
 from gwosc.datasets import event_gps
 
 from .constants import BilbyJobType
@@ -951,3 +952,7 @@ def upload_supporting_files(upload_tokens, uploaded_supporting_files):
             upload_token.job.submit()
 
     return True
+
+
+def _health_view(request):
+    return TemplateResponse(request, "bilbyui/base.html", {"page_title": "htmx-bootstrap"})
