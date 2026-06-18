@@ -101,7 +101,7 @@ ruff-lint:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_src, script]
-    - src/.venv/bin/ruff check --format gitlab --output-file gl-code-quality-report.json src/
+    - src/.venv/bin/ruff check --output-format gitlab --output-file gl-code-quality-report.json src/
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
@@ -227,7 +227,7 @@ cronjob-ruff-lint:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_cron, script]
-    - gwosc_cron/.venv/bin/ruff check --format gitlab --output-file gl-code-quality-report.json gwosc_cron/
+    - gwosc_cron/.venv/bin/ruff check --output-format gitlab --output-file gl-code-quality-report.json gwosc_cron/
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
