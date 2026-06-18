@@ -120,7 +120,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
 
     @silence_errors
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
-    @mock.patch("bilbyui.schema.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def _request(self, query, variables, request_job_filter, elasticsearch_search, headers=None):
         if headers is None:
             headers = {}
