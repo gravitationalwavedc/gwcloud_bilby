@@ -1,10 +1,11 @@
 import os
 
-from core.misc import get_scheduler
 import _bundledb
+import settings
 from scheduler.scheduler import EScheduler
 from scheduler.status import JobStatus
-import settings
+
+from core.misc import get_scheduler
 
 
 def get_submit_status(job):
@@ -87,7 +88,7 @@ def slurm_status(job):
     if not os.path.exists(sid_file):
         return {"status": result_status, "complete": False}
 
-    with open(sid_file, "r") as f:
+    with open(sid_file) as f:
         slurm_ids = [line.strip() for line in f.readlines()]
 
     # Track the job statuses

@@ -13,13 +13,17 @@ requests = "*"
 urllib3 = "<2"  # requests_toolbelt <1.0 (via gwcloud-python) needs urllib3 1.x (appengine)
 h5py = "*"
 
-[tool.black]
+[tool.ruff]
 line-length = 120
-target-version = ["py312"]
+target-version = "py312"
+exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501", "E402", "B905", "B904"]
 
 [tool.poetry.group.dev.dependencies]
-black = "*"
-flake8-gl-codeclimate = "*"
+ruff = "*"
 responses = "*"
 coverage = "*"
 unittest-xml-reporting = "*"

@@ -23,3 +23,10 @@ outdir/
 /src/reports/
 .env
 .tmuxinator.yml
+
+# Agent/harness files
+.agents
+AGENTS.md
+ARCHITECTURE.md
+docs
+

@@ -1,5 +1,7 @@
-import htcondor
 from pathlib import Path
+
+import htcondor
+
 from .scheduler import Scheduler
 from .status import JobStatus
 

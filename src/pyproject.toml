@@ -29,15 +29,17 @@ adacs-sso-plugin = {git = "https://gitlab.com/CAS-eResearch/internal/adacs-sso-p
 gunicorn = "*"
 mysqlclient = "*"
 
-[tool.black]
+[tool.ruff]
 line-length = 120
-target-version = ["py312"]
-extend-exclude = "/react/"
+target-version = "py312"
+exclude = ["react", ".venv", "bilbyui/migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501", "E402", "B905", "B904"]
 
 [tool.poetry.group.dev.dependencies]
-black = "*"
-flake8 = "*"
-flake8-gl-codeclimate = "*"
+ruff = "*"
 coverage = "*"
 unittest-xml-reporting = "*"
 

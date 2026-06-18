@@ -4,6 +4,7 @@ import uuid
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -12,13 +13,12 @@ from django.test import override_settings
 from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, IniKeyValue, SupportingFile
 from bilbyui.tests.test_utils import (
-    create_test_ini_string,
     compare_ini_kvs,
-    silence_errors,
+    create_test_ini_string,
     create_test_upload_data,
+    silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
-from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 
 User = get_user_model()
 

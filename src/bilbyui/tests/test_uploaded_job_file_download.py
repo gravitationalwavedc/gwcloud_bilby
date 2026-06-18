@@ -4,17 +4,16 @@ from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client
-from django.test import override_settings
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import (
-    silence_errors,
-    create_test_upload_data,
     create_test_ini_string,
+    create_test_upload_data,
     get_file_download_tokens,
     get_files,
+    silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
 

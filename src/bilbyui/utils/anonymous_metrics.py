@@ -4,7 +4,7 @@ import uuid
 from bilbyui.models import AnonymousMetrics
 
 
-class AnonymousMetricsMiddleware(object):
+class AnonymousMetricsMiddleware:
     def resolve(self, next, root, info, **args):
         # Get the tracking header and split it by space to get the persistent and session ids
         header = info.context.headers.get("X-Correlation-Id", None)

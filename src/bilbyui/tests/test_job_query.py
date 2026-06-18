@@ -1,14 +1,14 @@
-from django.contrib.auth import get_user_model
-
-from graphql_relay.node.node import to_global_id
-from bilbyui.models import BilbyJob, Label, EventID
-from bilbyui.tests.test_utils import silence_errors, create_test_ini_string
-from bilbyui.tests.testcases import BilbyTestCase
+from datetime import datetime
 from unittest import mock
 
-from humps import camelize
-from datetime import datetime
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
+from django.contrib.auth import get_user_model
+from graphql_relay.node.node import to_global_id
+from humps import camelize
+
+from bilbyui.models import BilbyJob, EventID, Label
+from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
+from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
 

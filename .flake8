@@ -1,8 +1,0 @@
-[flake8]
-
-exclude =
-    .venv
-    # Ignore react
-    react
-
-max-line-length = 120

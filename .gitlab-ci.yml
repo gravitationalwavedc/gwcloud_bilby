@@ -93,7 +93,7 @@ npm-tests:
         path: src/react/coverage/cobertura-coverage.xml
       junit: src/react/junit.xml
 
-flake8:
+ruff-lint:
   stage: CI
   variables:
     POETRY_VIRTUALENVS_IN_PROJECT: "true"
@@ -101,12 +101,12 @@ flake8:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_src, script]
-    - src/.venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json src/
+    - src/.venv/bin/ruff check --output-format gitlab --output-file gl-code-quality-report.json src/
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
 
-black:
+ruff-format:
   stage: CI
   variables:
     POETRY_VIRTUALENVS_IN_PROJECT: "true"
@@ -114,7 +114,7 @@ black:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_src, script]
-    - src/.venv/bin/black --check src/
+    - src/.venv/bin/ruff format --check src/
 
 # -----------------------------------------------------------------------------
 # Bundle (Conda, unchanged)
@@ -209,7 +209,7 @@ cronjob-tests:
         path: gwosc_cron/coverage.xml
       junit: gwosc_cron/junit.xml
 
-cronjob-black:
+cronjob-ruff-format:
   stage: CI
   variables:
     POETRY_VIRTUALENVS_IN_PROJECT: "true"
@@ -217,9 +217,9 @@ cronjob-black:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_cron, script]
-    - gwosc_cron/.venv/bin/black --check gwosc_cron/
+    - gwosc_cron/.venv/bin/ruff format --check gwosc_cron/
 
-cronjob-flake8:
+cronjob-ruff-lint:
   stage: CI
   variables:
     POETRY_VIRTUALENVS_IN_PROJECT: "true"
@@ -227,7 +227,7 @@ cronjob-flake8:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
     - !reference [.poetry_install_cron, script]
-    - gwosc_cron/.venv/bin/flake8 --exit-zero --format gl-codeclimate --output-file gl-code-quality-report.json gwosc_cron/
+    - gwosc_cron/.venv/bin/ruff check --output-format gitlab --output-file gl-code-quality-report.json gwosc_cron/
   artifacts:
     reports:
       codequality: gl-code-quality-report.json

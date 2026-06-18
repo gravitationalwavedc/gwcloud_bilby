@@ -1,12 +1,6 @@
-import datetime
-import json
-
-import jwt
-import requests
-from django.conf import settings
+from adacs_sso_plugin.utils import auth_request
 
 from bilbyui.utils.misc import check_request_leak_decorator
-from adacs_sso_plugin.utils import auth_request
 
 
 @check_request_leak_decorator

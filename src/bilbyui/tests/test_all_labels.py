@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
-from bilbyui.tests.testcases import BilbyTestCase
+
 from bilbyui.tests.test_utils import silence_errors
+from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
 

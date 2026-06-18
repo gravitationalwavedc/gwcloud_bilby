@@ -2,21 +2,21 @@ import json
 import uuid
 from pathlib import Path
 
-from bilbyui.utils.misc import is_ligo_user
 from django.conf import settings
-from django.test import TestCase, override_settings
+from django.test import override_settings
 from django.utils import timezone
 
 from bilbyui.models import (
     BilbyJob,
-    Label,
-    FileDownloadToken,
     BilbyJobUploadToken,
-    SupportingFile,
     EventID,
+    FileDownloadToken,
+    Label,
+    SupportingFile,
 )
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.misc import is_ligo_user
 from bilbyui.views import update_bilby_job
 
 
@@ -62,7 +62,7 @@ class TestBilbyJobModel(BilbyTestCase):
 
         self.authenticate(id=2)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             update_bilby_job(self.job.id, self.user, event_id=self.event_id.event_id)
 
         self.job.refresh_from_db()

@@ -16,17 +16,17 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
-from django.http import Http404, FileResponse
+from django.http import FileResponse, Http404
 from gwosc.datasets import event_gps
 
 from .constants import BilbyJobType
 from .models import (
     BilbyJob,
-    Label,
     EventID,
-    FileDownloadToken,
-    SupportingFile,
     ExternalBilbyJob,
+    FileDownloadToken,
+    Label,
+    SupportingFile,
 )
 from .utils.embargo import should_embargo_job
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
@@ -571,7 +571,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
         ini_file = ini_file[0]
 
         # Read the ini file
-        with open(os.path.join(job_staging_dir, ini_file), "r") as f:
+        with open(os.path.join(job_staging_dir, ini_file)) as f:
             ini_content = f.read()
 
         # Parse and validate the INI file
@@ -768,7 +768,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
                 f.write(chunk)
 
         # Read and parse the INI file
-        with open(ini_path, "r") as f:
+        with open(ini_path) as f:
             ini_content = f.read()
 
         # Parse and validate the INI file

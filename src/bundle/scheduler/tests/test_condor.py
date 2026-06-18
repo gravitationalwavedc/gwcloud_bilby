@@ -1,10 +1,12 @@
-import htcondor
 import os
-from mock import patch
-from scheduler.condor import CondorScheduler
-from scheduler.status import JobStatus
 from tempfile import TemporaryDirectory
 from unittest import TestCase
+from unittest.mock import patch
+
+import htcondor
+
+from scheduler.condor import CondorScheduler
+from scheduler.status import JobStatus
 
 mock_from_dag_args = None
 mock_from_dag_kwargs = None

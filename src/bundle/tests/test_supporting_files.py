@@ -7,7 +7,7 @@ from unittest.case import TestCase
 
 import responses
 
-from tests.utils import cd, args_to_bilby_ini
+from tests.utils import args_to_bilby_ini, cd
 
 
 class TestSupportingFiles(TestCase):
@@ -40,8 +40,8 @@ class TestSupportingFiles(TestCase):
         """
         Performs a full cycle of saving the ini file from the provided args, then loading and parsing the ini file
         """
-        from core.submit import bilby_ini_to_args
         from bilby_pipe.data_generation import DataGenerationInput
+        from core.submit import bilby_ini_to_args
 
         ini = args_to_bilby_ini(args)
         args = bilby_ini_to_args(ini.decode("utf-8"))

@@ -10,11 +10,11 @@ from django.utils import timezone
 from graphql_relay import to_global_id
 
 from bilbyui.constants import BilbyJobType
-from bilbyui.models import FileDownloadToken, BilbyJob, ExternalBilbyJob
+from bilbyui.models import BilbyJob, ExternalBilbyJob, FileDownloadToken
 from bilbyui.tests.test_utils import (
-    silence_errors,
-    create_test_upload_data,
     create_test_ini_string,
+    create_test_upload_data,
+    silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
 

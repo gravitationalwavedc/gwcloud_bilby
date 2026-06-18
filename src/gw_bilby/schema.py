@@ -1,6 +1,7 @@
-import graphene
-import bilbyui.schema
 import adacs_sso_plugin.schema
+import graphene
+
+import bilbyui.schema
 
 
 class Query(bilbyui.schema.Query, adacs_sso_plugin.schema.Query, graphene.ObjectType):

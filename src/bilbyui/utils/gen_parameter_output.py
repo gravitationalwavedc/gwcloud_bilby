@@ -7,11 +7,11 @@ from bilby_pipe.input import Input
 from bilby_pipe.utils import logger
 
 from bilbyui.types import (
-    JobParameterOutput,
-    JobDetailsOutput,
     ChannelsOutput,
     DataOutput,
     DetectorOutput,
+    JobDetailsOutput,
+    JobParameterOutput,
     PriorOutput,
     SamplerOutput,
     WaveformOutput,

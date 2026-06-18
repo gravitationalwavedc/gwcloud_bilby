@@ -1,6 +1,6 @@
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
 from django.core import mail
-from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 
 
 def check_request_leak():

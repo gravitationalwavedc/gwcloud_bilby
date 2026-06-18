@@ -8,16 +8,16 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import requests
+import settings
+from _bundledb import create_or_update_job
 from bilby_pipe.job_creation.dag import Dag
 from bilby_pipe.job_creation.slurm import SubmitSLURM
 from bilby_pipe.main import MainInput, generate_dag
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import parse_args
-
-import settings
-from core.misc import get_scheduler, working_directory
-from _bundledb import create_or_update_job
 from scheduler.scheduler import EScheduler
+
+from core.misc import get_scheduler, working_directory
 
 chdir_lock = threading.Lock()
 
@@ -111,9 +111,9 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
             if not getattr(bilby_args, file_type_map[supporting_file["type"]]):
                 setattr(bilby_args, file_type_map[supporting_file["type"]], {})
 
-            getattr(bilby_args, file_type_map[supporting_file["type"]])[
-                supporting_file["key"]
-            ] = relative_supporting_file_path
+            getattr(bilby_args, file_type_map[supporting_file["type"]])[supporting_file["key"]] = (
+                relative_supporting_file_path
+            )
         else:
             # Pseudocode
             # bilby_args.psd_dict = relative_path_to_psd_file
@@ -280,7 +280,7 @@ def refactor_slurm_data_generation_step(slurm_script):
     :return: The data generation command
     """
     # Read the lines from the submit script
-    with open(slurm_script, "r") as f:
+    with open(slurm_script) as f:
         slines = f.readlines()
 
     # Find the line for data generation and the first echo after that, then remove the dependency from the following
