@@ -20,7 +20,7 @@ def request_job_filter_mock(*args, **kwargs):
 
 
 class TestMyJobsView(BilbyTestCase):
-    url = "/htmx-preview/jobs/"
+    url = "/jobs/"
 
     def setUp(self):
         self.deauthenticate()
@@ -29,7 +29,7 @@ class TestMyJobsView(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "/sso/login/?next=/htmx-preview/jobs/")
+        self.assertEqual(response["Location"], "/sso/login/?next=/jobs/")
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_authenticated_returns_user_jobs(self, request_job_filter):

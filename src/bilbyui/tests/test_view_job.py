@@ -31,7 +31,7 @@ class TestViewJob(BilbyTestCase):
             private=False,
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Viewable job"}),
         )
-        self.base_url = f"/htmx-preview/jobs/{self.job.id}/"
+        self.base_url = f"/jobs/{self.job.id}/"
 
     def test_unauthenticated_redirected(self):
         self.deauthenticate()
@@ -41,7 +41,7 @@ class TestViewJob(BilbyTestCase):
         self.assertEqual(response["Location"], f"/sso/login/?next={self.base_url}")
 
     def test_unknown_job_returns_404(self):
-        response = self.client.get("/htmx-preview/jobs/99999/")
+        response = self.client.get("/jobs/99999/")
 
         self.assertEqual(response.status_code, 404)
 
@@ -55,7 +55,7 @@ class TestViewJob(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Private other job"}),
         )
 
-        response = self.client.get(f"/htmx-preview/jobs/{other_job.id}/")
+        response = self.client.get(f"/jobs/{other_job.id}/")
 
         self.assertEqual(response.status_code, 404)
 
@@ -70,7 +70,7 @@ class TestViewJob(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "LIGO job"}),
         )
 
-        response = self.client.get(f"/htmx-preview/jobs/{ligo_job.id}/")
+        response = self.client.get(f"/jobs/{ligo_job.id}/")
 
         self.assertEqual(response.status_code, 404)
 
@@ -118,7 +118,7 @@ class TestViewJob(BilbyTestCase):
 
         token = FileDownloadToken.objects.create(job=self.job, path="/a/path/here.txt")
 
-        response = self.client.get(f"/htmx-preview/jobs/{self.job.id}/files/{token.token}/download/")
+        response = self.client.get(f"/jobs/{self.job.id}/files/{token.token}/download/")
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/file_download/?fileId=", response["Location"])

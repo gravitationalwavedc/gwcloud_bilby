@@ -6,6 +6,13 @@ SITE_URL = "https://gw-cloud.org"
 
 STATIC_URL = "/static/"
 
+STORAGES = {
+    **STORAGES,  # noqa: F405
+    "staticfiles": {
+        "BACKEND": "bilbyui.utils.storage.NonStrictManifestStaticFilesStorage",
+    },
+}
+
 ALLOWED_HOSTS = ["*"]
 
 EMAIL_HOST = "mail.swin.edu.au"

@@ -1491,3 +1491,8 @@ def api_token_revoke(request, token_id):
     response = HttpResponse(status=204)
     response["HX-Trigger"] = "token-revoked"
     return response
+
+
+@require_GET
+def not_found_view(request, path):
+    return TemplateResponse(request, "bilbyui/not_found.html", status=404)
