@@ -33,6 +33,11 @@ urlpatterns = [
         views.edit_job_description,
         name="edit_job_description",
     ),
+    path(
+        "jobs/<int:job_id>/edit/privacy/",
+        views.edit_job_privacy,
+        name="edit_job_privacy",
+    ),
     path("jobs/<int:job_id>/", views.view_job_view, name="view_job"),
     path("jobs/", views.my_jobs_view, name="my_jobs"),
 ]
