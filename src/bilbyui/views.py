@@ -8,18 +8,19 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 import bilby_pipe
 
 logger = logging.getLogger(__name__)
+from adacs_sso_plugin.models import APISessionToken
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import convert_string_to_dict
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import UploadedFile
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from gwosc.datasets import event_gps
 
 from .constants import BilbyJobType
@@ -31,6 +32,7 @@ from .models import (
     Label,
     SupportingFile,
 )
+from .services.api_tokens import create_token, list_tokens, revoke_token
 from .services.event_ids import get_event_id, list_event_ids_for_user
 from .services.jobs import get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
@@ -1443,3 +1445,49 @@ def file_download_redirect(request, job_id, token):
         download_id = result[0]
 
     return HttpResponseRedirect(f"/file_download/?fileId={download_id}")
+
+
+@login_required(login_url="/sso/login/")
+@require_GET
+def api_token_view(request):
+    tokens = list_tokens(request.user)
+    return TemplateResponse(request, "bilbyui/api_token.html", {"tokens": tokens})
+
+
+@login_required(login_url="/sso/login/")
+@require_POST
+def api_token_create(request):
+    name = request.POST.get("name", "").strip()
+    if not name:
+        return HttpResponse("Token name cannot be empty", status=400)
+    if len(name) > 64:
+        return HttpResponse("Token name must be at most 64 characters", status=400)
+
+    try:
+        token = create_token(request.user, name)
+    except (ValidationError, IntegrityError):
+        return HttpResponse(
+            "Ensure you do not already have a token with the same name",
+            status=400,
+        )
+
+    response = TemplateResponse(
+        request,
+        "bilbyui/_token_create_success.html",
+        {"name": name, "full_token": str(token.token)},
+    )
+    response["HX-Trigger"] = "save-toast"
+    return response
+
+
+@login_required(login_url="/sso/login/")
+@require_POST
+def api_token_revoke(request, token_id):
+    try:
+        revoke_token(request.user, token_id)
+    except (PermissionDenied, APISessionToken.DoesNotExist):
+        raise Http404
+
+    response = HttpResponse(status=204)
+    response["HX-Trigger"] = "token-revoked"
+    return response

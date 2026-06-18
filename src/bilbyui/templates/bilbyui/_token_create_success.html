@@ -1,0 +1,13 @@
+<div class="alert alert-warning mt-3">
+  <strong>Warning:</strong> This is the only time this token will be visible.
+  <div class="mt-2" x-data="{ copied: false }">
+    <h5>{{ name }}</h5>
+    <code id="new-token-value" class="mr-2">{{ full_token }}</code>
+    <button type="button"
+            class="btn btn-outline-secondary btn-sm"
+            @click="navigator.clipboard.writeText(document.getElementById('new-token-value').textContent); copied = true">
+      <span x-show="!copied">Copy</span>
+      <span x-show="copied">Copied!</span>
+    </button>
+  </div>
+</div>
