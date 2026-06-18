@@ -1,0 +1,19 @@
+<div data-field="event-id" class="mb-2">
+  {% if job.event_id %}
+    <span class="mr-2">Event ID: {{ job.event_id.event_id }}</span>
+    {% if job.event_id.trigger_id %}<span class="mr-2">Trigger ID: {{ job.event_id.trigger_id }}</span>{% endif %}
+    {% if job.event_id.nickname %}<span class="mr-2">Nickname: {{ job.event_id.nickname }}</span>{% endif %}
+  {% else %}
+    <span class="text-muted">No event ID set</span>
+  {% endif %}
+  {% if error %}
+    <p class="text-danger small mb-0">{{ error }}</p>
+  {% endif %}
+  {% if modifiable %}
+  <button type="button" class="btn btn-sm btn-link"
+          hx-get="{% url 'bilbyui:event_id_modal' job_id=job.id %}"
+          hx-target="#event-id-modal-{{ job.id }}"
+          hx-swap="outerHTML">{% if job.event_id %}Change{% else %}Set{% endif %} Event ID</button>
+  <div id="event-id-modal-{{ job.id }}"></div>
+  {% endif %}
+</div>

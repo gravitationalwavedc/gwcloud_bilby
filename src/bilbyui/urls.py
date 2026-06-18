@@ -43,6 +43,17 @@ urlpatterns = [
         views.edit_job_labels,
         name="edit_job_labels",
     ),
+    path("event-ids/", views.event_id_search, name="event_id_search"),
+    path(
+        "jobs/<int:job_id>/event-id-modal/",
+        views.event_id_modal,
+        name="event_id_modal",
+    ),
+    path(
+        "jobs/<int:job_id>/edit/event-id/",
+        views.edit_job_event_id,
+        name="edit_job_event_id",
+    ),
     path("jobs/<int:job_id>/", views.view_job_view, name="view_job"),
     path("jobs/", views.my_jobs_view, name="my_jobs"),
 ]

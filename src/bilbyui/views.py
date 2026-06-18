@@ -16,7 +16,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
-from django.http import FileResponse, Http404, HttpResponseRedirect
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect
+from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
 from django.views.decorators.http import require_POST
 from gwosc.datasets import event_gps
@@ -30,6 +31,7 @@ from .models import (
     Label,
     SupportingFile,
 )
+from .services.event_ids import get_event_id, list_event_ids_for_user
 from .services.jobs import get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
 from .utils.embargo import should_embargo_job
@@ -1329,6 +1331,98 @@ def edit_job_labels(request, job_id):
 
     response = _render_job_field_labels(request, job)
     response["HX-Trigger"] = "save-toast"
+    return response
+
+
+def _render_job_field_event_id(request, job, error="", status=200, modifiable=None):
+    if modifiable is None:
+        modifiable = request.user.id == job.user_id
+    return TemplateResponse(
+        request,
+        "bilbyui/_job_field_event_id.html",
+        {
+            "job": job,
+            "all_event_ids": list_event_ids_for_user(request.user),
+            "error": error,
+            "modifiable": modifiable,
+        },
+        status=status,
+    )
+
+
+def _filter_event_ids_for_query(event_ids, query):
+    q_lower = query.lower()
+    return [
+        event
+        for event in event_ids
+        if q_lower in (event.event_id or "").lower()
+        or q_lower in (event.trigger_id or "").lower()
+        or q_lower in (event.nickname or "").lower()
+    ]
+
+
+@login_required(login_url="/sso/login/")
+def event_id_search(request):
+    query = request.GET.get("q", "").strip()
+    if not query:
+        return HttpResponse('<p class="text-muted">Type to search…</p>')
+
+    job_id = request.GET.get("job_id")
+    if not job_id:
+        raise Http404
+
+    job = _get_view_job_or_404(job_id, request.user)
+    matches = _filter_event_ids_for_query(list_event_ids_for_user(request.user), query)
+
+    if not matches:
+        return HttpResponse('<p class="text-muted">No matches</p>')
+
+    items = [
+        render_to_string(
+            "bilbyui/_event_id_result.html",
+            {"event": event, "job": job},
+            request=request,
+        )
+        for event in matches
+    ]
+    return HttpResponse(f'<ul class="list-group">{"".join(items)}</ul>')
+
+
+@login_required(login_url="/sso/login/")
+def event_id_modal(request, job_id):
+    job = _get_view_job_or_404(job_id, request.user)
+    return TemplateResponse(request, "bilbyui/_event_id_modal.html", {"job": job})
+
+
+@login_required(login_url="/sso/login/")
+@require_POST
+def edit_job_event_id(request, job_id):
+    job = _get_view_job_or_404(job_id, request.user)
+
+    if request.user.id != job.user_id:
+        raise Http404
+
+    event_id_str = request.POST.get("event_id", "")
+
+    if event_id_str == "":
+        job.event_id = None
+        job.save()
+    else:
+        try:
+            job.event_id = get_event_id(event_id_str, user=request.user)
+        except EventID.DoesNotExist:
+            return _render_job_field_event_id(
+                request,
+                job,
+                error=f"Event ID '{event_id_str}' not found.",
+                status=400,
+            )
+        except Exception as e:
+            return _render_job_field_event_id(request, job, error=str(e), status=400)
+        job.save()
+
+    response = _render_job_field_event_id(request, job)
+    response["HX-Trigger"] = "save-toast, close-modal"
     return response
 
 
