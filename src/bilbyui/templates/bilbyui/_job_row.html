@@ -1,0 +1,18 @@
+<div class="row mb-4 align-items-center">
+  <div class="col-md-5">
+    <div class="text-muted small">{{ node.user }}</div>
+    <div class="font-weight-bold">{{ node.name }}</div>
+    {% if node.description %}
+      <div class="text-muted">{{ node.description }}</div>
+    {% endif %}
+  </div>
+  <div class="col-md-3 text-center">
+    <span class="badge badge-primary mr-1">{{ node.status_name }}</span>
+    {% for label in node.labels %}
+      <span class="badge badge-secondary mr-1">{{ label.name }}</span>
+    {% endfor %}
+  </div>
+  <div class="col-md-1 text-center">
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'bilbyui:view_job' job_id=node.id %}">View</a>
+  </div>
+</div>
