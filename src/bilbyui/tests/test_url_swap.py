@@ -29,9 +29,9 @@ class TestUrlSwap(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_my_jobs_path_requires_auth(self):
-        response = self.client.get("/jobs/")
+        response = self.client.get("/job-list/")
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "/sso/login/?next=/jobs/")
+        self.assertEqual(response["Location"], "/sso/login/?next=/job-list/")
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_view_job_path_returns_200(self, request_job_filter):
@@ -45,15 +45,33 @@ class TestUrlSwap(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "URL swap job"}),
         )
 
-        response = self.client.get(f"/jobs/{job.id}/")
+        response = self.client.get(f"/job-results/{job.id}/")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "URL swap job")
 
     def test_api_tokens_path_requires_auth(self):
-        response = self.client.get("/api-tokens/")
+        response = self.client.get("/api-token/")
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "/sso/login/?next=/api-tokens/")
+        self.assertEqual(response["Location"], "/sso/login/?next=/api-token/")
+
+    def test_job_form_path_returns_404(self):
+        response = self.client.get("/job-form/")
+        self.assertEqual(response.status_code, 404)
+        self.assertContains(response, "Page Not Found", status_code=404)
+
+    def test_job_form_duplicate_path_returns_404(self):
+        response = self.client.get("/job-form/duplicate/")
+        self.assertEqual(response.status_code, 404)
+        self.assertContains(response, "Page Not Found", status_code=404)
+
+    def test_old_jobs_path_returns_404(self):
+        response = self.client.get("/jobs/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_old_api_tokens_path_returns_404(self):
+        response = self.client.get("/api-tokens/")
+        self.assertEqual(response.status_code, 404)
 
     def test_unknown_path_returns_404(self):
         response = self.client.get("/some/random/path/")

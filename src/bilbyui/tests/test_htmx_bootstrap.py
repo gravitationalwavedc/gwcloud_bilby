@@ -64,4 +64,4 @@ class TestHtmxBootstrap(BilbyTestCase):
         self.authenticate()
         response = self.client.get(self.health_url)
         content = response.content.decode()
-        self.assertIn('href="/api-tokens/"', content)
+        self.assertIn('href="/api-token/"', content)

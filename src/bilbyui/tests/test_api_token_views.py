@@ -3,8 +3,8 @@ from bilbyui.tests.testcases import BilbyTestCase
 
 
 class TestApiTokenViews(BilbyTestCase):
-    url = "/api-tokens/"
-    create_url = "/api-tokens/create/"
+    url = "/api-token/"
+    create_url = "/api-token/create/"
 
     def setUp(self):
         self.deauthenticate()
@@ -13,7 +13,7 @@ class TestApiTokenViews(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "/sso/login/?next=/api-tokens/")
+        self.assertEqual(response["Location"], "/sso/login/?next=/api-token/")
 
     def test_renders_existing_tokens(self):
         self.authenticate()
@@ -71,7 +71,7 @@ class TestApiTokenViews(BilbyTestCase):
     def test_revoke_token(self):
         self.authenticate()
         token = create_token(self.user, "revoke-me")
-        revoke_url = f"/api-tokens/{token.id}/revoke/"
+        revoke_url = f"/api-token/{token.id}/revoke/"
 
         response = self.client.post(revoke_url)
 
@@ -83,7 +83,7 @@ class TestApiTokenViews(BilbyTestCase):
         self.authenticate()
         token = create_token(self.user, "other-users-token")
         self.authenticate(id=2, name="other user", primary_email="other@example.com")
-        revoke_url = f"/api-tokens/{token.id}/revoke/"
+        revoke_url = f"/api-token/{token.id}/revoke/"
 
         response = self.client.post(revoke_url)
 
