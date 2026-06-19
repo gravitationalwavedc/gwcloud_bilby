@@ -10,7 +10,7 @@
 </head>
 <body>
   {% include "bilbyui/_navbar.html" %}
-  <main>
+  <main class="h-100" style="padding-top: 64px;">
     {% block content %}{% endblock %}
   </main>
   <script defer src="{% static 'bilbyui/htmx.min.js' %}"></script>

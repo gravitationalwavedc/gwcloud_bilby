@@ -1,17 +1,22 @@
 <form class="form-row">
   <div class="col-lg-3">
-    <input
-      type="search"
-      name="search"
-      class="form-control"
-      placeholder="Find a job..."
-      value="{{ search }}"
-      hx-get="{% url jobs_list_url_name %}"
-      hx-trigger="input changed delay:300ms, search"
-      hx-target="#job-list"
-      hx-swap="innerHTML"
-      hx-push-url="true"
-    >
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+      </div>
+      <input
+        type="search"
+        name="search"
+        class="form-control"
+        placeholder="Find a job..."
+        value="{{ search }}"
+        hx-get="{% url jobs_list_url_name %}"
+        hx-trigger="input changed delay:300ms, search"
+        hx-target="#job-list"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+      >
+    </div>
   </div>
   <div class="col-lg-2">
     <select
