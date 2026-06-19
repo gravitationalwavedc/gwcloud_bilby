@@ -5,7 +5,7 @@
     {% elif job.job_type == 2 %}
       <a href="{{ file.path }}" target="_blank" rel="noopener noreferrer">{{ file.path }}</a>
     {% elif file.download_token %}
-      <a href="{% url 'bilbyui:file_download' job_id=job.id token=file.download_token %}" target="_blank">
+      <a href="{% url 'bilbyui:file_download' job_ref=job.id token=file.download_token %}" target="_blank">
         {{ file.path }}
       </a>
     {% else %}

@@ -1,5 +1,5 @@
 <li class="list-group-item p-0">
-  <form hx-post="{% url 'bilbyui:edit_job_event_id' job_id=job.id %}"
+  <form hx-post="{% url 'bilbyui:edit_job_event_id' job_ref=job.id %}"
         hx-target="closest [data-field='event-id']"
         hx-swap="outerHTML"
         class="mb-0">

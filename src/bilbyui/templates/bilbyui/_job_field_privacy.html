@@ -7,7 +7,7 @@
              name="private"
              id="privacy-{{ job.id }}"
              {% if not job.private %}checked{% endif %}
-             hx-post="{% url 'bilbyui:edit_job_privacy' job_id=job.id %}"
+             hx-post="{% url 'bilbyui:edit_job_privacy' job_ref=job.id %}"
              hx-target="closest [data-field='privacy']"
              hx-swap="outerHTML"
              hx-trigger="change"

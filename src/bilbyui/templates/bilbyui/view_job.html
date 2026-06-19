@@ -39,7 +39,7 @@
         <div
           x-show="tab === 'parameters'"
           id="parameters-pane"
-          hx-get="{% url 'bilbyui:view_job_parameters' job_id=job.id %}"
+          hx-get="{% url 'bilbyui:view_job_parameters' job_ref=job.id %}"
           hx-trigger="load once"
           hx-swap="innerHTML"
         >
@@ -48,7 +48,7 @@
         <div
           x-show="tab === 'results'"
           id="results-pane"
-          hx-get="{% url 'bilbyui:view_job_results' job_id=job.id %}"
+          hx-get="{% url 'bilbyui:view_job_results' job_ref=job.id %}"
           hx-trigger="click once from:#results-tab"
           hx-swap="innerHTML"
         ></div>

@@ -1,7 +1,7 @@
 <div data-field="labels" class="mb-2">
   {% if modifiable %}
     <form id="labels-form-{{ job.id }}"
-          hx-post="{% url 'bilbyui:edit_job_labels' job_id=job.id %}"
+          hx-post="{% url 'bilbyui:edit_job_labels' job_ref=job.id %}"
           hx-target="closest [data-field='labels']"
           hx-swap="outerHTML">
       {% csrf_token %}
