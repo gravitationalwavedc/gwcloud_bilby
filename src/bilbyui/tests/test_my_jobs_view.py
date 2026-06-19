@@ -1,6 +1,6 @@
 from unittest import mock
 
-from bilbyui.models import BilbyJob
+from bilbyui.models import BilbyJob, EventID
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -108,3 +108,49 @@ class TestMyJobsView(BilbyTestCase):
         self.assertContains(response, "Paged job 29")
         self.assertContains(response, "Loading more")
         self.assertContains(response, "page=2")
+
+    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    def test_renders_event_id_values(self, request_job_filter):
+        self.authenticate()
+
+        event_id = EventID.objects.create(
+            event_id="GW123456_123456",
+            trigger_id="S123456a",
+            nickname="GW123456",
+            is_ligo_event=False,
+            gps_time=12345678.1234,
+        )
+        BilbyJob.objects.create(
+            user_id=1,
+            name="Event job",
+            description="with event id",
+            job_controller_id=8101,
+            private=False,
+            event_id=event_id,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Event job"}),
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "GW123456_123456")
+        self.assertContains(response, "S123456a")
+        self.assertContains(response, "GW123456")
+
+    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    def test_renders_no_event_ids_when_missing(self, request_job_filter):
+        self.authenticate()
+
+        BilbyJob.objects.create(
+            user_id=1,
+            name="No event job",
+            description="without event id",
+            job_controller_id=8102,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "No event job"}),
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No event ids")

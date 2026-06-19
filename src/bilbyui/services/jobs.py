@@ -40,7 +40,11 @@ def _apply_search_filter(qs, search):
 
 
 def list_user_jobs(user, *, search="", time_range="all", page=1, page_size=20):
-    qs = BilbyJob.user_bilby_job_filter(BilbyJob.objects.all(), user).order_by("-last_updated")
+    qs = (
+        BilbyJob.user_bilby_job_filter(BilbyJob.objects.all(), user)
+        .select_related("event_id")
+        .order_by("-last_updated")
+    )
     qs = _apply_search_filter(qs, search)
     qs = _apply_time_range_filter(qs, time_range)
 
@@ -122,7 +126,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
     records = results["hits"]["hits"]
     has_next = len(records) > page_size
 
-    qs_before = BilbyJob.objects.filter(id__in=[record["_id"] for record in records])
+    qs_before = BilbyJob.objects.filter(id__in=[record["_id"] for record in records]).select_related("event_id")
     qs_after = qs_before
     if user_subject_to_embargo(user):
         qs_after = embargo_filter(qs_before, user)
@@ -134,7 +138,10 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         logger.warning(f"User {user_id} query violated embargo or included private job")
         return empty_result
 
-    jobs = {job.id: job for job in BilbyJob.objects.filter(id__in=[record["_id"] for record in records])}
+    jobs = {
+        job.id: job
+        for job in BilbyJob.objects.filter(id__in=[record["_id"] for record in records]).select_related("event_id")
+    }
 
     job_controller_ids = {job.job_controller_id: job.id for job in jobs.values() if job.job_controller_id}
     job_controller_jobs = {}

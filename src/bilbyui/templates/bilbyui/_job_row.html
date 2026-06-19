@@ -1,5 +1,14 @@
 <div class="row mb-4 align-items-center">
-  <div class="col-md-5">
+  <div class="col-md-2">
+    {% if node.event_id_values %}
+      {% for value in node.event_id_values %}
+        <span>{{ value }}</span><br>
+      {% endfor %}
+    {% else %}
+      <span>No event ids</span>
+    {% endif %}
+  </div>
+  <div class="col-md-3">
     <div class="text-muted small">{{ node.user }}</div>
     <div class="font-weight-bold">{{ node.name }}</div>
     {% if node.description %}
