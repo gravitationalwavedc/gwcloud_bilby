@@ -1046,7 +1046,7 @@ def public_jobs_view(request):
     return TemplateResponse(request, "bilbyui/public_jobs.html", context)
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 def my_jobs_view(request):
     page = max(int(request.GET.get("page", 1)), 1)
     search = request.GET.get("search", "")
@@ -1163,7 +1163,7 @@ def _render_job_field_labels(request, job, error="", status=200, modifiable=None
     )
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 def view_job_view(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
@@ -1183,7 +1183,7 @@ def view_job_view(request, job_id):
     )
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 def view_job_parameters_partial(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
@@ -1204,7 +1204,7 @@ def view_job_parameters_partial(request, job_id):
     )
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 def view_job_results_partial(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
@@ -1235,7 +1235,7 @@ def _render_job_field_text(request, job, field, editing=False, error="", status=
     )
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 def view_job_field_partial(request, job_id, field):
     job = _get_view_job_or_404(job_id, request.user)
@@ -1249,7 +1249,7 @@ def view_job_field_partial(request, job_id, field):
     return _render_job_field_text(request, job, field, editing=editing)
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 @require_POST
 def edit_job_name(request, job_id):
@@ -1273,7 +1273,7 @@ def edit_job_name(request, job_id):
     return response
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 @require_POST
 def edit_job_description(request, job_id):
@@ -1301,7 +1301,7 @@ def _render_job_field_privacy(request, job, status=200):
     )
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 @require_POST
 def edit_job_privacy(request, job_id):
@@ -1321,7 +1321,7 @@ def edit_job_privacy(request, job_id):
     return response
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 @require_POST
 def edit_job_labels(request, job_id):
@@ -1381,7 +1381,7 @@ def _filter_event_ids_for_query(event_ids, query):
     ]
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 def event_id_search(request):
     query = request.GET.get("q", "").strip()
     if not query:
@@ -1408,14 +1408,14 @@ def event_id_search(request):
     return HttpResponse(f'<ul class="list-group">{"".join(items)}</ul>')
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 def event_id_modal(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
     return TemplateResponse(request, "bilbyui/_event_id_modal.html", {"job": job})
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 @require_POST
 def edit_job_event_id(request, job_id):
@@ -1448,7 +1448,7 @@ def edit_job_event_id(request, job_id):
     return response
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @resolve_job_ref_view
 def file_download_redirect(request, job_id, token):
     job = _get_view_job_or_404(job_id, request.user)
@@ -1468,14 +1468,14 @@ def file_download_redirect(request, job_id, token):
     return HttpResponseRedirect(f"/file_download/?fileId={download_id}")
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @require_GET
 def api_token_view(request):
     tokens = list_tokens(request.user)
     return TemplateResponse(request, "bilbyui/api_token.html", {"tokens": tokens})
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @require_POST
 def api_token_create(request):
     name = request.POST.get("name", "").strip()
@@ -1501,7 +1501,7 @@ def api_token_create(request):
     return response
 
 
-@login_required(login_url="/sso/login/")
+@login_required
 @require_POST
 def api_token_revoke(request, token_id):
     try:

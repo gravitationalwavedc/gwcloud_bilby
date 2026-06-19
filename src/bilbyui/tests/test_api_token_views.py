@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from bilbyui.services.api_tokens import create_token, list_tokens
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -13,7 +15,7 @@ class TestApiTokenViews(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "/sso/login/?next=/api-token/")
+        self.assertEqual(response["Location"], f"{settings.LOGIN_URL}?next=/api-token/")
 
     def test_renders_existing_tokens(self):
         self.authenticate()

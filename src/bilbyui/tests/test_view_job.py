@@ -1,6 +1,8 @@
 import uuid
 from unittest import mock
 
+from django.conf import settings
+
 from bilbyui.models import BilbyJob, FileDownloadToken
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
@@ -38,7 +40,7 @@ class TestViewJob(BilbyTestCase):
         response = self.client.get(self.base_url)
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], f"/sso/login/?next={self.base_url}")
+        self.assertEqual(response["Location"], f"{settings.LOGIN_URL}?next={self.base_url}")
 
     def test_unknown_job_returns_404(self):
         response = self.client.get("/job-results/99999/")

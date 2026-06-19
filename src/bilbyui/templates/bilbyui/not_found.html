@@ -21,7 +21,7 @@
           {% if user.is_authenticated %}
             <a class="btn btn-outline-primary btn-lg m-2" href="/job-list/">My Jobs</a>
           {% else %}
-            <a class="btn btn-outline-primary btn-lg m-2" href="/sso/login/">Login</a>
+            <a class="btn btn-outline-primary btn-lg m-2" href="{% url 'sso:login' %}">Login</a>
           {% endif %}
         </div>
 

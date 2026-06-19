@@ -1,6 +1,7 @@
 from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
+from django.conf import settings
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import create_test_ini_string
@@ -99,5 +100,5 @@ class TestEditJobPrivacy(BilbyTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(
             response["Location"],
-            f"/sso/login/?next={self.base_url}edit/privacy/",
+            f"{settings.LOGIN_URL}?next={self.base_url}edit/privacy/",
         )

@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from bilbyui.models import BilbyJob, EventID
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
@@ -115,5 +117,5 @@ class TestEditJobEventId(BilbyTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(
             response["Location"],
-            f"/sso/login/?next={self.base_url}edit/event-id/",
+            f"{settings.LOGIN_URL}?next={self.base_url}edit/event-id/",
         )
