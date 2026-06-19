@@ -45,7 +45,7 @@ class TestEditJobLabels(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "viewable_job"}),
         )
         self.job.labels.add(self.other_label)
-        self.base_url = f"/jobs/{self.job.id}/"
+        self.base_url = f"/job-results/{self.job.id}/"
 
     def test_add_label(self):
         response = self.client.post(
@@ -131,7 +131,7 @@ class TestEditJobLabels(BilbyTestCase):
             private=True,
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "other_users_job"}),
         )
-        other_base_url = f"/jobs/{other_job.id}/"
+        other_base_url = f"/job-results/{other_job.id}/"
 
         response = self.client.post(
             f"{other_base_url}edit/labels/",

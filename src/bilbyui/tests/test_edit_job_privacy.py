@@ -19,7 +19,7 @@ class TestEditJobPrivacy(BilbyTestCase):
             private=True,
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "viewable_job"}),
         )
-        self.base_url = f"/jobs/{self.job.id}/"
+        self.base_url = f"/job-results/{self.job.id}/"
 
     def test_toggling_to_public(self):
         response = self.client.post(
@@ -59,7 +59,7 @@ class TestEditJobPrivacy(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "ligo_job"}),
         )
 
-        response = self.client.get(f"/jobs/{ligo_job.id}/")
+        response = self.client.get(f"/job-results/{ligo_job.id}/")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Share with LVK collaborators")
@@ -80,7 +80,7 @@ class TestEditJobPrivacy(BilbyTestCase):
             private=True,
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "other_users_job"}),
         )
-        other_base_url = f"/jobs/{other_job.id}/"
+        other_base_url = f"/job-results/{other_job.id}/"
 
         response = self.client.post(
             f"{other_base_url}edit/privacy/",
