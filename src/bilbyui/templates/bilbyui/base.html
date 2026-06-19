@@ -5,14 +5,13 @@
   <meta charset="utf-8">
   <title>{% block title %}{{ page_title|default:"GWCloud Bilby" }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'bilbyui/app.css' %}">
+  <link rel="stylesheet" href="{% static 'bilbyui/vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
 </head>
 <body>
-  <header>
-    <img src="{% static 'bilbyui/images/GWCloud-logo-primary200.png' %}" alt="GWCloud">
-    <a href="/sso/login/">Log in</a>
-    <a href="/sso/logout/">Log out</a>
-  </header>
-  {% block content %}{% endblock %}
+  {% include "bilbyui/_navbar.html" %}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
   <script defer src="{% static 'bilbyui/htmx.min.js' %}"></script>
   <script defer src="{% static 'bilbyui/alpine.min.js' %}"></script>
 </body>
