@@ -1519,7 +1519,7 @@ def api_token_create(request):
     response = TemplateResponse(
         request,
         "bilbyui/_token_create_success.html",
-        {"name": name, "full_token": str(token.token)},
+        {"name": name, "full_token": str(token.token), "token": token},
     )
     response["HX-Trigger"] = "save-toast"
     return response
