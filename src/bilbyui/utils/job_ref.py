@@ -33,10 +33,10 @@ def canonical_job_path(request, job_ref, job_id):
 
 def resolve_job_ref_view(view_func):
     @wraps(view_func)
-    def wrapper(request, job_ref, *args, **kwargs):
-        job_id, is_relay_id = parse_job_ref(job_ref)
+    def wrapper(request, job_id, *args, **kwargs):
+        resolved_id, is_relay_id = parse_job_ref(job_id)
         if is_relay_id:
-            return HttpResponsePermanentRedirect(canonical_job_path(request, job_ref, job_id))
-        return view_func(request, job_id, *args, **kwargs)
+            return HttpResponsePermanentRedirect(canonical_job_path(request, job_id, resolved_id))
+        return view_func(request, resolved_id, *args, **kwargs)
 
     return wrapper
