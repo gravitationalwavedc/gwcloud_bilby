@@ -21,14 +21,14 @@
       {% if error %}
         <p class="text-danger small">{{ error }}</p>
       {% endif %}
-      <button type="submit" class="btn btn-sm btn-primary">Save</button>
+      <button type="submit" class="save-button btn btn-sm btn-primary"><i class="bi bi-check"></i></button>
       <button
         type="button"
-        class="btn btn-sm btn-link"
+        class="cancel-button btn btn-sm btn-link"
         hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field=field %}"
         hx-target="#field-{{ field }}-{{ job_id }}"
         hx-swap="outerHTML"
-      >Cancel</button>
+      ><i class="bi bi-x"></i></button>
     </form>
   {% else %}
     {% if field == "name" %}
@@ -38,7 +38,7 @@
         hx-trigger="click"
         hx-swap="outerHTML"
         style="cursor: pointer;"
-      {% endif %}>{{ value }}</h1>
+      {% endif %}>{{ value }}{% if modifiable %}<button class="edit-button text-muted ml-2" aria-label="Edit"><i class="bi bi-pencil"></i> edit</button>{% endif %}</h1>
     {% else %}
       <p{% if modifiable %}
         hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field='description' %}?editing=1"
@@ -46,7 +46,7 @@
         hx-trigger="click"
         hx-swap="outerHTML"
         style="cursor: pointer;"
-      {% endif %}>{{ value }}</p>
+      {% endif %}>{{ value }}{% if modifiable %}<button class="edit-button text-muted ml-2" aria-label="Edit"><i class="bi bi-pencil"></i> edit</button>{% endif %}</p>
     {% endif %}
   {% endif %}
 </div>

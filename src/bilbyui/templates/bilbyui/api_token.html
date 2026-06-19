@@ -12,24 +12,37 @@
       to authenticate you, allowing you to view proprietary data and submit new jobs.
     </p>
 
-    {% if tokens %}
-      <div id="token-list">
-        {% for token in tokens %}
-          {% include "bilbyui/_token_row.html" %}
-        {% endfor %}
-      </div>
-    {% else %}
-      <p>You do not have any API tokens associated with your account.</p>
-    {% endif %}
+    <div id="token-list" hx-on::after-process="document.getElementById('no-tokens-message').style.display = 'none'">
+      {% for token in tokens %}
+        {% include "bilbyui/_token_row.html" %}
+      {% endfor %}
+    </div>
+    <p id="no-tokens-message" style="{% if tokens %}display: none;{% endif %}">You do not have any API tokens associated with your account.</p>
 
-    <div id="token-create-result"></div>
-    {% include "bilbyui/_token_create_form.html" %}
+    <div x-data="{ open: false }" class="mt-4">
+      <div x-show="!open" class="clearfix mb-3">
+        <button class="btn btn-primary float-right" @click="open = true">Create Token</button>
+      </div>
+      <div x-show="open" class="card card-body mb-3">
+        <div id="token-create-result"></div>
+        {% include "bilbyui/_token_create_form.html" %}
+        <div class="text-right mt-2">
+          <button class="btn btn-secondary btn-sm" @click="open = false">Cancel</button>
+        </div>
+      </div>
+    </div>
 
     {% include "bilbyui/_save_toast.html" %}
 
     <script>
       document.body.addEventListener("token-revoked", function (evt) {
-        evt.detail.elt.closest("[data-token-id]").remove();
+        var row = evt.detail.elt.closest("[data-token-id]");
+        var parent = row.parentNode;
+        row.remove();
+        if (parent && parent.children.length === 0) {
+          var msg = document.getElementById("no-tokens-message");
+          if (msg) msg.style.display = "block";
+        }
       });
     </script>
   </div>

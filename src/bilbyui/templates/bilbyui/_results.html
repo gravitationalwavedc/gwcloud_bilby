@@ -8,7 +8,29 @@
   </thead>
   <tbody>
     {% for file in files %}
-      {% include "bilbyui/_file_row.html" with file=file job=job %}
+      <tr>
+        <td>
+          {% if file.is_dir %}
+            {{ file.path }}
+          {% elif job.job_type == 2 %}
+            <a href="{{ file.path }}" target="_blank" rel="noopener noreferrer">{{ file.path }}</a>
+          {% elif file.download_token %}
+            <a href="{% url 'bilbyui:file_download' job_id=job.id token=file.download_token %}" target="_blank">
+              {{ file.path }}
+            </a>
+          {% else %}
+            {{ file.path }}
+          {% endif %}
+        </td>
+        <td>{% if file.is_dir %}Directory{% else %}File{% endif %}</td>
+        <td>
+          {% if file.is_dir or file.file_size is None %}
+            —
+          {% else %}
+            {{ file.file_size|filesizeformat }}
+          {% endif %}
+        </td>
+      </tr>
     {% empty %}
       <tr>
         <td colspan="3" class="text-muted">No result files found.</td>
