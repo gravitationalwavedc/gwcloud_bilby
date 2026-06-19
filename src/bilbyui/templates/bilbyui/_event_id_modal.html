@@ -28,13 +28,41 @@
   (function () {
     var modalEl = document.getElementById("event-id-modal-{{ job.id }}");
     if (!modalEl) return;
-    modalEl.addEventListener("close-modal", function () {
+
+    var placeholderId = "event-id-modal-{{ job.id }}";
+    var anchor = document.querySelector("[data-field='event-id']");
+
+    function ensurePlaceholder() {
+      if (!document.getElementById(placeholderId) && anchor) {
+        var placeholder = document.createElement("div");
+        placeholder.id = placeholderId;
+        anchor.appendChild(placeholder);
+      }
+    }
+
+    function hideModal() {
       if (typeof $ !== "undefined" && $.fn.modal) {
         $(modalEl).modal("hide");
       }
-    });
-    if (typeof $ !== "undefined" && $.fn.modal) {
+    }
+
+    function showModal() {
+      document.body.appendChild(modalEl);
+
+      if (typeof $ === "undefined" || !$.fn.modal) return;
+
+      modalEl.addEventListener("close-modal", hideModal);
+
+      $(modalEl).one("hidden.bs.modal", function () {
+        modalEl.remove();
+        ensurePlaceholder();
+      });
       $(modalEl).modal("show");
     }
+
+    // HTMX settling restores `class` from the server fragment after swap. If we
+    // call Bootstrap's modal("show") immediately, it adds `.show`, then HTMX
+    // strips it while leaving the backdrop and body.modal-open behind.
+    modalEl.addEventListener("htmx:afterSettle", showModal, { once: true });
   })();
 </script>

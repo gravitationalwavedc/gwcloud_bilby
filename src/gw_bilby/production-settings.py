@@ -17,6 +17,13 @@ STORAGES = {
 
 ALLOWED_HOSTS = ["*"]
 
+# nginx terminates TLS and forwards X-Forwarded-Proto; required for CSRF referer checks.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = [
+    "https://gwcloud.org.au",
+    "https://gw-cloud.org",
+]
+
 EMAIL_HOST = "mail.swin.edu.au"
 EMAIL_PORT = 25
 
