@@ -24,7 +24,7 @@ class TestEditJobText(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'name="name"')
         self.assertContains(response, "hx-post")
-        self.assertContains(response, "Save")
+        self.assertContains(response, "save-button")
 
     def test_name_edit_saves_valid(self):
         response = self.client.post(
@@ -65,7 +65,7 @@ class TestEditJobText(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'name="description"')
-        self.assertContains(response, "Cancel")
+        self.assertContains(response, "cancel-button")
 
     def test_description_edit_saves(self):
         response = self.client.post(

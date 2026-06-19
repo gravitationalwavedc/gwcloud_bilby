@@ -13,5 +13,12 @@
     {% endif %}
   </td>
   <td>{% if file.is_dir %}Directory{% else %}File{% endif %}</td>
-  <td>{{ file.file_size|default:"—" }}</td>
+  <td>
+    {% if file.is_dir or file.file_size is None %}
+      —
+    {% else %}
+      {{ file.file_size|filesizeformat }}
+    {% endif %}
+  </td>
 </tr>
+

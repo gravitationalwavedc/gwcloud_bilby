@@ -38,7 +38,7 @@
         hx-trigger="click"
         hx-swap="outerHTML"
         style="cursor: pointer;"
-      {% endif %}>{{ value }}{% if modifiable %}<button class="edit-button text-muted ml-2" aria-label="Edit"><i class="bi bi-pencil"></i> edit</button>{% endif %}</h1>
+      {% endif %}>{{ value }}{% if modifiable %}<button class="edit-button text-muted ml-2" aria-label="Edit field"><i class="bi bi-pencil"></i> edit</button>{% endif %}</h1>
     {% else %}
       <p{% if modifiable %}
         hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field='description' %}?editing=1"
@@ -46,7 +46,7 @@
         hx-trigger="click"
         hx-swap="outerHTML"
         style="cursor: pointer;"
-      {% endif %}>{{ value }}{% if modifiable %}<button class="edit-button text-muted ml-2" aria-label="Edit"><i class="bi bi-pencil"></i> edit</button>{% endif %}</p>
+      {% endif %}>{{ value }}{% if modifiable %}<button class="edit-button text-muted ml-2" aria-label="Edit field"><i class="bi bi-pencil"></i> edit</button>{% endif %}</p>
     {% endif %}
   {% endif %}
 </div>

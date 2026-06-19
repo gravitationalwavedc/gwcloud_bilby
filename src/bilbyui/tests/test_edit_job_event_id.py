@@ -60,6 +60,7 @@ class TestEditJobEventId(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["HX-Trigger"], "save-toast, close-modal")
         self.assertContains(response, self.event.event_id)
+        self.assertContains(response, "Clear")
         self.job.refresh_from_db()
         self.assertEqual(self.job.event_id, self.event)
 
@@ -75,6 +76,7 @@ class TestEditJobEventId(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["HX-Trigger"], "save-toast, close-modal")
         self.assertContains(response, "No event ID set")
+        self.assertNotContains(response, "Clear")
         self.job.refresh_from_db()
         self.assertIsNone(self.job.event_id)
 

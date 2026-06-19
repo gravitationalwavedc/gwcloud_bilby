@@ -84,7 +84,7 @@ class TestViewJob(BilbyTestCase):
         self.assertContains(response, "Viewable job")
         self.assertContains(response, "Parameters")
         self.assertContains(response, "Results")
-        self.assertContains(response, 'class="badge badge-primary">Completed</span>')
+        self.assertContains(response, "COMPLETED —")
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_parameters_partial(self, request_job_filter):

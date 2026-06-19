@@ -1317,10 +1317,11 @@ def edit_job_description(request, job_id):
 
 
 def _render_job_field_privacy(request, job, status=200):
+    modifiable = request.user.id == job.user_id
     return TemplateResponse(
         request,
         "bilbyui/_job_field_privacy.html",
-        {"job": job},
+        {"job": job, "modifiable": modifiable},
         status=status,
     )
 
