@@ -39,6 +39,7 @@ from .status import JobStatus
 from .utils.embargo import should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
+from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
@@ -1163,6 +1164,7 @@ def _render_job_field_labels(request, job, error="", status=200, modifiable=None
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 def view_job_view(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
     status = _get_job_status_context(job, request.user)
@@ -1182,6 +1184,7 @@ def view_job_view(request, job_id):
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 def view_job_parameters_partial(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
 
@@ -1202,6 +1205,7 @@ def view_job_parameters_partial(request, job_id):
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 def view_job_results_partial(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
 
@@ -1232,6 +1236,7 @@ def _render_job_field_text(request, job, field, editing=False, error="", status=
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 def view_job_field_partial(request, job_id, field):
     job = _get_view_job_or_404(job_id, request.user)
 
@@ -1245,6 +1250,7 @@ def view_job_field_partial(request, job_id, field):
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 @require_POST
 def edit_job_name(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
@@ -1268,6 +1274,7 @@ def edit_job_name(request, job_id):
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 @require_POST
 def edit_job_description(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
@@ -1295,6 +1302,7 @@ def _render_job_field_privacy(request, job, status=200):
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 @require_POST
 def edit_job_privacy(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
@@ -1314,6 +1322,7 @@ def edit_job_privacy(request, job_id):
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 @require_POST
 def edit_job_labels(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
@@ -1400,12 +1409,14 @@ def event_id_search(request):
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 def event_id_modal(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
     return TemplateResponse(request, "bilbyui/_event_id_modal.html", {"job": job})
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 @require_POST
 def edit_job_event_id(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
@@ -1438,6 +1449,7 @@ def edit_job_event_id(request, job_id):
 
 
 @login_required(login_url="/sso/login/")
+@resolve_job_ref_view
 def file_download_redirect(request, job_id, token):
     job = _get_view_job_or_404(job_id, request.user)
 
