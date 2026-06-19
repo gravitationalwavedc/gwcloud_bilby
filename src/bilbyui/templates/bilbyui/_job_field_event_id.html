@@ -1,4 +1,4 @@
-<div data-field="event-id" class="mb-2">
+<div data-field="event-id" id="event-id-field-{{ job.id }}" class="mb-2">
   {% if job.event_id %}
     <span class="mr-2">Event ID: {{ job.event_id.event_id }}</span>
     {% if job.event_id.trigger_id %}<span class="mr-2">Trigger ID: {{ job.event_id.trigger_id }}</span>{% endif %}

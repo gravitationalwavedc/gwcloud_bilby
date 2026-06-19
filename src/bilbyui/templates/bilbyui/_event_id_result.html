@@ -1,6 +1,6 @@
 <li class="list-group-item p-0">
   <form hx-post="{% url 'bilbyui:edit_job_event_id' job_id=job.id %}"
-        hx-target="closest [data-field='event-id']"
+        hx-target="#event-id-field-{{ job.id }}"
         hx-swap="outerHTML"
         class="mb-0">
     {% csrf_token %}
