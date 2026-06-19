@@ -3,7 +3,7 @@
   {% include "bilbyui/_job_field_text.html" with field="description" value=job.description job_id=job.id editing=False modifiable=modifiable %}
 
   <div class="mb-2">
-    <span class="badge badge-primary">{{ status_name }}</span>
+    <span class="badge badge-{{ status_badge_class }}">{{ status_name }}</span>
     <span class="text-muted small ml-2">{{ status_date }}</span>
   </div>
 

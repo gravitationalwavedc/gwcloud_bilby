@@ -16,9 +16,9 @@
     {% endif %}
   </div>
   <div class="col-md-3 text-center">
-    <span class="badge badge-primary mr-1">{{ node.status_name }}</span>
+    <span class="badge badge-{{ node.status_badge_class }} mr-1">{{ node.status_name }}</span>
     {% for label in node.labels %}
-      <span class="badge badge-secondary mr-1">{{ label.name }}</span>
+      <span class="badge badge-{{ label.badge_type }} mr-1">{{ label.name }}</span>
     {% endfor %}
   </div>
   <div class="col-md-1 text-center">

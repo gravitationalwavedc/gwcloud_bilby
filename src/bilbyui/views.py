@@ -44,6 +44,13 @@ from .utils.job_validation import validate_job_name
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
 
+STATUS_BADGE_CLASSES = {
+    "Completed": "primary",
+    "Error": "danger",
+    "Running": "info",
+    "Unknown": "dark",
+}
+
 
 def check_job_embargo_status(user, args):
     """
@@ -970,6 +977,7 @@ def _build_public_job_rows(public_jobs_result):
                 "name": job_source["job"]["name"],
                 "description": job_source["job"]["description"] or "",
                 "status_name": status_name,
+                "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
                 "labels": list(bilby_job.labels.all()),
                 "event_id_values": _event_id_display_values(bilby_job.event_id),
             }
@@ -1009,6 +1017,7 @@ def _build_user_job_rows(user_jobs_result, user):
                 "name": bilby_job.name,
                 "description": bilby_job.description or "",
                 "status_name": status_name,
+                "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
                 "labels": list(bilby_job.labels.all()),
                 "event_id_values": _event_id_display_values(bilby_job.event_id),
             }
@@ -1092,21 +1101,35 @@ def _get_view_job_or_404(job_id, user):
 
 def _get_job_status_context(job, user):
     if job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
+        status_name = JobStatus.display_name(JobStatus.COMPLETED)
         return {
-            "status_name": JobStatus.display_name(JobStatus.COMPLETED),
+            "status_name": status_name,
+            "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
             "status_date": job.last_updated,
         }
 
     if not job.job_controller_id:
-        return {"status_name": "Unknown", "status_date": job.last_updated}
+        status_name = "Unknown"
+        return {
+            "status_name": status_name,
+            "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
+            "status_date": job.last_updated,
+        }
 
     _, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
     if not job_controller_jobs:
-        return {"status_name": "Unknown", "status_date": job.last_updated}
+        status_name = "Unknown"
+        return {
+            "status_name": status_name,
+            "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
+            "status_date": job.last_updated,
+        }
 
     job_controller_job = job_controller_jobs[0]
+    status_name = JobStatus.display_name(job_controller_job["history"][0]["state"])
     return {
-        "status_name": JobStatus.display_name(job_controller_job["history"][0]["state"]),
+        "status_name": status_name,
+        "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
         "status_date": job_controller_job["history"][0]["timestamp"],
     }
 
@@ -1176,6 +1199,7 @@ def view_job_view(request, job_id):
         {
             "job": job,
             "status_name": status["status_name"],
+            "status_badge_class": status["status_badge_class"],
             "status_date": status["status_date"],
             "modifiable": modifiable,
             "available_labels": _available_labels_for_job(job) if modifiable else [],
