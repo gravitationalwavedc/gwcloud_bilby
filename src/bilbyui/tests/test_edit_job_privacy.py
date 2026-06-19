@@ -1,3 +1,4 @@
+import re
 from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
@@ -101,4 +102,41 @@ class TestEditJobPrivacy(BilbyTestCase):
         self.assertEqual(
             response["Location"],
             f"{settings.LOGIN_URL}?next={self.base_url}edit/privacy/",
+        )
+
+    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    def test_post_requires_csrf_token(self, request_job_filter):
+        self.client = self.client_class(enforce_csrf_checks=True)
+        self.authenticate()
+
+        response = self.client.get(self.base_url)
+        self.assertEqual(response.status_code, 200)
+
+        csrf_token = re.search(
+            r'name="csrfmiddlewaretoken" value="([^"]+)"',
+            response.content.decode(),
+        ).group(1)
+
+        response = self.client.post(
+            f"{self.base_url}edit/privacy/",
+            {"private": "on"},
+        )
+        self.assertEqual(response.status_code, 403)
+
+        response = self.client.post(
+            f"{self.base_url}edit/privacy/",
+            {"private": "on", "csrfmiddlewaretoken": csrf_token},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.job.refresh_from_db()
+        self.assertFalse(self.job.private)
+
+    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    def test_privacy_form_submits_via_form_element(self, request_job_filter):
+        response = self.client.get(self.base_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertRegex(
+            response.content.decode(),
+            rf'<form id="privacy-form-{self.job.id}"[^>]*hx-post="[^"]*edit/privacy/',
         )
