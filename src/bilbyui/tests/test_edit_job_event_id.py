@@ -35,6 +35,7 @@ class TestEditJobEventId(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "GW150914_123456")
         self.assertContains(response, "S123456a")
+        self.assertContains(response, f'hx-target="#event-id-field-{self.job.id}"')
 
     def test_search_empty(self):
         response = self.client.get(self.search_url, {"q": ""})
