@@ -930,6 +930,13 @@ def _health_view(request):
     return TemplateResponse(request, "bilbyui/base.html", {"page_title": "htmx-bootstrap"})
 
 
+def _event_id_display_values(event_id):
+    if event_id is None:
+        return []
+
+    return [value for value in (event_id.event_id, event_id.trigger_id, event_id.nickname) if value]
+
+
 def _build_public_job_rows(public_jobs_result):
     records = public_jobs_result["records"]
     page_size = public_jobs_result["page_size"]
@@ -963,6 +970,7 @@ def _build_public_job_rows(public_jobs_result):
                 "description": job_source["job"]["description"] or "",
                 "status_name": status_name,
                 "labels": list(bilby_job.labels.all()),
+                "event_id_values": _event_id_display_values(bilby_job.event_id),
             }
         )
 
@@ -1001,6 +1009,7 @@ def _build_user_job_rows(user_jobs_result, user):
                 "description": bilby_job.description or "",
                 "status_name": status_name,
                 "labels": list(bilby_job.labels.all()),
+                "event_id_values": _event_id_display_values(bilby_job.event_id),
             }
         )
 
