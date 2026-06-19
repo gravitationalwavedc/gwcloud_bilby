@@ -13,6 +13,8 @@
   <main class="h-100" style="padding-top: 64px;">
     {% block content %}{% endblock %}
   </main>
+  <script defer src="{% static 'bilbyui/vendor/jquery/jquery-3.7.1.min.js' %}"></script>
+  <script defer src="{% static 'bilbyui/vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
   <script defer src="{% static 'bilbyui/htmx.min.js' %}"></script>
   <script defer src="{% static 'bilbyui/alpine.min.js' %}"></script>
 </body>
