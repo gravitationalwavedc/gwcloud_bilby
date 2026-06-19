@@ -4,6 +4,7 @@ from unittest import mock
 
 from django.conf import settings
 from django.test import override_settings
+from django.urls import reverse
 from django.utils import timezone
 
 from bilbyui.models import BilbyJob, EventID
@@ -254,6 +255,18 @@ class TestPublicJobsView(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "My Jobs")
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock_no_hits)
+    def test_authenticated_user_sees_my_jobs_link(self, elasticsearch_search):
+        self.authenticate()
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        my_jobs_url = reverse("bilbyui:my_jobs")
+        self.assertContains(response, f'href="{my_jobs_url}"')
+        self.assertContains(response, "My Jobs")
+        self.assertNotContains(response, 'href="#">My Jobs')
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
