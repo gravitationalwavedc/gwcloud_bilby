@@ -1483,14 +1483,13 @@ def file_download_redirect(request, job_id, token):
         raise Http404
 
     if job.job_type == BilbyJobType.UPLOADED:
-        download_id = str(token)
-    else:
-        success, result = request_file_download_ids(job, paths, user_id=request.user.id)
-        if not success:
-            raise Http404
-        download_id = result[0]
+        return HttpResponseRedirect(f"/file_download/?fileId={token}")
 
-    return HttpResponseRedirect(f"/file_download/?fileId={download_id}")
+    success, result = request_file_download_ids(job, paths, user_id=request.user.id)
+    if not success:
+        raise Http404
+
+    return HttpResponseRedirect(f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/?fileId={result[0]}")
 
 
 @login_required
