@@ -3,6 +3,7 @@ from unittest import mock
 
 from django.conf import settings
 
+from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, FileDownloadToken
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
@@ -124,5 +125,23 @@ class TestViewJob(BilbyTestCase):
         response = self.client.get(f"/job-results/{self.job.id}/files/{token.token}/download/")
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/file_download/?fileId=", response["Location"])
-        self.assertIn(download_id, response["Location"])
+        self.assertEqual(
+            response["Location"],
+            f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/?fileId={download_id}",
+        )
+
+    def test_file_download_redirect_uploaded_job(self):
+        uploaded_job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Uploaded job",
+            description="Uploaded",
+            job_type=BilbyJobType.UPLOADED,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Uploaded job"}),
+        )
+        token = FileDownloadToken.objects.create(job=uploaded_job, path="/result.txt")
+
+        response = self.client.get(f"/job-results/{uploaded_job.id}/files/{token.token}/download/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"/file_download/?fileId={token.token}")
