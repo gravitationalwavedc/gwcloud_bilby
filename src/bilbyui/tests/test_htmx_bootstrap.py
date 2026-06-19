@@ -65,3 +65,9 @@ class TestHtmxBootstrap(BilbyTestCase):
         response = self.client.get(self.health_url)
         content = response.content.decode()
         self.assertIn('href="/api-token/"', content)
+
+    def test_google_analytics_absent_when_disabled(self):
+        response = self.client.get(self.health_url)
+        content = response.content.decode()
+        self.assertNotIn("googletagmanager.com", content)
+        self.assertNotIn("UA-219714075-1", content)

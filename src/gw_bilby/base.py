@@ -71,6 +71,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "bilbyui.context_processors.google_analytics_id",
             ],
         },
     },
@@ -199,3 +200,6 @@ EMBARGO_START_TIME = None
 ELASTIC_SEARCH_INDEX = "gwcloud-bilbyjob"
 ELASTIC_SEARCH_HOST = "http://localhost:9200"
 ELASTIC_SEARCH_API_KEY = "very secure key"
+
+# Google Analytics tracking ID (gtag.js). Set in production-settings.py; None disables tracking.
+GOOGLE_ANALYTICS_ID = None

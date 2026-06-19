@@ -4,6 +4,8 @@ DEBUG = False
 
 SITE_URL = "https://gw-cloud.org"
 
+GOOGLE_ANALYTICS_ID = "UA-219714075-1"
+
 STATIC_URL = "/static/"
 
 STORAGES = {

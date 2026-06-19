@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <title>{% block title %}{{ page_title|default:"GWCloud Bilby" }}{% endblock %}</title>
+  {% include "bilbyui/_google_analytics.html" %}
   <link rel="stylesheet" href="{% static 'bilbyui/app.css' %}">
   <link rel="stylesheet" href="{% static 'bilbyui/vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
 </head>
