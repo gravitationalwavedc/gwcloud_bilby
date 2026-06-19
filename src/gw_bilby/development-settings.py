@@ -24,7 +24,8 @@ SUPPORTING_FILE_UPLOAD_DIR = os.path.join(EXTERNAL_STORAGE_PATH, "supporting_fil
 
 ELASTIC_SEARCH_HOST = "http://localhost:9200"
 
-# On both login and logout, redirect to the Django htmx frontend
+# LOGIN_URL is set in base.py (reverse_lazy("sso:login")).
+# On both login and logout, redirect to the Django htmx frontend.
 LOGIN_REDIRECT_URL = "http://localhost:8001/"
 LOGOUT_REDIRECT_URL = "http://localhost:8001/"
 

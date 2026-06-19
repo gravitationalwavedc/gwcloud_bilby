@@ -32,7 +32,7 @@
       </li>
     {% else %}
       <li class="nav-item">
-        <a class="nav-link" href="/sso/login/">Login</a>
+        <a class="nav-link" href="{% url 'sso:login' %}">Login</a>
       </li>
     {% endif %}
   </ul>

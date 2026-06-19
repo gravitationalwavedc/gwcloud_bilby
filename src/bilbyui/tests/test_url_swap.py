@@ -1,5 +1,6 @@
 from unittest import mock
 
+from django.conf import settings
 from django.urls import reverse
 from graphql_relay.node.node import to_global_id
 
@@ -42,7 +43,7 @@ class TestUrlSwap(BilbyTestCase):
     def test_my_jobs_path_requires_auth(self):
         response = self.client.get("/job-list/")
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "/sso/login/?next=/job-list/")
+        self.assertEqual(response["Location"], f"{settings.LOGIN_URL}?next=/job-list/")
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_view_job_path_returns_200(self, request_job_filter):
@@ -119,7 +120,7 @@ class TestUrlSwap(BilbyTestCase):
     def test_api_tokens_path_requires_auth(self):
         response = self.client.get("/api-token/")
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "/sso/login/?next=/api-token/")
+        self.assertEqual(response["Location"], f"{settings.LOGIN_URL}?next=/api-token/")
 
     def test_job_form_path_returns_404(self):
         response = self.client.get("/job-form/")
@@ -154,6 +155,6 @@ class TestUrlSwap(BilbyTestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_sso_login_endpoint_still_works(self):
-        response = self.client.get("/sso/login/")
+        response = self.client.get(reverse("sso:login"))
         self.assertNotEqual(response.status_code, 404)
         self.assertIn(response.status_code, (200, 302))
