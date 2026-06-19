@@ -11,3 +11,7 @@
     </button>
   </div>
 </div>
+
+<div id="token-list-prepend" hx-swap-oob="afterbegin:#token-list">
+  {% include "bilbyui/_token_row.html" with token=token %}
+</div>

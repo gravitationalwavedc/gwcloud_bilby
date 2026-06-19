@@ -1,17 +1,41 @@
 <div class="mb-4">
-  {% include "bilbyui/_job_field_text.html" with field="name" value=job.name job_id=job.id editing=False modifiable=modifiable %}
-  {% include "bilbyui/_job_field_text.html" with field="description" value=job.description job_id=job.id editing=False modifiable=modifiable %}
-
-  <div class="mb-2">
-    <span class="badge badge-primary">{{ status_name }}</span>
-    <span class="text-muted small ml-2">{{ status_date }}</span>
+  <div class="row mb-3">
+    <div class="col-md-6 offset-md-2">
+      {% include "bilbyui/_job_field_text.html" with field="name" value=job.name job_id=job.id editing=False modifiable=modifiable %}
+    </div>
   </div>
 
-  {% include "bilbyui/_job_field_labels.html" with job=job available_labels=available_labels modifiable=modifiable %}
+  <div class="row mb-3">
+    <div class="col-md-8 offset-md-2">
+      {% include "bilbyui/_job_field_text.html" with field="description" value=job.description job_id=job.id editing=False modifiable=modifiable %}
+    </div>
+  </div>
 
-  {% include "bilbyui/_job_field_event_id.html" with job=job modifiable=modifiable %}
+  <div class="row mb-3">
+    <div class="col-md-6 offset-md-2">
+      <div class="mb-2 text-{{ status_badge_class|default:'muted' }}">
+        {{ status_name|upper }} — {{ status_date }}
+      </div>
+    </div>
+  </div>
 
-  <div class="mb-2">
-    {% include "bilbyui/_job_field_privacy.html" %}
+  <div class="row mb-3">
+    <div class="col-md-6 offset-md-2">
+      {% include "bilbyui/_job_field_labels.html" with job=job available_labels=available_labels modifiable=modifiable %}
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col-md-6 offset-md-2">
+      {% include "bilbyui/_job_field_event_id.html" with job=job modifiable=modifiable %}
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col-md-8 offset-md-2">
+      <div class="mb-2">
+        {% include "bilbyui/_job_field_privacy.html" %}
+      </div>
+    </div>
   </div>
 </div>
