@@ -10,10 +10,11 @@ Django serves these files as `{% static 'bilbyui/...' %}`. The htmx UI loads
 | `vendor/jquery/jquery-3.7.1.min.js` | jQuery 3.7.1 (Bootstrap 4 dependency) |
 | `vendor/bootstrap/bootstrap.bundle.min.js` | Bootstrap 4.6.2 JS bundle (includes Popper) |
 | `htmx.min.js` | HTMX |
+| `htmx-csrf.js` | Sends `X-CSRFToken` from the `csrftoken` cookie on HTMX requests |
 | `alpine.min.js` | Alpine.js |
 
 Bootstrap JS version matches the vendored Bootstrap 4.6.2 SCSS used to compile
-`app.css`. Load order in `base.html` is jQuery → Bootstrap → HTMX → Alpine.
+`app.css`. Load order in `base.html` is jQuery → Bootstrap → HTMX → HTMX CSRF → Alpine.
 
 ## CSS build
 

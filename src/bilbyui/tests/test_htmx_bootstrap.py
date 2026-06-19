@@ -36,6 +36,15 @@ class TestHtmxBootstrap(BilbyTestCase):
             content.index("htmx.min.js"),
         )
 
+    def test_health_view_renders_htmx_csrf_helper(self):
+        response = self.client.get(self.health_url)
+        content = response.content.decode()
+        self.assertIn("htmx-csrf.js", content)
+        self.assertLess(
+            content.index("htmx.min.js"),
+            content.index("htmx-csrf.js"),
+        )
+
     def test_navbar_anonymous_shows_login(self):
         response = self.client.get(self.health_url)
         content = response.content.decode()

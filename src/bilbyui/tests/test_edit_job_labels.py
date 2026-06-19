@@ -2,6 +2,7 @@ from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
+from django.test import override_settings
 
 from bilbyui.models import BilbyJob, Label
 from bilbyui.tests.test_utils import create_test_ini_string
@@ -122,6 +123,37 @@ class TestEditJobLabels(BilbyTestCase):
         self.assertNotContains(response, f'name="add" value="{self.pe_label.name}"')
         self.assertNotContains(response, f'name="add" value="{self.official_label.name}"')
         self.assertContains(response, f'name="add" value="{self.unassigned_label.name}"')
+
+    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    @override_settings(
+        SECURE_PROXY_SSL_HEADER=("HTTP_X_FORWARDED_PROTO", "https"),
+        CSRF_TRUSTED_ORIGINS=["https://gwcloud.org.au"],
+    )
+    def test_add_label_accepts_csrf_header_from_cookie(self, request_job_filter):
+        self.client = self.client_class(enforce_csrf_checks=True)
+        self.authenticate()
+
+        response = self.client.get(
+            self.base_url,
+            HTTP_X_FORWARDED_PROTO="https",
+        )
+        csrf_cookie = response.cookies["csrftoken"].value
+
+        response = self.client.post(
+            f"{self.base_url}edit/labels/",
+            {
+                "labels": [self.other_label.name],
+                "add": self.pe_label.name,
+            },
+            HTTP_X_FORWARDED_PROTO="https",
+            HTTP_X_CSRFTOKEN=csrf_cookie,
+            HTTP_HX_REQUEST="true",
+            HTTP_REFERER=f"https://gwcloud.org.au/job-results/{self.job.id}/",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.job.refresh_from_db()
+        self.assertIn(self.pe_label, self.job.labels.all())
 
     def test_other_users_job_returns_404(self):
         other_job = BilbyJob.objects.create(
