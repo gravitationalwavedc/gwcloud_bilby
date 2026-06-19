@@ -22,6 +22,20 @@ class TestHtmxBootstrap(BilbyTestCase):
         content = response.content.decode()
         self.assertIn("alpine.min.js", content)
 
+    def test_health_view_renders_jquery_before_bootstrap(self):
+        response = self.client.get(self.health_url)
+        content = response.content.decode()
+        self.assertIn("jquery-3.7.1.min.js", content)
+        self.assertIn("bootstrap.bundle.min.js", content)
+        self.assertLess(
+            content.index("jquery-3.7.1.min.js"),
+            content.index("bootstrap.bundle.min.js"),
+        )
+        self.assertLess(
+            content.index("bootstrap.bundle.min.js"),
+            content.index("htmx.min.js"),
+        )
+
     def test_navbar_anonymous_shows_login(self):
         response = self.client.get(self.health_url)
         content = response.content.decode()
