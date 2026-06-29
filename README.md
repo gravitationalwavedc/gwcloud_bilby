@@ -96,6 +96,7 @@ The project uses separate settings files for different environments. **You must 
 - **`gw_bilby.prod`** — Production settings (reads from environment variables)
 - **`gw_bilby.dev`** — Development settings with debug mode, console email backend, and local SSO mock
 - **`gw_bilby.test`** — Test settings (inherits from dev, uses `ModelBackend` to avoid SSO calls)
+- **`gw_bilby.build`** — Build-time settings (minimal config for Docker image builds, uses in-memory SQLite)
 
 Run commands with a specific settings file:
 
@@ -108,6 +109,9 @@ poetry run python manage.py <command> --settings=gw_bilby.dev
 
 # Testing
 DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py <command>
+
+# Build (Docker only)
+DJANGO_SETTINGS_MODULE=gw_bilby.build poetry run python manage.py <command>
 ```
 
 **Note:** The `--settings` flag must come **after** the subcommand (e.g., `manage.py migrate --settings=gw_bilby.dev`).
