@@ -7,4 +7,4 @@ set -e
 #   ./run_tests.sh --failfast
 #   ./run_tests.sh bilbyui.tests.test_models
 #   ./run_tests.sh --parallel 4
-python development-manage.py test "$@"
+python manage.py test "$@"

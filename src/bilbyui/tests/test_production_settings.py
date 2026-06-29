@@ -6,7 +6,7 @@ from django.test import SimpleTestCase
 
 class TestProductionSettings(SimpleTestCase):
     def test_production_settings_configures_proxy_csrf(self):
-        path = Path(settings.BASE_DIR) / "gw_bilby" / "production-settings.py"
+        path = Path(settings.BASE_DIR) / "gw_bilby" / "prod.py"
         content = path.read_text()
 
         self.assertIn('SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")', content)

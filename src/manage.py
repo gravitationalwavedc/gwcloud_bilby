@@ -22,7 +22,7 @@ def main():
 
         sys.modules["gwosc.datasets"] = MockDatasets
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gw_bilby.development-settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gw_bilby.dev")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

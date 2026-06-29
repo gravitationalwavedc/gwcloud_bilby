@@ -25,7 +25,7 @@ poetry install
 
 ```bash
 # From src/, with venv active or via poetry run
-poetry run python development-manage.py migrate
+poetry run python manage.py migrate
 ```
 
 ### Mysql
@@ -62,7 +62,7 @@ mysql -u <username> -p gwcloud_bilby < <production_dump.sql>
 
 ```bash
 # From src/
-poetry run python development-manage.py migrate
+poetry run python manage.py migrate
 ```
 
 ### elasticsearch
@@ -85,8 +85,8 @@ In order to fetch results or file lists you will need to have access to the *pro
 
 ```bash
 # In src/ directory
-poetry run python development-manage.py runserver 8001
-# or: . .venv/bin/activate && python development-manage.py runserver 8001
+poetry run python manage.py runserver 8001
+# or: . .venv/bin/activate && python manage.py runserver 8001
 ```
 
 ### Styles
@@ -126,7 +126,7 @@ in `src/static/bilbyui/README.md`.
 
 ```bash
 # From src/
-poetry run python development-manage.py es_ingest
+poetry run python manage.py es_ingest
 ```
 
 - To regenerate the graphql schema
@@ -134,5 +134,5 @@ poetry run python development-manage.py es_ingest
 ```bash
 # From src/
 mkdir -p docs/data
-poetry run python development-manage.py graphql_schema
+poetry run python manage.py graphql_schema
 ```

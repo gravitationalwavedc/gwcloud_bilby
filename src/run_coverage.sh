@@ -13,6 +13,6 @@ set -e
 # isn't using --parallel you'll just get a single data file; if it is, each
 # worker process will write its own, and combine will merge them.
 python -m coverage erase
-python -m coverage run --parallel-mode development-manage.py test "$@"
+python -m coverage run --parallel-mode manage.py test "$@"
 python -m coverage combine
 python -m coverage report

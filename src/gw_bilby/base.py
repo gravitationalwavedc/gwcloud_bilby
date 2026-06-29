@@ -206,5 +206,5 @@ ELASTIC_SEARCH_INDEX = "gwcloud-bilbyjob"
 ELASTIC_SEARCH_HOST = "http://localhost:9200"
 ELASTIC_SEARCH_API_KEY = "very secure key"
 
-# Google Analytics tracking ID (gtag.js). Set in production-settings.py; None disables tracking.
+# Google Analytics tracking ID (gtag.js). Set in prod.py; None disables tracking.
 GOOGLE_ANALYTICS_ID = None
