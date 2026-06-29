@@ -89,6 +89,43 @@ poetry run python manage.py runserver 8001
 # or: . .venv/bin/activate && python manage.py runserver 8001
 ```
 
+### Settings Files
+
+The project uses separate settings files for different environments:
+
+- **`gw_bilby.dev`** (default) — Development settings with debug mode, console email backend, and local SSO mock
+- **`gw_bilby.prod`** — Production settings (reads from environment variables)
+- **`gw_bilby.test`** — Test settings (inherits from dev, uses `ModelBackend` to avoid SSO calls)
+
+Run commands with a specific settings file:
+
+```bash
+# Development (default)
+poetry run python manage.py <command>
+
+# Production
+poetry run python manage.py --settings=gw_bilby.prod <command>
+
+# Testing
+DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py <command>
+```
+
+### Running Tests
+
+```bash
+# Run all tests with test settings
+DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test
+
+# Run specific test module
+DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.test_models
+
+# Run with coverage
+cd src && poetry run bash run_coverage.sh
+
+# Run without coverage
+cd src && poetry run bash run_tests.sh
+```
+
 ### Styles
 
 The htmx UI stylesheet is compiled from SCSS under `src/static/bilbyui/scss/`.
