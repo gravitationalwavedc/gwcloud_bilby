@@ -45,9 +45,6 @@ TEST_OUTPUT_FILE_NAME = "junit.xml"
 ADACS_SSO_CLIENT_SECRET = "dev_secret_for_local_testing"
 ADACS_SSO_LOCAL_MODE = True
 
-# Use ModelBackend for tests to avoid SSO server calls
-AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
-
 try:
     from .local import *
 except ImportError:
