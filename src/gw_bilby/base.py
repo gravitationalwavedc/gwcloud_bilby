@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.humanize",
     "django.contrib.staticfiles",
+    "users.apps.UsersConfig",
     "bilbyui.apps.BilbyUiConfig",
     "graphene_django",
     "django_jenkins",
@@ -54,8 +55,8 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "adacs_sso_plugin.middleware.ADACSSSOMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "adacs_sso_plugin.middleware.ADACSSSOMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -157,6 +158,7 @@ GRAPHENE = {
 }
 
 AUTHENTICATION_BACKENDS = ["adacs_sso_plugin.backend.ADACSSSOBackend"]
+AUTH_USER_MODEL = "users.User"
 LOGIN_URL = reverse_lazy("sso:login")
 
 

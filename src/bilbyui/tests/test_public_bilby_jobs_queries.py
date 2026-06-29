@@ -2,7 +2,6 @@ import re
 from datetime import datetime, timedelta
 from unittest import mock
 
-from adacs_sso_plugin.adacs_user import ADACSUser
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import override_settings
@@ -23,7 +22,8 @@ User = get_user_model()
 
 class TestPublicBilbyJobsQueries(BilbyTestCase):
     def setUp(self):
-        self.user = ADACSUser(**BilbyTestCase.DEFAULT_USER)
+        User = get_user_model()
+        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
 
         self.job1 = BilbyJob.objects.create(
             user_id=self.user.id,

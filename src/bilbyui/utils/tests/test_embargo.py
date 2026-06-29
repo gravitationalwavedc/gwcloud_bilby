@@ -1,5 +1,6 @@
-from adacs_sso_plugin.adacs_user import ADACSAnonymousUser, ADACSUser
+from adacs_sso_plugin.anonymous_user import ADACSAnonymousUser
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
+from django.contrib.auth import get_user_model
 from django.test import override_settings
 
 from bilbyui.models import BilbyJob
@@ -11,6 +12,8 @@ from bilbyui.utils.embargo import (
     user_subject_to_embargo,
 )
 
+User = get_user_model()
+
 
 class TestUserSubjectToEmbargo(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=None)
@@ -19,10 +22,10 @@ class TestUserSubjectToEmbargo(BilbyTestCase):
         self.user = ADACSAnonymousUser()
         self.assertFalse(user_subject_to_embargo(self.user))
 
-        self.user = ADACSUser(**BilbyTestCase.DEFAULT_USER)
+        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
         self.assertFalse(user_subject_to_embargo(self.user))
 
-        self.user.authentication_method = AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
+        self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
         self.assertFalse(user_subject_to_embargo(self.user))
 
     @override_settings(EMBARGO_START_TIME=1)
@@ -33,10 +36,10 @@ class TestUserSubjectToEmbargo(BilbyTestCase):
 
         self.assertTrue(user_subject_to_embargo(self.user))
 
-        self.user = ADACSUser(**BilbyTestCase.DEFAULT_USER)
+        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
         self.assertTrue(user_subject_to_embargo(self.user))
 
-        self.user.authentication_method = AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
+        self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
         self.assertFalse(user_subject_to_embargo(self.user))
 
 
@@ -50,13 +53,13 @@ class TestShouldEmbargoJob(BilbyTestCase):
         self.assertFalse(should_embargo_job(self.user, None, True))
         self.assertFalse(should_embargo_job(self.user, None, False))
 
-        self.user = ADACSUser(**BilbyTestCase.DEFAULT_USER)
+        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
         self.assertFalse(should_embargo_job(self.user, 1.0, True))
         self.assertFalse(should_embargo_job(self.user, 1.0, False))
         self.assertFalse(should_embargo_job(self.user, None, True))
         self.assertFalse(should_embargo_job(self.user, None, False))
 
-        self.user.authentication_method = AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
+        self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
         self.assertFalse(should_embargo_job(self.user, 1.0, True))
         self.assertFalse(should_embargo_job(self.user, 1.0, False))
         self.assertFalse(should_embargo_job(self.user, None, True))
@@ -74,7 +77,7 @@ class TestShouldEmbargoJob(BilbyTestCase):
         self.assertFalse(should_embargo_job(self.user, None, True))
         self.assertFalse(should_embargo_job(self.user, None, False))
 
-        self.user = ADACSUser(**BilbyTestCase.DEFAULT_USER)
+        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
         self.assertFalse(should_embargo_job(self.user, 1.0, True))
         self.assertFalse(should_embargo_job(self.user, 1.0, False))
         self.assertFalse(should_embargo_job(self.user, 2.0, True))
@@ -82,7 +85,7 @@ class TestShouldEmbargoJob(BilbyTestCase):
         self.assertFalse(should_embargo_job(self.user, None, True))
         self.assertFalse(should_embargo_job(self.user, None, False))
 
-        self.user.authentication_method = AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
+        self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
         self.assertFalse(should_embargo_job(self.user, 1.0, True))
         self.assertFalse(should_embargo_job(self.user, 1.0, False))
         self.assertFalse(should_embargo_job(self.user, 2.0, True))
@@ -124,10 +127,10 @@ class TestEmbargoFilter(BilbyTestCase):
         self.user = ADACSAnonymousUser()
         self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))
 
-        self.user = ADACSUser(**BilbyTestCase.DEFAULT_USER)
+        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
         self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))
 
-        self.user.authentication_method = AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
+        self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
         self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))
 
     @override_settings(EMBARGO_START_TIME=1.5)
@@ -141,11 +144,11 @@ class TestEmbargoFilter(BilbyTestCase):
             embargo_filter(input_qs, self.user),
         )
 
-        self.user = ADACSUser(**BilbyTestCase.DEFAULT_USER)
+        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
         self.assertQuerySetEqual(
             BilbyJob.objects.filter(pk__in=[1, 2, 3]),
             embargo_filter(input_qs, self.user),
         )
 
-        self.user.authentication_method = AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
+        self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
         self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))

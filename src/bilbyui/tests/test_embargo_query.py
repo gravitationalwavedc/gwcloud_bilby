@@ -47,7 +47,7 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         # Normally we don't have any User objects
         # But this test uses the presence or absense of User.objects[0] for various things
-        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
+        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
 
     def job_request(self, job_data):
         field_str = "\n".join(list(camelize(job_data).keys()))

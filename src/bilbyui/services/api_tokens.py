@@ -18,20 +18,11 @@ def list_tokens(user):
 
 
 def create_token(user, name):
-    session_user_data = {
-        "id": user.id,
-        "name": user.name,
-        "primary_email": user.primary_email,
-        "emails": user.emails,
-        "authentication_method": user.authentication_method,
-        "is_authenticated": user.is_authenticated,
-        "authenticated_at": user.authenticated_at.timestamp(),
-        "fetched_at": user.fetched_at.timestamp(),
-    }
     token = APISessionToken(
-        user_id=user.id,
+        user=user,
         name=name,
-        session_user_data=session_user_data,
+        authenticated_at=user.last_fetched_at,
+        authentication_method=user.authentication_methods[0] if user.authentication_methods else "password",
     )
     token.full_clean()
     token.save()
