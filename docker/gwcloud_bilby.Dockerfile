@@ -40,7 +40,7 @@ COPY ./src /src
 WORKDIR /src
 
 # Generate the graphql schema
-ENV DJANGO_SETTINGS_MODULE=gw_bilby.prod
+ENV DJANGO_SETTINGS_MODULE=gw_bilby.build
 RUN .venv/bin/python manage.py graphql_schema
 
 # Collect static assets for nginx (production manifest storage)
