@@ -40,11 +40,11 @@ COPY ./src /src
 WORKDIR /src
 
 # Generate the graphql schema
+ENV DJANGO_SETTINGS_MODULE=gw_bilby.prod
 RUN .venv/bin/python manage.py graphql_schema
 
 # Collect static assets for nginx (production manifest storage)
-ENV DJANGO_SETTINGS_MODULE=gw_bilby.prod
-RUN .venv/bin/python manage.py --settings=gw_bilby.prod collectstatic --noinput
+RUN .venv/bin/python manage.py collectstatic --noinput
 
 
 FROM base as django-runner

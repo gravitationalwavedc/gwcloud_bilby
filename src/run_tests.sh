@@ -7,4 +7,5 @@ set -e
 #   ./run_tests.sh --failfast
 #   ./run_tests.sh bilbyui.tests.test_models
 #   ./run_tests.sh --parallel 4
+export DJANGO_SETTINGS_MODULE=gw_bilby.test
 python manage.py test "$@"
