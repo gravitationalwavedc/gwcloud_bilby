@@ -3,7 +3,6 @@ import uuid
 from unittest import mock
 
 import requests
-from adacs_sso_plugin.adacs_user import ADACSUser
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import LiveServerTestCase
 from django.test import override_settings
@@ -16,7 +15,6 @@ from bilbyui.tests.test_utils import (
     generate_elastic_doc,
     silence_errors,
 )
-from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
 
@@ -24,7 +22,8 @@ User = get_user_model()
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class TestAnonymousMetrics(LiveServerTestCase):
     def setUp(self):
-        self.user = ADACSUser(**BilbyTestCase.DEFAULT_USER)
+        User = get_user_model()
+        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
         self.public_id = str(uuid.uuid4())
         self.session_id = str(uuid.uuid4())
 

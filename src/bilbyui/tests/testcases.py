@@ -1,12 +1,15 @@
 import datetime
 
-from adacs_sso_plugin.adacs_user import ADACSAnonymousUser, ADACSUser
+from adacs_sso_plugin.anonymous_user import ADACSAnonymousUser
 from adacs_sso_plugin.test_client import ADACSSSOSessionClient
+from django.contrib.auth import get_user_model
 from django.test import override_settings
 from graphene_django.utils.testing import GraphQLTestCase
 from graphene_file_upload.django.testing import GraphQLFileUploadTestMixin
 
 from gw_bilby.schema import schema
+
+User = get_user_model()
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
@@ -60,7 +63,17 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
             **kwargs,
         }
         self.client.authenticate(user_dict)
-        self.user = ADACSUser(**user_dict)
+        self.user, _ = User.objects.update_or_create(
+            id=user_dict["id"],
+            defaults={
+                "name": user_dict["name"],
+                "primary_email": user_dict["primary_email"],
+                "emails": user_dict["emails"],
+                "authentication_methods": [user_dict["authentication_method"]],
+                "last_fetched_at": datetime.datetime.now(tz=datetime.UTC),
+            },
+        )
+        self.client.force_login(self.user)
 
     def deauthenticate(self):
         self.client.deauthenticate()

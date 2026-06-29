@@ -12,7 +12,8 @@ set -e
 # Clean any old data, then always run in coverage's parallel mode. If Django
 # isn't using --parallel you'll just get a single data file; if it is, each
 # worker process will write its own, and combine will merge them.
+export DJANGO_SETTINGS_MODULE=gw_bilby.test
 python -m coverage erase
-python -m coverage run --parallel-mode development-manage.py test "$@"
+python -m coverage run --parallel-mode manage.py test "$@"
 python -m coverage combine
 python -m coverage report

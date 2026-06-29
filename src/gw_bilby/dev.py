@@ -41,6 +41,10 @@ TEST_RUNNER = "xmlrunner.extra.djangotestrunner.XMLTestRunner"
 TEST_OUTPUT_DIR = os.path.join(BASE_DIR, "reports")
 TEST_OUTPUT_FILE_NAME = "junit.xml"
 
+# Required for adacs-sso-plugin v0.4.2 system checks
+ADACS_SSO_CLIENT_SECRET = "dev_secret_for_local_testing"
+ADACS_SSO_LOCAL_MODE = True
+
 try:
     from .local import *
 except ImportError:

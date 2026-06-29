@@ -25,7 +25,7 @@ poetry install
 
 ```bash
 # From src/, with venv active or via poetry run
-poetry run python development-manage.py migrate
+poetry run python manage.py migrate --settings=gw_bilby.dev
 ```
 
 ### Mysql
@@ -62,7 +62,7 @@ mysql -u <username> -p gwcloud_bilby < <production_dump.sql>
 
 ```bash
 # From src/
-poetry run python development-manage.py migrate
+poetry run python manage.py migrate --settings=gw_bilby.dev
 ```
 
 ### elasticsearch
@@ -84,9 +84,52 @@ In order to fetch results or file lists you will need to have access to the *pro
 ## Running locally
 
 ```bash
-# In src/ directory
-poetry run python development-manage.py runserver 8001
-# or: . .venv/bin/activate && python development-manage.py runserver 8001
+# In src/ directory (with dev settings)
+poetry run python manage.py runserver 8001 --settings=gw_bilby.dev
+# or: . .venv/bin/activate && python manage.py runserver 8001 --settings=gw_bilby.dev
+```
+
+### Settings Files
+
+The project uses separate settings files for different environments. **You must explicitly specify which settings to use** with every `manage.py` command:
+
+- **`gw_bilby.prod`** — Production settings (reads from environment variables)
+- **`gw_bilby.dev`** — Development settings with debug mode, console email backend, and local SSO mock
+- **`gw_bilby.test`** — Test settings (inherits from dev, uses `ModelBackend` to avoid SSO calls)
+- **`gw_bilby.build`** — Build-time settings (minimal config for Docker image builds, uses in-memory SQLite)
+
+Run commands with a specific settings file:
+
+```bash
+# Production
+poetry run python manage.py <command> --settings=gw_bilby.prod
+
+# Development
+poetry run python manage.py <command> --settings=gw_bilby.dev
+
+# Testing
+DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py <command>
+
+# Build (Docker only)
+DJANGO_SETTINGS_MODULE=gw_bilby.build poetry run python manage.py <command>
+```
+
+**Note:** The `--settings` flag must come **after** the subcommand (e.g., `manage.py migrate --settings=gw_bilby.dev`).
+
+### Running Tests
+
+```bash
+# Run all tests with test settings
+DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test
+
+# Run specific test module
+DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.test_models
+
+# Run with coverage
+cd src && poetry run bash run_coverage.sh
+
+# Run without coverage
+cd src && poetry run bash run_tests.sh
 ```
 
 ### Styles
@@ -126,7 +169,7 @@ in `src/static/bilbyui/README.md`.
 
 ```bash
 # From src/
-poetry run python development-manage.py es_ingest
+poetry run python manage.py es_ingest --settings=gw_bilby.dev
 ```
 
 - To regenerate the graphql schema
@@ -134,5 +177,5 @@ poetry run python development-manage.py es_ingest
 ```bash
 # From src/
 mkdir -p docs/data
-poetry run python development-manage.py graphql_schema
+poetry run python manage.py graphql_schema --settings=gw_bilby.dev
 ```

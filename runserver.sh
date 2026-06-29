@@ -15,5 +15,5 @@ done
 echo "Database is up."
 
 mkdir -p /var/log/gwcloud_bilby
-"$PYTHON" /src/production-manage.py migrate
+"$PYTHON" /src/manage.py migrate --settings=gw_bilby.prod
 exec "$GUNICORN" gw_bilby.wsgi --bind 0.0.0.0:8000 --workers 8 --timeout 600

@@ -16,7 +16,7 @@ MOCK_EMBARGO_START_TIME = 1128678900.4
 
 class TestBilbyEmbargoPermissions(BilbyTestCase):
     def setUp(self):
-        self.user = User.objects.create(username="buffy", first_name="buffy", last_name="summers")
+        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
 
         self.params = {
             "params": {

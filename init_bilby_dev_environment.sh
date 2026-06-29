@@ -1,3 +1,3 @@
 echo Set up python virtual env for bilby module
 cd "$(dirname "$0")/src" && poetry install
-poetry run python development-manage.py migrate
+poetry run python manage.py migrate --settings=gw_bilby.dev
