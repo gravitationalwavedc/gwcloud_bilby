@@ -48,11 +48,24 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
         "fetched_at": 0,
     }
 
+    # Common test user IDs that need User objects for FK constraints
+    TEST_USER_IDS = [0, 1, 2, 3, 4, 1234, 88888]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # We always want to see the full diff when an error occurs.
         self.maxDiff = None
         self.user = ADACSAnonymousUser()
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Create User objects for common test user_ids to satisfy FK constraints
+        for user_id in cls.TEST_USER_IDS:
+            User.objects.update_or_create(
+                id=user_id,
+                defaults={"name": f"Test User {user_id}", "primary_email": f"user{user_id}@test{user_id}.com"},
+            )
 
     # Log in as a user. Any parameters can be overwritten with **kwargs
     def authenticate(self, **kwargs):

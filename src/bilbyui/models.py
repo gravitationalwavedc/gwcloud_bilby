@@ -148,11 +148,15 @@ def event_id_save(sender, instance, **kwargs):
 
 class BilbyJob(models.Model):
     class Meta:
-        unique_together = (("user_id", "name"),)
+        unique_together = (("user", "name"),)
 
         ordering = ("-last_updated", "name")
 
-    user_id = models.IntegerField()
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="bilby_jobs",
+    )
     name = models.CharField(max_length=255, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
 
@@ -196,7 +200,7 @@ class BilbyJob(models.Model):
         job = cls.objects.get(id=bid)
 
         # Users can only access the job if it is public or (the user is authenticated AND the user also owns the job)
-        if job.private and (user.is_anonymous or user.id != job.user_id):
+        if job.private and (user.is_anonymous or user.id != job.user.id):
             raise Exception("Permission Denied")
 
         return job
@@ -285,7 +289,7 @@ class BilbyJob(models.Model):
         job_params = self.as_dict()
 
         # Ask the job controller to submit the job
-        result = submit_job(self.user_id, job_params, self.cluster)
+        result = submit_job(self.user.id, job_params, self.cluster)
 
         # Save the job id
         self.job_controller_id = result["jobId"]
@@ -353,7 +357,7 @@ class BilbyJob(models.Model):
         )
 
         # Get the user details for this job
-        _, users = request_lookup_users([self.user_id])
+        _, users = request_lookup_users([self.user.id])
         user = users[0]
 
         # Generate the document for insertion or update in elastic search
@@ -369,7 +373,7 @@ class BilbyJob(models.Model):
             "eventId": None,
             "ini": {kv.key: json.loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=False)},
             "params": {kv.key: json.loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=True)},
-            "_private_info_": {"userId": self.user_id, "private": self.private},
+            "_private_info_": {"userId": self.user.id, "private": self.private},
         }
 
         # Set the event id if one is set on the job
@@ -641,7 +645,11 @@ class BilbyJobUploadToken(models.Model):
     # The job upload token
     token = models.UUIDField(unique=True, default=uuid.uuid4, db_index=True)
     # The ID of the user the upload token was created for (Used to provide the user of the uploaded job)
-    user_id = models.IntegerField()
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="upload_tokens",
+    )
     # If the user creating the upload token was a ligo user or not
     is_ligo = models.BooleanField()
     # When the token was created
@@ -671,7 +679,7 @@ class BilbyJobUploadToken(models.Model):
         cls.prune()
 
         # Next create and return a new token instance
-        return cls.objects.create(user_id=user.id, is_ligo=is_ligo_user(user))
+        return cls.objects.create(user=user, is_ligo=is_ligo_user(user))
 
     @classmethod
     def prune(cls):

@@ -23,7 +23,10 @@ User = get_user_model()
 class TestPublicBilbyJobsQueries(BilbyTestCase):
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
 
         self.job1 = BilbyJob.objects.create(
             user_id=self.user.id,

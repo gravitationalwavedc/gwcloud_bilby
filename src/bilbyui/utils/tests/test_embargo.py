@@ -22,7 +22,10 @@ class TestUserSubjectToEmbargo(BilbyTestCase):
         self.user = ADACSAnonymousUser()
         self.assertFalse(user_subject_to_embargo(self.user))
 
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
         self.assertFalse(user_subject_to_embargo(self.user))
 
         self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
@@ -36,7 +39,10 @@ class TestUserSubjectToEmbargo(BilbyTestCase):
 
         self.assertTrue(user_subject_to_embargo(self.user))
 
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
         self.assertTrue(user_subject_to_embargo(self.user))
 
         self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
@@ -53,7 +59,10 @@ class TestShouldEmbargoJob(BilbyTestCase):
         self.assertFalse(should_embargo_job(self.user, None, True))
         self.assertFalse(should_embargo_job(self.user, None, False))
 
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
         self.assertFalse(should_embargo_job(self.user, 1.0, True))
         self.assertFalse(should_embargo_job(self.user, 1.0, False))
         self.assertFalse(should_embargo_job(self.user, None, True))
@@ -77,7 +86,10 @@ class TestShouldEmbargoJob(BilbyTestCase):
         self.assertFalse(should_embargo_job(self.user, None, True))
         self.assertFalse(should_embargo_job(self.user, None, False))
 
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
         self.assertFalse(should_embargo_job(self.user, 1.0, True))
         self.assertFalse(should_embargo_job(self.user, 1.0, False))
         self.assertFalse(should_embargo_job(self.user, 2.0, True))
@@ -127,7 +139,10 @@ class TestEmbargoFilter(BilbyTestCase):
         self.user = ADACSAnonymousUser()
         self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))
 
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
         self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))
 
         self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
@@ -144,7 +159,10 @@ class TestEmbargoFilter(BilbyTestCase):
             embargo_filter(input_qs, self.user),
         )
 
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
         self.assertQuerySetEqual(
             BilbyJob.objects.filter(pk__in=[1, 2, 3]),
             embargo_filter(input_qs, self.user),

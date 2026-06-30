@@ -37,7 +37,6 @@ from .types import (
     SupportingFileUploadInput,
     SupportingFileUploadResult,
 )
-from .utils.auth.lookup_users import request_lookup_users
 from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
@@ -84,7 +83,7 @@ class UserBilbyJobFilter(FilterSet):
     @property
     def qs(self):
         user = self.request.user
-        return BilbyJob.user_bilby_job_filter(super().qs, user)
+        return BilbyJob.user_bilby_job_filter(super().qs, user).prefetch_related("user")
 
 
 class PublicBilbyJobFilter(FilterSet):
@@ -102,7 +101,7 @@ class PublicBilbyJobFilter(FilterSet):
     @property
     def qs(self):
         user = self.request.user
-        return BilbyJob.public_bilby_job_filter(super().qs, user)
+        return BilbyJob.public_bilby_job_filter(super().qs, user).prefetch_related("user")
 
 
 class BilbyJobNode(DjangoObjectType):
@@ -112,6 +111,7 @@ class BilbyJobNode(DjangoObjectType):
         interfaces = (relay.Node,)
 
     user = graphene.String()
+    user_id = graphene.Int()
     job_status = graphene.Field(JobStatusType)
     last_updated = graphene.String()
     params = graphene.Field(JobParameterOutput)
@@ -124,11 +124,9 @@ class BilbyJobNode(DjangoObjectType):
         user_id = user.id if user.is_authenticated else 0
 
         qs = BilbyJob.bilby_job_filter(queryset, user)
+        qs = qs.prefetch_related("user")
 
-        # Query any users from this queryset in one go
-        user_ids = set(qs.values_list("user_id", flat=True))
-        _, users = request_lookup_users(list(user_ids))
-        info.context.users = dict(zip([user["id"] for user in users], [user for user in users]))
+        info.context.users = {}
 
         # Query any job controller information in one go - exclude any job controller ids that are not set
         job_controller_ids = set(qs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
@@ -138,10 +136,15 @@ class BilbyJobNode(DjangoObjectType):
         return qs
 
     def resolve_user(parent, info):
-        user = info.context.users.get(parent.user_id, None)
-        if user:
-            return user["name"]
+        try:
+            if parent.user:
+                return parent.user.name
+        except Exception:
+            pass
         return "Unknown User"
+
+    def resolve_user_id(parent, info):
+        return parent.user_id
 
     def resolve_last_updated(parent, info):
         return parent.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")

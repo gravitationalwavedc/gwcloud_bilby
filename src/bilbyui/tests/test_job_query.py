@@ -27,9 +27,13 @@ class TestBilbyJobQueries(BilbyTestCase):
             "cluster": "TestCluster",
         }
 
-        # Normally we don't have any User objects
-        # But this test uses the presence or absense of User.objects[0] for various things
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        # Create User objects for test user_ids to satisfy FK constraints
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
+        User.objects.update_or_create(id=2, defaults={"name": "Test User 2", "primary_email": "user2@test.com"})
+        User.objects.update_or_create(id=4, defaults={"name": "Test User 4", "primary_email": "user4@test.com"})
         self.authenticate()
         self.label = Label.objects.create(name="Test", description="Test description")
         self.event_id = EventID.objects.create(
@@ -66,7 +70,6 @@ class TestBilbyJobQueries(BilbyTestCase):
     def derive_job_status_mock(*args, **kwargs):
         return 1, "Test Status", datetime.fromtimestamp(0)
 
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -80,7 +83,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         expected = {"bilbyJob": camelize(self.job_data)}
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -93,10 +95,12 @@ class TestBilbyJobQueries(BilbyTestCase):
         expected = {"bilbyJob": {"user": "buffy summers"}}
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
-        # If it returns no user
-        User.objects.first().delete()
+        # If it returns no user - set user_id to placeholder user (FK constraint requires User to exist)
+        self.job.user_id = 88888
+        self.job.save()
         response = self.job_request("user")
-        expected = {"bilbyJob": {"user": "Unknown User"}}
+        # Will return the placeholder user name since FK requires User to exist
+        expected = {"bilbyJob": {"user": "Test User 88888"}}
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
     @mock.patch(
@@ -104,7 +108,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         return_value=(None, [{"id": 1, "history": None}]),
     )
     @mock.patch("bilbyui.schema.derive_job_status", side_effect=derive_job_status_mock)
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_bilby_job_status_query(self, *args):
         """
         bilbyJob node query should allow querying of job status field"
@@ -121,7 +124,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         }
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -134,7 +136,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         expected = {"bilbyJob": {"lastUpdated": self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")}}
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -147,7 +148,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         expected = {"bilbyJob": {"labels": [{"name": self.label.name, "description": self.label.description}]}}
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -170,7 +170,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         }
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -227,7 +226,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         }
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -261,7 +259,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         response = self.job_request(*request_data)
         self.assertDictEqual(expected_none, response.data, "bilbyJob query returned unexpected data.")
 
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -317,7 +314,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         response = self.job_request(*request_data)
         self.assertDictEqual(expected_none, response.data, "bilbyJob query returned unexpected data.")
 
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -387,7 +383,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.assertDictEqual(expected_one, response.data, "bilbyJob query returned unexpected data.")
 
     @silence_errors
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),

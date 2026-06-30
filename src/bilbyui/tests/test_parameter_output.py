@@ -28,7 +28,10 @@ class TestJobSubmission(BilbyTestCase):
     def setUp(self):
         # Normally we don't have any User objects
         # But this test uses the presence or absense of User.objects[0] for various things
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
         self.authenticate()
 
     def request_lookup_users_mock(*args, **kwargs):
@@ -37,7 +40,6 @@ class TestJobSubmission(BilbyTestCase):
             return True, [{"id": user.id, "name": "buffy summers"}]
         return False, []
 
-    @patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @patch("bilbyui.schema.request_job_filter")
     @patch("bilbyui.models.submit_job")
     def test_generate_parameter_output(self, mock_api_call, mock_request_job_filter, *args):
