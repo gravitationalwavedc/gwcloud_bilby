@@ -14,12 +14,7 @@ User = get_user_model()
 @override_settings(IGNORE_ELASTIC_SEARCH=False)
 class TestElasticSearch(BilbyTestCase):
     def setUp(self):
-        # Normally we don't have any User objects
-        # But this test uses the presence or absense of User.objects[0] for various things
-        self.user, _ = User.objects.update_or_create(
-            id=1,
-            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
-        )
+        self.user = self.create_user()
 
     def request_lookup_users_mock(*args, **kwargs):
         user = User.objects.first()

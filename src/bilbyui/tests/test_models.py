@@ -23,8 +23,9 @@ from bilbyui.views import update_bilby_job
 class TestBilbyJobModel(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.user = cls.create_user()
         cls.job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="Test_Job",
             description="Test job description",
             private=False,
@@ -204,8 +205,9 @@ class TestBilbyJobModel(BilbyTestCase):
 class TestFileDownloadToken(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.user = cls.create_user()
         cls.job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="Test Job",
             description="Test job description",
             private=False,
@@ -438,12 +440,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
 class TestSupportingFile(BilbyTestCase):
     @classmethod
     def setUp(self):
-        class TestUser:
-            def __init__(self):
-                self.is_ligo = False
-                self.user_id = 1234
-
-        self.user = TestUser()
+        self.user = self.create_user(id=1234)
 
         self.parsed = {
             SupportingFile.PSD: [
@@ -456,7 +453,7 @@ class TestSupportingFile(BilbyTestCase):
         }
 
         self.job = BilbyJob.objects.create(
-            user_id=self.user.user_id,
+            user_id=self.user.id,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         self.after = timezone.now()

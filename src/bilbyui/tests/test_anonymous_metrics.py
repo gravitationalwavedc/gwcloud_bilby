@@ -21,12 +21,21 @@ User = get_user_model()
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class TestAnonymousMetrics(LiveServerTestCase):
-    def setUp(self):
-        User = get_user_model()
-        self.user, _ = User.objects.update_or_create(
-            id=1,
-            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+    def create_user(self, id=1, name="buffy summers", primary_email="slayer@gmail.com"):
+        """Create a test user"""
+        user, _ = User.objects.update_or_create(
+            id=id,
+            defaults={
+                "name": name,
+                "primary_email": primary_email,
+                "emails": [primary_email],
+                "authentication_methods": ["password"],
+            },
         )
+        return user
+
+    def setUp(self):
+        self.user = self.create_user()
         self.public_id = str(uuid.uuid4())
         self.session_id = str(uuid.uuid4())
 

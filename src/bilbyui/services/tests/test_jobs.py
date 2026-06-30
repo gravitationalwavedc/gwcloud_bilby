@@ -7,22 +7,24 @@ from bilbyui.tests.testcases import BilbyTestCase
 class TestJobsService(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.user = cls.create_user()
+        cls.other_user = cls.create_user(id=2, name="other user", primary_email="other@gmail.com")
         cls.job1 = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="first_job",
             description="First job",
             private=False,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         cls.job2 = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="second_job",
             description="Second job",
             private=False,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         cls.other_user_job = BilbyJob.objects.create(
-            user_id=2,
+            user_id=cls.other_user.id,
             name="other_job",
             description="Other user job",
             private=False,

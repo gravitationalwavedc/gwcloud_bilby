@@ -61,7 +61,7 @@ class TestHtmxBootstrap(BilbyTestCase):
         login_url = reverse("sso:login")
         self.assertIn("Python API", content)
         self.assertIn("API Tokens", content)
-        self.assertIn(self.DEFAULT_USER["name"], content)
+        self.assertIn(self.user.name, content)
         self.assertIn('href="/sso/logout/"', content)
         self.assertNotIn(f'href="{login_url}"', content)
         self.assertIn("bi-code", content)

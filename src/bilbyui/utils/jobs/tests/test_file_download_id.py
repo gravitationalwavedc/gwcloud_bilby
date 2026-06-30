@@ -19,7 +19,8 @@ class TestFileDownloadIds(BilbyTestCase):
         self.addCleanup(self.responses.stop)
         self.addCleanup(self.responses.reset)
 
-        self.job = BilbyJob.objects.create(user_id=1234, ini_string="detectors=['H1']")
+        self.user = self.create_user(id=1234, name="download user", primary_email="download@gmail.com")
+        self.job = BilbyJob.objects.create(user_id=self.user.id, ini_string="detectors=['H1']")
 
     def test_request_file_download_id(self):
         try:
