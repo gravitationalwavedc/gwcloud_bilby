@@ -49,7 +49,7 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
     }
 
     # Common test user IDs that need User objects for FK constraints
-    TEST_USER_IDS = [1, 2, 4, 1234, 88888]
+    TEST_USER_IDS = [0, 1, 2, 3, 4, 1234, 88888]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
