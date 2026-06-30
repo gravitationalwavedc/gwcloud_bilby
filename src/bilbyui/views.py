@@ -122,7 +122,7 @@ def _create_bilby_job_record(user, details, args, job_type, ini_string=None):
     is_ligo_job = check_job_embargo_status(None, args)
 
     bilby_job = BilbyJob.objects.create(
-        user_id=user.id,
+        user=user,
         name=args.label,
         description=details.description,
         private=details.private,
@@ -297,7 +297,7 @@ def create_bilby_job(user, params):
 
     try:
         bilby_job = BilbyJob.objects.create(
-            user_id=user.id,
+            user=user,
             name=params.details.name,
             description=params.details.description,
             private=params.details.private,
@@ -460,7 +460,7 @@ def create_bilby_job_from_ini_string(user, params):
     ini_string = bilby_args_to_ini_string(args)
 
     bilby_job = BilbyJob(
-        user_id=user.id,
+        user=user,
         name=params.details.name,
         description=params.details.description,
         private=params.details.private,
@@ -612,7 +612,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
             # Create the bilby job record
             bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.UPLOADED, ini_string)
             # Override the user_id to use the upload token's user
-            bilby_job.user_id = upload_token.user_id
+            bilby_job.user = upload_token.user
             bilby_job.save()
 
             # Save any supporting file records
@@ -786,7 +786,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
             # Create the bilby job record
             bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.UPLOADED, ini_string)
             # Override the user_id to use the upload token's user
-            bilby_job.user_id = upload_token.user_id
+            bilby_job.user = upload_token.user
             bilby_job.save()
 
             # Move the staging directory to the actual job directory

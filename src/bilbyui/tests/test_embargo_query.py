@@ -47,7 +47,10 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         # Normally we don't have any User objects
         # But this test uses the presence or absense of User.objects[0] for various things
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
 
     def job_request(self, job_data):
         field_str = "\n".join(list(camelize(job_data).keys()))
@@ -80,7 +83,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         return False, []
 
     @override_settings(EMBARGO_START_TIME=1.5)
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -100,7 +102,6 @@ class TestBilbyJobQueries(BilbyTestCase):
             self.authenticate()
 
     @override_settings(EMBARGO_START_TIME=1.5)
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -116,7 +117,6 @@ class TestBilbyJobQueries(BilbyTestCase):
             self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
     @override_settings(EMBARGO_START_TIME=1.5)
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
@@ -132,7 +132,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
     @override_settings(EMBARGO_START_TIME=1.5)
-    @mock.patch("bilbyui.schema.request_lookup_users", side_effect=request_lookup_users_mock)
     @mock.patch(
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),

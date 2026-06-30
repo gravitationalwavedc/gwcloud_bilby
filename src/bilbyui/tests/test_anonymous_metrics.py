@@ -23,7 +23,10 @@ User = get_user_model()
 class TestAnonymousMetrics(LiveServerTestCase):
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create(id=1, name="buffy summers", primary_email="slayer@gmail.com")
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+        )
         self.public_id = str(uuid.uuid4())
         self.session_id = str(uuid.uuid4())
 
