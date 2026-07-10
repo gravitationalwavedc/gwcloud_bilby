@@ -1,7 +1,10 @@
-from unittest import mock
+import json
+import logging
 
+import responses
 from django.conf import settings
 from django.test import override_settings
+from unittest import mock
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import create_test_ini_string
@@ -72,3 +75,42 @@ class TestRequestJobStatus(BilbyTestCase):
 
         self.assertEqual(status, "UNKNOWN")
         self.assertEqual(message, "Error getting job status")
+
+    def test_request_job_status_with_responses(self):
+        self.responses = responses.RequestsMock()
+        self.responses.start()
+
+        self.addCleanup(self.responses.stop)
+        self.addCleanup(self.responses.reset)
+
+        status_url = f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?jobIds=4321"
+        self.responses.add(responses.GET, status_url, status=400)
+
+        history = [{"status": 30, "timestamp": "2020-01-01T00:00:00Z"}]
+        self.responses.add(
+            responses.GET,
+            status_url,
+            body=json.dumps([{"id": 4321, "history": history}]),
+            status=200,
+        )
+
+        # Test job not submitted
+        self.job.job_controller_id = None
+        self.job.save()
+
+        result = request_job_status(self.job)
+
+        self.assertEqual(result, ("UNKNOWN", "Job not submitted"))
+
+        # Test submitted job, invalid return code
+        self.job.job_controller_id = 4321
+        self.job.save()
+
+        result = request_job_status(self.job)
+
+        self.assertEqual(result, ("UNKNOWN", "Error getting job status"))
+
+        # Test submitted job, successful return
+        result = request_job_status(self.job)
+
+        self.assertEqual(result, ("OK", history))
