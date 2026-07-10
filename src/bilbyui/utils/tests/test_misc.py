@@ -1,7 +1,10 @@
+from adacs_sso_plugin.anonymous_user import ADACSAnonymousUser
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.test import override_settings
 
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.misc import check_request_leak_decorator
+from bilbyui.utils.misc import is_ligo_user
 
 
 def _return_ok():
@@ -29,3 +32,18 @@ class TestCheckRequestLeakDecorator(BilbyTestCase):
         decorated = check_request_leak_decorator(_return_ok)
 
         self.assertEqual(decorated(), "ok")
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class TestIsLigoUser(BilbyTestCase):
+    def test_anonymous_user_is_not_ligo_user(self):
+        self.user = ADACSAnonymousUser()
+        self.assertFalse(is_ligo_user(self.user))
+
+    def test_authenticated_user_is_not_ligo_user(self):
+        self.authenticate()
+        self.assertFalse(is_ligo_user(self.user))
+
+    def test_ligo_shibboleth_user_is_ligo_user(self):
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+        self.assertTrue(is_ligo_user(self.user))
