@@ -185,7 +185,7 @@ class BilbyJobNode(DjangoObjectType):
                 "date": status_date.strftime("%Y-%m-%d %H:%M:%S UTC"),
             }
         except Exception:
-            return {"name": "Unknown", "number": 0, "data": "Unknown"}
+            return {"name": "Unknown", "number": 0, "date": "Unknown"}
 
 
 class BilbyResultFile(graphene.ObjectType):
