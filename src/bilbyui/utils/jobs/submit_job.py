@@ -11,6 +11,39 @@ from bilbyui.utils.misc import check_request_leak_decorator
 logger = logging.getLogger(__name__)
 
 
+def _make_job_controller_request(method, url, user_id, data=None):
+    """
+    Helper to make a request to the job controller with JWT auth.
+
+    :param method: HTTP method (GET, POST, etc.)
+    :param url: Full URL to the job controller endpoint
+    :param user_id: User ID for JWT token
+    :param data: Optional data payload to send
+    :return: Parsed JSON response dict
+    """
+    jwt_enc = jwt.encode(
+        {"userId": user_id, "exp": datetime.datetime.now() + datetime.timedelta(days=30)},
+        settings.JOB_CONTROLLER_JWT_SECRET,
+        algorithm="HS256",
+    )
+
+    kwargs = {
+        "headers": {"Authorization": jwt_enc},
+        "timeout": 10,
+    }
+    if data is not None:
+        kwargs["data"] = json.dumps(data)
+
+    result = requests.request(method, url, **kwargs)
+
+    if result.status_code != 200:
+        msg = f"Job controller returned {result.status_code}: {result.content}"
+        logger.error(msg)
+        raise Exception(msg)
+
+    return json.loads(result.content)
+
+
 @check_request_leak_decorator
 def submit_job(user_id, params, cluster):
     """
@@ -37,34 +70,16 @@ def submit_job(user_id, params, cluster):
     # Construct the request parameters to the job controller, note that parameters must be a string, not an object
     data = {"parameters": json.dumps(params), "cluster": cluster, "bundle": "fbc9f7c0815f1a83b0de36f957351c93797b2049"}
 
-    # Create the jwt token
-    jwt_enc = jwt.encode(
-        {"userId": user_id, "exp": datetime.datetime.now() + datetime.timedelta(days=30)},
-        settings.JOB_CONTROLLER_JWT_SECRET,
-        algorithm="HS256",
-    )
-
     try:
-        # Initiate the request to the job controller
-        result = requests.request(
+        result_data = _make_job_controller_request(
             "POST",
             settings.GWCLOUD_JOB_CONTROLLER_API_URL + "/job/",
-            data=json.dumps(data),
-            headers={"Authorization": jwt_enc},
-            timeout=10,
+            user_id,
+            data=data,
         )
 
-        # Check that the request was successful
-        if result.status_code != 200:
-            # Oops
-            msg = f"Error submitting job for user {user_id}, got error code: {result.status_code}: {result.content}"
-            logger.error(msg)
-            raise Exception(msg)
+        logger.info(f"Job submitted successfully for user {user_id}: status 200")
 
-        logger.info(f"Job submitted successfully for user {user_id}: status {result.status_code}")
-
-        # Parse the response from the job controller
-        result_data = json.loads(result.content)
         logger.info(f"Job controller assigned ID {result_data.get('jobId')} for user {user_id}")
 
         return result_data
