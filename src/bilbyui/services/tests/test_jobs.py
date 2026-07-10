@@ -1,3 +1,7 @@
+from datetime import timedelta
+
+from django.utils import timezone
+
 from bilbyui.models import BilbyJob
 from bilbyui.services.jobs import get_job, list_user_jobs, update_job
 from bilbyui.tests.test_utils import create_test_ini_string
@@ -46,6 +50,24 @@ class TestJobsService(BilbyTestCase):
         self.assertEqual(result["jobs"][0].id, self.job1.id)
         self.assertFalse(result["has_next"])
         self.assertEqual(result["page"], 2)
+
+    def test_list_user_jobs_search_filters_by_name(self):
+        result = list_user_jobs(self.user, search="first")
+        job_ids = [job.id for job in result["jobs"]]
+        self.assertEqual(job_ids, [self.job1.id])
+
+    def test_list_user_jobs_search_filters_by_description(self):
+        result = list_user_jobs(self.user, search="Second")
+        job_ids = [job.id for job in result["jobs"]]
+        self.assertEqual(job_ids, [self.job2.id])
+
+    def test_list_user_jobs_time_range_filter(self):
+        BilbyJob.objects.filter(pk=self.job1.pk).update(
+            last_updated=timezone.now() - timedelta(days=2),
+        )
+        result = list_user_jobs(self.user, time_range="1d")
+        job_ids = [job.id for job in result["jobs"]]
+        self.assertEqual(job_ids, [self.job2.id])
 
     def test_update_job_with_name(self):
         success, message = update_job(self.job1.id, self.user, name="renamed_job")
