@@ -1,5 +1,5 @@
 from bilbyui.models import EventID
-from bilbyui.services.event_ids import list_event_ids_for_user
+from bilbyui.services.event_ids import get_event_id, list_event_ids_for_user
 from bilbyui.tests.testcases import BilbyTestCase
 
 
@@ -24,3 +24,15 @@ class TestEventIdsService(BilbyTestCase):
         self.assertEqual(len(event_ids), 4)
         self.assertIn("GW012345_012345", event_ids)
         self.assertIn("GW543210_543210", event_ids)
+
+    def test_get_event_id_returns_public_event(self):
+        self.authenticate()
+        event = get_event_id("GW123456_123456", self.user)
+        self.assertEqual(event.event_id, "GW123456_123456")
+        self.assertFalse(event.is_ligo_event)
+
+    def test_get_event_id_denies_ligo_event_for_non_ligo_user(self):
+        self.authenticate()
+        with self.assertRaises(Exception) as ctx:
+            get_event_id("GW012345_012345", self.user)
+        self.assertEqual(str(ctx.exception), "Permission Denied")
