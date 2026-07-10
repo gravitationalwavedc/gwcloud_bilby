@@ -1,13 +1,33 @@
+from unittest import mock
+
 from adacs_sso_plugin.anonymous_user import ADACSAnonymousUser
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.test import override_settings
 
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.misc import check_request_leak_decorator, is_ligo_user
+from bilbyui.utils.misc import check_request_leak, check_request_leak_decorator, is_ligo_user
 
 
 def _return_ok():
     return "ok"
+
+
+def _increment(value):
+    return value + 1
+
+
+class TestCheckRequestLeak(BilbyTestCase):
+    def test_raises_when_outbox_present_without_allow_http_leaks(self):
+        with self.assertRaisesMessage(Exception, "HTTP request leaked during testing"):
+            check_request_leak()
+
+    @override_settings(ALLOW_HTTP_LEAKS=True)
+    def test_noop_when_allow_http_leaks_set(self):
+        check_request_leak()
+
+    @mock.patch("bilbyui.utils.misc.mail", new=mock.Mock(spec=[]))
+    def test_noop_when_mail_has_no_outbox(self):
+        check_request_leak()
 
 
 class TestCheckRequestLeakDecorator(BilbyTestCase):
@@ -31,6 +51,13 @@ class TestCheckRequestLeakDecorator(BilbyTestCase):
         decorated = check_request_leak_decorator(_return_ok)
 
         self.assertEqual(decorated(), "ok")
+
+    def test_decorator_invokes_wrapped_function(self):
+        self.assertEqual(check_request_leak_decorator(_increment)(4), 5)
+
+    def test_decorator_raises_on_leak(self):
+        with self.assertRaisesMessage(Exception, "HTTP request leaked during testing"):
+            check_request_leak_decorator(int)(42)
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
