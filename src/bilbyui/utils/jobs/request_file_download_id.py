@@ -1,11 +1,9 @@
 import datetime
-import json
 import logging
 
-import jwt
-import requests
 from django.conf import settings
 
+from bilbyui.utils.jobs.submit_job import _make_job_controller_request
 from bilbyui.utils.misc import check_request_leak_decorator
 
 logger = logging.getLogger(__name__)
@@ -38,42 +36,18 @@ def request_file_download_ids(job, paths, user_id=None):
         logger.warning(f"Job {job.id} has no job_controller_id - not submitted")
         return False, "Job not submitted"
 
-    # Create the jwt token
-    jwt_enc = jwt.encode(
-        {"userId": user, "exp": datetime.datetime.now() + datetime.timedelta(minutes=5)},
-        settings.JOB_CONTROLLER_JWT_SECRET,
-        algorithm="HS256",
-    )
-
-    # Generate the post payload
     data = {"jobId": job.job_controller_id, "paths": paths}
 
     try:
-        # Initiate the request to the job controller
-        result = requests.request(
+        result = _make_job_controller_request(
             "POST",
             f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
-            data=json.dumps(data),
-            headers={"Authorization": jwt_enc},
-            timeout=10,
+            user,
+            data=data,
+            jwt_expiry=datetime.timedelta(minutes=5),
         )
 
-        # Check that the request was successful
-        if result.status_code != 200:
-            # todo: Spruce the exception handling up a bit
-            # Oops
-            msg = (
-                f"Error getting file download URLs for job {job.id}, "
-                f"got error code: {result.status_code}: {result.content}"
-            )
-            logger.error(msg)
-            raise Exception(msg)
-
-        # Parse the response from the job controller
-        result = json.loads(result.content)
-
         logger.info(f"Successfully generated {len(result['fileIds'])} download IDs for job {job.id}")
-        # Return the file ids
         return True, result["fileIds"]
     except Exception as e:
         logger.error(f"Error getting file download URLs for job {job.id}: {str(e)}", exc_info=True)

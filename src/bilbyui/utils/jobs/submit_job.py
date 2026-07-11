@@ -11,7 +11,7 @@ from bilbyui.utils.misc import check_request_leak_decorator
 logger = logging.getLogger(__name__)
 
 
-def _make_job_controller_request(method, url, user_id, data=None):
+def _make_job_controller_request(method, url, user_id, data=None, jwt_expiry=None):
     """
     Helper to make a request to the job controller with JWT auth.
 
@@ -19,10 +19,14 @@ def _make_job_controller_request(method, url, user_id, data=None):
     :param url: Full URL to the job controller endpoint
     :param user_id: User ID for JWT token
     :param data: Optional data payload to send
+    :param jwt_expiry: Optional timedelta for JWT expiry (default: 30 days)
     :return: Parsed JSON response dict
     """
+    if jwt_expiry is None:
+        jwt_expiry = datetime.timedelta(days=30)
+
     jwt_enc = jwt.encode(
-        {"userId": user_id, "exp": datetime.datetime.now() + datetime.timedelta(days=30)},
+        {"userId": user_id, "exp": datetime.datetime.now() + jwt_expiry},
         settings.JOB_CONTROLLER_JWT_SECRET,
         algorithm="HS256",
     )
