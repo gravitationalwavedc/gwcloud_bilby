@@ -1,11 +1,8 @@
-import datetime
-import json
 import logging
 
-import jwt
-import requests
 from django.conf import settings
 
+from bilbyui.utils.jobs.submit_job import _make_job_controller_request
 from bilbyui.utils.misc import check_request_leak_decorator
 
 logger = logging.getLogger(__name__)
@@ -27,31 +24,10 @@ def request_job_status(job, user_id=None):
         logger.warning(f"Job {job.id} has no job_controller_id - not submitted")
         return "UNKNOWN", "Job not submitted"
 
-    # Create the jwt token
-    jwt_enc = jwt.encode(
-        {"userId": user_id or job.user_id, "exp": datetime.datetime.now() + datetime.timedelta(days=30)},
-        settings.JOB_CONTROLLER_JWT_SECRET,
-        algorithm="HS256",
-    )
+    url = f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?jobIds={job.job_controller_id}"
 
     try:
-        # Initiate the request to the job controller
-        result = requests.request(
-            "GET",
-            f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?jobIds={job.job_controller_id}",
-            headers={"Authorization": jwt_enc},
-            timeout=10,
-        )
-
-        # Check that the request was successful
-        if result.status_code != 200:
-            # Oops
-            msg = f"Error getting job status for job {job.id}, got error code: {result.status_code}: {result.content}"
-            logger.error(msg)
-            raise Exception(msg)
-
-        # Parse the response from the job controller
-        result = json.loads(result.content)
+        result = _make_job_controller_request("GET", url, user_id or job.user_id)
 
         logger.debug(f"Successfully retrieved status for job {job.id}")
         return "OK", result[0]["history"]
