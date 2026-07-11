@@ -93,8 +93,9 @@ class TestEditJobEventId(BilbyTestCase):
         self.assertIsNone(self.job.event_id)
 
     def test_other_users_job_returns_404(self):
+        other_user = self.create_user(id=self.user.id + 1, name="other user", primary_email="other@gmail.com")
         other_job = BilbyJob.objects.create(
-            user_id=self.user.id + 1,
+            user_id=other_user.id,
             name="other_users_job",
             description="hidden",
             job_controller_id=10002,
