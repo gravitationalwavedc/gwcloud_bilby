@@ -28,12 +28,9 @@ class TestBilbyJobQueries(BilbyTestCase):
         }
 
         # Create User objects for test user_ids to satisfy FK constraints
-        self.user, _ = User.objects.update_or_create(
-            id=1,
-            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
-        )
-        User.objects.update_or_create(id=2, defaults={"name": "Test User 2", "primary_email": "user2@test.com"})
-        User.objects.update_or_create(id=4, defaults={"name": "Test User 4", "primary_email": "user4@test.com"})
+        self.user = self.create_user()
+        self.create_user(id=2, name="Test User 2", primary_email="user2@test.com")
+        self.create_user(id=4, name="Test User 4", primary_email="user4@test.com")
         self.authenticate()
         self.label = Label.objects.create(name="Test", description="Test description")
         self.event_id = EventID.objects.create(
@@ -96,7 +93,8 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
         # If it returns no user - set user_id to placeholder user (FK constraint requires User to exist)
-        self.job.user_id = 88888
+        placeholder_user = self.create_user(id=88888, name="Test User 88888", primary_email="test88888@gmail.com")
+        self.job.user_id = placeholder_user.id
         self.job.save()
         response = self.job_request("user")
         # Will return the placeholder user name since FK requires User to exist

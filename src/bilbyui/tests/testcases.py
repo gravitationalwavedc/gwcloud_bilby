@@ -37,19 +37,56 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
     GRAPHQL_URL = "/graphql"
     client_class = ADACSSSOSessionClient
 
-    DEFAULT_USER = {
-        "is_authenticated": True,
-        "id": 1,
-        "name": "buffy summers",
-        "primary_email": "slayer@gmail.com",
-        "emails": ["slayer@gmail.com"],
-        "authentication_method": "password",
-        "authenticated_at": 0,
-        "fetched_at": 0,
-    }
+    @classmethod
+    def create_user(
+        cls,
+        id=1,
+        name="buffy summers",
+        primary_email="slayer@gmail.com",
+        emails=None,
+        authentication_method="password",
+        **kwargs,
+    ):
+        """Create a test User with sensible defaults.
 
-    # Common test user IDs that need User objects for FK constraints
-    TEST_USER_IDS = [0, 1, 2, 3, 4, 1234, 88888]
+        Args:
+            id: User ID (default: 1)
+            name: User name (default: "buffy summers")
+            primary_email: Email (default: "slayer@gmail.com")
+            emails: List of emails (default: None, resolved to [primary_email])
+            authentication_method: Auth method to set as list (default: "password")
+            **kwargs: Additional fields to pass to create_user()
+
+        Returns:
+            User instance
+        """
+        if emails is None:
+            emails = [primary_email]
+
+        try:
+            user = User.objects.get(id=id)
+            user.name = name
+            user.primary_email = primary_email
+            user.emails = emails
+            for key, value in kwargs.items():
+                setattr(user, key, value)
+            user.authentication_methods = [authentication_method]
+            user.save()
+            return user
+        except User.DoesNotExist:
+            pass
+
+        # If this is not the default user, use a unique email to avoid conflicts
+        if id != 1 and primary_email == "slayer@gmail.com":
+            primary_email = f"user{id}@test.com"
+            emails = [primary_email]
+
+        user = User.objects.create_user(id=id, name=name, primary_email=primary_email, **kwargs)
+        user.emails = emails
+        user.authentication_methods = [authentication_method]
+        user.save()
+
+        return user
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -57,35 +94,24 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
         self.maxDiff = None
         self.user = ADACSAnonymousUser()
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        # Create User objects for common test user_ids to satisfy FK constraints
-        for user_id in cls.TEST_USER_IDS:
-            User.objects.update_or_create(
-                id=user_id,
-                defaults={"name": f"Test User {user_id}", "primary_email": f"user{user_id}@test{user_id}.com"},
-            )
-
     # Log in as a user. Any parameters can be overwritten with **kwargs
-    def authenticate(self, **kwargs):
+    def authenticate(self, user=None, **kwargs):
+        if user is None:
+            user = self.create_user(**kwargs)
         user_dict = {
-            **BilbyTestCase.DEFAULT_USER,
+            "id": user.id,
+            "name": user.name,
+            "primary_email": user.primary_email,
+            "emails": user.emails,
+            "authentication_method": user.authentication_methods[0] if user.authentication_methods else "password",
+            "is_authenticated": True,
             "authenticated_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
             "fetched_at": datetime.datetime.now(tz=datetime.UTC).timestamp(),
-            **kwargs,
         }
         self.client.authenticate(user_dict)
-        self.user, _ = User.objects.update_or_create(
-            id=user_dict["id"],
-            defaults={
-                "name": user_dict["name"],
-                "primary_email": user_dict["primary_email"],
-                "emails": user_dict["emails"],
-                "authentication_methods": [user_dict["authentication_method"]],
-                "last_fetched_at": datetime.datetime.now(tz=datetime.UTC),
-            },
-        )
+        user.last_fetched_at = datetime.datetime.now(tz=datetime.UTC)
+        user.save()
+        self.user = user
         self.client.force_login(self.user)
 
     def deauthenticate(self):

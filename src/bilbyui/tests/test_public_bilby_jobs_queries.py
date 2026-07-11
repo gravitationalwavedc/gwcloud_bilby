@@ -22,11 +22,7 @@ User = get_user_model()
 
 class TestPublicBilbyJobsQueries(BilbyTestCase):
     def setUp(self):
-        User = get_user_model()
-        self.user, _ = User.objects.update_or_create(
-            id=1,
-            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
-        )
+        self.user = self.create_user()
 
         self.job1 = BilbyJob.objects.create(
             user_id=self.user.id,
@@ -135,8 +131,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_no_cursor(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private and owned by a different user
+        other_user = self.create_user(id=self.user.id + 1, name="other user", primary_email="other+1@test.com")
         BilbyJob.objects.create(
-            user_id=self.user.id + 1,
+            user_id=other_user.id,
             name="Test3",
             job_controller_id=3456,
             private=True,
@@ -184,8 +181,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
     )
     def test_public_bilby_jobs_query_missing_job_controller_job(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private and owned by a different user
+        other_user = self.create_user(id=self.user.id + 1, name="other user2", primary_email="other+2@test.com")
         BilbyJob.objects.create(
-            user_id=self.user.id + 1,
+            user_id=other_user.id,
             name="Test3",
             job_controller_id=3456,
             private=True,
@@ -317,8 +315,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_uploaded(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private.
+        other_user = self.create_user(id=4, name="other user", primary_email="other4@test.com")
         BilbyJob.objects.create(
-            user_id=4,
+            user_id=other_user.id,
             name="Test3",
             job_controller_id=3,
             private=True,

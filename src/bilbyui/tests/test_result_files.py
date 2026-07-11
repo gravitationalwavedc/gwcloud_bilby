@@ -292,8 +292,9 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
 
 class TestExternalJobResultFiles(BilbyTestCase):
     def setUp(self):
+        self.user = self.create_user()
         self.job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="Test1",
             description="first job",
             private=False,

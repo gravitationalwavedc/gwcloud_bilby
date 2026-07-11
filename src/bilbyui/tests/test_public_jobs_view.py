@@ -131,9 +131,10 @@ class TestPublicJobsView(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_renders_list_with_data(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
         for index in range(25):
             BilbyJob.objects.create(
-                user_id=1,
+                user_id=self.user.id,
                 name=f"Job {index}",
                 description=f"Description {index}",
                 job_controller_id=1000 + index,
@@ -153,8 +154,9 @@ class TestPublicJobsView(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_search_filters(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="GW150914",
             description="matched event",
             job_controller_id=2001,
@@ -162,7 +164,7 @@ class TestPublicJobsView(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "GW150914"}),
         )
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="Other job",
             description="unrelated",
             job_controller_id=2002,
@@ -179,8 +181,9 @@ class TestPublicJobsView(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_time_range_filters(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="Recent job",
             description="recent",
             job_controller_id=3001,
@@ -188,7 +191,7 @@ class TestPublicJobsView(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Recent job"}),
         )
         old_job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="Old job",
             description="old",
             job_controller_id=3002,
@@ -209,8 +212,9 @@ class TestPublicJobsView(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_embargo_filter(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="Public job",
             description="allowed",
             job_controller_id=4001,
@@ -225,7 +229,7 @@ class TestPublicJobsView(BilbyTestCase):
             ),
         )
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="Embargoed job",
             description="hidden",
             job_controller_id=4002,
@@ -271,8 +275,9 @@ class TestPublicJobsView(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_htmx_request_returns_fragment(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="Fragment job",
             description="fragment",
             job_controller_id=5001,
@@ -295,6 +300,7 @@ class TestPublicJobsView(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_renders_event_id_values(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
         event_id = EventID.objects.create(
             event_id="GW123456_123456",
             trigger_id="S123456a",
@@ -303,7 +309,7 @@ class TestPublicJobsView(BilbyTestCase):
             gps_time=12345678.1234,
         )
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="Event job",
             description="with event id",
             job_controller_id=5101,
@@ -322,8 +328,9 @@ class TestPublicJobsView(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_renders_no_event_ids_when_missing(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="No event job",
             description="without event id",
             job_controller_id=5102,
