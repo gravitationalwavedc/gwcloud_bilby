@@ -3,8 +3,7 @@ from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.test import override_settings
 
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.misc import check_request_leak_decorator
-from bilbyui.utils.misc import is_ligo_user
+from bilbyui.utils.misc import check_request_leak_decorator, is_ligo_user
 
 
 def _return_ok():
