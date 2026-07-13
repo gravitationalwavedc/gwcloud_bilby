@@ -1,10 +1,9 @@
 import json
-import logging
+from unittest import mock
 
 import responses
 from django.conf import settings
 from django.test import override_settings
-from unittest import mock
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import create_test_ini_string
