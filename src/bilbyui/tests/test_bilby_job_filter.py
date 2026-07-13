@@ -18,6 +18,7 @@ class TestBilbyJobFilter(BilbyTestCase):
             id=4,
             defaults={"name": "Other User", "primary_email": "other@test.com"},
         )
+        User.objects.update_or_create(id=1, defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"})
 
     def _create_job(self, *, user_id=1, private=False, is_ligo_job=False, name=None):
         return BilbyJob.objects.create(

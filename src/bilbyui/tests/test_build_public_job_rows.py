@@ -25,10 +25,9 @@ def _result(records, jobs, job_controller_jobs=None, page_size=20):
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class TestBuildPublicJobRows(BilbyTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.create_user(id=1)
+@classmethod
+    def setUpTestData(cls):
+        cls.create_user(id=1, name="buffy summers")
 
     def _create_job(self, **kwargs):
         defaults = {
