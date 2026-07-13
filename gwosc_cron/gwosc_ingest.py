@@ -33,7 +33,7 @@ except ImportError:
     ENDPOINT = os.getenv("ENDPOINT")
     DB_PATH = os.getenv("DB_PATH")
 
-EVENTNAME_SEPERATOR = "--"
+EVENTNAME_SEPARATOR = "--"
 LOCK_FILE_PATH = str(Path(DB_PATH).with_suffix(".lock")) if DB_PATH else None
 MAX_RETRY_ATTEMPTS = 24
 
@@ -64,7 +64,7 @@ def fix_job_name(name):
 
 
 def build_bilbyjob_name(event_name, config_name):
-    return fix_job_name(f"{event_name}{EVENTNAME_SEPERATOR}{config_name}")
+    return fix_job_name(f"{event_name}{EVENTNAME_SEPARATOR}{config_name}")
 
 
 def create_table(cursor):
@@ -155,9 +155,9 @@ def _check_and_download_inner(con, cur):
     gwcloud_events = list(
         set(
             [
-                fix_job_name(n.split(EVENTNAME_SEPERATOR)[0])
+                fix_job_name(n.split(EVENTNAME_SEPARATOR)[0])
                 for n in full_gwcloud_events
-                if len(n.split(EVENTNAME_SEPERATOR)) > 1
+                if len(n.split(EVENTNAME_SEPARATOR)) > 1
             ]
         )
     )
