@@ -21,12 +21,12 @@ class JobStatus:
     # A job is deleting if the job has been deleted but is waiting for the client to acknowledge it has received
     # the job deletion command
     DELETING = 80
-    # A job is deleted when it's data has been cleaned up and only it lives on the UI database for future clone,
+    # A job is deleted when its data has been cleaned up and only it lives on the UI database for future clone,
     # reference, etc.
     DELETED = 90
-    # A job is error if it crashed at any point during it's execution
+    # A job is error if it crashed at any point during its execution
     ERROR = 400
-    # A job that has exceeded it's wall time
+    # A job that has exceeded its wall time
     WALL_TIME_EXCEEDED = 401
     # A job that crashed because it ran out of memory
     OUT_OF_MEMORY = 402
