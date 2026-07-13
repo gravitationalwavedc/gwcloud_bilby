@@ -342,3 +342,39 @@ class TestPublicJobsView(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No event ids")
+
+    def test_query_helper_edge_branches(self):
+        # _extract_search_term: empty input, malformed/missing "(((" term, valid
+        # "(((" term, and a "(job.creationTime:...)" term.
+        self.assertIsNone(_extract_search_term(None))
+        self.assertIsNone(_extract_search_term("((("))
+        self.assertIsNone(_extract_search_term("(((*))"))
+        self.assertEqual(_extract_search_term("(((GW150914))"), "GW150914")
+        self.assertIsNone(_extract_search_term("(job.creationTime:[2020 TO 2021])"))
+
+        self.user = self.create_user()
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Edge job",
+            description="edge",
+            job_controller_id=6001,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Edge job"}),
+        )
+
+        # _job_matches_embargo_filter: EMBARGO_START_TIME is None -> always allowed.
+        self.assertTrue(_job_matches_embargo_filter(job, "params.trigger_time:1000"))
+
+        # _job_matches_embargo_filter: trigger_time missing -> always allowed.
+        with override_settings(EMBARGO_START_TIME=1234.0):
+            job.inikeyvalue_set.filter(key="trigger_time").update(processed=False)
+            self.assertTrue(_job_matches_embargo_filter(job, "params.trigger_time:1000"))
+
+        # _job_matches_time_range: naive last_updated is made timezone-aware.
+        job.last_updated = datetime(2020, 6, 1)
+        self.assertTrue(
+            _job_matches_time_range(
+                job,
+                'job.creationTime:["2020-01-01T00:00:00+00:00" TO "2021-01-01T00:00:00+00:00"]',
+            )
+        )
