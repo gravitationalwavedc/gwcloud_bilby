@@ -116,7 +116,7 @@ def generate_parameter_output(job):
         duration=to_dec(parser.duration),
         sampling_frequency=to_dec(parser.sampling_frequency),
     )
-    for k, v in {("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")}:
+    for k, v in [("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")]:
         if v in parser.detectors:
             setattr(detector, k, True)
             setattr(detector, f"{k}_minimum_frequency", to_dec(parser.minimum_frequency_dict[v]))
