@@ -6,7 +6,7 @@ from bilbyui.utils.misc import check_request_leak_decorator
 @check_request_leak_decorator
 def request_lookup_users(ids):
     """
-    Requests a list of users from the id's provided
+    Requests a list of users from the ids provided
 
     :param ids: The list of ids to use to look up users
     """
