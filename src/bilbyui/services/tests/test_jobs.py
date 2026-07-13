@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.utils import timezone
 
@@ -7,6 +8,7 @@ from bilbyui.services.jobs import (
     _apply_search_filter,
     _apply_time_range_filter,
     get_job,
+    list_public_jobs,
     list_user_jobs,
     update_job,
 )
@@ -112,3 +114,20 @@ class TestJobsService(BilbyTestCase):
     def test_get_job_raises_for_unknown_id(self):
         with self.assertRaises(BilbyJob.DoesNotExist):
             get_job(99999, self.user)
+
+    @patch("bilbyui.services.jobs.elasticsearch.Elasticsearch")
+    def test_list_public_jobs_elasticsearch_connection_failure(self, mock_elasticsearch):
+        mock_elasticsearch.side_effect = Exception("connection failed")
+        result = list_public_jobs(self.user)
+        self.assertEqual(
+            result,
+            {
+                "jobs": {},
+                "records": [],
+                "job_controller_jobs": {},
+                "has_next": False,
+                "page": 1,
+                "page_size": 20,
+            },
+        )
+        mock_elasticsearch.assert_called_once()
