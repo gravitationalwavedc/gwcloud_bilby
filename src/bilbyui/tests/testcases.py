@@ -97,7 +97,6 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
         super().__init__(*args, **kwargs)
         # We always want to see the full diff when an error occurs.
         self.maxDiff = None
-        self.user = ADACSAnonymousUser()
 
     # Log in as a user. Any parameters can be overwritten with **kwargs
     def authenticate(self, user=None, **kwargs):

@@ -14,6 +14,10 @@ User = get_user_model()
 class TestBilbyJobFilter(BilbyTestCase):
     def setUp(self):
         self.ini_string = create_test_ini_string({"detectors": "['H1']"})
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "buffy@test.com"},
+        )
         self.other_user, _ = User.objects.update_or_create(
             id=4,
             defaults={"name": "Other User", "primary_email": "other@test.com"},
