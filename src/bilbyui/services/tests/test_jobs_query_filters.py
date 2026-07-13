@@ -14,23 +14,23 @@ class TestApplySearchFilter(BilbyTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.create_user(id=1, name="buffy summers")
+        cls.user = cls.create_user(id=1, name="buffy summers", primary_email="buffy@test.com")
         cls.match_name = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="gw_search_match",
             description="unrelated",
             private=False,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         cls.match_description = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="other_job",
             description="contains gw_search_match token",
             private=False,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         cls.no_match = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="third_job",
             description="nothing here",
             private=False,
@@ -62,16 +62,16 @@ class TestApplyTimeRangeFilter(BilbyTestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.create_user(id=1, name="buffy summers")
+        cls.user = cls.create_user(id=1, name="buffy summers", primary_email="buffy@test.com")
         cls.recent_job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="recent_job",
             description="recent",
             private=False,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         cls.old_job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="old_job",
             description="old",
             private=False,
