@@ -9,7 +9,7 @@ def args_to_bilby_ini(args):
     """
     Generates an ini string from the provided args
 
-    :params args: The args to add to the ini string
+    :param args: The args to add to the ini string
     :return: A string containing the ini file content
     """
 
