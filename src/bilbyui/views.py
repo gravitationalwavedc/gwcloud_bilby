@@ -157,7 +157,7 @@ def create_bilby_job(user, params):
     maximum_frequencies = {}
     minimum_frequencies = {}
     channels = {}
-    for k, v in {("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")}:
+    for k, v in [("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")]:
         if getattr(params.detector, k):
             detectors.append(v)
             maximum_frequencies[v] = str(getattr(params.detector, k + "_maximum_frequency"))
