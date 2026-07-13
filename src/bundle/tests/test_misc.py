@@ -20,3 +20,33 @@ class TestMisc(unittest.TestCase):
         details = "some_file_path.hdf5"
 
         self.assertEqual(working_directory(details), settings.default_working_directory)
+
+    @patch("settings.scheduler", None)
+    def test_get_scheduler_slurm(self):
+        from core.misc import get_scheduler
+        from scheduler.scheduler import EScheduler
+
+        with patch("settings.scheduler", EScheduler.SLURM):
+            scheduler = get_scheduler()
+
+        from scheduler.slurm import SlurmScheduler
+
+        self.assertIsInstance(scheduler, SlurmScheduler)
+
+    @patch("settings.scheduler", None)
+    def test_get_scheduler_condor(self):
+        from core.misc import get_scheduler
+        from scheduler.scheduler import EScheduler
+
+        with patch("settings.scheduler", EScheduler.CONDOR):
+            scheduler = get_scheduler()
+
+        from scheduler.condor import CondorScheduler
+
+        self.assertIsInstance(scheduler, CondorScheduler)
+
+    @patch("settings.scheduler", None)
+    def test_get_scheduler_unknown(self):
+        from core.misc import get_scheduler
+
+        self.assertIsNone(get_scheduler())
