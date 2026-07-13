@@ -13,7 +13,7 @@ from bilbyui.views import _build_result_files
 class TestBuildResultFiles(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.create_user(id=1, name="buffy summers")
+        cls.user = cls.create_user(id=1, name="buffy summers", primary_email="buffy@test.com")
         cls.ini = create_test_ini_string({"detectors": "['H1']"})
 
     def setUp(self):
@@ -21,7 +21,7 @@ class TestBuildResultFiles(BilbyTestCase):
 
     def test_external_job_returns_url_entry(self):
         job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="external_job",
             description="external",
             job_type=BilbyJobType.EXTERNAL,
@@ -45,7 +45,7 @@ class TestBuildResultFiles(BilbyTestCase):
 
     def test_failed_file_list_returns_empty(self):
         job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="normal_job",
             description="normal",
             job_controller_id=1,
@@ -57,7 +57,7 @@ class TestBuildResultFiles(BilbyTestCase):
 
     def test_successful_file_list_returns_files_with_tokens(self):
         job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="normal_job",
             description="normal",
             job_controller_id=1,
@@ -92,7 +92,7 @@ class TestBuildResultFiles(BilbyTestCase):
 
     def test_only_non_directory_paths_receive_download_tokens(self):
         job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="normal_job",
             description="normal",
             job_controller_id=1,
