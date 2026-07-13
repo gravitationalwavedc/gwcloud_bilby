@@ -9,6 +9,9 @@ from bilbyui.tests.testcases import BilbyTestCase
 
 
 class TestApplySearchFilter(BilbyTestCase):
+    def setUp(self):
+        self.create_user(id=1)
+
     @classmethod
     def setUpTestData(cls):
         cls.create_user(id=1, name="buffy summers")
@@ -54,6 +57,9 @@ class TestApplySearchFilter(BilbyTestCase):
 
 
 class TestApplyTimeRangeFilter(BilbyTestCase):
+    def setUp(self):
+        self.create_user(id=1)
+
     @classmethod
     def setUpTestData(cls):
         cls.create_user(id=1, name="buffy summers")
