@@ -6,13 +6,13 @@ from bilby_pipe.utils import parse_args
 
 def bilby_ini_string_to_args(ini):
     """
-    Parses an ini string in to an argument Namespace
+    Parses an ini string into an argument Namespace
 
     :params ini: The ini string to parse
     :return: An ArgParser Namespace of the parsed arguments from the ini
     """
 
-    # Create an bilby argument parser
+    # Create a bilby argument parser
     parser = create_parser()
 
     # Bilby pipe requires a real file in order to parse the ini file
