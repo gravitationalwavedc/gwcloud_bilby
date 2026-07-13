@@ -77,7 +77,7 @@ def request_file_list(job, path, recursive, user_id=None):
                 # Add the file entry
                 file_list.append(
                     {
-                        # Remove the leading slash
+                        # Remove the leading working directory
                         "path": real_file_name[len(job_dir) :],
                         "isDir": os.path.isdir(real_file_name),
                         "fileSize": os.path.getsize(real_file_name),
