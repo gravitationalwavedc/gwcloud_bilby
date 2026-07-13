@@ -5,6 +5,7 @@ import logging
 import jwt
 import requests
 from django.conf import settings
+from django.utils import timezone
 
 from bilbyui.utils.misc import check_request_leak_decorator
 
@@ -26,7 +27,7 @@ def _make_job_controller_request(method, url, user_id, data=None, jwt_expiry=Non
         jwt_expiry = datetime.timedelta(days=30)
 
     jwt_enc = jwt.encode(
-        {"userId": user_id, "exp": datetime.datetime.now() + jwt_expiry},
+        {"userId": user_id, "exp": timezone.now() + jwt_expiry},
         settings.JOB_CONTROLLER_JWT_SECRET,
         algorithm="HS256",
     )
