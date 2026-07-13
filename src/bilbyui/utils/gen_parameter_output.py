@@ -51,8 +51,8 @@ def generate_parameter_output(job):
     """
     Generates a complete JobParameterOutput for a job
 
-    :input job: The BilbyJob instance to generate the JobParameterOutput for
-    :result: The complete JobParameterOutput
+    :param job: The BilbyJob instance to generate the JobParameterOutput for
+    :returns: The complete JobParameterOutput
     """
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
     args = bilby_ini_string_to_args(job.ini_string.encode("utf-8"))
