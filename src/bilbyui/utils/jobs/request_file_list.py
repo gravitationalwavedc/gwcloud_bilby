@@ -27,7 +27,11 @@ def request_file_list(job, path, recursive, user_id=None):
         # * this file really sits under the working directory
         # * the path exists
         # * the path is a directory
-        if not dir_path.startswith(job_dir) or not os.path.exists(dir_path) or not os.path.isdir(dir_path):
+        if (
+            not (dir_path == job_dir or dir_path.startswith(job_dir + os.sep))
+            or not os.path.exists(dir_path)
+            or not os.path.isdir(dir_path)
+        ):
             return False, "Files do not exist"
 
         # Get the list of files requested
