@@ -21,7 +21,7 @@ def get_submit_status(job):
     if "submit_id" in job:
         _status, info = sched.status(job["submit_id"], job)
 
-        # If the job is a state less than or equal to running, return it's state
+        # If the job is a state less than or equal to running, return its state
         if _status <= JobStatus.RUNNING:
             result = {"what": "submit", "status": _status, "info": info}
 
@@ -95,7 +95,7 @@ def slurm_status(job):
     had_error = False
     statuses = []
 
-    # Iterate over each job id and record it's status
+    # Iterate over each job id and record its status
     sched = get_scheduler()
     for _sid in slurm_ids:
         what = _sid.split(" ")[0]
