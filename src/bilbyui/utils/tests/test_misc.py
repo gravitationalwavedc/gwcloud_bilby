@@ -52,6 +52,7 @@ class TestCheckRequestLeakDecorator(BilbyTestCase):
 
         self.assertEqual(decorated(), "ok")
 
+    @override_settings(ALLOW_HTTP_LEAKS=True)
     def test_decorator_invokes_wrapped_function(self):
         self.assertEqual(check_request_leak_decorator(_increment)(4), 5)
 
