@@ -38,6 +38,11 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
     client_class = ADACSSSOSessionClient
 
     @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_user()
+
+    @classmethod
     def create_user(
         cls,
         id=1,
