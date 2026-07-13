@@ -23,8 +23,8 @@ def request_file_download_ids(job, paths, user_id=None):
     On success, the list of ids is guaranteed to be the same size and order as the provided paths parameter
 
     :param job: The BilbyJob instance to get the status of
-    :param paths: The list of paths to generate download identifies for
-    :param user_id: On optional user id to make the request as
+    :param paths: The list of paths to generate download identifiers for
+    :param user_id: An optional user id to make the request as
 
     :return: tuple(result -> bool, details)
     """
@@ -60,7 +60,7 @@ def request_file_download_id(job, path, user_id=None):
 
     :param job: The BilbyJob instance to get the status of
     :param path: The path to the file to download
-    :param user_id: On optional user id to make the request as
+    :param user_id: An optional user id to make the request as
     """
     success, results = request_file_download_ids(job, [path], user_id)
 
