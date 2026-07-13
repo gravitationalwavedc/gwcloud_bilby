@@ -37,7 +37,7 @@ def request_file_list(job, path, recursive, user_id=None):
         # Get the list of files requested
         file_list = []
         if recursive:
-            # This is a recursive searh
+            # This is a recursive search
             for root, dirnames, filenames in os.walk(dir_path):
                 # Iterate over the directories
                 for item in dirnames:
