@@ -11,6 +11,7 @@ from bilbyui.tests.testcases import BilbyTestCase
 class TestApplySearchFilter(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.create_user(id=1, name="buffy summers")
         cls.match_name = BilbyJob.objects.create(
             user_id=1,
             name="gw_search_match",
@@ -55,6 +56,7 @@ class TestApplySearchFilter(BilbyTestCase):
 class TestApplyTimeRangeFilter(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.create_user(id=1, name="buffy summers")
         cls.recent_job = BilbyJob.objects.create(
             user_id=1,
             name="recent_job",
