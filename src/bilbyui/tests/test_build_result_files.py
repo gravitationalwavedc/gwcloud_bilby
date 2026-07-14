@@ -15,6 +15,7 @@ class TestBuildResultFiles(BilbyTestCase):
     def setUpTestData(cls):
         cls.user = cls.create_user(id=1, name="buffy summers", primary_email="buffy@test.com")
         cls.ini = create_test_ini_string({"detectors": "['H1']"})
+        cls.user = cls.create_user()
 
     def setUp(self):
         self.create_user(id=1)
