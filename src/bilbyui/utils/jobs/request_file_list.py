@@ -1,3 +1,4 @@
+import contextlib
 import os
 
 from django.conf import settings
@@ -57,7 +58,8 @@ def request_file_list(job, path, recursive, user_id=None):
                     # Construct the real path to this file
                     real_file_name = os.path.join(root, item)
                     # Add the file entry
-                    try:
+                    with contextlib.suppress(FileNotFoundError):
+                        # Happens when trying to stat a symlink
                         file_list.append(
                             {
                                 # Remove the leading working directory
@@ -66,9 +68,6 @@ def request_file_list(job, path, recursive, user_id=None):
                                 "fileSize": os.path.getsize(real_file_name),
                             }
                         )
-                    except FileNotFoundError:
-                        # Happens when trying to stat a symlink
-                        pass
         else:
             # Not a recursive search
             for item in os.listdir(dir_path):
