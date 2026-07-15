@@ -409,7 +409,7 @@ class Query:
                     path=f["path"],
                     is_dir=f["isDir"],
                     file_size=Decimal(f["fileSize"]),
-                    download_token=token_dict[f["path"]] if f["path"] in token_dict else None,
+                    download_token=token_dict.get(f["path"], None),
                 )
                 for f in files
             ]
