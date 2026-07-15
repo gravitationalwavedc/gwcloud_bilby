@@ -58,12 +58,6 @@ class TestBilbyJobQueries(BilbyTestCase):
             }}
             """)
 
-    def request_lookup_users_mock(*args, **kwargs):
-        user = User.objects.first()
-        if user:
-            return True, [{"id": user.id, "name": "buffy summers"}]
-        return False, []
-
     def derive_job_status_mock(*args, **kwargs):
         return 1, "Test Status", datetime.fromtimestamp(0)
 
@@ -174,7 +168,8 @@ class TestBilbyJobQueries(BilbyTestCase):
     )
     def test_bilby_job_supporting_files_dont_exist(self, *args):
         self.job_data["name"] = "another test job"
-        self.job_data["ini_string"] = open("bilbyui/tests/regression_data/psd_dict_ini.ini").read()
+        with open("bilbyui/tests/regression_data/psd_dict_ini.ini") as f:
+            self.job_data["ini_string"] = f.read()
         del self.job_data["id"]
         self.job = BilbyJob.objects.create(**self.job_data)
 
