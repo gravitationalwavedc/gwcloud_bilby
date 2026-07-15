@@ -60,6 +60,6 @@ def parse_ini_file(job, ini_key_value_klass=None):
                 pass
 
     except Exception as e:
-        logger.error(f"Error parsing INI file for job {job.id}: {str(e)}", exc_info=True)
+        logger.error(f"Error parsing INI file for job {job.id}: {e}", exc_info=True)
 
     (ini_key_value_klass or IniKeyValue).objects.bulk_create(items)
