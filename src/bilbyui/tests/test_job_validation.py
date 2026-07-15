@@ -20,5 +20,12 @@ class TestValidateJobName(BilbyTestCase):
             validate_job_name("valid name")
         self.assertEqual(str(ctx.exception), "Job name must not contain any spaces or special characters.")
 
+    def test_accepts_min_length_name(self):
+        validate_job_name("a" * 5)
+
+    def test_accepts_max_length_name(self):
+        max_len = BilbyJob._meta.get_field("name").max_length
+        validate_job_name("a" * max_len)
+
     def test_accepts_valid_name(self):
         validate_job_name("my_valid-job1")
