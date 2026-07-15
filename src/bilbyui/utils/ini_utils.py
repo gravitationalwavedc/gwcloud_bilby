@@ -24,7 +24,7 @@ def bilby_ini_string_to_args(ini):
         f.flush()
 
         # Read the data from the ini file
-        args, unknown_args = parse_args([f.name], parser)
+        args, _ = parse_args([f.name], parser)
 
     # ini and verbose are not kept in the ini file, so remove them
     delattr(args, "ini")
