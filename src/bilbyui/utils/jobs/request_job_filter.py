@@ -36,5 +36,5 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
         logger.debug(f"Successfully retrieved {len(result)} jobs for user {user_id}")
         return "OK", result
     except Exception as e:
-        logger.error(f"Error getting job filter for user {user_id}: {str(e)}", exc_info=True)
+        logger.error(f"Error getting job filter for user {user_id}: {e}", exc_info=True)
         return "UNKNOWN", "Error getting job filter"
