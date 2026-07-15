@@ -50,8 +50,8 @@ def request_file_download_ids(job, paths, user_id=None):
         logger.info(f"Successfully generated {len(result['fileIds'])} download IDs for job {job.id}")
         return True, result["fileIds"]
     except Exception as e:
-        logger.error(f"Error getting file download URLs for job {job.id}: {str(e)}", exc_info=True)
-        return False, "Error getting job file download url"
+        logger.error(f"Error getting file download IDs for job {job.id}: {str(e)}", exc_info=True)
+        return False, "Error getting job file download id"
 
 
 def request_file_download_id(job, path, user_id=None):

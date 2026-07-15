@@ -52,7 +52,7 @@ class TestFileDownloadIds(BilbyTestCase):
 
             result = request_file_download_id(self.job, "test_path")
 
-            self.assertEqual(result, (False, "Error getting job file download url"))
+            self.assertEqual(result, (False, "Error getting job file download id"))
 
             # Test submitted job, successful return
             self.job.job_controller_id = 4321
@@ -94,7 +94,7 @@ class TestFileDownloadIds(BilbyTestCase):
 
             result = request_file_download_ids(self.job, "test_path")
 
-            self.assertEqual(result, (False, "Error getting job file download url"))
+            self.assertEqual(result, (False, "Error getting job file download id"))
 
             # Test submitted job, successful return
             self.job.job_controller_id = 4321
