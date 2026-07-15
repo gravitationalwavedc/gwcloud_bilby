@@ -459,7 +459,7 @@ class TestSupportingFile(BilbyTestCase):
         self.after = timezone.now()
 
     def test_save_from_parsed(self):
-        # Test that parsed supporting files are correctly entered in to the database
+        # Test that parsed supporting files are correctly entered into the database
         supporting_file_tokens = SupportingFile.save_from_parsed(self.job, self.parsed)
 
         self.assertEqual(SupportingFile.objects.count(), 3)
