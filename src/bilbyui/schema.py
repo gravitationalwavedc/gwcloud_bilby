@@ -305,7 +305,7 @@ class Query:
 
         job_controller_jobs = public_jobs["job_controller_jobs"]
 
-        # Parse the result in to graphql objects
+        # Parse the result into graphql objects
         result = []
 
         for record in records:
@@ -355,7 +355,7 @@ class Query:
         # hasNextPage correctly, such that infinite scroll works as expected.
 
         # graphene_django's arrayconnection implementation is a bit crazy. It expects this function to return a full
-        # array that has *all* the elements in it, that is then sliced in to the expected result. Since the database
+        # array that has *all* the elements in it, that is then sliced into the expected result. Since the database
         # only returns us what we expect, what we're doing here is reconstructing that array with the requested offset
         # worth of empty elements at the start. We then tac on our records from the database, and the arrayconnection
         # internally slices the correct values from the array and returns that to the client.
