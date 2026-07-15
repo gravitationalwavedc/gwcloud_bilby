@@ -350,7 +350,7 @@ class Query:
 
             result.append(job_node)
 
-        # Nb. The elastic search search function requests one extra record than kwargs['first'].
+        # Nb. The elastic search function requests one extra record than kwargs['first'].
         # This triggers the ArrayConnection used by returning the result array to correctly set
         # hasNextPage correctly, such that infinite scroll works as expected.
 
