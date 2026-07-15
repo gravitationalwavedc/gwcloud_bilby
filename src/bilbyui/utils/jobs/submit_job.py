@@ -89,5 +89,5 @@ def submit_job(user_id, params, cluster):
 
         return result_data
     except requests.RequestException as e:
-        logger.error(f"Request exception submitting job for user {user_id}: {str(e)}", exc_info=True)
-        raise Exception(f"Error submitting job: {str(e)}")
+        logger.error(f"Request exception submitting job for user {user_id}: {e}", exc_info=True)
+        raise Exception(f"Error submitting job: {e}")
