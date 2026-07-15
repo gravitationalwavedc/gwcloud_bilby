@@ -7,7 +7,7 @@ from bilbyui.models import AnonymousMetrics
 class AnonymousMetricsMiddleware:
     def resolve(self, next, root, info, **args):
         # Get the tracking header and split it by space to get the persistent and session ids
-        header = info.context.headers.get("X-Correlation-Id", None)
+        header = info.context.headers.get("X-Correlation-Id")
 
         # If the tracking headers are not passed through, or the user is authenticated, then there is nothing more to
         # do. Also ignore any paths that aren't the top level (ie, nodes and fields)
