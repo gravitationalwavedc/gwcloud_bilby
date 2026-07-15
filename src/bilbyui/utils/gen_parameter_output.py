@@ -42,9 +42,9 @@ def to_dec(val):
     # It's a numeric type, if there is a remainder, convert the value to a string and parse it with Decimal
     if val - floor(val):
         return Decimal(str(val))
-    else:
-        # The number is whole, cast it to an int and then parse it with Decimal
-        return Decimal(int(val))
+
+    # The number is whole, cast it to an int and then parse it with Decimal
+    return Decimal(int(val))
 
 
 def generate_parameter_output(job):
