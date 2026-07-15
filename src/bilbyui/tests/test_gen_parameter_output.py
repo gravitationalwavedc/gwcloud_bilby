@@ -36,8 +36,8 @@ class TestGenerateParameterOutput(BilbyTestCase):
     def test_to_dec(self):
         self.assertIsNone(to_dec(None))
         self.assertEqual(to_dec(Decimal("3.14")), Decimal("3.14"))
-        self.assertEqual(to_dec("42"), Decimal("42"))
-        self.assertEqual(to_dec(42), Decimal("42"))
+        self.assertEqual(to_dec("42"), Decimal(42))
+        self.assertEqual(to_dec(42), Decimal(42))
         self.assertEqual(to_dec(3.14), Decimal("3.14"))
         self.assertEqual(to_dec("hello"), "hello")
 
@@ -49,16 +49,16 @@ class TestGenerateParameterOutput(BilbyTestCase):
         self.assertIsInstance(r, JobParameterOutput)
         self.assertEqual(r.details.name, "test-job")
         self.assertEqual(r.data.data_choice, "real")
-        self.assertEqual(r.data.trigger_time, Decimal("12345678"))
+        self.assertEqual(r.data.trigger_time, Decimal(12345678))
         self.assertIsNone(r.data.channels.hanford_channel)
-        self.assertEqual(r.detector.duration, Decimal("4"))
-        self.assertEqual(r.detector.sampling_frequency, Decimal("2048"))
+        self.assertEqual(r.detector.duration, Decimal(4))
+        self.assertEqual(r.detector.sampling_frequency, Decimal(2048))
         self.assertTrue(r.detector.hanford)
         self.assertTrue(r.detector.livingston)
         self.assertTrue(r.detector.virgo)
         self.assertEqual(r.prior.prior_default, "4s")
         self.assertEqual(r.sampler.sampler_choice, "dynesty")
-        self.assertEqual(r.sampler.nlive, Decimal("1024"))
+        self.assertEqual(r.sampler.nlive, Decimal(1024))
         self.assertEqual(r.sampler.sample, "rwalk")
         self.assertEqual(r.waveform.model, "binaryBlackHole")
 
@@ -75,8 +75,8 @@ class TestGenerateParameterOutput(BilbyTestCase):
         self.assertTrue(r.detector.hanford)
         self.assertFalse(r.detector.livingston)
         self.assertFalse(r.detector.virgo)
-        self.assertEqual(r.detector.hanford_minimum_frequency, Decimal("20"))
-        self.assertEqual(r.detector.hanford_maximum_frequency, Decimal("1024"))
+        self.assertEqual(r.detector.hanford_minimum_frequency, Decimal(20))
+        self.assertEqual(r.detector.hanford_maximum_frequency, Decimal(1024))
 
     def test_waveform_models(self):
         for i, (model, expected) in enumerate(
@@ -108,8 +108,8 @@ class TestGenerateParameterOutput(BilbyTestCase):
         )
         r = generate_parameter_output(job)
         self.assertEqual(r.sampler.sample, "rwalk")
-        self.assertEqual(r.sampler.nlive, Decimal("2000"))
-        self.assertEqual(r.sampler.walks, Decimal("100"))
+        self.assertEqual(r.sampler.nlive, Decimal(2000))
+        self.assertEqual(r.sampler.walks, Decimal(100))
 
     def test_channel_dict(self):
         job = self._make_job(
