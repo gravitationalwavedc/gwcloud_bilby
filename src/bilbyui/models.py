@@ -319,7 +319,7 @@ class BilbyJob(models.Model):
 
     def as_dict(self):
         """
-        Converts this job in to a dictionary that can be submitted to the bundle for submission
+        Converts this job into a dictionary that can be submitted to the bundle for submission
         """
         # Iterate over any supporting files and generate the supporting file details
         supporting_file_details = []
