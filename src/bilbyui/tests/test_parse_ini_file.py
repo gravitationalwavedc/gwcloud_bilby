@@ -31,12 +31,14 @@ class TestParseIniFileErrorBranches(BilbyTestCase):
         # If bilby_ini_args_to_data_input raises, the error should be logged and swallowed
         self.job.ini_string = create_test_ini_string({"detectors": "['H1']"})
 
-        with mock.patch(
-            "bilbyui.views.bilby_ini_args_to_data_input",
-            side_effect=RuntimeError("boom"),
+        with (
+            mock.patch(
+                "bilbyui.views.bilby_ini_args_to_data_input",
+                side_effect=RuntimeError("boom"),
+            ),
+            self.assertLogs("bilbyui.utils.parse_ini_file", level="ERROR") as logs,
         ):
-            with self.assertLogs("bilbyui.utils.parse_ini_file", level="ERROR") as logs:
-                parse_ini_file(self.job)
+            parse_ini_file(self.job)
 
         self.assertIn("Error parsing INI file", "\n".join(logs.output))
 
