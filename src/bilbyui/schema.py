@@ -393,7 +393,7 @@ class Query:
             # Fetch the file list from the job controller
             success, files = job.get_file_list()
             if not success:
-                logger.error(f"Failed to get file list for job {job_id}: {str(files)}")
+                logger.error(f"Failed to get file list for job {job_id}: {files!s}")
                 raise Exception("Error getting file list. " + str(files))
 
             # Generate download tokens for the list of files
