@@ -85,7 +85,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
             verify_certs=False,
         )
     except Exception as e:
-        logger.error(f"Failed to connect to Elasticsearch: {str(e)}", exc_info=True)
+        logger.error(f"Failed to connect to Elasticsearch: {e}", exc_info=True)
         return empty_result
 
     q = search or "*"
