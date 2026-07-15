@@ -64,7 +64,7 @@ def submit_job(user_id, params, cluster):
     logger.info(f"User {user_id} submitting job to cluster '{cluster}'")
 
     # Choose the first (default) cluster if one is not provided
-    cluster = settings.CLUSTERS[0] if not cluster else cluster
+    cluster = cluster if cluster else settings.CLUSTERS[0]
 
     # Check that the specified cluster is valid for submission
     if cluster not in settings.CLUSTERS:
