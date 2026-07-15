@@ -11,7 +11,7 @@ def request_file_list(job, path, recursive, user_id=None):
     """
     Requests the file list for a job
 
-    :param job: The BilbyJob instance to get the status of
+    :param job: The BilbyJob instance whose files are listed
     :param user_id: An optional user id to make the request as
     :param path: The relative path to the job to fetch the file list for
     :param recursive: If the file list should be recursive or not

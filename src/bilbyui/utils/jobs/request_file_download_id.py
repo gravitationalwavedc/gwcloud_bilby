@@ -22,7 +22,7 @@ def request_file_download_ids(job, paths, user_id=None):
 
     On success, the list of ids is guaranteed to be the same size and order as the provided paths parameter
 
-    :param job: The BilbyJob instance to get the status of
+    :param job: The BilbyJob instance for which file download ids are generated
     :param paths: The list of paths to generate download identifiers for
     :param user_id: An optional user id to make the request as
 
@@ -58,7 +58,7 @@ def request_file_download_id(job, path, user_id=None):
     """
     Requests a file download id from the job controller for the provided file path
 
-    :param job: The BilbyJob instance to get the status of
+    :param job: The BilbyJob instance for which a file download id is generated
     :param path: The path to the file to download
     :param user_id: An optional user id to make the request as
     """
