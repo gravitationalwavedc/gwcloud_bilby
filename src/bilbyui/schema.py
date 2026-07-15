@@ -157,7 +157,7 @@ class BilbyJobNode(DjangoObjectType):
             return generate_parameter_output(parent)
         except Exception as e:
             logger.error(
-                f"Failed to generate parameter output for job {parent.id}: {type(e).__name__}: {str(e)}", exc_info=True
+                f"Failed to generate parameter output for job {parent.id}: {type(e).__name__}: {e}", exc_info=True
             )
             return None
 
