@@ -259,7 +259,7 @@ class TestIniJobSubmissionNameValidation(BilbyTestCase):
 
     @silence_errors
     def test_invalid_job_name_too_long(self):
-        test_name = "aa" * BilbyJob._meta.get_field("name").max_length
+        test_name = "aa" * BilbyJob._meta.get_field("name").max_length  # noqa: SLF001
 
         test_ini_string = create_test_ini_string({"label": test_name, "detectors": "['H1']"})
 
