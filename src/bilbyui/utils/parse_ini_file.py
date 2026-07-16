@@ -1,4 +1,3 @@
-import contextlib
 import json
 import logging
 
@@ -46,17 +45,18 @@ def parse_ini_file(job, ini_key_value_klass=None):
         processed_args = bilby_ini_args_to_data_input(args)
 
         for idx, key in enumerate(vars(processed_args)):
-            while key.startswith("_"):
-                key = key[1:]
+            stripped_key = key.lstrip("_")
 
-            with contextlib.suppress(Exception):
-                val = getattr(processed_args, key)
+            try:
+                val = getattr(processed_args, stripped_key)
 
                 items.append(
                     (ini_key_value_klass or IniKeyValue)(
-                        job=job, key=key, value=json.dumps(val), index=idx, processed=True
+                        job=job, key=stripped_key, value=json.dumps(val), index=idx, processed=True
                     )
                 )
+            except Exception as e:
+                logger.error(f"Error parsing INI file for job {job.id}: {e}", exc_info=True)
 
     except Exception as e:
         logger.error(f"Error parsing INI file for job {job.id}: {e}", exc_info=True)
