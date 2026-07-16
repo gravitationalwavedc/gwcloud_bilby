@@ -16,6 +16,7 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
     :param ids: A list of job ids to fetch
     :param user_id: An optional user id to make the request as
     :param end_time_gt: An optional parameter for jobs with an end time greater than this
+    :return: A tuple of (status, result) where status is "OK" on success or "UNKNOWN" on error
     """
 
     qs = []
