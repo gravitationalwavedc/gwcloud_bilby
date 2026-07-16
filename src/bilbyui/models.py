@@ -123,7 +123,7 @@ class EventID(models.Model):
         event.save()
         return event
 
-    def update(self, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=False):
+    def update(self, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=None):
         if gps_time is not None:
             self.gps_time = gps_time
         if trigger_id is not None:
