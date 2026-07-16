@@ -17,14 +17,13 @@ logger = logging.getLogger(__name__)
 def _time_range_to_timedelta(time_range):
     if time_range == "1d":
         return timedelta(days=1)
-    elif time_range == "1w":
+    if time_range == "1w":
         return timedelta(days=7)
-    elif time_range == "1m":
+    if time_range == "1m":
         return timedelta(days=31)
-    elif time_range == "1y":
+    if time_range == "1y":
         return timedelta(days=365)
-    else:
-        raise Exception(f"Unexpected timeRange value {time_range}")
+    raise Exception(f"Unexpected timeRange value {time_range}")
 
 
 def _apply_time_range_filter(qs, time_range, field_name="last_updated"):
@@ -184,12 +183,11 @@ def update_job(job_id, user, private=None, labels=None, event_id=None, name=None
 
         return True, "Job saved!"
 
-    elif user.id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
+    if user.id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
         bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
 
         bilby_job.save()
 
         return True, "Job saved"
 
-    else:
-        raise Exception("You must own the job to change it!")
+    raise Exception("You must own the job to change it!")
