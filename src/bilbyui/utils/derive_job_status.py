@@ -11,12 +11,11 @@ def derive_job_status(history):
     :returns: A tuple of (state, display_name, timestamp) for the most recent job status
     """
 
-    history_items = []
     # Order the histories by timestamp
-    for h in history:
-        history_items.append(
-            {"timestamp": datetime.datetime.strptime(h["timestamp"], "%Y-%m-%d %H:%M:%S.%f UTC"), "data": h}
-        )
+    history_items = [
+        {"timestamp": datetime.datetime.strptime(h["timestamp"], "%Y-%m-%d %H:%M:%S.%f UTC"), "data": h}
+        for h in history
+    ]
 
     history_items.sort(key=lambda x: x["timestamp"], reverse=True)
 
