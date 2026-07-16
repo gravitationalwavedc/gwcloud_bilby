@@ -92,6 +92,5 @@ class TestParseJobRef(BilbyTestCase):
             parse_job_ref("not-a-valid-relay-id")
 
     def test_from_global_id_exception_raises_404(self):
-        with mock.patch("bilbyui.utils.job_ref.from_global_id", side_effect=ValueError("bad")):
-            with self.assertRaises(Http404):
-                parse_job_ref("some-relay-id")
+        with mock.patch("bilbyui.utils.job_ref.from_global_id", side_effect=ValueError("bad")), self.assertRaises(Http404):
+            parse_job_ref("some-relay-id")
