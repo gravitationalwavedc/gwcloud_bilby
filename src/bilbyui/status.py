@@ -37,31 +37,31 @@ class JobStatus:
     def display_name(status):
         if status == JobStatus.DRAFT:
             return "Draft"
-        elif status == JobStatus.PENDING:
+        if status == JobStatus.PENDING:
             return "Pending"
-        elif status == JobStatus.SUBMITTING:
+        if status == JobStatus.SUBMITTING:
             return "Submitting"
-        elif status == JobStatus.SUBMITTED:
+        if status == JobStatus.SUBMITTED:
             return "Submitted"
-        elif status == JobStatus.QUEUED:
+        if status == JobStatus.QUEUED:
             return "Queued"
-        elif status == JobStatus.RUNNING:
+        if status == JobStatus.RUNNING:
             return "Running"
-        elif status == JobStatus.CANCELLING:
+        if status == JobStatus.CANCELLING:
             return "Cancelling"
-        elif status == JobStatus.CANCELLED:
+        if status == JobStatus.CANCELLED:
             return "Cancelled"
-        elif status == JobStatus.DELETING:
+        if status == JobStatus.DELETING:
             return "Deleting"
-        elif status == JobStatus.DELETED:
+        if status == JobStatus.DELETED:
             return "Deleted"
-        elif status == JobStatus.ERROR:
+        if status == JobStatus.ERROR:
             return "Error"
-        elif status == JobStatus.WALL_TIME_EXCEEDED:
+        if status == JobStatus.WALL_TIME_EXCEEDED:
             return "Wall Time Exceeded"
-        elif status == JobStatus.OUT_OF_MEMORY:
+        if status == JobStatus.OUT_OF_MEMORY:
             return "Out of Memory"
-        elif status == JobStatus.COMPLETED:
+        if status == JobStatus.COMPLETED:
             return "Completed"
         else:
             return "Unknown"
