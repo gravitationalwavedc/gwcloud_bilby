@@ -332,12 +332,12 @@ class BilbyJob(models.Model):
                 }
             )
 
-        return dict(
-            name=self.name,
-            description=self.description,
-            ini_string=self.ini_string,
-            supporting_files=supporting_file_details,
-        )
+        return {
+            "name": self.name,
+            "description": self.description,
+            "ini_string": self.ini_string,
+            "supporting_files": supporting_file_details,
+        }
 
     def elastic_search_update(self):
         """
