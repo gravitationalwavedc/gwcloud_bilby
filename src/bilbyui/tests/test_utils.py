@@ -291,17 +291,13 @@ def create_test_upload_data(
 def get_file_download_tokens(response):
     # Returns all downloadTokens for a bilbyResultFiles response where the file is not a directory
 
-    download_tokens = [
-        f["downloadToken"] for f in filter(lambda x: not x["isDir"], response.data["bilbyResultFiles"]["files"])
-    ]
-    return download_tokens
+    return [f["downloadToken"] for f in filter(lambda x: not x["isDir"], response.data["bilbyResultFiles"]["files"])]
 
 
 def get_files(response):
     # Returns all files for a bilbyResultFiles response where the file is not a directory
 
-    files = [f for f in filter(lambda x: not x["isDir"], response.data["bilbyResultFiles"]["files"])]
-    return files
+    return list(filter(lambda x: not x["isDir"], response.data["bilbyResultFiles"]["files"]))
 
 
 def generate_elastic_doc(job, user):
