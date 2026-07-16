@@ -3,6 +3,8 @@ import uuid
 
 from bilbyui.models import AnonymousMetrics
 
+EXPECTED_ID_COUNT = 2
+
 
 class AnonymousMetricsMiddleware:
     def resolve(self, next, root, info, **args):
@@ -20,7 +22,7 @@ class AnonymousMetricsMiddleware:
 
         # Check that there is exactly two ids
         ids = header.split(" ")
-        if len(ids) != 2:
+        if len(ids) != EXPECTED_ID_COUNT:
             return next(root, info, **args)
 
         # Check that the two ids are valid uuid4's
