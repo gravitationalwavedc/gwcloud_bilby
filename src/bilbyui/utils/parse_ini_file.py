@@ -55,6 +55,8 @@ def parse_ini_file(job, ini_key_value_klass=None):
                         job=job, key=stripped_key, value=json.dumps(val), index=idx, processed=True
                     )
                 )
+            except Exception as e:
+                logger.error(f"Error parsing INI file for job {job.id}: {e}", exc_info=True)
 
     except Exception as e:
         logger.error(f"Error parsing INI file for job {job.id}: {e}", exc_info=True)
