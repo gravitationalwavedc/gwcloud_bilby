@@ -234,13 +234,25 @@ outdir=.""",
 trigger-time=12345678
 outdir=./
 sampler=dynesty
-sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100, 'n_check_point': 2000, 'nact': 10, 'npool': 4}""",  # noqa
+sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100, 'n_check_point': 2000, 'nact': 10, 'npool': 4}""",
         )
         job.save()
 
         # Generate the output params - bilby will raise an exception if the decimal parser isn't updated to handle the
         # case of 'sample': 'rwalk'
         generate_parameter_output(job)
+
+    @patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_request_lookup_users_mock_branch(self, lookup_users_mock):
+        # Exercise the unused lookup-users mock helper so both its branches are covered
+        success, users = lookup_users_mock()
+        self.assertTrue(success)
+        self.assertEqual(users, [{"id": self.user.id, "name": "buffy summers"}])
+
+        User.objects.all().delete()
+        success, users = lookup_users_mock()
+        self.assertFalse(success)
+        self.assertEqual(users, [])
 
     def test_generate_parameter_output_data_generation_input_requires_idx(self):
         # Regression: bilby-pipe DataGenerationInput.generation_seed setter asserts self.idx is not None
