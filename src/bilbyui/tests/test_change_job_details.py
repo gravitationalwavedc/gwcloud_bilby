@@ -94,7 +94,7 @@ class TestChangeJobDetails(BilbyTestCase):
         self.assertDictEqual({"updateBilbyJob": None}, response.data)
         self.assertEqual(
             response.errors[0]["message"],
-            "Job name must be less than 255 characters long.",
+            "Job name must be at most 255 characters long.",
         )
 
     @silence_errors

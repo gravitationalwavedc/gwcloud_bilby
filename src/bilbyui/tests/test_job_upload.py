@@ -1354,7 +1354,7 @@ class TestJobUploadNameValidation(BilbyTestCase):
 
         self.assertEqual(
             response.errors[0]["message"],
-            "Job name must be less than 255 characters long.",
+            "Job name must be at most 255 characters long.",
         )
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
