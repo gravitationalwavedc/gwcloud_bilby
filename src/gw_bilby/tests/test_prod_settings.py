@@ -11,9 +11,9 @@ from django.test import TestCase, override_settings
 )
 class ProdSettingsTestCase(TestCase):
     def test_prod_settings_importable(self):
-        os.environ.setdefault("GWOSC_INGEST_USER", "1")
-        os.environ.setdefault("PERMITTED_EVENT_CREATION_USER_IDS", "[]")
-        os.environ.setdefault("CLUSTERS", "[]")
+        os.environ["GWOSC_INGEST_USER"] = "1"
+        os.environ["PERMITTED_EVENT_CREATION_USER_IDS"] = "[]"
+        os.environ["CLUSTERS"] = "[]"
         import gw_bilby.prod  # noqa: F401
 
         self.assertTrue(hasattr(settings, "DEBUG"))
