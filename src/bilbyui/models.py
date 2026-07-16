@@ -108,8 +108,7 @@ class EventID(models.Model):
         # Users may not view ligo IDs if they are not a ligo user
         if is_ligo:
             return cls.objects.all()
-        else:
-            return cls.objects.exclude(is_ligo_event=True)
+        return cls.objects.exclude(is_ligo_event=True)
 
     @classmethod
     def create(cls, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
