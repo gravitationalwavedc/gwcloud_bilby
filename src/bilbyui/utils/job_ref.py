@@ -11,16 +11,16 @@ def parse_job_ref(job_ref):
 
     try:
         type_name, pk = from_global_id(job_ref)
-    except Exception:
-        raise Http404
+    except Exception as err:
+        raise Http404 from err
 
     if type_name != "BilbyJobNode":
         raise Http404
 
     try:
         job_id = int(pk)
-    except (TypeError, ValueError):
-        raise Http404
+    except (TypeError, ValueError) as err:
+        raise Http404 from err
 
     return job_id, True
 
