@@ -1,6 +1,6 @@
 """Minimal settings for Docker build-time collectstatic (no runtime secrets)."""
 
-from .base import *
+from .base import *  # noqa: F403
 
 DEBUG = False
 ALLOWED_HOSTS = ["*"]

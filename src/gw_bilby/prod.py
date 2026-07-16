@@ -1,4 +1,4 @@
-from .base import *
+from .base import *  # noqa: F401, F403
 
 DEBUG = False
 
@@ -9,7 +9,7 @@ GOOGLE_ANALYTICS_ID = "UA-219714075-1"
 STATIC_URL = "/static/"
 
 STORAGES = {
-    **STORAGES,
+    **STORAGES,  # noqa: F405
     "staticfiles": {
         "BACKEND": "bilbyui.utils.storage.NonStrictManifestStaticFilesStorage",
     },
@@ -102,6 +102,6 @@ LOGGING = {
 }
 
 try:
-    from .environment import *
+    from .environment import *  # noqa: F401, F403
 except ImportError:
     pass
