@@ -5,7 +5,7 @@ from . import views
 app_name = "bilbyui"
 
 urlpatterns = [
-    path("_health/", views._health_view, name="health"),  # noqa: SLF001
+    path("_health/", views._health_view, name="health"),
     path("", views.public_jobs_view, name="public_jobs"),
     path(
         "job-results/<str:job_id>/files/<str:token>/download/",
