@@ -51,7 +51,6 @@ class TestJobSubmission(BilbyTestCase):
                         "description": rand_string(128),
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": random.choice(["real", "simulated"]),
                         "triggerTime": str(to_dec(float(rand_float(1126200000, 118200000)))),
@@ -74,10 +73,7 @@ class TestJobSubmission(BilbyTestCase):
                         "duration": random.choice(["4", "8", "16", "32", "64", "128"]),
                         "samplingFrequency": random.choice(["512", "1024", "2048", "4096", "8192", "16384"]),
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": random.choice(["4s", "8s", "16s", "32s", "64s", "128s"])},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": rand_int(100, 10000),
                         "nact": rand_int(1, 100),
@@ -239,8 +235,7 @@ sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100,
         )
         job.save()
 
-        # Generate the output params - bilby will raise an exception if the decimal parser isn't updated to handle the
-        # case of 'sample': 'rwalk'
+        # Generate the output params. Bilby raises if the decimal parser is not updated to handle the rwalk sample case.
         generate_parameter_output(job)
 
     @patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
