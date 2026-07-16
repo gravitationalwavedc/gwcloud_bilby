@@ -11,6 +11,11 @@ from bilbyui.utils.gen_parameter_output import generate_parameter_output, to_dec
 
 User = get_user_model()
 
+def request_lookup_users_mock(*args, **kwargs):
+    user = User.objects.first()
+    if user:
+        return True, [{"id": user.id, "name": "buffy summers"}]
+    return False, []
 
 def rand_int(start, end):
     return random.randrange(start, end, 1)
@@ -22,13 +27,6 @@ def rand_float(start, end, places=4):
 
 def rand_string(num_chars):
     return "".join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=num_chars))
-
-
-def request_lookup_users_mock(*args, **kwargs):
-    user = User.objects.first()
-    if user:
-        return True, [{"id": user.id, "name": "buffy summers"}]
-    return False, []
 
 
 class TestJobSubmission(BilbyTestCase):
