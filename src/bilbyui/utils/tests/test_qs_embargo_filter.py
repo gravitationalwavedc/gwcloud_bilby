@@ -21,13 +21,12 @@ class TestQsEmbargoFilter(BilbyTestCase):
         if n_simulation is not None:
             ini_config["n-simulation"] = n_simulation
 
-        job = BilbyJob.objects.create(
+        return BilbyJob.objects.create(
             user_id=self.user.id,
             name=name,
             description=name,
             ini_string=create_test_ini_string(ini_config),
         )
-        return job
 
     @override_settings(EMBARGO_START_TIME=5.0)
     def test_job_with_trigger_time_below_embargo(self):
