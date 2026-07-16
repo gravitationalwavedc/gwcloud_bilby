@@ -70,6 +70,9 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
 
         try:
             user = User.objects.get(id=id)
+        except User.DoesNotExist:
+            pass
+        else:
             user.name = name
             user.primary_email = primary_email
             user.emails = emails
@@ -78,8 +81,6 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
             user.authentication_methods = [authentication_method]
             user.save()
             return user
-        except User.DoesNotExist:
-            pass
 
         # If this is not the default user, use a unique email to avoid conflicts
         if id != 1 and primary_email == "slayer@gmail.com":
