@@ -321,14 +321,15 @@ class TestFileDownloadToken(BilbyTestCase):
             self.assertEqual(result[i], tk.path)
 
         # Set one object outside the expiry window
-        r = FileDownloadToken.objects.all()[2]
+        EXPIRY_TOKEN_INDEX = 2
+        r = FileDownloadToken.objects.all()[EXPIRY_TOKEN_INDEX]
         r.created = after - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1)
         r.save()
 
         result = FileDownloadToken.get_paths(self.job, tokens)
 
         for i, tk in enumerate(fd_tokens):
-            if i == 2:
+            if i == EXPIRY_TOKEN_INDEX:
                 self.assertEqual(result[i], None)
             else:
                 self.assertEqual(result[i], tk.path)
