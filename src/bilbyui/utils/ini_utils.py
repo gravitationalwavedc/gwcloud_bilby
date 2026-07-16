@@ -34,6 +34,13 @@ def bilby_ini_string_to_args(ini):
 
 
 def bilby_args_to_ini_string(args):
+    """
+    Serializes an argument Namespace into an ini content string
+
+    :param args: The argument Namespace to serialize
+    :return: A string containing the serialized ini content of the arguments
+    """
+
     # Create an argument parser
     parser = create_parser()
 
