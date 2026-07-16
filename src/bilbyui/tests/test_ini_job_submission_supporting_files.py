@@ -573,7 +573,7 @@ class TestIniJobSubmission(BilbyTestCase):
     @silence_errors
     def test_download_supporting_files_invalid_token(self):
         # Test that using an invalid token raises an error
-        response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={str(uuid.uuid4())}")
+        response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={uuid.uuid4()!s}")
         self.assertEqual(response.status_code, 404)
 
     def test_download_supporting_files_valid_token_force_download(self):
