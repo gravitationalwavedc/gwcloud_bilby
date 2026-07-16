@@ -178,7 +178,7 @@ class BilbyJobNode(DjangoObjectType):
 
         try:
             status_number, status_name, status_date = derive_job_status(
-                info.context.job_controller_jobs.get(parent.job_controller_id, None)["history"]
+                info.context.job_controller_jobs.get(parent.job_controller_id)["history"]
             )
 
             return {
