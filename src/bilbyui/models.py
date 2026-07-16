@@ -633,7 +633,7 @@ class FileDownloadToken(models.Model):
         objects = {str(rec.token): rec.path for rec in cls.objects.filter(job=job, token__in=tokens)}
 
         # Generate the list and return
-        return [objects[str(tok)] if str(tok) in objects else None for tok in tokens]
+        return [objects.get(str(tok)) for tok in tokens]
 
 
 class BilbyJobUploadToken(models.Model):
