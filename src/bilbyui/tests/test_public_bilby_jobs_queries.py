@@ -438,7 +438,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 elif time_range == "1y":
                     delta = timedelta(days=365)
 
-                regex = re.compile('job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')  # noqa: W605
+                regex = re.compile('job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')
                 _from, to = regex.search(elasticsearch_search.mock_calls[-1].kwargs["q"]).groups()
 
                 _from = datetime.fromisoformat(_from)
@@ -490,7 +490,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             "publicBilbyJobs query returned unexpected data.",
         )
 
-        regex = re.compile('job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')  # noqa: W605
+        regex = re.compile('job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')
         _from, to = regex.search(elasticsearch_search.mock_calls[-1].kwargs["q"]).groups()
 
         _from = datetime.fromisoformat(_from)
