@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 
@@ -48,7 +49,7 @@ def parse_ini_file(job, ini_key_value_klass=None):
             while key.startswith("_"):
                 key = key[1:]
 
-            try:
+            with contextlib.suppress(Exception):
                 val = getattr(processed_args, key)
 
                 items.append(
@@ -56,8 +57,6 @@ def parse_ini_file(job, ini_key_value_klass=None):
                         job=job, key=key, value=json.dumps(val), index=idx, processed=True
                     )
                 )
-            except Exception:
-                pass
 
     except Exception as e:
         logger.error(f"Error parsing INI file for job {job.id}: {e}", exc_info=True)
