@@ -11,6 +11,8 @@ from bilbyui.utils.misc import check_request_leak_decorator
 
 logger = logging.getLogger(__name__)
 
+HTTP_OK = 200
+
 
 def _make_job_controller_request(method, url, user_id, data=None, jwt_expiry=None):
     """
@@ -41,7 +43,7 @@ def _make_job_controller_request(method, url, user_id, data=None, jwt_expiry=Non
 
     result = requests.request(method, url, **kwargs)
 
-    if result.status_code != 200:
+    if result.status_code != HTTP_OK:
         msg = f"Job controller returned {result.status_code}: {result.content}"
         logger.error(msg)
         raise Exception(msg)
