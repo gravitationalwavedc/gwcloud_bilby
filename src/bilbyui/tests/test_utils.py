@@ -18,7 +18,7 @@ def parse_test_ini(ini):
     # Iterate over the parsed ini configuration and generate a result dict
     result = {}
     for idx, key in enumerate(vars(args)):
-        result[key] = dict(value=getattr(args, key), index=idx)
+        result[key] = {"value": getattr(args, key), "index": idx}
 
     return result
 
