@@ -130,15 +130,15 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
     def query(self, *args, **kwargs):
         response = super().query(*args, **kwargs)
         response_json = response.json()
-        response.data = response_json["data"] if "data" in response_json else None
-        response.errors = response_json["errors"] if "errors" in response_json else None
+        response.data = response_json.get("data")
+        response.errors = response_json.get("errors")
         return response
 
     def file_query(self, *args, **kwargs):
         response = super().file_query(*args, **kwargs)
         response_json = response.json()
-        response.data = response_json["data"] if "data" in response_json else None
-        response.errors = response_json["errors"] if "errors" in response_json else None
+        response.data = response_json.get("data")
+        response.errors = response_json.get("errors")
         return response
 
     def get_upload_token(self):
