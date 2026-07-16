@@ -90,3 +90,8 @@ class TestParseJobRef(BilbyTestCase):
     def test_malformed_relay_id_raises_404(self):
         with self.assertRaises(Http404):
             parse_job_ref("not-a-valid-relay-id")
+
+    def test_from_global_id_exception_raises_404(self):
+        with mock.patch("bilbyui.utils.job_ref.from_global_id", side_effect=ValueError("bad")):
+            with self.assertRaises(Http404):
+                parse_job_ref("some-relay-id")
