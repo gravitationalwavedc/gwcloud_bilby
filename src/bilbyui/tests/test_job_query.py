@@ -510,11 +510,4 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.assertDictEqual(response.data, expected, "bilbyJobs query returned unexpected data.")
 
         # Check that all ids provided to request_job_filter_mock were integers
-        self.assertTrue(
-            all(
-                map(
-                    lambda x: isinstance(x, int),
-                    request_job_filter_mock.call_args[1]["ids"],
-                )
-            )
-        )
+        self.assertTrue(all(isinstance(x, int) for x in request_job_filter_mock.call_args[1]["ids"]))
