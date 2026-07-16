@@ -238,6 +238,7 @@ sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100,
         # Generate the output params. Bilby raises if the decimal parser is not updated to handle the rwalk sample case.
         generate_parameter_output(job)
 
+class TestRequestLookupUsersMock(BilbyTestCase):
     @patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_request_lookup_users_mock_branch(self, lookup_users_mock):
         # Exercise the unused lookup-users mock helper so both its branches are covered
@@ -249,7 +250,6 @@ sampler-kwargs={'queue_size': 4, 'nlive': 2000, 'sample': 'rwalk', 'walks': 100,
         success, users = lookup_users_mock()
         self.assertFalse(success)
         self.assertEqual(users, [])
-
     def test_generate_parameter_output_data_generation_input_requires_idx(self):
         # Regression: bilby-pipe DataGenerationInput.generation_seed setter asserts self.idx is not None
         # when args.generation_seed is set. We must pass idx=0. Including generation-seed in the ini
