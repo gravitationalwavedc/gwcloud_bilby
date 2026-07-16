@@ -8,6 +8,7 @@ def derive_job_status(history):
     Takes a job history returned from the job controller and turns it into a final status
 
     :param history: The job history object returned from the job controller
+    :returns: A tuple of (state, display_name, timestamp) for the most recent job status
     """
 
     history_items = []
