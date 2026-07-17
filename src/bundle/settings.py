@@ -17,6 +17,6 @@ condor_accounting_user = "no.one"
 default_working_directory = "/"
 
 try:
-    from local import *  # noqa: F401, F403
+    from local import *
 except Exception:
     pass
