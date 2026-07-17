@@ -620,3 +620,25 @@ class TestSupportingFile(BilbyTestCase):
 
         # Now the supporting file should be returned by get_by_download_token
         self.assertEqual(SupportingFile.get_by_download_token(sf.download_token).id, sf.id)
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class TestBilbyJobHasSupportingFiles(BilbyTestCase):
+    def setUp(self):
+        self.user = self.create_user()
+        self.job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Test_Job",
+            description="Test job description",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+    def test_false_when_no_supporting_files(self):
+        # A job with no supporting files must report has_supporting_files as False
+        self.assertFalse(self.job.has_supporting_files())
+
+    def test_true_once_supporting_file_added(self):
+        # Once a supporting file record exists for the job, has_supporting_files must be True
+        SupportingFile.objects.create(job=self.job, file_type=SupportingFile.PSD, file_name="H1_psd.txt")
+        self.assertTrue(self.job.has_supporting_files())
