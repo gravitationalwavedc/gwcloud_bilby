@@ -63,5 +63,4 @@ class JobStatus:
             return "Out of Memory"
         if status == JobStatus.COMPLETED:
             return "Completed"
-        else:
-            return "Unknown"
+        return "Unknown"
