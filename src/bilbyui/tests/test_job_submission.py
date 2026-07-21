@@ -40,7 +40,6 @@ class TestJobSubmission(BilbyTestCase):
                         "description": "Test description 1234",
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": "simulated",
                         "triggerTime": "1126259462.391",
@@ -63,10 +62,7 @@ class TestJobSubmission(BilbyTestCase):
                         "duration": "4",
                         "samplingFrequency": "512",
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": 1000,
                         "nact": 10,
@@ -234,7 +230,6 @@ class TestJobSubmission(BilbyTestCase):
                         "description": "real Test description 1234",
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": "real",
                         "triggerTime": "1126259562.391",
@@ -257,10 +252,7 @@ class TestJobSubmission(BilbyTestCase):
                         "duration": "4",
                         "samplingFrequency": "512",
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": 1000,
                         "nact": 10,
@@ -446,7 +438,6 @@ class TestJobSubmission(BilbyTestCase):
                         "description": "Test description 1122",
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": "simulated",
                         "triggerTime": "1126259462.391",
@@ -469,10 +460,7 @@ class TestJobSubmission(BilbyTestCase):
                         "duration": "4",
                         "samplingFrequency": "512",
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": 1000,
                         "nact": 10,
@@ -577,7 +565,6 @@ class TestJobSubmission(BilbyTestCase):
                         "description": "real Test description 1234",
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": "real",
                         "triggerTime": "1126259562.391",
@@ -601,10 +588,7 @@ class TestJobSubmission(BilbyTestCase):
                         "duration": "4",
                         "samplingFrequency": "512",
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": 1000,
                         "nact": 10,
@@ -664,7 +648,6 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
                         "description": "Test description 1234",
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": "simulated",
                         "triggerTime": "1126259462.391",
@@ -687,10 +670,7 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
                         "duration": "4",
                         "samplingFrequency": "512",
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": 1000,
                         "nact": 10,
