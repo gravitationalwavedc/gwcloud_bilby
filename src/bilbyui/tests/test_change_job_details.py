@@ -85,7 +85,7 @@ class TestChangeJobDetails(BilbyTestCase):
         """
         change_job_input = {
             "jobId": self.global_job_id,
-            "name": "aa" * BilbyJob._meta.get_field("name").max_length,  # noqa: SLF001
+            "name": "aa" * BilbyJob._meta.get_field("name").max_length,
             "description": "New job description",
         }
 
