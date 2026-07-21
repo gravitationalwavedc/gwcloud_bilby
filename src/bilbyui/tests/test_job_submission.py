@@ -746,7 +746,7 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
 
         self.assertEqual(
             response.errors[0]["message"],
-            "Job name must be less than 255 characters long.",
+            "Job name must be at most 255 characters long.",
         )
 
     @silence_errors
@@ -784,12 +784,12 @@ class TestJobNameValidation(testcases.TestCase):
         with self.assertRaises(Exception) as ex:
             validate_job_name("a" * (BilbyJob._meta.get_field("name").max_length + 1))  # noqa: SLF001
 
-        self.assertEqual(str(ex.exception), "Job name must be less than 255 characters long.")
+        self.assertEqual(str(ex.exception), "Job name must be at most 255 characters long.")
 
         with self.assertRaises(Exception) as ex:
             validate_job_name("a" * 3000)
 
-        self.assertEqual(str(ex.exception), "Job name must be less than 255 characters long.")
+        self.assertEqual(str(ex.exception), "Job name must be at most 255 characters long.")
 
         # Test valid name length
         try:
