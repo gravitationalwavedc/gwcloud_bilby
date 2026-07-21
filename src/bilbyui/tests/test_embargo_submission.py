@@ -25,7 +25,6 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
                     "description": "Test description 1234",
                     "private": True,
                 },
-                # "calibration": None,
                 "data": {
                     "dataChoice": "real",
                     "triggerTime": "1126259462.391",
@@ -48,10 +47,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
                     "duration": "4",
                     "samplingFrequency": "512",
                 },
-                # "injection": {},
-                # "likelihood": {},
                 "prior": {"priorDefault": "4s"},
-                # "postProcessing": {},
                 "sampler": {
                     "nlive": 1000,
                     "nact": 10,
