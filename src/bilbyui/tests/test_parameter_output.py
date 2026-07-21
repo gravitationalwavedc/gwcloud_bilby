@@ -36,12 +36,6 @@ class TestJobSubmission(BilbyTestCase):
         self.user = self.create_user()
         self.authenticate()
 
-    def request_lookup_users_mock(*args, **kwargs):
-        user = User.objects.first()
-        if user:
-            return True, [{"id": user.id, "name": "buffy summers"}]
-        return False, []
-
     @patch("bilbyui.schema.request_job_filter")
     @patch("bilbyui.models.submit_job")
     def test_generate_parameter_output(self, mock_api_call, mock_request_job_filter, *args):
