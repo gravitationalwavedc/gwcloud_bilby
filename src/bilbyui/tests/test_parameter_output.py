@@ -6,7 +6,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 
 from bilbyui.models import BilbyJob
-from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.tests.testcases import BilbyTestCase, User
 from bilbyui.utils.gen_parameter_output import generate_parameter_output, to_dec
 
 User = get_user_model()
@@ -22,6 +22,13 @@ def rand_float(start, end, places=4):
 
 def rand_string(num_chars):
     return "".join(random.choices(string.ascii_lowercase + string.ascii_uppercase + string.digits, k=num_chars))
+
+
+def request_lookup_users_mock(*args, **kwargs):
+    user = User.objects.first()
+    if user:
+        return True, [{"id": user.id, "name": "buffy summers"}]
+    return False, []
 
 
 class TestJobSubmission(BilbyTestCase):
