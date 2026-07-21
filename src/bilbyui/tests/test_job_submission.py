@@ -734,7 +734,7 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
 
     @silence_errors
     def test_invalid_job_name_too_long(self):
-        self.params["input"]["params"]["details"]["name"] = "aa" * BilbyJob._meta.get_field("name").max_length  # noqa: SLF001
+        self.params["input"]["params"]["details"]["name"] = "aa" * BilbyJob._meta.get_field("name").max_length
 
         response = self.query(self.mutation_string, input_data=self.params["input"])
 
@@ -782,7 +782,7 @@ class TestJobNameValidation(testcases.TestCase):
 
         # Test name too long
         with self.assertRaises(Exception) as ex:
-            validate_job_name("a" * (BilbyJob._meta.get_field("name").max_length + 1))  # noqa: SLF001
+            validate_job_name("a" * (BilbyJob._meta.get_field("name").max_length + 1))
 
         self.assertEqual(str(ex.exception), "Job name must be less than 255 characters long.")
 
@@ -793,7 +793,7 @@ class TestJobNameValidation(testcases.TestCase):
 
         # Test valid name length
         try:
-            for i in range(5, BilbyJob._meta.get_field("name").max_length):  # noqa: SLF001
+            for i in range(5, BilbyJob._meta.get_field("name").max_length):
                 validate_job_name("a" * i)
         except Exception:
             self.fail("validate_job_name raised an exception when it should not have")
