@@ -6,16 +6,11 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 
 from bilbyui.models import BilbyJob
-from bilbyui.tests.testcases import BilbyTestCase, User
+from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gen_parameter_output import generate_parameter_output, to_dec
 
 User = get_user_model()
 
-def request_lookup_users_mock(*args, **kwargs):
-    user = User.objects.first()
-    if user:
-        return True, [{"id": user.id, "name": "buffy summers"}]
-    return False, []
 
 def rand_int(start, end):
     return random.randrange(start, end, 1)
