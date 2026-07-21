@@ -12,14 +12,13 @@ from bilbyui.tests.testcases import BilbyTestCase
 
 def request_job_filter_mock(*args, **kwargs):
     requested_ids = set(kwargs.get("ids", []))
-    jobs = []
-    for job in BilbyJob.objects.filter(job_controller_id__in=requested_ids):
-        jobs.append(
-            {
-                "id": job.job_controller_id,
-                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
-            }
-        )
+    jobs = [
+        {
+            "id": job.job_controller_id,
+            "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+        }
+        for job in BilbyJob.objects.filter(job_controller_id__in=requested_ids)
+    ]
 
     return True, jobs
 
