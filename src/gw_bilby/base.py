@@ -10,12 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
-import os
+from pathlib import Path
 
 from django.urls import reverse_lazy
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Build paths inside the project like this: BASE_DIR / ...
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
@@ -66,7 +66,7 @@ ROOT_URLCONF = "gw_bilby.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, "templates")],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -89,7 +89,7 @@ WSGI_APPLICATION = "gw_bilby.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+        "NAME": str(BASE_DIR / "db.sqlite3"),
     }
 }
 
@@ -128,10 +128,10 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static/"),
+    BASE_DIR / "static/",
 ]
 
 STORAGES = {
@@ -181,19 +181,19 @@ UPLOAD_SUPPORTING_FILE_EXPIRY = 60 * 60 * 24
 FILE_DOWNLOAD_TOKEN_EXPIRY = 60 * 60 * 24
 
 # The path to where external storage is mounted
-EXTERNAL_STORAGE_PATH = "/job_data"
+EXTERNAL_STORAGE_PATH = Path("/job_data")
 
 # Where uploaded jobs are staged (unpacked) for checking validity of uploaded jobs
-JOB_UPLOAD_STAGING_DIR = os.path.join(EXTERNAL_STORAGE_PATH, "staging")
+JOB_UPLOAD_STAGING_DIR = EXTERNAL_STORAGE_PATH / "staging"
 
 # Where valid jobs are permanently stored
-JOB_UPLOAD_DIR = os.path.join(EXTERNAL_STORAGE_PATH, "jobs")
+JOB_UPLOAD_DIR = EXTERNAL_STORAGE_PATH / "jobs"
 
 # Where django should store temporary file uploads on disk
-FILE_UPLOAD_TEMP_DIR = os.path.join(EXTERNAL_STORAGE_PATH, "upload")
+FILE_UPLOAD_TEMP_DIR = EXTERNAL_STORAGE_PATH / "upload"
 
 # Where supporting files are permanently stored
-SUPPORTING_FILE_UPLOAD_DIR = os.path.join(EXTERNAL_STORAGE_PATH, "supporting_files")
+SUPPORTING_FILE_UPLOAD_DIR = EXTERNAL_STORAGE_PATH / "supporting_files"
 
 # Which clusters are able to be submitted to
 CLUSTERS = ["ozstar"]
