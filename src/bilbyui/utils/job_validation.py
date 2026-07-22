@@ -13,7 +13,7 @@ def validate_job_name(name):
 
     max_len = BilbyJob._meta.get_field("name").max_length
     # this one is enforced by the database field's max_length
-if len(name) > max_len:
+    if len(name) > max_len:
         msg = f"Job name must be less than {max_len} characters long."
         raise Exception(msg)
 
