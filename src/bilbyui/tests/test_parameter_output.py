@@ -19,7 +19,6 @@ def request_lookup_users_mock(*args, **kwargs):
     return False, []
 
 
-
 def rand_int(start, end):
     return random.randrange(start, end, 1)
 
