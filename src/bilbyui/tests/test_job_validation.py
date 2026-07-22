@@ -13,7 +13,7 @@ class TestValidateJobName(BilbyTestCase):
         max_len = BilbyJob._meta.get_field("name").max_length
         with self.assertRaises(Exception) as ctx:
             validate_job_name("a" * (max_len + 1))
-        self.assertEqual(str(ctx.exception), f"Job name must be at most {max_len} characters long.")
+        self.assertEqual(str(ctx.exception), f"Job name must be less than {max_len} characters long.")
 
     def test_rejects_invalid_characters(self):
         with self.assertRaises(Exception) as ctx:
