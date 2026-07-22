@@ -118,14 +118,13 @@ class TestAnonymousMetrics(LiveServerTestCase):
         return {"hits": {"hits": jobs}}
 
     def request_job_filter_mock(*args, **kwargs):
-        jobs = []
-        for job in BilbyJob.objects.filter(user_id=1):
-            jobs.append(
-                {
-                    "id": job.job_controller_id,
-                    "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
-                }
-            )
+        jobs = [
+            {
+                "id": job.job_controller_id,
+                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+            }
+            for job in BilbyJob.objects.filter(user_id=1)
+        ]
 
         return True, jobs
 
