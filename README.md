@@ -120,17 +120,19 @@ DJANGO_SETTINGS_MODULE=gw_bilby.build poetry run python manage.py <command>
 
 ```bash
 # Run all tests with test settings
-DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test
 
 # Run specific test module
-DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.test_models
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.test_models
 
 # Run with coverage
-cd src && poetry run bash run_coverage.sh
+cd src && bash run_coverage.sh --parallel
 
 # Run without coverage
-cd src && poetry run bash run_tests.sh
+cd src && bash run_tests.sh
 ```
+
+**Note:** The shell scripts (`run_coverage.sh`, `run_tests.sh`) set `DJANGO_SETTINGS_MODULE` internally. For direct `manage.py test` calls, specify `DJANGO_SETTINGS_MODULE=gw_bilby.test` explicitly.
 
 ### Styles
 
