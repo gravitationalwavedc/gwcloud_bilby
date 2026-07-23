@@ -77,7 +77,12 @@ class TestStatus(TestCase):
     @patch("scheduler.slurm.SlurmScheduler.status")
     @patch.object(settings, "scheduler", EScheduler.SLURM)
     def test_status_slurm_submit_error(
-        self, status_mock, path_exists_mock, get_job_by_id_mock, update_job_mock, delete_job_mock,
+        self,
+        status_mock,
+        path_exists_mock,
+        get_job_by_id_mock,
+        update_job_mock,
+        delete_job_mock,
     ):
         path_exists_mock.side_effect = Mock(return_value=False)
 

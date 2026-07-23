@@ -48,6 +48,16 @@ source venv/bin/activate
 pytest tests/
 ```
 
+### Ruff Lint
+
+```bash
+# Check for auto-fixable issues (CI check)
+micromamba run -p venv --root-prefix ~/.local/share/mamba ruff check --select ALL --fix --exit-non-zero-on-fix --ignore PT009 --ignore PT027 .
+
+# Auto-fix
+micromamba run -p venv --root-prefix ~/.local/share/mamba ruff check --select ALL --fix --ignore PT009 --ignore PT027 .
+```
+
 ### Pip packages
 
 ```

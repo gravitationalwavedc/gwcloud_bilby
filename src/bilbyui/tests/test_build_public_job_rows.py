@@ -49,7 +49,9 @@ class TestBuildPublicJobRows(BilbyTestCase):
     def test_normal_job_statuses(self):
         with_controller = self._create_job(job_type=BilbyJobType.NORMAL)
         without_controller = self._create_job(
-            name="No controller", job_controller_id=1002, job_type=BilbyJobType.NORMAL,
+            name="No controller",
+            job_controller_id=1002,
+            job_type=BilbyJobType.NORMAL,
         )
         controller_jobs = {
             with_controller.id: {"history": [{"state": JobStatus.COMPLETED, "timestamp": "2020-01-01"}]},

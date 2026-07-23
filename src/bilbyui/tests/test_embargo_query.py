@@ -83,8 +83,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_embargoed_user_embargo_single_query(self, *args):
-        """Checks that non-ligo and anonymous users will not receive jobs subject to embargo
-        """
+        """Checks that non-ligo and anonymous users will not receive jobs subject to embargo"""
         for _ in range(2):
             for data in self.job_data[:2]:
                 response = self.job_request(data)
@@ -101,8 +100,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_ligo_user_embargo_single_query(self, *args):
-        """Checks that ligo users will receive all jobs
-        """
+        """Checks that ligo users will receive all jobs"""
         self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
         for data in self.job_data:
             response = self.job_request(data)
@@ -129,8 +127,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_ligo_user_embargo_query(self, *args):
-        """Checks that ligo users will receive all jobs
-        """
+        """Checks that ligo users will receive all jobs"""
         self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
         response = self.jobs_request()
         expected = {"bilbyJobs": {"edges": [{"node": camelize(data)} for data in self.job_data[::-1]]}}

@@ -5,8 +5,7 @@ from .status import JobStatus
 
 
 class SlurmScheduler(Scheduler):
-    """Slurm scheduler
-    """
+    """Slurm scheduler"""
 
     SLURM_STATUS = {
         "BOOT_FAIL": "Job terminated due to launch failure, typically due to a hardware failure (e.g. unable to boot "

@@ -50,7 +50,11 @@ def parse_ini_file(job, ini_key_value_klass=None):
 
                 items.append(
                     (ini_key_value_klass or IniKeyValue)(
-                        job=job, key=stripped_key, value=json.dumps(val), index=idx, processed=True,
+                        job=job,
+                        key=stripped_key,
+                        value=json.dumps(val),
+                        index=idx,
+                        processed=True,
                     ),
                 )
             except Exception as e:

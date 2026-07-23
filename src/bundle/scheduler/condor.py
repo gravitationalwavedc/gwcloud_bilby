@@ -7,8 +7,7 @@ from .status import JobStatus
 
 
 class CondorScheduler(Scheduler):
-    """Condor scheduler
-    """
+    """Condor scheduler"""
 
     def submit(self, script, working_directory):
         """Submits a script using the provided working directory

@@ -448,7 +448,13 @@ def create_bilby_job_from_ini_string(user, params):
 
     # Parse any supporting files
     supporting_files = parse_supporting_files(
-        parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict,
+        parser,
+        args,
+        prior_file,
+        gps_file,
+        timeslide_file,
+        injection_file,
+        psd_dict,
     )
 
     # Override any required fields
@@ -596,7 +602,13 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
         # Parse any supporting files
         supporting_files = parse_supporting_files(
-            parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict,
+            parser,
+            args,
+            prior_file,
+            gps_file,
+            timeslide_file,
+            injection_file,
+            psd_dict,
         )
 
         # Convert the modified arguments back to an ini string

@@ -25,12 +25,17 @@ INI_BASE = (
 class TestGenerateParameterOutput(BilbyTestCase):
     def setUp(self):
         self.user, _ = User.objects.update_or_create(
-            id=1, defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
         )
 
     def _make_job(self, ini_string, name="test-job"):
         return BilbyJob.objects.create(
-            user_id=self.user.id, name=name, description="test", private=False, ini_string=ini_string,
+            user_id=self.user.id,
+            name=name,
+            description="test",
+            private=False,
+            ini_string=ini_string,
         )
 
     def test_to_dec(self):

@@ -153,7 +153,8 @@ class TestIniJobSubmission(BilbyTestCase):
             for idx, token in enumerate(tokens):
                 input_data["supportingFiles"].append({"fileToken": str(token), "supportingFile": None})
                 files[f"input.supportingFiles.{idx}.supportingFile"] = SimpleUploadedFile(
-                    name="test.tar.gz", content=content.encode("utf-8"),
+                    name="test.tar.gz",
+                    content=content.encode("utf-8"),
                 )
 
             response = self.file_query(

@@ -500,7 +500,8 @@ class TestJobUpload(BilbyTestCase):
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.name, test_name)
         self.assertFalse(
-            job.is_ligo_job, "Simulated data job should not be marked as LIGO job even with embargoed trigger time",
+            job.is_ligo_job,
+            "Simulated data job should not be marked as LIGO job even with embargoed trigger time",
         )
 
 

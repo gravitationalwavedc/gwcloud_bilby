@@ -258,19 +258,18 @@ class BilbyJob(models.Model):
         removal_time = timezone.now() - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY)
 
         expired_supporting_file_job_ids = SupportingFile.objects.filter(
-            job__creation_time__lt=removal_time, upload_token__isnull=False,
+            job__creation_time__lt=removal_time,
+            upload_token__isnull=False,
         )
 
         cls.objects.filter(id__in=expired_supporting_file_job_ids).delete()
 
     def get_upload_directory(self):
-        """Returns the upload directory of the job - only relevant to uploaded jobs.
-        """
+        """Returns the upload directory of the job - only relevant to uploaded jobs."""
         return os.path.join(settings.JOB_UPLOAD_DIR, str(self.id))
 
     def has_supporting_files(self):
-        """Checks if this job has any supporting files
-        """
+        """Checks if this job has any supporting files"""
         return self.supportingfile_set.exists()
 
     def submit(self):
@@ -307,8 +306,7 @@ class BilbyJob(models.Model):
         return request_file_list(self, path, recursive)
 
     def as_dict(self):
-        """Converts this job into a dictionary that can be submitted to the bundle for submission
-        """
+        """Converts this job into a dictionary that can be submitted to the bundle for submission"""
         # Iterate over any supporting files and generate the supporting file details
         supporting_file_details = []
         for supporting_file in self.supportingfile_set.all():
@@ -329,8 +327,7 @@ class BilbyJob(models.Model):
         }
 
     def elastic_search_update(self):
-        """Updates this bilby job entry in elastic search
-        """
+        """Updates this bilby job entry in elastic search"""
         if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
             return
         # Jobs with no ini_string (legacy/interrupted) have no parsed params to index
@@ -379,8 +376,7 @@ class BilbyJob(models.Model):
             es.index(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, document=doc)
 
     def elastic_search_remove(self):
-        """Deletes the elastic search record for this job
-        """
+        """Deletes the elastic search record for this job"""
         if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
             return
 
@@ -519,8 +515,7 @@ class SupportingFile(models.Model):
 
     @classmethod
     def get_unuploaded_supporting_files(cls, job):
-        """Retrieves all supporting files that have not yet been uploaded for the specified job
-        """
+        """Retrieves all supporting files that have not yet been uploaded for the specified job"""
         return SupportingFile.objects.filter(job=job, upload_token__isnull=False)
 
     @classmethod
@@ -565,8 +560,7 @@ class FileDownloadToken(models.Model):
 
     @classmethod
     def get_by_token(cls, token):
-        """Returns the instance matching the specified token, or None if expired or not found
-        """
+        """Returns the instance matching the specified token, or None if expired or not found"""
         # First prune any old tokens which may have expired
         cls.prune()
 
@@ -588,8 +582,7 @@ class FileDownloadToken(models.Model):
 
     @classmethod
     def prune(cls):
-        """Removes any expired tokens from the database
-        """
+        """Removes any expired tokens from the database"""
         cls.objects.filter(
             created__lt=timezone.now() - datetime.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY),
         ).delete()
@@ -630,8 +623,7 @@ class BilbyJobUploadToken(models.Model):
 
     @classmethod
     def get_by_token(cls, token):
-        """Returns the instance matching the specified token, or None if expired or not found
-        """
+        """Returns the instance matching the specified token, or None if expired or not found"""
         # First prune any old tokens which may have expired
         cls.prune()
 
@@ -644,8 +636,7 @@ class BilbyJobUploadToken(models.Model):
 
     @classmethod
     def create(cls, user):
-        """Creates a BilbyJobUploadToken object
-        """
+        """Creates a BilbyJobUploadToken object"""
         # First prune any old tokens which may have expired
         cls.prune()
 
@@ -654,16 +645,14 @@ class BilbyJobUploadToken(models.Model):
 
     @classmethod
     def prune(cls):
-        """Removes any expired tokens from the database
-        """
+        """Removes any expired tokens from the database"""
         cls.objects.filter(
             created__lt=timezone.now() - datetime.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY),
         ).delete()
 
 
 class AnonymousMetrics(models.Model):
-    """Used to track information about anonymous users accessing the system for reporting purposes.
-    """
+    """Used to track information about anonymous users accessing the system for reporting purposes."""
 
     # The public (Persistent) user identifier
     public_id = models.UUIDField()

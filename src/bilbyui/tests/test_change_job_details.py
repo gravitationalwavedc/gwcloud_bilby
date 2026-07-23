@@ -60,8 +60,7 @@ class TestChangeJobDetails(BilbyTestCase):
 
     @silence_errors
     def test_change_job_name_symbols(self):
-        """Try to update a bilby job with a name that contains symbols
-        """
+        """Try to update a bilby job with a name that contains symbols"""
         change_job_input = {
             "jobId": self.global_job_id,
             "name": "Test_job$",
@@ -78,8 +77,7 @@ class TestChangeJobDetails(BilbyTestCase):
 
     @silence_errors
     def test_change_job_name_too_long(self):
-        """Try to update a bilby job with a name that is too long
-        """
+        """Try to update a bilby job with a name that is too long"""
         change_job_input = {
             "jobId": self.global_job_id,
             "name": "aa" * BilbyJob._meta.get_field("name").max_length,
@@ -96,8 +94,7 @@ class TestChangeJobDetails(BilbyTestCase):
 
     @silence_errors
     def test_change_job_name_too_short(self):
-        """Try to update a bilby job with a name that is too short
-        """
+        """Try to update a bilby job with a name that is too short"""
         change_job_input = {
             "jobId": self.global_job_id,
             "name": "a",

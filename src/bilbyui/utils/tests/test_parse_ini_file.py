@@ -52,17 +52,22 @@ label=my-awesome-job"""
 
         # Double check that the k/v's were correctly created
         self.assertEqual(
-            IniKeyValue.objects.filter(job=self.job, key="pn_phase_order", value="12345", processed=False).count(), 1,
+            IniKeyValue.objects.filter(job=self.job, key="pn_phase_order", value="12345", processed=False).count(),
+            1,
         )
         self.assertEqual(
-            IniKeyValue.objects.filter(job=self.job, key="pn_phase_order", value="12345", processed=True).count(), 1,
+            IniKeyValue.objects.filter(job=self.job, key="pn_phase_order", value="12345", processed=True).count(),
+            1,
         )
         self.assertEqual(
-            IniKeyValue.objects.filter(job=self.job, key="n_parallel", value="5432", processed=False).count(), 1,
+            IniKeyValue.objects.filter(job=self.job, key="n_parallel", value="5432", processed=False).count(),
+            1,
         )
         self.assertEqual(
-            IniKeyValue.objects.filter(job=self.job, key="label", value='"my-awesome-job"', processed=False).count(), 1,
+            IniKeyValue.objects.filter(job=self.job, key="label", value='"my-awesome-job"', processed=False).count(),
+            1,
         )
         self.assertEqual(
-            IniKeyValue.objects.filter(job=self.job, key="label", value='"my-awesome-job"', processed=True).count(), 1,
+            IniKeyValue.objects.filter(job=self.job, key="label", value='"my-awesome-job"', processed=True).count(),
+            1,
         )

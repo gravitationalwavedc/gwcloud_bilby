@@ -104,6 +104,28 @@ poetry run python manage.py runserver 8001 --settings=gw_bilby.dev
 # or: . .venv/bin/activate && python manage.py runserver 8001 --settings=gw_bilby.dev
 ```
 
+## Code Quality
+
+### Ruff Lint
+
+The project uses `ruff` with the `ALL` rule selection for comprehensive linting. CI checks that all auto-fixable issues are resolved:
+
+```bash
+# From project root
+src/.venv/bin/ruff check --select ALL --fix --exit-non-zero-on-fix --ignore PT009 --ignore PT027 src/
+src/.venv/bin/ruff check --select ALL --fix --exit-non-zero-on-fix --ignore PT009 --ignore PT027 gwosc_cron/
+```
+
+- `--select ALL`: Check all available rules
+- `--fix`: Apply auto-fixes
+- `--exit-non-zero-on-fix`: Fail if any files were modified (catches new issues)
+- `--ignore PT009 PT027`: Skip pytest-specific rules (project uses unittest)
+
+To auto-fix locally:
+```bash
+src/.venv/bin/ruff check --select ALL --fix --ignore PT009 --ignore PT027 src/
+```
+
 ### Settings Files
 
 The project uses separate settings files for different environments. **You must explicitly specify which settings to use** with every `manage.py` command:

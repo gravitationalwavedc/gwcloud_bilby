@@ -141,8 +141,7 @@ class TestElasticSearch(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_update_document(self, lookup_users_mock, elasticsearch_update_mock):
-        """Test that update is called with the expected document
-        """
+        """Test that update is called with the expected document"""
         from bilbyui.models import BilbyJob
 
         job = BilbyJob.objects.create(
@@ -249,8 +248,7 @@ class TestElasticSearch(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_delete_remove_document(self, request_lookup_users, elastic_search_update, elastic_search_delete):
-        """Test that when a bilby job is deleted, the elastic search record is also deleted
-        """
+        """Test that when a bilby job is deleted, the elastic search record is also deleted"""
         from bilbyui.models import BilbyJob
 
         job = BilbyJob.objects.create(

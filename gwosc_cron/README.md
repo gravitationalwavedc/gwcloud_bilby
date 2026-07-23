@@ -27,6 +27,16 @@ cd gwosc_cron/
 poetry run coverage report
 ```
 
+### Ruff Lint
+
+```bash
+# Check for auto-fixable issues (CI check)
+gwosc_cron/.venv/bin/ruff check --select ALL --fix --exit-non-zero-on-fix --ignore PT009 --ignore PT027 gwosc_cron/
+
+# Auto-fix
+gwosc_cron/.venv/bin/ruff check --select ALL --fix --ignore PT009 --ignore PT027 gwosc_cron/
+```
+
 ## Log files
 
 The logs for the ingest script can be publicly accessed at [https://gwcloud.org.au/gwosc_ingest/gwosc_ingest.log]. It details all runs of the scripts, including any potential failure states.
