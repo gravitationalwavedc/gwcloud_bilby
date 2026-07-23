@@ -5,8 +5,8 @@ from unittest import TestCase
 
 import htcondor
 
-from scheduler.status import JobStatus
 from scheduler.condor import CondorScheduler
+from scheduler.status import JobStatus
 
 
 class TestCondor(TestCase):
