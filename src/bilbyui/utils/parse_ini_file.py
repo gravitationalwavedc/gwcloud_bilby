@@ -6,6 +6,15 @@ from bilbyui.utils.ini_utils import bilby_ini_string_to_args
 logger = logging.getLogger(__name__)
 
 
+class BilbyJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles common non-serializable types from bilby."""
+
+    def default(self, obj):
+        if isinstance(obj, type):
+            return obj.__name__
+        return str(obj)
+
+
 def parse_ini_file(job, ini_key_value_klass=None):
     """
     Parses the ini file from a job and generates a full set of ini key/value model instances
@@ -45,19 +54,13 @@ def parse_ini_file(job, ini_key_value_klass=None):
         processed_args = bilby_ini_args_to_data_input(args)
 
         for idx, key in enumerate(vars(processed_args)):
-            stripped_key = key.lstrip("_")
+            val = getattr(processed_args, key)
 
-            try:
-                val = getattr(processed_args, stripped_key)
-
-                items.append(
-                    (ini_key_value_klass or IniKeyValue)(
-                        job=job, key=stripped_key, value=json.dumps(val), index=idx, processed=True
-                    )
+            items.append(
+                (ini_key_value_klass or IniKeyValue)(
+                    job=job, key=key, value=json.dumps(val, cls=BilbyJSONEncoder), index=idx, processed=True
                 )
-            except Exception as e:
-                logger.error(f"Error parsing INI file for job {job.id}: {e}", exc_info=True)
-
+            )
     except Exception as e:
         logger.error(f"Error parsing INI file for job {job.id}: {e}", exc_info=True)
 
