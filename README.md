@@ -86,7 +86,7 @@ In order to fetch results or file lists you will need to have access to the *pro
 The `src/bundle/` directory contains a separate Python environment used for running bilby jobs. This environment is **independent** of:
 
 - The Poetry environment used by the webapp (`src/`)
-- Any environment used by `gwosc` or `cbc` ingest scripts
+- Any environment used by ingest scripts (e.g. `gwosc_cron/`)
 
 To set up the bundle environment, see [`src/bundle/README.md`](src/bundle/README.md).
 
