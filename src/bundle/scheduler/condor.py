@@ -2,7 +2,7 @@ from pathlib import Path
 
 import htcondor
 
-from bilbyui.status import JobStatus
+from scheduler.status import JobStatus
 
 from .scheduler import Scheduler
 
