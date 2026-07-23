@@ -1,7 +1,8 @@
 import subprocess
 
+from bilbyui.status import JobStatus
+
 from .scheduler import Scheduler
-from .status import JobStatus
 
 
 class SlurmScheduler(Scheduler):

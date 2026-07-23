@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import htcondor
 
+from bilbyui.status import JobStatus
 from scheduler.condor import CondorScheduler
-from scheduler.status import JobStatus
 
 mock_from_dag_args = None
 mock_from_dag_kwargs = None
