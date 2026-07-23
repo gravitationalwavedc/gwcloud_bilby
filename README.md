@@ -90,6 +90,12 @@ The `src/bundle/` directory contains a separate Python environment used for runn
 
 To set up the bundle environment, see [`src/bundle/README.md`](src/bundle/README.md).
 
+## GWOSC Ingest
+
+The `gwosc_cron/` directory contains the script that ingests Bilby jobs from the GWOSC catalog into GWCloud. It runs every hour via cron and has its own Python environment.
+
+To set up and run the ingest script, see [`gwosc_cron/README.md`](gwosc_cron/README.md).
+
 ## Running locally
 
 ```bash
