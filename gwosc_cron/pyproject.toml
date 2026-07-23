@@ -28,6 +28,7 @@ responses = "*"
 coverage = "*"
 unittest-xml-reporting = "*"
 parameterized = "*"
+pytest = "^9.1.1"
 
 [build-system]
 requires = ["poetry-core"]
