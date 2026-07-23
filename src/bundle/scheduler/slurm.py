@@ -5,8 +5,7 @@ from .status import JobStatus
 
 
 class SlurmScheduler(Scheduler):
-    """
-    Slurm scheduler
+    """Slurm scheduler
     """
 
     SLURM_STATUS = {
@@ -31,14 +30,12 @@ class SlurmScheduler(Scheduler):
     }
 
     def submit(self, script, working_directory):
-        """
-        Submits a script using the provided working directory
+        """Submits a script using the provided working directory
 
         :param script: The path to the submit script
         :param working_directory: The path to the working directory
         :return: An integer identifier for the submitted job
         """
-
         # Construct the sbatch command
         command = f"cd {working_directory} && sbatch {script}"
 
@@ -55,15 +52,14 @@ class SlurmScheduler(Scheduler):
         print(f"Success: Command `{command}` returned `{stdout}`")
 
         # Get the slurm id from the output
-        # todo: Handle errors
+        # TODO: Handle errors
         try:
             return int(stdout.strip().split()[-1])
         except Exception:
             return None
 
     def status(self, job_id, details):
-        """
-        Get the status of a job by scheduler id
+        """Get the status of a job by scheduler id
 
         :param job_id: The scheduler job id to check the status of
         :param details: The internal job details object
@@ -77,7 +73,7 @@ class SlurmScheduler(Scheduler):
         # Execute the sacct command for this job
         stdout = subprocess.check_output(command, shell=True)
 
-        # todo: Handle errors
+        # TODO: Handle errors
         # Get the output
         print(f"Command `{command}` returned `{stdout}`")
 
@@ -132,8 +128,7 @@ class SlurmScheduler(Scheduler):
         return None, None
 
     def cancel(self, job_id, details):
-        """
-        Cancel a running job
+        """Cancel a running job
 
         :param job_id: The id of the job to cancel
         :param details: The internal job details object
@@ -147,6 +142,6 @@ class SlurmScheduler(Scheduler):
         # Cancel the job
         stdout = subprocess.check_output(command, shell=True)
 
-        # todo: Handle errors
+        # TODO: Handle errors
         # Get the output
         print(f"Command `{command}` returned `{stdout}`")

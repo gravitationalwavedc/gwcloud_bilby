@@ -48,8 +48,7 @@ def to_dec(val):
 
 
 def generate_parameter_output(job):
-    """
-    Generates a complete JobParameterOutput for a job
+    """Generates a complete JobParameterOutput for a job
 
     :param job: The BilbyJob instance to generate the JobParameterOutput for
     :returns: The complete JobParameterOutput
@@ -130,7 +129,7 @@ def generate_parameter_output(job):
     prior = PriorOutput(
         # args.prior_file is correct here rather than parser. parser actually fills out the entire path to the prior
         # file
-        prior_default=args.prior_file
+        prior_default=args.prior_file,
     )
 
     # Sampler

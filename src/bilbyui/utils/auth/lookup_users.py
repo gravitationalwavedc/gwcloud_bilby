@@ -5,14 +5,12 @@ from bilbyui.utils.misc import check_request_leak_decorator
 
 @check_request_leak_decorator
 def request_lookup_users(ids):
-    """
-    Requests a list of users from the ids provided
+    """Requests a list of users from the ids provided
 
     :param ids: The list of ids to use to look up users
     :return: A tuple (success, result) where success is a bool, and result is the
         list of users on success or an error string on failure
     """
-
     try:
         resp = auth_request("get_users", {"ids": ids})
         return True, resp["users"]

@@ -10,13 +10,11 @@ logger = logging.getLogger(__name__)
 
 @check_request_leak_decorator
 def request_job_status(job, user_id=None):
-    """
-    Requests and calculates the current job status for the provided job
+    """Requests and calculates the current job status for the provided job
 
     :param job: The BilbyJob instance to get the status of
     :param user_id: An optional user id to make the request as
     """
-
     logger.debug(f"Requesting job status for job {job.id} (controller ID: {job.job_controller_id})")
 
     # Make sure that the job was actually submitted (Might be in a draft state?)

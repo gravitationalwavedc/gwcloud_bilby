@@ -11,8 +11,7 @@ logger = logging.getLogger(__name__)
 
 @check_request_leak_decorator
 def request_file_download_ids(job, paths, user_id=None):
-    """
-    Requests a list of file download ids from the job controller for the provided list of file paths
+    """Requests a list of file download ids from the job controller for the provided list of file paths
 
     If a file download id is generated successfully for all paths, the result will be a tuple of:-
         True, [id, id, id, id, id]
@@ -55,8 +54,7 @@ def request_file_download_ids(job, paths, user_id=None):
 
 
 def request_file_download_id(job, path, user_id=None):
-    """
-    Requests a file download id from the job controller for the provided file path
+    """Requests a file download id from the job controller for the provided file path
 
     :param job: The BilbyJob instance for which a file download id is generated
     :param path: The path to the file to download

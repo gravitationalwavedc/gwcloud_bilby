@@ -89,7 +89,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
                             "jobStatus": {"name": "Completed"},
                             "timestamp": "2020-01-01 12:00:00 UTC",
                             "user": "buffy summers",
-                        }
+                        },
                     },
                     {
                         "node": {
@@ -101,10 +101,10 @@ class TestAnonymousMetrics(LiveServerTestCase):
                             },
                             "timestamp": "2020-01-01 12:00:00 UTC",
                             "user": "buffy summers",
-                        }
+                        },
                     },
-                ]
-            }
+                ],
+            },
         }
 
     def elasticsearch_search_mock(*args, **kwargs):

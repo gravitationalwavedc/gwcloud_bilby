@@ -65,7 +65,7 @@ class TestEventIDCreation(BilbyTestCase):
                 "nickname": "GW123456",
                 "isLigoEvent": False,
                 "gpsTime": 12345678.1234,
-            }
+            },
         }
 
     @silence_errors
@@ -151,7 +151,7 @@ class TestEventIDUpdating(BilbyTestCase):
                 "nickname": "new nickname",
                 "isLigoEvent": False,
                 "gpsTime": 87654321.87654321,
-            }
+            },
         }
         response = self.query(self.query_string, input_data=new_params["input"])
         self.assertResponseHasErrors(response)
@@ -224,7 +224,7 @@ class TestEventIDDeletion(BilbyTestCase):
         params = {
             "input": {
                 "eventId": "GW123456_123456",
-            }
+            },
         }
 
         response = self.query(self.query_string, input_data=params["input"])
@@ -277,7 +277,7 @@ class TestEventIDPermissions(BilbyTestCase):
                 "eventId": self.event_id1.event_id,
                 "triggerId": new_trigger_id,
                 "gpsTime": 1126259462.391,
-            }
+            },
         }
 
         # Run this test twice, the first time without an authenticated user, and the second with an authenticated user
@@ -298,7 +298,7 @@ class TestEventIDPermissions(BilbyTestCase):
         params = {
             "input": {
                 "eventId": self.event_id1.event_id,
-            }
+            },
         }
 
         # Run this test twice, the first time without an authenticated user, and the second with an authenticated user

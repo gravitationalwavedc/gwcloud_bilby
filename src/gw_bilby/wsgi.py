@@ -1,5 +1,4 @@
-"""
-WSGI config for gwcloud_bilby project.
+"""WSGI config for gwcloud_bilby project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 

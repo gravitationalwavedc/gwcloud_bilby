@@ -7,19 +7,16 @@ from .status import JobStatus
 
 
 class CondorScheduler(Scheduler):
-    """
-    Condor scheduler
+    """Condor scheduler
     """
 
     def submit(self, script, working_directory):
-        """
-        Submits a script using the provided working directory
+        """Submits a script using the provided working directory
 
         :param script: The path to the submit script
         :param working_directory: The path to the working directory
         :return: An integer identifier for the submitted job
         """
-
         print(f"Trying to submit {script} from {working_directory}")
 
         # Create the submit object from the dag and submit it
@@ -43,14 +40,12 @@ class CondorScheduler(Scheduler):
         return None
 
     def status(self, job_id, details):
-        """
-        Get the status of a job by scheduler id
+        """Get the status of a job by scheduler id
 
         :param job_id: The scheduler job id to check the status of
         :param details: The internal job details object
         :return: A tuple with JobStatus, additional info as a string. None if no job status could be obtained
         """
-
         p = Path(details["working_directory"]) / details["submit_directory"]
 
         print(f"Trying to get status of job with working directory {p}...")
@@ -89,8 +84,7 @@ class CondorScheduler(Scheduler):
             # generation stage, otherwise SUBMIT indicates the job is running
             if stage.endswith("_generation_arg_0"):
                 return JobStatus.QUEUED, "Job is queued"
-            else:
-                return JobStatus.RUNNING, "Job is running"
+            return JobStatus.RUNNING, "Job is running"
 
         if latest_event.type == htcondor.JobEventType.EXECUTE:
             # EXECUTE is self explanitory.
@@ -136,15 +130,14 @@ class CondorScheduler(Scheduler):
             del submitted_stages[event.cluster]
 
         # If all submitted stages have finished, and the plotting stage has been submitted, then the job has finished
-        if not len(submitted_stages) and plot_started:
+        if not submitted_stages and plot_started:
             return JobStatus.COMPLETED, "All job stages finished successfully"
 
         # Job is not yet complete
         return JobStatus.RUNNING, "Job is running"
 
     def cancel(self, job_id, details):
-        """
-        Cancel a running job
+        """Cancel a running job
 
         :param job_id: The id of the job to cancel
         :param details: The internal db record for the job

@@ -43,7 +43,7 @@ class TestExternalJobUpload(BilbyTestCase):
         test_ini_string = create_test_ini_string(
             {
                 "label": test_name,
-            }
+            },
         )
 
         test_input = {

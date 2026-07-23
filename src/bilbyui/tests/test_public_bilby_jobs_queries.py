@@ -74,7 +74,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                             },
                             "timestamp": "2020-01-01 12:00:00 UTC",
                             "user": "buffy summers",
-                        }
+                        },
                     },
                     {
                         "node": {
@@ -84,10 +84,10 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                             "jobStatus": {"name": "Completed"},
                             "timestamp": "2020-01-01 12:00:00 UTC",
                             "user": "buffy summers",
-                        }
+                        },
                     },
-                ]
-            }
+                ],
+            },
         }
 
     def elasticsearch_search_mock(*args, **kwargs):
@@ -192,7 +192,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"]["jobStatus"]["name"] = "Unknown"
         self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"]["timestamp"] = str(
-            self.job2.creation_time
+            self.job2.creation_time,
         )
 
         # Loop twice, the first loop the user will not be authenticated, the second loop the user will be authenticated
@@ -330,10 +330,10 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         self.job2.save()
 
         self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"]["timestamp"] = str(
-            self.job2.creation_time
+            self.job2.creation_time,
         )
         self.public_bilby_job_expected["publicBilbyJobs"]["edges"][1]["node"]["timestamp"] = str(
-            self.job1.creation_time
+            self.job1.creation_time,
         )
 
         variables = {"count": 50, "search": None, "timeRange": "all"}
@@ -553,7 +553,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         # Update the trigger time for one of the jobs to be after the embargo time
         self.job1.ini_string = create_test_ini_string(
-            {"detectors": "['H1']", "trigger-time": settings.EMBARGO_START_TIME + 1}
+            {"detectors": "['H1']", "trigger-time": settings.EMBARGO_START_TIME + 1},
         )
         self.job1.save()
 

@@ -42,8 +42,7 @@ class TestBilbyJobModel(BilbyTestCase):
         )
 
     def test_update_privacy(self):
-        """
-        Check that update_bilby_job view can update privacy of a job
+        """Check that update_bilby_job view can update privacy of a job
         """
         self.assertEqual(self.job.private, False)
 
@@ -55,8 +54,7 @@ class TestBilbyJobModel(BilbyTestCase):
         self.assertEqual(self.job.private, True)
 
     def test_update_event_id(self):
-        """
-        Check that update_bilby_job view can update the event ID of a job
+        """Check that update_bilby_job view can update the event ID of a job
         """
         # A user who doesn't own the job shouldn't be able to change the event id
         self.assertEqual(self.job.event_id, None)
@@ -91,8 +89,7 @@ class TestBilbyJobModel(BilbyTestCase):
         self.assertEqual(self.job.event_id, self.event_id)
 
     def test_update_name(self):
-        """
-        Check that update_bilby_job view can update the name of a job
+        """Check that update_bilby_job view can update the name of a job
         """
         self.assertEqual(self.job.name, "Test_Job")
 
@@ -104,8 +101,7 @@ class TestBilbyJobModel(BilbyTestCase):
         self.assertEqual(self.job.name, "new_job")
 
     def test_update_description(self):
-        """
-        Check that update_bilby_job view can update the description of a job
+        """Check that update_bilby_job view can update the description of a job
         """
         self.assertEqual(self.job.description, "Test job description")
 
@@ -117,10 +113,8 @@ class TestBilbyJobModel(BilbyTestCase):
         self.assertEqual(self.job.description, "new description")
 
     def test_update_labels(self):
+        """Check that update_bilby_job view can update job labels
         """
-        Check that update_bilby_job view can update job labels
-        """
-
         self.assertFalse(self.job.labels.exists())
 
         self.authenticate()
@@ -448,7 +442,7 @@ class TestSupportingFile(BilbyTestCase):
                 {
                     "H1": "/my/test/path/psd_h1.file",
                     "V1": "/my/test/path/psd_v1.file",
-                }
+                },
             ],
             SupportingFile.GPS: "/another/test/path/gps.file",
         }
@@ -468,8 +462,8 @@ class TestSupportingFile(BilbyTestCase):
         for token in supporting_file_tokens:
             self.assertTrue(
                 SupportingFile.objects.filter(
-                    upload_token=token["token"], file_name=Path(token["file_path"]).name
-                ).exists()
+                    upload_token=token["token"], file_name=Path(token["file_path"]).name,
+                ).exists(),
             )
 
     def test_pruning_jobs_with_non_uploaded_supporting_files(self):

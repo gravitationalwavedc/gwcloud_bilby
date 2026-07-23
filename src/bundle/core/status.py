@@ -9,8 +9,7 @@ from core.misc import get_scheduler
 
 
 def get_submit_status(job):
-    """
-    Gets the status of the job submission step for slurm. If the job submission step is successful, it removes the
+    """Gets the status of the job submission step for slurm. If the job submission step is successful, it removes the
     submit_id from the job record and updates it. If the job submission fails for some reason the job is deleted.
 
     :param job: The internal job db record for the job to get the submit status of
@@ -47,8 +46,7 @@ def get_submit_status(job):
 
 
 def condor_status(job):
-    """
-    Process job status for the condor scheduler
+    """Process job status for the condor scheduler
 
     :param job: The internal job object representing the job to check the status for
     :return: The same return type from submit()
@@ -59,16 +57,14 @@ def condor_status(job):
 
     if _status <= JobStatus.RUNNING:
         return {"status": result, "complete": False}
-    else:
-        # Job is completed, or an error occurred
-        _bundledb.delete_job(job)
+    # Job is completed, or an error occurred
+    _bundledb.delete_job(job)
 
-        return {"status": result, "complete": True}
+    return {"status": result, "complete": True}
 
 
 def slurm_status(job):
-    """
-    Process job status for the slurm scheduler
+    """Process job status for the slurm scheduler
 
     :param job: The internal job object representing the job to check the status for
     :return: The same return type from submit()
@@ -89,7 +85,7 @@ def slurm_status(job):
         return {"status": result_status, "complete": False}
 
     with open(sid_file) as f:
-        slurm_ids = [line.strip() for line in f.readlines()]
+        slurm_ids = [line.strip() for line in f]
 
     # Track the job statuses
     had_error = False
@@ -123,8 +119,7 @@ def slurm_status(job):
 
 
 def status(details, *args, **kwargs):
-    """
-    The entry point of the status function which returns the job status and information for the specified job
+    """The entry point of the status function which returns the job status and information for the specified job
 
     :param details: The job details object from the client
     :return: A special dict with the following format:
@@ -145,7 +140,7 @@ def status(details, *args, **kwargs):
     if not job:
         # Job doesn't exist. Report error
         result = [
-            {"what": "system", "status": JobStatus.ERROR, "info": "Job does not exist. Perhaps it failed to start?"}
+            {"what": "system", "status": JobStatus.ERROR, "info": "Job does not exist. Perhaps it failed to start?"},
         ]
 
         return {"status": result, "complete": True}
@@ -153,7 +148,6 @@ def status(details, *args, **kwargs):
     # Use the relevant scheduler to obtain the job status
     if settings.scheduler == EScheduler.CONDOR:
         return dict(condor_status(job))
-    elif settings.scheduler == EScheduler.SLURM:
+    if settings.scheduler == EScheduler.SLURM:
         return dict(slurm_status(job))
-    else:
-        return None
+    return None

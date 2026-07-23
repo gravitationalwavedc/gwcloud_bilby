@@ -10,8 +10,7 @@ from bilbyui.utils.misc import check_request_leak
 
 
 def request_file_list(job, path, recursive, user_id=None):
-    """
-    Requests the file list for a job
+    """Requests the file list for a job
 
     :param job: The BilbyJob instance whose files are listed
     :param user_id: An optional user id to make the request as
@@ -53,7 +52,7 @@ def request_file_list(job, path, recursive, user_id=None):
                             "path": str(real_file_name)[len(job_dir) :],
                             "isDir": True,
                             "fileSize": real_file_name.stat().st_size,
-                        }
+                        },
                     )
 
                 for item in filenames:
@@ -68,7 +67,7 @@ def request_file_list(job, path, recursive, user_id=None):
                                 "path": str(real_file_name)[len(job_dir) :],
                                 "isDir": False,
                                 "fileSize": real_file_name.stat().st_size,
-                            }
+                            },
                         )
         else:
             # Not a recursive search
@@ -82,7 +81,7 @@ def request_file_list(job, path, recursive, user_id=None):
                         "path": str(real_file_name)[len(job_dir) :],
                         "isDir": real_file_name.is_dir(),
                         "fileSize": real_file_name.stat().st_size,
-                    }
+                    },
                 )
 
         return True, file_list

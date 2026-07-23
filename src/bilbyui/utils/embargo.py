@@ -29,22 +29,21 @@ def qs_embargo_filter(qs):
         trigger_time=Cast(
             Subquery(
                 models.IniKeyValue.objects.filter(job=OuterRef("pk"), key="trigger_time", processed=True).values(
-                    "value"
-                )
+                    "value",
+                ),
             ),
             FloatField(),
         ),
         simulated=Subquery(
             models.IniKeyValue.objects.filter(job=OuterRef("pk"), key="n_simulation", processed=False).values("value")[
                 :1
-            ]
+            ],
         ),
     ).filter(Q(trigger_time__lt=settings.EMBARGO_START_TIME) | Q(simulated__gt=0))
 
 
 def should_embargo_job(user, trigger_time, simulated):
-    """
-    Determine if a job should be embargoed based on user, trigger time, and simulation status.
+    """Determine if a job should be embargoed based on user, trigger time, and simulation status.
 
     Args:
         user: The user object. If None, treats as non-LIGO user for embargo checking.
@@ -60,6 +59,7 @@ def should_embargo_job(user, trigger_time, simulated):
         - Jobs with no trigger time are never embargoed
         - Jobs with trigger_time < EMBARGO_START_TIME are never embargoed
         - Only real data jobs with trigger_time >= EMBARGO_START_TIME are embargoed
+
     """
     # If user is None, treat as non-LIGO user for embargo checking
     if user is not None and not user_subject_to_embargo(user):

@@ -66,10 +66,8 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_bilby_job_query(self, *args):
+        """BilbyJob node query should allow querying of model fields"
         """
-        bilbyJob node query should allow querying of model fields"
-        """
-
         response = self.job_request(*list(camelize(self.job_data).keys()))
         expected = {"bilbyJob": camelize(self.job_data)}
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
@@ -79,8 +77,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_bilby_job_user_query(self, *args):
-        """
-        bilbyJob node query should allow querying of user field"
+        """BilbyJob node query should allow querying of user field"
         """
         response = self.job_request("user")
         expected = {"bilbyJob": {"user": "buffy summers"}}
@@ -101,8 +98,7 @@ class TestBilbyJobQueries(BilbyTestCase):
     )
     @mock.patch("bilbyui.schema.derive_job_status", side_effect=derive_job_status_mock)
     def test_bilby_job_status_query(self, *args):
-        """
-        bilbyJob node query should allow querying of job status field"
+        """BilbyJob node query should allow querying of job status field"
         """
         response = self.job_request("jobStatus {name \n number \n date}")
         expected = {
@@ -111,8 +107,8 @@ class TestBilbyJobQueries(BilbyTestCase):
                     "name": "Test Status",
                     "number": 1,
                     "date": datetime.fromtimestamp(0).strftime("%Y-%m-%d %H:%M:%S UTC"),
-                }
-            }
+                },
+            },
         }
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
@@ -121,8 +117,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_bilby_job_last_updated_query(self, *args):
-        """
-        bilbyJob node query should allow querying of last updated field"
+        """BilbyJob node query should allow querying of last updated field"
         """
         response = self.job_request("lastUpdated")
         expected = {"bilbyJob": {"lastUpdated": self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")}}
@@ -133,8 +128,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_bilby_job_labels_query(self, *args):
-        """
-        bilbyJob node query should allow querying of labels field"
+        """BilbyJob node query should allow querying of labels field"
         """
         response = self.job_request("labels {name \n description}")
         expected = {"bilbyJob": {"labels": [{"name": self.label.name, "description": self.label.description}]}}
@@ -145,8 +139,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_bilby_job_event_id_query(self, *args):
-        """
-        bilbyJob node query should allow querying of labels field"
+        """BilbyJob node query should allow querying of labels field"
         """
         response = self.job_request("eventId {eventId \n triggerId \n nickname \n isLigoEvent \n gpsTime}")
         expected = {
@@ -157,8 +150,8 @@ class TestBilbyJobQueries(BilbyTestCase):
                     "nickname": self.event_id.nickname,
                     "isLigoEvent": self.event_id.is_ligo_event,
                     "gpsTime": self.event_id.gps_time,
-                }
-            }
+                },
+            },
         }
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
@@ -213,9 +206,9 @@ class TestBilbyJobQueries(BilbyTestCase):
                         "name": "another test job",
                         "description": "Test description",
                         "private": False,
-                    }
+                    },
                 },
-            }
+            },
         }
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
@@ -224,8 +217,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_bilby_job_query_anonymous_user(self, *args):
-        """
-        bilbyJob node query should return a single job as expected for an anonymous user"
+        """BilbyJob node query should return a single job as expected for an anonymous user"
         """
         request_data = list(camelize(self.job_data).keys())
         expected_one = {"bilbyJob": camelize(self.job_data)}
@@ -257,8 +249,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_bilby_job_query_non_ligo_user(self, *args):
-        """
-        bilbyJob node query should return a single job as expected for a user who is not a ligo user"
+        """BilbyJob node query should return a single job as expected for a user who is not a ligo user"
         """
         self.authenticate()
 
@@ -312,8 +303,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_bilby_job_query_ligo_user(self, *args):
-        """
-        bilbyJob node query should return a single job as expected for a user who is a ligo user"
+        """BilbyJob node query should return a single job as expected for a user who is a ligo user"
         """
         self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
 
@@ -381,8 +371,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_bilby_jobs_query(self, request_job_filter_mock, *args):
-        """
-        bilbyJobs query should return a list of personal jobs for an authenticated user.
+        """BilbyJobs query should return a list of personal jobs for an authenticated user.
         """
         job = BilbyJob.objects.create(
             user_id=self.user.id,
@@ -446,14 +435,14 @@ class TestBilbyJobQueries(BilbyTestCase):
                             "userId": 1,
                             "name": "aaafirst",
                             "description": "A test job",
-                        }
+                        },
                     },
                     {
                         "node": {
                             "userId": 1,
                             "name": "Test2",
                             "description": "A test job",
-                        }
+                        },
                     },
                     {"node": {"userId": 1, "name": "Test1", "description": None}},
                     {
@@ -461,10 +450,10 @@ class TestBilbyJobQueries(BilbyTestCase):
                             "userId": 1,
                             "name": "TestName",
                             "description": "Test description",
-                        }
+                        },
                     },
-                ]
-            }
+                ],
+            },
         }
         self.assertDictEqual(response.data, expected, "bilbyJobs query returned unexpected data.")
 
@@ -481,31 +470,31 @@ class TestBilbyJobQueries(BilbyTestCase):
                             "userId": 1,
                             "name": "Test1",
                             "description": "Test job description",
-                        }
+                        },
                     },
                     {
                         "node": {
                             "userId": 1,
                             "name": "aaafirst",
                             "description": "A test job",
-                        }
+                        },
                     },
                     {
                         "node": {
                             "userId": 1,
                             "name": "Test2",
                             "description": "A test job",
-                        }
+                        },
                     },
                     {
                         "node": {
                             "userId": 1,
                             "name": "TestName",
                             "description": "Test description",
-                        }
+                        },
                     },
-                ]
-            }
+                ],
+            },
         }
         self.assertDictEqual(response.data, expected, "bilbyJobs query returned unexpected data.")
 

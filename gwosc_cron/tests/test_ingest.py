@@ -26,14 +26,16 @@ class TestComputeIsLatestVersion(unittest.TestCase):
 
     def test_unversioned_treated_as_v0_not_latest(self):
         """An unversioned event is treated as v0, so it is NOT the latest when versioned
-        siblings exist."""
+        siblings exist.
+        """
         names = ["GW150914", "GW150914-v1"]
         self.assertFalse(gwosc_ingest.compute_is_latest_version("GW150914", names))
         self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914-v1", names))
 
     def test_all_unversioned_siblings_all_latest(self):
         """When no name in the group has a version suffix, all are tied at v0 and
-        every member is considered latest."""
+        every member is considered latest.
+        """
         names = ["GW150914", "GW150914_alt"]
         self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914", names))
         self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914_alt", names))
@@ -115,8 +117,8 @@ class TestGWOSCCron(GWOSCTestBase):
                                 "data_url": "https://test.org/GW000002.h5",
                             },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
 
@@ -163,8 +165,8 @@ class TestGWOSCCron(GWOSCTestBase):
                                 "data_url": "https://test.org/GW000002.h5",
                             },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
 
@@ -288,7 +290,7 @@ class TestGWOSCCron(GWOSCTestBase):
 
         gwc.return_value.create_event_id.assert_called_once_with("GW000001_123456", 1729400000, "S123456z")
         gwc.return_value.upload_external_job.return_value.set_event_id.assert_called_once_with(
-            gwc.return_value.create_event_id.return_value
+            gwc.return_value.create_event_id.return_value,
         )
 
     @responses.activate
@@ -328,8 +330,8 @@ class TestGWOSCCron(GWOSCTestBase):
                         "commonName": "GW000001",
                         "catalog.shortName": "GWTC-3-confident",
                         "jsonurl": "https://test.org/GW000001.json",
-                    }
-                }
+                    },
+                },
             },
         )
         responses.add(
@@ -346,10 +348,10 @@ class TestGWOSCCron(GWOSCTestBase):
                             "AAAAA": {
                                 "is_preferred": True,
                                 "data_url": "https://test.org/GW000001.h5",
-                            }
+                            },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
         with open("test_fixtures/good.h5", "rb") as f:
@@ -444,7 +446,8 @@ class TestGWOSCCron(GWOSCTestBase):
     @responses.activate
     def test_h5_key_iteration_error_records_job_failure(self, gwc):
         """An unexpected exception while reading H5 config data (e.g. corrupt node)
-        records a job_errors row for retry and does not crash the whole script."""
+        records a job_errors row for retry and does not crash the whole script.
+        """
         self.add_allevents_response()
         self.add_event_response()
         self.add_file_response()
@@ -579,10 +582,10 @@ class TestGWOSCCron(GWOSCTestBase):
                             "AAAAA": {
                                 "is_preferred": True,
                                 "data_url": "",
-                            }
+                            },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
 
@@ -608,8 +611,8 @@ class TestGWOSCCron(GWOSCTestBase):
     def test_bad_ini(self, gwc):
         """If an ini file is invalid, the upload_external_job exception is caught.
         The all-uploads-fail path now records a job_errors row for retry.
-        See test_dont_duplicate_jobs for the explicit coverage of this path."""
-        pass
+        See test_dont_duplicate_jobs for the explicit coverage of this path.
+        """
 
     @responses.activate
     def test_colon_name(self, gwc):
@@ -672,8 +675,8 @@ class TestGWOSCCron(GWOSCTestBase):
                     "GW000001.123456": {
                         "commonName": "GW000001.123456",
                         "jsonurl": "https://test.org/GW000001.123456.json",
-                    }
-                }
+                    },
+                },
             },
         )
         responses.add(
@@ -690,10 +693,10 @@ class TestGWOSCCron(GWOSCTestBase):
                             "AAAAA": {
                                 "is_preferred": True,
                                 "data_url": "https://test.org/GW000001.h5",
-                            }
+                            },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
         self.add_file_response()
@@ -732,8 +735,8 @@ class TestGWOSCCron(GWOSCTestBase):
                         "commonName": "GW000001_123456",
                         "catalog.shortName": catalog_shortname,
                         "jsonurl": "https://test.org/GW000001_123456.json",
-                    }
-                }
+                    },
+                },
             },
         )
         responses.add(
@@ -750,10 +753,10 @@ class TestGWOSCCron(GWOSCTestBase):
                             "AAAAA": {
                                 "is_preferred": True,
                                 "data_url": "https://test.org/GW000001.h5",
-                            }
+                            },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
         self.add_file_response()
@@ -795,7 +798,7 @@ class TestGWOSCCron(GWOSCTestBase):
                         "catalog.shortName": "GWTC-3-confident",
                         "jsonurl": "https://test.org/GW000001_123456-v2.json",
                     },
-                }
+                },
             },
         )
         responses.add(
@@ -812,10 +815,10 @@ class TestGWOSCCron(GWOSCTestBase):
                             "AAAAA": {
                                 "is_preferred": True,
                                 "data_url": "https://test.org/GW000001.h5",
-                            }
+                            },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
         responses.add(
@@ -832,10 +835,10 @@ class TestGWOSCCron(GWOSCTestBase):
                             "AAAAA": {
                                 "is_preferred": True,
                                 "data_url": "https://test.org/GW000002.h5",
-                            }
+                            },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
         self.add_file_response("bad.h5")
@@ -897,7 +900,7 @@ class TestGWOSCCron(GWOSCTestBase):
                         "catalog.shortName": "GWTC-3-confident",
                         "jsonurl": "https://test.org/GW000002.json",
                     },
-                }
+                },
             },
         )
         responses.add(
@@ -914,10 +917,10 @@ class TestGWOSCCron(GWOSCTestBase):
                             "AAAAA": {
                                 "is_preferred": True,
                                 "data_url": "https://test.org/GW000001.h5",
-                            }
+                            },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
         responses.add(
@@ -934,10 +937,10 @@ class TestGWOSCCron(GWOSCTestBase):
                             "AAAAA": {
                                 "is_preferred": True,
                                 "data_url": "https://test.org/GW000002.h5",
-                            }
+                            },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
         self.add_file_response("good.h5", "GW000001.h5")

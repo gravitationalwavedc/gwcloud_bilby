@@ -86,7 +86,7 @@ class TestSchemaCoverage(BilbyTestCase):
 
     @silence_errors
     @mock.patch(
-        "bilbyui.models.request_file_list", return_value=(True, [{"path": "/f.txt", "isDir": False, "fileSize": 1}])
+        "bilbyui.models.request_file_list", return_value=(True, [{"path": "/f.txt", "isDir": False, "fileSize": 1}]),
     )
     @mock.patch("bilbyui.schema.request_file_download_ids", return_value=(False, "download error"))
     def test_generate_file_download_ids_failure(self, *_):
@@ -105,7 +105,7 @@ class TestSchemaCoverage(BilbyTestCase):
             files={"input.supportingFiles.0.supportingFile": test_file},
         )
         self.assertEqual(
-            response.errors[0]["message"], "At least one supporting file upload token is invalid or expired."
+            response.errors[0]["message"], "At least one supporting file upload token is invalid or expired.",
         )
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
@@ -123,7 +123,7 @@ class TestSchemaCoverage(BilbyTestCase):
             },
             files={
                 "input.hdf5File": SimpleUploadedFile(
-                    name="t.hdf5", content=b"x", content_type="application/octet-stream"
+                    name="t.hdf5", content=b"x", content_type="application/octet-stream",
                 ),
                 "input.iniFile": SimpleUploadedFile(name="t.ini", content=ini.encode(), content_type="text/plain"),
             },

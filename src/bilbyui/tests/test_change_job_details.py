@@ -33,8 +33,7 @@ class TestChangeJobDetails(BilbyTestCase):
         self.global_job_id = to_global_id("BilbyJobNode", self.job.id)
 
     def test_change_details_mutation(self):
-        """
-        Change details mutation should set a new jobname and or a new description if the authenticated user is the
+        """Change details mutation should set a new jobname and or a new description if the authenticated user is the
         owner of the job.
         """
         change_job_input = {
@@ -61,8 +60,7 @@ class TestChangeJobDetails(BilbyTestCase):
 
     @silence_errors
     def test_change_job_name_symbols(self):
-        """
-        Try to update a bilby job with a name that contains symbols
+        """Try to update a bilby job with a name that contains symbols
         """
         change_job_input = {
             "jobId": self.global_job_id,
@@ -80,8 +78,7 @@ class TestChangeJobDetails(BilbyTestCase):
 
     @silence_errors
     def test_change_job_name_too_long(self):
-        """
-        Try to update a bilby job with a name that is too long
+        """Try to update a bilby job with a name that is too long
         """
         change_job_input = {
             "jobId": self.global_job_id,
@@ -99,8 +96,7 @@ class TestChangeJobDetails(BilbyTestCase):
 
     @silence_errors
     def test_change_job_name_too_short(self):
-        """
-        Try to update a bilby job with a name that is too short
+        """Try to update a bilby job with a name that is too short
         """
         change_job_input = {
             "jobId": self.global_job_id,

@@ -25,12 +25,12 @@ INI_BASE = (
 class TestGenerateParameterOutput(BilbyTestCase):
     def setUp(self):
         self.user, _ = User.objects.update_or_create(
-            id=1, defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"}
+            id=1, defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
         )
 
     def _make_job(self, ini_string, name="test-job"):
         return BilbyJob.objects.create(
-            user_id=self.user.id, name=name, description="test", private=False, ini_string=ini_string
+            user_id=self.user.id, name=name, description="test", private=False, ini_string=ini_string,
         )
 
     def test_to_dec(self):
@@ -43,7 +43,7 @@ class TestGenerateParameterOutput(BilbyTestCase):
 
     def test_basic_job(self):
         job = self._make_job(
-            "detectors=['H1', 'L1', 'V1']\n" + INI_BASE + "sampler-kwargs={'nlive': 1024, 'sample': 'rwalk'}\n"
+            "detectors=['H1', 'L1', 'V1']\n" + INI_BASE + "sampler-kwargs={'nlive': 1024, 'sample': 'rwalk'}\n",
         )
         r = generate_parameter_output(job)
         self.assertIsInstance(r, JobParameterOutput)
@@ -83,14 +83,14 @@ class TestGenerateParameterOutput(BilbyTestCase):
             [
                 ("lal_binary_neutron_star", "binaryNeutronStar"),
                 ("some_custom_model", "unknown"),
-            ]
+            ],
         ):
             job = self._make_job(
                 "detectors=['H1']\n"
                 + INI_BASE.replace(
                     "frequency-domain-source-model=lal_binary_black_hole",
                     f"frequency-domain-source-model={model}",
-                )
+                ),
             )
             job.name = f"test-waveform-{i}"
             job.save()
@@ -104,7 +104,7 @@ class TestGenerateParameterOutput(BilbyTestCase):
 
     def test_sampler_kwargs(self):
         job = self._make_job(
-            "detectors=['H1']\n" + INI_BASE + "sampler-kwargs={'sample': 'rwalk', 'nlive': 2000, 'walks': 100}\n"
+            "detectors=['H1']\n" + INI_BASE + "sampler-kwargs={'sample': 'rwalk', 'nlive': 2000, 'walks': 100}\n",
         )
         r = generate_parameter_output(job)
         self.assertEqual(r.sampler.sample, "rwalk")
@@ -115,7 +115,7 @@ class TestGenerateParameterOutput(BilbyTestCase):
         job = self._make_job(
             "detectors=['H1', 'L1', 'V1']\n"
             + INI_BASE
-            + "channel-dict={'H1': 'GDS-CALIB_STRAIN', 'L1': 'GDS-CALIB_STRAIN', 'V1': 'Hrec_hoft_16384Hz'}\n"
+            + "channel-dict={'H1': 'GDS-CALIB_STRAIN', 'L1': 'GDS-CALIB_STRAIN', 'V1': 'Hrec_hoft_16384Hz'}\n",
         )
         r = generate_parameter_output(job)
         self.assertEqual(r.data.channels.hanford_channel, "GDS-CALIB_STRAIN")

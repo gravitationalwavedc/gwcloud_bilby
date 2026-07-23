@@ -181,7 +181,7 @@ def complete_config_dict(config_dict):
             ("pn-phase-order", -1),
             ("pn-amplitude-order", 0),
             ("frequency-domain-source-model", "lal_binary_black_hole"),
-        ]
+        ],
     )
 
     complete_dict.update(config_dict)

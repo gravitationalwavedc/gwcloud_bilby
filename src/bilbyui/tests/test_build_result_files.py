@@ -40,7 +40,7 @@ class TestBuildResultFiles(BilbyTestCase):
                     "is_dir": False,
                     "file_size": None,
                     "download_token": None,
-                }
+                },
             ],
         )
 

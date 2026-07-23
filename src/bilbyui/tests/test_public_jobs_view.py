@@ -224,7 +224,7 @@ class TestPublicJobsView(BilbyTestCase):
                     "label": "Public job",
                     "trigger-time": 1000,
                     "n-simulation": 1,
-                }
+                },
             ),
         )
         BilbyJob.objects.create(
@@ -240,7 +240,7 @@ class TestPublicJobsView(BilbyTestCase):
                     "trigger-time": settings.EMBARGO_START_TIME + 1,
                     "n-simulation": 0,
                     "gaussian-noise": False,
-                }
+                },
             ),
         )
 
@@ -375,5 +375,5 @@ class TestPublicJobsView(BilbyTestCase):
             _job_matches_time_range(
                 job,
                 'job.creationTime:["2020-01-01T00:00:00+00:00" TO "2021-01-01T00:00:00+00:00"]',
-            )
+            ),
         )

@@ -77,7 +77,7 @@ class UserBilbyJobFilter(FilterSet):
         fields=(
             ("last_updated", "lastUpdated"),
             ("name", "name"),
-        )
+        ),
     )
 
     @property
@@ -95,7 +95,7 @@ class PublicBilbyJobFilter(FilterSet):
         fields=(
             ("last_updated", "last_updated"),
             ("name", "name"),
-        )
+        ),
     )
 
     @property
@@ -152,7 +152,7 @@ class BilbyJobNode(DjangoObjectType):
             return generate_parameter_output(parent)
         except Exception as e:
             logger.error(
-                f"Failed to generate parameter output for job {parent.id}: {type(e).__name__}: {e}", exc_info=True
+                f"Failed to generate parameter output for job {parent.id}: {type(e).__name__}: {e}", exc_info=True,
             )
             return None
 
@@ -173,7 +173,7 @@ class BilbyJobNode(DjangoObjectType):
 
         try:
             status_number, status_name, status_date = derive_job_status(
-                info.context.job_controller_jobs.get(parent.job_controller_id)["history"]
+                info.context.job_controller_jobs.get(parent.job_controller_id)["history"],
             )
 
             return {
@@ -271,7 +271,7 @@ class Query:
         user_id = user.id if user.is_authenticated else 0
         search_term = kwargs.get("search", "*")
         logger.info(
-            f"User {user_id} searching public jobs: search='{search_term}', time_range={kwargs.get('time_range')}"
+            f"User {user_id} searching public jobs: search='{search_term}', time_range={kwargs.get('time_range')}",
         )
 
         # Parse the cursor if it was provided and set the first offset to be used by the database search

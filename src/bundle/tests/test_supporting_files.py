@@ -37,8 +37,7 @@ class TestSupportingFiles(TestCase):
         )
 
     def perform_ini_save_load_cycle(self, args):
-        """
-        Performs a full cycle of saving the ini file from the provided args, then loading and parsing the ini file
+        """Performs a full cycle of saving the ini file from the provided args, then loading and parsing the ini file
         """
         from bilby_pipe.data_generation import DataGenerationInput
         from core.submit import bilby_ini_to_args
@@ -78,7 +77,7 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)
@@ -120,13 +119,13 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)
 
             self.assertDictEqual(
-                args.psd_dict, {"V1": "./supporting_files/psd/v1.psd", "L1": "./supporting_files/psd/l1.psd"}
+                args.psd_dict, {"V1": "./supporting_files/psd/v1.psd", "L1": "./supporting_files/psd/l1.psd"},
             )
 
     def test_psd3(self):
@@ -173,7 +172,7 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)
@@ -211,7 +210,7 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)
@@ -253,7 +252,7 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)
@@ -307,7 +306,7 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)
@@ -345,7 +344,7 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)
@@ -387,7 +386,7 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)
@@ -419,7 +418,7 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)
@@ -450,7 +449,7 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)
@@ -481,7 +480,7 @@ class TestSupportingFiles(TestCase):
                         / "supporting_files"
                         / supporting_file["type"]
                         / supporting_file["file_name"]
-                    ).is_file()
+                    ).is_file(),
                 )
 
             args = self.perform_ini_save_load_cycle(args)

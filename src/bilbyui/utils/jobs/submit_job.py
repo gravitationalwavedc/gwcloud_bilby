@@ -15,8 +15,7 @@ HTTP_OK = 200
 
 
 def _make_job_controller_request(method, url, user_id, data=None, jwt_expiry=None):
-    """
-    Helper to make a request to the job controller with JWT auth.
+    """Helper to make a request to the job controller with JWT auth.
 
     :param method: HTTP method (GET, POST, etc.)
     :param url: Full URL to the job controller endpoint
@@ -53,8 +52,7 @@ def _make_job_controller_request(method, url, user_id, data=None, jwt_expiry=Non
 
 @check_request_leak_decorator
 def submit_job(user_id, params, cluster):
-    """
-    Submits a new job with `params` to the job controller
+    """Submits a new job with `params` to the job controller
 
     :param user_id: The id of the user who is making the request
     :param params: The dictionary object to dump to json and submit as the parameters
@@ -62,7 +60,6 @@ def submit_job(user_id, params, cluster):
 
     :return: The job controller id of the submitted job
     """
-
     logger.info(f"User {user_id} submitting job to cluster '{cluster}'")
 
     # Choose the first (default) cluster if one is not provided

@@ -97,14 +97,14 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
                     self.files[i]["downloadToken"] = None
                 else:
                     self.files[i]["downloadToken"] = str(
-                        FileDownloadToken.objects.get(job=self.job, path=f["path"]).token
+                        FileDownloadToken.objects.get(job=self.job, path=f["path"]).token,
                     )
 
             expected = {
                 "bilbyResultFiles": {
                     "files": self.files,
                     "jobType": BilbyJobType.NORMAL,
-                }
+                },
             }
             self.assertDictEqual(response.data, expected)
 

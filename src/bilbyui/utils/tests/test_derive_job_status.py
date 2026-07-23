@@ -21,7 +21,7 @@ class TestDeriveJobStatus(BilbyTestCase):
             {
                 "timestamp": "2024-01-01 10:00:00.000000 UTC",
                 "state": JobStatus.RUNNING,
-            }
+            },
         ]
 
         status_number, status_name, status_date = derive_job_status(history)

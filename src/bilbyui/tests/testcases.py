@@ -14,14 +14,12 @@ User = get_user_model()
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
-    """
-    Bilby test classes should inherit from this class.
+    """Bilby test classes should inherit from this class.
 
     It overrides some settings that will be common to most bilby test cases.
 
     Attributes
     ----------
-
     GRAPHQL_SCHEMA : schema object
         Uses the bilby schema file as the default schema.
 
@@ -31,6 +29,7 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
     client_class : class
         Sets client to be a special bilby specific object that uses a custom authentication.
         method.
+
     """
 
     GRAPHQL_SCHEMA = schema
@@ -64,6 +63,7 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
 
         Returns:
             User instance
+
         """
         if emails is None:
             emails = [primary_email]

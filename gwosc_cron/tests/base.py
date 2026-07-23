@@ -61,7 +61,7 @@ class GWOSCTestBase(unittest.TestCase):
                     "commonName": "GW000001_123456",
                     "catalog.shortName": "GWTC-3-confident",
                     "jsonurl": "https://test.org/GW000001_123456.json",
-                }
+                },
             }
         responses.add(
             responses.GET,
@@ -75,7 +75,7 @@ class GWOSCTestBase(unittest.TestCase):
         common_name=None,
         catalog_shortname="GWTC-3-confident",
         data_url="https://test.org/GW000001.h5",
-    ):  # noqa: E501
+    ):
         if common_name is None:
             common_name = event_name
         responses.add(
@@ -92,10 +92,10 @@ class GWOSCTestBase(unittest.TestCase):
                             "AAAAA": {
                                 "is_preferred": True,
                                 "data_url": data_url,
-                            }
+                            },
                         },
-                    }
-                }
+                    },
+                },
             },
         )
 
@@ -120,7 +120,7 @@ class GWOSCTestBase(unittest.TestCase):
                     "catalog.shortName": "GWTC-3-confident",
                     "jsonurl": "https://test.org/GW000002_654321.json",
                 },
-            }
+            },
         )
 
     def add_second_event_response(self):

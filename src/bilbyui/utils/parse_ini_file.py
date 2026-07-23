@@ -7,15 +7,13 @@ logger = logging.getLogger(__name__)
 
 
 def parse_ini_file(job, ini_key_value_klass=None):
-    """
-    Parses the ini file from a job and generates a full set of ini key/value model instances
+    """Parses the ini file from a job and generates a full set of ini key/value model instances
 
     :param job: The BilbyJob instance containing the ini_string content to parse
     :param ini_key_value_klass: Because this function can be called from a migration, we need to allow overriding
     the model to work with migration app models (See 0020_parse_ini_kv.py)
     :return: Nothing
     """
-
     # Avoiding circular imports
     from bilbyui.models import IniKeyValue
     from bilbyui.views import bilby_ini_args_to_data_input
@@ -35,7 +33,7 @@ def parse_ini_file(job, ini_key_value_klass=None):
         val = getattr(args, key)
 
         items.append(
-            (ini_key_value_klass or IniKeyValue)(job=job, key=key, value=json.dumps(val), index=idx, processed=False)
+            (ini_key_value_klass or IniKeyValue)(job=job, key=key, value=json.dumps(val), index=idx, processed=False),
         )
 
     # Parse the args through DataGenerationInput to postprocess any values
@@ -52,8 +50,8 @@ def parse_ini_file(job, ini_key_value_klass=None):
 
                 items.append(
                     (ini_key_value_klass or IniKeyValue)(
-                        job=job, key=stripped_key, value=json.dumps(val), index=idx, processed=True
-                    )
+                        job=job, key=stripped_key, value=json.dumps(val), index=idx, processed=True,
+                    ),
                 )
             except Exception as e:
                 logger.error(f"Error parsing INI file for job {job.id}: {e}", exc_info=True)

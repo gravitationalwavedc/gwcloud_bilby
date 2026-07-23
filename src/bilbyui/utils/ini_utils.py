@@ -5,13 +5,11 @@ from bilby_pipe.utils import parse_args
 
 
 def bilby_ini_string_to_args(ini):
-    """
-    Parses an ini string into an argument Namespace
+    """Parses an ini string into an argument Namespace
 
     :param ini: The ini string to parse
     :return: An ArgParser Namespace of the parsed arguments from the ini
     """
-
     # Create a bilby argument parser
     parser = create_parser()
 
@@ -34,13 +32,11 @@ def bilby_ini_string_to_args(ini):
 
 
 def bilby_args_to_ini_string(args):
-    """
-    Serializes an argument Namespace into an ini content string
+    """Serializes an argument Namespace into an ini content string
 
     :param args: The argument Namespace to serialize
     :return: A string containing the serialized ini content of the arguments
     """
-
     # Create an argument parser
     parser = create_parser()
 

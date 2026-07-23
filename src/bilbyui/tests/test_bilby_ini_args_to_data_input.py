@@ -20,7 +20,7 @@ class TestBilbyIniArgsToDataInput(BilbyTestCase):
                 "timeslide-file": "/tmp/timeslide.dat",
                 "injection-file": "/tmp/injection.dat",
                 "psd-dict": "{'H1': '/tmp/psd'}",
-            }
+            },
         )
 
         result = bilby_ini_args_to_data_input(args)

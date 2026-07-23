@@ -84,7 +84,7 @@ class TestJobSubmission(BilbyTestCase):
                         "samplerChoice": "dynesty",
                     },
                     "waveform": {"model": random.choice([None, "binaryNeutronStar", "binaryBlackHole"])},
-                }
+                },
             }
 
             response = self.query(
@@ -195,7 +195,7 @@ class TestJobSubmission(BilbyTestCase):
                     "jobControllerId": job_index + 10,
                     "private": params["params"]["details"]["private"],
                     "params": params["params"],
-                }
+                },
             }
 
             self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")

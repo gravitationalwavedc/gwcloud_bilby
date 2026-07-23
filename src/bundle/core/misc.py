@@ -14,8 +14,7 @@ def working_directory(details, *args, **kwargs):
 
 
 def get_scheduler():
-    """
-    Gets the scheduler class based on the scheduler from settings
+    """Gets the scheduler class based on the scheduler from settings
 
     :return: The scheduler class
     """

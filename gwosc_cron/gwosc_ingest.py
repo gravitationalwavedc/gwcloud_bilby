@@ -162,8 +162,8 @@ def _check_and_download_inner(con, cur):
                 fix_job_name(n.split(EVENTNAME_SEPARATOR)[0])
                 for n in full_gwcloud_events
                 if len(n.split(EVENTNAME_SEPARATOR)) > 1
-            ]
-        )
+            ],
+        ),
     )
     logger.info(f"GWCloud events found: {len(gwcloud_events)}")
 
@@ -248,7 +248,7 @@ def _check_and_download_inner(con, cur):
         for pattern in ignore_patterns:
             if re.search(pattern, catalog_shortname, flags=re.IGNORECASE):
                 logger.error(
-                    f"{event_name} ignored due to matching /{pattern}/ in catalog_shortname ({catalog_shortname})"
+                    f"{event_name} ignored due to matching /{pattern}/ in catalog_shortname ({catalog_shortname})",
                 )
                 save_sqlite_job(
                     event_name,
@@ -286,7 +286,7 @@ def _check_and_download_inner(con, cur):
         # See if there is already an event_id for this event
         event_id = None
         if _EVENT_ID_RE.match(common_name):
-            event_id = gwcloud_event_ids.get(common_name, None)
+            event_id = gwcloud_event_ids.get(common_name)
             if event_id is None:
                 # we need to create one
                 try:
@@ -399,26 +399,25 @@ def _check_and_download_inner(con, cur):
             logger.error(error_msg)
             record_job_failure(con, cur, event_name, error_msg)
             continue
-        else:
-            save_sqlite_job(
-                event_name,
-                common_name,
-                catalog_shortname,
-                all_succeeded and not none_succeeded,
-                "completed_submit",
-                is_latest_version,
-                "",
-                all_succeeded,
-                none_succeeded,
-            )
-            logger.info("Deleted temp h5 file")
+        save_sqlite_job(
+            event_name,
+            common_name,
+            catalog_shortname,
+            all_succeeded and not none_succeeded,
+            "completed_submit",
+            is_latest_version,
+            "",
+            all_succeeded,
+            none_succeeded,
+        )
+        logger.info("Deleted temp h5 file")
 
-            # One H5 processing attempt per invocation — if the event was successfully
-            # processed (whether that means uploads succeeded, partially failed, or it was
-            # intentionally ignored), we stop here so the cron job doesn't consume too
-            # much time in a single pass. Failed events (where everything failed) are skipped
-            # via `continue` above and will be retried on the next run.
-            break
+        # One H5 processing attempt per invocation — if the event was successfully
+        # processed (whether that means uploads succeeded, partially failed, or it was
+        # intentionally ignored), we stop here so the cron job doesn't consume too
+        # much time in a single pass. Failed events (where everything failed) are skipped
+        # via `continue` above and will be retried on the next run.
+        break
 
 
 def run():

@@ -6,13 +6,11 @@ from bilby_pipe.parser import create_parser
 
 
 def args_to_bilby_ini(args):
-    """
-    Generates an ini string from the provided args
+    """Generates an ini string from the provided args
 
     :param args: The args to add to the ini string
     :return: A string containing the ini file content
     """
-
     # Create a bilby argument parser
     parser = create_parser()
 

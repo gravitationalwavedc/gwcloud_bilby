@@ -37,8 +37,7 @@ class TestElasticSearch(BilbyTestCase):
         elasticsearch_index_mock,
         elasticsearch_update_mock_raises,
     ):
-        """
-        Test that if we create a job, the elastic search index function is called as expected.
+        """Test that if we create a job, the elastic search index function is called as expected.
         Also tests that if update raises a elasticsearch.NotFoundError exception, that index is called to insert the
         record in elastic search
         """
@@ -87,8 +86,7 @@ class TestElasticSearch(BilbyTestCase):
         elasticsearch_index_mock,
         elasticsearch_update_mock_raises,
     ):
-        """
-        Test that if we create a job with event id and labels, that the elastic search index function
+        """Test that if we create a job with event id and labels, that the elastic search index function
         is called as expected
         Also tests that if update raises a elasticsearch.NotFoundError exception, that index is called to insert the
         record in elastic search
@@ -143,8 +141,7 @@ class TestElasticSearch(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_update_document(self, lookup_users_mock, elasticsearch_update_mock):
-        """
-        Test that update is called with the expected document
+        """Test that update is called with the expected document
         """
         from bilbyui.models import BilbyJob
 
@@ -182,8 +179,7 @@ class TestElasticSearch(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_event_id_update(self, lookup_users_mock, elasticsearch_update_mock):
-        """
-        Test that if we update an event id associated with a job, that the job's elastic search update
+        """Test that if we update an event id associated with a job, that the job's elastic search update
         is triggered
         """
         from bilbyui.models import BilbyJob, EventID
@@ -220,8 +216,7 @@ class TestElasticSearch(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_label_update(self, lookup_users_mock, elasticsearch_update_mock):
-        """
-        Test that if we update a label associated with a job, that the job's elastic search update
+        """Test that if we update a label associated with a job, that the job's elastic search update
         is triggered
         """
         from bilbyui.models import BilbyJob, Label
@@ -254,8 +249,7 @@ class TestElasticSearch(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_delete_remove_document(self, request_lookup_users, elastic_search_update, elastic_search_delete):
-        """
-        Test that when a bilby job is deleted, the elastic search record is also deleted
+        """Test that when a bilby job is deleted, the elastic search record is also deleted
         """
         from bilbyui.models import BilbyJob
 

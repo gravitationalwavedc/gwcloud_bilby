@@ -33,8 +33,7 @@ class Label(models.Model):
 
     @classmethod
     def all(cls):
-        """
-        Retrieves all labels
+        """Retrieves all labels
 
         :return: QuerySet of all Labels
         """
@@ -42,8 +41,7 @@ class Label(models.Model):
 
     @classmethod
     def filter_by_name(cls, labels, include_protected=False):
-        """
-        Filter all Labels by name in the provided labels
+        """Filter all Labels by name in the provided labels
 
         :param labels: A list of strings representing the label names to match
         :param include_protected: If protected labels should be included
@@ -185,8 +183,7 @@ class BilbyJob(models.Model):
 
     @classmethod
     def get_by_id(cls, bid, user):
-        """
-        Get BilbyJob by the provided id
+        """Get BilbyJob by the provided id
 
         This function will raise an exception if:-
         * the job requested is a ligo job, but the user is not a ligo user
@@ -206,8 +203,7 @@ class BilbyJob(models.Model):
 
     @classmethod
     def user_bilby_job_filter(cls, qs, user):
-        """
-        Used by UserBilbyJobFilter to filter only jobs owned by the requesting user
+        """Used by UserBilbyJobFilter to filter only jobs owned by the requesting user
 
         :param qs: The UserBilbyJobFilter queryset
         :param user_job_filter: The UserBilbyJobFilter instance
@@ -220,8 +216,7 @@ class BilbyJob(models.Model):
 
     @classmethod
     def public_bilby_job_filter(cls, qs, user):
-        """
-        Used by PublicBilbyJobFilter to filter only public jobs
+        """Used by PublicBilbyJobFilter to filter only public jobs
 
         :param qs: The PublicBilbyJobFilter queryset
         :param public_job_filter: The PublicBilbyJobFilter instance
@@ -231,8 +226,7 @@ class BilbyJob(models.Model):
 
     @classmethod
     def bilby_job_filter(cls, qs, user):
-        """
-        Used by BilbyJobNode to filter which jobs are visible to the requesting user.
+        """Used by BilbyJobNode to filter which jobs are visible to the requesting user.
 
         A user who is not logged in can only see public jobs
         A user who is logged in can only see their own jobs + public jobs
@@ -242,7 +236,6 @@ class BilbyJob(models.Model):
         :param info: The BilbyJobNode qs info object
         :return: qs filtered by ligo jobs if required
         """
-
         if user.is_anonymous:
             # User isn't logged in - only allow public jobs
             return embargo_filter(qs.filter(private=False, is_ligo_job=False), user)
@@ -259,27 +252,24 @@ class BilbyJob(models.Model):
 
     @classmethod
     def prune_supporting_files_jobs(cls):
-        """
-        This function removes any jobs that have supporting files that have not been uploaded within the time specified
+        """This function removes any jobs that have supporting files that have not been uploaded within the time specified
         by UPLOAD_SUPPORTING_FILE_EXPIRY
         """
         removal_time = timezone.now() - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY)
 
         expired_supporting_file_job_ids = SupportingFile.objects.filter(
-            job__creation_time__lt=removal_time, upload_token__isnull=False
+            job__creation_time__lt=removal_time, upload_token__isnull=False,
         )
 
         cls.objects.filter(id__in=expired_supporting_file_job_ids).delete()
 
     def get_upload_directory(self):
-        """
-        Returns the upload directory of the job - only relevant to uploaded jobs.
+        """Returns the upload directory of the job - only relevant to uploaded jobs.
         """
         return os.path.join(settings.JOB_UPLOAD_DIR, str(self.id))
 
     def has_supporting_files(self):
-        """
-        Checks if this job has any supporting files
+        """Checks if this job has any supporting files
         """
         return self.supportingfile_set.exists()
 
@@ -317,8 +307,7 @@ class BilbyJob(models.Model):
         return request_file_list(self, path, recursive)
 
     def as_dict(self):
-        """
-        Converts this job into a dictionary that can be submitted to the bundle for submission
+        """Converts this job into a dictionary that can be submitted to the bundle for submission
         """
         # Iterate over any supporting files and generate the supporting file details
         supporting_file_details = []
@@ -329,7 +318,7 @@ class BilbyJob(models.Model):
                     "key": supporting_file.key,
                     "file_name": supporting_file.file_name,
                     "token": str(supporting_file.download_token),
-                }
+                },
             )
 
         return {
@@ -340,8 +329,7 @@ class BilbyJob(models.Model):
         }
 
     def elastic_search_update(self):
-        """
-        Updates this bilby job entry in elastic search
+        """Updates this bilby job entry in elastic search
         """
         if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
             return
@@ -391,8 +379,7 @@ class BilbyJob(models.Model):
             es.index(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, document=doc)
 
     def elastic_search_remove(self):
-        """
-        Deletes the elastic search record for this job
+        """Deletes the elastic search record for this job
         """
         if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
             return
@@ -420,8 +407,7 @@ def bilby_job_delete_signal(sender, instance, using, **kwargs):
 
 
 class ExternalBilbyJob(models.Model):
-    """
-    This model stores information about bilby jobs that have external results. For example a job
+    """This model stores information about bilby jobs that have external results. For example a job
     where the data file is stored on Zenodo
     """
 
@@ -430,8 +416,7 @@ class ExternalBilbyJob(models.Model):
 
 
 class SupportingFile(models.Model):
-    """
-    This model stores information about supporting files for bilby jobs. This can include PSD, Calibration, Prior, GPS,
+    """This model stores information about supporting files for bilby jobs. This can include PSD, Calibration, Prior, GPS,
     Time Slide and Injection files. Doesn't include a timestamp, as these records will be created at the same time as a
     BilbyJob is.
     """
@@ -462,8 +447,7 @@ class SupportingFile(models.Model):
 
     @classmethod
     def save_from_parsed(cls, bilby_job, supporting_files, uploaded=False):
-        """
-        Takes the output from parse_supporting_files and generates the relevant SupportingFile records
+        """Takes the output from parse_supporting_files and generates the relevant SupportingFile records
 
         param bilby_job: The BilbyJob instance that the supporting files belongs to
         param supporting_files: Dictionary of supporting files returned from parse_supporting_files function
@@ -488,7 +472,7 @@ class SupportingFile(models.Model):
                                 key=k,
                                 file_name=Path(f).name,
                                 **extra,
-                            )
+                            ),
                         )
 
             elif type(details) is str:
@@ -501,7 +485,7 @@ class SupportingFile(models.Model):
                         key=None,
                         file_name=Path(details).name,
                         **extra,
-                    )
+                    ),
                 )
 
         created = cls.objects.bulk_create(bulk_items)
@@ -515,8 +499,7 @@ class SupportingFile(models.Model):
 
     @classmethod
     def get_by_upload_token(cls, token):
-        """
-        Retrieves the SupportingFile object matching the provided upload token. Returns None if the token doesn't
+        """Retrieves the SupportingFile object matching the provided upload token. Returns None if the token doesn't
         exist or the bilby job's file uploads have expired.
         """
         BilbyJob.prune_supporting_files_jobs()
@@ -529,23 +512,20 @@ class SupportingFile(models.Model):
 
     @classmethod
     def get_by_upload_tokens(cls, tokens):
-        """
-        Retrieves the SupportingFile objects matching the provided upload tokens. Returns None for any
+        """Retrieves the SupportingFile objects matching the provided upload tokens. Returns None for any
         specific SupportingFile if the token doesn't exist or the bilby job's file uploads have expired.
         """
         return [cls.get_by_upload_token(token) for token in tokens]
 
     @classmethod
     def get_unuploaded_supporting_files(cls, job):
-        """
-        Retrieves all supporting files that have not yet been uploaded for the specified job
+        """Retrieves all supporting files that have not yet been uploaded for the specified job
         """
         return SupportingFile.objects.filter(job=job, upload_token__isnull=False)
 
     @classmethod
     def get_by_download_token(cls, token):
-        """
-        Retrieves the SupportingFile object matching the provided download token. Returns None if the token doesn't
+        """Retrieves the SupportingFile object matching the provided download token. Returns None if the token doesn't
         exist or the file is not yet uploaded.
         """
         inst = cls.objects.filter(download_token=token, upload_token__isnull=True)
@@ -570,8 +550,7 @@ class IniKeyValue(models.Model):
 
 
 class FileDownloadToken(models.Model):
-    """
-    This model tracks files from job file lists which can be used to generate file download tokens from the job
+    """This model tracks files from job file lists which can be used to generate file download tokens from the job
     controller
     """
 
@@ -586,8 +565,7 @@ class FileDownloadToken(models.Model):
 
     @classmethod
     def get_by_token(cls, token):
-        """
-        Returns the instance matching the specified token, or None if expired or not found
+        """Returns the instance matching the specified token, or None if expired or not found
         """
         # First prune any old tokens which may have expired
         cls.prune()
@@ -601,8 +579,7 @@ class FileDownloadToken(models.Model):
 
     @classmethod
     def create(cls, job, paths):
-        """
-        Creates a bulk number of FileDownloadToken objects for a specific job and list of paths, and returns the
+        """Creates a bulk number of FileDownloadToken objects for a specific job and list of paths, and returns the
         created objects
         """
         data = [cls(job=job, path=p) for p in paths]
@@ -611,17 +588,15 @@ class FileDownloadToken(models.Model):
 
     @classmethod
     def prune(cls):
-        """
-        Removes any expired tokens from the database
+        """Removes any expired tokens from the database
         """
         cls.objects.filter(
-            created__lt=timezone.now() - datetime.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY)
+            created__lt=timezone.now() - datetime.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY),
         ).delete()
 
     @classmethod
     def get_paths(cls, job, tokens):
-        """
-        Returns a list of paths from a list of tokens, any token that isn't found will have a path of None
+        """Returns a list of paths from a list of tokens, any token that isn't found will have a path of None
 
         The resulting list, will have identical size and ordering to the provided list of tokens
         """
@@ -636,8 +611,7 @@ class FileDownloadToken(models.Model):
 
 
 class BilbyJobUploadToken(models.Model):
-    """
-    This model tracks file upload tokens that can be used to upload bilby jobs rather than using traditional JWT
+    """This model tracks file upload tokens that can be used to upload bilby jobs rather than using traditional JWT
     authentication
     """
 
@@ -656,8 +630,7 @@ class BilbyJobUploadToken(models.Model):
 
     @classmethod
     def get_by_token(cls, token):
-        """
-        Returns the instance matching the specified token, or None if expired or not found
+        """Returns the instance matching the specified token, or None if expired or not found
         """
         # First prune any old tokens which may have expired
         cls.prune()
@@ -671,8 +644,7 @@ class BilbyJobUploadToken(models.Model):
 
     @classmethod
     def create(cls, user):
-        """
-        Creates a BilbyJobUploadToken object
+        """Creates a BilbyJobUploadToken object
         """
         # First prune any old tokens which may have expired
         cls.prune()
@@ -682,17 +654,15 @@ class BilbyJobUploadToken(models.Model):
 
     @classmethod
     def prune(cls):
-        """
-        Removes any expired tokens from the database
+        """Removes any expired tokens from the database
         """
         cls.objects.filter(
-            created__lt=timezone.now() - datetime.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY)
+            created__lt=timezone.now() - datetime.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY),
         ).delete()
 
 
 class AnonymousMetrics(models.Model):
-    """
-    Used to track information about anonymous users accessing the system for reporting purposes.
+    """Used to track information about anonymous users accessing the system for reporting purposes.
     """
 
     # The public (Persistent) user identifier

@@ -30,7 +30,7 @@ class TestCheckJobEmbargoStatus(BilbyTestCase):
                 "detectors": "['H1']",
                 "trigger-time": "2.0",
                 "n-simulation": "0",
-            }
+            },
         )
         self.user = ADACSAnonymousUser()
         self.assertTrue(check_job_embargo_status(self.user, args))
@@ -42,7 +42,7 @@ class TestCheckJobEmbargoStatus(BilbyTestCase):
                 "detectors": "['H1']",
                 "trigger-time": "1.0",
                 "n-simulation": "0",
-            }
+            },
         )
         self.user = ADACSAnonymousUser()
         self.assertFalse(check_job_embargo_status(self.user, args))
@@ -72,7 +72,7 @@ class TestCheckJobEmbargoStatus(BilbyTestCase):
                 "detectors": "['H1']",
                 "trigger-time": "2.0",
                 "n-simulation": "1",
-            }
+            },
         )
         self.assertFalse(check_job_embargo_status(None, args))
 

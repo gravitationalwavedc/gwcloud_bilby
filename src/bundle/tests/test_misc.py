@@ -10,7 +10,7 @@ class TestMisc(unittest.TestCase):
 
         details = {"job_id": 1234}
 
-        self.assertEqual(working_directory(details), f"{settings.job_directory}/{str(details['job_id'])}")
+        self.assertEqual(working_directory(details), f"{settings.job_directory}/{details['job_id']!s}")
 
     @patch("settings.default_working_directory", "/my/default/directory")
     def test_working_directory_default(self):

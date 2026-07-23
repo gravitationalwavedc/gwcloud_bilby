@@ -58,7 +58,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
                     "samplerChoice": "dynesty",
                 },
                 "waveform": {"model": None},
-            }
+            },
         }
 
         self.query_string = """
@@ -158,7 +158,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
                     "private": True,
                 },
                 "iniString": {"iniString": None},
-            }
+            },
         }
 
         self.query_string = """

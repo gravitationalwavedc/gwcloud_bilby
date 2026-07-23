@@ -66,7 +66,7 @@ class TestIniJobSubmission(BilbyTestCase):
                     "private": self.test_private,
                 },
                 "iniString": {"iniString": None},
-            }
+            },
         }
 
         self.responses = responses.RequestsMock()
@@ -79,8 +79,7 @@ class TestIniJobSubmission(BilbyTestCase):
 
     @patch("bilbyui.models.submit_job")
     def mock_ini_job_submission_with_supporting_files(self, test_ini_string, file_names, config_names, mock_api_call):
-        """
-        This function is called by subsequent tests and performs the bulk of the actual testing and asserting. It's
+        """This function is called by subsequent tests and performs the bulk of the actual testing and asserting. It's
         main flow is basically the following:
         * Submit the provided ini file to create a new bilby job
         * Verify that the created job details are correct
@@ -91,7 +90,6 @@ class TestIniJobSubmission(BilbyTestCase):
         * Verify that the job is not submitted until the last supporting file is uploaded, then the job should be
           submitted
         """
-
         self.test_input["params"]["iniString"]["iniString"] = test_ini_string
 
         mock_api_call.return_value = {"jobId": 4321}
@@ -117,8 +115,8 @@ class TestIniJobSubmission(BilbyTestCase):
                 "result": {
                     "jobId": "QmlsYnlKb2JOb2RlOjE=",
                     "supportingFiles": expected_supporting_files,
-                }
-            }
+                },
+            },
         }
 
         response.data["newBilbyJobFromIniString"]["result"]["supportingFiles"].sort(key=lambda x: x["token"])
@@ -155,7 +153,7 @@ class TestIniJobSubmission(BilbyTestCase):
             for idx, token in enumerate(tokens):
                 input_data["supportingFiles"].append({"fileToken": str(token), "supportingFile": None})
                 files[f"input.supportingFiles.{idx}.supportingFile"] = SimpleUploadedFile(
-                    name="test.tar.gz", content=content.encode("utf-8")
+                    name="test.tar.gz", content=content.encode("utf-8"),
                 )
 
             response = self.file_query(
@@ -211,7 +209,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "label": "Test_Name",
                 "detectors": "['H1']",
                 "psd-dict": "{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat}",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -230,7 +228,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "detectors": "['H1']",
                 "psd-dict": "{L1:./supporting_files/psd/L1-psd.dat, V1:./supporting_files/psd/V1-psd.dat, "
                 "H1:./supporting_files/psd/H1-psd.dat}",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -249,7 +247,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "label": "Test_Name",
                 "detectors": "['H1']",
                 "spline-calibration-envelope-dict": "{L1:./supporting_files/calib/L1-calib.dat}",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -259,7 +257,7 @@ class TestIniJobSubmission(BilbyTestCase):
                     "L1",
                     "./supporting_files/calib/L1-calib.dat",
                     SupportingFile.CALIBRATION,
-                ]
+                ],
             ],
             "spline_calibration_envelope_dict",
         )
@@ -271,7 +269,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "detectors": "['H1']",
                 "spline-calibration-envelope-dict": "{L1:./supporting_files/calib/L1-calib.dat, "
                 "V1:./supporting_files/calib/V1-calib.dat}",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -299,7 +297,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "spline-calibration-envelope-dict": "{L1:./supporting_files/calib/L1-calib.dat, "
                 "V1:./supporting_files/calib/V1-calib.dat, "
                 "H1:./supporting_files/calib/H1-calib.dat}",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -330,7 +328,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "label": "Test_Name",
                 "detectors": "['H1']",
                 "prior-file": "./supporting_files/prior/myprior.prior",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -345,7 +343,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "label": "Test_Name",
                 "detectors": "['H1']",
                 "gps-file": "./supporting_files/gps/gps.dat",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -360,7 +358,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "label": "Test_Name",
                 "detectors": "['H1']",
                 "timeslide-file": "./supporting_files/timeslide/timeslide.dat",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -370,7 +368,7 @@ class TestIniJobSubmission(BilbyTestCase):
                     None,
                     "./supporting_files/timeslide/timeslide.dat",
                     SupportingFile.TIME_SLIDE,
-                ]
+                ],
             ],
             "timeslide_file",
         )
@@ -381,7 +379,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "label": "Test_Name",
                 "detectors": "['H1']",
                 "injection-file": "./supporting_files/injection/injection.dat",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -391,7 +389,7 @@ class TestIniJobSubmission(BilbyTestCase):
                     None,
                     "./supporting_files/injection/injection.dat",
                     SupportingFile.INJECTION,
-                ]
+                ],
             ],
             "injection_file",
         )
@@ -402,7 +400,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "label": "Test_Name",
                 "detectors": "['H1']",
                 "numerical-relativity-file": "./supporting_files/nrf/nrf.dat",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -412,7 +410,7 @@ class TestIniJobSubmission(BilbyTestCase):
                     None,
                     "./supporting_files/nrf/nrf.dat",
                     SupportingFile.NUMERICAL_RELATIVITY,
-                ]
+                ],
             ],
             "numerical_relativity_file",
         )
@@ -425,7 +423,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "label": "Test_Name",
                 "detectors": "['H1']",
                 "distance-marginalization-lookup-table": "./supporting_files/dml/dml.npz",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -435,7 +433,7 @@ class TestIniJobSubmission(BilbyTestCase):
                     None,
                     "./supporting_files/dml/dml.npz",
                     SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE,
-                ]
+                ],
             ],
             "distance_marginalization_lookup_table",
         )
@@ -451,7 +449,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "detectors": "['H1']",
                 "prior-file": "4s",
                 "distance-marginalization-lookup-table": None,
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(test_ini_string, [], "distance_marginalization_lookup_table")
@@ -462,7 +460,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "label": "Test_Name",
                 "detectors": "['H1']",
                 "data-dict": "{H1: ./supporting_files/dat/h1.gwf}",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -477,7 +475,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "label": "Test_Name",
                 "detectors": "['H1', 'L1']",
                 "data-dict": "{H1: ./supporting_files/dat/h1.gwf, L1: ./supporting_files/dat/l1.gwf}",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -507,7 +505,7 @@ class TestIniJobSubmission(BilbyTestCase):
                 "distance-marginalization-lookup-table": "./supporting_files/dml/dml.npz",
                 "data-dict": "{H1: ./supporting_files/dat/h1.gwf, L1: ./supporting_files/dat/l1.gwf, "
                 "V1: ./supporting_files/dat/v1.gwf}",
-            }
+            },
         )
 
         self.mock_ini_job_submission_with_supporting_files(
@@ -594,7 +592,7 @@ class TestIniJobSubmission(BilbyTestCase):
         supporting_file = SupportingFile.objects.last()
 
         response = self.http_client.get(
-            f"{reverse(viewname='file_download')}?fileId={supporting_file.download_token}&forceDownload"
+            f"{reverse(viewname='file_download')}?fileId={supporting_file.download_token}&forceDownload",
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Content-Type"], "application/octet-stream")

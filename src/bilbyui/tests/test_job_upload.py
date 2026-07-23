@@ -67,7 +67,7 @@ class TestJobUpload(BilbyTestCase):
         test_ini_string = create_test_ini_string(
             {
                 "label": test_name,
-            }
+            },
         )
 
         test_file = SimpleUploadedFile(
@@ -500,7 +500,7 @@ class TestJobUpload(BilbyTestCase):
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.name, test_name)
         self.assertFalse(
-            job.is_ligo_job, "Simulated data job should not be marked as LIGO job even with embargoed trigger time"
+            job.is_ligo_job, "Simulated data job should not be marked as LIGO job even with embargoed trigger time",
         )
 
 
@@ -551,7 +551,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
                 name="test.tar.gz",
                 content=create_test_upload_data(ini_string, "testjob"),
                 content_type="application/gzip",
-            )
+            ),
         }
 
         response = self.file_query(self.mutation_string, input_data=self.params, files=test_files)
@@ -586,7 +586,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
                 name="test.tar.gz",
                 content=create_test_upload_data(ini_string, "testjob"),
                 content_type="application/gzip",
-            )
+            ),
         }
 
         response = self.file_query(self.mutation_string, input_data=self.params, files=test_files)
@@ -624,7 +624,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
                     name="test.tar.gz",
                     content=create_test_upload_data(ini_string, "testjob"),
                     content_type="application/gzip",
-                )
+                ),
             }
 
             response = self.file_query(self.mutation_string, input_data=self.params, files=test_files)

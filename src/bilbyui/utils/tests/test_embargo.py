@@ -120,7 +120,7 @@ class TestEmbargoFilter(BilbyTestCase):
                         "detectors": "['H1']",
                         "trigger-time": vals[0],
                         "n-simulation": vals[1],
-                    }
+                    },
                 ),
             )
 

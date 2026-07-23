@@ -30,28 +30,28 @@ class TestAllLabels(BilbyTestCase):
                             "name": "Bad Run",
                             "description": "This run contains some issues and should not be used for science.",
                             "protected": False,
-                        }
+                        },
                     },
                     {
                         "node": {
                             "name": "Production Run",
                             "description": "This run has been completed successfully and can be used for science.",
                             "protected": False,
-                        }
+                        },
                     },
                     {
                         "node": {
                             "name": "Review Requested",
                             "description": "This run should be reviewed by peers.",
                             "protected": False,
-                        }
+                        },
                     },
                     {
                         "node": {
                             "name": "Reviewed",
                             "description": "This run has been reviewed.",
                             "protected": False,
-                        }
+                        },
                     },
                     {
                         "node": {
@@ -59,10 +59,10 @@ class TestAllLabels(BilbyTestCase):
                             "description": "This run has been marked by GWCloud admins as preferred for analysis of "
                             "this event.",
                             "protected": True,
-                        }
+                        },
                     },
-                ]
-            }
+                ],
+            },
         }
         self.assertResponseHasNoErrors(response)
         self.assertDictEqual(response.data, expected)

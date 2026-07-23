@@ -60,7 +60,8 @@ class TestRetryLogic(GWOSCTestBase):
     def test_event_json_invalid_json_records_job_error(self, gwc):
         """Event JSON returns 200 OK but with a non-JSON body → job_errors row with
         failure_count=1 and no completed_jobs row.  Covers the 'blind spot' where
-        the server responds successfully but the body is malformed."""
+        the server responds successfully but the body is malformed.
+        """
         self.add_allevents_response()
         responses.add(
             responses.GET,
@@ -315,7 +316,8 @@ class TestRetryLogic(GWOSCTestBase):
     @responses.activate
     def test_mix_broken_transient_success(self, gwc):
         """Three events: first at max retries (marked broken), second H5 404
-        (incremented), third succeeds → all handled correctly in one run."""
+        (incremented), third succeeds → all handled correctly in one run.
+        """
         events = {
             "GW000001_123456": {
                 "commonName": "GW000001_123456",

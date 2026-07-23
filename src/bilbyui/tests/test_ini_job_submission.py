@@ -58,7 +58,7 @@ class TestIniJobSubmission(BilbyTestCase):
                     "private": test_private,
                 },
                 "iniString": {"iniString": test_ini_string},
-            }
+            },
         }
 
         response = self.query(self.mutation_string, input_data=test_input)
@@ -92,7 +92,7 @@ class TestIniJobSubmission(BilbyTestCase):
                     "private": test_private,
                 },
                 "iniString": {"iniString": test_ini_string},
-            }
+            },
         }
 
         response = self.query(self.mutation_string, input_data=test_input)
@@ -143,7 +143,7 @@ class TestIniJobSubmission(BilbyTestCase):
                     "private": test_private,
                 },
                 "iniString": {"iniString": test_ini_string},
-            }
+            },
         }
 
         # First test no cluster - this should default to 'default'
@@ -241,7 +241,7 @@ class TestIniJobSubmissionNameValidation(BilbyTestCase):
                     "private": True,
                 },
                 "iniString": {"iniString": test_ini_string},
-            }
+            },
         }
 
         response = self.query(self.mutation_string, input_data=test_input)
@@ -271,7 +271,7 @@ class TestIniJobSubmissionNameValidation(BilbyTestCase):
                     "private": True,
                 },
                 "iniString": {"iniString": test_ini_string},
-            }
+            },
         }
 
         response = self.query(self.mutation_string, input_data=test_input)
@@ -301,7 +301,7 @@ class TestIniJobSubmissionNameValidation(BilbyTestCase):
                     "private": True,
                 },
                 "iniString": {"iniString": test_ini_string},
-            }
+            },
         }
 
         response = self.query(self.mutation_string, input_data=test_input)

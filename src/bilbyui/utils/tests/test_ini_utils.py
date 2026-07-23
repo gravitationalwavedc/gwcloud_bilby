@@ -48,7 +48,7 @@ class TestIniUtils(BilbyTestCase):
                 "label": "my-custom-label",
                 "n-parallel": 4,
                 "pn-phase-order": 12345,
-            }
+            },
         )
         args = bilby_ini_string_to_args(ini.encode("utf-8"))
 

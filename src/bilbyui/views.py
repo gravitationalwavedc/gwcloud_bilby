@@ -53,8 +53,7 @@ STATUS_BADGE_CLASSES = {
 
 
 def check_job_embargo_status(user, args):
-    """
-    Check if a job should be embargoed based on user and job arguments.
+    """Check if a job should be embargoed based on user and job arguments.
 
     This function serves two distinct purposes depending on the context:
 
@@ -81,6 +80,7 @@ def check_job_embargo_status(user, args):
 
     Returns:
         bool: True if the job should be embargoed, False otherwise.
+
     """
     # Parse trigger_time from INI args - can be a float or event name like "GW150914"
     try:
@@ -150,7 +150,7 @@ def create_bilby_job(user, params):
     # Check the ligo permissions and ligo job status
     is_ligo_job = False
 
-    # todo: request_cpus
+    # TODO: request_cpus
 
     # Generate the detector choice
     detectors = []
@@ -314,13 +314,12 @@ def create_bilby_job(user, params):
 
         return bilby_job
     except Exception as e:
-        logger.error(f"Failed to create/submit job for user {user.id}: {str(e)}", exc_info=True)
+        logger.error(f"Failed to create/submit job for user {user.id}: {e!s}", exc_info=True)
         raise
 
 
 def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict):
-    """
-    Given a DataGenerationInput object, parser, this function will generate a dictionary representing any supporting
+    """Given a DataGenerationInput object, parser, this function will generate a dictionary representing any supporting
     files from the input, and then remove those supporting files from the parser. The other parameter is a
     BilbyArgParser instance which will also have the supporting file removed from.
     """
@@ -397,7 +396,7 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
             setattr(args, config_name, None)
 
         else:
-            logging.error(f"Got unknown supporting file type for {config_name}: {str(config)}")
+            logging.error(f"Got unknown supporting file type for {config_name}: {config!s}")
 
     return supporting_files
 
@@ -449,7 +448,7 @@ def create_bilby_job_from_ini_string(user, params):
 
     # Parse any supporting files
     supporting_files = parse_supporting_files(
-        parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict
+        parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict,
     )
 
     # Override any required fields
@@ -541,12 +540,12 @@ def upload_bilby_job(user, upload_token, details, job_file):
             filter(
                 lambda x: os.path.isfile(os.path.join(job_staging_dir, x)) and x.endswith("_config_complete.ini"),
                 os.listdir(job_staging_dir),
-            )
+            ),
         )
 
         if len(ini_file) != 1:
             raise Exception(
-                "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one."
+                "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one.",
             )
 
         ini_file = ini_file[0]
@@ -597,7 +596,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
         # Parse any supporting files
         supporting_files = parse_supporting_files(
-            parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict
+            parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict,
         )
 
         # Convert the modified arguments back to an ini string
@@ -702,8 +701,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
 
 
 def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
-    """
-    Upload a bilby job with HDF5 result file and INI configuration file.
+    """Upload a bilby job with HDF5 result file and INI configuration file.
 
     This function creates an UPLOADED job type with the actual HDF5 result file
     and INI configuration file stored in GWCloud's internal storage.
@@ -717,6 +715,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
 
     Returns:
         BilbyJob: The created bilby job
+
     """
     # Check that the uploaded files are the correct types
     if not hdf5_file.name.endswith((".hdf5", ".h5")):
@@ -737,16 +736,14 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         # Save the HDF5 file to the result directory
         hdf5_path = os.path.join(job_staging_dir, "result", "result.hdf5")
         with open(hdf5_path, "wb") as f:
-            for chunk in hdf5_file.chunks():
-                f.write(chunk)
+            f.writelines(hdf5_file.chunks())
 
         # Save the INI file with the correct naming convention
         job_name = details.name
         ini_filename = f"{job_name}_config_complete.ini"
         ini_path = os.path.join(job_staging_dir, ini_filename)
         with open(ini_path, "wb") as f:
-            for chunk in ini_file.chunks():
-                f.write(chunk)
+            f.writelines(ini_file.chunks())
 
         # Read and parse the INI file
         with open(ini_path) as f:
@@ -918,8 +915,7 @@ def upload_supporting_files(upload_tokens, uploaded_supporting_files):
 
         with open(job_dir / str(upload_token.id), "wb") as supporting_file:
             # Write the uploaded file to the temporary file
-            for c in uploaded_supporting_file.chunks():
-                supporting_file.write(c)
+            supporting_file.writelines(uploaded_supporting_file.chunks())
             supporting_file.flush()
 
         # Clear the token to indicate the file is uploaded
@@ -980,7 +976,7 @@ def _build_public_job_rows(public_jobs_result):
                 "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
                 "labels": list(bilby_job.labels.all()),
                 "event_id_values": _event_id_display_values(bilby_job.event_id),
-            }
+            },
         )
 
     return rows
@@ -1020,7 +1016,7 @@ def _build_user_job_rows(user_jobs_result, user):
                 "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
                 "labels": list(bilby_job.labels.all()),
                 "event_id_values": _event_id_display_values(bilby_job.event_id),
-            }
+            },
         )
 
     return rows
@@ -1143,7 +1139,7 @@ def _build_result_files(job):
                 "is_dir": False,
                 "file_size": None,
                 "download_token": None,
-            }
+            },
         ]
 
     success, files = job.get_file_list()
@@ -1216,7 +1212,7 @@ def view_job_parameters_partial(request, job_id):
         params = generate_parameter_output(job)
     except Exception as e:
         logger.error(
-            f"Failed to generate parameter output for job {job.id}: {type(e).__name__}: {str(e)}",
+            f"Failed to generate parameter output for job {job.id}: {type(e).__name__}: {e!s}",
             exc_info=True,
         )
         params = None

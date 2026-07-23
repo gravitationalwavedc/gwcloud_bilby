@@ -73,8 +73,8 @@ class TestJobSubmission(BilbyTestCase):
                         "samplerChoice": "dynesty",
                     },
                     "waveform": {"model": None},
-                }
-            }
+                },
+            },
         }
 
         response = self.query(
@@ -199,8 +199,8 @@ class TestJobSubmission(BilbyTestCase):
 
         self.assertTrue(
             literal_eval(IniKeyValue.objects.get(job=job, key="prior_file", processed=True).value).endswith(
-                "bilby_pipe/data_files/4s.prior"
-            )
+                "bilby_pipe/data_files/4s.prior",
+            ),
         )
 
         self.assertEqual(
@@ -263,8 +263,8 @@ class TestJobSubmission(BilbyTestCase):
                         "samplerChoice": "dynesty",
                     },
                     "waveform": {"model": None},
-                }
-            }
+                },
+            },
         }
 
         response = self.query(
@@ -398,8 +398,8 @@ class TestJobSubmission(BilbyTestCase):
 
         self.assertTrue(
             literal_eval(IniKeyValue.objects.get(job=job, key="prior_file", processed=True).value).endswith(
-                "bilby_pipe/data_files/4s.prior"
-            )
+                "bilby_pipe/data_files/4s.prior",
+            ),
         )
 
         self.assertEqual(
@@ -471,8 +471,8 @@ class TestJobSubmission(BilbyTestCase):
                         "samplerChoice": "dynesty",
                     },
                     "waveform": {"model": None},
-                }
-            }
+                },
+            },
         }
 
         mut = """
@@ -599,8 +599,8 @@ class TestJobSubmission(BilbyTestCase):
                         "samplerChoice": "dynesty",
                     },
                     "waveform": {"model": None},
-                }
-            }
+                },
+            },
         }
 
         mutation = """
@@ -681,8 +681,8 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
                         "samplerChoice": "dynesty",
                     },
                     "waveform": {"model": None},
-                }
-            }
+                },
+            },
         }
 
         self.mutation_string = """

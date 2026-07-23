@@ -60,7 +60,7 @@ class TestSubmit(TestCase):
     def test_submit_real_data_job_slurm(self, *args, **kwargs):
         # Generate a minimal ini file
         ini = args_to_bilby_ini(
-            {"label": "test-real", "detectors": ["H1"], "trigger-time": "12345678", "injection-numbers": []}
+            {"label": "test-real", "detectors": ["H1"], "trigger-time": "12345678", "injection-numbers": []},
         ).decode("utf-8")
 
         details = {"job_id": 1}
@@ -158,7 +158,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 "n-simulation": 1,
                 "gaussian_noise": True,
                 "injection-numbers": [],
-            }
+            },
         ).decode("utf-8")
 
         details = {"job_id": 1}
@@ -198,13 +198,13 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
             # Check the stdout and stderr logs for the data generation step do not exist
             self.assertFalse(
                 os.path.exists(
-                    os.path.join(td, "log_data_generation", "test-simulated_data0_12345678-0_generation.out")
-                )
+                    os.path.join(td, "log_data_generation", "test-simulated_data0_12345678-0_generation.out"),
+                ),
             )
             self.assertFalse(
                 os.path.exists(
-                    os.path.join(td, "log_data_generation", "test-simulated_data0_12345678-0_generation.err")
-                )
+                    os.path.join(td, "log_data_generation", "test-simulated_data0_12345678-0_generation.err"),
+                ),
             )
 
             # Check that the master slurm script was correctly modified
@@ -265,7 +265,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 "n-simulation": 1,
                 "gaussian_noise": True,
                 "injection-numbers": [],
-            }
+            },
         ).decode("utf-8")
 
         details = {"job_id": 1}
@@ -302,13 +302,13 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
             # Check the stdout and stderr logs for the data generation step do not exist
             self.assertFalse(
                 os.path.exists(
-                    os.path.join(td, "log_data_generation", "test-simulated_data0_12345678-0_generation.out")
-                )
+                    os.path.join(td, "log_data_generation", "test-simulated_data0_12345678-0_generation.out"),
+                ),
             )
             self.assertFalse(
                 os.path.exists(
-                    os.path.join(td, "log_data_generation", "test-simulated_data0_12345678-0_generation.err")
-                )
+                    os.path.join(td, "log_data_generation", "test-simulated_data0_12345678-0_generation.err"),
+                ),
             )
 
             # Check that the master slurm script was correctly modified
@@ -362,7 +362,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
     def test_submit_real_data_job_condor(self, *args, **kwargs):
         # Generate a minimal ini file
         ini = args_to_bilby_ini(
-            {"label": "test-real", "detectors": ["H1"], "trigger-time": "12345678", "injection-numbers": []}
+            {"label": "test-real", "detectors": ["H1"], "trigger-time": "12345678", "injection-numbers": []},
         ).decode("utf-8")
 
         details = {"job_id": 1}
@@ -440,7 +440,7 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
                 "n-simulation": 1,
                 "gaussian_noise": True,
                 "injection-numbers": [],
-            }
+            },
         ).decode("utf-8")
 
         details = {"job_id": 1}

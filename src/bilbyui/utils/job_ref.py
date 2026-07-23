@@ -6,8 +6,7 @@ from graphql_relay.node.node import from_global_id
 
 
 def parse_job_ref(job_ref):
-    """
-    Resolves a job reference into a numeric job id.
+    """Resolves a job reference into a numeric job id.
 
     :param job_ref: A job reference, either a raw numeric id string or a Relay global id
     :return: A tuple of (job_id, is_relay_id) where job_id is the integer job id and
@@ -33,8 +32,7 @@ def parse_job_ref(job_ref):
 
 
 def canonical_job_path(request, resolved_job_id):
-    """
-    Builds the canonical URL path for a resolved job id.
+    """Builds the canonical URL path for a resolved job id.
 
     :param request: The current HttpRequest whose path and query string are used as a template
     :param resolved_job_id: The integer job id to substitute into the resolved view
@@ -49,8 +47,7 @@ def canonical_job_path(request, resolved_job_id):
 
 
 def resolve_job_ref_view(view_func):
-    """
-    Decorator that resolves a job reference before dispatching to a view.
+    """Decorator that resolves a job reference before dispatching to a view.
 
     :param view_func: The view function to wrap
     :return: A wrapped view that resolves the job reference, redirecting to the
