@@ -11,23 +11,21 @@ cd gwosc_cron/
 poetry install
 ```
 
-This creates a `.venv` directory with all required packages including `h5py`, `gwosc`, and `gwcloud-python`.
+This installs all required packages including `h5py`, `gwosc`, and `gwcloud-python` into a virtual environment managed by Poetry.
 
 ### Run tests
 
 ```bash
 cd gwosc_cron/
-.venv/bin/python -m coverage run -m xmlrunner discover -s tests -t . --output-file ./junit.xml
+poetry run python -m coverage run -m xmlrunner discover -s tests -t . --output-file ./junit.xml
 ```
 
 ### Generate coverage report
 
 ```bash
 cd gwosc_cron/
-.venv/bin/coverage html --directory htmlcov
+poetry run coverage report
 ```
-
-Open `htmlcov/index.html` in your browser to view the interactive coverage report.
 
 ## Log files
 
