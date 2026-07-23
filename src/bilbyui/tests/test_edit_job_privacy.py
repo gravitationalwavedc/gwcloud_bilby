@@ -75,8 +75,9 @@ class TestEditJobPrivacy(BilbyTestCase):
         self.assertContains(response, "Share publicly")
 
     def test_other_users_job_returns_404(self):
+        other_user = self.create_user(id=2, name="other", primary_email="other@gmail.com")
         other_job = BilbyJob.objects.create(
-            user_id=self.user.id + 1,
+            user_id=other_user.id,
             name="other_users_job",
             description="hidden",
             job_controller_id=10003,

@@ -1,11 +1,9 @@
 import datetime
-import json
 import logging
 
-import jwt
-import requests
 from django.conf import settings
 
+from bilbyui.utils.jobs.submit_job import _make_job_controller_request
 from bilbyui.utils.misc import check_request_leak_decorator
 
 logger = logging.getLogger(__name__)
@@ -24,9 +22,9 @@ def request_file_download_ids(job, paths, user_id=None):
 
     On success, the list of ids is guaranteed to be the same size and order as the provided paths parameter
 
-    :param job: The BilbyJob instance to get the status of
-    :param paths: The list of paths to generate download identifies for
-    :param user_id: On optional user id to make the request as
+    :param job: The BilbyJob instance for which file download ids are generated
+    :param paths: The list of paths to generate download identifiers for
+    :param user_id: An optional user id to make the request as
 
     :return: tuple(result -> bool, details)
     """
@@ -38,55 +36,31 @@ def request_file_download_ids(job, paths, user_id=None):
         logger.warning(f"Job {job.id} has no job_controller_id - not submitted")
         return False, "Job not submitted"
 
-    # Create the jwt token
-    jwt_enc = jwt.encode(
-        {"userId": user, "exp": datetime.datetime.now() + datetime.timedelta(minutes=5)},
-        settings.JOB_CONTROLLER_JWT_SECRET,
-        algorithm="HS256",
-    )
-
-    # Generate the post payload
     data = {"jobId": job.job_controller_id, "paths": paths}
 
     try:
-        # Initiate the request to the job controller
-        result = requests.request(
+        result = _make_job_controller_request(
             "POST",
             f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
-            data=json.dumps(data),
-            headers={"Authorization": jwt_enc},
-            timeout=10,
+            user,
+            data=data,
+            jwt_expiry=datetime.timedelta(minutes=5),
         )
 
-        # Check that the request was successful
-        if result.status_code != 200:
-            # todo: Spruce the exception handling up a bit
-            # Oops
-            msg = (
-                f"Error getting file download URLs for job {job.id}, "
-                f"got error code: {result.status_code}: {result.content}"
-            )
-            logger.error(msg)
-            raise Exception(msg)
-
-        # Parse the response from the job controller
-        result = json.loads(result.content)
-
         logger.info(f"Successfully generated {len(result['fileIds'])} download IDs for job {job.id}")
-        # Return the file ids
         return True, result["fileIds"]
     except Exception as e:
-        logger.error(f"Error getting file download URLs for job {job.id}: {str(e)}", exc_info=True)
-        return False, "Error getting job file download url"
+        logger.error(f"Error getting file download IDs for job {job.id}: {e}", exc_info=True)
+        return False, "Error getting job file download id"
 
 
 def request_file_download_id(job, path, user_id=None):
     """
     Requests a file download id from the job controller for the provided file path
 
-    :param job: The BilbyJob instance to get the status of
+    :param job: The BilbyJob instance for which a file download id is generated
     :param path: The path to the file to download
-    :param user_id: On optional user id to make the request as
+    :param user_id: An optional user id to make the request as
     """
     success, results = request_file_download_ids(job, [path], user_id)
 

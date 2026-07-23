@@ -1,4 +1,5 @@
 import json
+import os
 from tempfile import TemporaryDirectory
 
 import responses
@@ -28,7 +29,8 @@ class TestRequestFileListNotUploaded(BilbyTestCase):
         self.addCleanup(self.responses.stop)
         self.addCleanup(self.responses.reset)
 
-        self.job = BilbyJob.objects.create(user_id=1234, ini_string="detectors=['H1']")
+        self.user = self.create_user(id=1234, name="filelist user", primary_email="filelist@gmail.com")
+        self.job = BilbyJob.objects.create(user_id=self.user.id, ini_string="detectors=['H1']")
 
     @silence_errors
     def test_request_file_list_not_uploaded(self):
@@ -184,3 +186,12 @@ class TestRequestFileListUploaded(BilbyTestCase):
 
         result = request_file_list(self.job, "results_page", True, self.job.user_id)
         self.assertTrue(len(list(filter(lambda x: "overview.html" in x["path"], result[1]))))
+
+    def test_request_file_list_recursive_skips_broken_symlink(self):
+        job_dir = self.job.get_upload_directory()
+        os.symlink("/nonexistent/target", os.path.join(job_dir, "data", "broken_link"))
+
+        result = request_file_list(self.job, "./data", True, self.job.user_id)
+
+        self.assertEqual(result[0], True)
+        self.assertNotIn("broken_link", [entry["path"] for entry in result[1]])

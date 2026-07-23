@@ -182,13 +182,9 @@ class JobDetailsOutput(graphene.ObjectType, JobDetailsCommon):
 class JobParameterInput(graphene.InputObjectType):
     details = JobDetailsInput()
 
-    # calibration = CalibrationInput()
     data = DataInput()
     detector = DetectorInput()
-    # injection = InjectionInput()
-    # likelihood = LikelihoodInput()
     prior = PriorInput()
-    # post_processing = PostProcessingInput()
     sampler = SamplerInput()
     waveform = WaveformInput()
 
@@ -196,13 +192,9 @@ class JobParameterInput(graphene.InputObjectType):
 class JobParameterOutput(graphene.ObjectType):
     details = graphene.Field(JobDetailsOutput)
 
-    # calibration = graphene.Field(CalibrationOutput)
     data = graphene.Field(DataOutput)
     detector = graphene.Field(DetectorOutput)
-    # injection = graphene.Field(InjectionOutput)
-    # likelihood = graphene.Field(LikelihoodOutput)
     prior = graphene.Field(PriorOutput)
-    # post_processing = graphene.Field(PostProcessingOutput)
     sampler = graphene.Field(SamplerOutput)
     waveform = graphene.Field(WaveformOutput)
 

@@ -22,11 +22,7 @@ User = get_user_model()
 
 class TestPublicBilbyJobsQueries(BilbyTestCase):
     def setUp(self):
-        User = get_user_model()
-        self.user, _ = User.objects.update_or_create(
-            id=1,
-            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
-        )
+        self.user = self.create_user()
 
         self.job1 = BilbyJob.objects.create(
             user_id=self.user.id,
@@ -108,26 +104,24 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         return {"hits": {}}
 
     def request_job_filter_mock(*args, **kwargs):
-        jobs = []
-        for job in BilbyJob.objects.filter(user_id=1):
-            jobs.append(
-                {
-                    "id": job.job_controller_id,
-                    "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
-                }
-            )
+        jobs = [
+            {
+                "id": job.job_controller_id,
+                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+            }
+            for job in BilbyJob.objects.filter(user_id=1)
+        ]
 
         return True, jobs
 
     def request_job_filter_mock_missing_record(*args, **kwargs):
-        jobs = []
-        for job in BilbyJob.objects.filter(user_id=1)[1:]:
-            jobs.append(
-                {
-                    "id": job.job_controller_id,
-                    "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
-                }
-            )
+        jobs = [
+            {
+                "id": job.job_controller_id,
+                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+            }
+            for job in BilbyJob.objects.filter(user_id=1)[1:]
+        ]
 
         return True, jobs
 
@@ -135,8 +129,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_no_cursor(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private and owned by a different user
+        other_user = self.create_user(id=self.user.id + 1, name="other user", primary_email="other+1@test.com")
         BilbyJob.objects.create(
-            user_id=self.user.id + 1,
+            user_id=other_user.id,
             name="Test3",
             job_controller_id=3456,
             private=True,
@@ -184,8 +179,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
     )
     def test_public_bilby_jobs_query_missing_job_controller_job(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private and owned by a different user
+        other_user = self.create_user(id=self.user.id + 1, name="other user2", primary_email="other+2@test.com")
         BilbyJob.objects.create(
-            user_id=self.user.id + 1,
+            user_id=other_user.id,
             name="Test3",
             job_controller_id=3456,
             private=True,
@@ -317,8 +313,9 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_uploaded(self, request_job_filter, elasticsearch_search):
         # This job shouldn't appear in the list because it's private.
+        other_user = self.create_user(id=4, name="other user", primary_email="other4@test.com")
         BilbyJob.objects.create(
-            user_id=4,
+            user_id=other_user.id,
             name="Test3",
             job_controller_id=3,
             private=True,
@@ -439,7 +436,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 elif time_range == "1y":
                     delta = timedelta(days=365)
 
-                regex = re.compile('job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')  # noqa: W605
+                regex = re.compile(r'job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')
                 _from, to = regex.search(elasticsearch_search.mock_calls[-1].kwargs["q"]).groups()
 
                 _from = datetime.fromisoformat(_from)
@@ -491,7 +488,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             "publicBilbyJobs query returned unexpected data.",
         )
 
-        regex = re.compile('job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')  # noqa: W605
+        regex = re.compile(r'job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')
         _from, to = regex.search(elasticsearch_search.mock_calls[-1].kwargs["q"]).groups()
 
         _from = datetime.fromisoformat(_from)

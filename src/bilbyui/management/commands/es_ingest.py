@@ -25,7 +25,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f"✓ Job {job.id} - {job.name}"))
             except Exception as e:
                 error_count += 1
-                logger.error(f"Job {job.id} - {job.name} could not be ingested: {str(e)}", exc_info=True)
-                self.stdout.write(self.style.ERROR(f"✗ Job {job.id} - {job.name}: {str(e)}"))
+                logger.error(f"Job {job.id} - {job.name} could not be ingested: {e}", exc_info=True)
+                self.stdout.write(self.style.ERROR(f"✗ Job {job.id} - {job.name}: {e}"))
 
         self.stdout.write(self.style.SUCCESS(f"\nIngestion complete: {success_count} succeeded, {error_count} failed"))

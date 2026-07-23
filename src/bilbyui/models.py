@@ -108,8 +108,7 @@ class EventID(models.Model):
         # Users may not view ligo IDs if they are not a ligo user
         if is_ligo:
             return cls.objects.all()
-        else:
-            return cls.objects.exclude(is_ligo_event=True)
+        return cls.objects.exclude(is_ligo_event=True)
 
     @classmethod
     def create(cls, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
@@ -124,7 +123,7 @@ class EventID(models.Model):
         event.save()
         return event
 
-    def update(self, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=False):
+    def update(self, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=None):
         if gps_time is not None:
             self.gps_time = gps_time
         if trigger_id is not None:
@@ -319,7 +318,7 @@ class BilbyJob(models.Model):
 
     def as_dict(self):
         """
-        Converts this job in to a dictionary that can be submitted to the bundle for submission
+        Converts this job into a dictionary that can be submitted to the bundle for submission
         """
         # Iterate over any supporting files and generate the supporting file details
         supporting_file_details = []
@@ -333,12 +332,12 @@ class BilbyJob(models.Model):
                 }
             )
 
-        return dict(
-            name=self.name,
-            description=self.description,
-            ini_string=self.ini_string,
-            supporting_files=supporting_file_details,
-        )
+        return {
+            "name": self.name,
+            "description": self.description,
+            "ini_string": self.ini_string,
+            "supporting_files": supporting_file_details,
+        }
 
     def elastic_search_update(self):
         """
@@ -633,7 +632,7 @@ class FileDownloadToken(models.Model):
         objects = {str(rec.token): rec.path for rec in cls.objects.filter(job=job, token__in=tokens)}
 
         # Generate the list and return
-        return [objects[str(tok)] if str(tok) in objects else None for tok in tokens]
+        return [objects.get(str(tok)) for tok in tokens]
 
 
 class BilbyJobUploadToken(models.Model):

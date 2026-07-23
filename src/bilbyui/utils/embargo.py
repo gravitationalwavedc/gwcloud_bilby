@@ -11,10 +11,7 @@ def user_subject_to_embargo(user):
     if settings.EMBARGO_START_TIME is None:
         return False
 
-    if is_ligo_user(user):
-        return False
-
-    return True
+    return not is_ligo_user(user)
 
 
 def embargo_filter(qs, user):
@@ -74,7 +71,4 @@ def should_embargo_job(user, trigger_time, simulated):
     if settings.EMBARGO_START_TIME is None:
         return False
 
-    if trigger_time < settings.EMBARGO_START_TIME:
-        return False
-
-    return True
+    return trigger_time >= settings.EMBARGO_START_TIME

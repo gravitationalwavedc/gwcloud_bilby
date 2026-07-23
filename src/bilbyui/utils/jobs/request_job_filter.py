@@ -16,6 +16,7 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
     :param ids: A list of job ids to fetch
     :param user_id: An optional user id to make the request as
     :param end_time_gt: An optional parameter for jobs with an end time greater than this
+    :return: A tuple of (status, result) where status is "OK" on success or "UNKNOWN" on error
     """
 
     qs = []
@@ -32,9 +33,9 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
 
     try:
         result = _make_job_controller_request("GET", url, user_id)
-
+    except Exception as e:
+        logger.error(f"Error getting job filter for user {user_id}: {e}", exc_info=True)
+        return "UNKNOWN", "Error getting job filter"
+    else:
         logger.debug(f"Successfully retrieved {len(result)} jobs for user {user_id}")
         return "OK", result
-    except Exception as e:
-        logger.error(f"Error getting job filter for user {user_id}: {str(e)}", exc_info=True)
-        return "UNKNOWN", "Error getting job filter"

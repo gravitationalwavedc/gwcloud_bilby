@@ -348,12 +348,12 @@ class TestEventIDPermissions(BilbyTestCase):
     def test_view_event_id_list_permissions(self):
         response = self.query(get_all_event_ids_query)
         self.assertEqual(len(response.data["allEventIds"]), 2)
-        self.assertTrue(all([not event["isLigoEvent"] for event in response.data["allEventIds"]]))
+        self.assertTrue(all(not event["isLigoEvent"] for event in response.data["allEventIds"]))
 
         self.authenticate()
         response = self.query(get_all_event_ids_query)
         self.assertEqual(len(response.data["allEventIds"]), 2)
-        self.assertTrue(all([not event["isLigoEvent"] for event in response.data["allEventIds"]]))
+        self.assertTrue(all(not event["isLigoEvent"] for event in response.data["allEventIds"]))
 
         self.authenticate(authentication_method="ligo_shibboleth")
         response = self.query(get_all_event_ids_query)

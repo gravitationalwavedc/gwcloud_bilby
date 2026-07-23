@@ -6,8 +6,6 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import bilby_pipe
-
-logger = logging.getLogger(__name__)
 from adacs_sso_plugin.models import APISessionToken
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
@@ -43,6 +41,8 @@ from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
+
+logger = logging.getLogger(__name__)
 
 STATUS_BADGE_CLASSES = {
     "Completed": "primary",
@@ -157,7 +157,7 @@ def create_bilby_job(user, params):
     maximum_frequencies = {}
     minimum_frequencies = {}
     channels = {}
-    for k, v in {("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")}:
+    for k, v in [("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")]:
         if getattr(params.detector, k):
             detectors.append(v)
             maximum_frequencies[v] = str(getattr(params.detector, k + "_maximum_frequency"))
@@ -184,7 +184,7 @@ def create_bilby_job(user, params):
         "dlogz": str(params.sampler.dlogz),
     }
 
-    # Parse the input parameters in to an argument dict
+    # Parse the input parameters into an argument dict
     data = {
         ################################################################################
         # Calibration arguments
@@ -282,7 +282,7 @@ def create_bilby_job(user, params):
     parser = create_parser()
 
     # Because we don't know the correct ini file name yet, we need to save the ini data to a temporary file
-    # and then read the data back in to create a MainInput object, which we can then use to get the name of the ini
+    # and then read the data back into create a MainInput object, which we can then use to get the name of the ini
     # file
     with NamedTemporaryFile() as f:
         # Write the temporary ini file
@@ -353,7 +353,7 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
         elif config_name == "distance_marginalization_lookup_table":
             # Bilby pipe has a weird way to deal with default distance marginalisation tables. If the distance
             # marginalisation lookup table is None, then bilby_pipe will copy a default one for the specified prior
-            # in to the current working directory. Then upon our code trying to check if that file exists, we get an
+            # into the current working directory. Then upon our code trying to check if that file exists, we get an
             # error. Instead, we need to check if the provided marginalisation lookup table is one of the defaults, and
             # ignore it if it is. See get_distance_file_lookup_table() in
             # https://git.ligo.org/lscsoft/bilby_pipe/-/blob/master/bilby_pipe/input.py#L781

@@ -21,12 +21,12 @@ class JobStatus:
     # A job is deleting if the job has been deleted but is waiting for the client to acknowledge it has received
     # the job deletion command
     DELETING = 80
-    # A job is deleted when it's data has been cleaned up and only it lives on the UI database for future clone,
+    # A job is deleted when its data has been cleaned up and only it lives on the UI database for future clone,
     # reference, etc.
     DELETED = 90
-    # A job is error if it crashed at any point during it's execution
+    # A job is in error if it crashed at any point during its execution
     ERROR = 400
-    # A job that has exceeded it's wall time
+    # A job that has exceeded its wall time
     WALL_TIME_EXCEEDED = 401
     # A job that crashed because it ran out of memory
     OUT_OF_MEMORY = 402
@@ -37,31 +37,30 @@ class JobStatus:
     def display_name(status):
         if status == JobStatus.DRAFT:
             return "Draft"
-        elif status == JobStatus.PENDING:
+        if status == JobStatus.PENDING:
             return "Pending"
-        elif status == JobStatus.SUBMITTING:
+        if status == JobStatus.SUBMITTING:
             return "Submitting"
-        elif status == JobStatus.SUBMITTED:
+        if status == JobStatus.SUBMITTED:
             return "Submitted"
-        elif status == JobStatus.QUEUED:
+        if status == JobStatus.QUEUED:
             return "Queued"
-        elif status == JobStatus.RUNNING:
+        if status == JobStatus.RUNNING:
             return "Running"
-        elif status == JobStatus.CANCELLING:
+        if status == JobStatus.CANCELLING:
             return "Cancelling"
-        elif status == JobStatus.CANCELLED:
+        if status == JobStatus.CANCELLED:
             return "Cancelled"
-        elif status == JobStatus.DELETING:
+        if status == JobStatus.DELETING:
             return "Deleting"
-        elif status == JobStatus.DELETED:
+        if status == JobStatus.DELETED:
             return "Deleted"
-        elif status == JobStatus.ERROR:
+        if status == JobStatus.ERROR:
             return "Error"
-        elif status == JobStatus.WALL_TIME_EXCEEDED:
+        if status == JobStatus.WALL_TIME_EXCEEDED:
             return "Wall Time Exceeded"
-        elif status == JobStatus.OUT_OF_MEMORY:
+        if status == JobStatus.OUT_OF_MEMORY:
             return "Out of Memory"
-        elif status == JobStatus.COMPLETED:
+        if status == JobStatus.COMPLETED:
             return "Completed"
-        else:
-            return "Unknown"
+        return "Unknown"

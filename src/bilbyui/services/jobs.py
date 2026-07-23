@@ -14,21 +14,23 @@ from bilbyui.utils.jobs.request_job_filter import request_job_filter
 logger = logging.getLogger(__name__)
 
 
+def _time_range_to_timedelta(time_range):
+    if time_range == "1d":
+        return timedelta(days=1)
+    if time_range == "1w":
+        return timedelta(days=7)
+    if time_range == "1m":
+        return timedelta(days=31)
+    if time_range == "1y":
+        return timedelta(days=365)
+    raise Exception(f"Unexpected timeRange value {time_range}")
+
+
 def _apply_time_range_filter(qs, time_range, field_name="last_updated"):
     if time_range == "all":
         return qs
 
-    now = timezone.now()
-    if time_range == "1d":
-        then = now - timedelta(days=1)
-    elif time_range == "1w":
-        then = now - timedelta(days=7)
-    elif time_range == "1m":
-        then = now - timedelta(days=31)
-    elif time_range == "1y":
-        then = now - timedelta(days=365)
-    else:
-        raise Exception(f"Unexpected timeRange value {time_range}")
+    then = timezone.now() - _time_range_to_timedelta(time_range)
 
     return qs.filter(**{f"{field_name}__gte": then})
 
@@ -82,7 +84,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
             verify_certs=False,
         )
     except Exception as e:
-        logger.error(f"Failed to connect to Elasticsearch: {str(e)}", exc_info=True)
+        logger.error(f"Failed to connect to Elasticsearch: {e}", exc_info=True)
         return empty_result
 
     q = search or "*"
@@ -94,16 +96,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
 
     if time_range != "all":
         now = timezone.now()
-        if time_range == "1d":
-            then = now - timedelta(days=1)
-        elif time_range == "1w":
-            then = now - timedelta(days=7)
-        elif time_range == "1m":
-            then = now - timedelta(days=31)
-        elif time_range == "1y":
-            then = now - timedelta(days=365)
-        else:
-            raise Exception(f"Unexpected timeRange value {time_range}")
+        then = now - _time_range_to_timedelta(time_range)
 
         q = f'({q}) AND job.creationTime:["{then.isoformat()}" TO "{now.isoformat()}"]'
 
@@ -190,12 +183,11 @@ def update_job(job_id, user, private=None, labels=None, event_id=None, name=None
 
         return True, "Job saved!"
 
-    elif user.id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
+    if user.id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
         bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
 
         bilby_job.save()
 
         return True, "Job saved"
 
-    else:
-        raise Exception("You must own the job to change it!")
+    raise Exception("You must own the job to change it!")

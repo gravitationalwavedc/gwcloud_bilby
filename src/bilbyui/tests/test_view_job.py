@@ -11,14 +11,13 @@ from bilbyui.tests.testcases import BilbyTestCase
 
 def request_job_filter_mock(*args, **kwargs):
     requested_ids = set(kwargs.get("ids", []))
-    jobs = []
-    for job in BilbyJob.objects.filter(job_controller_id__in=requested_ids):
-        jobs.append(
-            {
-                "id": job.job_controller_id,
-                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
-            }
-        )
+    jobs = [
+        {
+            "id": job.job_controller_id,
+            "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+        }
+        for job in BilbyJob.objects.filter(job_controller_id__in=requested_ids)
+    ]
 
     return True, jobs
 
@@ -49,8 +48,9 @@ class TestViewJob(BilbyTestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_other_users_job_returns_404(self):
+        other_user = self.create_user(id=2, name="other", primary_email="other@gmail.com")
         other_job = BilbyJob.objects.create(
-            user_id=self.user.id + 1,
+            user_id=other_user.id,
             name="Private other job",
             description="hidden",
             job_controller_id=10002,
@@ -97,6 +97,15 @@ class TestViewJob(BilbyTestCase):
         self.assertContains(response, "Signal &amp; Parameters")
         self.assertContains(response, "Priors")
         self.assertContains(response, "Sampler Parameters")
+        self.assertNotContains(response, "<!doctype html>")
+
+    @mock.patch("bilbyui.views.generate_parameter_output", side_effect=Exception("boom"))
+    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    def test_parameters_partial_generate_parameter_output_error(self, request_job_filter, generate_parameter_output):
+        response = self.client.get(f"{self.base_url}parameters/")
+
+        self.assertEqual(response.status_code, 200)
+        generate_parameter_output.assert_called_once_with(self.job)
         self.assertNotContains(response, "<!doctype html>")
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)

@@ -21,12 +21,21 @@ User = get_user_model()
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class TestAnonymousMetrics(LiveServerTestCase):
-    def setUp(self):
-        User = get_user_model()
-        self.user, _ = User.objects.update_or_create(
-            id=1,
-            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
+    def create_user(self, id=1, name="buffy summers", primary_email="slayer@gmail.com"):
+        """Create a test user"""
+        user, _ = User.objects.update_or_create(
+            id=id,
+            defaults={
+                "name": name,
+                "primary_email": primary_email,
+                "emails": [primary_email],
+                "authentication_methods": ["password"],
+            },
         )
+        return user
+
+    def setUp(self):
+        self.user = self.create_user()
         self.public_id = str(uuid.uuid4())
         self.session_id = str(uuid.uuid4())
 
@@ -109,14 +118,13 @@ class TestAnonymousMetrics(LiveServerTestCase):
         return {"hits": {"hits": jobs}}
 
     def request_job_filter_mock(*args, **kwargs):
-        jobs = []
-        for job in BilbyJob.objects.filter(user_id=1):
-            jobs.append(
-                {
-                    "id": job.job_controller_id,
-                    "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
-                }
-            )
+        jobs = [
+            {
+                "id": job.job_controller_id,
+                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+            }
+            for job in BilbyJob.objects.filter(user_id=1)
+        ]
 
         return True, jobs
 

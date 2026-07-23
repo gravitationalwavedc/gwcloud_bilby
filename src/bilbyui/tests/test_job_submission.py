@@ -40,7 +40,6 @@ class TestJobSubmission(BilbyTestCase):
                         "description": "Test description 1234",
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": "simulated",
                         "triggerTime": "1126259462.391",
@@ -63,10 +62,7 @@ class TestJobSubmission(BilbyTestCase):
                         "duration": "4",
                         "samplingFrequency": "512",
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": 1000,
                         "nact": 10,
@@ -234,7 +230,6 @@ class TestJobSubmission(BilbyTestCase):
                         "description": "real Test description 1234",
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": "real",
                         "triggerTime": "1126259562.391",
@@ -257,10 +252,7 @@ class TestJobSubmission(BilbyTestCase):
                         "duration": "4",
                         "samplingFrequency": "512",
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": 1000,
                         "nact": 10,
@@ -446,7 +438,6 @@ class TestJobSubmission(BilbyTestCase):
                         "description": "Test description 1122",
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": "simulated",
                         "triggerTime": "1126259462.391",
@@ -469,10 +460,7 @@ class TestJobSubmission(BilbyTestCase):
                         "duration": "4",
                         "samplingFrequency": "512",
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": 1000,
                         "nact": 10,
@@ -577,7 +565,6 @@ class TestJobSubmission(BilbyTestCase):
                         "description": "real Test description 1234",
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": "real",
                         "triggerTime": "1126259562.391",
@@ -601,10 +588,7 @@ class TestJobSubmission(BilbyTestCase):
                         "duration": "4",
                         "samplingFrequency": "512",
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": 1000,
                         "nact": 10,
@@ -664,7 +648,6 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
                         "description": "Test description 1234",
                         "private": True,
                     },
-                    # "calibration": None,
                     "data": {
                         "dataChoice": "simulated",
                         "triggerTime": "1126259462.391",
@@ -687,10 +670,7 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
                         "duration": "4",
                         "samplingFrequency": "512",
                     },
-                    # "injection": {},
-                    # "likelihood": {},
                     "prior": {"priorDefault": "4s"},
-                    # "postProcessing": {},
                     "sampler": {
                         "nlive": 1000,
                         "nact": 10,
@@ -746,7 +726,7 @@ class TestJobSubmissionNameValidation(BilbyTestCase):
 
         self.assertEqual(
             response.errors[0]["message"],
-            "Job name must be less than 255 characters long.",
+            "Job name must be at most 255 characters long.",
         )
 
     @silence_errors
@@ -784,12 +764,12 @@ class TestJobNameValidation(testcases.TestCase):
         with self.assertRaises(Exception) as ex:
             validate_job_name("a" * (BilbyJob._meta.get_field("name").max_length + 1))
 
-        self.assertEqual(str(ex.exception), "Job name must be less than 255 characters long.")
+        self.assertEqual(str(ex.exception), "Job name must be at most 255 characters long.")
 
         with self.assertRaises(Exception) as ex:
             validate_job_name("a" * 3000)
 
-        self.assertEqual(str(ex.exception), "Job name must be less than 255 characters long.")
+        self.assertEqual(str(ex.exception), "Job name must be at most 255 characters long.")
 
         # Test valid name length
         try:

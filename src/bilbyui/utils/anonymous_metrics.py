@@ -3,11 +3,13 @@ import uuid
 
 from bilbyui.models import AnonymousMetrics
 
+EXPECTED_ID_COUNT = 2
+
 
 class AnonymousMetricsMiddleware:
     def resolve(self, next, root, info, **args):
         # Get the tracking header and split it by space to get the persistent and session ids
-        header = info.context.headers.get("X-Correlation-Id", None)
+        header = info.context.headers.get("X-Correlation-Id")
 
         # If the tracking headers are not passed through, or the user is authenticated, then there is nothing more to
         # do. Also ignore any paths that aren't the top level (ie, nodes and fields)
@@ -20,7 +22,7 @@ class AnonymousMetricsMiddleware:
 
         # Check that there is exactly two ids
         ids = header.split(" ")
-        if len(ids) != 2:
+        if len(ids) != EXPECTED_ID_COUNT:
             return next(root, info, **args)
 
         # Check that the two ids are valid uuid4's

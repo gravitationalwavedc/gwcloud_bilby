@@ -15,9 +15,11 @@ User = get_user_model()
 
 class TestBilbyJobQueries(BilbyTestCase):
     def setUp(self):
+        self.user = self.create_user()
+
         self.real_job_data = {
             "name": "RealTestName",
-            "user_id": 1,
+            "user_id": self.user.id,
             "ini_string": create_test_ini_string({"trigger-time": 1.0, "n-simulation": 0, "detectors": "['H1']"}),
         }
         self.real_job = BilbyJob.objects.create(**self.real_job_data)
@@ -25,7 +27,7 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         self.simulated_job_data = {
             "name": "SimulatedTestName",
-            "user_id": 1,
+            "user_id": self.user.id,
             "ini_string": create_test_ini_string({"trigger-time": 2.0, "n-simulation": 1, "detectors": "['H1']"}),
         }
         self.simulated_job = BilbyJob.objects.create(**self.simulated_job_data)
@@ -33,7 +35,7 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         self.embargoed_job_data = {
             "name": "EmbargoedTestName",
-            "user_id": 1,
+            "user_id": self.user.id,
             "ini_string": create_test_ini_string({"trigger-time": 2.0, "n-simulation": 0, "detectors": "['H1']"}),
         }
         self.embargoed_job = BilbyJob.objects.create(**self.embargoed_job_data)
@@ -44,13 +46,6 @@ class TestBilbyJobQueries(BilbyTestCase):
             self.simulated_job_data,
             self.embargoed_job_data,
         ]
-
-        # Normally we don't have any User objects
-        # But this test uses the presence or absense of User.objects[0] for various things
-        self.user, _ = User.objects.update_or_create(
-            id=1,
-            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
-        )
 
     def job_request(self, job_data):
         field_str = "\n".join(list(camelize(job_data).keys()))

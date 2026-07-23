@@ -7,8 +7,9 @@ from bilbyui.utils.parse_ini_file import parse_ini_file
 class TestParseIniFile(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.user = cls.create_user()
         cls.job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="test job",
             description="test job",
             ini_string=create_test_ini_string({"detectors": "['H1']"}),

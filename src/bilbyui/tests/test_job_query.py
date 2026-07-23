@@ -28,12 +28,9 @@ class TestBilbyJobQueries(BilbyTestCase):
         }
 
         # Create User objects for test user_ids to satisfy FK constraints
-        self.user, _ = User.objects.update_or_create(
-            id=1,
-            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
-        )
-        User.objects.update_or_create(id=2, defaults={"name": "Test User 2", "primary_email": "user2@test.com"})
-        User.objects.update_or_create(id=4, defaults={"name": "Test User 4", "primary_email": "user4@test.com"})
+        self.user = self.create_user()
+        self.create_user(id=2, name="Test User 2", primary_email="user2@test.com")
+        self.create_user(id=4, name="Test User 4", primary_email="user4@test.com")
         self.authenticate()
         self.label = Label.objects.create(name="Test", description="Test description")
         self.event_id = EventID.objects.create(
@@ -60,12 +57,6 @@ class TestBilbyJobQueries(BilbyTestCase):
                 }}
             }}
             """)
-
-    def request_lookup_users_mock(*args, **kwargs):
-        user = User.objects.first()
-        if user:
-            return True, [{"id": user.id, "name": "buffy summers"}]
-        return False, []
 
     def derive_job_status_mock(*args, **kwargs):
         return 1, "Test Status", datetime.fromtimestamp(0)
@@ -96,7 +87,8 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
 
         # If it returns no user - set user_id to placeholder user (FK constraint requires User to exist)
-        self.job.user_id = 88888
+        placeholder_user = self.create_user(id=88888, name="Test User 88888", primary_email="test88888@gmail.com")
+        self.job.user_id = placeholder_user.id
         self.job.save()
         response = self.job_request("user")
         # Will return the placeholder user name since FK requires User to exist
@@ -176,7 +168,8 @@ class TestBilbyJobQueries(BilbyTestCase):
     )
     def test_bilby_job_supporting_files_dont_exist(self, *args):
         self.job_data["name"] = "another test job"
-        self.job_data["ini_string"] = open("bilbyui/tests/regression_data/psd_dict_ini.ini").read()
+        with open("bilbyui/tests/regression_data/psd_dict_ini.ini") as f:
+            self.job_data["ini_string"] = f.read()
         del self.job_data["id"]
         self.job = BilbyJob.objects.create(**self.job_data)
 
@@ -517,11 +510,4 @@ class TestBilbyJobQueries(BilbyTestCase):
         self.assertDictEqual(response.data, expected, "bilbyJobs query returned unexpected data.")
 
         # Check that all ids provided to request_job_filter_mock were integers
-        self.assertTrue(
-            all(
-                map(
-                    lambda x: isinstance(x, int),
-                    request_job_filter_mock.call_args[1]["ids"],
-                )
-            )
-        )
+        self.assertTrue(all(isinstance(x, int) for x in request_job_filter_mock.call_args[1]["ids"]))

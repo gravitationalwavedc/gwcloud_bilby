@@ -4,7 +4,7 @@ class BilbyJobType:
     NORMAL = 0
     # Job was created via a job upload
     UPLOADED = 1
-    # Job is a external result job
+    # Job is an external result job
     EXTERNAL = 2
 
 

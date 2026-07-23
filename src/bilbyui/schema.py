@@ -131,16 +131,13 @@ class BilbyJobNode(DjangoObjectType):
         # Query any job controller information in one go - exclude any job controller ids that are not set
         job_controller_ids = set(qs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
         _, jc_jobs = request_job_filter(user_id, ids=list(job_controller_ids))
-        info.context.job_controller_jobs = dict(zip([job["id"] for job in jc_jobs], [job for job in jc_jobs]))
+        info.context.job_controller_jobs = dict(zip([job["id"] for job in jc_jobs], list(jc_jobs), strict=True))
 
         return qs
 
     def resolve_user(parent, info):
-        try:
-            if parent.user:
-                return parent.user.name
-        except Exception:
-            pass
+        if getattr(parent, "user", None):
+            return parent.user.name
         return "Unknown User"
 
     def resolve_user_id(parent, info):
@@ -155,7 +152,7 @@ class BilbyJobNode(DjangoObjectType):
             return generate_parameter_output(parent)
         except Exception as e:
             logger.error(
-                f"Failed to generate parameter output for job {parent.id}: {type(e).__name__}: {str(e)}", exc_info=True
+                f"Failed to generate parameter output for job {parent.id}: {type(e).__name__}: {e}", exc_info=True
             )
             return None
 
@@ -176,7 +173,7 @@ class BilbyJobNode(DjangoObjectType):
 
         try:
             status_number, status_name, status_date = derive_job_status(
-                info.context.job_controller_jobs.get(parent.job_controller_id, None)["history"]
+                info.context.job_controller_jobs.get(parent.job_controller_id)["history"]
             )
 
             return {
@@ -281,7 +278,7 @@ class Query:
         # Sometimes the relay resolver fills out all kwarg parameters, but sometimes
         # it doesn't, most likely becuase it hates happiness and all that is good
         # This ensures that "after" is either an int (from a b64 string) or None
-        if kwargs.get("after", None) is None:
+        if kwargs.get("after") is None:
             kwargs["after"] = None
         else:
             kwargs["after"] = int(from_global_id(kwargs["after"])[1])
@@ -303,7 +300,7 @@ class Query:
 
         job_controller_jobs = public_jobs["job_controller_jobs"]
 
-        # Parse the result in to graphql objects
+        # Parse the result into graphql objects
         result = []
 
         for record in records:
@@ -348,12 +345,12 @@ class Query:
 
             result.append(job_node)
 
-        # Nb. The elastic search search function requests one extra record than kwargs['first'].
+        # Nb. The elastic search function requests one extra record than kwargs['first'].
         # This triggers the ArrayConnection used by returning the result array to correctly set
         # hasNextPage correctly, such that infinite scroll works as expected.
 
         # graphene_django's arrayconnection implementation is a bit crazy. It expects this function to return a full
-        # array that has *all* the elements in it, that is then sliced in to the expected result. Since the database
+        # array that has *all* the elements in it, that is then sliced into the expected result. Since the database
         # only returns us what we expect, what we're doing here is reconstructing that array with the requested offset
         # worth of empty elements at the start. We then tac on our records from the database, and the arrayconnection
         # internally slices the correct values from the array and returns that to the client.
@@ -391,7 +388,7 @@ class Query:
             # Fetch the file list from the job controller
             success, files = job.get_file_list()
             if not success:
-                logger.error(f"Failed to get file list for job {job_id}: {str(files)}")
+                logger.error(f"Failed to get file list for job {job_id}: {files!s}")
                 raise Exception("Error getting file list. " + str(files))
 
             # Generate download tokens for the list of files
@@ -407,7 +404,7 @@ class Query:
                     path=f["path"],
                     is_dir=f["isDir"],
                     file_size=Decimal(f["fileSize"]),
-                    download_token=token_dict[f["path"]] if f["path"] in token_dict else None,
+                    download_token=token_dict.get(f["path"]),
                 )
                 for f in files
             ]

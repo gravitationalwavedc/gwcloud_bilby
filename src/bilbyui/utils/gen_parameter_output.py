@@ -42,17 +42,17 @@ def to_dec(val):
     # It's a numeric type, if there is a remainder, convert the value to a string and parse it with Decimal
     if val - floor(val):
         return Decimal(str(val))
-    else:
-        # The number is whole, cast it to an int and then parse it with Decimal
-        return Decimal(int(val))
+
+    # The number is whole, cast it to an int and then parse it with Decimal
+    return Decimal(int(val))
 
 
 def generate_parameter_output(job):
     """
     Generates a complete JobParameterOutput for a job
 
-    :input job: The BilbyJob instance to generate the JobParameterOutput for
-    :result: The complete JobParameterOutput
+    :param job: The BilbyJob instance to generate the JobParameterOutput for
+    :returns: The complete JobParameterOutput
     """
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
     args = bilby_ini_string_to_args(job.ini_string.encode("utf-8"))
@@ -116,7 +116,7 @@ def generate_parameter_output(job):
         duration=to_dec(parser.duration),
         sampling_frequency=to_dec(parser.sampling_frequency),
     )
-    for k, v in {("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")}:
+    for k, v in [("hanford", "H1"), ("livingston", "L1"), ("virgo", "V1")]:
         if v in parser.detectors:
             setattr(detector, k, True)
             setattr(detector, f"{k}_minimum_frequency", to_dec(parser.minimum_frequency_dict[v]))

@@ -9,14 +9,13 @@ from bilbyui.tests.testcases import BilbyTestCase
 
 def request_job_filter_mock(*args, **kwargs):
     requested_ids = set(kwargs.get("ids", []))
-    jobs = []
-    for job in BilbyJob.objects.filter(job_controller_id__in=requested_ids):
-        jobs.append(
-            {
-                "id": job.job_controller_id,
-                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
-            }
-        )
+    jobs = [
+        {
+            "id": job.job_controller_id,
+            "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+        }
+        for job in BilbyJob.objects.filter(job_controller_id__in=requested_ids)
+    ]
 
     return True, jobs
 
@@ -36,10 +35,11 @@ class TestMyJobsView(BilbyTestCase):
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_authenticated_returns_user_jobs(self, request_job_filter):
         self.authenticate()
+        other_user = self.create_user(id=2, name="other", primary_email="other@gmail.com")
 
         for index in range(3):
             BilbyJob.objects.create(
-                user_id=1,
+                user_id=self.user.id,
                 name=f"My job {index}",
                 description=f"My description {index}",
                 job_controller_id=6000 + index,
@@ -49,7 +49,7 @@ class TestMyJobsView(BilbyTestCase):
 
         for index in range(3):
             BilbyJob.objects.create(
-                user_id=2,
+                user_id=other_user.id,
                 name=f"Other job {index}",
                 description=f"Other description {index}",
                 job_controller_id=7000 + index,
@@ -71,7 +71,7 @@ class TestMyJobsView(BilbyTestCase):
         self.authenticate()
 
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="Fragment job",
             description="fragment",
             job_controller_id=8001,
@@ -97,7 +97,7 @@ class TestMyJobsView(BilbyTestCase):
 
         for index in range(30):
             BilbyJob.objects.create(
-                user_id=1,
+                user_id=self.user.id,
                 name=f"Paged job {index}",
                 description=f"Paged description {index}",
                 job_controller_id=9000 + index,
@@ -124,7 +124,7 @@ class TestMyJobsView(BilbyTestCase):
             gps_time=12345678.1234,
         )
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="Event job",
             description="with event id",
             job_controller_id=8101,
@@ -145,7 +145,7 @@ class TestMyJobsView(BilbyTestCase):
         self.authenticate()
 
         BilbyJob.objects.create(
-            user_id=1,
+            user_id=self.user.id,
             name="No event job",
             description="without event id",
             job_controller_id=8102,

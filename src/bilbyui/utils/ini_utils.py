@@ -6,13 +6,13 @@ from bilby_pipe.utils import parse_args
 
 def bilby_ini_string_to_args(ini):
     """
-    Parses an ini string in to an argument Namespace
+    Parses an ini string into an argument Namespace
 
-    :params ini: The ini string to parse
+    :param ini: The ini string to parse
     :return: An ArgParser Namespace of the parsed arguments from the ini
     """
 
-    # Create an bilby argument parser
+    # Create a bilby argument parser
     parser = create_parser()
 
     # Bilby pipe requires a real file in order to parse the ini file
@@ -24,7 +24,7 @@ def bilby_ini_string_to_args(ini):
         f.flush()
 
         # Read the data from the ini file
-        args, unknown_args = parse_args([f.name], parser)
+        args, _ = parse_args([f.name], parser)
 
     # ini and verbose are not kept in the ini file, so remove them
     delattr(args, "ini")
@@ -34,6 +34,13 @@ def bilby_ini_string_to_args(ini):
 
 
 def bilby_args_to_ini_string(args):
+    """
+    Serializes an argument Namespace into an ini content string
+
+    :param args: The argument Namespace to serialize
+    :return: A string containing the serialized ini content of the arguments
+    """
+
     # Create an argument parser
     parser = create_parser()
 

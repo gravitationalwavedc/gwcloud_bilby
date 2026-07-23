@@ -45,7 +45,7 @@ def bilby_ini_to_args(ini):
     """
     Parses an ini string in to an argument Namespace
 
-    :params ini: The ini string to parse
+    :param ini: The ini string to parse
     :return: An ArgParser Namespace of the parsed arguments from the ini
     """
 

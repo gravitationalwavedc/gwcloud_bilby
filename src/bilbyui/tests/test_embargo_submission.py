@@ -16,10 +16,7 @@ MOCK_EMBARGO_START_TIME = 1128678900.4
 
 class TestBilbyEmbargoPermissions(BilbyTestCase):
     def setUp(self):
-        self.user, _ = User.objects.update_or_create(
-            id=1,
-            defaults={"name": "buffy summers", "primary_email": "slayer@gmail.com"},
-        )
+        self.user = self.create_user()
 
         self.params = {
             "params": {
@@ -28,7 +25,6 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
                     "description": "Test description 1234",
                     "private": True,
                 },
-                # "calibration": None,
                 "data": {
                     "dataChoice": "real",
                     "triggerTime": "1126259462.391",
@@ -51,10 +47,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
                     "duration": "4",
                     "samplingFrequency": "512",
                 },
-                # "injection": {},
-                # "likelihood": {},
                 "prior": {"priorDefault": "4s"},
-                # "postProcessing": {},
                 "sampler": {
                     "nlive": 1000,
                     "nact": 10,

@@ -23,8 +23,9 @@ from bilbyui.views import update_bilby_job
 class TestBilbyJobModel(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.user = cls.create_user()
         cls.job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="Test_Job",
             description="Test job description",
             private=False,
@@ -204,8 +205,9 @@ class TestBilbyJobModel(BilbyTestCase):
 class TestFileDownloadToken(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
+        cls.user = cls.create_user()
         cls.job = BilbyJob.objects.create(
-            user_id=1,
+            user_id=cls.user.id,
             name="Test Job",
             description="Test job description",
             private=False,
@@ -319,14 +321,15 @@ class TestFileDownloadToken(BilbyTestCase):
             self.assertEqual(result[i], tk.path)
 
         # Set one object outside the expiry window
-        r = FileDownloadToken.objects.all()[2]
+        EXPIRY_TOKEN_INDEX = 2
+        r = FileDownloadToken.objects.all()[EXPIRY_TOKEN_INDEX]
         r.created = after - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1)
         r.save()
 
         result = FileDownloadToken.get_paths(self.job, tokens)
 
         for i, tk in enumerate(fd_tokens):
-            if i == 2:
+            if i == EXPIRY_TOKEN_INDEX:
                 self.assertEqual(result[i], None)
             else:
                 self.assertEqual(result[i], tk.path)
@@ -438,12 +441,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
 class TestSupportingFile(BilbyTestCase):
     @classmethod
     def setUp(self):
-        class TestUser:
-            def __init__(self):
-                self.is_ligo = False
-                self.user_id = 1234
-
-        self.user = TestUser()
+        self.user = self.create_user(id=1234)
 
         self.parsed = {
             SupportingFile.PSD: [
@@ -456,13 +454,13 @@ class TestSupportingFile(BilbyTestCase):
         }
 
         self.job = BilbyJob.objects.create(
-            user_id=self.user.user_id,
+            user_id=self.user.id,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         self.after = timezone.now()
 
     def test_save_from_parsed(self):
-        # Test that parsed supporting files are correctly entered in to the database
+        # Test that parsed supporting files are correctly entered into the database
         supporting_file_tokens = SupportingFile.save_from_parsed(self.job, self.parsed)
 
         self.assertEqual(SupportingFile.objects.count(), 3)
@@ -622,3 +620,25 @@ class TestSupportingFile(BilbyTestCase):
 
         # Now the supporting file should be returned by get_by_download_token
         self.assertEqual(SupportingFile.get_by_download_token(sf.download_token).id, sf.id)
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class TestBilbyJobHasSupportingFiles(BilbyTestCase):
+    def setUp(self):
+        self.user = self.create_user()
+        self.job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Test_Job",
+            description="Test job description",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+    def test_false_when_no_supporting_files(self):
+        # A job with no supporting files must report has_supporting_files as False
+        self.assertFalse(self.job.has_supporting_files())
+
+    def test_true_once_supporting_file_added(self):
+        # Once a supporting file record exists for the job, has_supporting_files must be True
+        SupportingFile.objects.create(job=self.job, file_type=SupportingFile.PSD, file_name="H1_psd.txt")
+        self.assertTrue(self.job.has_supporting_files())
