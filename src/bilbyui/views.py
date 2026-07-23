@@ -6,8 +6,6 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import bilby_pipe
-
-logger = logging.getLogger(__name__)
 from adacs_sso_plugin.models import APISessionToken
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
@@ -43,6 +41,8 @@ from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
+
+logger = logging.getLogger(__name__)
 
 STATUS_BADGE_CLASSES = {
     "Completed": "primary",
