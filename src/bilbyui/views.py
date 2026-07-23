@@ -397,7 +397,7 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
             setattr(args, config_name, None)
 
         else:
-            logging.error(f"Got unknown supporting file type for {config_name}: {str(config)}")
+            logger.error(f"Got unknown supporting file type for {config_name}: {str(config)}")
 
     return supporting_files
 
@@ -802,9 +802,9 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
             )
             out, err = p.communicate()
 
-            logging.info(f"Packing uploaded HDF5 job archive for {job_name} had return code {p.returncode}")
-            logging.info(f"stdout: {out}")
-            logging.info(f"stderr: {err}")
+            logger.info(f"Packing uploaded HDF5 job archive for {job_name} had return code {p.returncode}")
+            logger.info(f"stdout: {out}")
+            logger.info(f"stderr: {err}")
 
             if p.returncode != 0:
                 raise Exception("Unable to repack the uploaded HDF5 job")
