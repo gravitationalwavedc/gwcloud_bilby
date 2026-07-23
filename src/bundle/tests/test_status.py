@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import settings
 from scheduler.scheduler import EScheduler
 
-from bilbyui.status import JobStatus
+from scheduler.status import JobStatus
 
 
 class TestStatus(TestCase):

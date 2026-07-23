@@ -5,7 +5,7 @@ from unittest import TestCase
 
 import htcondor
 
-from bilbyui.status import JobStatus
+from scheduler.status import JobStatus
 from scheduler.condor import CondorScheduler
 
 
