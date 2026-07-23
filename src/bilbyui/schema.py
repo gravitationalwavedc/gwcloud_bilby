@@ -136,9 +136,10 @@ class BilbyJobNode(DjangoObjectType):
         return qs
 
     def resolve_user(parent, info):
-        if getattr(parent, "user", None):
+        try:
             return parent.user.name
-        return "Unknown User"
+        except Exception:
+            return "Unknown User"
 
     def resolve_user_id(parent, info):
         return parent.user_id
