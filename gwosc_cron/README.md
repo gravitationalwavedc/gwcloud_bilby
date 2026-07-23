@@ -2,6 +2,31 @@
 
 The purpose of this script is to ingest Bilby jobs from the GWOSC catalog into GWCloud. It is run every hour using cron.
 
+## Setup
+
+### Install dependencies
+
+```bash
+cd gwosc_cron/
+poetry install
+```
+
+This installs all required packages including `h5py`, `gwosc`, and `gwcloud-python` into a virtual environment managed by Poetry.
+
+### Run tests
+
+```bash
+cd gwosc_cron/
+poetry run python -m coverage run -m xmlrunner discover -s tests -t . --output-file ./junit.xml
+```
+
+### Generate coverage report
+
+```bash
+cd gwosc_cron/
+poetry run coverage report
+```
+
 ## Log files
 
 The logs for the ingest script can be publicly accessed at [https://gwcloud.org.au/gwosc_ingest/gwosc_ingest.log]. It details all runs of the scripts, including any potential failure states.
