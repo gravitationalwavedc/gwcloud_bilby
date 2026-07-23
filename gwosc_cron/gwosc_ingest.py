@@ -37,6 +37,10 @@ EVENTNAME_SEPARATOR = "--"
 LOCK_FILE_PATH = str(Path(DB_PATH).with_suffix(".lock")) if DB_PATH else None
 MAX_RETRY_ATTEMPTS = 24
 
+_VERSION_RE = re.compile(r"-v(\d+)$")
+_JOB_NAME_RE = re.compile(r"[^a-z0-9_-]", re.IGNORECASE)
+_EVENT_ID_RE = re.compile(r"^GW\d{6}_\d{6}$")
+
 
 def compute_is_latest_version(event_name, shared_common_names):
     """Return True if *event_name* is the latest-versioned name among *shared_common_names*.
@@ -50,7 +54,7 @@ def compute_is_latest_version(event_name, shared_common_names):
         return True
 
     def _version(name):
-        match = re.search(r"-v(\d+)$", name)
+        match = _VERSION_RE.search(name)
         # Unversioned names are treated as v0
         return int(match.group(1)) if match else 0
 
@@ -60,7 +64,7 @@ def compute_is_latest_version(event_name, shared_common_names):
 
 
 def fix_job_name(name):
-    return re.sub("[^a-z0-9_-]", "-", name, flags=re.IGNORECASE)
+    return _JOB_NAME_RE.sub("-", name)
 
 
 def build_bilbyjob_name(event_name, config_name):
@@ -281,7 +285,7 @@ def _check_and_download_inner(con, cur):
 
         # See if there is already an event_id for this event
         event_id = None
-        if re.match(r"^GW\d{6}_\d{6}$", common_name):
+        if _EVENT_ID_RE.match(common_name):
             event_id = gwcloud_event_ids.get(common_name, None)
             if event_id is None:
                 # we need to create one
