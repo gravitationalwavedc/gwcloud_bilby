@@ -10,5 +10,5 @@ def delete(details, job_data):
     """
     try:
         shutil.rmtree(working_directory(details, job_data))
-    except Exception:
+    except OSError:
         pass
