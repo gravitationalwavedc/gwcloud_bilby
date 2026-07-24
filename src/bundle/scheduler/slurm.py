@@ -1,7 +1,10 @@
+import logging
 import subprocess
 
 from .scheduler import Scheduler
 from .status import JobStatus
+
+logger = logging.getLogger(__name__)
 
 
 class SlurmScheduler(Scheduler):
@@ -48,11 +51,11 @@ class SlurmScheduler(Scheduler):
             stdout = subprocess.check_output(command, shell=True)
         except Exception:
             # Record the command and the output
-            print(f"Error: Command `{command}` returned `{stdout}`")
+            logger.error("Error: Command `%s` returned `%s`", command, stdout)
             return None
 
         # Record the command and the output
-        print(f"Success: Command `{command}` returned `{stdout}`")
+        logger.info("Success: Command `%s` returned `%s`", command, stdout)
 
         # Get the slurm id from the output
         # todo: Handle errors
@@ -69,7 +72,7 @@ class SlurmScheduler(Scheduler):
         :param details: The internal job details object
         :return: A tuple with JobStatus, additional info as a string. None if no job status could be obtained
         """
-        print(f"Trying to get status of job {job_id}...")
+        logger.info("Trying to get status of job %s...", job_id)
 
         # Construct the command
         command = f"sacct -Pn -j {job_id} -o jobid,state%50"
@@ -79,7 +82,7 @@ class SlurmScheduler(Scheduler):
 
         # todo: Handle errors
         # Get the output
-        print(f"Command `{command}` returned `{stdout}`")
+        logger.info("Command `%s` returned `%s`", command, stdout)
 
         _status = None
         # Iterate over the lines
@@ -94,7 +97,7 @@ class SlurmScheduler(Scheduler):
             except Exception:
                 continue
 
-        print(f"Got job status {_status} for job {job_id}")
+        logger.info("Got job status %s for job %s", _status, job_id)
 
         # Check that we got a status for this job
         if not _status:
@@ -128,7 +131,7 @@ class SlurmScheduler(Scheduler):
         if _status in ["RUNNING", "SUSPENDED"]:
             return JobStatus.RUNNING, SlurmScheduler.SLURM_STATUS[_status.split(" ")[0]]
 
-        print(f"Got unknown Slurm job state {_status} for job {job_id}")
+        logger.warning("Got unknown Slurm job state %s for job %s", _status, job_id)
         return None, None
 
     def cancel(self, job_id, details):
@@ -139,7 +142,7 @@ class SlurmScheduler(Scheduler):
         :param details: The internal job details object
         :return: True if the job was cancelled otherwise False
         """
-        print(f"Trying to terminate job {job_id}...")
+        logger.info("Trying to terminate job %s...", job_id)
 
         # Construct the command
         command = f"scancel {job_id}"
@@ -149,4 +152,4 @@ class SlurmScheduler(Scheduler):
 
         # todo: Handle errors
         # Get the output
-        print(f"Command `{command}` returned `{stdout}`")
+        logger.info("Command `%s` returned `%s`", command, stdout)

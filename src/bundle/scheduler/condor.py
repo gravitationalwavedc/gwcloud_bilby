@@ -1,9 +1,12 @@
+import logging
 from pathlib import Path
 
 import htcondor
 
 from .scheduler import Scheduler
 from .status import JobStatus
+
+logger = logging.getLogger(__name__)
 
 
 class CondorScheduler(Scheduler):
@@ -20,7 +23,7 @@ class CondorScheduler(Scheduler):
         :return: An integer identifier for the submitted job
         """
 
-        print(f"Trying to submit {script} from {working_directory}")
+        logger.info("Trying to submit %s from %s", script, working_directory)
 
         # Create the submit object from the dag and submit it
         # Retry up to 5 times before failing, condor submit is quite flakey at times
@@ -30,16 +33,16 @@ class CondorScheduler(Scheduler):
                 result = htcondor.Schedd().submit(submit, count=1)
 
                 # Record the command and the output
-                print(f"Success: condor submit succeeded, got ClusterId={result.cluster()}")
+                logger.info("Success: condor submit succeeded, got ClusterId=%s", result.cluster())
 
                 # Return the condor ClusterId
                 return result.cluster()
             except Exception as e:
                 # Record the error occurred
-                print(f"Error: condor submit failed, trying again {attempt}/5")
-                print(e)
+                logger.info("Error: condor submit failed, trying again %d/5", attempt)
+                logger.debug("condor submit error: %s", e)
 
-        print("Condor submit failed 5 times in a row, assuming something is wrong.")
+        logger.warning("Condor submit failed 5 times in a row, assuming something is wrong.")
         return None
 
     def status(self, job_id, details):
@@ -53,12 +56,12 @@ class CondorScheduler(Scheduler):
 
         p = Path(details["working_directory"]) / details["submit_directory"]
 
-        print(f"Trying to get status of job with working directory {p}...")
+        logger.info("Trying to get status of job with working directory %s...", p)
 
         log_file = list(p.glob("*.submit.nodes.log"))
 
         if len(log_file) != 1:
-            print(f"The number of .submit.nodes.log files was not 1 as expected, it was {len(log_file)}")
+            logger.warning("The number of .submit.nodes.log files was not 1 as expected, it was %d", len(log_file))
             return None, None
 
         log_file = log_file[0]
@@ -76,7 +79,7 @@ class CondorScheduler(Scheduler):
 
         # There should be exactly one stage found, which is the name of the job dag for the submitted job
         if len(stage) != 1:
-            print("No DAG Node could be found for the most recent job submission")
+            logger.warning("No DAG Node could be found for the most recent job submission")
             return None, None
 
         stage = stage[0]
@@ -111,7 +114,9 @@ class CondorScheduler(Scheduler):
 
         # The only remaining event type we can handle is JOB_TERMINATED, otherwise condor has done something weird
         if latest_event.type != htcondor.JobEventType.JOB_TERMINATED:
-            print(f"Unexpected job event {latest_event.type}! for working directory {details['working_directory']}")
+            logger.warning(
+                "Unexpected job event %s! for working directory %s", latest_event.type, details["working_directory"]
+            )
             return None, None
 
         # Iterate over all submit events in order and find all stages that have been run
