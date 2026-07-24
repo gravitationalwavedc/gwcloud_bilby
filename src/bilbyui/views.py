@@ -1090,7 +1090,8 @@ def _get_view_job_or_404(job_id, user):
         job = get_job(job_id, user)
     except BilbyJob.DoesNotExist:
         raise Http404
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Unexpected error fetching job {job_id}: {e}", exc_info=True)
         raise Http404
 
     if not BilbyJob.bilby_job_filter(BilbyJob.objects.filter(pk=job.id), user).exists():
