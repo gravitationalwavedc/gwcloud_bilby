@@ -20,6 +20,8 @@ from scheduler.scheduler import EScheduler
 
 from core.misc import get_scheduler, working_directory
 
+logger = logging.getLogger(__name__)
+
 chdir_lock = threading.Lock()
 
 
@@ -412,7 +414,7 @@ def submit(details, job_parameters):
     :param job_parameters: The ini string representing the bilby ini file to submit the job for
     :return: The internal job id representing the job, otherwise None on failure
     """
-    logging.info("Submitting new job...")
+    logger.info("Submitting new job...")
 
     # Create and enter the working directory
     wk_dir = create_working_directory(details)
