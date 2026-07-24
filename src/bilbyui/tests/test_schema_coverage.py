@@ -56,7 +56,7 @@ class TestSchemaCoverage(BilbyTestCase):
 
     def test_resolve_user_exception_fallback(self):
         parent = mock.Mock()
-        type(parent).user = mock.PropertyMock(side_effect=Exception("fail"))
+        parent.user = mock.Mock(spec=[])
         self.assertEqual(BilbyJobNode.resolve_user(parent, mock.Mock()), "Unknown User")
 
     @mock.patch("bilbyui.schema.generate_parameter_output", side_effect=Exception("fail"))
