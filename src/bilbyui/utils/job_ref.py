@@ -1,8 +1,11 @@
+import logging
 from functools import wraps
 
 from django.http import Http404, HttpResponsePermanentRedirect
 from django.urls import resolve, reverse
 from graphql_relay.node.node import from_global_id
+
+logger = logging.getLogger(__name__)
 
 
 def parse_job_ref(job_ref):
@@ -18,8 +21,9 @@ def parse_job_ref(job_ref):
 
     try:
         type_name, pk = from_global_id(job_ref)
-    except Exception as err:
-        raise Http404 from err
+    except Exception as e:
+        logger.debug("Invalid job ref: %s (%s)", job_ref, e)
+        raise Http404 from e
 
     if type_name != "BilbyJobNode":
         raise Http404
