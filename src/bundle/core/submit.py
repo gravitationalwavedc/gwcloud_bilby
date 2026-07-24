@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import subprocess
@@ -411,7 +412,7 @@ def submit(details, job_parameters):
     :param job_parameters: The ini string representing the bilby ini file to submit the job for
     :return: The internal job id representing the job, otherwise None on failure
     """
-    print("Submitting new job...")
+    logging.info("Submitting new job...")
 
     # Create and enter the working directory
     wk_dir = create_working_directory(details)
