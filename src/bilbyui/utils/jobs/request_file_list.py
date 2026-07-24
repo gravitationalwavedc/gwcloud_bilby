@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import os
 from pathlib import Path
 
@@ -7,6 +8,8 @@ from django.conf import settings
 from bilbyui.constants import BilbyJobType
 from bilbyui.utils.jobs.submit_job import _make_job_controller_request
 from bilbyui.utils.misc import check_request_leak
+
+logger = logging.getLogger(__name__)
 
 
 def request_file_list(job, path, recursive, user_id=None):
@@ -102,5 +105,6 @@ def request_file_list(job, path, recursive, user_id=None):
             data=data,
         )
         return True, result["files"]
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error getting job file list: {e}", exc_info=True)
         return False, "Error getting job file list"
