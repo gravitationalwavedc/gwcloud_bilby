@@ -138,7 +138,7 @@ class BilbyJobNode(DjangoObjectType):
     def resolve_user(parent, info):
         try:
             return parent.user.name
-        except Exception:
+        except AttributeError:
             return "Unknown User"
 
     def resolve_user_id(parent, info):
@@ -182,7 +182,7 @@ class BilbyJobNode(DjangoObjectType):
                 "number": status_number,
                 "date": status_date.strftime("%Y-%m-%d %H:%M:%S UTC"),
             }
-        except Exception:
+        except (KeyError, TypeError, ValueError):
             return {"name": "Unknown", "number": 0, "date": "Unknown"}
 
 
