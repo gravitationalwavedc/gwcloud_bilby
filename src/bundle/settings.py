@@ -18,5 +18,5 @@ default_working_directory = "/"
 
 try:
     from local import *  # noqa: F401, F403
-except Exception:
+except ImportError:
     pass
