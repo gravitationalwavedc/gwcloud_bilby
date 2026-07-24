@@ -49,7 +49,7 @@ class SlurmScheduler(Scheduler):
         stdout = None
         try:
             stdout = subprocess.check_output(command, shell=True)
-        except Exception:
+        except subprocess.CalledProcessError:
             # Record the command and the output
             logger.error("Error: Command `%s` returned `%s`", command, stdout)
             return None
@@ -61,7 +61,7 @@ class SlurmScheduler(Scheduler):
         # todo: Handle errors
         try:
             return int(stdout.strip().split()[-1])
-        except Exception:
+        except ValueError:
             return None
 
     def status(self, job_id, details):
@@ -94,7 +94,7 @@ class SlurmScheduler(Scheduler):
                 if int(bits[0]) == int(job_id):
                     _status = bits[1].decode("utf-8")
                     break
-            except Exception:
+            except ValueError:
                 continue
 
         logger.info("Got job status %s for job %s", _status, job_id)
