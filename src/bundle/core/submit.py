@@ -307,9 +307,10 @@ def refactor_slurm_data_generation_step(slurm_script):
             continue
 
         # Check if this line is the next sbatch command using jid0 as a
-        if data_gen_idx and "--dependency=afterok:${" + generation_jid + "[-1]}" in line:
-            # Remove the dependenc
-            line = line.replace("--dependency=afterok:${" + generation_jid + "[-1]}", "")
+        dep_str = f"--dependency=afterok:${{{generation_jid}[-1]}}"
+        if data_gen_idx and dep_str in line:
+            # Remove the dependency
+            line = line.replace(dep_str, "")
 
         new_lines.append(line)
 
