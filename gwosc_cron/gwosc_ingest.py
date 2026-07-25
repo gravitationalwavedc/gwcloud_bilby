@@ -11,6 +11,7 @@ from tempfile import NamedTemporaryFile
 import h5py
 import requests
 from gwcloud_python import GWCloud
+from gwdc_python.exceptions import GWDCUnknownException
 
 logger = logging.getLogger("gwosc_ingest")
 logger.setLevel(logging.DEBUG)
@@ -222,7 +223,7 @@ def _check_and_download_inner(con, cur):
 
         try:
             event_json = r.json()
-        except Exception:
+        except ValueError:
             error_msg = f"Unable to parse event json (event: {event_name}, url: {all_events[event_name]['jsonurl']})"
             logger.error(error_msg, exc_info=True)
             record_job_failure(con, cur, event_name, error_msg)
@@ -292,7 +293,7 @@ def _check_and_download_inner(con, cur):
                 try:
                     event_id = gwc.create_event_id(common_name, gps, gracedb_id)
                     logger.info(f"Created a new event_id: {common_name}")
-                except Exception:
+                except GWDCUnknownException:
                     error_msg = f"Failed to create event_id for {common_name}"
                     logger.error(error_msg, exc_info=True)
                     record_job_failure(con, cur, event_name, error_msg)
@@ -313,7 +314,7 @@ def _check_and_download_inner(con, cur):
                     r.raise_for_status()
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
-            except Exception:
+            except requests.RequestException:
                 error_msg = f"Downloading {h5url} failed 😠"
                 logger.error(error_msg, exc_info=True)
                 record_job_failure(con, cur, event_name, error_msg)
@@ -327,7 +328,7 @@ def _check_and_download_inner(con, cur):
             # Load the h5 file, and read in the bilby ini file(s)
             try:
                 h5_handle = h5py.File(f)
-            except Exception:
+            except OSError:
                 error_msg = f"Failed to open H5 file downloaded from {h5url}"
                 logger.error(error_msg, exc_info=True)
                 record_job_failure(con, cur, event_name, error_msg)
@@ -353,7 +354,7 @@ def _check_and_download_inner(con, cur):
                         for k in config.keys():
                             ini_lines.append(f"{k}={config[k][0].decode('utf-8')}")
                         ini_str = "\n".join(ini_lines)
-                    except Exception:
+                    except (KeyError, OSError):
                         error_msg = f"Failed to read H5 config data for key {toplevel_key!r} in {h5url}"
                         logger.error(error_msg, exc_info=True)
                         record_job_failure(con, cur, event_name, error_msg)
@@ -375,7 +376,7 @@ def _check_and_download_inner(con, cur):
                         else:
                             logger.info(" and has no event_id")
                         none_succeeded = False
-                    except Exception:
+                    except GWDCUnknownException:
                         all_succeeded = False
                         # we don't just raise here as we want to potentially upload other jobs
                         logger.error("Failed to create BilbyJob 😠", exc_info=True)
