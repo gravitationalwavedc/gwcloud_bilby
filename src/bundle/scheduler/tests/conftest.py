@@ -1,5 +1,5 @@
 import sys
 
-import htcondor
+import htcondor2
 
-sys.modules["htcondor"] = htcondor
+sys.modules["htcondor"] = htcondor2
