@@ -155,4 +155,4 @@ class CondorScheduler(Scheduler):
         :param details: The internal db record for the job
         :return: True if the job was cancelled otherwise False
         """
-        raise Exception("Not implemented")
+        raise NotImplementedError("Condor cancel is not implemented")
