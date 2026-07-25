@@ -1287,6 +1287,7 @@ def edit_job_name(request, job_id):
     try:
         validate_job_name(name)
     except Exception as e:
+        logger.warning("edit_job_name validation failed for job %s: %s", job_id, e)
         return _render_job_field_text(request, job, "name", editing=True, error=str(e), status=400)
 
     update_job(job_id, request.user, name=name)
