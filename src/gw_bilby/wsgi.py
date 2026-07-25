@@ -16,5 +16,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gw_bilby.prod")
 
 application = get_wsgi_application()
 
+logger = logging.getLogger(__name__)
+
 # Verify file logging is active (so we can confirm logs reach the host volume)
-logging.getLogger("bilbyui").info("GWCloud Bilby application started; file logging active")
+logger.info("GWCloud Bilby application started; file logging active")
