@@ -7,7 +7,7 @@ def check_request_leak():
     if hasattr(mail, "outbox") and not hasattr(settings, "ALLOW_HTTP_LEAKS"):
         # We are in test mode!
         msg = "HTTP request leaked during testing"
-        raise Exception(msg)
+        raise RuntimeError(msg)
 
 
 def check_request_leak_decorator(fn):
