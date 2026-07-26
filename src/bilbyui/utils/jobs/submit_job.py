@@ -46,7 +46,7 @@ def _make_job_controller_request(method, url, user_id, data=None, jwt_expiry=Non
     if result.status_code != HTTP_OK:
         msg = f"Job controller returned {result.status_code}: {result.content}"
         logger.error(msg)
-        raise requests.HTTPError(msg)
+        raise requests.RequestException(msg)
 
     return json.loads(result.content)
 
