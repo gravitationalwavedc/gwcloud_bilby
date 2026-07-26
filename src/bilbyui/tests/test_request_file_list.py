@@ -2,6 +2,7 @@ import os
 from tempfile import TemporaryDirectory
 from unittest import mock
 
+import requests
 from django.test import override_settings
 
 from bilbyui.constants import BilbyJobType
@@ -131,7 +132,7 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertTrue(kwargs["data"]["recursive"])
 
         # Exception path returns an error message
-        make_request.side_effect = Exception("boom")
+        make_request.side_effect = requests.RequestException("boom")
         success, result = request_file_list(job, "", False)
         self.assertFalse(success)
         self.assertEqual(result, "Error getting job file list")
