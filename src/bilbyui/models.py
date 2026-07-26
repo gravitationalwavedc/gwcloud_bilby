@@ -200,7 +200,7 @@ class BilbyJob(models.Model):
 
         # Users can only access the job if it is public or (the user is authenticated AND the user also owns the job)
         if job.private and (user.is_anonymous or user.id != job.user.id):
-            raise Exception("Permission Denied")
+            raise PermissionError("Permission Denied")
 
         return job
 
