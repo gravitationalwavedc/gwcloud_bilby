@@ -214,7 +214,7 @@ class BilbyJob(models.Model):
         :return: The queryset filtered by the requesting user
         """
         if user.is_anonymous:
-            raise Exception("Permission Denied")
+            raise PermissionError("Permission Denied")
 
         return embargo_filter(qs.filter(user_id=user.id), user)
 
