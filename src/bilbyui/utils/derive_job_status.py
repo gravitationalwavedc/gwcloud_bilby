@@ -1,6 +1,9 @@
 import datetime
+import logging
 
 from bilbyui.status import JobStatus
+
+logger = logging.getLogger(__name__)
 
 
 def derive_job_status(history):
@@ -20,10 +23,10 @@ def derive_job_status(history):
     history_items.sort(key=lambda x: x["timestamp"], reverse=True)
 
     if history_items:
-        return (
-            history_items[0]["data"]["state"],
-            JobStatus.display_name(history_items[0]["data"]["state"]),
-            history_items[0]["timestamp"],
-        )
+        state = history_items[0]["data"]["state"]
+        display_name = JobStatus.display_name(state)
+        timestamp = history_items[0]["timestamp"]
+        logger.info("Derived job status: state=%s, display_name=%s, timestamp=%s", state, display_name, timestamp)
+        return (state, display_name, timestamp)
 
     return JobStatus.DRAFT, "Unknown", None
