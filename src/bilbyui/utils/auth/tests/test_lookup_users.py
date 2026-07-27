@@ -26,5 +26,5 @@ class TestRequestLookupUsers(BilbyTestCase):
         success, result = request_lookup_users([1, 2])
 
         self.assertFalse(success)
-        self.assertEqual(result, "Error filtering users: auth failed")
+        self.assertEqual(result, "Error looking up users: auth failed")
         auth_request_mock.assert_called_once_with("get_users", {"ids": [1, 2]})
