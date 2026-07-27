@@ -1,3 +1,4 @@
+import logging
 import os
 
 import _bundledb
@@ -6,6 +7,8 @@ from scheduler.scheduler import EScheduler
 from scheduler.status import JobStatus
 
 from core.misc import get_scheduler
+
+logger = logging.getLogger(__name__)
 
 
 def get_submit_status(job):
@@ -156,4 +159,5 @@ def status(details, *args, **kwargs):
     elif settings.scheduler == EScheduler.SLURM:
         return dict(slurm_status(job))
     else:
+        logger.warning("Unknown scheduler: %s", settings.scheduler)
         return None
