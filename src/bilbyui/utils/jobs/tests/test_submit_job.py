@@ -41,7 +41,7 @@ class TestSubmitJob(BilbyTestCase):
 
     @silence_errors
     def test_invalid_cluster(self):
-        with self.assertRaises(Exception) as ctx:
+        with self.assertRaises(ValueError) as ctx:
             submit_job(USER_ID, PARAMS, "not_real")
 
         self.assertIn("cluster 'not_real' is not one of", str(ctx.exception))
