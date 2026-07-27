@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.db.models import FloatField, OuterRef, Q, Subquery
 from django.db.models.functions import Cast
@@ -5,6 +7,8 @@ from django.db.models.functions import Cast
 from bilbyui import models
 
 from .misc import is_ligo_user
+
+logger = logging.getLogger(__name__)
 
 
 def user_subject_to_embargo(user):
@@ -59,16 +63,29 @@ def should_embargo_job(user, trigger_time, simulated):
         - Only real data jobs with trigger_time >= EMBARGO_START_TIME are embargoed
     """
     # If user is None, treat as non-LIGO user for embargo checking
-    if user is not None and not user_subject_to_embargo(user):
+    if user is None:
+        logger.debug("Job subject to embargo: user is None (treated as non-LIGO)")
+    elif not user_subject_to_embargo(user):
+        logger.debug("Job not subject to embargo: LIGO user")
         return False
 
     if simulated:
+        logger.debug("Job not subject to embargo: simulated data")
         return False
 
     if trigger_time is None:
+        logger.debug("Job not subject to embargo: no trigger time")
         return False
 
     if settings.EMBARGO_START_TIME is None:
+        logger.debug("Job not subject to embargo: no embargo start time configured")
         return False
 
-    return trigger_time >= settings.EMBARGO_START_TIME
+    result = trigger_time >= settings.EMBARGO_START_TIME
+    logger.debug(
+        "Embargo check: trigger_time=%s, EMBARGO_START_TIME=%s, result=%s",
+        trigger_time,
+        settings.EMBARGO_START_TIME,
+        result,
+    )
+    return result
