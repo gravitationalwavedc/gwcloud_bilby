@@ -1,6 +1,7 @@
 import logging
 
 from django.core.management.base import BaseCommand
+from django.db import DatabaseError
 
 from bilbyui.models import BilbyJob
 
@@ -23,7 +24,7 @@ class Command(BaseCommand):
                 success_count += 1
                 logger.info(f"Job {job.id} - {job.name} has been ingested into Elasticsearch")
                 self.stdout.write(self.style.SUCCESS(f"✓ Job {job.id} - {job.name}"))
-            except Exception as e:
+            except DatabaseError as e:
                 error_count += 1
                 logger.error(f"Job {job.id} - {job.name} could not be ingested: {e}", exc_info=True)
                 self.stdout.write(self.style.ERROR(f"✗ Job {job.id} - {job.name}: {e}"))
