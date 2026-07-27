@@ -190,4 +190,4 @@ def update_job(job_id, user, private=None, labels=None, event_id=None, name=None
 
         return True, "Job saved"
 
-    raise Exception("You must own the job to change it!")
+    raise PermissionError("You must own the job to change it!")
