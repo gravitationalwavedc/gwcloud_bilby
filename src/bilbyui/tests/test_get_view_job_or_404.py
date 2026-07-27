@@ -44,8 +44,8 @@ class TestGetViewJobOr404(BilbyTestCase):
             _get_view_job_or_404(ligo_job.id, self.user)
 
     @mock.patch("bilbyui.views.get_job")
-    def test_raises_404_on_generic_exception(self, mock_get_job):
-        mock_get_job.side_effect = RuntimeError("unexpected")
+    def test_raises_404_on_permission_error(self, mock_get_job):
+        mock_get_job.side_effect = PermissionError("permission denied")
 
         with self.assertRaises(Http404):
             _get_view_job_or_404(self.job.id, self.user)
