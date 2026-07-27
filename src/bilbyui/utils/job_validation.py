@@ -13,17 +13,17 @@ def validate_job_name(name):
     if len(name) < MIN_JOB_NAME_LENGTH:
         msg = f"Job name must be at least {MIN_JOB_NAME_LENGTH} characters long."
         logger.warning("Job name '%s' is too short: %s", name, msg)
-        raise Exception(msg)
+        raise ValueError(msg)
 
     max_len = BilbyJob._meta.get_field("name").max_length
     # this one is enforced by the database field's max_length
     if len(name) > max_len:
         msg = f"Job name must be at most {max_len} characters long."
         logger.warning("Job name '%s' is too long: %s", name, msg)
-        raise Exception(msg)
+        raise ValueError(msg)
 
     pattern = re.compile(r"^[0-9a-z_-]+\Z", flags=re.IGNORECASE | re.ASCII)
     if not pattern.match(name):
         msg = "Job name must not contain any spaces or special characters."
         logger.warning("Job name '%s' has invalid characters: %s", name, msg)
-        raise Exception(msg)
+        raise ValueError(msg)
