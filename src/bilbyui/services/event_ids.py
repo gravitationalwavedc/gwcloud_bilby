@@ -1,5 +1,9 @@
+import logging
+
 from bilbyui.models import EventID
 from bilbyui.utils.misc import is_ligo_user
+
+logger = logging.getLogger(__name__)
 
 
 def list_event_ids_for_user(user):
