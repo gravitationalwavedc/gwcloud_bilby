@@ -23,7 +23,7 @@ def _time_range_to_timedelta(time_range):
         return timedelta(days=31)
     if time_range == "1y":
         return timedelta(days=365)
-    raise Exception(f"Unexpected timeRange value {time_range}")
+    raise ValueError(f"Unexpected timeRange value {time_range}")
 
 
 def _apply_time_range_filter(qs, time_range, field_name="last_updated"):
