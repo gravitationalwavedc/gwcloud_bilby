@@ -72,7 +72,7 @@ def submit_job(user_id, params, cluster):
     if cluster not in settings.CLUSTERS:
         msg = f"Error submitting job, cluster '{cluster}' is not one of [{' '.join(settings.CLUSTERS)}]"
         logger.error(msg)
-        raise Exception(msg)
+        raise ValueError(msg)
 
     # Construct the request parameters to the job controller, note that parameters must be a string, not an object
     data = {"parameters": json.dumps(params), "cluster": cluster, "bundle": "fbc9f7c0815f1a83b0de36f957351c93797b2049"}
