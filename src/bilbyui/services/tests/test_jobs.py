@@ -62,7 +62,7 @@ class TestJobsService(BilbyTestCase):
         self.assertFalse(result["has_next"])
         self.assertEqual(result["page"], 2)
 
-def test_list_user_jobs_search_filters_by_name_or_description(self):
+    def test_list_user_jobs_search_filters_by_name_or_description(self):
         by_name = list_user_jobs(self.user, search="first")
         self.assertEqual([job.id for job in by_name["jobs"]], [self.job1.id])
 
