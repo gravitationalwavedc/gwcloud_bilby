@@ -499,7 +499,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
     # Check that the uploaded file is a tar.gz file
     if not job_file.name.endswith("tar.gz"):
         logger.error(f"User {user.id} attempted to upload non-tar.gz file: {job_file.name}")
-        raise Exception("Job upload should be a tar.gz file")
+        raise ValueError("Job upload should be a tar.gz file")
 
     # Check that the job upload directory exists
     os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
