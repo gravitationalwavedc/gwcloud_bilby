@@ -1,7 +1,10 @@
+import logging
 from tempfile import NamedTemporaryFile
 
 from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import parse_args
+
+logger = logging.getLogger(__name__)
 
 
 def bilby_ini_string_to_args(ini):
@@ -23,12 +26,16 @@ def bilby_ini_string_to_args(ini):
         # Make sure the data is written to the temporary file
         f.flush()
 
+        logger.debug("Parsing INI string via temporary file %s", f.name)
+
         # Read the data from the ini file
         args, _ = parse_args([f.name], parser)
 
     # ini and verbose are not kept in the ini file, so remove them
     delattr(args, "ini")
     delattr(args, "verbose")
+
+    logger.debug("Parsed INI string into %d arguments", len(vars(args)))
 
     return args
 
@@ -51,6 +58,8 @@ def bilby_args_to_ini_string(args):
 
         # Make sure the data is flushed
         f.flush()
+
+        logger.debug("Serialized %d arguments to INI string", len(vars(args)))
 
         # Read the ini content
         return f.read().decode("utf-8")
