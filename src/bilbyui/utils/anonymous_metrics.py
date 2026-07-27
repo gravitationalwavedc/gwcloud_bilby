@@ -1,7 +1,10 @@
 import json
+import logging
 import uuid
 
 from bilbyui.models import AnonymousMetrics
+
+logger = logging.getLogger(__name__)
 
 EXPECTED_ID_COUNT = 2
 
@@ -30,6 +33,7 @@ class AnonymousMetricsMiddleware:
             ids[0] = uuid.UUID(ids[0])
             ids[1] = uuid.UUID(ids[1])
         except ValueError:
+            logger.debug("Invalid X-Correlation-Id header: %s", header)
             return next(root, info, **args)
 
         # Details of the request are valid, we can create the metrics entry
