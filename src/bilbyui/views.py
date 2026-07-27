@@ -873,6 +873,7 @@ def file_download(request):
 
         raise Http404
     except ValidationError:
+        logger.warning(f"ValidationError in file_download for token: {token}")
         raise Http404
 
 
