@@ -99,7 +99,7 @@ class EventID(models.Model):
         event = cls.objects.get(event_id=event_id)
 
         if event.is_ligo_event and not is_ligo_user(user):
-            raise Exception("Permission Denied")
+            raise PermissionError("Permission Denied")
 
         return event
 
