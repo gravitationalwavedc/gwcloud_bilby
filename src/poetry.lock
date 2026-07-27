@@ -1335,29 +1335,6 @@ files = [
 numpy = ">=1.21.2"
 
 [[package]]
-name = "htcondor"
-version = "25.12.2"
-description = "HTCondor Python bindings"
-optional = false
-python-versions = "*"
-files = [
-    {file = "htcondor-25.12.2-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:dd308674ab8260b2c6d872a2e9b7046d941c84d49d9af4ffb539261b1785c299"},
-    {file = "htcondor-25.12.2-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:a8afd79bbac1bf5e9020ee8d03ea3601a7b7c982c00ee9047e8348101e8a8d49"},
-    {file = "htcondor-25.12.2-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:351f5d6bf71ce1aa1ef3fa1ebd7bfd49c616272163ec6f97190a3eb064960af6"},
-    {file = "htcondor-25.12.2-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:cfb0faa8be68bbdb52cc552256e31cf2477007e4a0bcd64ac0f10ff8bad5c951"},
-    {file = "htcondor-25.12.2-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:e53d7d0cba4cf1d6cba72e3859a65a315a79125242aedecafb8ffcb705d044f1"},
-    {file = "htcondor-25.12.2-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:a55a053b56b9fe2f980786131680d933e0355b4b9d6d8783448667d014a039e1"},
-    {file = "htcondor-25.12.2-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:0a9752a93782dcc40da15fc87084ffdd9e63cc03b76f41c02079b3f99a545928"},
-    {file = "htcondor-25.12.2-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:41c552d065e29222146cfa1fe3a0af00fec11da5f3f468602ba170d78638e40a"},
-    {file = "htcondor-25.12.2-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:a493835f3a208196d0ddd8c9620fc2c622b2974bab898c3ebb70b15410f0f199"},
-    {file = "htcondor-25.12.2-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:c98f6621764ae6cc474f3f35c4afacf839ccfca6f9be5920dabf095c76650719"},
-    {file = "htcondor-25.12.2-cp38-cp38-manylinux_2_28_aarch64.whl", hash = "sha256:3c263614ff64bb9cb5598458bd26db26bf74fa06e587b5e7c7fa991584114705"},
-    {file = "htcondor-25.12.2-cp38-cp38-manylinux_2_28_x86_64.whl", hash = "sha256:492b9504eb45e3df0e380f5b9a4b91bafcda980cdb42d82f460e9e061cf468a6"},
-    {file = "htcondor-25.12.2-cp39-cp39-manylinux_2_28_aarch64.whl", hash = "sha256:6de8ce1e7f71edfa58096e8863b8c128d94a07c935d1876001dbf43f983c381b"},
-    {file = "htcondor-25.12.2-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:e5c175353738abcf33d23bf731a8b3ed08ad7a01c519fe6aa8e1d876138c2efa"},
-]
-
-[[package]]
 name = "idna"
 version = "3.18"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -3364,4 +3341,4 @@ zstd = ["backports-zstd (>=1.0.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "aff366e10b3c6dec90776b4e0f9840fbde90dc5f479ea1ebcd5dda4a19a8918d"
+content-hash = "00b20756ccdd2bfd26e318e398800268106e278f7bf0386d283aa29194244132"

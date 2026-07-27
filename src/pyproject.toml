@@ -28,7 +28,6 @@ elasticsearch = ">=8.0,<9"
 adacs-sso-plugin = {git = "https://gitlab.com/CAS-eResearch/internal/adacs-sso-plugin.git", tag = "v0.4.2"}
 gunicorn = "*"
 mysqlclient = "*"
-htcondor = "^25.12.2"
 
 [tool.ruff]
 line-length = 120
