@@ -79,7 +79,7 @@ class TestSubmitJob(BilbyTestCase):
     def test_non_200_response(self):
         self.responses.add(responses.POST, JOB_URL, body=b"error", status=500)
 
-        with self.assertRaises(Exception) as ctx:
+        with self.assertRaises(RuntimeError) as ctx:
             submit_job(USER_ID, PARAMS, "default")
 
         self.assertIn("Job controller returned 500", str(ctx.exception))
@@ -89,7 +89,7 @@ class TestSubmitJob(BilbyTestCase):
     def test_request_exception(self, mock_request):
         mock_request.side_effect = requests.ConnectionError("connection refused")
 
-        with self.assertRaises(Exception) as ctx:
+        with self.assertRaises(RuntimeError) as ctx:
             submit_job(USER_ID, PARAMS, "default")
 
         self.assertEqual(str(ctx.exception), "Error submitting job: connection refused")
