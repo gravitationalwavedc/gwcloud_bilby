@@ -720,10 +720,10 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
     """
     # Check that the uploaded files are the correct types
     if not hdf5_file.name.endswith((".hdf5", ".h5")):
-        raise Exception("HDF5 file should have .hdf5 or .h5 extension")
+        raise ValueError("HDF5 file should have .hdf5 or .h5 extension")
 
     if not ini_file.name.endswith(".ini"):
-        raise Exception("INI file should have .ini extension")
+        raise ValueError("INI file should have .ini extension")
 
     # Check that the job upload directory exists
     os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
@@ -757,7 +757,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
 
         # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
         if check_job_embargo_status(user, args):
-            raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
+            raise PermissionError("Only LIGO users may upload real jobs on embargoed LIGO data")
 
         # Override the output directory
         args.outdir = "./"
@@ -807,7 +807,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
             logger.info(f"stderr: {err}")
 
             if p.returncode != 0:
-                raise Exception("Unable to repack the uploaded HDF5 job")
+                raise RuntimeError("Unable to repack the uploaded HDF5 job")
 
         # Job is validated and uploaded, return the job
         return bilby_job
