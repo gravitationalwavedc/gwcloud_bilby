@@ -1467,7 +1467,7 @@ def edit_job_event_id(request, job_id):
                 error=f"Event ID '{event_id_str}' not found.",
                 status=400,
             )
-        except Exception as e:
+        except PermissionError as e:
             logger.warning("Unexpected exception editing event ID for job %s: %s", job.id, e)
             return _render_job_field_event_id(request, job, error=str(e), status=400)
         job.save()
