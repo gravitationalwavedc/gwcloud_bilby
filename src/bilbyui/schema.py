@@ -182,7 +182,7 @@ class BilbyJobNode(DjangoObjectType):
                 "number": status_number,
                 "date": status_date.strftime("%Y-%m-%d %H:%M:%S UTC"),
             }
-        except (KeyError, TypeError, ValueError):
+except (KeyError, TypeError, ValueError):
             return {"name": "Unknown", "number": 0, "date": "Unknown"}
 
 
