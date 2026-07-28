@@ -2,6 +2,7 @@ from io import StringIO
 from unittest import mock
 
 from django.core.management import call_command
+from django.db import DatabaseError
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import create_test_ini_string
@@ -33,7 +34,7 @@ class TestEsIngestCommand(BilbyTestCase):
 
     def test_es_ingest_error(self):
         out = StringIO()
-        with mock.patch.object(BilbyJob, "save", autospec=True, side_effect=Exception("boom")):
+        with mock.patch.object(BilbyJob, "save", autospec=True, side_effect=DatabaseError("boom")):
             call_command("es_ingest", stdout=out)
 
         output = out.getvalue()
