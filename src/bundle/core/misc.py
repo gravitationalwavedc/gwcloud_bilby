@@ -1,9 +1,12 @@
+import logging
 from pathlib import Path
 
 import settings
 from scheduler.condor import CondorScheduler
 from scheduler.scheduler import EScheduler
 from scheduler.slurm import SlurmScheduler
+
+logger = logging.getLogger(__name__)
 
 
 def working_directory(details, *args, **kwargs):
@@ -25,4 +28,5 @@ def get_scheduler():
     if settings.scheduler == EScheduler.CONDOR:
         return CondorScheduler()
 
+    logger.warning("Unknown scheduler: %s", settings.scheduler)
     return None
