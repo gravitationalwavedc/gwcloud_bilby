@@ -59,7 +59,7 @@ class TestSchemaCoverage(BilbyTestCase):
         parent.user = mock.Mock(spec=[])
         self.assertEqual(BilbyJobNode.resolve_user(parent, mock.Mock()), "Unknown User")
 
-    @mock.patch("bilbyui.schema.generate_parameter_output", side_effect=Exception("fail"))
+    @mock.patch("bilbyui.schema.generate_parameter_output", side_effect=KeyError("fail"))
     def test_resolve_params_exception_returns_none(self, *_):
         self.assertIsNone(BilbyJobNode.resolve_params(mock.Mock(), mock.Mock()))
 
