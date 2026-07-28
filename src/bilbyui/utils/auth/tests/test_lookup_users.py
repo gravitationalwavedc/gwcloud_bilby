@@ -1,5 +1,6 @@
 from unittest import mock
 
+from adacs_sso_plugin.utils import AuthConnectionException
 from django.test import override_settings
 
 from bilbyui.tests.testcases import BilbyTestCase
@@ -21,7 +22,7 @@ class TestRequestLookupUsers(BilbyTestCase):
 
     @mock.patch("bilbyui.utils.auth.lookup_users.auth_request")
     def test_request_lookup_users_error(self, auth_request_mock):
-        auth_request_mock.side_effect = Exception("auth failed")
+        auth_request_mock.side_effect = AuthConnectionException("auth failed")
 
         success, result = request_lookup_users([1, 2])
 
