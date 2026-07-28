@@ -1,6 +1,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+import elasticsearch
 from django.utils import timezone
 
 from bilbyui.models import BilbyJob
@@ -117,7 +118,7 @@ class TestJobsService(BilbyTestCase):
 
     @patch("bilbyui.services.jobs.elasticsearch.Elasticsearch")
     def test_list_public_jobs_elasticsearch_connection_failure(self, mock_elasticsearch):
-        mock_elasticsearch.side_effect = Exception("connection failed")
+        mock_elasticsearch.side_effect = elasticsearch.exceptions.ConnectionError("connection failed")
         result = list_public_jobs(self.user)
         self.assertEqual(
             result,

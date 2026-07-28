@@ -83,7 +83,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
             api_key=settings.ELASTIC_SEARCH_API_KEY,
             verify_certs=False,
         )
-    except Exception as e:
+    except elasticsearch.exceptions.ConnectionError as e:
         logger.error(f"Failed to connect to Elasticsearch: {e}", exc_info=True)
         return empty_result
 
