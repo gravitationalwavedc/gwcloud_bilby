@@ -529,12 +529,12 @@ def upload_bilby_job(user, upload_token, details, job_file):
         logger.debug(f"stderr: {err}")
 
         if p.returncode != 0:
-            raise Exception("Invalid or corrupt tar.gz file")
+            raise ValueError("Invalid or corrupt tar.gz file")
 
         # Validate the directory structure, this should include 'data', 'result', and 'results_page' at minimum
         for directory in ["data", "result", "results_page"]:
             if not os.path.isdir(os.path.join(job_staging_dir, directory)):
-                raise Exception(f"Invalid directory structure, expected directory ./{directory} to exist.")
+                raise ValueError(f"Invalid directory structure, expected directory ./{directory} to exist.")
 
         # Find the config complete ini
         ini_file = list(
@@ -545,7 +545,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
         )
 
         if len(ini_file) != 1:
-            raise Exception(
+            raise ValueError(
                 "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one."
             )
 
@@ -560,7 +560,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
         # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
         if check_job_embargo_status(user, args):
-            raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
+            raise PermissionError("Only LIGO users may upload real jobs on embargoed LIGO data")
 
         # DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
         args.idx = getattr(args, "idx", None)
@@ -626,7 +626,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
             for supporting_file in supporting_file_details:
                 source_file = Path(job_staging_dir) / supporting_file["file_path"]
                 if not source_file.is_file():
-                    raise Exception(f"Supporting file {supporting_file['file_path']} does not exist.")
+                    raise FileNotFoundError(f"Supporting file {supporting_file['file_path']} does not exist.")
 
                 # Because we're in a transaction here, the bulk_create in `SupportingFile.save_from_parsed` isn't saved
                 # so we need to fetch it again from the database to get the inserted ID
@@ -653,7 +653,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
             if p.returncode != 0:
                 logger.error(f"Failed to repack uploaded job for user {user.id}")
-                raise Exception("Unable to repack the uploaded job")
+                raise RuntimeError("Unable to repack the uploaded job")
 
         # Job is validated and uploaded, return the job
         logger.info(f"Successfully uploaded and created job {bilby_job.id} for user {user.id}")
