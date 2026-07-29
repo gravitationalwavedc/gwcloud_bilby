@@ -870,9 +870,9 @@ def file_download(request):
             return file_download_supporting_file(request, supporting_file)
 
         raise Http404
-    except ValidationError:
+    except ValidationError as e:
         logger.warning(f"ValidationError in file_download for token: {token}")
-        raise Http404
+        raise Http404 from e
 
 
 def create_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
@@ -1087,11 +1087,11 @@ def my_jobs_view(request):
 def _get_view_job_or_404(job_id, user):
     try:
         job = get_job(job_id, user)
-    except BilbyJob.DoesNotExist:
-        raise Http404
+    except BilbyJob.DoesNotExist as e:
+        raise Http404 from e
     except PermissionError as e:
         logger.warning(f"Permission error fetching job {job_id}: {e}", exc_info=True)
-        raise Http404
+        raise Http404 from e
 
     if not BilbyJob.bilby_job_filter(BilbyJob.objects.filter(pk=job.id), user).exists():
         raise Http404
@@ -1533,7 +1533,7 @@ def api_token_revoke(request, token_id):
     try:
         revoke_token(request.user, token_id)
     except (PermissionDenied, APISessionToken.DoesNotExist):
-        raise Http404
+        raise Http404 from None
 
     response = HttpResponse(status=204)
     response["HX-Trigger"] = "token-revoked"
