@@ -54,9 +54,8 @@ class TestSchemaCoverage(BilbyTestCase):
         info.context = mock.Mock(user=self.user)
         self.assertEqual(Query.resolve_gwclouduser(Query(), info), self.user)
 
-    def test_resolve_user_exception_fallback(self):
-        parent = mock.Mock()
-        parent.user = mock.Mock(spec=[])
+def test_resolve_user_exception_fallback(self):
+        parent = mock.Mock(spec=[])
         self.assertEqual(BilbyJobNode.resolve_user(parent, mock.Mock()), "Unknown User")
 
     @mock.patch("bilbyui.schema.generate_parameter_output", side_effect=KeyError("fail"))
