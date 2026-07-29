@@ -818,9 +818,7 @@ def file_download_job_file(request, fdl):
     job_dir = fdl.job.get_upload_directory()
 
     # Make sure that there is no leading slash on the file path
-    file_path = fdl.path
-    while len(file_path) and file_path[0] == "/":
-        file_path = file_path[1:]
+    file_path = fdl.path.lstrip("/")
 
     # Get the full file path
     file_path = os.path.join(job_dir, file_path)
