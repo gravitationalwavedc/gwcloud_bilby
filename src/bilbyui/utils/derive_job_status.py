@@ -14,7 +14,7 @@ def derive_job_status(history):
     :returns: A tuple of (state, display_name, timestamp) for the most recent job status
     """
 
-history_items = [
+    history_items = [
         {"timestamp": datetime.datetime.strptime(h["timestamp"], "%Y-%m-%d %H:%M:%S.%f UTC"), "data": h}
         for h in history
     ]
