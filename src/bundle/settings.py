@@ -1,3 +1,5 @@
+import contextlib
+
 from scheduler.scheduler import EScheduler
 
 # The directory where jobs are stored
@@ -16,7 +18,5 @@ condor_accounting_user = "no.one"
 # Default working directory used when the job ID is not specified (e.g. for cluster file fetching)
 default_working_directory = "/"
 
-try:
+with contextlib.suppress(ImportError):
     from local import *  # noqa: F401, F403
-except ImportError:
-    pass
