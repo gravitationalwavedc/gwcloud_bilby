@@ -1,5 +1,6 @@
 import json
 
+import requests
 import responses
 from django.conf import settings
 from django.test import override_settings
@@ -55,7 +56,7 @@ class TestMakeJobControllerRequest(BilbyTestCase):
             status=500,
         )
 
-        with self.assertRaises(Exception) as ctx:
+        with self.assertRaises(requests.RequestException) as ctx:
             _make_job_controller_request("GET", f"{BASE_URL}/status/", USER_ID)
 
         self.assertIn("Job controller returned 500", str(ctx.exception))
