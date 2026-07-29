@@ -105,13 +105,22 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
     if user_subject_to_embargo(user):
         q = f"({q}) AND (params.trigger_time:<{settings.EMBARGO_START_TIME} OR ini.n_simulation:>0)"
 
-    results = es.search(
-        index=settings.ELASTIC_SEARCH_INDEX,
-        q=q,
-        size=page_size + 1,
-        from_=offset,
-        sort="job.lastUpdatedTime:desc",
-    )
+    try:
+        results = es.search(
+            index=settings.ELASTIC_SEARCH_INDEX,
+            q=q,
+            size=page_size + 1,
+            from_=offset,
+            sort="job.lastUpdatedTime:desc",
+        )
+    except elasticsearch.NotFoundError:
+        # Missing index (common in fresh local setups) — show empty list, not 500.
+        logger.error(
+            "Elasticsearch index missing or not found: %s",
+            settings.ELASTIC_SEARCH_INDEX,
+            exc_info=True,
+        )
+        return empty_result
 
     if not results["hits"]:
         return empty_result

@@ -9,11 +9,27 @@
     }
 }
 
-// Matches React Menu.jsx iconStyle (height 20px, margin -2px 2px 0 0)
+// Higher specificity than Bootstrap's .navbar-brand / .navbar-text (display:
+// inline-block) and .nav-link (display: block), which compile after this file.
+.navbar-brand.navbar-brand-link,
+.navbar-nav .nav-link,
+.navbar-nav .navbar-text {
+    display: inline-flex;
+    align-items: center;
+}
+
+// Bootstrap Icons (+ brand logo): size the glyph; flex handles vertical centering.
+// Do not use Material-style margin/vertical-align hacks — they fight BI's
+// ::before { vertical-align: -.125em } and shift icons off the text midline.
 .navbar-nav-icon {
-    font-size: 20px;
-    height: 20px;
-    width: 20px;
-    margin: -2px 2px 0 0;
-    vertical-align: text-bottom;
+    font-size: 1.25rem;
+    line-height: 1;
+    margin-right: 0.125rem;
+    flex-shrink: 0;
+}
+
+img.navbar-nav-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    object-fit: contain;
 }

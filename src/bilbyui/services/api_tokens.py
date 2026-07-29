@@ -5,21 +5,23 @@ from adacs_sso_plugin.models import APISessionToken
 logger = logging.getLogger(__name__)
 
 
+def serialize_token(token):
+    """Shape an APISessionToken for templates (matches list_tokens entries)."""
+    return {
+        "id": token.id,
+        "name": token.name,
+        "created": token.created,
+        "last_used": token.last_used,
+        "expiry": token.expiry,
+        "expired": token.expired,
+        "shortcode": token.token_shortcode,
+    }
+
+
 def list_tokens(user):
     logger.debug("Listing API tokens for user %s", user.id)
     tokens = APISessionToken.get_user_tokens(user.id)
-    return [
-        {
-            "id": token.id,
-            "name": token.name,
-            "created": token.created,
-            "last_used": token.last_used,
-            "expiry": token.expiry,
-            "expired": token.expired,
-            "shortcode": token.token_shortcode,
-        }
-        for token in tokens
-    ]
+    return [serialize_token(token) for token in tokens]
 
 
 def create_token(user, name):

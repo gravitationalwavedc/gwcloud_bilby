@@ -23,18 +23,25 @@
         {% endif %}
       </p>
     </div>
-    <div x-data="{ confirming: false }">
-      <div x-show="confirming" class="d-inline">
-        <form hx-post="{% url 'bilbyui:api_token_revoke' token_id=token.id %}"
-              hx-swap="none"
-              class="d-inline">
-          {% csrf_token %}
-          <span class="text-danger mr-2">Are you sure?</span>
-          <button type="submit" class="btn btn-danger btn-sm">Yes, revoke</button>
-          <button type="button" class="btn btn-secondary btn-sm" @click="confirming = false">Cancel</button>
-        </form>
-      </div>
-      <button type="button" class="btn btn-outline-danger" x-show="!confirming" @click="confirming = true">Revoke</button>
+    {# CSS confirm — works on OOB rows without Alpine.initTree (React CheckButton parity) #}
+    <div class="token-revoke" data-confirming="false">
+      <button type="button"
+              class="btn btn-outline-danger token-revoke-start"
+              onclick="this.closest('.token-revoke').dataset.confirming='true'">
+        Revoke
+      </button>
+      <form hx-post="{% url 'bilbyui:api_token_revoke' token_id=token.id %}"
+            hx-swap="none"
+            class="token-revoke-confirm d-inline">
+        {% csrf_token %}
+        <span class="text-danger mr-2">Are you sure?</span>
+        <button type="submit" class="btn btn-danger btn-sm">Yes, revoke</button>
+        <button type="button"
+                class="btn btn-secondary btn-sm"
+                onclick="this.closest('.token-revoke').dataset.confirming='false'">
+          Cancel
+        </button>
+      </form>
     </div>
   </div>
 </div>
