@@ -911,7 +911,7 @@ def delete_event_id(user, event_id):
 
 def upload_supporting_files(upload_tokens, uploaded_supporting_files):
     # Check that the job directory exists for this supporting file
-    for upload_token, uploaded_supporting_file in zip(upload_tokens, uploaded_supporting_files):
+    for upload_token, uploaded_supporting_file in zip(upload_tokens, uploaded_supporting_files, strict=True):
         job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(upload_token.job.id)
         os.makedirs(job_dir, exist_ok=True)
 
