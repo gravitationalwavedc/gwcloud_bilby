@@ -73,7 +73,7 @@ class CondorScheduler(Scheduler):
 
         # Find the most recent submit event and parse the log notes to find which job stage the submit
         # is for
-        submit_event = list(filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events))[0]
+        submit_event = next(filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events))
         notes = submit_event["LogNotes"]
         stage = list(filter(lambda x: x.startswith("DAG Node:"), notes.splitlines()))
 
@@ -123,7 +123,7 @@ class CondorScheduler(Scheduler):
         submitted_stages = {}
         for event in filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events):
             notes = event["LogNotes"]
-            submitted_stages[event.cluster] = list(filter(lambda x: x.startswith("DAG Node:"), notes.splitlines()))[0]
+            submitted_stages[event.cluster] = next(filter(lambda x: x.startswith("DAG Node:"), notes.splitlines()))
 
         plot_started = any(filter(lambda x: x.endswith("_plot_arg_0"), submitted_stages.values()))
 
