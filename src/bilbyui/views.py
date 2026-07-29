@@ -377,7 +377,7 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
             if config is None:
                 continue
 
-        if type(config) is dict:
+        if isinstance(config, dict):
             # Handle this configuration item as a dictionary of files
             # ie. {'L1': './supporting_files/psd/L1-psd.dat', 'V1': './supporting_files/psd/V1-psd.dat'}
             supporting_files.setdefault(supporting_file_type, [])
@@ -388,7 +388,7 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
             setattr(parser, config_name, None)
             setattr(args, config_name, None)
 
-        elif type(config) is str:
+        elif isinstance(config, str):
             # This config item is a single file
             supporting_files.setdefault(supporting_file_type, config)
 
