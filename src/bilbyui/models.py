@@ -321,16 +321,15 @@ class BilbyJob(models.Model):
         Converts this job into a dictionary that can be submitted to the bundle for submission
         """
         # Iterate over any supporting files and generate the supporting file details
-        supporting_file_details = []
-        for supporting_file in self.supportingfile_set.all():
-            supporting_file_details.append(
-                {
-                    "type": supporting_file.file_type,
-                    "key": supporting_file.key,
-                    "file_name": supporting_file.file_name,
-                    "token": str(supporting_file.download_token),
-                }
-            )
+        supporting_file_details = [
+            {
+                "type": supporting_file.file_type,
+                "key": supporting_file.key,
+                "file_name": supporting_file.file_name,
+                "token": str(supporting_file.download_token),
+            }
+            for supporting_file in self.supportingfile_set.all()
+        ]
 
         return {
             "name": self.name,
