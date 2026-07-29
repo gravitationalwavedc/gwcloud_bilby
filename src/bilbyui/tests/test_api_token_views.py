@@ -1,3 +1,4 @@
+from adacs_sso_plugin.models import APISessionToken
 from django.conf import settings
 
 from bilbyui.services.api_tokens import create_token, list_tokens
@@ -35,12 +36,36 @@ class TestApiTokenViews(BilbyTestCase):
         response = self.client.post(self.create_url, {"name": "my-token"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["HX-Trigger"], "save-toast")
+        self.assertNotIn("HX-Trigger", response)
         self.assertContains(response, "This is the only time this token will be visible")
-        self.assertContains(response, "my-token")
         tokens = list_tokens(self.user)
         self.assertEqual(len(tokens), 1)
         self.assertEqual(tokens[0]["name"], "my-token")
+        db_token = APISessionToken.objects.get(id=tokens[0]["id"])
+        # React showed the raw secret once; success fragment replaces #token-actions
+        self.assertContains(response, str(db_token.token))
+        self.assertContains(response, f'data-new-token-id="{tokens[0]["id"]}"')
+        self.assertNotContains(response, 'id="token-create-form"')
+        # OOB list row uses list_tokens shape (shortcode), and hides empty state
+        self.assertContains(response, tokens[0]["shortcode"])
+        self.assertContains(response, 'hx-swap-oob="afterbegin:#token-list"')
+        self.assertContains(response, 'id="no-tokens-message"')
+        self.assertContains(response, 'hx-swap-oob="true"')
+
+    def test_create_page_wiring(self):
+        self.authenticate()
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'hx-target="#token-actions"')
+        self.assertContains(response, 'method="post"')
+        self.assertContains(response, 'action="/api-token/create/"')
+        self.assertContains(response, 'id="token-actions-idle-template"')
+        self.assertNotContains(response, 'id="save-toast"')
+        self.assertRegex(
+            response.content.decode(),
+            r'<p id="no-tokens-message"(?! style="display: none;")>',
+        )
 
     def test_create_with_empty_name_returns_400(self):
         self.authenticate()

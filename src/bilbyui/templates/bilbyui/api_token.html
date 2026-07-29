@@ -12,36 +12,54 @@
       to authenticate you, allowing you to view proprietary data and submit new jobs.
     </p>
 
-    <div id="token-list" hx-on::after-process="document.getElementById('no-tokens-message').style.display = 'none'">
+    <div id="token-list">
       {% for token in tokens %}
         {% include "bilbyui/_token_row.html" %}
       {% endfor %}
     </div>
-    <p id="no-tokens-message" style="{% if tokens %}display: none;{% endif %}">You do not have any API tokens associated with your account.</p>
+    <p id="no-tokens-message"{% if tokens %} style="display: none;"{% endif %}>You do not have any API tokens associated with your account.</p>
 
-    <div x-data="{ open: false }" class="mt-4">
-      <div x-show="!open" class="clearfix mb-3">
-        <button class="btn btn-primary float-right" @click="open = true">Create Token</button>
-      </div>
-      <div x-show="open" class="card card-body mb-3">
-        <div id="token-create-result"></div>
-        {% include "bilbyui/_token_create_form.html" %}
-        <div class="text-right mt-2">
-          <button class="btn btn-secondary btn-sm" @click="open = false">Cancel</button>
-        </div>
-      </div>
-    </div>
+    {# Create flow matches React: idle button → form → on success replace this whole region with the one-time secret #}
+    {% include "bilbyui/_token_actions.html" %}
 
-    {% include "bilbyui/_save_toast.html" %}
+    {# Used to restore the Create Token button if the just-created token is revoked while its secret is still showing #}
+    <template id="token-actions-idle-template">
+      {% include "bilbyui/_token_actions.html" %}
+    </template>
 
     <script>
       document.body.addEventListener("token-revoked", function (evt) {
         var row = evt.detail.elt.closest("[data-token-id]");
+        var tokenId = row.getAttribute("data-token-id");
         var parent = row.parentNode;
         row.remove();
         if (parent && parent.children.length === 0) {
           var msg = document.getElementById("no-tokens-message");
           if (msg) msg.style.display = "block";
+        }
+        // React left newlyCreatedToken up after revoke; clear our warning for that token only
+        var warning = document.querySelector(
+          '#token-actions [data-new-token-id="' + tokenId + '"]'
+        );
+        if (!warning) {
+          return;
+        }
+        var actions = document.getElementById("token-actions");
+        var tpl = document.getElementById("token-actions-idle-template");
+        if (!actions || !tpl || !tpl.content.firstElementChild) {
+          return;
+        }
+        actions.replaceWith(tpl.content.firstElementChild.cloneNode(true));
+        var restored = document.getElementById("token-actions");
+        if (!restored) {
+          return;
+        }
+        // Cloned from <template> — HTMX/Alpine never saw this subtree
+        if (window.htmx) {
+          htmx.process(restored);
+        }
+        if (window.Alpine) {
+          Alpine.initTree(restored);
         }
       });
     </script>

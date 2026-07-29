@@ -1,13 +1,13 @@
-<div class="alert alert-warning mt-3">
+{# Replaces #token-actions (React: newlyCreatedToken warning, form closed). No save-toast — React APIToken had none. #}
+<div class="alert alert-warning mt-3" data-new-token-id="{{ token.id }}">
   <strong>Warning:</strong> This is the only time this token will be visible.
-  <div class="mt-2" x-data="{ copied: false }">
+  <div class="mt-2">
     <h5>{{ name }}</h5>
     <code id="new-token-value" class="mr-2">{{ full_token }}</code>
     <button type="button"
             class="btn btn-outline-secondary btn-sm"
-            @click="navigator.clipboard.writeText(document.getElementById('new-token-value').textContent); copied = true">
-      <span x-show="!copied">Copy</span>
-      <span x-show="copied">Copied!</span>
+            onclick="navigator.clipboard.writeText(document.getElementById('new-token-value').textContent); this.textContent='Copied!';">
+      Copy
     </button>
   </div>
 </div>
@@ -15,3 +15,5 @@
 <div id="token-list-prepend" hx-swap-oob="afterbegin:#token-list">
   {% include "bilbyui/_token_row.html" with token=token %}
 </div>
+
+<p id="no-tokens-message" hx-swap-oob="true" style="display: none;">You do not have any API tokens associated with your account.</p>

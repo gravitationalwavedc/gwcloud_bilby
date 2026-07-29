@@ -30,7 +30,7 @@ from .models import (
     Label,
     SupportingFile,
 )
-from .services.api_tokens import create_token, list_tokens, revoke_token
+from .services.api_tokens import create_token, list_tokens, revoke_token, serialize_token
 from .services.event_ids import get_event_id, list_event_ids_for_user
 from .services.jobs import get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
@@ -1521,9 +1521,12 @@ def api_token_create(request):
     response = TemplateResponse(
         request,
         "bilbyui/_token_create_success.html",
-        {"name": name, "full_token": str(token.token), "token": token},
+        {
+            "name": name,
+            "full_token": str(token.token),
+            "token": serialize_token(token),
+        },
     )
-    response["HX-Trigger"] = "save-toast"
     return response
 
 
