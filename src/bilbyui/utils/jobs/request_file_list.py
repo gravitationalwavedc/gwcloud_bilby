@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 
+import requests
 from django.conf import settings
 
 from bilbyui.constants import BilbyJobType
@@ -105,6 +106,6 @@ def request_file_list(job, path, recursive, user_id=None):
             data=data,
         )
         return True, result["files"]
-    except Exception as e:
+    except requests.RequestException as e:
         logger.error(f"Error getting job file list: {e}", exc_info=True)
         return False, "Error getting job file list"
