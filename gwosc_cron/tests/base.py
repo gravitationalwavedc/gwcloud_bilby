@@ -8,7 +8,7 @@ import responses
 import gwosc_ingest
 
 logger = logging.getLogger("gwosc_ingest")
-while logger.hasHandlers():
+while logger.handlers:
     logger.removeHandler(logger.handlers[0])
 
 # Use test configuration

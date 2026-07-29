@@ -65,10 +65,20 @@ def compute_is_latest_version(event_name, shared_common_names):
 
 
 def fix_job_name(name):
+    """Sanitize a string for use as a BilbyJob name.
+
+    Replaces any character that is not alphanumeric, ``_``, or ``-`` with a
+    hyphen so the result is safe for use in URLs and file paths.
+    """
     return _JOB_NAME_RE.sub("-", name)
 
 
 def build_bilbyjob_name(event_name, config_name):
+    """Construct a BilbyJob name from an event name and a config name.
+
+    Joins *event_name* and *config_name* with ``--`` then sanitises the
+    result via :func:`fix_job_name` so it is safe for use as a job identifier.
+    """
     return fix_job_name(f"{event_name}{EVENTNAME_SEPARATOR}{config_name}")
 
 
