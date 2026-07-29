@@ -476,7 +476,7 @@ class SupportingFile(models.Model):
         bulk_items = []
         result_files = []
         for supporting_file_type, details in supporting_files.items():
-            if type(details) is list:
+            if isinstance(details, list):
                 for element in details:
                     for k, f in element.items():
                         result_files.append({"file_path": f})
@@ -491,7 +491,7 @@ class SupportingFile(models.Model):
                             )
                         )
 
-            elif type(details) is str:
+            elif isinstance(details, str):
                 result_files.append({"file_path": details})
 
                 bulk_items.append(
