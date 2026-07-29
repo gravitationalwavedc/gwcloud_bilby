@@ -21,7 +21,7 @@ def parse_job_ref(job_ref):
 
     try:
         type_name, pk = from_global_id(job_ref)
-    except Exception as e:
+    except ValueError as e:
         logger.debug("Invalid job ref: %s (%s)", job_ref, e)
         raise Http404 from e
 
