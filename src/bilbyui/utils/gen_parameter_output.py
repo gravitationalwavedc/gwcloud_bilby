@@ -23,7 +23,7 @@ logger.setLevel("CRITICAL")
 
 
 def to_dec(val):
-    if type(val) is Decimal:
+    if isinstance(val, Decimal):
         return val
 
     # Nothing to do if the value is None
@@ -32,7 +32,7 @@ def to_dec(val):
 
     try:
         # If the value is a string, just return it as a Decimal
-        if type(val) is str:
+        if isinstance(val, str):
             return Decimal(val)
     except decimal.InvalidOperation:
         # If the string is not able to be converted, simply assume it's a string type not representing a decimal
