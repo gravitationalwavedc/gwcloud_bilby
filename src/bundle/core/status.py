@@ -1,5 +1,5 @@
 import logging
-import os
+from pathlib import Path
 
 import _bundledb
 import settings
@@ -85,13 +85,13 @@ def slurm_status(job):
         return {"status": result_status, "complete": True}
 
     # Get the path to the slurm id's file
-    sid_file = os.path.join(job["working_directory"], job["submit_directory"], "slurm_ids")
+    sid_file = Path(job["working_directory"]) / job["submit_directory"] / "slurm_ids"
 
     # Check if the slurm_ids file exists
-    if not os.path.exists(sid_file):
+    if not sid_file.exists():
         return {"status": result_status, "complete": False}
 
-    with open(sid_file) as f:
+    with sid_file.open() as f:
         slurm_ids = [line.strip() for line in f.readlines()]
 
     # Track the job statuses
