@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = "Ingest the mysql job details into elastic search"
 
-    def handle(self, *args, **options):
+    def handle(self, *_args, **_options):
         total_jobs = BilbyJob.objects.count()
         success_count = 0
         error_count = 0
