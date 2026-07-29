@@ -18,5 +18,7 @@
   <script defer src="{% static 'bilbyui/htmx.min.js' %}"></script>
   <script defer src="{% static 'bilbyui/htmx-csrf.js' %}"></script>
   <script defer src="{% static 'bilbyui/alpine.min.js' %}"></script>
+  {# Re-inits Alpine on every HTMX swap so x-data/x-show work in injected fragments #}
+  <script defer src="{% static 'bilbyui/htmx-alpine.js' %}"></script>
 </body>
 </html>

@@ -7,12 +7,10 @@ INSTALLED_APPS += ("corsheaders",)
 
 # For requests to include credentials (i.e., http-only cookies) the
 # CORS_ALLOWED_ORIGINS must not be ['*']
-CORS_ALLOWED_ORIGINS = ["http://localhost:8001"]
+CORS_ALLOWED_ORIGINS = ["http://localhost:8000"]
 CORS_ALLOW_CREDENTIALS = True
 
 MIDDLEWARE.append("corsheaders.middleware.CorsMiddleware")
-
-SITE_URL = "http://localhost:8001"
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
@@ -26,8 +24,8 @@ ELASTIC_SEARCH_HOST = "http://localhost:9200"
 
 # LOGIN_URL is set in base.py (reverse_lazy("sso:login")).
 # On both login and logout, redirect to the Django htmx frontend.
-LOGIN_REDIRECT_URL = "http://localhost:8001/"
-LOGOUT_REDIRECT_URL = "http://localhost:8001/"
+LOGIN_REDIRECT_URL = "http://localhost:8000/"
+LOGOUT_REDIRECT_URL = "http://localhost:8000/"
 
 # adacs-sso settings
 ADACS_SSO_CLIENT_NAME = "gwcloud_bilby_dev"

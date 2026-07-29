@@ -14,7 +14,6 @@ while logger.hasHandlers():
 # Use test configuration
 gwosc_ingest.DB_PATH = ":memory:"
 gwosc_ingest.GWCLOUD_TOKEN = "VALID"
-gwosc_ingest.AUTH_ENDPOINT = "https://authendpoint/graphql"
 gwosc_ingest.ENDPOINT = "https://bilby/graphql"
 
 

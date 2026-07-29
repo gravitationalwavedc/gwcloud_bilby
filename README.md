@@ -100,8 +100,8 @@ To set up and run the ingest script, see [`gwosc_cron/README.md`](gwosc_cron/REA
 
 ```bash
 # In src/ directory (with dev settings)
-poetry run python manage.py runserver 8001 --settings=gw_bilby.dev
-# or: . .venv/bin/activate && python manage.py runserver 8001 --settings=gw_bilby.dev
+poetry run python manage.py runserver 8000 --settings=gw_bilby.dev
+# or: . .venv/bin/activate && python manage.py runserver 8000 --settings=gw_bilby.dev
 ```
 
 ### Settings Files

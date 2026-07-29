@@ -33,3 +33,13 @@
         outline: none;
     }
 }
+
+// Alpine.js: hide elements with x-cloak until Alpine initialises them.
+[x-cloak] {
+    display: none !important;
+}
+
+// API token revoke confirmation — toggled via data-confirming attribute so it
+// works on HTMX OOB-swapped rows without needing Alpine.initTree.
+.token-revoke[data-confirming="false"] .token-revoke-confirm { display: none !important; }
+.token-revoke[data-confirming="true"] .token-revoke-start { display: none !important; }
