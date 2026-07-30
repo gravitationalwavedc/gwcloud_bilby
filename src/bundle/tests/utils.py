@@ -25,9 +25,7 @@ def args_to_bilby_ini(args):
         f.flush()
 
         # Read the ini file from the file
-        ini_string = f.read()
-
-    return ini_string
+        return f.read()
 
 
 @contextlib.contextmanager
