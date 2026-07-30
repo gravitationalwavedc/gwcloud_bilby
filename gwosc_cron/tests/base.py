@@ -74,7 +74,7 @@ class GWOSCTestBase(unittest.TestCase):
         common_name=None,
         catalog_shortname="GWTC-3-confident",
         data_url="https://test.org/GW000001.h5",
-    ):  # noqa: E501
+    ):
         if common_name is None:
             common_name = event_name
         responses.add(

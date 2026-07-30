@@ -19,4 +19,4 @@ condor_accounting_user = "no.one"
 default_working_directory = "/"
 
 with contextlib.suppress(ImportError):
-    from local import *  # noqa: F401, F403
+    from local import *  # noqa: F403

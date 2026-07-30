@@ -84,13 +84,13 @@ def build_bilbyjob_name(event_name, config_name):
 
 def create_table(cursor):
     cursor.execute(
-        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reason TEXT, reason_data TEXT, catalog_shortname TEXT,common_name, all_succeeded INT, none_succeeded INT, is_latest_version BOOLEAN)"  # noqa
+        "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reason TEXT, reason_data TEXT, catalog_shortname TEXT,common_name, all_succeeded INT, none_succeeded INT, is_latest_version BOOLEAN)"
     )
 
 
 def create_job_errors_table(cursor):
     cursor.execute(
-        "CREATE TABLE IF NOT EXISTS job_errors (job_id TEXT PRIMARY KEY, failure_count INTEGER NOT NULL DEFAULT 0, last_failure TIMESTAMP, last_error TEXT)"  # noqa
+        "CREATE TABLE IF NOT EXISTS job_errors (job_id TEXT PRIMARY KEY, failure_count INTEGER NOT NULL DEFAULT 0, last_failure TIMESTAMP, last_error TEXT)"
     )
 
 
