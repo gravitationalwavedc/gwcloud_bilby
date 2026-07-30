@@ -62,11 +62,11 @@ def condor_status(job):
 
     if _status <= JobStatus.RUNNING:
         return {"status": result, "complete": False}
-    else:
-        # Job is completed, or an error occurred
-        _bundledb.delete_job(job)
 
-        return {"status": result, "complete": True}
+    # Job is completed, or an error occurred
+    _bundledb.delete_job(job)
+
+    return {"status": result, "complete": True}
 
 
 def slurm_status(job):
