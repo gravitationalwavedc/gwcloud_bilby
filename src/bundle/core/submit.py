@@ -38,10 +38,10 @@ def set_directory(path: Path):
 
     origin = Path().absolute()
     try:
-        os.chdir(path)
+        path.chdir()
         yield
     finally:
-        os.chdir(origin)
+        origin.chdir()
 
 
 def bilby_ini_to_args(ini):
@@ -255,7 +255,7 @@ def run_data_generation(data_gen_command, wk_dir):
     # Run the data generation
     os.sync()
     with subprocess.Popen(
-        f"/bin/bash {os.path.abspath(os.path.join(wk_dir, data_gen_command))}",
+        f"/bin/bash {(Path(wk_dir) / data_gen_command).resolve()}",
         cwd=wk_dir,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -267,9 +267,9 @@ def run_data_generation(data_gen_command, wk_dir):
         stdout, stderr = p.communicate()
 
         # Write the data generation output to output files
-        with open(Path(wk_dir) / output_file, "wb") as f:
+        with (Path(wk_dir) / output_file).open("wb") as f:
             f.write(stdout)
-        with open(Path(wk_dir) / error_file, "wb") as f:
+        with (Path(wk_dir) / error_file).open("wb") as f:
             f.write(stderr)
 
 
@@ -283,8 +283,8 @@ def refactor_slurm_data_generation_step(slurm_script):
     :return: The data generation command
     """
     # Read the lines from the submit script
-    with open(slurm_script) as f:
-        slines = list(f)
+    with Path(slurm_script).open() as f:
+        slines = f.readlines()
 
     # Find the line for data generation and the first echo after that, then remove the dependency from the following
     # sbatch command
@@ -321,7 +321,7 @@ def refactor_slurm_data_generation_step(slurm_script):
     script_content = re.sub("\n\n+", "\n\n", "".join(new_lines))
 
     # Write the updated lines to the job submission script
-    with open(slurm_script, "w") as f:
+    with Path(slurm_script).open("w") as f:
         f.write(script_content)
 
     return data_gen_command
@@ -350,7 +350,7 @@ def write_submission_scripts(inputs, wk_dir):
     # Return the path to the dag script if the scheduler is condor
     if settings.scheduler == EScheduler.CONDOR:
         # Adapted from https://github.com/jrbourbeau/pycondor/blob/master/pycondor/dagman.py#L286
-        return os.path.join(str(Path(wk_dir) / dag.submit_directory), f"{dag.dag_name}.submit")
+        return str(Path(wk_dir) / dag.submit_directory / f"{dag.dag_name}.submit")
 
     return None
 
