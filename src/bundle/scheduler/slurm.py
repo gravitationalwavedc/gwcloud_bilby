@@ -1,5 +1,6 @@
 import logging
 import subprocess
+from typing import ClassVar
 
 from .scheduler import Scheduler
 from .status import JobStatus
@@ -12,7 +13,7 @@ class SlurmScheduler(Scheduler):
     Slurm scheduler
     """
 
-    SLURM_STATUS = {
+    SLURM_STATUS: ClassVar[dict[str, str]] = {
         "BOOT_FAIL": "Job terminated due to launch failure, typically due to a hardware failure (e.g. unable to boot "
         "the node or block and the job can not be requeued).",
         "CANCELLED": "Job was explicitly cancelled by the user or system administrator. The job may or may not have "
