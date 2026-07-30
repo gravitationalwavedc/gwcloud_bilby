@@ -453,8 +453,7 @@ class TestGWOSCCron(GWOSCTestBase):
         # raises OSError when the config data is actually read.
         mock_config = MagicMock()
         mock_config.__class__ = h5py.Group
-        mock_config.keys.return_value = ["param1"]
-        mock_config.__getitem__ = MagicMock(side_effect=OSError("HDF5 corrupt node"))
+        mock_config.items = MagicMock(side_effect=OSError("HDF5 corrupt node"))
 
         mock_config_file_group = MagicMock()
         mock_config_file_group.__class__ = h5py.Group
