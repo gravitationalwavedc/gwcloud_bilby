@@ -284,7 +284,7 @@ def refactor_slurm_data_generation_step(slurm_script):
     """
     # Read the lines from the submit script
     with open(slurm_script) as f:
-        slines = f.readlines()
+        slines = list(f)
 
     # Find the line for data generation and the first echo after that, then remove the dependency from the following
     # sbatch command
