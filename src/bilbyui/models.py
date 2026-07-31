@@ -16,6 +16,15 @@ from django.utils import timezone
 from bilbyui.utils.jobs.request_file_list import request_file_list
 
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
+
+
+class BilbyPermissionError(PermissionError):
+    message = "Permission Denied"
+
+    def __str__(self):
+        return self.message
+
+
 from .utils.auth.lookup_users import request_lookup_users
 from .utils.embargo import embargo_filter
 from .utils.jobs.submit_job import submit_job
@@ -99,7 +108,7 @@ class EventID(models.Model):
         event = cls.objects.get(event_id=event_id)
 
         if event.is_ligo_event and not is_ligo_user(user):
-            raise PermissionError("Permission Denied")
+            raise BilbyPermissionError()
 
         return event
 
@@ -200,7 +209,7 @@ class BilbyJob(models.Model):
 
         # Users can only access the job if it is public or (the user is authenticated AND the user also owns the job)
         if job.private and (user.is_anonymous or user.id != job.user.id):
-            raise PermissionError("Permission Denied")
+            raise BilbyPermissionError()
 
         return job
 
@@ -214,7 +223,7 @@ class BilbyJob(models.Model):
         :return: The queryset filtered by the requesting user
         """
         if user.is_anonymous:
-            raise PermissionError("Permission Denied")
+            raise BilbyPermissionError()
 
         return embargo_filter(qs.filter(user_id=user.id), user)
 
