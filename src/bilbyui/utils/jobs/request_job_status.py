@@ -1,5 +1,6 @@
 import logging
 
+import requests
 from django.conf import settings
 
 from bilbyui.utils.jobs.submit_job import _make_job_controller_request
@@ -31,6 +32,6 @@ def request_job_status(job, user_id=None):
 
         logger.debug(f"Successfully retrieved status for job {job.id}")
         return "OK", result[0]["history"]
-    except Exception as e:
+    except requests.RequestException as e:
         logger.error(f"Error getting job status for job {job.id}: {e}", exc_info=True)
         return "UNKNOWN", "Error getting job status"
