@@ -113,7 +113,7 @@ def slurm_status(job):
 
     # Determine if the job is completed. If every status is completed then the job is completed. If any status was an
     # error, then the job is complete
-    completed = statuses.count(JobStatus.COMPLETED) == len(statuses) or had_error
+    completed = all(s == JobStatus.COMPLETED for s in statuses) or had_error
 
     # Delete the job if it's completed
     if completed:
