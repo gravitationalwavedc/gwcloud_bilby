@@ -218,7 +218,7 @@ def prepare_ini_data(job_parameters, working_directory):
     args.catch_waveform_errors = True
 
     # Configure supporting files
-    if "supporting_files" in job_parameters and job_parameters["supporting_files"]:
+    if job_parameters.get("supporting_files"):
         prepare_supporting_files(args, job_parameters["supporting_files"], working_directory)
 
     return args
