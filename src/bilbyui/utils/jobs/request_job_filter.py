@@ -1,5 +1,6 @@
 import logging
 
+import requests
 from django.conf import settings
 
 from bilbyui.utils.jobs.submit_job import _make_job_controller_request
@@ -33,7 +34,7 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
 
     try:
         result = _make_job_controller_request("GET", url, user_id)
-    except Exception as e:
+    except requests.RequestException as e:
         logger.error(f"Error getting job filter for user {user_id}: {e}", exc_info=True)
         return "UNKNOWN", "Error getting job filter"
     else:
