@@ -40,11 +40,11 @@ class Command(BaseCommand):
             try:
                 job.save()
                 success_count += 1
-                logger.info(f"Job {job.id} - {job.name} has been ingested into Elasticsearch")
+                logger.info("Job %s - %s has been ingested into Elasticsearch", job.id, job.name)
                 self.stdout.write(self.style.SUCCESS(f"✓ Job {job.id} - {job.name}"))
             except DatabaseError as e:
                 error_count += 1
-                logger.exception(f"Job {job.id} - {job.name} could not be ingested: {e}")
+                logger.exception("Job %s - %s could not be ingested: %s", job.id, job.name, e)
                 self.stdout.write(self.style.ERROR(f"✗ Job {job.id} - {job.name}: {e}"))
 
         self.stdout.write(self.style.SUCCESS(f"\nIngestion complete: {success_count} succeeded, {error_count} failed"))
