@@ -23,7 +23,8 @@ def _time_range_to_timedelta(time_range):
         return timedelta(days=31)
     if time_range == "1y":
         return timedelta(days=365)
-    raise ValueError(f"Unexpected timeRange value {time_range}")
+    msg = f"Unexpected timeRange value {time_range}"
+    raise ValueError(msg)
 
 
 def _apply_time_range_filter(qs, time_range, field_name="last_updated"):
@@ -84,14 +85,16 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
             verify_certs=False,
         )
     except elasticsearch.exceptions.ConnectionError as e:
-        logger.error(f"Failed to connect to Elasticsearch: {e}", exc_info=True)
+        msg = f"Failed to connect to Elasticsearch: {e}"
+        logger.error(msg, exc_info=True)
         return empty_result
 
     q = search or "*"
 
     if "_private_info_" in q:
         user_id = user.id if user.is_authenticated else 0
-        logger.warning(f"User {user_id} attempted to search private info")
+        msg = f"User {user_id} attempted to search private info"
+        logger.warning(msg)
         return empty_result
 
     if time_range != "all":
@@ -137,7 +140,8 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
 
     if qs_before.count() != qs_after.count():
         user_id = user.id if user.is_authenticated else 0
-        logger.warning(f"User {user_id} query violated embargo or included private job")
+        msg = f"User {user_id} query violated embargo or included private job"
+        logger.warning(msg)
         return empty_result
 
     jobs = {
@@ -199,4 +203,5 @@ def update_job(job_id, user, private=None, labels=None, event_id=None, name=None
 
         return True, "Job saved"
 
-    raise PermissionError("You must own the job to change it!")
+    msg = "You must own the job to change it!"
+    raise PermissionError(msg)
