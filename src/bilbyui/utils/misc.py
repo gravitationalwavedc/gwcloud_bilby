@@ -19,5 +19,5 @@ def check_request_leak_decorator(fn):
     return wrapper
 
 
-def is_ligo_user(user):
+def is_ligo_user(user) -> bool:
     return not user.is_anonymous and AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"] in user.authentication_methods
