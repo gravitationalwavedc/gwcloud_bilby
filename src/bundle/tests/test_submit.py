@@ -126,7 +126,7 @@ echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
 jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-real_data0_12345678-0_analysis_H1_plot --dependency=afterok:${jid1[-1]} --output=log_data_analysis/test-real_data0_12345678-0_analysis_H1_plot.out --error=log_data_analysis/test-real_data0_12345678-0_analysis_H1_plot.err ./submit/test-real_data0_12345678-0_analysis_H1_plot.sh))
 
 echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
-""",  # noqa
+""",
                 )
 
                 # Check that the ini file was correctly updated
@@ -231,7 +231,7 @@ echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
 jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-simulated_data0_87654321-0_analysis_H1V1_plot --dependency=afterok:${jid1[-1]} --output=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_plot.out --error=log_data_analysis/test-simulated_data0_87654321-0_analysis_H1V1_plot.err ./submit/test-simulated_data0_87654321-0_analysis_H1V1_plot.sh))
 
 echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
-""",  # noqa
+""",
                 )
 
                 # Check that the ini file was correctly updated
@@ -335,7 +335,7 @@ echo "jid2 ${jid2[-1]}" >> ./submit/slurm_ids
 jid3=($(sbatch  --nodes=1 --ntasks-per-node=1 --mem=32G --time=1:00:00 --job-name=test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_plot --dependency=afterok:${jid1[-1]} --output=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_plot.out --error=log_data_analysis/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_plot.err ./submit/test-simulated-submission-failure_data0_11111111-0_analysis_L1V1_plot.sh))
 
 echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
-""",  # noqa
+""",
                 )
 
                 # Check that the ini file was correctly updated
@@ -407,7 +407,7 @@ VARS test-real_data0_12345678-0_analysis_H1_plot_arg_0 ARGS="--result ./result/t
 #Inter-job dependencies
 Parent test-real_data0_12345678-0_generation_arg_0 Child test-real_data0_12345678-0_analysis_H1_arg_0
 Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_12345678-0_analysis_H1_final_result_arg_0
-Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_12345678-0_analysis_H1_plot_arg_0""",  # noqa
+Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_12345678-0_analysis_H1_plot_arg_0""",
                 )
 
                 # Check that the ini file was correctly updated
@@ -486,7 +486,7 @@ VARS test-simulated_data0_87654321-0_analysis_H1V1_plot_arg_0 ARGS="--result ./r
 #Inter-job dependencies
 Parent test-simulated_data0_87654321-0_generation_arg_0 Child test-simulated_data0_87654321-0_analysis_H1V1_arg_0
 Parent test-simulated_data0_87654321-0_analysis_H1V1_arg_0 Child test-simulated_data0_87654321-0_analysis_H1V1_final_result_arg_0
-Parent test-simulated_data0_87654321-0_analysis_H1V1_arg_0 Child test-simulated_data0_87654321-0_analysis_H1V1_plot_arg_0""",  # noqa
+Parent test-simulated_data0_87654321-0_analysis_H1V1_arg_0 Child test-simulated_data0_87654321-0_analysis_H1V1_plot_arg_0""",
                 )
 
                 # Check that the ini file was correctly updated
