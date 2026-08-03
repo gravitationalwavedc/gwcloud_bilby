@@ -118,10 +118,9 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         )
     except elasticsearch.NotFoundError:
         # Missing index (common in fresh local setups) — show empty list, not 500.
-        logger.error(
+        logger.exception(
             "Elasticsearch index missing or not found: %s",
             settings.ELASTIC_SEARCH_INDEX,
-            exc_info=True,
         )
         return empty_result
 
