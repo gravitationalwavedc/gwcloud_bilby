@@ -62,11 +62,11 @@ def condor_status(job):
 
     if _status <= JobStatus.RUNNING:
         return {"status": result, "complete": False}
-    else:
-        # Job is completed, or an error occurred
-        _bundledb.delete_job(job)
 
-        return {"status": result, "complete": True}
+    # Job is completed, or an error occurred
+    _bundledb.delete_job(job)
+
+    return {"status": result, "complete": True}
 
 
 def slurm_status(job):
@@ -156,8 +156,8 @@ def status(details, *args, **kwargs):
     # Use the relevant scheduler to obtain the job status
     if settings.scheduler == EScheduler.CONDOR:
         return dict(condor_status(job))
-    elif settings.scheduler == EScheduler.SLURM:
+    if settings.scheduler == EScheduler.SLURM:
         return dict(slurm_status(job))
-    else:
-        logger.warning("Unknown scheduler: %s", settings.scheduler)
-        return None
+
+    logger.warning("Unknown scheduler: %s", settings.scheduler)
+    return None
