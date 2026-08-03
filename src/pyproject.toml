@@ -36,7 +36,7 @@ exclude = [".venv", "bilbyui/migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
-ignore = ["E501", "E402", "B905", "B904"]
+ignore = ["E501", "E402", "B905", "B904", "F403"]
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
