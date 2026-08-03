@@ -92,7 +92,6 @@ class CondorScheduler(Scheduler):
             # generation stage, otherwise SUBMIT indicates the job is running
             if stage.endswith("_generation_arg_0"):
                 return JobStatus.QUEUED, "Job is queued"
-
             return JobStatus.RUNNING, "Job is running"
 
         if latest_event.type == htcondor.JobEventType.EXECUTE:
