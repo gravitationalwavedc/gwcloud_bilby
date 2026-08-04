@@ -18,13 +18,13 @@ class EventIDAdmin(admin.ModelAdmin):
 class IniKeyValueAdmin(admin.TabularInline):
     model = IniKeyValue
 
-    def has_change_permission(self, _request, _obj=None):
+    def has_change_permission(self, _request, _obj=None) -> bool:
         return False
 
-    def has_add_permission(self, _request, _obj=None):
+    def has_add_permission(self, _request, _obj=None) -> bool:
         return False
 
-    def has_delete_permission(self, _request, _obj=None):
+    def has_delete_permission(self, _request, _obj=None) -> bool:
         return False
 
 
