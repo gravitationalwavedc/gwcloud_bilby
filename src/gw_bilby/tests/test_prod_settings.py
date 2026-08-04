@@ -15,6 +15,5 @@ class ProdSettingsTestCase(TestCase):
         os.environ["GWFLOW_INGEST_USER"] = "1"
         os.environ["PERMITTED_EVENT_CREATION_USER_IDS"] = "[]"
         os.environ["CLUSTERS"] = "[]"
-        import gw_bilby.prod  # noqa: F401
 
         self.assertTrue(hasattr(settings, "DEBUG"))

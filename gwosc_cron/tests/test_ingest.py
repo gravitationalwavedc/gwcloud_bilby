@@ -534,7 +534,7 @@ class TestGWOSCCron(GWOSCTestBase):
         cur = self.con.cursor()
         gwosc_ingest.create_table(cur)
         cur.execute(
-            "INSERT INTO completed_jobs (job_id, success, reason, reason_data, catalog_shortname, common_name, all_succeeded, none_succeeded, is_latest_version ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",  # noqa: E501
+            "INSERT INTO completed_jobs (job_id, success, reason, reason_data, catalog_shortname, common_name, all_succeeded, none_succeeded, is_latest_version ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 "GW000001_123456",
                 True,
