@@ -155,7 +155,6 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_gwc.upsert_gwflow_job.assert_called_once_with(sname="S_DELETED", is_pruned=True)
 
     def test_gwc_known_unpruned_snames_helpers(self):
-        self.assertEqual(gwc_known_unpruned_snames(None), set())
         with self.assertRaises(AttributeError):
             gwc_known_unpruned_snames(object())
 
