@@ -1,0 +1,277 @@
+from unittest import mock
+
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
+from django.contrib.auth import get_user_model
+from graphql_relay.node.node import to_global_id
+
+from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
+from bilbyui.tests.testcases import BilbyTestCase
+
+User = get_user_model()
+
+
+class TestGWFlowQueries(BilbyTestCase):
+    def setUp(self):
+        super().setUp()
+        self.authenticate()
+        self.normal_user = self.user
+        self.ligo_user = self.create_user(
+            id=10,
+            name="ligo user",
+            primary_email="ligo@ligo.org",
+            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"],
+        )
+        self.ingest_user = self.create_user(
+            id=99,
+            name="ingest user",
+            primary_email="ingest@gwflow.org",
+        )
+
+        self.event_id = EventID.objects.create(trigger_id="S230601ag")
+
+        # Public GWFlowJob
+        self.job_public = GWFlowJob.objects.create(
+            sname="S230601ag",
+            user=self.ingest_user,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            ligo_only=False,
+            is_pruned=False,
+            event_id=self.event_id,
+        )
+        self.file_public = GWFlowFile.objects.create(
+            job=self.job_public,
+            analysis_uid="c01:bilby",
+            path="outdir/result.json",
+            file_name="result.json",
+            file_size=1024,
+            uploaded=True,
+        )
+
+        # LIGO-only GWFlowJob
+        self.job_ligo = GWFlowJob.objects.create(
+            sname="S230601ah",
+            user=self.ingest_user,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            ligo_only=True,
+            is_pruned=False,
+        )
+
+        # Pruned GWFlowJob
+        self.job_pruned = GWFlowJob.objects.create(
+            sname="S230601ai",
+            user=self.ingest_user,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            ligo_only=False,
+            is_pruned=True,
+        )
+
+    def _auth_as(self, user):
+        if user is None:
+            self.deauthenticate()
+        else:
+            self.authenticate(user=user)
+
+    def test_gwflow_job_by_sname_visibility(self):
+        query = """
+            query GetBySname($sname: String!) {
+                gwflowJobBySname(sname: $sname) {
+                    id
+                    sname
+                    schemaVersion
+                    libraries
+                    isPruned
+                    ligoOnly
+                    files {
+                        id
+                        analysisUid
+                        path
+                        fileName
+                        fileSize
+                        uploaded
+                        downloadToken
+                    }
+                }
+            }
+        """
+
+        # 1. Anonymous user: sees public job, cannot see ligo_only or pruned
+        self._auth_as(None)
+        res = self.query(query, variables={"sname": "S230601ag"})
+        self.assertResponseNoErrors(res)
+        job_data = res.data["gwflowJobBySname"]
+        self.assertIsNotNone(job_data)
+        self.assertEqual(job_data["sname"], "S230601ag")
+        self.assertEqual(job_data["schemaVersion"], "v1")
+        self.assertEqual(len(job_data["files"]), 1)
+        self.assertEqual(job_data["files"][0]["fileName"], "result.json")
+
+        res_ligo = self.query(query, variables={"sname": "S230601ah"})
+        self.assertResponseNoErrors(res_ligo)
+        self.assertIsNone(res_ligo.data["gwflowJobBySname"])
+
+        res_pruned = self.query(query, variables={"sname": "S230601ai"})
+        self.assertResponseNoErrors(res_pruned)
+        self.assertIsNone(res_pruned.data["gwflowJobBySname"])
+
+        # 2. Non-LIGO user: sees public job, cannot see ligo_only or pruned
+        self._auth_as(self.normal_user)
+        res_ligo = self.query(query, variables={"sname": "S230601ah"})
+        self.assertResponseNoErrors(res_ligo)
+        self.assertIsNone(res_ligo.data["gwflowJobBySname"])
+
+        # 3. LIGO user: sees ligo_only job
+        self._auth_as(self.ligo_user)
+        res_ligo = self.query(query, variables={"sname": "S230601ah"})
+        self.assertResponseNoErrors(res_ligo)
+        self.assertIsNotNone(res_ligo.data["gwflowJobBySname"])
+        self.assertEqual(res_ligo.data["gwflowJobBySname"]["sname"], "S230601ah")
+
+    def test_gwflow_job_node_query_visibility(self):
+        query = """
+            query GetNode($id: ID!) {
+                gwflowJob(id: $id) {
+                    id
+                    sname
+                    ligoOnly
+                }
+            }
+        """
+        node_id_ligo = to_global_id("GWFlowJob", self.job_ligo.id)
+
+        # Non-LIGO user cannot retrieve ligo_only node
+        self._auth_as(self.normal_user)
+        res = self.query(query, variables={"id": node_id_ligo})
+        self.assertResponseNoErrors(res)
+        self.assertIsNone(res.data["gwflowJob"])
+
+        # LIGO user can retrieve ligo_only node
+        self._auth_as(self.ligo_user)
+        res = self.query(query, variables={"id": node_id_ligo})
+        self.assertResponseNoErrors(res)
+        self.assertIsNotNone(res.data["gwflowJob"])
+        self.assertEqual(res.data["gwflowJob"]["sname"], "S230601ah")
+
+    @mock.patch("bilbyui.schema.list_gwflow_jobs")
+    def test_gwflow_jobs_connection(self, mock_list_jobs):
+        query = """
+            query GetJobs($search: String, $timeRange: String, $includePruned: Boolean, $first: Int) {
+                gwflowJobs(search: $search, timeRange: $timeRange, includePruned: $includePruned, first: $first) {
+                    edges {
+                        node {
+                            id
+                            sname
+                        }
+                    }
+                }
+            }
+        """
+        mock_list_jobs.return_value = {
+            "jobs": {self.job_public.id: self.job_public},
+            "records": [{"_id": str(self.job_public.id)}],
+            "has_next": False,
+            "page": 1,
+            "page_size": 20,
+        }
+
+        self._auth_as(self.normal_user)
+        res = self.query(query, variables={"search": "S230601ag", "first": 20})
+        self.assertResponseNoErrors(res)
+
+        mock_list_jobs.assert_called_once_with(
+            self.normal_user,
+            search="S230601ag",
+            time_range="all",
+            page_size=20,
+            offset=0,
+            include_pruned=False,
+        )
+        edges = res.data["gwflowJobs"]["edges"]
+        self.assertEqual(len(edges), 1)
+        self.assertEqual(edges[0]["node"]["sname"], "S230601ag")
+
+    @mock.patch("bilbyui.schema.request_job_filter", return_value=(True, []))
+    def test_bilby_job_node_gwflow_additions(self, mock_req_filter):
+        # Create a BilbyJob linked to GWFlowJob
+        linked_job = BilbyJob.objects.create(
+            user=self.normal_user,
+            name="Test Linked Bilby Job",
+            gwflow_job=self.job_public,
+            gwflow_analysis_uid="c01:bilby",
+        )
+        # Create an unlinked BilbyJob
+        unlinked_job = BilbyJob.objects.create(
+            user=self.normal_user,
+            name="Test Unlinked Bilby Job",
+        )
+
+        query = """
+            query GetBilbyJob($id: ID!) {
+                bilbyJob(id: $id) {
+                    id
+                    name
+                    gwflowAnalysisUid
+                    gwflowJob {
+                        id
+                        sname
+                    }
+                }
+            }
+        """
+
+        self._auth_as(self.normal_user)
+
+        # 1. Linked job
+        linked_id = to_global_id("BilbyJobNode", linked_job.id)
+        res = self.query(query, variables={"id": linked_id})
+        self.assertResponseNoErrors(res)
+        job_data = res.data["bilbyJob"]
+        self.assertEqual(job_data["gwflowAnalysisUid"], "c01:bilby")
+        self.assertIsNotNone(job_data["gwflowJob"])
+        self.assertEqual(job_data["gwflowJob"]["sname"], "S230601ag")
+
+        # 2. Unlinked job
+        unlinked_id = to_global_id("BilbyJobNode", unlinked_job.id)
+        res_unlinked = self.query(query, variables={"id": unlinked_id})
+        self.assertResponseNoErrors(res_unlinked)
+        unlinked_data = res_unlinked.data["bilbyJob"]
+        self.assertIsNone(unlinked_data["gwflowAnalysisUid"])
+        self.assertIsNone(unlinked_data["gwflowJob"])
+
+    @mock.patch("bilbyui.schema.request_job_filter", return_value=(True, []))
+    def test_bilby_job_node_gwflow_job_visibility(self, mock_req_filter):
+        # Bilby job linked to LIGO-only GWFlowJob
+        ligo_linked_job = BilbyJob.objects.create(
+            user=self.ligo_user,
+            name="LIGO Linked Job",
+            gwflow_job=self.job_ligo,
+            gwflow_analysis_uid="c01:bilby_ligo",
+            private=False,
+            is_ligo_job=False,
+        )
+        query = """
+            query GetBilbyJob($id: ID!) {
+                bilbyJob(id: $id) {
+                    id
+                    gwflowJob {
+                        sname
+                    }
+                }
+            }
+        """
+        job_id = to_global_id("BilbyJobNode", ligo_linked_job.id)
+
+        # Non-LIGO user sees BilbyJob, but gwflowJob resolves to None
+        self._auth_as(self.normal_user)
+        res = self.query(query, variables={"id": job_id})
+        self.assertResponseNoErrors(res)
+        self.assertIsNone(res.data["bilbyJob"]["gwflowJob"])
+
+        # LIGO user sees gwflowJob
+        self._auth_as(self.ligo_user)
+        res_ligo = self.query(query, variables={"id": job_id})
+        self.assertResponseNoErrors(res_ligo)
+        self.assertIsNotNone(res_ligo.data["bilbyJob"]["gwflowJob"])
+        self.assertEqual(res_ligo.data["bilbyJob"]["gwflowJob"]["sname"], "S230601ah")
