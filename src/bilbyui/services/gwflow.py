@@ -52,7 +52,7 @@ def list_gwflow_jobs(
             verify_certs=False,
         )
     except elasticsearch.exceptions.ConnectionError as e:
-        logger.error("Failed to connect to Elasticsearch: %s", e, exc_info=True)
+        logger.exception("Failed to connect to Elasticsearch: %s", e)
         return empty_result
 
     if time_range != "all":
@@ -75,10 +75,9 @@ def list_gwflow_jobs(
             sort="lastUpdatedTime:desc",
         )
     except elasticsearch.NotFoundError:
-        logger.error(
+        logger.exception(
             "Elasticsearch gwflow index missing or not found: %s",
             settings.ELASTIC_SEARCH_GWFLOW_INDEX,
-            exc_info=True,
         )
         return empty_result
 
