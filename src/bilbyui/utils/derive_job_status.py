@@ -14,19 +14,12 @@ def derive_job_status(history):
     :returns: A tuple of (state, display_name, timestamp) for the most recent job status
     """
 
-    # Order the histories by timestamp
-    history_items = [
-        {"timestamp": datetime.datetime.strptime(h["timestamp"], "%Y-%m-%d %H:%M:%S.%f UTC"), "data": h}
-        for h in history
-    ]
+    if not history:
+        return JobStatus.DRAFT, "Unknown", None
 
-    history_items.sort(key=lambda x: x["timestamp"], reverse=True)
-
-    if history_items:
-        state = history_items[0]["data"]["state"]
-        display_name = JobStatus.display_name(state)
-        timestamp = history_items[0]["timestamp"]
-        logger.info("Derived job status: state=%s, display_name=%s, timestamp=%s", state, display_name, timestamp)
-        return (state, display_name, timestamp)
-
-    return JobStatus.DRAFT, "Unknown", None
+    latest = max(history, key=lambda h: datetime.datetime.strptime(h["timestamp"], "%Y-%m-%d %H:%M:%S.%f UTC"))
+    state = latest["state"]
+    display_name = JobStatus.display_name(state)
+    timestamp = datetime.datetime.strptime(latest["timestamp"], "%Y-%m-%d %H:%M:%S.%f UTC")
+    logger.info("Derived job status: state=%s, display_name=%s, timestamp=%s", state, display_name, timestamp)
+    return (state, display_name, timestamp)
