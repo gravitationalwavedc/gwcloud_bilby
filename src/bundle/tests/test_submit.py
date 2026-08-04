@@ -81,7 +81,7 @@ class TestSubmit(TestCase):
 
             submit_mock_return = 1234
 
-            params = dict(name="test-real", description="Some description", ini_string=ini)
+            params = {"name": "test-real", "description": "Some description", "ini_string": ini}
 
             result = submit(details, json.dumps(params))
 
@@ -179,7 +179,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
 
             submit_mock_return = 12345
 
-            params = dict(name="test-simulated", description="Some description", ini_string=ini)
+            params = {"name": "test-simulated", "description": "Some description", "ini_string": ini}
 
             result = submit(details, json.dumps(params))
 
@@ -286,7 +286,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
 
             submit_mock_return = None
 
-            params = dict(name="test-simulated-submission-failure", description="Some description", ini_string=ini)
+            params = {"name": "test-simulated-submission-failure", "description": "Some description", "ini_string": ini}
 
             result = submit(details, json.dumps(params))
 
@@ -378,7 +378,7 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
             submit_mock_return = 1234
             update_job_result = 4321
 
-            params = dict(name="test-real", description="Some description", ini_string=ini)
+            params = {"name": "test-real", "description": "Some description", "ini_string": ini}
 
             result = submit(details, json.dumps(params))
 
@@ -457,7 +457,7 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
 
             submit_mock_return = 1234
 
-            params = dict(name="test-real", description="Some description", ini_string=ini)
+            params = {"name": "test-real", "description": "Some description", "ini_string": ini}
 
             result = submit(details, json.dumps(params))
 
