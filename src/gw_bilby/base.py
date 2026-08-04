@@ -171,6 +171,9 @@ PERMITTED_EVENT_CREATION_USER_IDS = []
 # The ID of the user which submits official GWOSC jobs
 GWOSC_INGEST_USER = None
 
+# The ID of the user which submits official gwflow jobs
+GWFLOW_INGEST_USER = None
+
 # The expiry of BilbyJobUploadTokens (in seconds)
 BILBY_JOB_UPLOAD_TOKEN_EXPIRY = 60 * 60 * 24
 
@@ -195,6 +198,9 @@ FILE_UPLOAD_TEMP_DIR = EXTERNAL_STORAGE_PATH / "upload"
 # Where supporting files are permanently stored
 SUPPORTING_FILE_UPLOAD_DIR = EXTERNAL_STORAGE_PATH / "supporting_files"
 
+# Where mirrored gwflow files are permanently stored
+GWFLOW_FILE_UPLOAD_DIR = EXTERNAL_STORAGE_PATH / "gwflow"
+
 # Which clusters are able to be submitted to
 CLUSTERS = ["ozstar"]
 
@@ -203,8 +209,14 @@ EMBARGO_START_TIME = None
 
 # The elastic search details used by gwcloud
 ELASTIC_SEARCH_INDEX = "gwcloud-bilbyjob"
+ELASTIC_SEARCH_GWFLOW_INDEX = "gwcloud-gwflowjob"
 ELASTIC_SEARCH_HOST = "http://localhost:9200"
 ELASTIC_SEARCH_API_KEY = "very secure key"
+
+# cbcflow-portal API access (runtime on-demand metadata/history fetches; the
+# same service token the gwflow cron uses)
+CBCFLOW_PORTAL_URL = None
+CBCFLOW_PORTAL_TOKEN = None
 
 # Google Analytics tracking ID (gtag.js). Set in prod.py; None disables tracking.
 GOOGLE_ANALYTICS_ID = None
