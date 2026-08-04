@@ -1,5 +1,4 @@
 import json
-import os.path
 import uuid
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -136,13 +135,13 @@ class TestJobUpload(BilbyTestCase):
 
         # Check that the output directories and ini file were correctly created
         job_dir = job.get_upload_directory()
-        self.assertTrue(os.path.isdir(job_dir))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "data")))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "result")))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "results_page")))
-        self.assertTrue(os.path.isfile(os.path.join(job_dir, "myjob_config_complete.ini")))
+        self.assertTrue(Path(job_dir).is_dir())
+        self.assertTrue((Path(job_dir) / "data").is_dir())
+        self.assertTrue((Path(job_dir) / "result").is_dir())
+        self.assertTrue((Path(job_dir) / "results_page").is_dir())
+        self.assertTrue((Path(job_dir) / "myjob_config_complete.ini").is_file())
 
-        self.assertTrue(os.path.isfile(os.path.join(job_dir, "archive.tar.gz")))
+        self.assertTrue((Path(job_dir) / "archive.tar.gz").is_file())
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_success_outdir_replace(self):
@@ -183,13 +182,13 @@ class TestJobUpload(BilbyTestCase):
 
         # Check that the output directories and ini file were correctly created
         job_dir = job.get_upload_directory()
-        self.assertTrue(os.path.isdir(job_dir))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "data")))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "result")))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "results_page")))
-        self.assertTrue(os.path.isfile(os.path.join(job_dir, "another_job_config_complete.ini")))
+        self.assertTrue(Path(job_dir).is_dir())
+        self.assertTrue((Path(job_dir) / "data").is_dir())
+        self.assertTrue((Path(job_dir) / "result").is_dir())
+        self.assertTrue((Path(job_dir) / "results_page").is_dir())
+        self.assertTrue((Path(job_dir) / "another_job_config_complete.ini").is_file())
 
-        self.assertTrue(os.path.isfile(os.path.join(job_dir, "archive.tar.gz")))
+        self.assertTrue((Path(job_dir) / "archive.tar.gz").is_file())
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
@@ -690,13 +689,13 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
         # Check that the output directories and ini file were correctly created
         job_dir = job.get_upload_directory()
-        self.assertTrue(os.path.isdir(job_dir))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "data")))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "result")))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "results_page")))
-        self.assertTrue(os.path.isfile(os.path.join(job_dir, "myjob_config_complete.ini")))
+        self.assertTrue(Path(job_dir).is_dir())
+        self.assertTrue((Path(job_dir) / "data").is_dir())
+        self.assertTrue((Path(job_dir) / "result").is_dir())
+        self.assertTrue((Path(job_dir) / "results_page").is_dir())
+        self.assertTrue((Path(job_dir) / "myjob_config_complete.ini").is_file())
 
-        self.assertTrue(os.path.isfile(os.path.join(job_dir, "archive.tar.gz")))
+        self.assertTrue((Path(job_dir) / "archive.tar.gz").is_file())
 
         return job, job_dir
 
@@ -1469,13 +1468,13 @@ class TestHdf5JobUpload(BilbyTestCase):
 
         # Check that the files were uploaded correctly
         job_dir = job.get_upload_directory()
-        self.assertTrue(os.path.isdir(job_dir))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "data")))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "result")))
-        self.assertTrue(os.path.isdir(os.path.join(job_dir, "results_page")))
-        self.assertTrue(os.path.isfile(os.path.join(job_dir, "result", "result.hdf5")))
-        self.assertTrue(os.path.isfile(os.path.join(job_dir, f"{test_name}_config_complete.ini")))
-        self.assertTrue(os.path.isfile(os.path.join(job_dir, "archive.tar.gz")))
+        self.assertTrue(Path(job_dir).is_dir())
+        self.assertTrue((Path(job_dir) / "data").is_dir())
+        self.assertTrue((Path(job_dir) / "result").is_dir())
+        self.assertTrue((Path(job_dir) / "results_page").is_dir())
+        self.assertTrue((Path(job_dir) / "result" / "result.hdf5").is_file())
+        self.assertTrue((Path(job_dir) / f"{test_name}_config_complete.ini").is_file())
+        self.assertTrue((Path(job_dir) / "archive.tar.gz").is_file())
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_hdf5_job_upload_invalid_hdf5_extension(self):

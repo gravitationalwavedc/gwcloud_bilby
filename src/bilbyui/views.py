@@ -548,7 +548,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
         # Validate the directory structure, this should include 'data', 'result', and 'results_page' at minimum
         for directory in ["data", "result", "results_page"]:
-            if not os.path.isdir(os.path.join(job_staging_dir, directory)):
+            if not (Path(job_staging_dir) / directory).is_dir():
                 msg = f"Invalid directory structure, expected directory ./{directory} to exist."
                 raise ValueError(msg)
 
