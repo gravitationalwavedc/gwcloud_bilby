@@ -1,5 +1,6 @@
 import graphene
 from graphene_file_upload.scalars import Upload
+from graphql_relay.node.node import to_global_id
 
 
 class JobStatusType(graphene.ObjectType):
@@ -253,3 +254,27 @@ class GWFlowUpsertResult(graphene.ObjectType):
     sname = graphene.String(required=True)
     created = graphene.Boolean(required=True)
     files_pending = graphene.List(GWFlowPendingFile, required=True)
+
+
+class GWFlowFileType(graphene.ObjectType):
+    id = graphene.ID()
+    analysis_uid = graphene.String()
+    path = graphene.String()
+    file_name = graphene.String()
+    file_size = graphene.BigInt()
+    uploaded = graphene.Boolean()
+    download_token = graphene.String()
+
+    def resolve_id(self, info):
+        val = getattr(self, "id", None)
+        if val is None and isinstance(self, dict):
+            val = self.get("id")
+        if val is None:
+            return None
+        return to_global_id("GWFlowFileNode", val)
+
+    def resolve_download_token(self, info):
+        token = getattr(self, "download_token", None)
+        if token is None and isinstance(self, dict):
+            token = self.get("download_token")
+        return str(token) if token is not None else None
