@@ -1,4 +1,4 @@
-FROM python:3.12 as gwflow_ingest
+FROM python:3.12 AS gwflow_ingest
 
 # Update the container and install the required packages
 RUN apt-get update \
