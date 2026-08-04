@@ -141,7 +141,7 @@ class CondorScheduler(Scheduler):
             del submitted_stages[event.cluster]
 
         # If all submitted stages have finished, and the plotting stage has been submitted, then the job has finished
-        if not len(submitted_stages) and plot_started:
+        if not submitted_stages and plot_started:
             return JobStatus.COMPLETED, "All job stages finished successfully"
 
         # Job is not yet complete
