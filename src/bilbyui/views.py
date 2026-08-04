@@ -737,8 +737,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         # Save the HDF5 file to the result directory
         hdf5_path = os.path.join(job_staging_dir, "result", "result.hdf5")
         with open(hdf5_path, "wb") as f:
-            for chunk in hdf5_file.chunks():
-                f.write(chunk)
+            f.writelines(hdf5_file.chunks())
 
         # Save the INI file with the correct naming convention
         job_name = details.name
@@ -917,8 +916,7 @@ def upload_supporting_files(upload_tokens, uploaded_supporting_files):
 
         with open(job_dir / str(upload_token.id), "wb") as supporting_file:
             # Write the uploaded file to the temporary file
-            for c in uploaded_supporting_file.chunks():
-                supporting_file.write(c)
+            supporting_file.writelines(uploaded_supporting_file.chunks())
             supporting_file.flush()
 
         # Clear the token to indicate the file is uploaded
