@@ -11,6 +11,8 @@ from bilbyui.utils.gwflow_es import gwflow_elastic_search_update
 
 logger = logging.getLogger(__name__)
 
+HTTP_OK = 200
+
 
 class Command(BaseCommand):
     help = "Ingest job details into Elasticsearch"
@@ -72,7 +74,7 @@ class Command(BaseCommand):
         while next_url:
             try:
                 response = requests.get(next_url, headers=headers, timeout=30)
-                if response.status_code != 200:
+                if response.status_code != HTTP_OK:
                     msg = f"Failed to fetch superevents list from portal: HTTP {response.status_code}"
                     self.stderr.write(self.style.ERROR(msg))
                     logger.error(msg)
@@ -94,7 +96,7 @@ class Command(BaseCommand):
                     # Fetch detail payload for this superevent
                     detail_url = f"{base_url}/api/v1/superevents/{urllib.parse.quote(sname)}/"
                     detail_resp = requests.get(detail_url, headers=headers, timeout=30)
-                    if detail_resp.status_code != 200:
+                    if detail_resp.status_code != HTTP_OK:
                         self.stdout.write(
                             self.style.WARNING(
                                 f"Skipping {sname}: portal detail returned HTTP {detail_resp.status_code}"
