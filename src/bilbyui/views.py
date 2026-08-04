@@ -688,7 +688,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
     if check_job_embargo_status(user, args):
         logger.warning(f"User {user.id} attempted to upload external job on embargoed data")
         msg = "Only LIGO users may upload real jobs on embargoed LIGO data"
-        raise Exception(msg)
+        raise PermissionError(msg)
 
     # Set the job name from details
     args.label = details.name
