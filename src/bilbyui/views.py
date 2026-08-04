@@ -1555,8 +1555,9 @@ def api_token_create(request):
     name = request.POST.get("name", "").strip()
     if not name:
         return HttpResponse("Token name cannot be empty", status=400)
-    if len(name) > 64:
-        return HttpResponse("Token name must be at most 64 characters", status=400)
+    max_name_length = APISessionToken._meta.get_field("name").max_length
+    if len(name) > max_name_length:
+        return HttpResponse(f"Token name must be at most {max_name_length} characters", status=400)
 
     try:
         token = create_token(request.user, name)
