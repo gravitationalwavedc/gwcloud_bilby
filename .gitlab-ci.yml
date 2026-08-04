@@ -42,6 +42,12 @@ stages:
     - poetry install
     - cd ..
 
+.poetry_install_gwflow_cron:
+  script:
+    - cd gwflow_cron/
+    - poetry install
+    - cd ..
+
 # -----------------------------------------------------------------------------
 # Django / src (Poetry)
 # -----------------------------------------------------------------------------
@@ -182,3 +188,47 @@ cronjob-ruff-lint:
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
+
+# -----------------------------------------------------------------------------
+# gwflow_cron (Poetry)
+# -----------------------------------------------------------------------------
+
+gwflow-cronjob-tests:
+  stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  script:
+    - !reference [.apt_build, script]
+    - !reference [.install_poetry, script]
+    - !reference [.poetry_install_gwflow_cron, script]
+    - cd gwflow_cron/ && .venv/bin/python -m coverage run -m xmlrunner discover -s tests -t . --output-file ./junit.xml && .venv/bin/python -m coverage xml
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: gwflow_cron/coverage.xml
+      junit: gwflow_cron/junit.xml
+
+gwflow-cronjob-ruff-format:
+  stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  script:
+    - !reference [.apt_build, script]
+    - !reference [.install_poetry, script]
+    - !reference [.poetry_install_gwflow_cron, script]
+    - gwflow_cron/.venv/bin/ruff format --check gwflow_cron/
+
+gwflow-cronjob-ruff-lint:
+  stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  script:
+    - !reference [.apt_build, script]
+    - !reference [.install_poetry, script]
+    - !reference [.poetry_install_gwflow_cron, script]
+    - gwflow_cron/.venv/bin/ruff check --output-format gitlab --output-file gl-code-quality-report.json gwflow_cron/
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+
