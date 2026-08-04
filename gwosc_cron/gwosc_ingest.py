@@ -356,10 +356,7 @@ def _check_and_download_inner(con, cur):
 
                         logger.info(f"config_file found: {toplevel_key}")
                         config = h5[toplevel_key]["config_file"]["config"]
-                        ini_lines = []
-                        for k in config.keys():
-                            ini_lines.append(f"{k}={config[k][0].decode('utf-8')}")
-                        ini_str = "\n".join(ini_lines)
+                        ini_str = "\n".join(f"{k}={config[k][0].decode('utf-8')}" for k in config.keys())
                     except (KeyError, OSError):
                         error_msg = f"Failed to read H5 config data for key {toplevel_key!r} in {h5url}"
                         logger.exception(error_msg)
