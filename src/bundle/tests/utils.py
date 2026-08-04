@@ -1,5 +1,6 @@
 import contextlib
 import os
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from bilby_pipe.parser import create_parser
@@ -32,7 +33,7 @@ def args_to_bilby_ini(args):
 
 @contextlib.contextmanager
 def cd(path):
-    cwd = os.getcwd()
+    cwd = Path.cwd()
     os.chdir(path)
     try:
         yield
