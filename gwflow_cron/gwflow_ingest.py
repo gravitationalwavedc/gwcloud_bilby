@@ -31,19 +31,11 @@ if not logger.handlers:
 
 def gwc_known_unpruned_snames(gwc_client: Any = None) -> set[str]:
     """Query GWCloud for active (unpruned) superevent snames."""
-    if gwc_client is None:
+    if gwc_client is None or not hasattr(gwc_client, "get_gwflow_job_list"):
         return set()
 
-    if hasattr(gwc_client, "get_gwflow_job_list"):
-        jobs = gwc_client.get_gwflow_job_list(include_pruned=False)
-        return {j["sname"] if isinstance(j, dict) else j.sname for j in jobs}
-
-    if hasattr(gwc_client, "query"):
-        res = gwc_client.query("query { gwflowJobs(isPruned: false) { sname } }")
-        jobs = res.get("data", {}).get("gwflowJobs", []) if isinstance(res, dict) else []
-        return {j["sname"] for j in jobs if isinstance(j, dict) and "sname" in j}
-
-    return set()
+    jobs = gwc_client.get_gwflow_job_list(include_pruned=False)
+    return {j["sname"] if isinstance(j, dict) else j.sname for j in jobs}
 
 
 def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlite3.Connection | None = None):

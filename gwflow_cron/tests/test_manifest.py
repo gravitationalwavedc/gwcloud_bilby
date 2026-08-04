@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from manifest import extract_file_manifest
 
@@ -56,6 +57,26 @@ class TestManifestExtraction(unittest.TestCase):
         self.assertEqual(f0["file_size"], 1024)
         self.assertEqual(f0["md5_sum"], "hash1")
 
+    def test_bayeswave_psd_as_list(self):
+        payload = {
+            "pe": {
+                "results": [
+                    {
+                        "uid": "uid-bw-list",
+                        "bayeswave": {
+                            "psd_files": [
+                                {"path": "/data/bw_list1.dat", "file_size": 100},
+                                {"path": "/data/bw_list2.dat", "file_size": 200},
+                            ]
+                        },
+                    }
+                ]
+            }
+        }
+        files = extract_file_manifest(payload)
+        self.assertEqual(len(files), 2)
+        self.assertEqual(files[0]["path"], "/data/bw_list1.dat")
+
     def test_deduplication(self):
         payload = {
             "pe": {
@@ -74,6 +95,8 @@ class TestManifestExtraction(unittest.TestCase):
     def test_defensive_unknown_section_walking(self):
         payload = {
             "unknown_section": [
+                "non_dict_element",
+                {"no_uid": 123},
                 {
                     "uid": "uid-unk-1",
                     "custom_file": {
@@ -82,13 +105,42 @@ class TestManifestExtraction(unittest.TestCase):
                         "md5_sum": "hash_c",
                     },
                     "weird_field": "invalid_structure_no_crash",
-                }
-            ]
+                },
+            ],
+            "dict_section": {
+                "uid": "uid-dict-1",
+                "nested_list": [
+                    {"path": "/data/nested/file.dat", "file_size": 50},
+                ],
+            },
         }
         files = extract_file_manifest(payload)
-        self.assertEqual(len(files), 1)
-        self.assertEqual(files[0]["analysis_uid"], "uid-unk-1")
-        self.assertEqual(files[0]["path"], "/data/custom/file.dat")
+        self.assertEqual(len(files), 2)
+        uids = [f["analysis_uid"] for f in files]
+        self.assertIn("uid-unk-1", uids)
+        self.assertIn("uid-dict-1", uids)
+
+    def test_missing_path_or_invalid_file_obj(self):
+        payload = {
+            "pe": {
+                "results": [
+                    "invalid_result_entry",
+                    {
+                        "uid": "uid-invalid",
+                        "config_file": {"no_path": "foo"},
+                        "result_file": "not_a_dict",
+                    },
+                ]
+            }
+        }
+        files = extract_file_manifest(payload)
+        self.assertEqual(files, [])
+
+    def test_section_exception_handling(self):
+        payload = {"failing_section": {"uid": "uid-1"}}
+        with patch("manifest._build_file_entry", side_effect=Exception("mock error")):
+            files = extract_file_manifest(payload)
+            self.assertEqual(files, [])
 
     def test_empty_or_invalid_payload(self):
         self.assertEqual(extract_file_manifest({}), [])

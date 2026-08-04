@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 
+import requests
 import responses
 
 from portal import PortalClient
@@ -11,6 +12,10 @@ class TestPortalClient(unittest.TestCase):
         self.base_url = "https://cbcflow.example.com"
         self.token = "test-token"
         self.client = PortalClient(self.base_url, self.token)
+
+    def test_init_without_trailing_slash_and_token(self):
+        c = PortalClient("https://cbcflow.example.com", token="")
+        self.assertEqual(c.base_url, "https://cbcflow.example.com/")
 
     @responses.activate
     def test_iter_changed_pagination_and_sorting(self):
@@ -43,10 +48,24 @@ class TestPortalClient(unittest.TestCase):
 
         rows = list(self.client.iter_changed(since="2026-01-01T00:00:00Z"))
         self.assertEqual(len(rows), 3)
-        # Verify page 1 sorting
         self.assertEqual(rows[0]["sname"], "S260101a")
         self.assertEqual(rows[1]["sname"], "S260102b")
         self.assertEqual(rows[2]["sname"], "S260103c")
+
+    @responses.activate
+    def test_iter_changed_list_format(self):
+        url = f"{self.base_url}/api/v1/superevents/?ordering=commit_timestamp%2Csname&page_size=50"
+        responses.add(
+            responses.GET,
+            url,
+            json=[
+                {"sname": "S260101a", "commit_timestamp": "2026-01-01T10:00:00Z"},
+            ],
+            status=200,
+        )
+        rows = list(self.client.iter_changed())
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["sname"], "S260101a")
 
     @responses.activate
     def test_get_superevent(self):
@@ -72,13 +91,25 @@ class TestPortalClient(unittest.TestCase):
             json={
                 "results": [
                     {"sname": "S260101a"},
-                    {"sname": "S260102b"},
+                    "S260102b",
                 ],
                 "next": None,
             },
             status=200,
         )
 
+        snames = list(self.client.iter_current_snames())
+        self.assertEqual(snames, ["S260101a", "S260102b"])
+
+    @responses.activate
+    def test_iter_current_snames_list_format(self):
+        url = f"{self.base_url}/api/v1/superevents/"
+        responses.add(
+            responses.GET,
+            url,
+            json=["S260101a", {"sname": "S260102b"}],
+            status=200,
+        )
         snames = list(self.client.iter_current_snames())
         self.assertEqual(snames, ["S260101a", "S260102b"])
 
@@ -98,6 +129,17 @@ class TestPortalClient(unittest.TestCase):
         detail = self.client.get_superevent("S260101a")
         self.assertTrue(detail["ok"])
         self.assertEqual(len(responses.calls), 3)
+
+    @responses.activate
+    @patch("time.sleep", return_value=None)
+    def test_retry_max_attempts_exceeded(self, mock_sleep):
+        url = f"{self.base_url}/api/v1/superevents/S_FAIL/"
+        responses.add(responses.GET, url, status=500)
+        responses.add(responses.GET, url, status=500)
+        responses.add(responses.GET, url, status=500)
+
+        with self.assertRaises(requests.RequestException):
+            self.client.get_superevent("S_FAIL")
 
 
 if __name__ == "__main__":

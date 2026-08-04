@@ -1,19 +1,23 @@
 import unittest
-from unittest.mock import MagicMock
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 try:
     from tests.base import GWFlowTestBase
 except ImportError:
     from base import GWFlowTestBase
 
+import settings
 import state
-from gwflow_ingest import phase_metadata
+from gwflow_ingest import gwc_known_unpruned_snames, phase_metadata
 
 
 class TestMetadataPhase(GWFlowTestBase):
     def test_happy_path_delta_sync_and_watermark_advancement(self):
         mock_portal = MagicMock()
         mock_portal.iter_changed.return_value = [
+            "non_dict_row",
+            {"sname": "S_MISSING_TS"},
             {
                 "sname": "S260101a",
                 "commit_timestamp": "2026-01-01T10:00:00Z",
@@ -139,13 +143,52 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.iter_current_snames.return_value = ["S_KEEP"]
 
         mock_gwc = MagicMock()
-        # GWCloud currently has S_KEEP and S_DELETED
-        mock_gwc.get_gwflow_job_list.return_value = [{"sname": "S_KEEP"}, {"sname": "S_DELETED"}]
+        # GWCloud currently has S_KEEP and S_DELETED as object with .sname attribute
+        mock_gwc.get_gwflow_job_list.return_value = [
+            {"sname": "S_KEEP"},
+            SimpleNamespace(sname="S_DELETED"),
+        ]
 
         phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
 
         # S_DELETED should be marked is_pruned=True
         mock_gwc.upsert_gwflow_job.assert_called_once_with(sname="S_DELETED", is_pruned=True)
+
+    def test_gwc_known_unpruned_snames_helpers(self):
+        self.assertEqual(gwc_known_unpruned_snames(None), set())
+        self.assertEqual(gwc_known_unpruned_snames(object()), set())
+
+    @patch("portal.PortalClient")
+    def test_phase_metadata_creates_connection_when_con_is_none(self, mock_portal_cls):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = []
+        mock_portal.iter_current_snames.return_value = []
+        mock_portal_cls.return_value = mock_portal
+
+        phase_metadata(gwc_client=MagicMock())
+
+    def test_max_retry_attempts_reached_logs_error(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = [
+            {"sname": "S_CAP", "commit_timestamp": "2026-01-01T10:00:00Z", "schema_version": "1.0"},
+        ]
+        mock_portal.get_superevent.side_effect = ValueError("Persistent Failure")
+        mock_portal.iter_current_snames.return_value = ["S_CAP"]
+
+        cur = self.con.cursor()
+        # Pre-seed failure count to MAX_RETRY_ATTEMPTS - 1
+        for _ in range(settings.MAX_RETRY_ATTEMPTS - 1):
+            state.record_failure(self.con, cur, "S_CAP", "earlier failure")
+
+        phase_metadata(portal_client=mock_portal, gwc_client=MagicMock(), con=self.con)
+        self.assertEqual(state.get_failure_count(cur, "S_CAP"), settings.MAX_RETRY_ATTEMPTS)
+
+    def test_iter_current_snames_exception(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = []
+        mock_portal.iter_current_snames.side_effect = Exception("Prune API Error")
+
+        phase_metadata(portal_client=mock_portal, gwc_client=MagicMock(), con=self.con)
 
 
 if __name__ == "__main__":

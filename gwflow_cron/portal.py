@@ -25,6 +25,8 @@ class PortalClient:
                 if resp.status_code < 500:
                     resp.raise_for_status()
                     return resp
+                if attempt == max_attempts:
+                    resp.raise_for_status()
                 logger.warning(f"Portal request attempt {attempt} failed with status {resp.status_code}")
             except (requests.RequestException, Exception) as e:
                 if attempt == max_attempts:
@@ -32,7 +34,6 @@ class PortalClient:
                 logger.warning(f"Portal request attempt {attempt} raised exception: {e}")
             time.sleep(backoff)
             backoff *= 2.0
-        raise RuntimeError("Unreachable retry loop end")
 
     def iter_changed(self, since: str | None = None, page_size: int = 50):
         url = urljoin(self.base_url, "api/v1/superevents/")
