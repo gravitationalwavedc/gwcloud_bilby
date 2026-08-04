@@ -124,7 +124,7 @@ class Command(BaseCommand):
 
                 # Determine next page URL
                 next_page = data.get("next") if isinstance(data, dict) else None
-                next_url = next_page if next_page else None
+                next_url = next_page or None
 
             except Exception as e:
                 msg = f"Error during gwflow ingestion loop: {e}"
