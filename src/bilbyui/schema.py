@@ -109,10 +109,11 @@ class PublicBilbyJobFilter(FilterSet):
         )
     )
 
+
 class GWFlowJobNode(DjangoObjectType):
     class Meta:
         model = GWFlowJob
-        name = "GWFlowJob"          # explicit: keep API casing sane
+        name = "GWFlowJob"  # explicit: keep API casing sane
         convert_choices_to_enum = False
         interfaces = (relay.Node,)
 
@@ -176,7 +177,6 @@ class BilbyJobNode(DjangoObjectType):
     gwflow_job = graphene.Field(GWFlowJobNode)
     gwflow_analysis_uid = graphene.String()
 
-
     @classmethod
     def get_queryset(self, queryset, info):
         user = info.context.user
@@ -233,7 +233,6 @@ class BilbyJobNode(DjangoObjectType):
 
     def resolve_gwflow_analysis_uid(self, info):
         return self.gwflow_analysis_uid or None
-
 
     def resolve_job_status(self, info):
         # Uploaded jobs are always complete
@@ -390,7 +389,6 @@ class Query:
         real_result = [None] * after_value
         real_result.extend(nodes)
         return real_result
-
 
     @login_required
     def resolve_gwflow_pending_files(self, info, **kwargs):
