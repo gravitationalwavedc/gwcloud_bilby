@@ -156,7 +156,8 @@ class TestMetadataPhase(GWFlowTestBase):
 
     def test_gwc_known_unpruned_snames_helpers(self):
         self.assertEqual(gwc_known_unpruned_snames(None), set())
-        self.assertEqual(gwc_known_unpruned_snames(object()), set())
+        with self.assertRaises(AttributeError):
+            gwc_known_unpruned_snames(object())
 
     @patch("portal.PortalClient")
     def test_phase_metadata_creates_connection_when_con_is_none(self, mock_portal_cls):

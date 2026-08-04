@@ -31,7 +31,7 @@ if not logger.handlers:
 
 def gwc_known_unpruned_snames(gwc_client: Any = None) -> set[str]:
     """Query GWCloud for active (unpruned) superevent snames."""
-    if gwc_client is None or not hasattr(gwc_client, "get_gwflow_job_list"):
+    if gwc_client is None:
         return set()
 
     jobs = gwc_client.get_gwflow_job_list(include_pruned=False)
@@ -87,7 +87,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                     )
                     metadata = detail.get("raw_payload", {})
 
-                    if gwc_client and hasattr(gwc_client, "upsert_gwflow_job"):
+                    if gwc_client:
                         gwc_client.upsert_gwflow_job(
                             sname=row_sname,
                             schema_version=row_schema_ver,
@@ -126,7 +126,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
         pruned_snames = known_unpruned - current_snames
 
         for p_sname in pruned_snames:
-            if gwc_client and hasattr(gwc_client, "upsert_gwflow_job"):
+            if gwc_client:
                 gwc_client.upsert_gwflow_job(sname=p_sname, is_pruned=True)
 
     finally:
