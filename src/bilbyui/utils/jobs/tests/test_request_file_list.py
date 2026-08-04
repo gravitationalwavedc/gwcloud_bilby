@@ -189,7 +189,7 @@ class TestRequestFileListUploaded(BilbyTestCase):
 
     def test_request_file_list_recursive_skips_broken_symlink(self):
         job_dir = self.job.get_upload_directory()
-        Path(job_dir, "data", "broken_link").symlink_to("/nonexistent/target")
+        (Path(job_dir) / "data" / "broken_link").symlink_to("/nonexistent/target")
 
         result = request_file_list(self.job, "./data", True, self.job.user_id)
 
