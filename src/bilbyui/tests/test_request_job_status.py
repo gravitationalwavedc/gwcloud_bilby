@@ -1,5 +1,6 @@
 from unittest import mock
 
+import requests
 from django.test import override_settings
 
 from bilbyui.tests.testcases import BilbyTestCase
@@ -32,7 +33,7 @@ class TestRequestJobStatus(BilbyTestCase):
     def test_exception(self):
         job = FakeJob(3, 42, 1)
         with mock.patch("bilbyui.utils.jobs.request_job_status._make_job_controller_request") as mocked:
-            mocked.side_effect = Exception("boom")
+            mocked.side_effect = requests.RequestException("boom")
             status, detail = request_job_status(job)
         self.assertEqual(status, "UNKNOWN")
         self.assertEqual(detail, "Error getting job status")

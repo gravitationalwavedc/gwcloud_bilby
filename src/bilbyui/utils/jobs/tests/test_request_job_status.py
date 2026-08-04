@@ -1,6 +1,7 @@
 import json
 from unittest import mock
 
+import requests
 import responses
 from django.conf import settings
 from django.test import override_settings
@@ -68,7 +69,7 @@ class TestRequestJobStatus(BilbyTestCase):
 
     @mock.patch("bilbyui.utils.jobs.request_job_status._make_job_controller_request")
     def test_returns_unknown_on_error(self, make_request):
-        make_request.side_effect = Exception("controller unavailable")
+        make_request.side_effect = requests.RequestException("controller unavailable")
 
         status, message = request_job_status(self.job)
 
