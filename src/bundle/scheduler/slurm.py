@@ -64,7 +64,7 @@ class SlurmScheduler(Scheduler):
         except ValueError:
             return None
 
-    def status(self, job_id, details):
+    def status(self, job_id, _details):
         """
         Get the status of a job by scheduler id
 
@@ -134,7 +134,7 @@ class SlurmScheduler(Scheduler):
         logger.warning("Got unknown Slurm job state %s for job %s", _status, job_id)
         return None, None
 
-    def cancel(self, job_id, details):
+    def cancel(self, job_id, _details):
         """
         Cancel a running job
 
