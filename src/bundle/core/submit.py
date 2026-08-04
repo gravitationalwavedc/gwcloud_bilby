@@ -38,10 +38,10 @@ def set_directory(path: Path):
 
     origin = Path().absolute()
     try:
-        path.chdir()
+        os.chdir(path)
         yield
     finally:
-        origin.chdir()
+        os.chdir(origin)
 
 
 def bilby_ini_to_args(ini):
