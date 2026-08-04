@@ -56,20 +56,16 @@ stages:
   stage: CI
   variables:
     POETRY_VIRTUALENVS_IN_PROJECT: "true"
+
+.src_poetry_base:
+  extends: .poetry_job_base
   cache:
     key:
       files:
         - src/poetry.lock
-        - gwosc_cron/poetry.lock
-        - gwflow_cron/poetry.lock
     paths:
       - ~/.cache/pypoetry
       - src/.venv
-      - gwosc_cron/.venv
-      - gwflow_cron/.venv
-
-.src_poetry_base:
-  extends: .poetry_job_base
   before_script:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
@@ -77,6 +73,13 @@ stages:
 
 .gwosc_cron_base:
   extends: .poetry_job_base
+  cache:
+    key:
+      files:
+        - gwosc_cron/poetry.lock
+    paths:
+      - ~/.cache/pypoetry
+      - gwosc_cron/.venv
   before_script:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
@@ -84,6 +87,13 @@ stages:
 
 .gwflow_cron_base:
   extends: .poetry_job_base
+  cache:
+    key:
+      files:
+        - gwflow_cron/poetry.lock
+    paths:
+      - ~/.cache/pypoetry
+      - gwflow_cron/.venv
   before_script:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
