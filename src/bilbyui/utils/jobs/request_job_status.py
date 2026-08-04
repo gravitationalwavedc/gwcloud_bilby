@@ -18,11 +18,11 @@ def request_job_status(job, user_id=None):
     :param user_id: An optional user id to make the request as
     """
 
-    logger.debug(f"Requesting job status for job {job.id} (controller ID: {job.job_controller_id})")
+    logger.debug("Requesting job status for job %s (controller ID: %s)", job.id, job.job_controller_id)
 
     # Make sure that the job was actually submitted (Might be in a draft state?)
     if not job.job_controller_id:
-        logger.warning(f"Job {job.id} has no job_controller_id - not submitted")
+        logger.warning("Job %s has no job_controller_id - not submitted", job.id)
         return "UNKNOWN", "Job not submitted"
 
     url = f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?jobIds={job.job_controller_id}"
@@ -30,8 +30,8 @@ def request_job_status(job, user_id=None):
     try:
         result = _make_job_controller_request("GET", url, user_id or job.user_id)
 
-        logger.debug(f"Successfully retrieved status for job {job.id}")
+        logger.debug("Successfully retrieved status for job %s", job.id)
         return "OK", result[0]["history"]
     except requests.RequestException as e:
-        logger.error(f"Error getting job status for job {job.id}: {e}", exc_info=True)
+        logger.error("Error getting job status for job %s: %s", job.id, e, exc_info=True)
         return "UNKNOWN", "Error getting job status"
