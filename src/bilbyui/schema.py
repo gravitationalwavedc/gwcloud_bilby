@@ -19,16 +19,19 @@ from .models import (
     EventID,
     ExternalBilbyJob,
     FileDownloadToken,
+    GWFlowJob,
     Label,
     SupportingFile,
 )
 from .services.event_ids import get_event_id, list_event_ids_for_user
+from .services.gwflow import list_gwflow_jobs
 from .services.jobs import get_job, list_public_jobs, update_job
 from .services.labels import list_labels
 from .status import JobStatus
 from .types import (
     BilbyJobCreationResult,
     BilbyJobSupportingFile,
+    GWFlowFileType,
     GWFlowPendingFile,
     GWFlowUpsertInput,
     GWFlowUpsertResult,
@@ -44,6 +47,7 @@ from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
+from .utils.misc import is_ligo_user
 from .views import (
     create_bilby_job,
     create_bilby_job_from_ini_string,
@@ -111,6 +115,57 @@ class PublicBilbyJobFilter(FilterSet):
         return BilbyJob.public_bilby_job_filter(super().qs, user).prefetch_related("user")
 
 
+class GWFlowJobNode(DjangoObjectType):
+    class Meta:
+        model = GWFlowJob
+        name = "GWFlowJob"  # explicit: keep API casing sane
+        convert_choices_to_enum = False
+        interfaces = (relay.Node,)
+
+    user = graphene.String()
+    user_id = graphene.Int()
+    last_updated = graphene.String()
+    event_id = graphene.Field(EventIDType)
+    files = graphene.List(GWFlowFileType)
+    bilby_jobs = graphene.List(lambda: BilbyJobNode)
+
+    @classmethod
+    def get_queryset(parent, queryset, info):
+        user = info.context.user
+        if not is_ligo_user(user):
+            queryset = queryset.filter(ligo_only=False)
+        return queryset.prefetch_related("user")
+
+    def resolve_user(self, info):
+        try:
+            return self.user.name
+        except AttributeError:
+            return "Unknown User"
+
+    def resolve_user_id(self, info):
+        return self.user_id
+
+    def resolve_last_updated(self, info):
+        if not self.last_updated:
+            return None
+        return self.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    def resolve_event_id(self, info):
+        return self.event_id
+
+    def resolve_files(self, info):
+        return self.files.all()
+
+    def resolve_bilby_jobs(self, info):
+        user = info.context.user
+        return BilbyJob.bilby_job_filter(self.bilby_jobs.all(), user)
+
+
+class GWFlowJobConnection(relay.Connection):
+    class Meta:
+        node = GWFlowJobNode
+
+
 class BilbyJobNode(DjangoObjectType):
     class Meta:
         model = BilbyJob
@@ -124,6 +179,8 @@ class BilbyJobNode(DjangoObjectType):
     params = graphene.Field(JobParameterOutput)
     labels = graphene.List(LabelType)
     event_id = graphene.Field(EventIDType)
+    gwflow_job = graphene.Field(GWFlowJobNode)
+    gwflow_analysis_uid = graphene.String()
 
     @classmethod
     def get_queryset(self, queryset, info):
@@ -167,6 +224,20 @@ class BilbyJobNode(DjangoObjectType):
 
     def resolve_event_id(self, info):
         return self.event_id
+
+    def resolve_gwflow_job(self, info):
+        user = info.context.user
+        job = self.gwflow_job
+        if not job:
+            return None
+        if job.is_pruned:
+            return None
+        if job.ligo_only and not is_ligo_user(user):
+            return None
+        return job
+
+    def resolve_gwflow_analysis_uid(self, info):
+        return self.gwflow_analysis_uid or None
 
     def resolve_job_status(self, info):
         # Uploaded jobs are always complete
@@ -251,6 +322,78 @@ class Query:
 
     generate_bilby_job_upload_token = graphene.Field(GenerateBilbyJobUploadToken)
     gwflow_pending_files = graphene.List(GWFlowPendingFile)
+    gwflow_job = relay.Node.Field(GWFlowJobNode)
+    gwflow_job_by_sname = graphene.Field(GWFlowJobNode, sname=graphene.String(required=True))
+    gwflow_jobs = relay.ConnectionField(
+        GWFlowJobConnection,
+        search=graphene.String(),
+        time_range=graphene.String(),
+        include_pruned=graphene.Boolean(),
+        cursor=graphene.Argument(graphene.ID),
+        count=graphene.Int(),
+    )
+
+    def resolve_gwflow_job_by_sname(self, info, sname):
+        user = info.context.user
+        try:
+            job = GWFlowJob.objects.get(sname=sname)
+        except GWFlowJob.DoesNotExist:
+            return None
+
+        if job.is_pruned:
+            return None
+
+        if job.ligo_only and not is_ligo_user(user):
+            return None
+
+        return job
+
+    def resolve_gwflow_jobs(self, info, **kwargs):
+        user = info.context.user
+        user_id = user.id if user and user.is_authenticated else 0
+        search_term = kwargs.get("search", "") or ""
+        time_range = kwargs.get("time_range", "all") or "all"
+        include_pruned = kwargs.get("include_pruned", False) or False
+
+        logger.info(
+            f"User {user_id} searching gwflow jobs: search='{search_term}', time_range={time_range}, include_pruned={include_pruned}"
+        )
+
+        if kwargs.get("after") is None:
+            kwargs["after"] = None
+        else:
+            kwargs["after"] = int(from_global_id(kwargs["after"])[1])
+
+        page_size = kwargs.get("first", 20)
+        offset = kwargs.get("after") or 0
+
+        res_dict = list_gwflow_jobs(
+            user,
+            search=search_term,
+            time_range=time_range,
+            page_size=page_size,
+            offset=offset,
+            include_pruned=include_pruned,
+        )
+
+        jobs = res_dict.get("jobs", {})
+        records = res_dict.get("records", [])
+
+        if not records:
+            return []
+
+        nodes = []
+        for record in records:
+            job_id = int(record["_id"])
+            if job_id in jobs:
+                nodes.append(jobs[job_id])
+
+        after_value = int((kwargs.get("after") or -1) + 1)
+        if kwargs.get("after") == 0:
+            after_value = 1
+        real_result = [None] * after_value
+        real_result.extend(nodes)
+        return real_result
 
     @login_required
     def resolve_gwflow_pending_files(self, info, **kwargs):
