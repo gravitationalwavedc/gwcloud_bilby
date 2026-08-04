@@ -17,7 +17,6 @@ class Scheduler(ABC):
         :param working_directory: The path to the working directory
         :return: An integer identifier for the submitted job
         """
-        pass
 
     @abstractmethod
     def status(self, job_id, details):
@@ -28,7 +27,6 @@ class Scheduler(ABC):
         :param details: The internal job details object
         :return: A tuple with JobStatus, additional info as a string. None if no job status could be obtained
         """
-        pass
 
     @abstractmethod
     def cancel(self, job_id, details):
@@ -39,4 +37,3 @@ class Scheduler(ABC):
         :param details: The internal job details object
         :return: True if the job was cancelled otherwise False
         """
-        pass
