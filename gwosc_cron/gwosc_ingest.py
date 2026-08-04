@@ -235,7 +235,7 @@ def _check_and_download_inner(con, cur):
             event_json = r.json()
         except ValueError:
             error_msg = f"Unable to parse event json (event: {event_name}, url: {all_events[event_name]['jsonurl']})"
-            logger.error(error_msg, exc_info=True)
+            logger.exception(error_msg)
             record_job_failure(con, cur, event_name, error_msg)
             continue
         event_json = event_json["events"][event_name]
@@ -305,7 +305,7 @@ def _check_and_download_inner(con, cur):
                     logger.info(f"Created a new event_id: {common_name}")
                 except GWDCUnknownException:
                     error_msg = f"Failed to create event_id for {common_name}"
-                    logger.error(error_msg, exc_info=True)
+                    logger.exception(error_msg)
                     record_job_failure(con, cur, event_name, error_msg)
                     continue
             else:
@@ -326,7 +326,7 @@ def _check_and_download_inner(con, cur):
                         f.write(chunk)
             except requests.RequestException:
                 error_msg = f"Downloading {h5url} failed 😠"
-                logger.error(error_msg, exc_info=True)
+                logger.exception(error_msg)
                 record_job_failure(con, cur, event_name, error_msg)
                 download_failed = True
 
@@ -340,7 +340,7 @@ def _check_and_download_inner(con, cur):
                 h5_handle = h5py.File(f)
             except OSError:
                 error_msg = f"Failed to open H5 file downloaded from {h5url}"
-                logger.error(error_msg, exc_info=True)
+                logger.exception(error_msg)
                 record_job_failure(con, cur, event_name, error_msg)
                 continue
             h5_iteration_error = False
@@ -366,7 +366,7 @@ def _check_and_download_inner(con, cur):
                         ini_str = "\n".join(ini_lines)
                     except (KeyError, OSError):
                         error_msg = f"Failed to read H5 config data for key {toplevel_key!r} in {h5url}"
-                        logger.error(error_msg, exc_info=True)
+                        logger.exception(error_msg)
                         record_job_failure(con, cur, event_name, error_msg)
                         h5_iteration_error = True
                         break
@@ -389,7 +389,7 @@ def _check_and_download_inner(con, cur):
                     except GWDCUnknownException:
                         all_succeeded = False
                         # we don't just raise here as we want to potentially upload other jobs
-                        logger.error("Failed to create BilbyJob 😠", exc_info=True)
+                        logger.exception("Failed to create BilbyJob 😠")
 
             if h5_iteration_error:
                 continue
