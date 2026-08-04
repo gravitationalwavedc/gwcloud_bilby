@@ -1,6 +1,5 @@
 import datetime
 import json
-import os
 import uuid
 from pathlib import Path
 
@@ -288,7 +287,7 @@ class BilbyJob(models.Model):
         """
         Returns the upload directory of the job - only relevant to uploaded jobs.
         """
-        return os.path.join(settings.JOB_UPLOAD_DIR, str(self.id))
+        return Path(settings.JOB_UPLOAD_DIR) / str(self.id)
 
     def has_supporting_files(self):
         """

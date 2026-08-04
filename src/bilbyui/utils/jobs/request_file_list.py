@@ -24,7 +24,7 @@ def request_file_list(job, path, recursive, user_id=None):
     """
     # Check if the job is uploaded, and fetch the files off local storage
     if job.job_type == BilbyJobType.UPLOADED:
-        job_dir = job.get_upload_directory()
+        job_dir = str(job.get_upload_directory())
 
         # Get the absolute path to the requested path
         dir_path = str(Path(job_dir, path).resolve())
