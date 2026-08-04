@@ -744,8 +744,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         ini_filename = f"{job_name}_config_complete.ini"
         ini_path = os.path.join(job_staging_dir, ini_filename)
         with open(ini_path, "wb") as f:
-            for chunk in ini_file.chunks():
-                f.write(chunk)
+            f.writelines(ini_file.chunks())
 
         # Read and parse the INI file
         with open(ini_path) as f:
