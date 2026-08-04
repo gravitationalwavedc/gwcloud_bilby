@@ -64,7 +64,7 @@ def bilby_ini_to_args(ini):
         f.flush()
 
         # Read the data from the ini file
-        args, unknown_args = parse_args([f.name], parser)
+        args, _unknown_args = parse_args([f.name], parser)
 
     return args
 
