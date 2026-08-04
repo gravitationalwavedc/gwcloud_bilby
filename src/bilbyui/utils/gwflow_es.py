@@ -204,3 +204,30 @@ def gwflow_elastic_search_remove(job) -> None:
         es.delete(index=settings.ELASTIC_SEARCH_GWFLOW_INDEX, id=job.id)
     except elasticsearch.NotFoundError:
         pass
+
+
+def update_child_job_ids(job) -> None:
+    """
+    Perform a targeted update of childJobIds in Elasticsearch for a GWFlowJob.
+    No-op if settings.IGNORE_ELASTIC_SEARCH. Swallow NotFoundError if document is not in ES yet.
+    """
+    if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
+        return
+
+    es = elasticsearch.Elasticsearch(
+        hosts=[settings.ELASTIC_SEARCH_HOST],
+        api_key=settings.ELASTIC_SEARCH_API_KEY,
+        verify_certs=False,
+    )
+
+    child_job_ids = list(job.bilby_jobs.values_list("id", flat=True)) if hasattr(job, "bilby_jobs") else []
+
+    try:
+        es.update(
+            index=settings.ELASTIC_SEARCH_GWFLOW_INDEX,
+            id=job.id,
+            doc={"childJobIds": child_job_ids},
+        )
+    except elasticsearch.NotFoundError:
+        pass
+
