@@ -172,6 +172,19 @@ class BilbyJob(models.Model):
 
     labels = models.ManyToManyField(Label)
     event_id = models.ForeignKey(EventID, default=None, null=True, on_delete=models.SET_NULL)
+
+    # Parent gwflow record, if this job is a bilby-PE analysis of a superevent
+    gwflow_job = models.ForeignKey(
+        "GWFlowJob",
+        default=None,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="bilby_jobs",
+    )
+    # The uid of the analysis within the parent's metadata
+    gwflow_analysis_uid = models.CharField(max_length=128, blank=True, default="")
+
     # is_ligo_job indicates if the job has been run using proprietary data. If running a real job with GWOSC, this will
     # be set to False, otherwise a real data job using channels other than GWOSC will result in this value being True
     is_ligo_job = models.BooleanField(default=False)
@@ -426,6 +439,65 @@ class ExternalBilbyJob(models.Model):
 
     job = models.ForeignKey(BilbyJob, on_delete=models.CASCADE)
     url = models.URLField()
+
+
+class GWFlowJob(models.Model):
+    class Meta:
+        ordering = ("-last_updated", "sname")
+
+    # Superevent name from cbcflow (e.g. S230601ag) — the natural key
+    sname = models.CharField(max_length=64, unique=True, db_index=True)
+
+    # Owning user = the ingest user (GWFLOW_INGEST_USER)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="gwflow_jobs",
+    )
+
+    # Schema version of the current metadata (v1/v2/v3 today)
+    schema_version = models.CharField(max_length=8, blank=True, default="")
+
+    # Source libraries this superevent appears in (["cbc-workflow-o4a", ...])
+    libraries = models.JSONField(default=list, blank=True)
+
+    # Current-version pointer (display/sorting/change-detection only — payloads
+    # stay in the cbcflow-portal and are fetched on demand)
+    current_history_id = models.CharField(max_length=64, blank=True, default="")
+    current_history_timestamp = models.DateTimeField(null=True, blank=True)
+
+    # Visibility: LIGO-only by default; toggleable per-record later (UX deferred)
+    ligo_only = models.BooleanField(default=True)
+
+    # Mirrored soft-delete: superevent no longer current in any source library
+    is_pruned = models.BooleanField(default=False, db_index=True)
+
+    # Best-effort event link (sname matches EventID.trigger_id format)
+    event_id = models.ForeignKey(EventID, default=None, null=True, on_delete=models.SET_NULL)
+
+    creation_time = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
+
+
+class GWFlowFile(models.Model):
+    class Meta:
+        unique_together = (("job", "analysis_uid", "path"),)
+
+    job = models.ForeignKey(GWFlowJob, on_delete=models.CASCADE, related_name="files")
+
+    # Analysis uid within the metadata this file belongs to ("" = superevent-level)
+    analysis_uid = models.CharField(max_length=128, blank=True, default="", db_index=True)
+
+    # Source path as reported by the portal LinkedFile
+    path = models.TextField()
+    file_name = models.TextField()
+    file_size = models.BigIntegerField(null=True, blank=True)
+    md5_sum = models.CharField(max_length=32, blank=True, default="", db_index=True)
+
+    # False until bytes are mirrored into the job directory — the file-sync work queue
+    uploaded = models.BooleanField(default=False, db_index=True)
+
+    download_token = models.UUIDField(unique=True, default=uuid.uuid4, db_index=True)
 
 
 class SupportingFile(models.Model):
