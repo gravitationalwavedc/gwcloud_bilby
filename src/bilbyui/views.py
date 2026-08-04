@@ -820,13 +820,13 @@ def file_download_job_file(request, fdl):
     file_path = fdl.path.lstrip("/")
 
     # Get the full file path
-    file_path = os.path.join(job_dir, file_path)
+    file_path = Path(job_dir) / file_path
 
     # Use a django file response object to stream the file back to the client
     return FileResponse(
         open(file_path, "rb"),
         as_attachment="forceDownload" in request.GET,
-        filename=os.path.basename(file_path),
+        filename=file_path.name,
         content_type="application/octet-stream",
     )
 
