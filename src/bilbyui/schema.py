@@ -425,7 +425,7 @@ class EventIDMutation(relay.ClientIDMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **kwargs):
+    def mutate_and_get_payload(cls, _root, info, **kwargs):
         user = info.context.user
 
         if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
@@ -448,7 +448,7 @@ class UpdateEventIDMutation(relay.ClientIDMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **kwargs):
+    def mutate_and_get_payload(cls, _root, info, **kwargs):
         user = info.context.user
 
         if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
@@ -467,7 +467,7 @@ class DeleteEventIDMutation(relay.ClientIDMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, event_id):
+    def mutate_and_get_payload(cls, _root, info, event_id):
         user = info.context.user
 
         if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
@@ -486,7 +486,7 @@ class BilbyJobMutation(relay.ClientIDMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, params):
+    def mutate_and_get_payload(cls, _root, info, params):
         user = info.context.user
         logger.info(f"User {user.id} creating new Bilby job: {params.get('details', {}).get('name', 'unnamed')}")
 
@@ -509,7 +509,7 @@ class BilbyJobFromIniStringMutation(relay.ClientIDMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, params):
+    def mutate_and_get_payload(cls, _root, info, params):
         user = info.context.user
         logger.info(f"User {user.id} creating Bilby job from INI string")
 
@@ -539,7 +539,7 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **kwargs):
+    def mutate_and_get_payload(cls, _root, info, **kwargs):
         user = info.context.user
 
         job_id = kwargs.pop("job_id")
@@ -562,7 +562,7 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
     result = graphene.List(graphene.String)
 
     @classmethod
-    def mutate_and_get_payload(cls, root, info, job_id, download_tokens):
+    def mutate_and_get_payload(cls, _root, info, job_id, download_tokens):
         user = info.context.user
         user_id = user.id if user.is_authenticated else 0
         job_model_id = from_global_id(job_id)[1]
@@ -605,7 +605,7 @@ class UploadBilbyJobMutation(relay.ClientIDMutation):
     result = graphene.Field(BilbyJobCreationResult)
 
     @classmethod
-    def mutate_and_get_payload(cls, root, info, upload_token, details, job_file):
+    def mutate_and_get_payload(cls, _root, info, upload_token, details, job_file):
         logger.info(f"Upload job mutation initiated with token {upload_token}: {details.get('name', 'unnamed')}")
 
         # Get the token being used to perform the upload - this will return None if the token doesn't exist or
@@ -631,7 +631,7 @@ class UploadSupportingFilesMutation(relay.ClientIDMutation):
     result = graphene.Field(SupportingFileUploadResult)
 
     @classmethod
-    def mutate_and_get_payload(cls, root, info, supporting_files):
+    def mutate_and_get_payload(cls, _root, info, supporting_files):
         file_tokens, uploaded_files = [], []
         for f in supporting_files:
             file_tokens.append(f.file_token)
@@ -660,7 +660,7 @@ class UploadExternalBilbyJobMutation(relay.ClientIDMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, details, ini_file, result_url):
+    def mutate_and_get_payload(cls, _root, info, details, ini_file, result_url):
         user = info.context.user
         logger.info(f"User {user.id} uploading external Bilby job: {details.get('name', 'unnamed')} from {result_url}")
 
@@ -685,7 +685,7 @@ class UploadHdf5BilbyJobMutation(relay.ClientIDMutation):
     result = graphene.Field(BilbyJobCreationResult)
 
     @classmethod
-    def mutate_and_get_payload(cls, root, info, upload_token, details, hdf5_file, ini_file):
+    def mutate_and_get_payload(cls, _root, info, upload_token, details, hdf5_file, ini_file):
         logger.info(f"Upload HDF5 job mutation initiated with token {upload_token}: {details.get('name', 'unnamed')}")
 
         # Get the token being used to perform the upload - this will return None if the token doesn't exist or
