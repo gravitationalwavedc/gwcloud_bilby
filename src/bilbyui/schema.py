@@ -254,6 +254,7 @@ class Query:
     generate_bilby_job_upload_token = graphene.Field(GenerateBilbyJobUploadToken)
     gwflow_pending_files = graphene.List(GWFlowPendingFile)
 
+    @login_required
     def resolve_gwflow_pending_files(self, info, **kwargs):
         user = info.context.user
         return get_gwflow_pending_files(user)

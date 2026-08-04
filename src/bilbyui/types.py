@@ -228,13 +228,13 @@ class GWFlowFileInput(graphene.InputObjectType):
 
 class GWFlowUpsertInput(graphene.InputObjectType):
     sname = graphene.String(required=True)
-    schema_version = graphene.String(required=False, default_value="")
+    schema_version = graphene.String(required=False)
     metadata = graphene.String(required=False)
     libraries = graphene.List(graphene.String, required=False)
     is_pruned = graphene.Boolean(required=False)
     ligo_only = graphene.Boolean(required=False)
     event_id = graphene.String(required=False)
-    current_history_id = graphene.String(required=False, default_value="")
+    current_history_id = graphene.String(required=False)
     current_history_timestamp = graphene.DateTime(required=False)
     files = graphene.List(GWFlowFileInput, required=False)
 

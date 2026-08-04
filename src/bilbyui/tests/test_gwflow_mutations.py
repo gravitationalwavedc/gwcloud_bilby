@@ -92,7 +92,13 @@ class TestGWFlowMutations(BilbyTestCase):
 
             res_pending = self.query(pending_query)
             self.assertIsNotNone(res_pending.errors)
-            self.assertIn("Permission Denied", res_pending.errors[0]["message"])
+            # @login_required fires before our handler for anonymous users
+            self.assertTrue(
+                any(
+                    ("Permission Denied" in e["message"] or "do not have permission" in e["message"])
+                    for e in res_pending.errors
+                )
+            )
 
             # 2. Non-ingest user -> permission denied
             self._auth_as(self.normal_user)
@@ -391,7 +397,8 @@ class TestGWFlowMutations(BilbyTestCase):
             }
         """
 
-        res = self.query(query)
+        with self.assertNumQueries(3):  # auth + pending files (with select_related join) + session
+            res = self.query(query)
         self.assertIsNone(res.errors)
 
         pending = res.data["gwflowPendingFiles"]
@@ -409,3 +416,122 @@ class TestGWFlowMutations(BilbyTestCase):
         self.assertEqual(pending[2]["sname"], "S230602b")
         self.assertEqual(pending[2]["analysisUid"], "pe_1")
         self.assertEqual(pending[2]["path"], "b_path.h5")
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_omit_field_preserves_prior_value(self):
+        """Omitting schema_version / current_history_id on an update must not overwrite prior values."""
+        self._auth_as(self.ingest_user)
+
+        query = """
+            mutation Upsert($input: UpsertGwflowJobMutationInput!) {
+                upsertGwflowJob(input: $input) {
+                    result { sname created }
+                }
+            }
+        """
+
+        # Initial create with explicit values
+        input_create = {
+            "params": {
+                "sname": "S230701omit",
+                "schemaVersion": "v1",
+                "currentHistoryId": "hist-001",
+            }
+        }
+        res_create = self.query(query, input_data=input_create)
+        self.assertIsNone(res_create.errors)
+        self.assertTrue(res_create.data["upsertGwflowJob"]["result"]["created"])
+
+        job = GWFlowJob.objects.get(sname="S230701omit")
+        self.assertEqual(job.schema_version, "v1")
+        self.assertEqual(job.current_history_id, "hist-001")
+
+        # Update omitting both fields — prior values must be preserved
+        input_update = {
+            "params": {
+                "sname": "S230701omit",
+                "libraries": ["updated-lib"],
+            }
+        }
+        res_update = self.query(query, input_data=input_update)
+        self.assertIsNone(res_update.errors)
+        self.assertFalse(res_update.data["upsertGwflowJob"]["result"]["created"])
+
+        job.refresh_from_db()
+        self.assertEqual(job.schema_version, "v1", "schema_version was silently reset — default_value bug not fixed")
+        self.assertEqual(
+            job.current_history_id, "hist-001", "current_history_id was silently reset — default_value bug not fixed"
+        )
+        self.assertEqual(job.libraries, ["updated-lib"])
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upload_gwflow_file_invalid_relay_id(self):
+        """Relay-ID decode errors must return a GraphQL error, not a 500."""
+        self._auth_as(self.ingest_user)
+
+        query = """
+            mutation Upload($input: UploadGwflowFileMutationInput!) {
+                uploadGwflowFile(input: $input) {
+                    success
+                }
+            }
+        """
+
+        bad_file = io.BytesIO(b"content")
+        bad_file.name = "x.h5"
+        with TemporaryDirectory() as tmpdir:
+            with override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
+                res = self.file_query(
+                    query,
+                    input_data={"gwflowFileId": "not-a-valid-relay-id", "file": None},
+                    files={"input.file": bad_file},
+                )
+        self.assertIsNotNone(res.errors)
+        self.assertIn("Invalid gwflow_file_id", res.errors[0]["message"])
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_link_unknown_sname_raises_error(self):
+        """Linking to a non-existent GWFlowJob sname must raise a descriptive GraphQL error."""
+        self._auth_as(self.ingest_user)
+
+        ini_str = create_test_ini_string({"detectors": "['H1']", "label": "job_x"})
+        bilby_job = BilbyJob.objects.create(user=self.normal_user, name="bilby_job_x", ini_string=ini_str)
+
+        query = """
+            mutation Link($input: LinkBilbyJobToGwflowMutationInput!) {
+                linkBilbyJobToGwflow(input: $input) { success }
+            }
+        """
+        res = self.query(
+            query,
+            input_data={
+                "jobId": to_global_id("BilbyJobNode", bilby_job.id),
+                "sname": "NONEXISTENT_SNAME",
+                "analysisUid": "pe_1",
+            },
+        )
+        self.assertIsNotNone(res.errors)
+        self.assertIn("NONEXISTENT_SNAME", res.errors[0]["message"])
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_link_invalid_job_id_raises_error(self):
+        """An invalid/non-existent relay job_id must raise a descriptive GraphQL error."""
+        self._auth_as(self.ingest_user)
+
+        GWFlowJob.objects.create(sname="S230701link_err", user=self.ingest_user)
+
+        query = """
+            mutation Link($input: LinkBilbyJobToGwflowMutationInput!) {
+                linkBilbyJobToGwflow(input: $input) { success }
+            }
+        """
+        res = self.query(
+            query,
+            input_data={
+                "jobId": to_global_id("BilbyJobNode", 99999),
+                "sname": "S230701link_err",
+                "analysisUid": "pe_1",
+            },
+        )
+        self.assertIsNotNone(res.errors)
+        self.assertIn("Invalid job_id", res.errors[0]["message"])
