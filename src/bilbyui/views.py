@@ -397,7 +397,7 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
             setattr(args, config_name, None)
 
         else:
-            logger.error(f"Got unknown supporting file type for {config_name}: {str(config)}")
+            logger.error(f"Got unknown supporting file type for {config_name}: {config}")
 
     return supporting_files
 
@@ -1518,7 +1518,7 @@ def api_token_create(request):
             status=400,
         )
 
-    response = TemplateResponse(
+    return TemplateResponse(
         request,
         "bilbyui/_token_create_success.html",
         {
@@ -1527,7 +1527,6 @@ def api_token_create(request):
             "token": serialize_token(token),
         },
     )
-    return response
 
 
 @login_required
