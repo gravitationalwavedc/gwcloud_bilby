@@ -146,14 +146,17 @@ code-quality:
     reports:
       codequality: gl-code-quality-report.json
 
+.cronjob_base:
+  stage: CI
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+
 # -----------------------------------------------------------------------------
 # gwosc_cron (Poetry)
 # -----------------------------------------------------------------------------
 
 cronjob-tests:
-  stage: CI
-  variables:
-    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  extends: .cronjob_base
   script:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
@@ -167,9 +170,7 @@ cronjob-tests:
       junit: gwosc_cron/junit.xml
 
 cronjob-ruff-format:
-  stage: CI
-  variables:
-    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  extends: .cronjob_base
   script:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
@@ -177,9 +178,7 @@ cronjob-ruff-format:
     - gwosc_cron/.venv/bin/ruff format --check gwosc_cron/
 
 cronjob-ruff-lint:
-  stage: CI
-  variables:
-    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  extends: .cronjob_base
   script:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
@@ -194,9 +193,7 @@ cronjob-ruff-lint:
 # -----------------------------------------------------------------------------
 
 gwflow-cronjob-tests:
-  stage: CI
-  variables:
-    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  extends: .cronjob_base
   script:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
@@ -210,9 +207,7 @@ gwflow-cronjob-tests:
       junit: gwflow_cron/junit.xml
 
 gwflow-cronjob-ruff-format:
-  stage: CI
-  variables:
-    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  extends: .cronjob_base
   script:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
@@ -220,9 +215,7 @@ gwflow-cronjob-ruff-format:
     - gwflow_cron/.venv/bin/ruff format --check gwflow_cron/
 
 gwflow-cronjob-ruff-lint:
-  stage: CI
-  variables:
-    POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  extends: .cronjob_base
   script:
     - !reference [.apt_build, script]
     - !reference [.install_poetry, script]
@@ -231,4 +224,5 @@ gwflow-cronjob-ruff-lint:
   artifacts:
     reports:
       codequality: gl-code-quality-report.json
+
 
