@@ -143,7 +143,8 @@ def create_bilby_job(user, params):
 
     if should_embargo_job(user, float(params.data.trigger_time), params.data.data_choice == "simulated"):
         logger.warning(f"User {user.id} attempted to run real job on embargoed data: {params.details.name}")
-        raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
+        msg = "Only LIGO users may run real jobs on embargoed LIGO data"
+        raise Exception(msg)
 
     validate_job_name(params.details.name)
 
@@ -430,7 +431,8 @@ def create_bilby_job_from_ini_string(user, params):
     args = bilby_ini_string_to_args(params.ini_string.ini_string.encode("utf-8"))
 
     if check_job_embargo_status(user, args):
-        raise Exception("Only LIGO users may run real jobs on embargoed LIGO data")
+        msg = "Only LIGO users may run real jobs on embargoed LIGO data"
+        raise Exception(msg)
 
     if args.outdir == ".":
         args.outdir = "./"
@@ -499,7 +501,8 @@ def upload_bilby_job(user, upload_token, details, job_file):
     # Check that the uploaded file is a tar.gz file
     if not job_file.name.endswith("tar.gz"):
         logger.error(f"User {user.id} attempted to upload non-tar.gz file: {job_file.name}")
-        raise ValueError("Job upload should be a tar.gz file")
+        msg = "Job upload should be a tar.gz file"
+        raise ValueError(msg)
 
     # Check that the job upload directory exists
     Path(settings.JOB_UPLOAD_STAGING_DIR).mkdir(parents=True, exist_ok=True)
@@ -529,12 +532,14 @@ def upload_bilby_job(user, upload_token, details, job_file):
         logger.debug(f"stderr: {err}")
 
         if p.returncode != 0:
-            raise ValueError("Invalid or corrupt tar.gz file")
+            msg = "Invalid or corrupt tar.gz file"
+            raise ValueError(msg)
 
         # Validate the directory structure, this should include 'data', 'result', and 'results_page' at minimum
         for directory in ["data", "result", "results_page"]:
             if not os.path.isdir(os.path.join(job_staging_dir, directory)):
-                raise ValueError(f"Invalid directory structure, expected directory ./{directory} to exist.")
+                msg = f"Invalid directory structure, expected directory ./{directory} to exist."
+                raise ValueError(msg)
 
         # Find the config complete ini
         ini_file = list(
@@ -545,9 +550,8 @@ def upload_bilby_job(user, upload_token, details, job_file):
         )
 
         if len(ini_file) != 1:
-            raise ValueError(
-                "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one."
-            )
+            msg = "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one."
+            raise ValueError(msg)
 
         ini_file = ini_file[0]
 
@@ -560,7 +564,8 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
         # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
         if check_job_embargo_status(user, args):
-            raise PermissionError("Only LIGO users may upload real jobs on embargoed LIGO data")
+            msg = "Only LIGO users may upload real jobs on embargoed LIGO data"
+            raise PermissionError(msg)
 
         # DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
         args.idx = getattr(args, "idx", None)
@@ -626,7 +631,8 @@ def upload_bilby_job(user, upload_token, details, job_file):
             for supporting_file in supporting_file_details:
                 source_file = Path(job_staging_dir) / supporting_file["file_path"]
                 if not source_file.is_file():
-                    raise FileNotFoundError(f"Supporting file {supporting_file['file_path']} does not exist.")
+                    msg = f"Supporting file {supporting_file['file_path']} does not exist."
+                    raise FileNotFoundError(msg)
 
                 # Because we're in a transaction here, the bulk_create in `SupportingFile.save_from_parsed` isn't saved
                 # so we need to fetch it again from the database to get the inserted ID
@@ -653,7 +659,8 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
             if p.returncode != 0:
                 logger.error(f"Failed to repack uploaded job for user {user.id}")
-                raise RuntimeError("Unable to repack the uploaded job")
+                msg = "Unable to repack the uploaded job"
+                raise RuntimeError(msg)
 
         # Job is validated and uploaded, return the job
         logger.info(f"Successfully uploaded and created job {bilby_job.id} for user {user.id}")
@@ -669,7 +676,8 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
     # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
     if check_job_embargo_status(user, args):
         logger.warning(f"User {user.id} attempted to upload external job on embargoed data")
-        raise Exception("Only LIGO users may upload real jobs on embargoed LIGO data")
+        msg = "Only LIGO users may upload real jobs on embargoed LIGO data"
+        raise Exception(msg)
 
     # Set the job name from details
     args.label = details.name
@@ -720,10 +728,12 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
     """
     # Check that the uploaded files are the correct types
     if not hdf5_file.name.endswith((".hdf5", ".h5")):
-        raise ValueError("HDF5 file should have .hdf5 or .h5 extension")
+        msg = "HDF5 file should have .hdf5 or .h5 extension"
+        raise ValueError(msg)
 
     if not ini_file.name.endswith(".ini"):
-        raise ValueError("INI file should have .ini extension")
+        msg = "INI file should have .ini extension"
+        raise ValueError(msg)
 
     # Check that the job upload directory exists
     os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
@@ -756,7 +766,8 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
 
         # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
         if check_job_embargo_status(user, args):
-            raise PermissionError("Only LIGO users may upload real jobs on embargoed LIGO data")
+            msg = "Only LIGO users may upload real jobs on embargoed LIGO data"
+            raise PermissionError(msg)
 
         # Override the output directory
         args.outdir = "./"
@@ -806,7 +817,8 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
             logger.info(f"stderr: {err}")
 
             if p.returncode != 0:
-                raise RuntimeError("Unable to repack the uploaded HDF5 job")
+                msg = "Unable to repack the uploaded HDF5 job"
+                raise RuntimeError(msg)
 
         # Job is validated and uploaded, return the job
         return bilby_job
