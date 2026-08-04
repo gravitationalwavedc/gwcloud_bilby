@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
+from bilbyui.models import BilbyJob, EventID, Label
 from bilbyui.tests.test_utils import create_test_ini_string, generate_elastic_doc
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -42,8 +43,6 @@ class TestElasticSearch(BilbyTestCase):
         Also tests that if update raises a elasticsearch.NotFoundError exception, that index is called to insert the
         record in elastic search
         """
-        from bilbyui.models import BilbyJob
-
         job = BilbyJob.objects.create(
             user_id=self.user.id,
             name="Test1",
@@ -93,8 +92,6 @@ class TestElasticSearch(BilbyTestCase):
         Also tests that if update raises a elasticsearch.NotFoundError exception, that index is called to insert the
         record in elastic search
         """
-        from bilbyui.models import BilbyJob, EventID, Label
-
         label1 = Label.objects.create(name="label 1", description="my label 1", protected=True)
         label2 = Label.objects.create(name="label 2", description="my label 2", protected=False)
 
@@ -146,8 +143,6 @@ class TestElasticSearch(BilbyTestCase):
         """
         Test that update is called with the expected document
         """
-        from bilbyui.models import BilbyJob
-
         job = BilbyJob.objects.create(
             user_id=self.user.id,
             name="Test1",
@@ -186,8 +181,6 @@ class TestElasticSearch(BilbyTestCase):
         Test that if we update an event id associated with a job, that the job's elastic search update
         is triggered
         """
-        from bilbyui.models import BilbyJob, EventID
-
         event_id = EventID.create(
             "GW123456_123456",
             12345678,
@@ -224,8 +217,6 @@ class TestElasticSearch(BilbyTestCase):
         Test that if we update a label associated with a job, that the job's elastic search update
         is triggered
         """
-        from bilbyui.models import BilbyJob, Label
-
         label1 = Label.objects.create(name="label 1", description="my label 1", protected=True)
 
         job = BilbyJob.objects.create(
@@ -257,8 +248,6 @@ class TestElasticSearch(BilbyTestCase):
         """
         Test that when a bilby job is deleted, the elastic search record is also deleted
         """
-        from bilbyui.models import BilbyJob
-
         job = BilbyJob.objects.create(
             user_id=self.user.id,
             name="Test1",
