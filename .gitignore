@@ -10,8 +10,8 @@ local.py
 .coverage.*
 .DS_Store
 src/job_uploads/
-src/bundle/coverage.xml
-src/bundle/junit.xml
+bundle/coverage.xml
+bundle/junit.xml
 outdir/
 *.npz
 /gwosc_cron/junit.xml
