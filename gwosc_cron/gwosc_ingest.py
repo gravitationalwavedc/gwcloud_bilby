@@ -168,9 +168,7 @@ def _check_and_download_inner(con, cur):
     full_gwcloud_events = [n.name for n in gwc.get_official_job_list()]
     # Only those which follow the format EVENT_NAME--RUN_TYPE are considered to have a valid EVENT_NAME
     gwcloud_events = {
-        fix_job_name(n.split(EVENTNAME_SEPARATOR)[0])
-        for n in full_gwcloud_events
-        if len(n.split(EVENTNAME_SEPARATOR)) > 1
+        fix_job_name(n.split(EVENTNAME_SEPARATOR)[0]) for n in full_gwcloud_events if EVENTNAME_SEPARATOR in n
     }
     logger.info(f"GWCloud events found: {len(gwcloud_events)}")
 
