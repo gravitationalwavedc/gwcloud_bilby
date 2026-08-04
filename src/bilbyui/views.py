@@ -53,8 +53,6 @@ from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
 from .utils.misc import is_ligo_user
 
-MAX_TOKEN_NAME_LENGTH = 64
-
 logger = logging.getLogger(__name__)
 
 STATUS_BADGE_CLASSES = {
@@ -1557,8 +1555,9 @@ def api_token_create(request):
     name = request.POST.get("name", "").strip()
     if not name:
         return HttpResponse("Token name cannot be empty", status=400)
-    if len(name) > MAX_TOKEN_NAME_LENGTH:
-        return HttpResponse(f"Token name must be at most {MAX_TOKEN_NAME_LENGTH} characters", status=400)
+    max_name_length = APISessionToken._meta.get_field("name").max_length
+    if len(name) > max_name_length:
+        return HttpResponse(f"Token name must be at most {max_name_length} characters", status=400)
 
     try:
         token = create_token(request.user, name)
