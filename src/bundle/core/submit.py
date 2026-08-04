@@ -345,8 +345,7 @@ def write_submission_scripts(inputs, wk_dir):
         with chdir_lock, set_directory(wk_dir):
             _slurm = SubmitSLURM(dag)
 
-        slurm_script = str(Path(wk_dir) / _slurm.slurm_master_bash)
-        return slurm_script
+        return str(Path(wk_dir) / _slurm.slurm_master_bash)
 
     # Return the path to the dag script if the scheduler is condor
     if settings.scheduler == EScheduler.CONDOR:
