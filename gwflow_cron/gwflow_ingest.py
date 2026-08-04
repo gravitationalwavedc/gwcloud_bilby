@@ -39,13 +39,9 @@ def gwc_known_unpruned_snames(gwc_client: Any = None) -> set[str]:
         return {j["sname"] if isinstance(j, dict) else j.sname for j in jobs}
 
     if hasattr(gwc_client, "query"):
-        query_str = "query { gwflowJobs(isPruned: false) { sname } }"
-        res = gwc_client.query(query_str)
+        res = gwc_client.query("query { gwflowJobs(isPruned: false) { sname } }")
         jobs = res.get("data", {}).get("gwflowJobs", []) if isinstance(res, dict) else []
         return {j["sname"] for j in jobs if isinstance(j, dict) and "sname" in j}
-
-    if isinstance(gwc_client, (list, set)):
-        return set(gwc_client)
 
     return set()
 
