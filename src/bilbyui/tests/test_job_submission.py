@@ -774,7 +774,7 @@ class TestJobNameValidation(testcases.TestCase):
         try:
             for i in range(5, BilbyJob._meta.get_field("name").max_length):
                 validate_job_name("a" * i)
-        except Exception:
+        except ValueError:
             self.fail("validate_job_name raised an exception when it should not have")
 
     def test_invalid_characters(self):
@@ -786,7 +786,7 @@ class TestJobNameValidation(testcases.TestCase):
         for name in valid_names:
             try:
                 validate_job_name(name)
-            except Exception:
+            except ValueError:
                 self.fail(f"validate_job_name raised an exception for valid name '{name}'")
 
         invalid_names = [
