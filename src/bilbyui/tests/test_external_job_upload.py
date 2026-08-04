@@ -74,7 +74,7 @@ class TestExternalJobUpload(BilbyTestCase):
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string({"label": test_name}, True)
+        test_ini_string = create_test_ini_string({"label": test_name}, complete=True)
 
         test_input = {
             "details": {
@@ -113,7 +113,7 @@ class TestExternalJobUpload(BilbyTestCase):
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string({"label": test_name}, True)
+        test_ini_string = create_test_ini_string({"label": test_name}, complete=True)
 
         test_input = {
             "details": {
@@ -142,7 +142,7 @@ class TestExternalJobUpload(BilbyTestCase):
         test_description = "Test Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string({"label": test_name}, True)
+        test_ini_string = create_test_ini_string({"label": test_name}, complete=True)
 
         test_input = {
             "details": {
