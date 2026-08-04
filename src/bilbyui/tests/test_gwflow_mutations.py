@@ -270,36 +270,35 @@ class TestGWFlowMutations(BilbyTestCase):
 
         file_id = to_global_id("GWFlowFileNode", gwflow_file.id)
 
-        with TemporaryDirectory() as tmpdir:
-            with override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
-                # 1. MD5 mismatch test
-                bad_file = io.BytesIO(b"wrong content")
-                bad_file.name = "data.h5"
+        with TemporaryDirectory() as tmpdir, override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
+            # 1. MD5 mismatch test
+            bad_file = io.BytesIO(b"wrong content")
+            bad_file.name = "data.h5"
 
-                bad_input = {"gwflowFileId": file_id, "file": None}
-                bad_files = {"input.file": bad_file}
+            bad_input = {"gwflowFileId": file_id, "file": None}
+            bad_files = {"input.file": bad_file}
 
-                res_bad = self.file_query(query, input_data=bad_input, files=bad_files)
-                self.assertIsNotNone(res_bad.errors)
-                self.assertIn("MD5 checksum mismatch", res_bad.errors[0]["message"])
-                gwflow_file.refresh_from_db()
-                self.assertFalse(gwflow_file.uploaded)
+            res_bad = self.file_query(query, input_data=bad_input, files=bad_files)
+            self.assertIsNotNone(res_bad.errors)
+            self.assertIn("MD5 checksum mismatch", res_bad.errors[0]["message"])
+            gwflow_file.refresh_from_db()
+            self.assertFalse(gwflow_file.uploaded)
 
-                # 2. Success upload test
-                good_file = io.BytesIO(content)
-                good_file.name = "data.h5"
+            # 2. Success upload test
+            good_file = io.BytesIO(content)
+            good_file.name = "data.h5"
 
-                good_input = {"gwflowFileId": file_id, "file": None}
-                good_files = {"input.file": good_file}
+            good_input = {"gwflowFileId": file_id, "file": None}
+            good_files = {"input.file": good_file}
 
-                res_good = self.file_query(query, input_data=good_input, files=good_files)
-                self.assertIsNone(res_good.errors)
-                self.assertTrue(res_good.data["uploadGwflowFile"]["success"])
-                self.assertEqual(res_good.data["uploadGwflowFile"]["fileSize"], len(content))
+            res_good = self.file_query(query, input_data=good_input, files=good_files)
+            self.assertIsNone(res_good.errors)
+            self.assertTrue(res_good.data["uploadGwflowFile"]["success"])
+            self.assertEqual(res_good.data["uploadGwflowFile"]["fileSize"], len(content))
 
-                gwflow_file.refresh_from_db()
-                self.assertTrue(gwflow_file.uploaded)
-                self.assertEqual(gwflow_file.file_size, len(content))
+            gwflow_file.refresh_from_db()
+            self.assertTrue(gwflow_file.uploaded)
+            self.assertEqual(gwflow_file.file_size, len(content))
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_link_and_unlink_bilby_job_to_gwflow(self):
@@ -479,13 +478,12 @@ class TestGWFlowMutations(BilbyTestCase):
 
         bad_file = io.BytesIO(b"content")
         bad_file.name = "x.h5"
-        with TemporaryDirectory() as tmpdir:
-            with override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
-                res = self.file_query(
-                    query,
-                    input_data={"gwflowFileId": "not-a-valid-relay-id", "file": None},
-                    files={"input.file": bad_file},
-                )
+        with TemporaryDirectory() as tmpdir, override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
+            res = self.file_query(
+                query,
+                input_data={"gwflowFileId": "not-a-valid-relay-id", "file": None},
+                files={"input.file": bad_file},
+            )
         self.assertIsNotNone(res.errors)
         self.assertIn("Invalid gwflow_file_id", res.errors[0]["message"])
 
