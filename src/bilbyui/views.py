@@ -1518,7 +1518,7 @@ def api_token_create(request):
             status=400,
         )
 
-    response = TemplateResponse(
+    return TemplateResponse(
         request,
         "bilbyui/_token_create_success.html",
         {
@@ -1527,7 +1527,6 @@ def api_token_create(request):
             "token": serialize_token(token),
         },
     )
-    return response
 
 
 @login_required
