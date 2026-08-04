@@ -468,6 +468,7 @@ class TestGWOSCCron(GWOSCTestBase):
 
         mock_h5 = MagicMock()
         mock_h5.keys.return_value = ["IMRPhenom"]
+        mock_h5.__iter__ = MagicMock(return_value=iter(["IMRPhenom"]))
         mock_h5.__getitem__ = MagicMock(return_value=mock_toplevel_group)
         mock_h5.__enter__ = MagicMock(return_value=mock_h5)
         mock_h5.__exit__ = MagicMock(return_value=False)

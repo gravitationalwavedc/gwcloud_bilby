@@ -161,7 +161,7 @@ def _check_and_download_inner(con, cur):
         sys.exit(1)
 
     all_events = r.json()["events"]
-    gwosc_events = [k for k in all_events.keys()]
+    gwosc_events = list(all_events)
     logger.info(f"GWOSC events found: {len(gwosc_events)}")
 
     # Collect list of events from GWCloud
@@ -346,7 +346,7 @@ def _check_and_download_inner(con, cur):
             h5_iteration_error = False
             with h5_handle as h5:
                 logger.info(f"Found keys: {list(h5.keys())}")
-                for toplevel_key in h5.keys():
+                for toplevel_key in h5:
                     try:
                         if not (
                             isinstance(h5[toplevel_key], h5py.Group)
