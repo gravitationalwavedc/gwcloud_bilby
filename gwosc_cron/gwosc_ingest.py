@@ -293,7 +293,7 @@ def _check_and_download_inner(con, cur):
         # See if there is already an event_id for this event
         event_id = None
         if _EVENT_ID_RE.match(common_name):
-            event_id = gwcloud_event_ids.get(common_name, None)
+            event_id = gwcloud_event_ids.get(common_name)
             if event_id is None:
                 # we need to create one
                 try:
