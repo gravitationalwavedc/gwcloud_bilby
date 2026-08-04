@@ -155,9 +155,9 @@ def status(details, *args, **kwargs):
 
     # Use the relevant scheduler to obtain the job status
     if settings.scheduler == EScheduler.CONDOR:
-        return dict(condor_status(job))
+        return condor_status(job)
     if settings.scheduler == EScheduler.SLURM:
-        return dict(slurm_status(job))
+        return slurm_status(job)
 
     logger.warning("Unknown scheduler: %s", settings.scheduler)
     return None
