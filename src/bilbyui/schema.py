@@ -119,7 +119,7 @@ class BilbyJobNode(DjangoObjectType):
     event_id = graphene.Field(EventIDType)
 
     @classmethod
-    def get_queryset(parent, queryset, info):
+    def get_queryset(self, queryset, info):
         user = info.context.user
         user_id = user.id if user.is_authenticated else 0
 
@@ -135,46 +135,46 @@ class BilbyJobNode(DjangoObjectType):
 
         return qs
 
-    def resolve_user(parent, info):
+    def resolve_user(self, info):
         try:
-            return parent.user.name
+            return self.user.name
         except AttributeError:
             return "Unknown User"
 
-    def resolve_user_id(parent, info):
-        return parent.user_id
+    def resolve_user_id(self, info):
+        return self.user_id
 
-    def resolve_last_updated(parent, info):
-        return parent.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
+    def resolve_last_updated(self, info):
+        return self.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    def resolve_params(parent, info):
+    def resolve_params(self, info):
         try:
-            logger.debug(f"Generating parameters for job {parent.id}")
-            return generate_parameter_output(parent)
+            logger.debug(f"Generating parameters for job {self.id}")
+            return generate_parameter_output(self)
         except (AttributeError, KeyError, TypeError) as e:
             logger.error(
-                f"Failed to generate parameter output for job {parent.id}: {type(e).__name__}: {e}", exc_info=True
+                f"Failed to generate parameter output for job {self.id}: {type(e).__name__}: {e}", exc_info=True
             )
             return None
 
-    def resolve_labels(parent, info):
-        return parent.labels.all()
+    def resolve_labels(self, info):
+        return self.labels.all()
 
-    def resolve_event_id(parent, info):
-        return parent.event_id
+    def resolve_event_id(self, info):
+        return self.event_id
 
-    def resolve_job_status(parent, info):
+    def resolve_job_status(self, info):
         # Uploaded jobs are always complete
-        if parent.job_type == BilbyJobType.UPLOADED:
+        if self.job_type == BilbyJobType.UPLOADED:
             return {
                 "name": JobStatus.display_name(JobStatus.COMPLETED),
                 "number": JobStatus.COMPLETED,
-                "date": parent.creation_time,
+                "date": self.creation_time,
             }
 
         try:
             status_number, status_name, status_date = derive_job_status(
-                info.context.job_controller_jobs.get(parent.job_controller_id)["history"]
+                info.context.job_controller_jobs.get(self.job_controller_id)["history"]
             )
 
             return {
