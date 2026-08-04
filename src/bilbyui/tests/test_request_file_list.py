@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
@@ -81,9 +82,8 @@ class TestRequestFileListUploaded(BilbyTestCase):
         with open(os.path.join(job_dir, "data", "sub", "b.txt"), "w") as f:
             f.write("b")
         # A broken symlink should be skipped (FileNotFoundError on stat)
-        os.symlink(
+        Path(job_dir, "data", "broken_link").symlink_to(
             os.path.join(job_dir, "data", "sub", "missing"),
-            os.path.join(job_dir, "data", "broken_link"),
         )
 
         success, file_list = request_file_list(self.job, "data", True)
