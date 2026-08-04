@@ -1,3 +1,5 @@
+import hashlib
+import json
 import logging
 import os
 import shutil
@@ -15,10 +17,13 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
 from django.views.decorators.http import require_GET, require_POST
+from graphql import GraphQLError
+from graphql_relay.node.node import from_global_id, to_global_id
 from gwosc.datasets import event_gps
 
 from .constants import BilbyJobType
@@ -27,6 +32,8 @@ from .models import (
     EventID,
     ExternalBilbyJob,
     FileDownloadToken,
+    GWFlowFile,
+    GWFlowJob,
     Label,
     SupportingFile,
 )
@@ -34,8 +41,11 @@ from .services.api_tokens import create_token, list_tokens, revoke_token, serial
 from .services.event_ids import get_event_id, list_event_ids_for_user
 from .services.jobs import get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
+from .types import GWFlowPendingFile
 from .utils.embargo import should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
+from .utils.gwflow_es import gwflow_elastic_search_update
+from .utils.gwflow_es import update_child_job_ids as update_gwflow_child_job_ids
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
@@ -1554,3 +1564,225 @@ def api_token_revoke(request, token_id):
 @require_GET
 def not_found_view(request, path):
     return TemplateResponse(request, "bilbyui/not_found.html", status=404)
+
+
+def _check_gwflow_ingest_user(user):
+    ingest_user_id = getattr(settings, "GWFLOW_INGEST_USER", None)
+    if (
+        user is None
+        or not getattr(user, "is_authenticated", False)
+        or ingest_user_id is None
+        or user.id != ingest_user_id
+    ):
+        raise GraphQLError("Permission Denied")
+
+
+def _gwflow_pending_file(f):
+    return GWFlowPendingFile(
+        id=to_global_id("GWFlowFileNode", f.id),
+        sname=f.job.sname,
+        analysis_uid=f.analysis_uid,
+        path=f.path,
+        file_name=f.file_name,
+        md5_sum=f.md5_sum,
+    )
+
+
+def upsert_gwflow_job(user, params):
+    _check_gwflow_ingest_user(user)
+
+    sname = params.sname
+
+    with transaction.atomic():
+        job, created = GWFlowJob.objects.get_or_create(sname=sname, defaults={"user": user})
+
+        # ligo_only handling
+        ligo_only_param = getattr(params, "ligo_only", None)
+        if ligo_only_param is not None:
+            job.ligo_only = ligo_only_param
+
+        # Update current-state fields if provided
+        schema_version_param = getattr(params, "schema_version", None)
+        if schema_version_param is not None:
+            job.schema_version = schema_version_param
+
+        libraries_param = getattr(params, "libraries", None)
+        if libraries_param is not None:
+            job.libraries = libraries_param
+
+        is_pruned_param = getattr(params, "is_pruned", None)
+        if is_pruned_param is not None:
+            job.is_pruned = is_pruned_param
+
+        history_id_param = getattr(params, "current_history_id", None)
+        if history_id_param is not None:
+            job.current_history_id = history_id_param
+
+        history_ts_param = getattr(params, "current_history_timestamp", None)
+        if history_ts_param is not None:
+            job.current_history_timestamp = history_ts_param
+
+        # Best-effort event link
+        event_id_param = getattr(params, "event_id", None)
+        if event_id_param:
+            try:
+                event = EventID.objects.filter(Q(trigger_id=event_id_param) | Q(event_id=event_id_param)).first()
+                if event:
+                    job.event_id = event
+            except Exception as e:
+                logger.warning("EventID lookup failed for event_id %s on job %s: %s", event_id_param, sname, e)
+
+        job.save()
+
+        # Process file manifest
+        file_entries = getattr(params, "files", None) or []
+        for entry in file_entries:
+            analysis_uid = getattr(entry, "analysis_uid", "") or ""
+            path = entry.path
+            file_name = entry.file_name
+            file_size = getattr(entry, "file_size", None)
+            md5_sum = getattr(entry, "md5_sum", "") or ""
+
+            f_obj, f_created = GWFlowFile.objects.get_or_create(
+                job=job,
+                analysis_uid=analysis_uid,
+                path=path,
+                defaults={
+                    "file_name": file_name,
+                    "file_size": file_size,
+                    "md5_sum": md5_sum,
+                },
+            )
+            if not f_created:
+                if md5_sum and f_obj.md5_sum != md5_sum:
+                    f_obj.md5_sum = md5_sum
+                    f_obj.file_name = file_name
+                    f_obj.file_size = file_size
+                    f_obj.uploaded = False
+                    f_obj.save()
+                else:
+                    changed = False
+                    if f_obj.file_name != file_name:
+                        f_obj.file_name = file_name
+                        changed = True
+                    if file_size is not None and f_obj.file_size != file_size:
+                        f_obj.file_size = file_size
+                        changed = True
+                    if changed:
+                        f_obj.save()
+
+    # ES update runs outside the transaction so a connection error does not
+    # roll back the DB write.
+    metadata_param = getattr(params, "metadata", None)
+    if metadata_param:
+        try:
+            metadata_dict = json.loads(metadata_param)
+        except Exception as e:
+            raise GraphQLError("Invalid metadata JSON") from e
+        gwflow_elastic_search_update(job, metadata_dict)
+
+    pending_qs = job.files.filter(uploaded=False).select_related("job").order_by("job__sname", "analysis_uid", "path")
+    files_pending = [_gwflow_pending_file(f) for f in pending_qs]
+
+    return {
+        "gwflow_job_id": to_global_id("GWFlowJobNode", job.id),
+        "sname": job.sname,
+        "created": created,
+        "files_pending": files_pending,
+    }
+
+
+def upload_gwflow_file(user, gwflow_file_id, file):
+    _check_gwflow_ingest_user(user)
+
+    try:
+        _, file_pk = from_global_id(gwflow_file_id)
+        gwflow_file = GWFlowFile.objects.select_related("job").get(id=int(file_pk))
+    except (GWFlowFile.DoesNotExist, ValueError, TypeError, Exception) as e:
+        raise GraphQLError("Invalid gwflow_file_id") from e
+
+    dest_dir = Path(settings.GWFLOW_FILE_UPLOAD_DIR) / str(gwflow_file.job.id)
+    os.makedirs(dest_dir, exist_ok=True)
+
+    dest_path = dest_dir / str(gwflow_file.id)
+    part_path = dest_dir / f"{gwflow_file.id}.part"
+
+    hasher = hashlib.md5() if gwflow_file.md5_sum else None
+    bytes_written = 0
+
+    try:
+        with open(part_path, "wb") as f_out:
+            for chunk in file.chunks():
+                f_out.write(chunk)
+                bytes_written += len(chunk)
+                if hasher:
+                    hasher.update(chunk)
+    except Exception:
+        if os.path.exists(part_path):
+            os.remove(part_path)
+        raise
+
+    if gwflow_file.md5_sum and hasher:
+        calculated_md5 = hasher.hexdigest()
+        if calculated_md5 != gwflow_file.md5_sum:
+            if os.path.exists(part_path):
+                os.remove(part_path)
+            if os.path.exists(dest_path):
+                os.remove(dest_path)
+            raise GraphQLError("MD5 checksum mismatch")
+
+    os.replace(part_path, dest_path)
+
+    gwflow_file.uploaded = True
+    gwflow_file.file_size = bytes_written
+    gwflow_file.save(update_fields=["uploaded", "file_size"])
+
+    return {"success": True, "file_size": bytes_written}
+
+
+def link_bilby_job_to_gwflow(user, job_id, sname, analysis_uid):
+    _check_gwflow_ingest_user(user)
+
+    try:
+        _, job_pk = from_global_id(job_id)
+        job = BilbyJob.get_by_id(int(job_pk), user)
+    except GraphQLError:
+        raise
+    except Exception as e:
+        raise GraphQLError("Invalid job_id") from e
+
+    if not sname:
+        old_parent = job.gwflow_job
+        job.gwflow_job = None
+        job.gwflow_analysis_uid = ""
+        job.save()
+        if old_parent:
+            update_gwflow_child_job_ids(old_parent)
+        return {"success": True}
+
+    try:
+        gwflow_job = GWFlowJob.objects.get(sname=sname)
+    except GWFlowJob.DoesNotExist as e:
+        raise GraphQLError(f"GWFlowJob with sname '{sname}' does not exist") from e
+
+    duplicate_qs = gwflow_job.bilby_jobs.filter(gwflow_analysis_uid=analysis_uid).exclude(id=job.id)
+    if duplicate_qs.exists():
+        raise GraphQLError(f"analysis_uid '{analysis_uid}' already linked to another BilbyJob on GWFlowJob '{sname}'")
+
+    job.gwflow_job = gwflow_job
+    job.gwflow_analysis_uid = analysis_uid
+    job.save()
+
+    update_gwflow_child_job_ids(gwflow_job)
+
+    return {"success": True}
+
+
+def get_gwflow_pending_files(user):
+    _check_gwflow_ingest_user(user)
+
+    pending_files = (
+        GWFlowFile.objects.filter(uploaded=False).select_related("job").order_by("job__sname", "analysis_uid", "path")
+    )
+
+    return [_gwflow_pending_file(f) for f in pending_files]

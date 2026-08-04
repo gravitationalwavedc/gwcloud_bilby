@@ -29,6 +29,9 @@ from .status import JobStatus
 from .types import (
     BilbyJobCreationResult,
     BilbyJobSupportingFile,
+    GWFlowPendingFile,
+    GWFlowUpsertInput,
+    GWFlowUpsertResult,
     JobDetailsInput,
     JobIniInput,
     JobParameterInput,
@@ -46,11 +49,15 @@ from .views import (
     create_bilby_job_from_ini_string,
     create_event_id,
     delete_event_id,
+    get_gwflow_pending_files,
+    link_bilby_job_to_gwflow,
     update_event_id,
     upload_bilby_job,
     upload_external_bilby_job,
+    upload_gwflow_file,
     upload_hdf5_bilby_job,
     upload_supporting_files,
+    upsert_gwflow_job,
 )
 
 logger = logging.getLogger(__name__)
@@ -245,6 +252,12 @@ class Query:
     bilby_result_files = graphene.Field(BilbyResultFiles, job_id=graphene.ID(required=True))
 
     generate_bilby_job_upload_token = graphene.Field(GenerateBilbyJobUploadToken)
+    gwflow_pending_files = graphene.List(GWFlowPendingFile)
+
+    @login_required
+    def resolve_gwflow_pending_files(self, info, **kwargs):
+        user = info.context.user
+        return get_gwflow_pending_files(user)
 
     @login_required
     def resolve_generate_bilby_job_upload_token(self, info, **kwargs):
@@ -705,6 +718,56 @@ class UploadHdf5BilbyJobMutation(relay.ClientIDMutation):
         return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
 
 
+class UpsertGwflowJobMutation(relay.ClientIDMutation):
+    class Input:
+        params = GWFlowUpsertInput(required=True)
+
+    result = graphene.Field(GWFlowUpsertResult)
+
+    @classmethod
+    def mutate_and_get_payload(cls, _root, info, params):
+        user = info.context.user
+        data = upsert_gwflow_job(user, params)
+        return UpsertGwflowJobMutation(
+            result=GWFlowUpsertResult(
+                gwflow_job_id=data["gwflow_job_id"],
+                sname=data["sname"],
+                created=data["created"],
+                files_pending=data["files_pending"],
+            )
+        )
+
+
+class UploadGwflowFileMutation(relay.ClientIDMutation):
+    class Input:
+        gwflow_file_id = graphene.ID(required=True)
+        file = Upload(required=True)
+
+    success = graphene.Boolean(required=True)
+    file_size = graphene.BigInt()
+
+    @classmethod
+    def mutate_and_get_payload(cls, _root, info, gwflow_file_id, file):
+        user = info.context.user
+        res = upload_gwflow_file(user, gwflow_file_id, file)
+        return UploadGwflowFileMutation(success=res["success"], file_size=res["file_size"])
+
+
+class LinkBilbyJobToGwflowMutation(relay.ClientIDMutation):
+    class Input:
+        job_id = graphene.ID(required=True)
+        sname = graphene.String(required=True)
+        analysis_uid = graphene.String(required=True)
+
+    success = graphene.Boolean(required=True)
+
+    @classmethod
+    def mutate_and_get_payload(cls, _root, info, job_id, sname, analysis_uid):
+        user = info.context.user
+        res = link_bilby_job_to_gwflow(user, job_id, sname, analysis_uid)
+        return LinkBilbyJobToGwflowMutation(success=res["success"])
+
+
 class Mutation(graphene.ObjectType):
     new_bilby_job = BilbyJobMutation.Field()
     new_bilby_job_from_ini_string = BilbyJobFromIniStringMutation.Field()
@@ -717,3 +780,6 @@ class Mutation(graphene.ObjectType):
     upload_supporting_files = UploadSupportingFilesMutation.Field()
     upload_external_bilby_job = UploadExternalBilbyJobMutation.Field()
     upload_hdf5_bilby_job = UploadHdf5BilbyJobMutation.Field()
+    upsert_gwflow_job = UpsertGwflowJobMutation.Field()
+    upload_gwflow_file = UploadGwflowFileMutation.Field()
+    link_bilby_job_to_gwflow = LinkBilbyJobToGwflowMutation.Field()

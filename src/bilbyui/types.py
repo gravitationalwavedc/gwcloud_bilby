@@ -216,3 +216,40 @@ class SupportingFileUploadInput(graphene.InputObjectType):
 
 class SupportingFileUploadResult(graphene.ObjectType):
     result = graphene.Boolean()
+
+
+class GWFlowFileInput(graphene.InputObjectType):
+    analysis_uid = graphene.String(required=False, default_value="")
+    path = graphene.String(required=True)
+    file_name = graphene.String(required=True)
+    file_size = graphene.BigInt(required=False)
+    md5_sum = graphene.String(required=False, default_value="")
+
+
+class GWFlowUpsertInput(graphene.InputObjectType):
+    sname = graphene.String(required=True)
+    schema_version = graphene.String(required=False)
+    metadata = graphene.String(required=False)
+    libraries = graphene.List(graphene.String, required=False)
+    is_pruned = graphene.Boolean(required=False)
+    ligo_only = graphene.Boolean(required=False)
+    event_id = graphene.String(required=False)
+    current_history_id = graphene.String(required=False)
+    current_history_timestamp = graphene.DateTime(required=False)
+    files = graphene.List(GWFlowFileInput, required=False)
+
+
+class GWFlowPendingFile(graphene.ObjectType):
+    id = graphene.ID(required=True)
+    sname = graphene.String(required=True)
+    analysis_uid = graphene.String()
+    path = graphene.String(required=True)
+    file_name = graphene.String(required=True)
+    md5_sum = graphene.String()
+
+
+class GWFlowUpsertResult(graphene.ObjectType):
+    gwflow_job_id = graphene.ID(required=True)
+    sname = graphene.String(required=True)
+    created = graphene.Boolean(required=True)
+    files_pending = graphene.List(GWFlowPendingFile, required=True)
