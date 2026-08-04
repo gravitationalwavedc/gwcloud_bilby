@@ -61,7 +61,7 @@ class Label(models.Model):
         return cls.objects.filter(name__in=labels, protected__in=[False, include_protected])
 
     @property
-    def badge_type(self):
+    def badge_type(self) -> str:
         variants = {
             "Completed": "primary",
             "Error": "danger",
