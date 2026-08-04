@@ -56,6 +56,17 @@ stages:
   stage: CI
   variables:
     POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  cache:
+    key:
+      files:
+        - src/poetry.lock
+        - gwosc_cron/poetry.lock
+        - gwflow_cron/poetry.lock
+    paths:
+      - ~/.cache/pypoetry
+      - src/.venv
+      - gwosc_cron/.venv
+      - gwflow_cron/.venv
 
 .src_poetry_base:
   extends: .poetry_job_base
@@ -111,26 +122,40 @@ ruff-format:
     - src/.venv/bin/ruff format --check src/
 
 # -----------------------------------------------------------------------------
-# Bundle (Conda, unchanged)
+# Bundle (Conda)
 # -----------------------------------------------------------------------------
 
 bundle-tests:
   stage: CI
+  cache:
+    key:
+      files:
+        - bundle/conda-environment.yml
+    paths:
+      - bundle/venv
+      - ~/.miniconda
   script:
     - !reference [.apt_base, script]
-    - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$HOME/miniconda.sh"
-    - bash "$HOME/miniconda.sh" -b -p "$HOME/miniconda"
-    - cd src/bundle/
-    - $HOME/miniconda/bin/conda env create -f conda-environment.yml -p venv
-    - $HOME/miniconda/bin/conda env update --file conda-environment.yml --prune -p venv
-    - $HOME/miniconda/bin/conda run -p venv coverage run -m xmlrunner discover --output-file ./junit.xml
-    - $HOME/miniconda/bin/conda run -p venv coverage xml
+    - |
+      if [ ! -d "$HOME/.miniconda" ]; then
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$HOME/miniconda.sh"
+        bash "$HOME/miniconda.sh" -b -p "$HOME/.miniconda"
+      fi
+    - cd bundle/
+    - |
+      if [ ! -d "venv" ]; then
+        $HOME/.miniconda/bin/conda env create -f conda-environment.yml -p venv
+      else
+        $HOME/.miniconda/bin/conda env update --file conda-environment.yml --prune -p venv
+      fi
+    - $HOME/.miniconda/bin/conda run -p venv coverage run -m xmlrunner discover --output-file ./junit.xml
+    - $HOME/.miniconda/bin/conda run -p venv coverage xml
   artifacts:
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: src/bundle/coverage.xml
-      junit: src/bundle/junit.xml
+        path: bundle/coverage.xml
+      junit: bundle/junit.xml
 
 # -----------------------------------------------------------------------------
 # Code quality (Docker)
