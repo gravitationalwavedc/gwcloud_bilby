@@ -526,7 +526,6 @@ class GWFlowFile(models.Model):
         return inst.first()
 
 
-
 class SupportingFile(models.Model):
     """
     This model stores information about supporting files for bilby jobs. This can include PSD, Calibration, Prior, GPS,
