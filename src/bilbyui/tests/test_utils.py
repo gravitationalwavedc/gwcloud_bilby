@@ -273,7 +273,7 @@ def create_test_upload_data(
         with NamedTemporaryFile(suffix=".tar.gz") as tgz:
             with tarfile.open(tgz.name, "w:gz") as tar_handle:
                 # Change the working directory to the temporary directory so we don't have full paths in the tar.gz
-                wd = os.getcwd()
+                wd = Path.cwd()
                 os.chdir(d)
 
                 # Walk the temporary directory and write the files to the archive
