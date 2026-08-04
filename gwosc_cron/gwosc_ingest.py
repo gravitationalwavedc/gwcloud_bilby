@@ -161,7 +161,7 @@ def _check_and_download_inner(con, cur):
         sys.exit(1)
 
     all_events = r.json()["events"]
-    gwosc_events = [k for k in all_events.keys()]
+    gwosc_events = list(all_events)
     logger.info(f"GWOSC events found: {len(gwosc_events)}")
 
     # Collect list of events from GWCloud
