@@ -63,8 +63,8 @@ class TestSchemaCoverage(BilbyTestCase):
     def test_resolve_params_exception_returns_none(self, *_):
         self.assertIsNone(BilbyJobNode.resolve_params(mock.Mock(), mock.Mock()))
 
-    @mock.patch("bilbyui.schema.request_job_filter", return_value=(None, [{"id": 1, "history": None}]))
-    @mock.patch("bilbyui.schema.derive_job_status", side_effect=Exception("status unavailable"))
+    @mock.patch("bilbyui.schema.request_job_filter", return_value=(None, [{"id": 2, "history": None}]))
+    @mock.patch("bilbyui.schema.derive_job_status", side_effect=KeyError("status unavailable"))
     def test_bilby_job_status_exception_fallback(self, *_):
         response = self.query(JOB_STATUS_QUERY % self.global_id)
         self.assertEqual(response.data["bilbyJob"]["jobStatus"], {"name": "Unknown", "number": 0, "date": "Unknown"})
