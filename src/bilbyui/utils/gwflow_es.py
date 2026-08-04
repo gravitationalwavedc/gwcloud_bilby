@@ -1,3 +1,4 @@
+import contextlib
 import logging
 
 import elasticsearch
@@ -61,7 +62,7 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
         "rnp": "rnp",
     }
 
-    try:
+    with contextlib.suppress(Exception):
         for section_key, section_data in metadata.items():
             if section_key not in section_type_map:
                 continue
@@ -108,8 +109,6 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
                         "reviewers": reviewers,
                     }
                 )
-    except Exception as e:
-        logger.warning("Error parsing analyses from gwflow metadata for job %s: %s", job.id, e)
 
     # GraceDB section
     gracedb_doc = {
@@ -119,7 +118,7 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
         "instruments": "",
     }
 
-    try:
+    with contextlib.suppress(Exception):
         gracedb_section = metadata.get("GraceDB") or metadata.get("gracedb") or {}
         if isinstance(gracedb_section, dict):
             events = gracedb_section.get("Events") or gracedb_section.get("events") or []
@@ -139,8 +138,6 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
             )
             gracedb_doc["far"] = str(gracedb_section.get("preferred_event_far") or gracedb_section.get("far") or "")
             gracedb_doc["instruments"] = str(gracedb_section.get("instruments") or "")
-    except Exception as e:
-        logger.warning("Error parsing GraceDB from gwflow metadata for job %s: %s", job.id, e)
 
     # Child Bilby jobs IDs
     child_job_ids = []
@@ -200,10 +197,8 @@ def gwflow_elastic_search_remove(job) -> None:
 
     es = _get_es_client()
 
-    try:
+    with contextlib.suppress(elasticsearch.NotFoundError):
         es.delete(index=settings.ELASTIC_SEARCH_GWFLOW_INDEX, id=job.id)
-    except elasticsearch.NotFoundError:
-        pass
 
 
 def update_child_job_ids(job) -> None:
@@ -218,11 +213,9 @@ def update_child_job_ids(job) -> None:
 
     child_job_ids = list(job.bilby_jobs.values_list("id", flat=True))
 
-    try:
+    with contextlib.suppress(elasticsearch.NotFoundError):
         es.update(
             index=settings.ELASTIC_SEARCH_GWFLOW_INDEX,
             id=job.id,
             doc={"childJobIds": child_job_ids},
         )
-    except elasticsearch.NotFoundError:
-        pass
