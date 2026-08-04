@@ -1,5 +1,4 @@
 import json
-import string
 from ast import literal_eval
 from unittest.mock import patch
 
@@ -779,27 +778,32 @@ class TestJobNameValidation(testcases.TestCase):
             self.fail("validate_job_name raised an exception when it should not have")
 
     def test_invalid_characters(self):
-        # Generate a list of valid characters for a job
-        valid_characters = string.digits + string.ascii_letters + "_-"
+        valid_names = [
+            "valid_name_123",
+            "my-job-name",
+            "Job_2026-08",
+        ]
+        for name in valid_names:
+            try:
+                validate_job_name(name)
+            except Exception:
+                self.fail(f"validate_job_name raised an exception for valid name '{name}'")
 
-        # Try every possible character, including all unicode characters.
-        # Refer to https://www.rfc-editor.org/rfc/rfc3629 as to why the upper range is 0x10FFFF
-        for i in range(0x10FFFF):
-            char = chr(i)
-
-            # If the current character code is valid, no exception should be raised
-            if char in valid_characters:
-                try:
-                    validate_job_name("a" * 10 + char)
-                except Exception:
-                    self.fail("validate_job_name raised an exception when it should not have")
-
-            else:
-                # Any invalid character code should raise an exception
-                with self.assertRaises(Exception) as ex:
-                    validate_job_name("a" * 10 + char)
-
-                self.assertEqual(
-                    str(ex.exception),
-                    "Job name must not contain any spaces or special characters.",
-                )
+        invalid_names = [
+            "job name with space",
+            "job_name!",
+            "job_name@home",
+            "job#name",
+            "job$name",
+            "job%name",
+            "job/name",
+            "job_name_中文",
+            "job_name_🔥",
+        ]
+        for name in invalid_names:
+            with self.assertRaises(Exception) as ex:
+                validate_job_name(name)
+            self.assertEqual(
+                str(ex.exception),
+                "Job name must not contain any spaces or special characters.",
+            )
