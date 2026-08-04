@@ -1,6 +1,6 @@
 import contextlib
 
-from .base import *  # noqa: F401, F403
+from .base import *  # noqa: F403
 
 DEBUG = False
 
@@ -102,4 +102,4 @@ LOGGING = {
 }
 
 with contextlib.suppress(ImportError):
-    from .environment import *  # noqa: F401, F403
+    from .environment import *  # noqa: F403

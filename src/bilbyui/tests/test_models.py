@@ -63,7 +63,7 @@ class TestBilbyJobModel(BilbyTestCase):
 
         self.authenticate(id=2)
 
-        with self.assertRaises(Exception):  # noqa: B017
+        with self.assertRaises(PermissionError):
             update_bilby_job(self.job.id, self.user, event_id=self.event_id.event_id)
 
         self.job.refresh_from_db()
