@@ -29,11 +29,11 @@ def request_file_download_ids(job, paths, user_id=None):
     :return: tuple(result -> bool, details)
     """
     user = user_id or job.user_id
-    logger.info(f"User {user} requesting file download IDs for job {job.id}: {len(paths)} files")
+    logger.info("User %s requesting file download IDs for job %s: %s files", user, job.id, len(paths))
 
     # Make sure that the job was actually submitted (Might be in a draft state?)
     if not job.job_controller_id:
-        logger.warning(f"Job {job.id} has no job_controller_id - not submitted")
+        logger.warning("Job %s has no job_controller_id - not submitted", job.id)
         return False, "Job not submitted"
 
     data = {"jobId": job.job_controller_id, "paths": paths}
@@ -47,10 +47,10 @@ def request_file_download_ids(job, paths, user_id=None):
             jwt_expiry=datetime.timedelta(minutes=5),
         )
 
-        logger.info(f"Successfully generated {len(result['fileIds'])} download IDs for job {job.id}")
+        logger.info("Successfully generated %s download IDs for job %s", len(result["fileIds"]), job.id)
         return True, result["fileIds"]
     except Exception as e:
-        logger.error(f"Error getting file download IDs for job {job.id}: {e}", exc_info=True)
+        logger.error("Error getting file download IDs for job %s: %s", job.id, e, exc_info=True)
         return False, "Error getting job file download id"
 
 
