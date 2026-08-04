@@ -275,3 +275,102 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertResponseNoErrors(res_ligo)
         self.assertIsNotNone(res_ligo.data["bilbyJob"]["gwflowJob"])
         self.assertEqual(res_ligo.data["bilbyJob"]["gwflowJob"]["sname"], "S230601ah")
+
+    def test_filter_qs_properties(self):
+        from bilbyui.schema import PublicBilbyJobFilter, UserBilbyJobFilter
+
+        class DummyRequest:
+            def __init__(self, user):
+                self.user = user
+
+        req_normal = DummyRequest(self.normal_user)
+        user_filter = UserBilbyJobFilter(request=req_normal)
+        self.assertIsNotNone(user_filter.qs)
+
+        public_filter = PublicBilbyJobFilter(request=req_normal)
+        self.assertIsNotNone(public_filter.qs)
+
+    def test_gwflow_file_type_resolvers_edge_cases(self):
+        from bilbyui.types import GWFlowFileType
+
+        file_type = GWFlowFileType()
+        info = mock.Mock()
+
+        # Dict input with integer id and uuid token
+        dict_file = {"id": 42, "download_token": "123e4567-e89b-12d3-a456-426614174000"}
+        res_id = (
+            file_type.resolve_id(info)
+            if not hasattr(GWFlowFileType, "resolve_id")
+            else GWFlowFileType.resolve_id(dict_file, info)
+        )
+        self.assertEqual(res_id, to_global_id("GWFlowFileNode", 42))
+
+        res_token = GWFlowFileType.resolve_download_token(dict_file, info)
+        self.assertEqual(res_token, "123e4567-e89b-12d3-a456-426614174000")
+
+        # Dict input with None id and None token
+        dict_none = {"id": None, "download_token": None}
+        self.assertIsNone(GWFlowFileType.resolve_id(dict_none, info))
+        self.assertIsNone(GWFlowFileType.resolve_download_token(dict_none, info))
+
+        # Dict input without keys
+        dict_empty = {}
+        self.assertIsNone(GWFlowFileType.resolve_id(dict_empty, info))
+        self.assertIsNone(GWFlowFileType.resolve_download_token(dict_empty, info))
+
+    def test_gwflow_job_node_resolvers_edge_cases(self):
+        from bilbyui.schema import GWFlowJobNode
+
+        info = mock.Mock()
+
+        class BadUserJob:
+            @property
+            def user(self):
+                raise AttributeError("No user name")
+
+            last_updated = None
+
+        bad_job = BadUserJob()
+        self.assertEqual(GWFlowJobNode.resolve_user(bad_job, info), "Unknown User")
+        self.assertIsNone(GWFlowJobNode.resolve_last_updated(bad_job, info))
+
+    @mock.patch("bilbyui.schema.list_gwflow_jobs")
+    def test_gwflow_jobs_connection_empty_and_cursor(self, mock_list_jobs):
+        query = """
+            query GetJobs($first: Int, $after: String) {
+                gwflowJobs(first: $first, after: $after) {
+                    edges {
+                        node {
+                            id
+                        }
+                    }
+                }
+            }
+        """
+
+        # 1. Empty records returned from service
+        mock_list_jobs.return_value = {
+            "jobs": {},
+            "records": [],
+            "has_next": False,
+            "page": 1,
+            "page_size": 20,
+        }
+
+        self._auth_as(self.normal_user)
+        res = self.query(query, variables={"first": 20})
+        self.assertResponseNoErrors(res)
+        self.assertEqual(res.data["gwflowJobs"]["edges"], [])
+
+        # 2. Query with cursor 'after'
+        mock_list_jobs.return_value = {
+            "jobs": {self.job_public.id: self.job_public},
+            "records": [{"_id": str(self.job_public.id)}],
+            "has_next": False,
+            "page": 1,
+            "page_size": 20,
+        }
+        cursor_0 = to_global_id("arrayconnection", 0)
+        res_cursor = self.query(query, variables={"first": 20, "after": cursor_0})
+        self.assertResponseNoErrors(res_cursor)
+        self.assertEqual(len(res_cursor.data["gwflowJobs"]["edges"]), 1)
