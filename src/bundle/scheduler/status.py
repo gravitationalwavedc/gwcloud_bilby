@@ -33,35 +33,23 @@ class JobStatus:
     # A job is completed if it is finished running on the cluster without error
     COMPLETED = 500
 
+    _DISPLAY_NAMES = {
+        DRAFT: "Draft",
+        PENDING: "Pending",
+        SUBMITTING: "Submitting",
+        SUBMITTED: "Submitted",
+        QUEUED: "Queued",
+        RUNNING: "Running",
+        CANCELLING: "Cancelling",
+        CANCELLED: "Cancelled",
+        DELETING: "Deleting",
+        DELETED: "Deleted",
+        ERROR: "Error",
+        WALL_TIME_EXCEEDED: "Wall Time Exceeded",
+        OUT_OF_MEMORY: "Out of Memory",
+        COMPLETED: "Completed",
+    }
+
     @staticmethod
     def display_name(status):
-        if status == JobStatus.DRAFT:
-            return "Draft"
-        if status == JobStatus.PENDING:
-            return "Pending"
-        if status == JobStatus.SUBMITTING:
-            return "Submitting"
-        if status == JobStatus.SUBMITTED:
-            return "Submitted"
-        if status == JobStatus.QUEUED:
-            return "Queued"
-        if status == JobStatus.RUNNING:
-            return "Running"
-        if status == JobStatus.CANCELLING:
-            return "Cancelling"
-        if status == JobStatus.CANCELLED:
-            return "Cancelled"
-        if status == JobStatus.DELETING:
-            return "Deleting"
-        if status == JobStatus.DELETED:
-            return "Deleted"
-        if status == JobStatus.ERROR:
-            return "Error"
-        if status == JobStatus.WALL_TIME_EXCEEDED:
-            return "Wall Time Exceeded"
-        if status == JobStatus.OUT_OF_MEMORY:
-            return "Out of Memory"
-        if status == JobStatus.COMPLETED:
-            return "Completed"
-
-        return "Unknown"
+        return JobStatus._DISPLAY_NAMES.get(status, "Unknown")
