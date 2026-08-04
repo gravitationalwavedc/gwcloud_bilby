@@ -26,6 +26,7 @@ class BilbyPermissionError(PermissionError):
 
 from .utils.auth.lookup_users import request_lookup_users
 from .utils.embargo import embargo_filter
+from .utils.gwflow_es import gwflow_elastic_search_remove
 from .utils.jobs.submit_job import submit_job
 from .utils.misc import is_ligo_user
 from .utils.parse_ini_file import parse_ini_file
@@ -485,6 +486,11 @@ class GWFlowJob(models.Model):
 
     creation_time = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
+
+
+@receiver(pre_delete, sender=GWFlowJob, dispatch_uid="gwflow_job_delete_signal")
+def gwflow_job_delete_signal(sender, instance, using, **kwargs):
+    gwflow_elastic_search_remove(instance)
 
 
 class GWFlowFile(models.Model):
