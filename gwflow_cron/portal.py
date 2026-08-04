@@ -36,7 +36,7 @@ class PortalClient:
 
     def iter_changed(self, since: str | None = None, page_size: int = 50):
         url = urljoin(self.base_url, "api/v1/superevents/")
-        params = {}
+        params = {"ordering": "commit_timestamp,sname"}
         if since:
             params["commit_timestamp__gte"] = since
         if page_size:

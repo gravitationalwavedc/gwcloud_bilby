@@ -66,63 +66,66 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
         if portal_client is None:
             portal_client = PortalClient(settings.CBCFLOW_PORTAL_URL, settings.CBCFLOW_PORTAL_TOKEN)
 
-        wm = state.get_watermark(cur)
-        last_sname = state.get_last_sname(cur)
+        start_wm = state.get_watermark(cur)
+        start_last_sname = state.get_last_sname(cur)
+        has_failure_in_run = False
 
-        # Safely fetch changed rows from portal
+        # Safely stream changed rows from portal
         try:
-            changed_rows = list(portal_client.iter_changed(since=wm))
-        except Exception as e:
-            logger.error(f"Failed to fetch changed superevents from portal: {e}")
-            changed_rows = []
+            changed_stream = portal_client.iter_changed(since=start_wm)
+            for row in changed_stream:
+                if not isinstance(row, dict):
+                    continue
+                row_ts = row.get("commit_timestamp")
+                row_sname = row.get("sname")
+                row_schema_ver = row.get("schema_version")
+                row_commit_sha = row.get("commit_sha")
 
-        # Iterating changed superevents
-        for row in changed_rows:
-            if not isinstance(row, dict):
-                continue
-            row_ts = row.get("commit_timestamp")
-            row_sname = row.get("sname")
-            row_schema_ver = row.get("schema_version")
-            row_commit_sha = row.get("commit_sha")
-
-            if not row_ts or not row_sname:
-                continue
-
-            # Tie resume check
-            if wm and last_sname:
-                if (row_ts, row_sname) <= (wm, last_sname):
+                if not row_ts or not row_sname:
                     continue
 
-            try:
-                detail = portal_client.get_superevent(row_sname)
-                files = manifest.extract_file_manifest(detail)
-                libraries = [lib["name"] for lib in detail.get("libraries", [])] if isinstance(detail.get("libraries"), list) else []
-                metadata = detail.get("raw_payload", {})
+                # Tie resume check
+                if start_wm and start_last_sname:
+                    if (row_ts, row_sname) <= (start_wm, start_last_sname):
+                        continue
 
-                if gwc_client and hasattr(gwc_client, "upsert_gwflow_job"):
-                    gwc_client.upsert_gwflow_job(
-                        sname=row_sname,
-                        schema_version=row_schema_ver,
-                        metadata=metadata,
-                        libraries=libraries,
-                        is_pruned=False,
-                        current_history_id=row_commit_sha,
-                        current_history_timestamp=row_ts,
-                        files=files,
+                try:
+                    detail = portal_client.get_superevent(row_sname)
+                    files = manifest.extract_file_manifest(detail)
+                    libraries = (
+                        [lib["name"] for lib in detail.get("libraries", [])]
+                        if isinstance(detail.get("libraries"), list)
+                        else []
                     )
+                    metadata = detail.get("raw_payload", {})
 
-                state.set_watermark(con, cur, row_ts)
-                state.set_last_sname(con, cur, row_sname)
-                state.clear_failure(con, cur, row_sname)
-                wm = row_ts
-                last_sname = row_sname
+                    if gwc_client and hasattr(gwc_client, "upsert_gwflow_job"):
+                        gwc_client.upsert_gwflow_job(
+                            sname=row_sname,
+                            schema_version=row_schema_ver,
+                            metadata=metadata,
+                            libraries=libraries,
+                            is_pruned=False,
+                            current_history_id=row_commit_sha,
+                            current_history_timestamp=row_ts,
+                            files=files,
+                        )
 
-            except Exception as e:
-                logger.warning(f"Error processing {row_sname}: {e}")
-                state.record_failure(con, cur, row_sname, repr(e))
-                if state.get_failure_count(cur, row_sname) >= settings.MAX_RETRY_ATTEMPTS:
-                    logger.error("giving up on %s", row_sname)
-                continue
+                    state.clear_failure(con, cur, row_sname)
+                    if not has_failure_in_run:
+                        state.set_watermark(con, cur, row_ts)
+                        state.set_last_sname(con, cur, row_sname)
+
+                except Exception as e:
+                    logger.warning(f"Error processing {row_sname}: {e}")
+                    state.record_failure(con, cur, row_sname, repr(e))
+                    if state.get_failure_count(cur, row_sname) >= settings.MAX_RETRY_ATTEMPTS:
+                        logger.error("giving up on %s", row_sname)
+                    else:
+                        has_failure_in_run = True
+                    continue
+        except Exception as e:
+            logger.error(f"Failed during portal superevent sync: {e}")
 
         # Prune diffing: check for snames present in GWCloud but missing upstream
         try:

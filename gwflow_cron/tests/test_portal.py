@@ -14,7 +14,7 @@ class TestPortalClient(unittest.TestCase):
 
     @responses.activate
     def test_iter_changed_pagination_and_sorting(self):
-        url1 = f"{self.base_url}/api/v1/superevents/?commit_timestamp__gte=2026-01-01T00%3A00%3A00Z&page_size=50"
+        url1 = f"{self.base_url}/api/v1/superevents/?ordering=commit_timestamp%2Csname&commit_timestamp__gte=2026-01-01T00%3A00%3A00Z&page_size=50"
         url2 = f"{self.base_url}/api/v1/superevents/?page=2"
 
         responses.add(

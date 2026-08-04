@@ -87,16 +87,21 @@ class TestMetadataPhase(GWFlowTestBase):
         self.assertEqual(mock_gwc.upsert_gwflow_job.call_count, 1)
         self.assertEqual(state.get_last_sname(cur), "S260101b")
 
-    def test_per_sname_failure_and_retry_cap(self):
+    def test_per_sname_failure_and_watermark_held_back(self):
         mock_portal = MagicMock()
         mock_portal.iter_changed.return_value = [
+            {
+                "sname": "S_OK1",
+                "commit_timestamp": "2026-01-01T09:00:00Z",
+                "schema_version": "1.0",
+            },
             {
                 "sname": "S_FAIL",
                 "commit_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
             },
             {
-                "sname": "S_OK",
+                "sname": "S_OK2",
                 "commit_timestamp": "2026-01-01T11:00:00Z",
                 "schema_version": "1.0",
             },
@@ -108,7 +113,7 @@ class TestMetadataPhase(GWFlowTestBase):
             return {"sname": sname, "raw_payload": {}}
 
         mock_portal.get_superevent.side_effect = get_detail_side_effect
-        mock_portal.iter_current_snames.return_value = ["S_FAIL", "S_OK"]
+        mock_portal.iter_current_snames.return_value = ["S_OK1", "S_FAIL", "S_OK2"]
 
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -116,10 +121,13 @@ class TestMetadataPhase(GWFlowTestBase):
         cur = self.con.cursor()
         phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
 
-        # S_FAIL failed, S_OK succeeded
+        # S_OK1 succeeded, S_FAIL failed, S_OK2 succeeded
         self.assertEqual(state.get_failure_count(cur, "S_FAIL"), 1)
-        self.assertEqual(state.get_failure_count(cur, "S_OK"), 0)
-        self.assertEqual(state.get_watermark(cur), "2026-01-01T11:00:00Z")
+        self.assertEqual(state.get_failure_count(cur, "S_OK2"), 0)
+
+        # Watermark must be held back at S_OK1's timestamp so S_FAIL is retried on next run!
+        self.assertEqual(state.get_watermark(cur), "2026-01-01T09:00:00Z")
+        self.assertEqual(state.get_last_sname(cur), "S_OK1")
 
     def test_prune_diffing(self):
         mock_portal = MagicMock()
