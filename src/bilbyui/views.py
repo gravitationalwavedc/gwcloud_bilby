@@ -314,7 +314,7 @@ def create_bilby_job(user, params):
 
         return bilby_job
     except ValueError as e:
-        logger.error(f"Failed to create/submit job for user {user.id}: {str(e)}", exc_info=True)
+        logger.error(f"Failed to create/submit job for user {user.id}: {e}", exc_info=True)
         raise
 
 
