@@ -885,7 +885,7 @@ def file_download(request):
         raise Http404 from e
 
 
-def create_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
+def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
     EventID.create(
         event_id=event_id,
         trigger_id=trigger_id,
