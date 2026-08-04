@@ -502,7 +502,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
         raise ValueError("Job upload should be a tar.gz file")
 
     # Check that the job upload directory exists
-    os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
+    Path(settings.JOB_UPLOAD_STAGING_DIR).mkdir(parents=True, exist_ok=True)
 
     # Write out the uploaded job to disk and unpack the archive to a temporary staging directory
     with (
