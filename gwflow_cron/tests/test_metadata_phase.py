@@ -1,7 +1,10 @@
 import unittest
 from unittest.mock import MagicMock
 
-from base import GWFlowTestBase
+try:
+    from tests.base import GWFlowTestBase
+except ImportError:
+    from base import GWFlowTestBase
 
 import state
 from gwflow_ingest import phase_metadata
