@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "gwflow-ingest"
+version = "0.1.0"
+description = "GWFLOW cron job utilities"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+requests = "*"
+pyjwt = "*"
+urllib3 = "<2"
+gwcloud-python = "2.0.0"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501", "E402", "B905", "B904"]
+
+[tool.poetry.group.dev.dependencies]
+ruff = "*"
+responses = "*"
+coverage = "*"
+unittest-xml-reporting = "*"
+parameterized = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

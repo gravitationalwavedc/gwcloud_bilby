@@ -1,0 +1,7 @@
+gwflow_ingest.log
+*.bk/
+sqlite.db
+.venv/
+.coverage
+coverage.xml
+junit.xml
