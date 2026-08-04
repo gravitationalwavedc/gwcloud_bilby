@@ -92,7 +92,7 @@ def slurm_status(job):
         return {"status": result_status, "complete": False}
 
     with sid_file.open() as f:
-        slurm_ids = [line.strip() for line in f.readlines()]
+        slurm_ids = [line.strip() for line in f]
 
     # Track the job statuses
     had_error = False
