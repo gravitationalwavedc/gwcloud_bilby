@@ -312,11 +312,11 @@ def create_bilby_job(user, params):
         # Submit the job to the job controller
         bilby_job.submit()
         logger.info(f"Successfully submitted job {bilby_job.id} to job controller")
-
-        return bilby_job
     except ValueError as e:
         logger.error(f"Failed to create/submit job for user {user.id}: {e}", exc_info=True)
         raise
+    else:
+        return bilby_job
 
 
 def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, injection_file, psd_dict):
