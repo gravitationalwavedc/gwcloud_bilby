@@ -76,8 +76,9 @@ class TestApiTokenViews(BilbyTestCase):
 
     def test_create_with_too_long_name_returns_400(self):
         self.authenticate()
+        max_len = APISessionToken._meta.get_field("name").max_length
 
-        response = self.client.post(self.create_url, {"name": "x" * 65})
+        response = self.client.post(self.create_url, {"name": "x" * (max_len + 1)})
 
         self.assertEqual(response.status_code, 400)
 
