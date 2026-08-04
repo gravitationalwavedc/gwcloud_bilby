@@ -105,31 +105,31 @@ class SlurmScheduler(Scheduler):
 
         # Check for general failure
         if _status in ["BOOT_FAIL", "CANCELLED", "DEADLINE", "FAILED", "NODE_FAIL", "PREEMPTED", "REVOKED"]:
-            return JobStatus.ERROR, SlurmScheduler.SLURM_STATUS[_status.split(" ")[0]]
+            return JobStatus.ERROR, self.SLURM_STATUS[_status.split(" ")[0]]
 
         # Check for cancelled job
         if _status.startswith("CANCELLED"):
-            return JobStatus.CANCELLED, SlurmScheduler.SLURM_STATUS[_status.split(" ")[0]]
+            return JobStatus.CANCELLED, self.SLURM_STATUS[_status.split(" ")[0]]
 
         # Check for out of memory
         if _status == "OUT_OF_MEMORY":
-            return JobStatus.OUT_OF_MEMORY, SlurmScheduler.SLURM_STATUS[_status.split(" ")[0]]
+            return JobStatus.OUT_OF_MEMORY, self.SLURM_STATUS[_status.split(" ")[0]]
 
         # Check for wall time exceeded
         if _status == "TIMEOUT":
-            return JobStatus.WALL_TIME_EXCEEDED, SlurmScheduler.SLURM_STATUS[_status.split(" ")[0]]
+            return JobStatus.WALL_TIME_EXCEEDED, self.SLURM_STATUS[_status.split(" ")[0]]
 
         # Check for completed successfully
         if _status == "COMPLETED":
-            return JobStatus.COMPLETED, SlurmScheduler.SLURM_STATUS[_status.split(" ")[0]]
+            return JobStatus.COMPLETED, self.SLURM_STATUS[_status.split(" ")[0]]
 
         # Check for job currently queued
         if _status in ["PENDING", "REQUEUED", "RESIZING"]:
-            return JobStatus.QUEUED, SlurmScheduler.SLURM_STATUS[_status.split(" ")[0]]
+            return JobStatus.QUEUED, self.SLURM_STATUS[_status.split(" ")[0]]
 
         # Check for job running
         if _status in ["RUNNING", "SUSPENDED"]:
-            return JobStatus.RUNNING, SlurmScheduler.SLURM_STATUS[_status.split(" ")[0]]
+            return JobStatus.RUNNING, self.SLURM_STATUS[_status.split(" ")[0]]
 
         logger.warning("Got unknown Slurm job state %s for job %s", _status, job_id)
         return None, None
