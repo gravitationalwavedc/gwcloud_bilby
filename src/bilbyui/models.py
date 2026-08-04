@@ -513,6 +513,19 @@ class GWFlowFile(models.Model):
 
     download_token = models.UUIDField(unique=True, default=uuid.uuid4, db_index=True)
 
+    @classmethod
+    def get_by_download_token(cls, token):
+        """
+        Retrieves the GWFlowFile object matching the provided download token. Returns None if the token doesn't
+        exist.
+        """
+        inst = cls.objects.filter(download_token=token).select_related("job")
+        if not inst.exists():
+            return None
+
+        return inst.first()
+
+
 
 class SupportingFile(models.Model):
     """

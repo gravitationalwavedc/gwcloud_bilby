@@ -51,6 +51,7 @@ from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
+from .utils.misc import is_ligo_user
 
 logger = logging.getLogger(__name__)
 
@@ -868,6 +869,27 @@ def file_download_supporting_file(request, supporting_file):
     )
 
 
+def file_download_gwflow_file(request, gwflow_file):
+    # 404 unless fully mirrored
+    if not gwflow_file.uploaded:
+        raise Http404
+
+    # LIGO-only visibility
+    if gwflow_file.job.ligo_only and not is_ligo_user(request.user):
+        raise Http404
+
+    file_path = Path(settings.GWFLOW_FILE_UPLOAD_DIR) / str(gwflow_file.job.id) / str(gwflow_file.id)
+    if not file_path.exists():
+        raise Http404
+
+    return FileResponse(
+        open(file_path, "rb"),
+        as_attachment="forceDownload" in request.GET,
+        filename=gwflow_file.file_name,
+        content_type="application/octet-stream",
+    )
+
+
 def file_download(request):
     # Get the file token from the request and make sure it's real
     token = request.GET.get("fileId", None)
@@ -888,6 +910,13 @@ def file_download(request):
         # Was a file found with this token?
         if supporting_file:
             return file_download_supporting_file(request, supporting_file)
+
+        # Next try the token as a gwflow file token
+        gwflow_file = GWFlowFile.get_by_download_token(token)
+
+        # Was a file found with this token?
+        if gwflow_file:
+            return file_download_gwflow_file(request, gwflow_file)
 
         raise Http404
     except ValidationError as e:
