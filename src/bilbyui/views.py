@@ -544,8 +544,8 @@ def upload_bilby_job(user, upload_token, details, job_file):
         # Find the config complete ini
         ini_file = list(
             filter(
-                lambda x: os.path.isfile(os.path.join(job_staging_dir, x)) and x.endswith("_config_complete.ini"),
-                os.listdir(job_staging_dir),
+                lambda x: x.is_file() and x.name.endswith("_config_complete.ini"),
+                Path(job_staging_dir).iterdir(),
             )
         )
 
