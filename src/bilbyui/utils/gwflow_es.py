@@ -226,4 +226,3 @@ def update_child_job_ids(job) -> None:
         )
     except elasticsearch.NotFoundError:
         pass
-

@@ -783,4 +783,3 @@ class Mutation(graphene.ObjectType):
     upsert_gwflow_job = UpsertGwflowJobMutation.Field()
     upload_gwflow_file = UploadGwflowFileMutation.Field()
     link_bilby_job_to_gwflow = LinkBilbyJobToGwflowMutation.Field()
-

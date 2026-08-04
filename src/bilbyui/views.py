@@ -1782,10 +1782,7 @@ def get_gwflow_pending_files(user):
     _check_gwflow_ingest_user(user)
 
     pending_files = (
-        GWFlowFile.objects.filter(uploaded=False)
-        .select_related("job")
-        .order_by("job__sname", "analysis_uid", "path")
+        GWFlowFile.objects.filter(uploaded=False).select_related("job").order_by("job__sname", "analysis_uid", "path")
     )
 
     return [_gwflow_pending_file(f) for f in pending_files]
-
