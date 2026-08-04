@@ -1552,5 +1552,5 @@ def api_token_revoke(request, token_id):
 
 
 @require_GET
-def not_found_view(request, path):
+def not_found_view(request, **kwargs):
     return TemplateResponse(request, "bilbyui/not_found.html", status=404)
