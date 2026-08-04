@@ -109,6 +109,11 @@ class PublicBilbyJobFilter(FilterSet):
         )
     )
 
+    @property
+    def qs(self):
+        user = self.request.user
+        return BilbyJob.public_bilby_job_filter(super().qs, user).prefetch_related("user")
+
 
 class GWFlowJobNode(DjangoObjectType):
     class Meta:
