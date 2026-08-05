@@ -679,14 +679,14 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
 
 def upload_external_bilby_job(user, details, ini_file, result_url):
-    logger.info(f"User {user.id} uploading external Bilby job: {details.name} from {result_url}")
+    logger.info("User %s uploading external Bilby job: %s from %s", user.id, details.name, result_url)
 
     # Parse and validate the INI file
     args = _parse_and_validate_ini(ini_file)
 
     # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
     if check_job_embargo_status(user, args):
-        logger.warning(f"User {user.id} attempted to upload external job on embargoed data")
+        logger.warning("User %s attempted to upload external job on embargoed data", user.id)
         msg = "Only LIGO users may upload real jobs on embargoed LIGO data"
         raise PermissionError(msg)
 
@@ -716,7 +716,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
     # Create the relevant External Bilby Job record as well
     ExternalBilbyJob.objects.create(job=bilby_job, url=result_url)
 
-    logger.info(f"Successfully uploaded external job {bilby_job.id} for user {user.id}")
+    logger.info("Successfully uploaded external job %s for user %s", bilby_job.id, user.id)
     return bilby_job
 
 
