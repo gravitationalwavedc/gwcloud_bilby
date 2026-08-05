@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import fcntl
 import logging
 import sqlite3
@@ -179,10 +180,8 @@ def run(args=None):
         return 0
     finally:
         if lock_file:
-            try:
+            with contextlib.suppress(OSError):
                 fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-            except OSError:
-                pass
             lock_file.close()
 
 
