@@ -747,13 +747,13 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         raise ValueError(msg)
 
     # Check that the job upload directory exists
-    os.makedirs(settings.JOB_UPLOAD_STAGING_DIR, exist_ok=True)
+    Path(settings.JOB_UPLOAD_STAGING_DIR).mkdir(parents=True, exist_ok=True)
 
     # Create a temporary staging directory for the job
     with TemporaryDirectory(dir=settings.JOB_UPLOAD_STAGING_DIR) as job_staging_dir:
         # Create the required directory structure
         for directory in ["data", "result", "results_page"]:
-            os.makedirs(os.path.join(job_staging_dir, directory), exist_ok=True)
+            (Path(job_staging_dir) / directory).mkdir(parents=True, exist_ok=True)
 
         # Save the HDF5 file to the result directory
         hdf5_path = os.path.join(job_staging_dir, "result", "result.hdf5")
@@ -962,7 +962,7 @@ def upload_supporting_files(upload_tokens, uploaded_supporting_files):
     # Check that the job directory exists for this supporting file
     for upload_token, uploaded_supporting_file in zip(upload_tokens, uploaded_supporting_files, strict=True):
         job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(upload_token.job.id)
-        os.makedirs(job_dir, exist_ok=True)
+        job_dir.mkdir(parents=True, exist_ok=True)
 
         with open(job_dir / str(upload_token.id), "wb") as supporting_file:
             # Write the uploaded file to the temporary file
@@ -1732,7 +1732,7 @@ def upload_gwflow_file(user, gwflow_file_id, file):
         raise GraphQLError("Invalid gwflow_file_id") from e
 
     dest_dir = Path(settings.GWFLOW_FILE_UPLOAD_DIR) / str(gwflow_file.job.id)
-    os.makedirs(dest_dir, exist_ok=True)
+    dest_dir.mkdir(parents=True, exist_ok=True)
 
     dest_path = dest_dir / str(gwflow_file.id)
     part_path = dest_dir / f"{gwflow_file.id}.part"
