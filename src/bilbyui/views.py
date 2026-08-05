@@ -920,7 +920,7 @@ def file_download(request):
 
         raise Http404
     except ValidationError as e:
-        logger.warning(f"ValidationError in file_download for token: {token}")
+        logger.warning("ValidationError in file_download for token: %s", token)
         raise Http404 from e
 
 
