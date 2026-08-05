@@ -37,7 +37,7 @@ def to_dec(val):
     except decimal.InvalidOperation:
         # If the string is not able to be converted, simply assume it's a string type not representing a decimal
         # and return the original value
-        logger.debug(f"to_dec: invalid decimal string '{val}' — returning original value")
+        logger.debug("to_dec: invalid decimal string '%s' — returning original value", val)
         return val
 
     # It's a numeric type, if there is a remainder, convert the value to a string and parse it with Decimal
