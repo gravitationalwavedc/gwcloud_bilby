@@ -30,13 +30,13 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
         qs.append("endTimeGt=" + str(round(end_time_gt.timestamp())))
 
     url = f"""{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?{"&".join(qs)}"""
-    logger.debug(f"Requesting job filter for user {user_id}: {url}")
+    logger.debug("Requesting job filter for user %s: %s", user_id, url)
 
     try:
         result = _make_job_controller_request("GET", url, user_id)
     except requests.RequestException as e:
-        logger.exception(f"Error getting job filter for user {user_id}: {e}")
+        logger.exception("Error getting job filter for user %s: %s", user_id, e)
         return "UNKNOWN", "Error getting job filter"
     else:
-        logger.debug(f"Successfully retrieved {len(result)} jobs for user {user_id}")
+        logger.debug("Successfully retrieved %s jobs for user %s", len(result), user_id)
         return "OK", result
