@@ -133,7 +133,7 @@ class CondorScheduler(Scheduler):
             # some error has occurred
             if event["TerminatedNormally"]:
                 if event["ReturnValue"] != 0:
-                    return JobStatus.ERROR, f"Job terminated with return value {latest_event['ReturnValue']}"
+                    return JobStatus.ERROR, f"Job terminated with return value {event['ReturnValue']}"
             else:
                 # ???
                 return JobStatus.ERROR, "Job terminated abnormally"
