@@ -21,5 +21,5 @@ def request_lookup_users(ids):
         resp = auth_request("get_users", {"ids": ids})
         return True, resp["users"]
     except AuthConnectionException as e:
-        logger.error(f"Error looking up users: {e}", exc_info=True)
+        logger.error("Error looking up users: %s", e, exc_info=True)
         return False, f"Error looking up users: {e}"
