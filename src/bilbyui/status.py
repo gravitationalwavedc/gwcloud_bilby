@@ -1,3 +1,6 @@
+from typing import ClassVar
+
+
 class JobStatus:
     # A job that is currently in draft state - it is not yet submitted
     DRAFT = 0
@@ -33,7 +36,7 @@ class JobStatus:
     # A job is completed if it is finished running on the cluster without error
     COMPLETED = 500
 
-    _DISPLAY_NAMES = {
+    _DISPLAY_NAMES: ClassVar[dict] = {
         DRAFT: "Draft",
         PENDING: "Pending",
         SUBMITTING: "Submitting",
