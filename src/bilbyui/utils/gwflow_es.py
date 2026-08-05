@@ -106,7 +106,7 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
                         "reviewStatus": str(item.get("review_status") or ""),
                         "analysts": analysts,
                         "reviewers": reviewers,
-                    }
+                    },
                 )
     except Exception as e:
         logger.warning("Error parsing analyses from gwflow metadata for job %s: %s", job.id, e)
@@ -135,7 +135,7 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
                 gracedb_doc["uids"] = uids
 
             gracedb_doc["gpsTime"] = str(
-                gracedb_section.get("preferred_event_gps") or gracedb_section.get("gps_time") or ""
+                gracedb_section.get("preferred_event_gps") or gracedb_section.get("gps_time") or "",
             )
             gracedb_doc["far"] = str(gracedb_section.get("preferred_event_far") or gracedb_section.get("far") or "")
             gracedb_doc["instruments"] = str(gracedb_section.get("instruments") or "")
