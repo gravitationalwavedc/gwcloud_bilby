@@ -507,11 +507,11 @@ def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, nam
 
 
 def upload_bilby_job(user, upload_token, details, job_file):
-    logger.info(f"User {user.id} uploading Bilby job: {details.name}, file: {job_file.name}")
+    logger.info("User %s uploading Bilby job: %s, file: %s", user.id, details.name, job_file.name)
 
     # Check that the uploaded file is a tar.gz file
     if not job_file.name.endswith("tar.gz"):
-        logger.error(f"User {user.id} attempted to upload non-tar.gz file: {job_file.name}")
+        logger.error("User %s attempted to upload non-tar.gz file: %s", user.id, job_file.name)
         msg = "Job upload should be a tar.gz file"
         raise ValueError(msg)
 
@@ -538,9 +538,9 @@ def upload_bilby_job(user, upload_token, details, job_file):
         )
         out, err = p.communicate()
 
-        logger.info(f"Unpacking uploaded job archive {job_file.name} had return code {p.returncode}")
-        logger.debug(f"stdout: {out}")
-        logger.debug(f"stderr: {err}")
+        logger.info("Unpacking uploaded job archive %s had return code %s", job_file.name, p.returncode)
+        logger.debug("stdout: %s", out)
+        logger.debug("stderr: %s", err)
 
         if p.returncode != 0:
             msg = "Invalid or corrupt tar.gz file"
@@ -664,17 +664,17 @@ def upload_bilby_job(user, upload_token, details, job_file):
             )
             out, err = p.communicate()
 
-            logger.info(f"Packing uploaded job archive for {job_file.name} had return code {p.returncode}")
-            logger.debug(f"stdout: {out}")
-            logger.debug(f"stderr: {err}")
+            logger.info("Packing uploaded job archive for %s had return code %s", job_file.name, p.returncode)
+            logger.debug("stdout: %s", out)
+            logger.debug("stderr: %s", err)
 
             if p.returncode != 0:
-                logger.error(f"Failed to repack uploaded job for user {user.id}")
+                logger.error("Failed to repack uploaded job for user %s", user.id)
                 msg = "Unable to repack the uploaded job"
                 raise RuntimeError(msg)
 
         # Job is validated and uploaded, return the job
-        logger.info(f"Successfully uploaded and created job {bilby_job.id} for user {user.id}")
+        logger.info("Successfully uploaded and created job %s for user %s", bilby_job.id, user.id)
         return bilby_job
 
 
