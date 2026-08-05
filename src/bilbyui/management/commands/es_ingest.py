@@ -121,7 +121,7 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.SUCCESS(f"✓ GWFlowJob {job.id} ({sname}) ingested"))
                     except Exception as e:
                         error_count += 1
-                        logger.exception(f"Error ingesting GWFlowJob {job.id} ({sname}): {e}")
+                        logger.exception("Error ingesting GWFlowJob %s (%s): %s", job.id, sname, e)
                         self.stdout.write(self.style.ERROR(f"✗ GWFlowJob {job.id} ({sname}): {e}"))
 
                 # Determine next page URL
