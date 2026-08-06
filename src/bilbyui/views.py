@@ -756,19 +756,19 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
             (Path(job_staging_dir) / directory).mkdir(parents=True, exist_ok=True)
 
         # Save the HDF5 file to the result directory
-        hdf5_path = os.path.join(job_staging_dir, "result", "result.hdf5")
-        with open(hdf5_path, "wb") as f:
+        hdf5_path = Path(job_staging_dir) / "result" / "result.hdf5"
+        with hdf5_path.open("wb") as f:
             f.writelines(hdf5_file.chunks())
 
         # Save the INI file with the correct naming convention
         job_name = details.name
         ini_filename = f"{job_name}_config_complete.ini"
-        ini_path = os.path.join(job_staging_dir, ini_filename)
-        with open(ini_path, "wb") as f:
+        ini_path = Path(job_staging_dir) / ini_filename
+        with ini_path.open("wb") as f:
             f.writelines(ini_file.chunks())
 
         # Read and parse the INI file
-        with open(ini_path) as f:
+        with ini_path.open() as f:
             ini_content = f.read()
 
         # Parse and validate the INI file
