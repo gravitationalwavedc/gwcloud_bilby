@@ -1,5 +1,3 @@
-import os
-from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
@@ -30,9 +28,8 @@ class TestRequestFileListUploaded(BilbyTestCase):
     @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_valid_path_returns_files(self):
         job_dir = self.job.get_upload_directory()
-        os.makedirs(os.path.join(job_dir, "data"), exist_ok=True)
-        with open(os.path.join(job_dir, "data", "a.txt"), "w") as f:
-            f.write("hi")
+        (job_dir / "data").mkdir(parents=True, exist_ok=True)
+        (job_dir / "data" / "a.txt").write_text("hi")
 
         success, file_list = request_file_list(self.job, "data", False)
         self.assertTrue(success)
@@ -43,13 +40,12 @@ class TestRequestFileListUploaded(BilbyTestCase):
     def test_sibling_upload_dir_is_rejected(self):
         # job id 123 vs sibling dir 1234: "/uploads/1234/x".startswith("/uploads/123") is True
         job_dir = self.job.get_upload_directory()
-        os.makedirs(job_dir, exist_ok=True)
+        job_dir.mkdir(parents=True, exist_ok=True)
 
         # Build a sibling directory that the buggy prefix check would accept
-        sibling_dir = os.path.join(os.path.dirname(job_dir), f"{self.job.id}4")
-        os.makedirs(sibling_dir, exist_ok=True)
-        with open(os.path.join(sibling_dir, "secret.txt"), "w") as f:
-            f.write("secret")
+        sibling_dir = job_dir.parent / f"{self.job.id}4"
+        sibling_dir.mkdir(parents=True, exist_ok=True)
+        (sibling_dir / "secret.txt").write_text("secret")
 
         # Requesting "../<id>4/..." must NOT disclose the sibling contents
         success, result = request_file_list(self.job, f"../{self.job.id}4", False)
@@ -59,7 +55,7 @@ class TestRequestFileListUploaded(BilbyTestCase):
     @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_traversal_paths_rejected(self):
         job_dir = self.job.get_upload_directory()
-        os.makedirs(job_dir, exist_ok=True)
+        job_dir.mkdir(parents=True, exist_ok=True)
 
         for bad_path in ["./data", "../data/", "../../bin/bash"]:
             success, result = request_file_list(self.job, bad_path, False)
@@ -69,7 +65,7 @@ class TestRequestFileListUploaded(BilbyTestCase):
     @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_empty_path_returns_job_dir(self):
         job_dir = self.job.get_upload_directory()
-        os.makedirs(job_dir, exist_ok=True)
+        job_dir.mkdir(parents=True, exist_ok=True)
 
         success, file_list = request_file_list(self.job, "", False)
         self.assertTrue(success)
@@ -78,12 +74,11 @@ class TestRequestFileListUploaded(BilbyTestCase):
     @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_recursive_listing_returns_all_entries(self):
         job_dir = self.job.get_upload_directory()
-        os.makedirs(os.path.join(job_dir, "data", "sub"), exist_ok=True)
-        with open(os.path.join(job_dir, "data", "sub", "b.txt"), "w") as f:
-            f.write("b")
+        (job_dir / "data" / "sub").mkdir(parents=True, exist_ok=True)
+        (job_dir / "data" / "sub" / "b.txt").write_text("b")
         # A broken symlink should be skipped (FileNotFoundError on stat)
-        Path(job_dir, "data", "broken_link").symlink_to(
-            os.path.join(job_dir, "data", "sub", "missing"),
+        (job_dir / "data" / "broken_link").symlink_to(
+            job_dir / "data" / "sub" / "missing",
         )
 
         success, file_list = request_file_list(self.job, "data", True)
