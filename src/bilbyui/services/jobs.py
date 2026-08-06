@@ -14,17 +14,20 @@ from bilbyui.utils.jobs.request_job_filter import request_job_filter
 logger = logging.getLogger(__name__)
 
 
+_TIME_RANGE_DELTAS = {
+    "1d": timedelta(days=1),
+    "1w": timedelta(days=7),
+    "1m": timedelta(days=31),
+    "1y": timedelta(days=365),
+}
+
+
 def _time_range_to_timedelta(time_range):
-    if time_range == "1d":
-        return timedelta(days=1)
-    if time_range == "1w":
-        return timedelta(days=7)
-    if time_range == "1m":
-        return timedelta(days=31)
-    if time_range == "1y":
-        return timedelta(days=365)
-    msg = f"Unexpected timeRange value {time_range}"
-    raise ValueError(msg)
+    try:
+        return _TIME_RANGE_DELTAS[time_range]
+    except KeyError:
+        msg = f"Unexpected timeRange value {time_range}"
+        raise ValueError(msg) from None
 
 
 def _apply_time_range_filter(qs, time_range, field_name="last_updated"):
