@@ -1727,7 +1727,7 @@ def upload_gwflow_file(user, gwflow_file_id, file):
     try:
         _, file_pk = from_global_id(gwflow_file_id)
         gwflow_file = GWFlowFile.objects.select_related("job").get(id=int(file_pk))
-    except (GWFlowFile.DoesNotExist, ValueError, TypeError, Exception) as e:
+    except Exception as e:
         raise GraphQLError("Invalid gwflow_file_id") from e
 
     dest_dir = Path(settings.GWFLOW_FILE_UPLOAD_DIR) / str(gwflow_file.job.id)
