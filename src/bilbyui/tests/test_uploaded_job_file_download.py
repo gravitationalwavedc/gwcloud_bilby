@@ -1,5 +1,6 @@
 import os
 import uuid
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
@@ -143,7 +144,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             content = b"".join(list(response))
 
             with open(
-                os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]),
+                Path(self.job.get_upload_directory()) / files[idx]["path"][1:],
                 "rb",
             ) as f:
                 self.assertEqual(content, f.read())
@@ -167,7 +168,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             content = b"".join(list(response))
 
             with open(
-                os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]),
+                Path(self.job.get_upload_directory()) / files[idx]["path"][1:],
                 "rb",
             ) as f:
                 self.assertEqual(content, f.read())
