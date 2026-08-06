@@ -150,10 +150,10 @@ def _create_bilby_job_record(user, details, args, job_type, ini_string=None):
 
 
 def create_bilby_job(user, params):
-    logger.info(f"User {user.id} creating Bilby job: {params.details.name}")
+    logger.info("User %s creating Bilby job: %s", user.id, params.details.name)
 
     if should_embargo_job(user, float(params.data.trigger_time), params.data.data_choice == "simulated"):
-        logger.warning(f"User {user.id} attempted to run real job on embargoed data: {params.details.name}")
+        logger.warning("User %s attempted to run real job on embargoed data: %s", user.id, params.details.name)
         msg = "Only LIGO users may run real jobs on embargoed LIGO data"
         raise Exception(msg)
 
@@ -318,13 +318,13 @@ def create_bilby_job(user, params):
             cluster=params.details.cluster,
             event_id=event_id,
         )
-        logger.info(f"Created Bilby job {bilby_job.id} for user {user.id}")
+        logger.info("Created Bilby job %s for user %s", bilby_job.id, user.id)
 
         # Submit the job to the job controller
         bilby_job.submit()
-        logger.info(f"Successfully submitted job {bilby_job.id} to job controller")
+        logger.info("Successfully submitted job %s to job controller", bilby_job.id)
     except ValueError as e:
-        logger.exception(f"Failed to create/submit job for user {user.id}: {e}")
+        logger.exception("Failed to create/submit job for user %s: %s", user.id, e)
         raise
     else:
         return bilby_job
