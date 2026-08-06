@@ -34,8 +34,8 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
 
     try:
         result = _make_job_controller_request("GET", url, user_id)
-    except requests.RequestException as e:
-        logger.exception("Error getting job filter for user %s: %s", user_id, e)
+    except requests.RequestException:
+        logger.exception("Error getting job filter for user %s", user_id)
         return "UNKNOWN", "Error getting job filter"
     else:
         logger.debug("Successfully retrieved %s jobs for user %s", len(result), user_id)
