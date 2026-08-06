@@ -111,7 +111,7 @@ def get_job_failure_count(cursor, job_id):
 
 
 def check_and_download():
-    logger.info(f"==== gwosc_ingest cronjob {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ====")
+    logger.info("==== gwosc_ingest cronjob %s ====", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
@@ -162,7 +162,7 @@ def _check_and_download_inner(con, cur):
 
     all_events = r.json()["events"]
     gwosc_events = list(all_events)
-    logger.info(f"GWOSC events found: {len(gwosc_events)}")
+    logger.info("GWOSC events found: %s", len(gwosc_events))
 
     # Collect list of events from GWCloud
     full_gwcloud_events = [n.name for n in gwc.get_official_job_list()]
@@ -170,7 +170,7 @@ def _check_and_download_inner(con, cur):
     gwcloud_events = {
         fix_job_name(n.split(EVENTNAME_SEPARATOR)[0]) for n in full_gwcloud_events if EVENTNAME_SEPARATOR in n
     }
-    logger.info(f"GWCloud events found: {len(gwcloud_events)}")
+    logger.info("GWCloud events found: %s", len(gwcloud_events))
 
     # fetch event_ids from gwcloud and turn them into a dict
     full_gwcloud_event_ids = gwc.get_all_event_ids()
@@ -180,12 +180,12 @@ def _check_and_download_inner(con, cur):
     sqlite_rows = cur.execute("SELECT * FROM completed_jobs")
     sqlite_events = [j["job_id"] for j in sqlite_rows.fetchall()]
 
-    logger.info(f"sqlite events found: {len(sqlite_events)}")
-    logger.info(f"Potential bad runs found: {len(sqlite_events) - len(gwcloud_events)}")
+    logger.info("sqlite events found: %s", len(sqlite_events))
+    logger.info("Potential bad runs found: %s", len(sqlite_events) - len(gwcloud_events))
 
     # Find non-matching dataset names
     jobs_delta = [j for j in gwosc_events if j not in sqlite_events]
-    logger.info(f"Not matching events: {len(jobs_delta)}")
+    logger.info("Not matching events: %s", len(jobs_delta))
 
     if len(jobs_delta) == 0:
         logger.info("Nothing to do 😊")
@@ -198,7 +198,7 @@ def _check_and_download_inner(con, cur):
             # Fetch last_error for reason_data
             err_row = cur.execute("SELECT last_error FROM job_errors WHERE job_id = ?", (event_name,)).fetchone()
             last_error = err_row["last_error"] if err_row else ""
-            logger.error(f"{event_name} has failed {failure_count} times, marking as permanently failed")
+            logger.error("%s has failed %s times, marking as permanently failed", event_name, failure_count)
             common_name = all_events[event_name].get("commonName", "")
             shared_common_names = [k for k, v in all_events.items() if v.get("commonName") == common_name]
             is_latest_version = compute_is_latest_version(event_name, shared_common_names)
@@ -213,7 +213,7 @@ def _check_and_download_inner(con, cur):
             )
             continue
 
-        logger.info(f"{event_name}: {all_events[event_name]['jsonurl']}")
+        logger.info("%s: %s", event_name, all_events[event_name]["jsonurl"])
 
         r = requests.get(all_events[event_name]["jsonurl"], timeout=30)
         if r.status_code != 200:
@@ -271,7 +271,7 @@ def _check_and_download_inner(con, cur):
 
         found = [v for v in parameters.values() if v["is_preferred"]]
         if len(found) != 1:
-            logger.error(f"Unable to find preferred job for {event_name} 😠")
+            logger.error("Unable to find preferred job for %s 😠", event_name)
             save_sqlite_job(
                 event_name,
                 common_name,
@@ -284,7 +284,7 @@ def _check_and_download_inner(con, cur):
 
         h5url = found[0].get("data_url")
         if not h5url:
-            logger.error(f"Preferred job for {event_name} does not contain a dataurl 😠")
+            logger.error("Preferred job for %s does not contain a dataurl 😠", event_name)
             save_sqlite_job(event_name, common_name, catalog_shortname, False, "no dataurl", -1)
             continue
 
@@ -296,16 +296,16 @@ def _check_and_download_inner(con, cur):
                 # we need to create one
                 try:
                     event_id = gwc.create_event_id(common_name, gps, gracedb_id)
-                    logger.info(f"Created a new event_id: {common_name}")
+                    logger.info("Created a new event_id: %s", common_name)
                 except GWDCUnknownException:
                     error_msg = f"Failed to create event_id for {common_name}"
                     logger.exception(error_msg)
                     record_job_failure(con, cur, event_name, error_msg)
                     continue
             else:
-                logger.info(f"event_id already found: {common_name}")
+                logger.info("event_id already found: %s", common_name)
         else:
-            logger.info(f"{common_name} is not a valid event_id, uploading job without one")
+            logger.info("%s is not a valid event_id, uploading job without one", common_name)
 
         logger.info("Downloading h5 file")
         logger.info(h5url)
@@ -339,7 +339,7 @@ def _check_and_download_inner(con, cur):
                 continue
             h5_iteration_error = False
             with h5_handle as h5:
-                logger.info(f"Found keys: {list(h5.keys())}")
+                logger.info("Found keys: %s", list(h5.keys()))
                 for toplevel_key in h5:
                     try:
                         if not (
@@ -349,10 +349,10 @@ def _check_and_download_inner(con, cur):
                             and "config" in h5[toplevel_key]["config_file"]
                             and isinstance(h5[toplevel_key]["config_file"]["config"], h5py.Group)
                         ):
-                            logger.info(f"config_file not found: {toplevel_key}")
+                            logger.info("config_file not found: %s", toplevel_key)
                             continue
 
-                        logger.info(f"config_file found: {toplevel_key}")
+                        logger.info("config_file found: %s", toplevel_key)
                         config = h5[toplevel_key]["config_file"]["config"]
                         ini_str = "\n".join(f"{k}={config[k][0].decode('utf-8')}" for k in config.keys())
                     except (KeyError, OSError):
@@ -370,10 +370,10 @@ def _check_and_download_inner(con, cur):
                             ini_str,
                             h5url,
                         )
-                        logger.info(f"BilbyJob {job.id} created 😊")
+                        logger.info("BilbyJob %s created 😊", job.id)
                         if event_id is not None:
                             job.set_event_id(event_id)
-                            logger.info(f" and set event_id to {event_id.event_id}")
+                            logger.info(" and set event_id to %s", event_id.event_id)
                         else:
                             logger.info(" and has no event_id")
                         none_succeeded = False
