@@ -440,10 +440,10 @@ class TestBilbyJobUploadToken(BilbyTestCase):
 
 class TestSupportingFile(BilbyTestCase):
     @classmethod
-    def setUp(self):
-        self.user = self.create_user(id=1234)
+    def setUp(cls):
+        cls.user = cls.create_user(id=1234)
 
-        self.parsed = {
+        cls.parsed = {
             SupportingFile.PSD: [
                 {
                     "H1": "/my/test/path/psd_h1.file",
@@ -453,11 +453,11 @@ class TestSupportingFile(BilbyTestCase):
             SupportingFile.GPS: "/another/test/path/gps.file",
         }
 
-        self.job = BilbyJob.objects.create(
-            user_id=self.user.id,
+        cls.job = BilbyJob.objects.create(
+            user_id=cls.user.id,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
-        self.after = timezone.now()
+        cls.after = timezone.now()
 
     def test_save_from_parsed(self):
         # Test that parsed supporting files are correctly entered into the database
