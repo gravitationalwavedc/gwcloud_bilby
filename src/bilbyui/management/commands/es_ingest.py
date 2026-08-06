@@ -46,7 +46,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f"✓ Job {job.id} - {job.name}"))
             except DatabaseError as e:
                 error_count += 1
-                logger.exception("Job %s - %s could not be ingested: %s", job.id, job.name, e)
+                logger.exception("Job %s - %s could not be ingested", job.id, job.name)
                 self.stdout.write(self.style.ERROR(f"✗ Job {job.id} - {job.name}: {e}"))
 
         self.stdout.write(self.style.SUCCESS(f"\nIngestion complete: {success_count} succeeded, {error_count} failed"))
@@ -121,7 +121,7 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.SUCCESS(f"✓ GWFlowJob {job.id} ({sname}) ingested"))
                     except Exception as e:
                         error_count += 1
-                        logger.exception("Error ingesting GWFlowJob %s (%s): %s", job.id, sname, e)
+                        logger.exception("Error ingesting GWFlowJob %s (%s)", job.id, sname)
                         self.stdout.write(self.style.ERROR(f"✗ GWFlowJob {job.id} ({sname}): {e}"))
 
                 # Determine next page URL
