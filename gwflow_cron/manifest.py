@@ -69,7 +69,7 @@ def extract_file_manifest(detail: dict) -> list[dict]:
                 if isinstance(bayeswave, dict):
                     psd_files = bayeswave.get("psd_files")
                     if isinstance(psd_files, dict):
-                        for _det, psd_obj in psd_files.items():
+                        for psd_obj in psd_files.values():
                             add_file(uid, psd_obj)
                     elif isinstance(psd_files, list):
                         for psd_obj in psd_files:
