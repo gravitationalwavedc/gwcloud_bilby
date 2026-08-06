@@ -323,8 +323,8 @@ def create_bilby_job(user, params):
         # Submit the job to the job controller
         bilby_job.submit()
         logger.info("Successfully submitted job %s to job controller", bilby_job.id)
-    except ValueError as e:
-        logger.exception("Failed to create/submit job for user %s: %s", user.id, e)
+    except ValueError:
+        logger.exception("Failed to create/submit job for user %s", user.id)
         raise
     else:
         return bilby_job
