@@ -103,6 +103,6 @@ def extract_file_manifest(detail: dict) -> list[dict]:
                             if isinstance(elem, dict) and "path" in elem:
                                 add_file(item_uid, elem)
         except Exception as e:
-            logger.debug(f"Skipping section {section_key} due to unexpected structure: {e}")
+            logger.debug("Skipping section %s due to unexpected structure: %s", section_key, e)
 
     return manifest
