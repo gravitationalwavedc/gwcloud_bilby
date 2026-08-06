@@ -56,9 +56,9 @@ def parse_ini_file(job, ini_key_value_klass=None):
                     )
                 )
             except (AttributeError, TypeError) as e:
-                logger.exception(f"Error parsing INI file for job {job.id}: {e}")
+                logger.exception("Error parsing INI file for job %s: %s", job.id, e)
 
     except Exception as e:
-        logger.exception(f"Error parsing INI file for job {job.id}: {e}")
+        logger.exception("Error parsing INI file for job %s: %s", job.id, e)
 
     (ini_key_value_klass or IniKeyValue).objects.bulk_create(items)
