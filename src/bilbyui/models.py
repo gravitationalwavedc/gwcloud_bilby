@@ -108,7 +108,7 @@ class EventID(models.Model):
         event = cls.objects.get(event_id=event_id)
 
         if event.is_ligo_event and not is_ligo_user(user):
-            raise BilbyPermissionError()
+            raise BilbyPermissionError
 
         return event
 
@@ -222,7 +222,7 @@ class BilbyJob(models.Model):
 
         # Users can only access the job if it is public or (the user is authenticated AND the user also owns the job)
         if job.private and (user.is_anonymous or user.id != job.user.id):
-            raise BilbyPermissionError()
+            raise BilbyPermissionError
 
         return job
 
@@ -236,7 +236,7 @@ class BilbyJob(models.Model):
         :return: The queryset filtered by the requesting user
         """
         if user.is_anonymous:
-            raise BilbyPermissionError()
+            raise BilbyPermissionError
 
         return embargo_filter(qs.filter(user_id=user.id), user)
 
