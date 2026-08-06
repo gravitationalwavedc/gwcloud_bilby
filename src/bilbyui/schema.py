@@ -356,7 +356,11 @@ class Query:
         include_pruned = kwargs.get("include_pruned", False) or False
 
         logger.info(
-            f"User {user_id} searching gwflow jobs: search='{search_term}', time_range={time_range}, include_pruned={include_pruned}"
+            "User %s searching gwflow jobs: search='%s', time_range=%s, include_pruned=%s",
+            user_id,
+            search_term,
+            time_range,
+            include_pruned,
         )
 
         if kwargs.get("after") is None:
