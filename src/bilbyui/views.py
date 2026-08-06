@@ -1747,20 +1747,20 @@ def upload_gwflow_file(user, gwflow_file_id, file):
                 if hasher:
                     hasher.update(chunk)
     except Exception:
-        if os.path.exists(part_path):
-            os.remove(part_path)
+        if part_path.exists():
+            part_path.unlink()
         raise
 
     if gwflow_file.md5_sum and hasher:
         calculated_md5 = hasher.hexdigest()
         if calculated_md5 != gwflow_file.md5_sum:
-            if os.path.exists(part_path):
-                os.remove(part_path)
-            if os.path.exists(dest_path):
-                os.remove(dest_path)
+            if part_path.exists():
+                part_path.unlink()
+            if dest_path.exists():
+                dest_path.unlink()
             raise GraphQLError("MD5 checksum mismatch")
 
-    os.replace(part_path, dest_path)
+    part_path.replace(dest_path)
 
     gwflow_file.uploaded = True
     gwflow_file.file_size = bytes_written
