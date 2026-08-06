@@ -187,7 +187,7 @@ def _check_and_download_inner(con, cur):
     jobs_delta = [j for j in gwosc_events if j not in sqlite_events]
     logger.info(f"Not matching events: {len(jobs_delta)}")
 
-    if len(jobs_delta) == 0:
+    if not jobs_delta:
         logger.info("Nothing to do 😊")
         sys.exit(0)
 
