@@ -251,11 +251,11 @@ class TestRetryLogic(GWOSCTestBase):
         sqlite_rows = self.get_completed_jobs()
         self.assertEqual(len(sqlite_rows), 2)
         # First: marked broken
-        broken = [r for r in sqlite_rows if r["job_id"] == "GW000001_123456"][0]
+        broken = next(r for r in sqlite_rows if r["job_id"] == "GW000001_123456")
         self.assertEqual(broken["success"], 0)
         self.assertEqual(broken["reason"], "max_retries_exceeded")
         # Second: successful
-        success = [r for r in sqlite_rows if r["job_id"] == "GW000002_654321"][0]
+        success = next(r for r in sqlite_rows if r["job_id"] == "GW000002_654321")
         self.assertEqual(success["success"], 1)
         self.assertEqual(success["reason"], "completed_submit")
 
@@ -362,11 +362,11 @@ class TestRetryLogic(GWOSCTestBase):
         completed_ids = {r["job_id"] for r in sqlite_rows}
         self.assertEqual(completed_ids, {"GW000001_123456", "GW000003_111111"})
 
-        broken = [r for r in sqlite_rows if r["job_id"] == "GW000001_123456"][0]
+        broken = next(r for r in sqlite_rows if r["job_id"] == "GW000001_123456")
         self.assertEqual(broken["reason"], "max_retries_exceeded")
         self.assertEqual(broken["success"], 0)
 
-        success = [r for r in sqlite_rows if r["job_id"] == "GW000003_111111"][0]
+        success = next(r for r in sqlite_rows if r["job_id"] == "GW000003_111111")
         self.assertEqual(success["reason"], "completed_submit")
         self.assertEqual(success["success"], 1)
 
