@@ -1,3 +1,4 @@
+import contextlib
 import logging
 
 import elasticsearch
@@ -200,10 +201,8 @@ def gwflow_elastic_search_remove(job) -> None:
 
     es = _get_es_client()
 
-    try:
+    with contextlib.suppress(elasticsearch.NotFoundError):
         es.delete(index=settings.ELASTIC_SEARCH_GWFLOW_INDEX, id=job.id)
-    except elasticsearch.NotFoundError:
-        pass
 
 
 def update_child_job_ids(job) -> None:
@@ -218,11 +217,9 @@ def update_child_job_ids(job) -> None:
 
     child_job_ids = list(job.bilby_jobs.values_list("id", flat=True))
 
-    try:
+    with contextlib.suppress(elasticsearch.NotFoundError):
         es.update(
             index=settings.ELASTIC_SEARCH_GWFLOW_INDEX,
             id=job.id,
             doc={"childJobIds": child_job_ids},
         )
-    except elasticsearch.NotFoundError:
-        pass
