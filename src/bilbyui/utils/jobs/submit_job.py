@@ -63,7 +63,7 @@ def submit_job(user_id, params, cluster):
     :return: The job controller id of the submitted job
     """
 
-    logger.info(f"User {user_id} submitting job to cluster '{cluster}'")
+    logger.info("User %s submitting job to cluster '%s'", user_id, cluster)
 
     # Choose the first (default) cluster if one is not provided
     cluster = cluster or settings.CLUSTERS[0]
@@ -85,10 +85,10 @@ def submit_job(user_id, params, cluster):
             data=data,
         )
 
-        logger.info(f"Job submitted successfully for user {user_id}: status 200")
+        logger.info("Job submitted successfully for user %s: status 200", user_id)
 
-        logger.info(f"Job controller assigned ID {result_data.get('jobId')} for user {user_id}")
+        logger.info("Job controller assigned ID %s for user %s", result_data.get("jobId"), user_id)
         return result_data
     except requests.RequestException as e:
-        logger.exception(f"Request exception submitting job for user {user_id}: {e}")
+        logger.exception("Request exception submitting job for user %s: %s", user_id, e)
         raise RuntimeError(f"Error submitting job: {e}") from e
