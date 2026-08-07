@@ -67,6 +67,22 @@ from .views import (
 logger = logging.getLogger(__name__)
 
 
+def _parse_after_cursor(kwargs):
+    if kwargs.get("after") is None:
+        kwargs["after"] = None
+    else:
+        kwargs["after"] = int(from_global_id(kwargs["after"])[1])
+
+
+def _pad_result_for_cursor(after, nodes):
+    after_value = int((after or -1) + 1)
+    if after == 0:
+        after_value = 1
+    real_result = [None] * after_value
+    real_result.extend(nodes)
+    return real_result
+
+
 class LabelType(DjangoObjectType):
     class Meta:
         model = Label
@@ -358,7 +374,7 @@ class Query:
             include_pruned,
         )
 
-        kwargs["after"] = int(from_global_id(kwargs["after"])[1]) if kwargs.get("after") is not None else None
+        _parse_after_cursor(kwargs)
 
         page_size = kwargs.get("first", 20)
         offset = kwargs.get("after") or 0
@@ -384,12 +400,7 @@ class Query:
             if job_id in jobs:
                 nodes.append(jobs[job_id])
 
-        after_value = int((kwargs.get("after") or -1) + 1)
-        if kwargs.get("after") == 0:
-            after_value = 1
-        real_result = [None] * after_value
-        real_result.extend(nodes)
-        return real_result
+        return _pad_result_for_cursor(kwargs.get("after"), nodes)
 
     @login_required
     def resolve_gwflow_pending_files(self, info, **kwargs):
@@ -429,7 +440,7 @@ class Query:
         # Sometimes the relay resolver fills out all kwarg parameters, but sometimes
         # it doesn't, most likely becuase it hates happiness and all that is good
         # This ensures that "after" is either an int (from a b64 string) or None
-        kwargs["after"] = int(from_global_id(kwargs["after"])[1]) if kwargs.get("after") is not None else None
+        _parse_after_cursor(kwargs)
 
         page_size = kwargs["first"]
         offset = kwargs.get("after") or 0
@@ -507,15 +518,7 @@ class Query:
         # Furthermore, arrayconnections with offset 0 or 1 are functionally the same, this is why we add a +1 to the
         # value from after if it is provided, otherwise we use 0 (-1 + 1) if no after value is provided.
 
-        after_value = int((kwargs.get("after") or -1) + 1)
-        # If it is zero (due to being passed as b64 with a value of zero)
-        # This is different to if it is zero due to being None
-        if kwargs.get("after") == 0:
-            after_value = 1
-        real_result = [None] * after_value
-        real_result.extend(result)
-
-        return real_result
+        return _pad_result_for_cursor(kwargs.get("after"), result)
 
     @login_required
     def resolve_gwclouduser(self, info, **kwargs):
