@@ -34,11 +34,7 @@ def request_file_list(job, path, recursive, user_id=None):
         # * the path exists
         # * the path is a directory
         dir_path_obj = Path(dir_path)
-        if (
-            not (dir_path == job_dir or dir_path.startswith(job_dir + os.sep))
-            or not dir_path_obj.exists()
-            or not dir_path_obj.is_dir()
-        ):
+        if not dir_path_obj.is_relative_to(job_dir) or not dir_path_obj.exists() or not dir_path_obj.is_dir():
             return False, "Files do not exist"
 
         # Get the list of files requested
