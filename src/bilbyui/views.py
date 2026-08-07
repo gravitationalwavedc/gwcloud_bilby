@@ -990,9 +990,9 @@ def _event_id_display_values(event_id):
 
 def _job_status_name(bilby_job, job_controller_jobs):
     if bilby_job.job_type == BilbyJobType.NORMAL:
-        if bilby_job.id not in job_controller_jobs:
+        job_controller_job = job_controller_jobs.get(bilby_job.id)
+        if job_controller_job is None:
             return "Unknown"
-        job_controller_job = job_controller_jobs[bilby_job.id]
         return JobStatus.display_name(job_controller_job["history"][0]["state"])
     elif bilby_job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
         return JobStatus.display_name(JobStatus.COMPLETED)
