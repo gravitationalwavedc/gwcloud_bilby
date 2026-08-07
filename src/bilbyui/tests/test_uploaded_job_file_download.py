@@ -1,4 +1,3 @@
-import os
 import uuid
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -130,7 +129,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         download_tokens, response = self.generate_file_download_tokens()
         files = get_files(response)
 
-        for idx in range(len(files)):
+        for idx, file in enumerate(files):
             token = self.generate_download_id_from_token(download_tokens[idx])
 
             response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={token}")
@@ -138,13 +137,13 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
             self.assertEqual(
                 response.headers["Content-Disposition"],
-                f'inline; filename="{Path(files[idx]["path"][1:]).name}"',
+                f'inline; filename="{Path(file["path"][1:]).name}"',
             )
 
             content = b"".join(list(response))
 
             with open(
-                Path(self.job.get_upload_directory()) / files[idx]["path"][1:],
+                Path(self.job.get_upload_directory()) / file["path"][1:],
                 "rb",
             ) as f:
                 self.assertEqual(content, f.read())
@@ -154,7 +153,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         download_tokens, response = self.generate_file_download_tokens()
         files = get_files(response)
 
-        for idx in range(len(files)):
+        for idx, file in enumerate(files):
             token = self.generate_download_id_from_token(download_tokens[idx])
 
             response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={token}&forceDownload")
@@ -162,13 +161,13 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
             self.assertEqual(
                 response.headers["Content-Disposition"],
-                f'attachment; filename="{Path(files[idx]["path"][1:]).name}"',
+                f'attachment; filename="{Path(file["path"][1:]).name}"',
             )
 
             content = b"".join(list(response))
 
             with open(
-                Path(self.job.get_upload_directory()) / files[idx]["path"][1:],
+                Path(self.job.get_upload_directory()) / file["path"][1:],
                 "rb",
             ) as f:
                 self.assertEqual(content, f.read())
