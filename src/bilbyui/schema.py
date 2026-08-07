@@ -792,10 +792,8 @@ class UploadSupportingFilesMutation(relay.ClientIDMutation):
 
     @classmethod
     def mutate_and_get_payload(cls, _root, info, supporting_files):
-        file_tokens, uploaded_files = [], []
-        for f in supporting_files:
-            file_tokens.append(f.file_token)
-            uploaded_files.append(f.supporting_file)
+        file_tokens = [f.file_token for f in supporting_files]
+        uploaded_files = [f.supporting_file for f in supporting_files]
 
         # Get the tokens being used to perform the upload - this will return None if the token doesn't exist or
         # if the bilby job is expired
