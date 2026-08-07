@@ -548,7 +548,7 @@ class Query:
             success, files = job.get_file_list()
             if not success:
                 logger.error("Failed to get file list for job %s: %s", job_id, files)
-                raise Exception("Error getting file list. " + str(files))
+                raise GraphQLError("Error getting file list. " + str(files))
 
             # Generate download tokens for the list of files
             paths = [f["path"] for f in filter(lambda x: not x["isDir"], files)]
@@ -587,7 +587,7 @@ class EventIDMutation(relay.ClientIDMutation):
         user = info.context.user
 
         if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
-            raise Exception("User is not permitted to create EventIDs")
+            raise GraphQLError("User is not permitted to create EventIDs")
 
         message = create_event_id(user, **kwargs)
 
@@ -610,7 +610,7 @@ class UpdateEventIDMutation(relay.ClientIDMutation):
         user = info.context.user
 
         if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
-            raise Exception("User is not permitted to modify EventIDs")
+            raise GraphQLError("User is not permitted to modify EventIDs")
 
         message = update_event_id(user, **kwargs)
 
@@ -629,7 +629,7 @@ class DeleteEventIDMutation(relay.ClientIDMutation):
         user = info.context.user
 
         if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
-            raise Exception("User is not permitted to delete EventIDs")
+            raise GraphQLError("User is not permitted to delete EventIDs")
 
         message = delete_event_id(user, event_id)
 
