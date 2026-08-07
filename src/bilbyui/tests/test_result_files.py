@@ -149,7 +149,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
             input_data={"jobId": self.global_id, "downloadTokens": download_tokens},
         )
 
-        self.assertEqual(response.data["generateFileDownloadIds"], None)
+        self.assertIsNone(response.data["generateFileDownloadIds"])
         self.assertEqual(
             str(response.errors[0]["message"]),
             "At least one token was invalid or expired.",
@@ -283,7 +283,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
             input_data={"jobId": self.global_id, "downloadTokens": download_tokens},
         )
 
-        self.assertEqual(response.data["generateFileDownloadIds"], None)
+        self.assertIsNone(response.data["generateFileDownloadIds"])
         self.assertEqual(
             str(response.errors[0]["message"]),
             "At least one token was invalid or expired.",

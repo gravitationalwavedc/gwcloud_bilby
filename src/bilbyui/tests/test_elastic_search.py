@@ -70,7 +70,7 @@ class TestElasticSearch(BilbyTestCase):
         doc = generate_elastic_doc(job, {"name": "buffy summers"})
 
         self.assertEqual(doc["labels"], [])
-        self.assertEqual(doc["eventId"], None)
+        self.assertIsNone(doc["eventId"])
 
         self.assertDictEqual(elasticsearch_index_mock.mock_calls[0].kwargs["document"], doc)
 
@@ -170,7 +170,7 @@ class TestElasticSearch(BilbyTestCase):
         doc = generate_elastic_doc(job, {"name": "buffy summers"})
 
         self.assertEqual(doc["labels"], [])
-        self.assertEqual(doc["eventId"], None)
+        self.assertIsNone(doc["eventId"])
 
         self.assertDictEqual(elasticsearch_update_mock.mock_calls[0].kwargs["doc"], doc)
 
