@@ -39,7 +39,7 @@ def compare_ini_kvs(test, job, ini, ignored=None):
                 value__in=[
                     json.dumps([v["value"]]),
                     json.dumps(v["value"]),
-                    json.dumps(float(v["value"]) if type(v["value"]) is int else v["value"]),
+                    json.dumps(float(v["value"]) if isinstance(v["value"], int) else v["value"]),
                 ],
                 index=v["index"],
                 processed=False,
