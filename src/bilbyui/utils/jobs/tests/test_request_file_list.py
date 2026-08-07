@@ -140,10 +140,10 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertEqual(result, (False, "Files do not exist"))
 
         result = request_file_list(self.job, "./data", True, self.job.user_id)
-        self.assertEqual(result[0], True)
+        self.assertTrue(result[0])
 
         result = request_file_list(self.job, "./result/../data", True, self.job.user_id)
-        self.assertEqual(result[0], True)
+        self.assertTrue(result[0])
 
         # Test "the path exists"
         result = request_file_list(self.job, "./data_not_exist/", True, self.job.user_id)
@@ -156,10 +156,10 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertEqual(result, (False, "Files do not exist"))
 
         result = request_file_list(self.job, "data", True, self.job.user_id)
-        self.assertEqual(result[0], True)
+        self.assertTrue(result[0])
 
         result = request_file_list(self.job, "./result", True, self.job.user_id)
-        self.assertEqual(result[0], True)
+        self.assertTrue(result[0])
 
         # Test "the path is a directory"
         result = request_file_list(self.job, "myjob_config_complete.ini", True, self.job.user_id)
@@ -174,7 +174,7 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertEqual(result, (False, "Files do not exist"))
 
         result = request_file_list(self.job, "results_page", True, self.job.user_id)
-        self.assertEqual(result[0], True)
+        self.assertTrue(result[0])
 
         # Test recursive file list
         result = request_file_list(self.job, "", True, self.job.user_id)
@@ -193,5 +193,5 @@ class TestRequestFileListUploaded(BilbyTestCase):
 
         result = request_file_list(self.job, "./data", True, self.job.user_id)
 
-        self.assertEqual(result[0], True)
+        self.assertTrue(result[0])
         self.assertNotIn("broken_link", [entry["path"] for entry in result[1]])
