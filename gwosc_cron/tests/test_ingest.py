@@ -601,7 +601,7 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(row["job_id"], "GW000001_123456")
         self.assertEqual(row["success"], 0)
         self.assertEqual(row["reason"], "no dataurl")
-        self.assertEqual(row["is_latest_version"], -1)
+        self.assertEqual(row["is_latest_version"], 1)
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001_123456")
         self.assertIn("does not contain a dataurl", logs.output[0])
