@@ -1,5 +1,6 @@
 import os
 import uuid
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
@@ -137,7 +138,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
             self.assertEqual(
                 response.headers["Content-Disposition"],
-                f'inline; filename="{os.path.basename(files[idx]["path"][1:])}"',
+                f'inline; filename="{Path(files[idx]["path"][1:]).name}"',
             )
 
             content = b"".join(list(response))
@@ -161,7 +162,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
             self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
             self.assertEqual(
                 response.headers["Content-Disposition"],
-                f'attachment; filename="{os.path.basename(files[idx]["path"][1:])}"',
+                f'attachment; filename="{Path(files[idx]["path"][1:]).name}"',
             )
 
             content = b"".join(list(response))
