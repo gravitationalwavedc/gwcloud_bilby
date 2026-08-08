@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import responses
@@ -99,7 +100,7 @@ class GWOSCTestBase(unittest.TestCase):
         )
 
     def add_file_response(self, filename="good.h5", url_path="GW000001.h5"):
-        with open(f"test_fixtures/{filename}", "rb") as f:
+        with Path(f"test_fixtures/{filename}").open("rb") as f:
             h5data = f.read()
         responses.add(responses.GET, f"https://test.org/{url_path}", h5data)
 
