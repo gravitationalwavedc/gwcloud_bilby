@@ -112,7 +112,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             for job in BilbyJob.objects.filter(user_id=1)
         ]
 
-        return True, jobs
+        return "OK", jobs
 
     def request_job_filter_mock_missing_record(*args, **kwargs):
         jobs = [
@@ -123,7 +123,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             for job in BilbyJob.objects.filter(user_id=1)[1:]
         ]
 
-        return True, jobs
+        return "OK", jobs
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)

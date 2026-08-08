@@ -68,6 +68,17 @@ class TestBuildUserJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["status_badge_class"], "dark")
 
     @mock.patch("bilbyui.views.request_job_filter")
+    def test_controller_unavailable_shows_unknown(self, request_job_filter):
+        job = self._make_job(job_controller_id=42)
+        request_job_filter.return_value = ("UNKNOWN", "Error getting job filter")
+
+        rows = _build_user_job_rows({"jobs": [job], "page_size": 20}, self.user)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["status_name"], "Unknown")
+        self.assertEqual(rows[0]["status_badge_class"], "dark")
+
+    @mock.patch("bilbyui.views.request_job_filter")
     def test_uploaded_job_shows_completed(self, request_job_filter):
         job = self._make_job(job_type=BilbyJobType.UPLOADED)
 

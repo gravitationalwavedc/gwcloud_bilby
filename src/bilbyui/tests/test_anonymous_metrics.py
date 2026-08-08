@@ -126,7 +126,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
             for job in BilbyJob.objects.filter(user_id=1)
         ]
 
-        return True, jobs
+        return "OK", jobs
 
     @silence_errors
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
