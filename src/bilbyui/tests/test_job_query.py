@@ -119,6 +119,26 @@ class TestBilbyJobQueries(BilbyTestCase):
 
     @mock.patch(
         "bilbyui.schema.request_job_filter",
+        return_value=(None, [{"id": 1, "history": None}]),
+    )
+    def test_bilby_job_status_query_empty_history(self, *args):
+        """
+        bilbyJob node jobStatus should resolve to Unknown when job controller history is empty/None
+        """
+        response = self.job_request("jobStatus {name \n number \n date}")
+        expected = {
+            "bilbyJob": {
+                "jobStatus": {
+                    "name": "Unknown",
+                    "number": 0,
+                    "date": "Unknown",
+                }
+            }
+        }
+        self.assertDictEqual(expected, response.data, "bilbyJob query returned unexpected data.")
+
+    @mock.patch(
+        "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
     )
     def test_bilby_job_last_updated_query(self, *args):
