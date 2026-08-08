@@ -78,6 +78,15 @@ class TestSchemaCoverage(BilbyTestCase):
         self.assertEqual(status["number"], JobStatus.COMPLETED)
         self.assertEqual(status["date"], str(self.job.creation_time))
 
+    @mock.patch("bilbyui.schema.request_job_filter", side_effect=lambda *a, **k: (True, []))
+    def test_bilby_job_status_external(self, *_):
+        self.job.job_type = BilbyJobType.EXTERNAL
+        self.job.save()
+        status = self.query(JOB_STATUS_QUERY % self.global_id).data["bilbyJob"]["jobStatus"]
+        self.assertEqual(status["name"], JobStatus.display_name(JobStatus.COMPLETED))
+        self.assertEqual(status["number"], JobStatus.COMPLETED)
+        self.assertEqual(status["date"], str(self.job.creation_time))
+
     @silence_errors
     @mock.patch("bilbyui.models.request_file_list", return_value=(False, "controller error"))
     def test_bilby_result_files_list_failure(self, *_):
