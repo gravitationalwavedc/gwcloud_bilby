@@ -1243,10 +1243,9 @@ def view_job_parameters_partial(request, job_id):
         params = generate_parameter_output(job)
     except (AttributeError, KeyError, ValueError) as e:
         logger.exception(
-            "Failed to generate parameter output for job %s: %s: %s",
+            "Failed to generate parameter output for job %s: %s",
             job.id,
             type(e).__name__,
-            e,
         )
         params = None
 
