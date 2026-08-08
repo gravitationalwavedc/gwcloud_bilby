@@ -130,7 +130,7 @@ class GWFlowJobNode(DjangoObjectType):
     bilby_jobs = graphene.List(lambda: BilbyJobNode)
 
     @classmethod
-    def get_queryset(parent, queryset, info):
+    def get_queryset(cls, queryset, info):
         user = info.context.user
         if not is_ligo_user(user):
             queryset = queryset.filter(ligo_only=False)
@@ -183,7 +183,7 @@ class BilbyJobNode(DjangoObjectType):
     gwflow_analysis_uid = graphene.String()
 
     @classmethod
-    def get_queryset(self, queryset, info):
+    def get_queryset(cls, queryset, info):
         user = info.context.user
         user_id = user.id if user.is_authenticated else 0
 
