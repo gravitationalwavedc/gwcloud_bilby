@@ -84,11 +84,11 @@ def submit_job(user_id, params, cluster):
             user_id,
             data=data,
         )
-
+    except requests.RequestException as e:
+        logger.exception("Request exception submitting job for user %s", user_id)
+        raise RuntimeError(f"Error submitting job: {e}") from e
+    else:
         logger.info("Job submitted successfully for user %s: status 200", user_id)
 
         logger.info("Job controller assigned ID %s for user %s", result_data.get("jobId"), user_id)
         return result_data
-    except requests.RequestException as e:
-        logger.exception("Request exception submitting job for user %s", user_id)
-        raise RuntimeError(f"Error submitting job: {e}") from e
