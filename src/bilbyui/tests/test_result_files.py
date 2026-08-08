@@ -108,7 +108,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
             }
             self.assertDictEqual(response.data, expected)
 
-            download_tokens = [f["downloadToken"] for f in filter(lambda x: not x["isDir"], self.files)]
+            download_tokens = [f["downloadToken"] for f in self.files if not f["isDir"]]
 
             self.authenticate()
 
@@ -245,7 +245,7 @@ class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
             expected = {"bilbyResultFiles": {"files": files, "jobType": BilbyJobType.UPLOADED}}
             self.assertDictEqual(response.data, expected)
 
-            download_tokens = [f["downloadToken"] for f in filter(lambda x: not x["isDir"], files)]
+            download_tokens = [f["downloadToken"] for f in files if not f["isDir"]]
 
             self.authenticate()
 
