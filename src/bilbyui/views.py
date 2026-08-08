@@ -1742,7 +1742,7 @@ def upload_gwflow_file(user, gwflow_file_id, file):
     bytes_written = 0
 
     try:
-        with open(part_path, "wb") as f_out:
+        with part_path.open("wb") as f_out:
             for chunk in file.chunks():
                 f_out.write(chunk)
                 bytes_written += len(chunk)
