@@ -17,9 +17,12 @@ def derive_job_status(history):
     if not history:
         return JobStatus.DRAFT, "Unknown", None
 
-    latest = max(history, key=lambda h: datetime.datetime.strptime(h["timestamp"], "%Y-%m-%d %H:%M:%S.%f UTC"))
+    def parse_timestamp(entry):
+        return datetime.datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S.%f UTC")
+
+    latest = max(history, key=parse_timestamp)
     state = latest["state"]
     display_name = JobStatus.display_name(state)
-    timestamp = datetime.datetime.strptime(latest["timestamp"], "%Y-%m-%d %H:%M:%S.%f UTC")
+    timestamp = parse_timestamp(latest)
     logger.info("Derived job status: state=%s, display_name=%s, timestamp=%s", state, display_name, timestamp)
     return (state, display_name, timestamp)
