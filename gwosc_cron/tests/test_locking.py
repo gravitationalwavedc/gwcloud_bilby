@@ -23,9 +23,8 @@ class TestSingleInstanceLock(unittest.TestCase):
 
     def test_missing_db_path_exits(self):
         """run() exits with code 1 when DB_PATH is not configured."""
-        with patch.object(gwosc_ingest, "DB_PATH", None):
-            with self.assertRaises(SystemExit) as cm:
-                gwosc_ingest.run()
+        with patch.object(gwosc_ingest, "DB_PATH", None), self.assertRaises(SystemExit) as cm:
+            gwosc_ingest.run()
         self.assertEqual(cm.exception.code, 1)
 
     @patch("gwosc_ingest.check_and_download")
