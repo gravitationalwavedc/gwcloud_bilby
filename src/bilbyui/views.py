@@ -1147,9 +1147,11 @@ def _get_job_status_context(job, user):
     elif job.job_controller_id:
         _, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
         if job_controller_jobs:
-            history = job_controller_jobs[0]["history"][0]
-            status_name = JobStatus.display_name(history["state"])
-            status_date = history["timestamp"]
+            history = job_controller_jobs[0]["history"]
+            if history:
+                latest = history[0]
+                status_name = JobStatus.display_name(latest["state"])
+                status_date = latest["timestamp"]
 
     return {
         "status_name": status_name,
