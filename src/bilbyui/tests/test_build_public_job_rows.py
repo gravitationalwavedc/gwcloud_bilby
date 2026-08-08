@@ -65,6 +65,14 @@ class TestBuildPublicJobRows(BilbyTestCase):
         self.assertEqual(rows[1]["status_name"], "Unknown")
         self.assertEqual(rows[1]["status_badge_class"], "dark")
 
+    def test_normal_job_with_empty_history(self):
+        job = self._create_job(job_type=BilbyJobType.NORMAL)
+        controller_jobs = {job.id: {"history": []}}
+        rows = _build_public_job_rows(_result([_make_record(job)], {job.id: job}, job_controller_jobs=controller_jobs))
+
+        self.assertEqual(rows[0]["status_name"], "Unknown")
+        self.assertEqual(rows[0]["status_badge_class"], "dark")
+
     def test_uploaded_and_external_job_status(self):
         for job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
             with self.subTest(job_type=job_type):
