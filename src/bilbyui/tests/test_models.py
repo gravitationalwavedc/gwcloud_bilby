@@ -45,21 +45,21 @@ class TestBilbyJobModel(BilbyTestCase):
         """
         Check that update_bilby_job view can update privacy of a job
         """
-        self.assertEqual(self.job.private, False)
+        self.assertFalse(self.job.private)
 
         self.authenticate()
 
         update_bilby_job(self.job.id, self.user, True, [])
 
         self.job.refresh_from_db()
-        self.assertEqual(self.job.private, True)
+        self.assertTrue(self.job.private)
 
     def test_update_event_id(self):
         """
         Check that update_bilby_job view can update the event ID of a job
         """
         # A user who doesn't own the job shouldn't be able to change the event id
-        self.assertEqual(self.job.event_id, None)
+        self.assertIsNone(self.job.event_id)
 
         self.authenticate(id=2)
 
@@ -67,7 +67,7 @@ class TestBilbyJobModel(BilbyTestCase):
             update_bilby_job(self.job.id, self.user, event_id=self.event_id.event_id)
 
         self.job.refresh_from_db()
-        self.assertEqual(self.job.event_id, None)
+        self.assertIsNone(self.job.event_id)
 
         # If the user owns the job, they should be able to set the event id
         self.user.id = self.job.user_id
@@ -330,7 +330,7 @@ class TestFileDownloadToken(BilbyTestCase):
 
         for i, tk in enumerate(fd_tokens):
             if i == EXPIRY_TOKEN_INDEX:
-                self.assertEqual(result[i], None)
+                self.assertIsNone(result[i])
             else:
                 self.assertEqual(result[i], tk.path)
 
@@ -432,7 +432,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
 
         result = BilbyJobUploadToken.get_by_token(token)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
 
         # No records should exist in the database anymore
         self.assertFalse(BilbyJobUploadToken.objects.all().exists())
