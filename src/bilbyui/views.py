@@ -840,6 +840,9 @@ def file_download_job_file(request, fdl):
     # Get the full file path
     file_path = Path(job_dir) / file_path
 
+    if not file_path.exists():
+        raise Http404
+
     # Use a django file response object to stream the file back to the client
     return FileResponse(
         file_path.open("rb"),
@@ -855,6 +858,9 @@ def file_download_supporting_file(request, supporting_file):
 
     # Make sure that there is no leading slash on the file path
     file_path = job_dir / str(supporting_file.id)
+
+    if not file_path.exists():
+        raise Http404
 
     # Use a django file response object to stream the file back to the client
     return FileResponse(
