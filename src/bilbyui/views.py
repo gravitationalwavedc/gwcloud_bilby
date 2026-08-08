@@ -1482,7 +1482,6 @@ def edit_job_event_id(request, job_id):
 
     if event_id_str == "":
         job.event_id = None
-        job.save()
     else:
         try:
             job.event_id = get_event_id(event_id_str, user=request.user)
@@ -1496,7 +1495,8 @@ def edit_job_event_id(request, job_id):
         except PermissionError as e:
             logger.warning("Unexpected exception editing event ID for job %s: %s", job.id, e)
             return _render_job_field_event_id(request, job, error=str(e), status=400)
-        job.save()
+
+    job.save()
 
     response = _render_job_field_event_id(request, job)
     response["HX-Trigger"] = "save-toast, close-modal"
