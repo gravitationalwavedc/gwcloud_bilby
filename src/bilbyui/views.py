@@ -104,7 +104,7 @@ def check_job_embargo_status(user, args):
         trigger_time = None
 
     # Parse n_simulation from INI args - determines if job uses simulated data
-    n_simulation = args.n_simulation if args.n_simulation is not None else None
+    n_simulation = args.n_simulation
     # Convert to boolean for embargo checking (0 = False, non-zero = True)
     if n_simulation is not None:
         n_simulation = bool(int(n_simulation))
