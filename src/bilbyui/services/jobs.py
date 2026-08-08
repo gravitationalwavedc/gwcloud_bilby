@@ -142,10 +142,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         logger.warning(msg)
         return empty_result
 
-    jobs = {
-        job.id: job
-        for job in BilbyJob.objects.filter(id__in=[record["_id"] for record in records]).select_related("event_id")
-    }
+    jobs = {job.id: job for job in qs_after}
 
     job_controller_ids = {job.job_controller_id: job.id for job in jobs.values() if job.job_controller_id}
     job_controller_jobs = {}
