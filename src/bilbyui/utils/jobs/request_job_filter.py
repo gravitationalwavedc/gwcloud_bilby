@@ -29,7 +29,7 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
     if end_time_gt:
         qs.append("endTimeGt=" + str(round(end_time_gt.timestamp())))
 
-    url = f"""{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?{"&".join(qs)}"""
+    url = f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/job/?{'&'.join(qs)}"
     logger.debug("Requesting job filter for user %s: %s", user_id, url)
 
     try:
