@@ -1,6 +1,7 @@
 import fcntl
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import gwosc_ingest
@@ -38,7 +39,7 @@ class TestSingleInstanceLock(unittest.TestCase):
     def test_lock_already_held_returns_without_running(self, mock_check):
         """When the lock is already held, run() returns without calling check_and_download."""
         # Acquire the lock externally before calling run()
-        lock_fd = open(self.lock_path, "w")
+        lock_fd = Path(self.lock_path).open("w")
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         try:
             gwosc_ingest.run()
@@ -55,7 +56,7 @@ class TestSingleInstanceLock(unittest.TestCase):
 
         # After run() has exited (via exception), we should be able to reacquire
         # the lock, proving it was released in the finally block.
-        lock_fd = open(self.lock_path, "w")
+        lock_fd = Path(self.lock_path).open("w")
         try:
             fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
