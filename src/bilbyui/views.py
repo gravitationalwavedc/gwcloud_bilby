@@ -929,7 +929,7 @@ def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None, i
         gps_time=gps_time,
     )
 
-    return f"EventID {event_id} succesfully created!"
+    return f"EventID {event_id} successfully created!"
 
 
 def update_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=None):
@@ -945,13 +945,13 @@ def update_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is
     for job in event.bilbyjob_set.all():
         job.elastic_search_update()
 
-    return f"EventID {event_id} succesfully updated!"
+    return f"EventID {event_id} successfully updated!"
 
 
 def delete_event_id(user, event_id):
     event = EventID.get_by_event_id(event_id, user)
     event.delete()
-    return f"EventID {event_id} succesfully deleted!"
+    return f"EventID {event_id} successfully deleted!"
 
 
 def upload_supporting_files(upload_tokens, uploaded_supporting_files):
