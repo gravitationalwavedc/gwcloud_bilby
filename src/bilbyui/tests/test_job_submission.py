@@ -290,7 +290,7 @@ class TestJobSubmission(BilbyTestCase):
         # And should create all k/v's with default values
         job = BilbyJob.objects.all().last()
         compare_ini_kvs(self, job, job.ini_string)
-        self.assertEqual(job.event_id, None)
+        self.assertIsNone(job.event_id)
 
         _params = params["input"]["params"]
 
@@ -498,7 +498,7 @@ class TestJobSubmission(BilbyTestCase):
         # Check the job controller id was set as expected
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.job_controller_id, 1122)
-        self.assertEqual(job.event_id, None)
+        self.assertIsNone(job.event_id)
 
         # Check that the correct cluster was used in the request
         r = json.loads(self.responses.calls[0].request.body)
