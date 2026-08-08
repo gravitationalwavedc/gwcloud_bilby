@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
@@ -168,7 +169,7 @@ class TestBilbyJobQueries(BilbyTestCase):
     )
     def test_bilby_job_supporting_files_dont_exist(self, *args):
         self.job_data["name"] = "another test job"
-        with open("bilbyui/tests/regression_data/psd_dict_ini.ini") as f:
+        with Path("bilbyui/tests/regression_data/psd_dict_ini.ini").open() as f:
             self.job_data["ini_string"] = f.read()
         del self.job_data["id"]
         self.job = BilbyJob.objects.create(**self.job_data)
