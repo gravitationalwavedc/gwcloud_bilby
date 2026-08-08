@@ -285,7 +285,7 @@ def _check_and_download_inner(con, cur):
         h5url = found[0].get("data_url")
         if not h5url:
             logger.error("Preferred job for %s does not contain a dataurl 😠", event_name)
-            save_sqlite_job(event_name, common_name, catalog_shortname, False, "no dataurl", -1)
+            save_sqlite_job(event_name, common_name, catalog_shortname, False, "no dataurl", is_latest_version)
             continue
 
         # See if there is already an event_id for this event
