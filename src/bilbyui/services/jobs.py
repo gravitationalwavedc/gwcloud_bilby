@@ -126,6 +126,9 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
             settings.ELASTIC_SEARCH_INDEX,
         )
         return empty_result
+    except elasticsearch.exceptions.ConnectionError:
+        logger.exception("Failed to connect to Elasticsearch")
+        return empty_result
 
     if not results["hits"]:
         return empty_result

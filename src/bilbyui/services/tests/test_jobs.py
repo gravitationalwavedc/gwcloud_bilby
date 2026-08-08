@@ -150,3 +150,21 @@ class TestJobsService(BilbyTestCase):
             },
         )
         mock_es.search.assert_called_once()
+
+    @patch("bilbyui.services.jobs.elasticsearch.Elasticsearch")
+    def test_list_public_jobs_elasticsearch_search_connection_error(self, mock_elasticsearch):
+        mock_es = mock_elasticsearch.return_value
+        mock_es.search.side_effect = elasticsearch.exceptions.ConnectionError("connection failed")
+        result = list_public_jobs(self.user)
+        self.assertEqual(
+            result,
+            {
+                "jobs": {},
+                "records": [],
+                "job_controller_jobs": {},
+                "has_next": False,
+                "page": 1,
+                "page_size": 20,
+            },
+        )
+        mock_es.search.assert_called_once()
