@@ -519,11 +519,7 @@ class GWFlowFile(models.Model):
         Retrieves the GWFlowFile object matching the provided download token. Returns None if the token doesn't
         exist.
         """
-        inst = cls.objects.filter(download_token=token).select_related("job")
-        if not inst.exists():
-            return None
-
-        return inst.first()
+        return cls.objects.filter(download_token=token).select_related("job").first()
 
 
 class SupportingFile(models.Model):
@@ -618,11 +614,7 @@ class SupportingFile(models.Model):
         """
         BilbyJob.prune_supporting_files_jobs()
 
-        inst = cls.objects.filter(upload_token=token)
-        if not inst.exists():
-            return None
-
-        return inst.first()
+        return cls.objects.filter(upload_token=token).first()
 
     @classmethod
     def get_by_upload_tokens(cls, tokens):
@@ -645,11 +637,7 @@ class SupportingFile(models.Model):
         Retrieves the SupportingFile object matching the provided download token. Returns None if the token doesn't
         exist or the file is not yet uploaded.
         """
-        inst = cls.objects.filter(download_token=token, upload_token__isnull=True)
-        if not inst.exists():
-            return None
-
-        return inst.first()
+        return cls.objects.filter(download_token=token, upload_token__isnull=True).first()
 
 
 class IniKeyValue(models.Model):
