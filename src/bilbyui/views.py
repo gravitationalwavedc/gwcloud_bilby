@@ -991,6 +991,18 @@ def _event_id_display_values(event_id):
     return [value for value in (event_id.event_id, event_id.trigger_id, event_id.nickname) if value]
 
 
+def _job_status_name(bilby_job, job_controller_jobs):
+    if bilby_job.job_type == BilbyJobType.NORMAL:
+        if bilby_job.id not in job_controller_jobs:
+            return "Unknown"
+        job_controller_job = job_controller_jobs[bilby_job.id]
+        return JobStatus.display_name(job_controller_job["history"][0]["state"])
+    elif bilby_job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
+        return JobStatus.display_name(JobStatus.COMPLETED)
+    else:
+        return "Unknown"
+
+
 def _build_public_job_rows(public_jobs_result):
     records = public_jobs_result["records"]
     page_size = public_jobs_result["page_size"]
@@ -1005,16 +1017,7 @@ def _build_public_job_rows(public_jobs_result):
 
         job_source = record["_source"]
 
-        if bilby_job.job_type == BilbyJobType.NORMAL:
-            if bilby_job.id not in job_controller_jobs:
-                status_name = "Unknown"
-            else:
-                job_controller_job = job_controller_jobs[bilby_job.id]
-                status_name = JobStatus.display_name(job_controller_job["history"][0]["state"])
-        elif bilby_job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
-            status_name = JobStatus.display_name(JobStatus.COMPLETED)
-        else:
-            status_name = "Unknown"
+        status_name = _job_status_name(bilby_job, job_controller_jobs)
 
         rows.append(
             {
@@ -1045,16 +1048,7 @@ def _build_user_job_rows(user_jobs_result, user):
 
     rows = []
     for bilby_job in jobs[:page_size]:
-        if bilby_job.job_type == BilbyJobType.NORMAL:
-            if bilby_job.id not in job_controller_jobs:
-                status_name = "Unknown"
-            else:
-                job_controller_job = job_controller_jobs[bilby_job.id]
-                status_name = JobStatus.display_name(job_controller_job["history"][0]["state"])
-        elif bilby_job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
-            status_name = JobStatus.display_name(JobStatus.COMPLETED)
-        else:
-            status_name = "Unknown"
+        status_name = _job_status_name(bilby_job, job_controller_jobs)
 
         rows.append(
             {
