@@ -262,7 +262,7 @@ class TestFileDownloadToken(BilbyTestCase):
 
         FileDownloadToken.prune()
 
-        self.assertEqual(FileDownloadToken.objects.all().count(), 5)
+        self.assertEqual(FileDownloadToken.objects.count(), 5)
 
         # Check objects just inside the deletion time are not deleted
         for r in FileDownloadToken.objects.all():
@@ -271,7 +271,7 @@ class TestFileDownloadToken(BilbyTestCase):
 
         FileDownloadToken.prune()
 
-        self.assertEqual(FileDownloadToken.objects.all().count(), 5)
+        self.assertEqual(FileDownloadToken.objects.count(), 5)
 
         # Check objects just outside the deletion time are deleted
         for r in FileDownloadToken.objects.all():
@@ -280,7 +280,7 @@ class TestFileDownloadToken(BilbyTestCase):
 
         FileDownloadToken.prune()
 
-        self.assertEqual(FileDownloadToken.objects.all().count(), 0)
+        self.assertEqual(FileDownloadToken.objects.count(), 0)
 
     def test_get_paths(self):
         # Test that getting paths with valid tokens returns a list of paths in order
@@ -343,7 +343,7 @@ class TestFileDownloadToken(BilbyTestCase):
         self.assertEqual(result, [None] * 5)
 
         # No records should exist in the database anymore
-        self.assertFalse(FileDownloadToken.objects.all().exists())
+        self.assertFalse(FileDownloadToken.objects.exists())
 
 
 class TestBilbyJobUploadToken(BilbyTestCase):
@@ -380,7 +380,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
 
         BilbyJobUploadToken.prune()
 
-        self.assertEqual(BilbyJobUploadToken.objects.all().count(), 1)
+        self.assertEqual(BilbyJobUploadToken.objects.count(), 1)
 
         # Check objects just inside the deletion time are not deleted
         r = BilbyJobUploadToken.objects.last()
@@ -389,7 +389,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
 
         BilbyJobUploadToken.prune()
 
-        self.assertEqual(BilbyJobUploadToken.objects.all().count(), 1)
+        self.assertEqual(BilbyJobUploadToken.objects.count(), 1)
 
         # Check objects just outside the deletion time are deleted
         r.created = after - timezone.timedelta(seconds=settings.BILBY_JOB_UPLOAD_TOKEN_EXPIRY + 1)
@@ -397,7 +397,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
 
         BilbyJobUploadToken.prune()
 
-        self.assertEqual(BilbyJobUploadToken.objects.all().count(), 0)
+        self.assertEqual(BilbyJobUploadToken.objects.count(), 0)
 
     def test_get_by_token(self):
         before = timezone.now()
@@ -435,7 +435,7 @@ class TestBilbyJobUploadToken(BilbyTestCase):
         self.assertIsNone(result)
 
         # No records should exist in the database anymore
-        self.assertFalse(BilbyJobUploadToken.objects.all().exists())
+        self.assertFalse(BilbyJobUploadToken.objects.exists())
 
 
 class TestSupportingFile(BilbyTestCase):
@@ -481,7 +481,7 @@ class TestSupportingFile(BilbyTestCase):
 
         BilbyJob.prune_supporting_files_jobs()
 
-        self.assertEqual(BilbyJob.objects.all().count(), 1)
+        self.assertEqual(BilbyJob.objects.count(), 1)
 
         # Check objects just inside the deletion time are not deleted
         self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
@@ -489,7 +489,7 @@ class TestSupportingFile(BilbyTestCase):
 
         BilbyJob.prune_supporting_files_jobs()
 
-        self.assertEqual(BilbyJob.objects.all().count(), 1)
+        self.assertEqual(BilbyJob.objects.count(), 1)
 
         # Check objects just outside the deletion time are deleted
         self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
@@ -497,7 +497,7 @@ class TestSupportingFile(BilbyTestCase):
 
         BilbyJob.prune_supporting_files_jobs()
 
-        self.assertEqual(BilbyJob.objects.all().count(), 0)
+        self.assertEqual(BilbyJob.objects.count(), 0)
 
     def test_pruning_jobs_with_all_uploaded_supporting_files(self):
         # Test that BilbyJob's objects older than settings.UPLOAD_SUPPORTING_FILE_EXPIRY are not removed
@@ -514,7 +514,7 @@ class TestSupportingFile(BilbyTestCase):
 
         BilbyJob.prune_supporting_files_jobs()
 
-        self.assertEqual(BilbyJob.objects.all().count(), 1)
+        self.assertEqual(BilbyJob.objects.count(), 1)
 
         # Check objects just inside the deletion time are not deleted
         self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
@@ -522,7 +522,7 @@ class TestSupportingFile(BilbyTestCase):
 
         BilbyJob.prune_supporting_files_jobs()
 
-        self.assertEqual(BilbyJob.objects.all().count(), 1)
+        self.assertEqual(BilbyJob.objects.count(), 1)
 
         # Check objects just outside the deletion time are not deleted if all supporting files are uploaded
         self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
@@ -530,7 +530,7 @@ class TestSupportingFile(BilbyTestCase):
 
         BilbyJob.prune_supporting_files_jobs()
 
-        self.assertEqual(BilbyJob.objects.all().count(), 1)
+        self.assertEqual(BilbyJob.objects.count(), 1)
 
     def test_get_by_token_non_uploaded_files(self):
         # Tests that get_by_token correctly removes old BilbyJob instances that do not have all their
