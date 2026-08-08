@@ -106,18 +106,18 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                     logger.warning("Error processing %s: %s", row_sname, e)
                     state.record_failure(con, cur, row_sname, repr(e))
                     if state.get_failure_count(cur, row_sname) >= settings.MAX_RETRY_ATTEMPTS:
-                        logger.error("giving up on %s", row_sname)
+                        logger.exception("giving up on %s", row_sname)
                     else:
                         has_failure_in_run = True
                     continue
         except Exception as e:
-            logger.error("Failed during portal superevent sync: %s", e)
+            logger.exception("Failed during portal superevent sync: %s", e)
 
         # Prune diffing: check for snames present in GWCloud but missing upstream
         try:
             current_snames = set(portal_client.iter_current_snames())
         except Exception as e:
-            logger.error("Failed to fetch current snames from portal for prune diff: %s", e)
+            logger.exception("Failed to fetch current snames from portal for prune diff: %s", e)
             current_snames = set()
 
         if gwc_client is not None:
