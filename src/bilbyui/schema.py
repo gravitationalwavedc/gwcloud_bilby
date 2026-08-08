@@ -545,7 +545,7 @@ class Query:
                 raise Exception("Error getting file list. " + str(files))
 
             # Generate download tokens for the list of files
-            paths = [f["path"] for f in filter(lambda x: not x["isDir"], files)]
+            paths = [f["path"] for f in files if not f["isDir"]]
             tokens = FileDownloadToken.create(job, paths)
 
             # Generate a dict that can be used to query the generated tokens
