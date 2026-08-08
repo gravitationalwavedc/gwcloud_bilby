@@ -464,7 +464,7 @@ class Query:
 
         for record in records:
             job = record["_source"]
-            bilby_job = get_job(record["_id"], user)
+            bilby_job = public_jobs["jobs"][int(record["_id"])]
 
             job_node = BilbyPublicJobNode(
                 user=job["user"]["name"],
