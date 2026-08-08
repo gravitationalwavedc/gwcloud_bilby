@@ -20,8 +20,10 @@ def parse_ini_file(job, ini_key_value_klass=None):
     from bilbyui.models import IniKeyValue
     from bilbyui.views import bilby_ini_args_to_data_input
 
+    klass = ini_key_value_klass or IniKeyValue
+
     # Clean up any existing k/v for this job
-    (ini_key_value_klass or IniKeyValue).objects.filter(job=job).delete()
+    klass.objects.filter(job=job).delete()
 
     # Get the args from the ini
     args = bilby_ini_string_to_args((job.ini_string or "").encode("utf-8"))
@@ -34,9 +36,7 @@ def parse_ini_file(job, ini_key_value_klass=None):
     for idx, key in enumerate(vars(args)):
         val = getattr(args, key)
 
-        items.append(
-            (ini_key_value_klass or IniKeyValue)(job=job, key=key, value=json.dumps(val), index=idx, processed=False)
-        )
+        items.append(klass(job=job, key=key, value=json.dumps(val), index=idx, processed=False))
 
     # Parse the args through DataGenerationInput to postprocess any values
     args.outdir = "./"
@@ -50,15 +50,11 @@ def parse_ini_file(job, ini_key_value_klass=None):
             try:
                 val = getattr(processed_args, stripped_key)
 
-                items.append(
-                    (ini_key_value_klass or IniKeyValue)(
-                        job=job, key=stripped_key, value=json.dumps(val), index=idx, processed=True
-                    )
-                )
+                items.append(klass(job=job, key=stripped_key, value=json.dumps(val), index=idx, processed=True))
             except (AttributeError, TypeError):
                 logger.exception("Error parsing INI file for job %s", job.id)
 
     except Exception:
         logger.exception("Error parsing INI file for job %s", job.id)
 
-    (ini_key_value_klass or IniKeyValue).objects.bulk_create(items)
+    klass.objects.bulk_create(items)
