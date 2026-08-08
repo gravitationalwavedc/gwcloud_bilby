@@ -178,14 +178,14 @@ class TestRequestFileListUploaded(BilbyTestCase):
 
         # Test recursive file list
         result = request_file_list(self.job, "", True, self.job.user_id)
-        self.assertTrue(len(list(filter(lambda x: "overview.html" in x["path"], result[1]))))
+        self.assertTrue(len([x for x in result[1] if "overview.html" in x["path"]]))
 
         # Test non-recursive file list
         result = request_file_list(self.job, "", False, self.job.user_id)
-        self.assertFalse(len(list(filter(lambda x: "overview.html" in x["path"], result[1]))))
+        self.assertFalse(len([x for x in result[1] if "overview.html" in x["path"]]))
 
         result = request_file_list(self.job, "results_page", True, self.job.user_id)
-        self.assertTrue(len(list(filter(lambda x: "overview.html" in x["path"], result[1]))))
+        self.assertTrue(len([x for x in result[1] if "overview.html" in x["path"]]))
 
     def test_request_file_list_recursive_skips_broken_symlink(self):
         job_dir = self.job.get_upload_directory()
