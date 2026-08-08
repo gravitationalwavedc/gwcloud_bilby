@@ -1,5 +1,5 @@
 import logging
-import os
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("gwflow_ingest.manifest")
@@ -12,7 +12,7 @@ def _build_file_entry(analysis_uid: str, file_obj: dict | None) -> dict | None:
     if not path:
         return None
 
-    file_name = os.path.basename(path)
+    file_name = Path(path).name
     file_size = file_obj.get("file_size")
     md5_sum = file_obj.get("md5_sum", "")
 
