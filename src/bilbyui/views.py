@@ -1140,35 +1140,24 @@ def _get_view_job_or_404(job_id, user):
 def _get_job_status_context(job, user):
     if job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
         status_name = JobStatus.display_name(JobStatus.COMPLETED)
-        return {
-            "status_name": status_name,
-            "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
-            "status_date": job.last_updated,
-        }
-
-    if not job.job_controller_id:
+        status_date = job.last_updated
+    elif not job.job_controller_id:
         status_name = "Unknown"
-        return {
-            "status_name": status_name,
-            "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
-            "status_date": job.last_updated,
-        }
+        status_date = job.last_updated
+    else:
+        _, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
+        if not job_controller_jobs:
+            status_name = "Unknown"
+            status_date = job.last_updated
+        else:
+            job_controller_job = job_controller_jobs[0]
+            status_name = JobStatus.display_name(job_controller_job["history"][0]["state"])
+            status_date = job_controller_job["history"][0]["timestamp"]
 
-    _, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
-    if not job_controller_jobs:
-        status_name = "Unknown"
-        return {
-            "status_name": status_name,
-            "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
-            "status_date": job.last_updated,
-        }
-
-    job_controller_job = job_controller_jobs[0]
-    status_name = JobStatus.display_name(job_controller_job["history"][0]["state"])
     return {
         "status_name": status_name,
         "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
-        "status_date": job_controller_job["history"][0]["timestamp"],
+        "status_date": status_date,
     }
 
 
