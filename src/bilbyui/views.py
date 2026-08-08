@@ -644,7 +644,6 @@ def upload_bilby_job(user, upload_token, details, job_file):
                 # Because we're in a transaction here, the bulk_create in `SupportingFile.save_from_parsed` isn't saved
                 # so we need to fetch it again from the database to get the inserted ID
                 supporting_file_instance = SupportingFile.objects.get(download_token=supporting_file["download_token"])
-                source_file = Path(job_staging_dir) / supporting_file["file_path"]
                 shutil.copyfile(source_file, supporting_file_dir / str(supporting_file_instance.id))
 
             # Now we have the bilby job id, we can move the staging directory to the actual job directory
