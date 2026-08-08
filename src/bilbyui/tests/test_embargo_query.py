@@ -48,7 +48,7 @@ class TestBilbyJobQueries(BilbyTestCase):
         ]
 
     def job_request(self, job_data):
-        field_str = "\n".join(list(camelize(job_data).keys()))
+        field_str = "\n".join(camelize(job_data).keys())
         return self.query(f"""
             query {{
                 bilbyJob(id:"{job_data["id"]}"){{
@@ -58,7 +58,7 @@ class TestBilbyJobQueries(BilbyTestCase):
             """)
 
     def jobs_request(self):
-        field_str = "\n".join(list(camelize(self.real_job_data).keys()))
+        field_str = "\n".join(camelize(self.real_job_data).keys())
         return self.query(f"""
             query {{
                 bilbyJobs {{

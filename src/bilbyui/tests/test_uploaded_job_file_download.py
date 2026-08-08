@@ -140,7 +140,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
                 f'inline; filename="{Path(file["path"][1:]).name}"',
             )
 
-            content = b"".join(list(response))
+            content = b"".join(response)
 
             with open(
                 Path(self.job.get_upload_directory()) / file["path"][1:],
@@ -164,7 +164,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
                 f'attachment; filename="{Path(file["path"][1:]).name}"',
             )
 
-            content = b"".join(list(response))
+            content = b"".join(response)
 
             with open(
                 Path(self.job.get_upload_directory()) / file["path"][1:],
