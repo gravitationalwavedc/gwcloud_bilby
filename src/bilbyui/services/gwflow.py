@@ -51,8 +51,8 @@ def list_gwflow_jobs(
             api_key=settings.ELASTIC_SEARCH_API_KEY,
             verify_certs=False,
         )
-    except elasticsearch.exceptions.ConnectionError as e:
-        logger.exception("Failed to connect to Elasticsearch: %s", e)
+    except elasticsearch.exceptions.ConnectionError:
+        logger.exception("Failed to connect to Elasticsearch")
         return empty_result
 
     if time_range != "all":
