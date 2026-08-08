@@ -166,6 +166,16 @@ class GWFlowJobConnection(relay.Connection):
         node = GWFlowJobNode
 
 
+def _visible_gwflow_job(job, user):
+    if not job:
+        return None
+    if job.is_pruned:
+        return None
+    if job.ligo_only and not is_ligo_user(user):
+        return None
+    return job
+
+
 class BilbyJobNode(DjangoObjectType):
     class Meta:
         model = BilbyJob
@@ -226,15 +236,7 @@ class BilbyJobNode(DjangoObjectType):
         return self.event_id
 
     def resolve_gwflow_job(self, info):
-        user = info.context.user
-        job = self.gwflow_job
-        if not job:
-            return None
-        if job.is_pruned:
-            return None
-        if job.ligo_only and not is_ligo_user(user):
-            return None
-        return job
+        return _visible_gwflow_job(self.gwflow_job, info.context.user)
 
     def resolve_gwflow_analysis_uid(self, info):
         return self.gwflow_analysis_uid or None
@@ -334,19 +336,12 @@ class Query:
     )
 
     def resolve_gwflow_job_by_sname(self, info, sname):
-        user = info.context.user
         try:
             job = GWFlowJob.objects.get(sname=sname)
         except GWFlowJob.DoesNotExist:
             return None
 
-        if job.is_pruned:
-            return None
-
-        if job.ligo_only and not is_ligo_user(user):
-            return None
-
-        return job
+        return _visible_gwflow_job(job, info.context.user)
 
     def resolve_gwflow_jobs(self, info, **kwargs):
         user = info.context.user
