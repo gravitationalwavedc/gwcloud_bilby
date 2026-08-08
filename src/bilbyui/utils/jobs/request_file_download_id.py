@@ -49,8 +49,8 @@ def request_file_download_ids(job, paths, user_id=None):
 
         logger.info("Successfully generated %s download IDs for job %s", len(result["fileIds"]), job.id)
         return True, result["fileIds"]
-    except Exception as e:
-        logger.exception("Error getting file download IDs for job %s: %s", job.id, e)
+    except Exception:
+        logger.exception("Error getting file download IDs for job %s", job.id)
         return False, "Error getting job file download id"
 
 
