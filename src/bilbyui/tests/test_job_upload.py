@@ -628,7 +628,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
 
             response = self.file_query(self.mutation_string, input_data=self.params, files=test_files)
 
-            self.assertTrue("jobId" in response.data["uploadBilbyJob"]["result"])
+            self.assertIn("jobId", response.data["uploadBilbyJob"]["result"])
 
             # Check that the job is marked as proprietary
             job = BilbyJob.objects.all().last()

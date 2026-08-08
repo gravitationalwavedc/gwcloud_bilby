@@ -89,7 +89,7 @@ class TestEmbargoJobUpload(BilbyTestCase):
         ]:
             response = self.upload_job(trigger_time, n_simulation)
 
-            self.assertTrue("jobId" in response.data["uploadBilbyJob"]["result"])
+            self.assertIn("jobId", response.data["uploadBilbyJob"]["result"])
 
             _, job_id = from_global_id(response.data["uploadBilbyJob"]["result"]["jobId"])
 
@@ -136,7 +136,7 @@ class TestEmbargoJobUpload(BilbyTestCase):
         ]:
             response = self.upload_job(trigger_time, n_simulation)
 
-            self.assertTrue("jobId" in response.data["uploadBilbyJob"]["result"])
+            self.assertIn("jobId", response.data["uploadBilbyJob"]["result"])
 
             _, job_id = from_global_id(response.data["uploadBilbyJob"]["result"]["jobId"])
 
