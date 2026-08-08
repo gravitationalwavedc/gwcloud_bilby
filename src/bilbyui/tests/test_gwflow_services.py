@@ -68,6 +68,17 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(res["jobs"], {})
 
     @patch("elasticsearch.Elasticsearch")
+    def test_list_gwflow_jobs_search_connection_error(self, mock_es_cls):
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+        mock_client.search.side_effect = elasticsearch.exceptions.ConnectionError("Connection refused")
+
+        res = list_gwflow_jobs(self.non_ligo_user)
+        self.assertEqual(res["jobs"], {})
+        self.assertFalse(res["has_next"])
+        mock_client.search.assert_called_once()
+
+    @patch("elasticsearch.Elasticsearch")
     def test_list_gwflow_jobs_non_ligo_user_query(self, mock_es_cls):
         mock_client = MagicMock()
         mock_es_cls.return_value = mock_client
