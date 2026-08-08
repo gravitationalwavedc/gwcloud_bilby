@@ -1138,7 +1138,7 @@ def _get_view_job_or_404(job_id, user):
     except BilbyJob.DoesNotExist as e:
         raise Http404 from e
     except PermissionError as e:
-        logger.warning(f"Permission error fetching job {job_id}: {e}", exc_info=True)
+        logger.warning("Permission error fetching job %s: %s", job_id, e, exc_info=True)
         raise Http404 from e
 
     if not BilbyJob.bilby_job_filter(BilbyJob.objects.filter(pk=job.id), user).exists():
