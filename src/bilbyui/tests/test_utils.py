@@ -236,33 +236,33 @@ def create_test_upload_data(
     # Create a temporary directory to add job data to
     with TemporaryDirectory() as d:
         if ini_content and not no_ini_file:
-            with open(os.path.join(d, f"{job_label}_config_complete.ini"), "w") as ini:
+            with (Path(d) / f"{job_label}_config_complete.ini").open("w") as ini:
                 ini.write(ini_content)
 
-            with open(os.path.join(d, "unrelated.ini"), "w") as ini:
+            with (Path(d) / "unrelated.ini").open("w") as ini:
                 ini.write(ini_content)
 
             if multiple_ini_files:
-                with open(os.path.join(d, f"{job_label}2_config_complete.ini"), "w") as ini:
+                with (Path(d) / f"{job_label}2_config_complete.ini").open("w") as ini:
                     ini.write(ini_content)
 
-                with open(os.path.join(d, f"{job_label}3_config_complete.ini"), "w") as ini:
+                with (Path(d) / f"{job_label}3_config_complete.ini").open("w") as ini:
                     ini.write(ini_content)
 
         if include_result:
-            os.makedirs(os.path.join(d, "result"))
-            open(os.path.join(d, "result", f"{job_label}_intrinsic_corner.png"), "a").close()
-            open(os.path.join(d, "result", f"{job_label}_extrinsic_corner.png"), "a").close()
-            open(os.path.join(d, "result", f"{job_label}_test.png"), "a").close()
+            (Path(d) / "result").mkdir()
+            (Path(d) / "result" / f"{job_label}_intrinsic_corner.png").touch()
+            (Path(d) / "result" / f"{job_label}_extrinsic_corner.png").touch()
+            (Path(d) / "result" / f"{job_label}_test.png").touch()
 
         if include_results_page:
-            os.makedirs(os.path.join(d, "results_page"))
-            open(os.path.join(d, "results_page", "overview.html"), "a").close()
+            (Path(d) / "results_page").mkdir()
+            (Path(d) / "results_page" / "overview.html").touch()
 
         if include_data:
-            os.makedirs(os.path.join(d, "data"))
-            open(os.path.join(d, "data", f"H1_{job_label}_generation_frequency_domain_data.png"), "a").close()
-            open(os.path.join(d, "data", f"L1_{job_label}_generation_frequency_domain_data.png"), "a").close()
+            (Path(d) / "data").mkdir()
+            (Path(d) / "data" / f"H1_{job_label}_generation_frequency_domain_data.png").touch()
+            (Path(d) / "data" / f"L1_{job_label}_generation_frequency_domain_data.png").touch()
 
         for archive_path in supporting_files:
             file_path = Path(d) / Path(archive_path)
