@@ -154,10 +154,10 @@ def run(args=None):
 
     settings.validate_settings()
 
-    lock_path = str(Path(settings.DB_PATH).with_suffix(".lock"))
+    lock_path = Path(settings.DB_PATH).with_suffix(".lock")
     lock_file = None
     try:
-        lock_file = open(lock_path, "w")
+        lock_file = lock_path.open("w")
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except (BlockingIOError, OSError):
         logger.warning("Another instance of gwflow_ingest is already running.")
