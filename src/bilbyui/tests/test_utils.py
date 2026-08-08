@@ -199,7 +199,7 @@ def create_test_ini_string(config_dict=None, complete=False):
     if config_dict is None:
         config_dict = {}
 
-    if complete or (config_dict == {}):
+    if complete or not config_dict:
         config_dict = complete_config_dict(config_dict)
 
     return construct_ini_string_from_dict(config_dict)
