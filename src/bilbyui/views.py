@@ -409,7 +409,7 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
             setattr(args, config_name, None)
 
         else:
-            logger.error(f"Got unknown supporting file type for {config_name}: {config}")
+            logger.error("Got unknown supporting file type for %s: %s", config_name, config)
 
     return supporting_files
 
