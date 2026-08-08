@@ -1775,8 +1775,6 @@ def link_bilby_job_to_gwflow(user, job_id, sname, analysis_uid):
     try:
         _, job_pk = from_global_id(job_id)
         job = BilbyJob.get_by_id(int(job_pk), user)
-    except GraphQLError:
-        raise
     except Exception as e:
         raise GraphQLError("Invalid job_id") from e
 
