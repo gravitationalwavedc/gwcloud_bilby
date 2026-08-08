@@ -142,10 +142,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
 
             content = b"".join(response)
 
-            with open(
-                Path(self.job.get_upload_directory()) / file["path"][1:],
-                "rb",
-            ) as f:
+            with (Path(self.job.get_upload_directory()) / file["path"][1:]).open("rb") as f:
                 self.assertEqual(content, f.read())
 
     @silence_errors
@@ -166,8 +163,5 @@ class TestUploadedJobFileDownload(BilbyTestCase):
 
             content = b"".join(response)
 
-            with open(
-                Path(self.job.get_upload_directory()) / file["path"][1:],
-                "rb",
-            ) as f:
+            with (Path(self.job.get_upload_directory()) / file["path"][1:]).open("rb") as f:
                 self.assertEqual(content, f.read())
