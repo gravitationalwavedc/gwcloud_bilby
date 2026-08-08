@@ -678,11 +678,7 @@ class FileDownloadToken(models.Model):
         cls.prune()
 
         # Next try to find the instance matching the specified token
-        inst = cls.objects.filter(token=token)
-        if not inst.exists():
-            return None
-
-        return inst.first()
+        return cls.objects.filter(token=token).first()
 
     @classmethod
     def create(cls, job, paths):
@@ -748,11 +744,7 @@ class BilbyJobUploadToken(models.Model):
         cls.prune()
 
         # Next try to find the instance matching the specified token
-        inst = cls.objects.filter(token=token)
-        if not inst.exists():
-            return None
-
-        return inst.first()
+        return cls.objects.filter(token=token).first()
 
     @classmethod
     def create(cls, user):
