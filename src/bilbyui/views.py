@@ -154,7 +154,7 @@ def create_bilby_job(user, params):
     if should_embargo_job(user, float(params.data.trigger_time), params.data.data_choice == "simulated"):
         logger.warning("User %s attempted to run real job on embargoed data: %s", user.id, params.details.name)
         msg = "Only LIGO users may run real jobs on embargoed LIGO data"
-        raise Exception(msg)
+        raise GraphQLError(msg)
 
     validate_job_name(params.details.name)
 
@@ -442,7 +442,7 @@ def create_bilby_job_from_ini_string(user, params):
 
     if check_job_embargo_status(user, args):
         msg = "Only LIGO users may run real jobs on embargoed LIGO data"
-        raise Exception(msg)
+        raise GraphQLError(msg)
 
     if args.outdir == ".":
         args.outdir = "./"
