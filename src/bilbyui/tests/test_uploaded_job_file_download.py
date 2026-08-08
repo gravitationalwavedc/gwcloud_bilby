@@ -146,6 +146,20 @@ class TestUploadedJobFileDownload(BilbyTestCase):
                 self.assertEqual(content, f.read())
 
     @silence_errors
+    def test_missing_disk_file_returns_404(self):
+        download_tokens, response = self.generate_file_download_tokens()
+        files = get_files(response)
+
+        for idx, file in enumerate(files):
+            token = self.generate_download_id_from_token(download_tokens[idx])
+
+            disk_path = Path(self.job.get_upload_directory()) / file["path"][1:]
+            disk_path.unlink()
+
+            response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={token}")
+            self.assertEqual(response.status_code, 404)
+
+    @silence_errors
     def test_success_force_download(self):
         download_tokens, response = self.generate_file_download_tokens()
         files = get_files(response)
