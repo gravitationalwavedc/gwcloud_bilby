@@ -58,7 +58,10 @@ class Label(models.Model):
         :param include_protected: If protected labels should be included
         :return: QuerySet of filtered Labels
         """
-        return cls.objects.filter(name__in=labels, protected__in=[False, include_protected])
+        qs = cls.objects.filter(name__in=labels)
+        if not include_protected:
+            qs = qs.filter(protected=False)
+        return qs
 
     @property
     def badge_type(self) -> str:
