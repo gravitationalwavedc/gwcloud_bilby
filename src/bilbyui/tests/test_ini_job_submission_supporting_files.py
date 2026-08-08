@@ -606,7 +606,7 @@ class TestIniJobSubmission(BilbyTestCase):
         # Get the supporting file path
         file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)
 
-        with open(str(file_path), "rb") as f:
+        with file_path.open("rb") as f:
             self.assertEqual(content, f.read())
 
     def test_download_supporting_files_valid_token(self):
@@ -636,5 +636,5 @@ class TestIniJobSubmission(BilbyTestCase):
         # Get the supporting file path
         file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)
 
-        with open(str(file_path), "rb") as f:
+        with file_path.open("rb") as f:
             self.assertEqual(content, f.read())
