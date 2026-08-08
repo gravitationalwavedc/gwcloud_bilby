@@ -111,7 +111,7 @@ def request_job_filter_mock(*args, **kwargs):
         for job in BilbyJob.objects.filter(job_controller_id__in=requested_ids)
     ]
 
-    return True, jobs
+    return "OK", jobs
 
 
 class TestPublicJobsView(BilbyTestCase):
@@ -149,6 +149,25 @@ class TestPublicJobsView(BilbyTestCase):
         self.assertNotContains(response, "Job 4")
         self.assertContains(response, "Loading more")
         self.assertContains(response, "page=2")
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", return_value=("UNKNOWN", "Error getting job filter"))
+    def test_controller_unavailable_renders_unknown(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Offline job",
+            description="controller down",
+            job_controller_id=1501,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Offline job"}),
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Offline job")
+        self.assertContains(response, 'class="badge badge-dark mr-1">Unknown</span>')
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)

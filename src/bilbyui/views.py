@@ -1038,9 +1038,9 @@ def _build_user_job_rows(user_jobs_result, user):
     job_controller_ids = {job.job_controller_id: job.id for job in jobs if job.job_controller_id}
     job_controller_jobs = {}
     if job_controller_ids:
-        job_controller_jobs = {
-            job_controller_ids[job["id"]]: job for job in request_job_filter(user.id, ids=job_controller_ids.keys())[1]
-        }
+        status, job_controller_result = request_job_filter(user.id, ids=job_controller_ids.keys())
+        if status == "OK":
+            job_controller_jobs = {job_controller_ids[job["id"]]: job for job in job_controller_result}
 
     rows = []
     for bilby_job in jobs[:page_size]:

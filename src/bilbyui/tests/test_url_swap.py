@@ -20,7 +20,7 @@ def request_job_filter_mock(*args, **kwargs):
         for job in BilbyJob.objects.filter(job_controller_id__in=requested_ids)
     ]
 
-    return True, jobs
+    return "OK", jobs
 
 
 class TestUrlSwap(BilbyTestCase):
