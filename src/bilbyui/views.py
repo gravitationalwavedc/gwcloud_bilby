@@ -552,12 +552,9 @@ def upload_bilby_job(user, upload_token, details, job_file):
                 raise ValueError(msg)
 
         # Find the config complete ini
-        ini_file = list(
-            filter(
-                lambda x: x.is_file() and x.name.endswith("_config_complete.ini"),
-                Path(job_staging_dir).iterdir(),
-            )
-        )
+        ini_file = [
+            x for x in Path(job_staging_dir).iterdir() if x.is_file() and x.name.endswith("_config_complete.ini")
+        ]
 
         if len(ini_file) != 1:
             msg = "Invalid number of ini files ending in `_config_complete.ini`. There should be exactly one."
