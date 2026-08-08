@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
@@ -69,7 +70,7 @@ class TestCondor(TestCase):
 
         log_name = "completed_no_error_no_parallel.submit.nodes.log"
 
-        jel = htcondor.JobEventLog(os.path.join(os.path.dirname(__file__), "data", log_name))
+        jel = htcondor.JobEventLog(str(Path(__file__).parent / "data" / log_name))
         events = list(jel.events(stop_after=0))
 
         with TemporaryDirectory() as td:
@@ -99,7 +100,7 @@ class TestCondor(TestCase):
 
         log_name = "cancelled_no_parallel.submit.nodes.log"
 
-        jel = htcondor.JobEventLog(os.path.join(os.path.dirname(__file__), "data", log_name))
+        jel = htcondor.JobEventLog(str(Path(__file__).parent / "data" / log_name))
         events = list(jel.events(stop_after=0))
 
         with TemporaryDirectory() as td:
@@ -129,7 +130,7 @@ class TestCondor(TestCase):
 
         log_name = "completed_no_error_parallel.submit.nodes.log"
 
-        jel = htcondor.JobEventLog(os.path.join(os.path.dirname(__file__), "data", log_name))
+        jel = htcondor.JobEventLog(str(Path(__file__).parent / "data" / log_name))
         events = list(jel.events(stop_after=0))
 
         with TemporaryDirectory() as td:
@@ -159,7 +160,7 @@ class TestCondor(TestCase):
 
         log_name = "error_no_parallel.submit.nodes.log"
 
-        jel = htcondor.JobEventLog(os.path.join(os.path.dirname(__file__), "data", log_name))
+        jel = htcondor.JobEventLog(str(Path(__file__).parent / "data" / log_name))
         events = list(jel.events(stop_after=0))
 
         with TemporaryDirectory() as td:
@@ -189,7 +190,7 @@ class TestCondor(TestCase):
 
         log_name = "error_short.submit.nodes.log"
 
-        jel = htcondor.JobEventLog(os.path.join(os.path.dirname(__file__), "data", log_name))
+        jel = htcondor.JobEventLog(str(Path(__file__).parent / "data" / log_name))
         events = list(jel.events(stop_after=0))
 
         with TemporaryDirectory() as td:
