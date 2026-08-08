@@ -846,7 +846,7 @@ def file_download_job_file(request, fdl):
 
     # Use a django file response object to stream the file back to the client
     return FileResponse(
-        open(file_path, "rb"),
+        file_path.open("rb"),
         as_attachment="forceDownload" in request.GET,
         filename=file_path.name,
         content_type="application/octet-stream",
@@ -862,7 +862,7 @@ def file_download_supporting_file(request, supporting_file):
 
     # Use a django file response object to stream the file back to the client
     return FileResponse(
-        open(file_path, "rb"),
+        file_path.open("rb"),
         as_attachment="forceDownload" in request.GET,
         filename=supporting_file.file_name,
         content_type="application/octet-stream",
@@ -883,7 +883,7 @@ def file_download_gwflow_file(request, gwflow_file):
         raise Http404
 
     return FileResponse(
-        open(file_path, "rb"),
+        file_path.open("rb"),
         as_attachment="forceDownload" in request.GET,
         filename=gwflow_file.file_name,
         content_type="application/octet-stream",
