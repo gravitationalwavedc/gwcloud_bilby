@@ -100,7 +100,7 @@ class TestJobSubmission(BilbyTestCase):
                 input_data=params,
             )
 
-            self.assertTrue("jobId" in response.data["newBilbyJob"]["result"])
+            self.assertIn("jobId", response.data["newBilbyJob"]["result"])
 
             job_id = response.data["newBilbyJob"]["result"]["jobId"]
 

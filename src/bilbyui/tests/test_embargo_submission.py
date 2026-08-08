@@ -98,7 +98,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             self.assertResponseNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
-            self.assertTrue("jobId" in response.data["newBilbyJob"]["result"])
+            self.assertIn("jobId", response.data["newBilbyJob"]["result"])
 
             _, job_id = from_global_id(response.data["newBilbyJob"]["result"]["jobId"])
 
@@ -137,7 +137,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             self.assertResponseNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
-            self.assertTrue("jobId" in response.data["newBilbyJob"]["result"])
+            self.assertIn("jobId", response.data["newBilbyJob"]["result"])
 
             _, job_id = from_global_id(response.data["newBilbyJob"]["result"]["jobId"])
 
@@ -206,7 +206,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             self.assertResponseNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
-            self.assertTrue("jobId" in response.data["newBilbyJobFromIniString"]["result"])
+            self.assertIn("jobId", response.data["newBilbyJobFromIniString"]["result"])
 
             _, job_id = from_global_id(response.data["newBilbyJobFromIniString"]["result"]["jobId"])
 
@@ -269,7 +269,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
             self.assertResponseNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
-            self.assertTrue("jobId" in response.data["newBilbyJobFromIniString"]["result"])
+            self.assertIn("jobId", response.data["newBilbyJobFromIniString"]["result"])
 
             _, job_id = from_global_id(response.data["newBilbyJobFromIniString"]["result"]["jobId"])
 
