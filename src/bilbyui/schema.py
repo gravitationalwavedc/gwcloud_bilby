@@ -258,8 +258,8 @@ class BilbyJobNode(DjangoObjectType):
         return self.gwflow_analysis_uid or None
 
     def resolve_job_status(self, info):
-        # Uploaded jobs are always complete
-        if self.job_type == BilbyJobType.UPLOADED:
+        # Uploaded and external jobs are always complete
+        if self.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
             return {
                 "name": JobStatus.display_name(JobStatus.COMPLETED),
                 "number": JobStatus.COMPLETED,
