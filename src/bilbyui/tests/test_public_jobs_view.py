@@ -207,6 +207,24 @@ class TestPublicJobsView(BilbyTestCase):
         self.assertContains(response, "Recent job")
         self.assertNotContains(response, "Old job")
 
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_invalid_time_range_defaults_to_all(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Invalid range job",
+            description="should still render",
+            job_controller_id=3201,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Invalid range job"}),
+        )
+
+        response = self.client.get(self.url, {"time_range": "invalid"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Invalid range job")
+
     @override_settings(EMBARGO_START_TIME=1234.0)
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
