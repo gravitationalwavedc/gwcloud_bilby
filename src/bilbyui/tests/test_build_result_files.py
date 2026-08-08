@@ -13,7 +13,6 @@ from bilbyui.views import _build_result_files
 class TestBuildResultFiles(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = cls.create_user(id=1, name="buffy summers", primary_email="buffy@test.com")
         cls.ini = create_test_ini_string({"detectors": "['H1']"})
         cls.user = cls.create_user()
 
