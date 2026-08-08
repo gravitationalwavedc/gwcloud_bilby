@@ -363,10 +363,7 @@ class Query:
             include_pruned,
         )
 
-        if kwargs.get("after") is None:
-            kwargs["after"] = None
-        else:
-            kwargs["after"] = int(from_global_id(kwargs["after"])[1])
+        kwargs["after"] = int(from_global_id(kwargs["after"])[1]) if kwargs.get("after") is not None else None
 
         page_size = kwargs.get("first", 20)
         offset = kwargs.get("after") or 0
@@ -437,10 +434,7 @@ class Query:
         # Sometimes the relay resolver fills out all kwarg parameters, but sometimes
         # it doesn't, most likely becuase it hates happiness and all that is good
         # This ensures that "after" is either an int (from a b64 string) or None
-        if kwargs.get("after") is None:
-            kwargs["after"] = None
-        else:
-            kwargs["after"] = int(from_global_id(kwargs["after"])[1])
+        kwargs["after"] = int(from_global_id(kwargs["after"])[1]) if kwargs.get("after") is not None else None
 
         page_size = kwargs["first"]
         offset = kwargs.get("after") or 0
