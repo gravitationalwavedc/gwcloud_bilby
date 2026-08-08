@@ -197,7 +197,7 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         response = self.query(query)
 
-        self.assertEqual(response.errors, None)
+        self.assertIsNone(response.errors)
 
         expected = {
             "bilbyJob": {
