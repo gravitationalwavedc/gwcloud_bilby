@@ -601,7 +601,7 @@ class TestIniJobSubmission(BilbyTestCase):
         self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
         self.assertEqual(response.headers["Content-Disposition"], 'attachment; filename="V1-psd.dat"')
 
-        content = b"".join(list(response))
+        content = b"".join(response)
 
         # Get the supporting file path
         file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)
@@ -631,7 +631,7 @@ class TestIniJobSubmission(BilbyTestCase):
         self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
         self.assertEqual(response.headers["Content-Disposition"], 'inline; filename="V1-psd.dat"')
 
-        content = b"".join(list(response))
+        content = b"".join(response)
 
         # Get the supporting file path
         file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)

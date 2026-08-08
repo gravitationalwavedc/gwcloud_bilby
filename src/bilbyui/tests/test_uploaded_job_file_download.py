@@ -140,7 +140,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
                 f'inline; filename="{os.path.basename(files[idx]["path"][1:])}"',
             )
 
-            content = b"".join(list(response))
+            content = b"".join(response)
 
             with open(
                 os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]),
@@ -164,7 +164,7 @@ class TestUploadedJobFileDownload(BilbyTestCase):
                 f'attachment; filename="{os.path.basename(files[idx]["path"][1:])}"',
             )
 
-            content = b"".join(list(response))
+            content = b"".join(response)
 
             with open(
                 os.path.join(self.job.get_upload_directory(), files[idx]["path"][1:]),
