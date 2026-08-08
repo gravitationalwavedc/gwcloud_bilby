@@ -123,10 +123,6 @@ class BilbyTestCase(GraphQLFileUploadTestMixin, GraphQLTestCase):
         self.client.deauthenticate()
         self.user = ADACSAnonymousUser()
 
-    # Deprecated function name redirect
-    def assertResponseHasNoErrors(self, resp, msg=None):
-        return self.assertResponseNoErrors(resp, msg)
-
     # Add a .data parameter as a result of doing a query
     def query(self, *args, **kwargs):
         response = super().query(*args, **kwargs)

@@ -64,7 +64,7 @@ class TestAllLabels(BilbyTestCase):
                 ]
             }
         }
-        self.assertResponseHasNoErrors(response)
+        self.assertResponseNoErrors(response)
         self.assertDictEqual(response.data, expected)
 
     @silence_errors
