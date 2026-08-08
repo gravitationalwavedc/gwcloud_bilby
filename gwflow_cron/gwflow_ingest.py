@@ -71,9 +71,8 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                     continue
 
                 # Tie resume check
-                if start_wm and start_last_sname:
-                    if (row_ts, row_sname) <= (start_wm, start_last_sname):
-                        continue
+                if start_wm and start_last_sname and (row_ts, row_sname) <= (start_wm, start_last_sname):
+                    continue
 
                 try:
                     detail = portal_client.get_superevent(row_sname)
