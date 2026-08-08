@@ -80,6 +80,9 @@ def list_gwflow_jobs(
             settings.ELASTIC_SEARCH_GWFLOW_INDEX,
         )
         return empty_result
+    except elasticsearch.exceptions.ConnectionError:
+        logger.exception("Failed to connect to Elasticsearch")
+        return empty_result
 
     if not results or "hits" not in results or not results["hits"]["hits"]:
         return empty_result
