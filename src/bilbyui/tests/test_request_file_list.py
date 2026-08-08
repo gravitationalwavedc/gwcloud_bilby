@@ -87,6 +87,20 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertIn("/data/sub", paths)
         self.assertIn("/data/sub/b.txt", paths)
 
+    @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_non_recursive_listing_skips_broken_symlink(self):
+        job_dir = self.job.get_upload_directory()
+        (job_dir / "data").mkdir(parents=True, exist_ok=True)
+        (job_dir / "data" / "a.txt").write_text("a")
+        # A broken symlink should be skipped (FileNotFoundError on stat)
+        (job_dir / "data" / "broken_link").symlink_to(job_dir / "data" / "missing")
+
+        success, file_list = request_file_list(self.job, "data", False)
+        self.assertTrue(success)
+        paths = sorted(entry["path"] for entry in file_list)
+        self.assertIn("/data/a.txt", paths)
+        self.assertNotIn("/data/broken_link", paths)
+
     def test_non_uploaded_job_without_controller_id(self):
         job = BilbyJob.objects.create(
             user_id=self.user.id,
