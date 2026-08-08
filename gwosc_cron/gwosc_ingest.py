@@ -433,7 +433,7 @@ def run():
         logger.critical("DB_PATH is not set — this is a misconfiguration. Exiting.")
         sys.exit(1)
 
-    lock_fd = open(LOCK_FILE_PATH, "w")
+    lock_fd = Path(LOCK_FILE_PATH).open("w")
     try:
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
