@@ -1067,6 +1067,8 @@ def public_jobs_view(request):
     page = max(int(request.GET.get("page", 1)), 1)
     search = request.GET.get("search", "")
     time_range = request.GET.get("time_range", "all")
+    if time_range not in ("all", "1d", "1w", "1m", "1y"):
+        time_range = "all"
 
     public_jobs_result = list_public_jobs(
         request.user,
@@ -1097,6 +1099,8 @@ def my_jobs_view(request):
     page = max(int(request.GET.get("page", 1)), 1)
     search = request.GET.get("search", "")
     time_range = request.GET.get("time_range", "all")
+    if time_range not in ("all", "1d", "1w", "1m", "1y"):
+        time_range = "all"
 
     user_jobs_result = list_user_jobs(
         request.user,
