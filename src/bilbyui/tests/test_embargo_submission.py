@@ -95,7 +95,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             self.set_trigger_time_and_data_choice(trigger_time, data_choice)
             response = self.query(self.query_string, input_data=self.params)
 
-            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
+            self.assertResponseNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
             self.assertTrue("jobId" in response.data["newBilbyJob"]["result"])
@@ -134,7 +134,7 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             self.set_trigger_time_and_data_choice(trigger_time, data_choice)
             response = self.query(self.query_string, input_data=self.params)
 
-            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
+            self.assertResponseNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
             self.assertTrue("jobId" in response.data["newBilbyJob"]["result"])
@@ -203,7 +203,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
 
             response = self.query(self.query_string, input_data=self.params)
 
-            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
+            self.assertResponseNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
             self.assertTrue("jobId" in response.data["newBilbyJobFromIniString"]["result"])
@@ -266,7 +266,7 @@ class TestIniBilbyEmbargoPermissions(BilbyTestCase):
 
             response = self.query(self.query_string, input_data=self.params)
 
-            self.assertResponseHasNoErrors(response, "mutation should not have returned errors due to embargo")
+            self.assertResponseNoErrors(response, "mutation should not have returned errors due to embargo")
             self.assertEqual(BilbyJob.objects.count(), 1)
 
             self.assertTrue("jobId" in response.data["newBilbyJobFromIniString"]["result"])

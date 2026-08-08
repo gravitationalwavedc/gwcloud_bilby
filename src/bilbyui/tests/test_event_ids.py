@@ -266,7 +266,7 @@ class TestEventIDPermissions(BilbyTestCase):
             self.authenticate()
 
         response = self.query(create_mutation, input_data=params["input"])
-        self.assertResponseHasNoErrors(response)
+        self.assertResponseNoErrors(response)
         self.assertTrue(EventID.objects.filter(event_id=new_event_id).exists())
 
     @silence_errors
@@ -290,7 +290,7 @@ class TestEventIDPermissions(BilbyTestCase):
             self.authenticate()
 
         response = self.query(update_mutation, input_data=params["input"])
-        self.assertResponseHasNoErrors(response)
+        self.assertResponseNoErrors(response)
         self.assertNotEqual(new_trigger_id, self.event_id1.trigger_id)
 
     @silence_errors
@@ -311,7 +311,7 @@ class TestEventIDPermissions(BilbyTestCase):
             self.authenticate()
 
         response = self.query(delete_mutation, input_data=params["input"])
-        self.assertResponseHasNoErrors(response)
+        self.assertResponseNoErrors(response)
         self.assertFalse(EventID.objects.filter(event_id=self.event_id1.event_id).exists())
 
     @silence_errors
@@ -321,7 +321,7 @@ class TestEventIDPermissions(BilbyTestCase):
         variables_ligo = {"eventId": self.event_id_ligo1.event_id}
 
         response = self.query(get_event_id_query, variables=variables_not_ligo)
-        self.assertResponseHasNoErrors(response)
+        self.assertResponseNoErrors(response)
         self.assertFalse(response.data["eventId"]["isLigoEvent"])
 
         response = self.query(get_event_id_query, variables=variables_ligo)
@@ -329,7 +329,7 @@ class TestEventIDPermissions(BilbyTestCase):
 
         self.authenticate()
         response = self.query(get_event_id_query, variables=variables_not_ligo)
-        self.assertResponseHasNoErrors(response)
+        self.assertResponseNoErrors(response)
         self.assertFalse(response.data["eventId"]["isLigoEvent"])
 
         response = self.query(get_event_id_query, variables=variables_ligo)
@@ -337,11 +337,11 @@ class TestEventIDPermissions(BilbyTestCase):
 
         self.authenticate(authentication_method="ligo_shibboleth")
         response = self.query(get_event_id_query, variables=variables_not_ligo)
-        self.assertResponseHasNoErrors(response)
+        self.assertResponseNoErrors(response)
         self.assertFalse(response.data["eventId"]["isLigoEvent"])
 
         response = self.query(get_event_id_query, variables=variables_ligo)
-        self.assertResponseHasNoErrors(response)
+        self.assertResponseNoErrors(response)
         self.assertTrue(response.data["eventId"]["isLigoEvent"])
 
     @silence_errors
