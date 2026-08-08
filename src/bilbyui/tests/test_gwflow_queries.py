@@ -5,7 +5,9 @@ from django.contrib.auth import get_user_model
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
+from bilbyui.schema import GWFlowJobNode, PublicBilbyJobFilter, UserBilbyJobFilter
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.types import GWFlowFileType
 
 User = get_user_model()
 
@@ -277,8 +279,6 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertEqual(res_ligo.data["bilbyJob"]["gwflowJob"]["sname"], "S230601ah")
 
     def test_filter_qs_properties(self):
-        from bilbyui.schema import PublicBilbyJobFilter, UserBilbyJobFilter
-
         class DummyRequest:
             def __init__(self, user):
                 self.user = user
@@ -291,8 +291,6 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertIsNotNone(public_filter.qs)
 
     def test_gwflow_file_type_resolvers_edge_cases(self):
-        from bilbyui.types import GWFlowFileType
-
         file_type = GWFlowFileType()
         info = mock.Mock()
 
@@ -319,8 +317,6 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertIsNone(GWFlowFileType.resolve_download_token(dict_empty, info))
 
     def test_gwflow_job_node_resolvers_edge_cases(self):
-        from bilbyui.schema import GWFlowJobNode
-
         info = mock.Mock()
 
         class BadUserJob:
