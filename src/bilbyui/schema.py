@@ -471,13 +471,14 @@ class Query:
                     job_node.timestamp = bilby_job.creation_time
                 else:
                     job_controller_job = job_controller_jobs[bilby_job.id]
+                    history = job_controller_job["history"][0]
                     job_node.job_status = JobStatusType(
-                        name=JobStatus.display_name(job_controller_job["history"][0]["state"]),
-                        number=job_controller_job["history"][0]["state"],
-                        date=job_controller_job["history"][0]["timestamp"],
+                        name=JobStatus.display_name(history["state"]),
+                        number=history["state"],
+                        date=history["timestamp"],
                     )
                     job_node.labels = bilby_job.labels.all()
-                    job_node.timestamp = job_controller_job["history"][0]["timestamp"]
+                    job_node.timestamp = history["timestamp"]
 
             elif bilby_job.job_type in [BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL]:
                 job_node.job_status = JobStatusType(
