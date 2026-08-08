@@ -600,9 +600,9 @@ class SupportingFile(models.Model):
         created = cls.objects.bulk_create(bulk_items)
 
         # Map the tokens for the created files to the returned supporting files details
-        for i, _ in enumerate(created):
-            result_files[i]["token"] = created[i].upload_token
-            result_files[i]["download_token"] = created[i].download_token
+        for i, created_file in enumerate(created):
+            result_files[i]["token"] = created_file.upload_token
+            result_files[i]["download_token"] = created_file.download_token
 
         return result_files
 
