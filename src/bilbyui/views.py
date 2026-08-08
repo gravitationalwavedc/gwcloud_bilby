@@ -964,7 +964,7 @@ def upload_supporting_files(upload_tokens, uploaded_supporting_files):
         job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(upload_token.job.id)
         job_dir.mkdir(parents=True, exist_ok=True)
 
-        with open(job_dir / str(upload_token.id), "wb") as supporting_file:
+        with (job_dir / str(upload_token.id)).open("wb") as supporting_file:
             # Write the uploaded file to the temporary file
             supporting_file.writelines(uploaded_supporting_file.chunks())
             supporting_file.flush()
