@@ -1138,21 +1138,18 @@ def _get_view_job_or_404(job_id, user):
 
 
 def _get_job_status_context(job, user):
+    status_name = "Unknown"
+    status_date = job.last_updated
+
     if job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
         status_name = JobStatus.display_name(JobStatus.COMPLETED)
         status_date = job.last_updated
-    elif not job.job_controller_id:
-        status_name = "Unknown"
-        status_date = job.last_updated
-    else:
+    elif job.job_controller_id:
         _, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
-        if not job_controller_jobs:
-            status_name = "Unknown"
-            status_date = job.last_updated
-        else:
-            job_controller_job = job_controller_jobs[0]
-            status_name = JobStatus.display_name(job_controller_job["history"][0]["state"])
-            status_date = job_controller_job["history"][0]["timestamp"]
+        if job_controller_jobs:
+            history = job_controller_jobs[0]["history"][0]
+            status_name = JobStatus.display_name(history["state"])
+            status_date = history["timestamp"]
 
     return {
         "status_name": status_name,
