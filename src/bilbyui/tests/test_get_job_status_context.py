@@ -63,6 +63,15 @@ class TestGetJobStatusContext(BilbyTestCase):
         self.assertEqual(result["status_date"], self.job.last_updated)
         mock_filter.assert_called_once_with(self.user.id, ids=[10001])
 
+    @mock.patch("bilbyui.views.request_job_filter", return_value=("UNKNOWN", []))
+    def test_unknown_filter_status_returns_unknown(self, mock_filter):
+        result = _get_job_status_context(self.job, self.user)
+
+        self.assertEqual(result["status_name"], "Unknown")
+        self.assertEqual(result["status_badge_class"], "dark")
+        self.assertEqual(result["status_date"], self.job.last_updated)
+        mock_filter.assert_called_once_with(self.user.id, ids=[10001])
+
     @mock.patch(
         "bilbyui.views.request_job_filter",
         return_value=(True, [{"history": []}]),

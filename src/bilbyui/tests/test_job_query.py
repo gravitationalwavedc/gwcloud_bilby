@@ -532,3 +532,33 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         # Check that all ids provided to request_job_filter_mock were integers
         self.assertTrue(all(isinstance(x, int) for x in request_job_filter_mock.call_args[1]["ids"]))
+
+    @mock.patch(
+        "bilbyui.schema.request_job_filter",
+        return_value=("UNKNOWN", []),
+    )
+    def test_bilby_jobs_query_job_controller_down(self, *args):
+        """
+        bilbyJobs query should not raise when the job controller is down
+        (request_job_filter returns ("UNKNOWN", [])).
+        """
+        self.authenticate()
+        query = """
+                query {
+                    bilbyJobs {
+                        edges {
+                            node {
+                                userId
+                                name
+                            }
+                        }
+                    }
+                }
+            """
+        response = self.query(query)
+        self.assertIsNone(response.errors)
+        self.assertDictEqual(
+            response.data,
+            {"bilbyJobs": {"edges": [{"node": {"userId": 1, "name": "TestName"}}]}},
+            "bilbyJobs query returned unexpected data when job controller is down.",
+        )
