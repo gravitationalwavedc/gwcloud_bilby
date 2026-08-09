@@ -139,6 +139,11 @@ class TestViewJob(BilbyTestCase):
             f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/?fileId={download_id}",
         )
 
+    def test_file_download_redirect_invalid_token_returns_404(self):
+        response = self.client.get(f"/job-results/{self.job.id}/files/not-a-uuid/download/")
+
+        self.assertEqual(response.status_code, 404)
+
     def test_file_download_redirect_uploaded_job(self):
         uploaded_job = BilbyJob.objects.create(
             user_id=self.user.id,
