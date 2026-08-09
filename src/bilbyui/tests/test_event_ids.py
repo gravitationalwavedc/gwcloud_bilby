@@ -344,6 +344,12 @@ class TestEventIDPermissions(BilbyTestCase):
         self.assertResponseNoErrors(response)
         self.assertTrue(response.data["eventId"]["isLigoEvent"])
 
+    def test_view_nonexistent_event_id(self):
+        self.authenticate()
+        response = self.query(get_event_id_query, variables={"eventId": "GW999999_999999"})
+        self.assertResponseNoErrors(response)
+        self.assertIsNone(response.data["eventId"])
+
     @silence_errors
     def test_view_event_id_list_permissions(self):
         response = self.query(get_all_event_ids_query)

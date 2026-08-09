@@ -428,7 +428,10 @@ class Query:
         return list_labels()
 
     def resolve_event_id(self, info, event_id):
-        return get_event_id(event_id, info.context.user)
+        try:
+            return get_event_id(event_id, info.context.user)
+        except EventID.DoesNotExist:
+            return None
 
     def resolve_all_event_ids(self, info, **kwargs):
         return list_event_ids_for_user(info.context.user)
