@@ -707,7 +707,10 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         logger.info("User %s updating job %s: %s", user.id, job_model_id, list(kwargs.keys()))
 
         # Update privacy of bilby job
-        message = update_job(job_model_id, user, **kwargs)[1]
+        try:
+            message = update_job(job_model_id, user, **kwargs)[1]
+        except EventID.DoesNotExist:
+            raise GraphQLError(f"Event ID '{kwargs.get('event_id')}' not found.")
 
         logger.info("Successfully updated job %s for user %s", job_model_id, user.id)
         # Return the bilby job id to the client

@@ -60,6 +60,24 @@ class TestChangeJobDetails(BilbyTestCase):
         self.assertEqual(self.job.name, "New_job_name")
 
     @silence_errors
+    def test_change_job_details_nonexistent_event_id(self):
+        """
+        Change details mutation should return a clean error when the event ID does not exist.
+        """
+        change_job_input = {
+            "jobId": self.global_job_id,
+            "eventId": "non-existent-event",
+        }
+
+        response = self.query(self.mutation_string, input_data=change_job_input)
+
+        self.assertDictEqual({"updateBilbyJob": None}, response.data)
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Event ID 'non-existent-event' not found.",
+        )
+
+    @silence_errors
     def test_change_job_name_symbols(self):
         """
         Try to update a bilby job with a name that contains symbols
