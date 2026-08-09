@@ -49,3 +49,7 @@ class TestGetViewJobOr404(BilbyTestCase):
 
         with self.assertRaises(Http404):
             _get_view_job_or_404(self.job.id, self.user)
+
+    def test_raises_404_for_non_numeric_job_id(self):
+        with self.assertRaises(Http404):
+            _get_view_job_or_404("abc", self.user)
