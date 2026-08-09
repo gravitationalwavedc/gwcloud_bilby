@@ -14,7 +14,7 @@ def derive_job_status(history):
     :returns: A tuple of (state, display_name, timestamp) for the most recent job status
     """
 
-    if not history:
+    if not history or not isinstance(history, list):
         return JobStatus.DRAFT, "Unknown", None
 
     def parse_timestamp(entry):

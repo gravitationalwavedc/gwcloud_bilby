@@ -16,6 +16,13 @@ class TestDeriveJobStatus(BilbyTestCase):
         self.assertEqual(status_name, "Unknown")
         self.assertIsNone(status_date)
 
+    def test_non_list_history_returns_draft(self):
+        status_number, status_name, status_date = derive_job_status("not a list")
+
+        self.assertEqual(status_number, JobStatus.DRAFT)
+        self.assertEqual(status_name, "Unknown")
+        self.assertIsNone(status_date)
+
     def test_single_history_item(self):
         history = [
             {
