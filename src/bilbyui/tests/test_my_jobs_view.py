@@ -131,6 +131,24 @@ class TestMyJobsView(BilbyTestCase):
         self.assertContains(response, "Invalid range job")
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    def test_invalid_page_defaults_to_one(self, request_job_filter):
+        self.authenticate()
+
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Invalid page job",
+            description="should still render",
+            job_controller_id=8301,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Invalid page job"}),
+        )
+
+        response = self.client.get(self.url, {"page": "abc"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Invalid page job")
+
+    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_renders_event_id_values(self, request_job_filter):
         self.authenticate()
 

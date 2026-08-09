@@ -1058,8 +1058,15 @@ def _build_user_job_rows(user_jobs_result, user):
     return rows
 
 
+def _parse_page(request):
+    try:
+        return max(int(request.GET.get("page", 1)), 1)
+    except (TypeError, ValueError):
+        return 1
+
+
 def public_jobs_view(request):
-    page = max(int(request.GET.get("page", 1)), 1)
+    page = _parse_page(request)
     search = request.GET.get("search", "")
     time_range = request.GET.get("time_range", "all")
     if time_range not in ("all", "1d", "1w", "1m", "1y"):
@@ -1091,7 +1098,7 @@ def public_jobs_view(request):
 
 @login_required
 def my_jobs_view(request):
-    page = max(int(request.GET.get("page", 1)), 1)
+    page = _parse_page(request)
     search = request.GET.get("search", "")
     time_range = request.GET.get("time_range", "all")
     if time_range not in ("all", "1d", "1w", "1m", "1y"):
