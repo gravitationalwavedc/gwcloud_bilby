@@ -158,8 +158,9 @@ def create_bilby_job(user, params):
 
     validate_job_name(params.details.name)
 
-    # Check the ligo permissions and ligo job status
-    is_ligo_job = False
+    # Check if this job would be embargoed for non-LIGO users.
+    # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
+    is_ligo_job = should_embargo_job(None, float(params.data.trigger_time), params.data.data_choice == "simulated")
 
     # todo: request_cpus
 
@@ -435,14 +436,16 @@ def bilby_ini_args_to_data_input(args):
 
 
 def create_bilby_job_from_ini_string(user, params):
-    is_ligo_job = False
-
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
     args = bilby_ini_string_to_args(params.ini_string.ini_string.encode("utf-8"))
 
     if check_job_embargo_status(user, args):
         msg = "Only LIGO users may run real jobs on embargoed LIGO data"
         raise GraphQLError(msg)
+
+    # Check if this job would be embargoed for non-LIGO users.
+    # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
+    is_ligo_job = check_job_embargo_status(None, args)
 
     if args.outdir == ".":
         args.outdir = "./"
