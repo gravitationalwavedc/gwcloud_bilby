@@ -13,7 +13,7 @@ from bilbyui.services.jobs import (
     list_user_jobs,
     update_job,
 )
-from bilbyui.tests.test_utils import create_test_ini_string
+from bilbyui.tests.test_utils import create_test_ini_string, generate_elastic_doc
 from bilbyui.tests.testcases import BilbyTestCase
 
 
@@ -168,3 +168,38 @@ class TestJobsService(BilbyTestCase):
             },
         )
         mock_es.search.assert_called_once()
+
+    @patch("bilbyui.services.jobs.request_job_filter")
+    @patch("bilbyui.services.jobs.elasticsearch.Elasticsearch")
+    def test_list_public_jobs_skips_unexpected_controller_job_id(self, mock_elasticsearch, mock_request_job_filter):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="public_job",
+            description="Public job",
+            private=False,
+            job_controller_id=42,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        mock_es = mock_elasticsearch.return_value
+        mock_es.search.return_value = {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": generate_elastic_doc(job, {"name": self.user.name, "id": self.user.id}),
+                        "_id": job.id,
+                    }
+                ]
+            }
+        }
+        mock_request_job_filter.return_value = (
+            "OK",
+            [
+                {"id": 42, "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}]},
+                {"id": 999, "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}]},
+            ],
+        )
+
+        result = list_public_jobs(self.user)
+
+        self.assertEqual(list(result["job_controller_jobs"].keys()), [job.id])
+        self.assertEqual(result["job_controller_jobs"][job.id]["id"], 42)
