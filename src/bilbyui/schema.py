@@ -464,7 +464,9 @@ class Query:
 
         for record in records:
             job = record["_source"]
-            bilby_job = public_jobs["jobs"][int(record["_id"])]
+            bilby_job = public_jobs["jobs"].get(int(record["_id"]))
+            if bilby_job is None:
+                continue
 
             job_node = BilbyPublicJobNode(
                 user=job["user"]["name"],
