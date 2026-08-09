@@ -294,7 +294,7 @@ class BilbyJob(models.Model):
             job__creation_time__lt=removal_time, upload_token__isnull=False
         )
 
-        cls.objects.filter(id__in=expired_supporting_file_job_ids).delete()
+        cls.objects.filter(id__in=expired_supporting_file_job_ids.values("job_id")).delete()
 
     def get_upload_directory(self):
         """
