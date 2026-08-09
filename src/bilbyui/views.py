@@ -492,19 +492,6 @@ def create_bilby_job_from_ini_string(user, params):
     return bilby_job, supporting_file_details
 
 
-def update_bilby_job(job_id, user, private=None, labels=None, event_id=None, name=None, description=None):
-    _, message = update_job(
-        job_id,
-        user,
-        private=private,
-        labels=labels,
-        event_id=event_id,
-        name=name,
-        description=description,
-    )
-    return message
-
-
 def upload_bilby_job(user, upload_token, details, job_file):
     logger.info("User %s uploading Bilby job: %s, file: %s", user.id, details.name, job_file.name)
 

@@ -14,10 +14,10 @@ from bilbyui.models import (
     Label,
     SupportingFile,
 )
+from bilbyui.services.jobs import update_job
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.misc import is_ligo_user
-from bilbyui.views import update_bilby_job
 
 
 class TestBilbyJobModel(BilbyTestCase):
@@ -43,20 +43,20 @@ class TestBilbyJobModel(BilbyTestCase):
 
     def test_update_privacy(self):
         """
-        Check that update_bilby_job view can update privacy of a job
+        Check that update_job service can update privacy of a job
         """
         self.assertFalse(self.job.private)
 
         self.authenticate()
 
-        update_bilby_job(self.job.id, self.user, True, [])
+        update_job(self.job.id, self.user, True, [])
 
         self.job.refresh_from_db()
         self.assertTrue(self.job.private)
 
     def test_update_event_id(self):
         """
-        Check that update_bilby_job view can update the event ID of a job
+        Check that update_job service can update the event ID of a job
         """
         # A user who doesn't own the job shouldn't be able to change the event id
         self.assertIsNone(self.job.event_id)
@@ -64,7 +64,7 @@ class TestBilbyJobModel(BilbyTestCase):
         self.authenticate(id=2)
 
         with self.assertRaises(PermissionError):
-            update_bilby_job(self.job.id, self.user, event_id=self.event_id.event_id)
+            update_job(self.job.id, self.user, event_id=self.event_id.event_id)
 
         self.job.refresh_from_db()
         self.assertIsNone(self.job.event_id)
@@ -72,7 +72,7 @@ class TestBilbyJobModel(BilbyTestCase):
         # If the user owns the job, they should be able to set the event id
         self.user.id = self.job.user_id
 
-        update_bilby_job(self.job.id, self.user, event_id=self.event_id.event_id)
+        update_job(self.job.id, self.user, event_id=self.event_id.event_id)
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.event_id, self.event_id)
@@ -85,47 +85,47 @@ class TestBilbyJobModel(BilbyTestCase):
         self.user.id = self.job.user_id + 1
 
         with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[self.user.id]):
-            update_bilby_job(self.job.id, self.user, event_id=self.event_id.event_id)
+            update_job(self.job.id, self.user, event_id=self.event_id.event_id)
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.event_id, self.event_id)
 
     def test_update_name(self):
         """
-        Check that update_bilby_job view can update the name of a job
+        Check that update_job service can update the name of a job
         """
         self.assertEqual(self.job.name, "Test_Job")
 
         self.authenticate()
 
-        update_bilby_job(self.job.id, self.user, name="new_job")
+        update_job(self.job.id, self.user, name="new_job")
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.name, "new_job")
 
     def test_update_description(self):
         """
-        Check that update_bilby_job view can update the description of a job
+        Check that update_job service can update the description of a job
         """
         self.assertEqual(self.job.description, "Test job description")
 
         self.authenticate()
 
-        update_bilby_job(self.job.id, self.user, description="new description")
+        update_job(self.job.id, self.user, description="new description")
 
         self.job.refresh_from_db()
         self.assertEqual(self.job.description, "new description")
 
     def test_update_labels(self):
         """
-        Check that update_bilby_job view can update job labels
+        Check that update_job service can update job labels
         """
 
         self.assertFalse(self.job.labels.exists())
 
         self.authenticate()
 
-        update_bilby_job(self.job.id, self.user, False, ["Bad Run", "Review Requested"])
+        update_job(self.job.id, self.user, False, ["Bad Run", "Review Requested"])
 
         self.job.refresh_from_db()
 
