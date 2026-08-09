@@ -23,6 +23,9 @@ class TestElasticSearch(BilbyTestCase):
             return True, [{"id": user.id, "name": "buffy summers"}]
         return False, []
 
+    def request_lookup_users_failure_mock(*args, **kwargs):
+        return False, "Error looking up users: auth service unavailable"
+
     def request_elasticsearch_update_mock_raises(*args, **kwargs):
         raise elasticsearch.NotFoundError("Exists", None, None)
 
@@ -136,6 +139,31 @@ class TestElasticSearch(BilbyTestCase):
         self.assertNotEqual(doc["eventId"], None)
 
         self.assertDictEqual(elasticsearch_index_mock.mock_calls[-1].kwargs["document"], doc)
+
+    @mock.patch("elasticsearch.Elasticsearch.update")
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_failure_mock)
+    def test_job_save_user_lookup_failure_skips_indexing(self, lookup_users_mock, elasticsearch_update_mock):
+        """
+        Test that when the user lookup fails (auth service down), the job is still saved without
+        raising a TypeError and no document is indexed in elastic search
+        """
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Test1",
+            description="first job",
+            job_controller_id=2,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+        # request_lookup_users should have been called once with an array containing only the user id
+        self.assertEqual(lookup_users_mock.call_count, 1)
+        self.assertEqual(lookup_users_mock.mock_calls[0].args, ([1],))
+
+        # No elastic search update/index call should have been made
+        elasticsearch_update_mock.assert_not_called()
+
+        self.assertIsNotNone(job.id)
 
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
