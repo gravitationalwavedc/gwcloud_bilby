@@ -52,7 +52,7 @@ class TestBuildPublicJobRows(BilbyTestCase):
             name="No controller", job_controller_id=1002, job_type=BilbyJobType.NORMAL
         )
         controller_jobs = {
-            with_controller.id: {"history": [{"state": JobStatus.COMPLETED, "timestamp": "2020-01-01"}]},
+            with_controller.id: {"history": [{"state": JobStatus.COMPLETED, "timestamp": "2020-01-01 00:00:00 UTC"}]},
         }
         jobs = {with_controller.id: with_controller, without_controller.id: without_controller}
         records = [_make_record(with_controller), _make_record(without_controller)]
@@ -73,6 +73,21 @@ class TestBuildPublicJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["status_name"], "Unknown")
         self.assertEqual(rows[0]["status_badge_class"], "dark")
 
+    def test_normal_job_uses_latest_history_entry(self):
+        job = self._create_job(job_type=BilbyJobType.NORMAL)
+        controller_jobs = {
+            job.id: {
+                "history": [
+                    {"state": JobStatus.RUNNING, "timestamp": "2020-01-01 00:00:00 UTC"},
+                    {"state": JobStatus.COMPLETED, "timestamp": "2020-01-02 00:00:00 UTC"},
+                ]
+            },
+        }
+        rows = _build_public_job_rows(_result([_make_record(job)], {job.id: job}, job_controller_jobs=controller_jobs))
+
+        self.assertEqual(rows[0]["status_name"], "Completed")
+        self.assertEqual(rows[0]["status_badge_class"], "primary")
+
     def test_uploaded_and_external_job_status(self):
         for job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
             with self.subTest(job_type=job_type):
@@ -84,7 +99,9 @@ class TestBuildPublicJobRows(BilbyTestCase):
     def test_unknown_job_type_and_running_badge(self):
         unknown = self._create_job(job_type=99)
         running = self._create_job(name="Running", job_controller_id=1003, job_type=BilbyJobType.NORMAL)
-        controller_jobs = {running.id: {"history": [{"state": JobStatus.RUNNING, "timestamp": "2020-01-01"}]}}
+        controller_jobs = {
+            running.id: {"history": [{"state": JobStatus.RUNNING, "timestamp": "2020-01-01 00:00:00 UTC"}]}
+        }
         jobs = {unknown.id: unknown, running.id: running}
         records = [_make_record(unknown), _make_record(running)]
 
