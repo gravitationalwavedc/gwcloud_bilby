@@ -532,6 +532,50 @@ class TestSupportingFile(BilbyTestCase):
 
         self.assertEqual(BilbyJob.objects.count(), 1)
 
+    def test_pruning_jobs_with_non_uploaded_supporting_files_no_id_collision(self):
+        # Regression test: prune_supporting_files_jobs must filter by the supporting file's
+        # job_id, not by the supporting file's own id. Previously the subquery compared
+        # BilbyJob.id against SupportingFile.id, so an expired job was only pruned when its
+        # id happened to collide with one of its supporting file ids.
+
+        # Create a few jobs first so the expired job's id is guaranteed to be greater than
+        # the supporting file ids (which start at 1 in the supporting file table), avoiding
+        # the id collision that the buggy subquery relied on.
+        for i in range(3):
+            BilbyJob.objects.create(
+                user_id=self.user.id,
+                name=f"dummy_{i}",
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+
+        expired_job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="expired_job",
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        SupportingFile.save_from_parsed(expired_job, self.parsed)
+
+        supporting_file_ids = set(SupportingFile.objects.filter(job=expired_job).values_list("id", flat=True))
+        self.assertNotIn(expired_job.id, supporting_file_ids)
+
+        # A fresh job that must survive pruning.
+        fresh_job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="fresh_job",
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        self.assertNotIn(fresh_job.id, supporting_file_ids)
+
+        expired_job.creation_time = timezone.now() - timezone.timedelta(
+            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1
+        )
+        expired_job.save()
+
+        BilbyJob.prune_supporting_files_jobs()
+
+        self.assertFalse(BilbyJob.objects.filter(id=expired_job.id).exists())
+        self.assertTrue(BilbyJob.objects.filter(id=fresh_job.id).exists())
+
     def test_get_by_token_non_uploaded_files(self):
         # Tests that get_by_token correctly removes old BilbyJob instances that do not have all their
         # uploaded supporting files.
