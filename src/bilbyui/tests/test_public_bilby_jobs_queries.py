@@ -171,6 +171,17 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         return "OK", jobs
 
+    def request_job_filter_mock_empty_history(*args, **kwargs):
+        jobs = [
+            {
+                "id": job.job_controller_id,
+                "history": [],
+            }
+            for job in BilbyJob.objects.filter(user_id=1)
+        ]
+
+        return "OK", jobs
+
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_no_cursor(self, request_job_filter, elasticsearch_search):
@@ -312,6 +323,32 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         self.assertEqual(request_job_filter.mock_calls[0].args[0], 0)
 
         self.assertEqual(list(request_job_filter.mock_calls[0].kwargs["ids"]), [1234, 2345])
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch(
+        "bilbyui.services.jobs.request_job_filter",
+        side_effect=request_job_filter_mock_empty_history,
+    )
+    def test_public_bilby_jobs_query_empty_history(self, request_job_filter, elasticsearch_search):
+        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"]["jobStatus"]["name"] = "Unknown"
+        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]["node"]["timestamp"] = str(
+            self.job2.creation_time
+        )
+        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][1]["node"]["jobStatus"]["name"] = "Unknown"
+        self.public_bilby_job_expected["publicBilbyJobs"]["edges"][1]["node"]["timestamp"] = str(
+            self.job1.creation_time
+        )
+
+        variables = {"count": 50, "search": None, "timeRange": "all"}
+
+        # A NORMAL job with a job controller record that has an empty history should report an
+        # Unknown status rather than raising an IndexError.
+        response = self.query(self.public_bilby_job_query, variables=variables)
+        self.assertDictEqual(
+            response.data,
+            self.public_bilby_job_expected,
+            "publicBilbyJobs query returned unexpected data.",
+        )
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
