@@ -1,5 +1,6 @@
 import json
 import logging
+from unittest import mock
 
 import responses
 from django.conf import settings
@@ -105,3 +106,13 @@ class TestFileDownloadIds(BilbyTestCase):
             self.assertEqual(result, (True, return_result))
         finally:
             logging.disable(logging.NOTSET)
+
+    @mock.patch("bilbyui.utils.jobs.request_file_download_id._make_job_controller_request")
+    def test_request_file_download_ids_empty_result(self, make_request):
+        make_request.return_value = {"fileIds": []}
+        self.job.job_controller_id = 4321
+        self.job.save()
+
+        result = request_file_download_ids(self.job, ["test_path"])
+
+        self.assertEqual(result, (False, "No file download IDs returned"))
