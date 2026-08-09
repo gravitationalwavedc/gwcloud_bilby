@@ -48,7 +48,12 @@ def _make_job_controller_request(method, url, user_id, data=None, jwt_expiry=Non
         logger.error(msg)
         raise requests.RequestException(msg)
 
-    return json.loads(result.content)
+    try:
+        return json.loads(result.content)
+    except json.JSONDecodeError as e:
+        msg = f"Job controller returned invalid JSON: {result.content}"
+        logger.error(msg)
+        raise requests.RequestException(msg) from e
 
 
 @check_request_leak_decorator
