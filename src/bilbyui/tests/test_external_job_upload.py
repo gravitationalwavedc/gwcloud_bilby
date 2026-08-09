@@ -107,6 +107,99 @@ class TestExternalJobUpload(BilbyTestCase):
             1,
         )
 
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @silence_errors
+    def test_invalid_job_name_symbols(self):
+        test_name = "Test_Name$"
+        test_description = "Test Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name}, complete=True)
+
+        test_input = {
+            "details": {
+                "name": test_name,
+                "description": test_description,
+                "private": test_private,
+            },
+            "iniFile": test_ini_string,
+            "resultUrl": "https://www.example.com/",
+        }
+
+        response = self.query(self.mutation_string, input_data=test_input)
+
+        self.assertDictEqual({"uploadExternalBilbyJob": None}, response.data)
+
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Job name must not contain any spaces or special characters.",
+        )
+
+        self.assertFalse(BilbyJob.objects.all().exists())
+        self.assertFalse(ExternalBilbyJob.objects.all().exists())
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @silence_errors
+    def test_invalid_job_name_too_long(self):
+        test_name = "aa" * BilbyJob._meta.get_field("name").max_length
+        test_description = "Test Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name}, complete=True)
+
+        test_input = {
+            "details": {
+                "name": test_name,
+                "description": test_description,
+                "private": test_private,
+            },
+            "iniFile": test_ini_string,
+            "resultUrl": "https://www.example.com/",
+        }
+
+        response = self.query(self.mutation_string, input_data=test_input)
+
+        self.assertDictEqual({"uploadExternalBilbyJob": None}, response.data)
+
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Job name must be at most 255 characters long.",
+        )
+
+        self.assertFalse(BilbyJob.objects.all().exists())
+        self.assertFalse(ExternalBilbyJob.objects.all().exists())
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @silence_errors
+    def test_invalid_job_name_too_short(self):
+        test_name = "a"
+        test_description = "Test Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name}, complete=True)
+
+        test_input = {
+            "details": {
+                "name": test_name,
+                "description": test_description,
+                "private": test_private,
+            },
+            "iniFile": test_ini_string,
+            "resultUrl": "https://www.example.com/",
+        }
+
+        response = self.query(self.mutation_string, input_data=test_input)
+
+        self.assertDictEqual({"uploadExternalBilbyJob": None}, response.data)
+
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Job name must be at least 5 characters long.",
+        )
+
+        self.assertFalse(BilbyJob.objects.all().exists())
+        self.assertFalse(ExternalBilbyJob.objects.all().exists())
+
     @override_settings(GWOSC_INGEST_USER=1)
     def test_gwosc_ingest_upload(self):
         test_name = "myjob"

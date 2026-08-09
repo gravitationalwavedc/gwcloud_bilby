@@ -677,6 +677,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
         raise PermissionError(msg)
 
     # Set the job name from details
+    validate_job_name(details.name)
     args.label = details.name
 
     # Strip the prior, gps, timeslide, and injection file
