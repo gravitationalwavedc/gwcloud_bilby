@@ -1515,7 +1515,12 @@ def edit_job_event_id(request, job_id):
 def file_download_redirect(request, job_id, token):
     job = _get_view_job_or_404(job_id, request.user)
 
-    paths = FileDownloadToken.get_paths(job, [token])
+    try:
+        paths = FileDownloadToken.get_paths(job, [token])
+    except ValidationError as e:
+        logger.warning("ValidationError in file_download_redirect for token: %s", token)
+        raise Http404 from e
+
     if None in paths:
         raise Http404
 
