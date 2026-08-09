@@ -984,7 +984,7 @@ def _event_id_display_values(event_id):
 def _job_status_name(bilby_job, job_controller_jobs):
     if bilby_job.job_type == BilbyJobType.NORMAL:
         job_controller_job = job_controller_jobs.get(bilby_job.id)
-        if job_controller_job is None or not job_controller_job["history"]:
+        if job_controller_job is None or not job_controller_job.get("history"):
             return "Unknown"
         _, status_name, _ = derive_job_status(job_controller_job["history"])
         return status_name
@@ -1156,7 +1156,7 @@ def _get_job_status_context(job, user):
     elif job.job_controller_id:
         status, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
         if status == "OK" and job_controller_jobs:
-            history = job_controller_jobs[0]["history"]
+            history = job_controller_jobs[0].get("history")
             if history:
                 _, status_name, status_date = derive_job_status(history)
                 status_date = status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
