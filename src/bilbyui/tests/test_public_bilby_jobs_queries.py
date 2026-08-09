@@ -103,6 +103,38 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
     def elasticsearch_search_mock_no_hits(*args, **kwargs):
         return {"hits": {}}
 
+    def elasticsearch_search_mock_with_stale_record(*args, **kwargs):
+        user = {"name": "buffy summers", "id": 1}
+
+        jobs = []
+        for job in BilbyJob.objects.filter(user_id=user["id"]):
+            doc = {"_source": generate_elastic_doc(job, user), "_id": job.id}
+            jobs.append(doc)
+
+        # Simulate a stale Elasticsearch record: the job was deleted from the DB but the
+        # ES delete failed, so the hit has no matching BilbyJob.
+        jobs.append(
+            {
+                "_id": 999999,
+                "_source": {
+                    "user": {"name": "buffy summers"},
+                    "job": {
+                        "name": "Stale job",
+                        "description": "deleted from DB",
+                        "creationTime": "2020-01-01",
+                        "lastUpdatedTime": "2020-01-01",
+                    },
+                    "labels": [],
+                    "eventId": None,
+                    "ini": {},
+                    "params": {},
+                    "_private_info_": {"userId": 1, "private": False},
+                },
+            }
+        )
+
+        return {"hits": {"hits": jobs}}
+
     def request_job_filter_mock(*args, **kwargs):
         jobs = [
             {
@@ -587,6 +619,19 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         )
 
         self.assertEqual(response.errors[0]["message"], "Unexpected timeRange value invalid")
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock_with_stale_record)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_stale_es_record(self, request_job_filter, elasticsearch_search):
+        variables = {"count": 50, "search": None, "timeRange": "all"}
+
+        # The stale ES record with no matching BilbyJob should be skipped, not raise a KeyError.
+        response = self.query(self.public_bilby_job_query, variables=variables)
+        self.assertDictEqual(
+            response.data,
+            self.public_bilby_job_expected,
+            "publicBilbyJobs query returned unexpected data.",
+        )
 
     @mock.patch(
         "elasticsearch.Elasticsearch.search",
