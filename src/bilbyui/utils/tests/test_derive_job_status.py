@@ -30,6 +30,20 @@ class TestDeriveJobStatus(BilbyTestCase):
         self.assertEqual(status_name, "Running")
         self.assertEqual(status_date, datetime.datetime(2024, 1, 1, 10, 0, 0, 0))
 
+    def test_timestamp_without_microseconds(self):
+        history = [
+            {
+                "timestamp": "2024-01-01 10:00:00 UTC",
+                "state": JobStatus.RUNNING,
+            }
+        ]
+
+        status_number, status_name, status_date = derive_job_status(history)
+
+        self.assertEqual(status_number, JobStatus.RUNNING)
+        self.assertEqual(status_name, "Running")
+        self.assertEqual(status_date, datetime.datetime(2024, 1, 1, 10, 0, 0))
+
     def test_latest_state_selected_by_timestamp(self):
         history = [
             {
