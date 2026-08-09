@@ -1546,6 +1546,42 @@ class TestHdf5JobUpload(BilbyTestCase):
         self.assertTrue(hasattr(response, "errors"))
         self.assertIn("INI file should have .ini extension", str(response.errors))
 
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    @silence_errors
+    def test_hdf5_job_upload_invalid_job_name(self):
+        """Test HDF5 job upload with a malicious job name is rejected."""
+        token = self.get_upload_token()
+
+        test_name = "../../../../tmp/evil"
+        test_description = "Test HDF5 Job"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": "hdf5_job", "outdir": "./"}, True)
+        hdf5_file = self.create_test_hdf5_file()
+        ini_file = self.create_test_ini_file(test_ini_string)
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"name": test_name, "description": test_description, "private": test_private},
+            "hdf5File": None,
+            "iniFile": None,
+        }
+        test_files = {
+            "input.hdf5File": hdf5_file,
+            "input.iniFile": ini_file,
+        }
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertDictEqual({"uploadHdf5BilbyJob": None}, response.data)
+
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Job name must not contain any spaces or special characters.",
+        )
+
+        self.assertFalse(BilbyJob.objects.all().exists())
+
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
     def test_hdf5_job_upload_embargoed_ligo_job(self):
         """Test that HDF5 jobs with embargoed data are marked as LIGO jobs."""
