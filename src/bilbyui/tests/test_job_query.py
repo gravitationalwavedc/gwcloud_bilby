@@ -562,3 +562,27 @@ class TestBilbyJobQueries(BilbyTestCase):
             {"bilbyJobs": {"edges": [{"node": {"userId": 1, "name": "TestName"}}]}},
             "bilbyJobs query returned unexpected data when job controller is down.",
         )
+
+    @mock.patch("bilbyui.schema.request_job_filter")
+    def test_bilby_jobs_query_no_controller_ids_skips_request(self, request_job_filter_mock):
+        """
+        bilbyJobs query should not call request_job_filter when no jobs have job controller ids
+        """
+        self.job.job_controller_id = None
+        self.job.save()
+
+        query = """
+                query {
+                    bilbyJobs {
+                        edges {
+                            node {
+                                name
+                            }
+                        }
+                    }
+                }
+            """
+
+        response = self.query(query)
+        self.assertIsNone(response.errors)
+        self.assertFalse(request_job_filter_mock.called)
