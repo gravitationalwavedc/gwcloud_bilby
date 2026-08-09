@@ -56,6 +56,15 @@ class TestRequestJobStatus(BilbyTestCase):
         )
 
     @mock.patch("bilbyui.utils.jobs.request_job_status._make_job_controller_request")
+    def test_returns_unknown_when_job_not_in_controller(self, make_request):
+        make_request.return_value = []
+
+        status, message = request_job_status(self.job)
+
+        self.assertEqual(status, "UNKNOWN")
+        self.assertEqual(message, "Job not found in job controller")
+
+    @mock.patch("bilbyui.utils.jobs.request_job_status._make_job_controller_request")
     def test_uses_explicit_user_id(self, make_request):
         make_request.return_value = [{"history": []}]
 

@@ -30,6 +30,10 @@ def request_job_status(job, user_id=None):
     try:
         result = _make_job_controller_request("GET", url, user_id or job.user_id)
 
+        if not result:
+            logger.warning("No status found for job %s in job controller", job.id)
+            return "UNKNOWN", "Job not found in job controller"
+
         logger.debug("Successfully retrieved status for job %s", job.id)
         return "OK", result[0]["history"]
     except requests.RequestException as e:
