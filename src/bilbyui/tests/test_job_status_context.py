@@ -61,7 +61,7 @@ class TestGetJobStatusContext(BilbyTestCase):
         self.assertEqual(context["status_badge_class"], "dark")
         self.assertEqual(context["status_date"], job.last_updated)
 
-    @mock.patch("bilbyui.views.request_job_filter", return_value=(True, []))
+    @mock.patch("bilbyui.views.request_job_filter", return_value=("OK", []))
     def test_empty_job_controller_response_returns_unknown(self, mock_filter):
         job = BilbyJob.objects.create(
             user_id=self.user.id,
@@ -81,7 +81,7 @@ class TestGetJobStatusContext(BilbyTestCase):
     def test_running_job_returns_status_from_controller(self, mock_filter):
         timestamp = "2020-01-01 12:00:00 UTC"
         mock_filter.return_value = (
-            True,
+            "OK",
             [{"id": 99, "history": [{"state": JobStatus.RUNNING, "timestamp": timestamp}]}],
         )
         job = BilbyJob.objects.create(
@@ -102,7 +102,7 @@ class TestGetJobStatusContext(BilbyTestCase):
     def test_error_job_uses_danger_badge(self, mock_filter):
         timestamp = "2021-06-15 08:30:00 UTC"
         mock_filter.return_value = (
-            True,
+            "OK",
             [{"id": 77, "history": [{"state": JobStatus.ERROR, "timestamp": timestamp}]}],
         )
         job = BilbyJob.objects.create(

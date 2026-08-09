@@ -1153,8 +1153,8 @@ def _get_job_status_context(job, user):
         status_name = JobStatus.display_name(JobStatus.COMPLETED)
         status_date = job.last_updated
     elif job.job_controller_id:
-        _, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
-        if job_controller_jobs:
+        status, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
+        if status == "OK" and job_controller_jobs:
             history = job_controller_jobs[0]["history"]
             if history:
                 _, status_name, status_date = derive_job_status(history)
