@@ -459,7 +459,7 @@ class Query:
         public_jobs = list_public_jobs(
             user,
             search=kwargs.get("search", "") or "",
-            time_range=kwargs["time_range"],
+            time_range=kwargs.get("time_range", "all") or "all",
             page_size=page_size,
             offset=offset,
         )

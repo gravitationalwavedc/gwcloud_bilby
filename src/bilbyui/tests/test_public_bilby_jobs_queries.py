@@ -575,6 +575,45 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 # From -> To should be equal to the delta
                 self.assertEqual((to - _from), delta)
 
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_no_time_range(self, request_job_filter, elasticsearch_search):
+        # A client may omit the optional timeRange argument entirely; the resolver should
+        # fall back to "all" rather than raising a KeyError (500).
+        query = """
+            query($count: Int!, $cursor: String, $search: String) {
+                publicBilbyJobs(first: $count, after: $cursor, search: $search) {
+                    edges {
+                        node {
+                            user
+                            description
+                            name
+                            jobStatus {
+                                name
+                            }
+                            timestamp
+                            id
+                        }
+                    }
+                }
+            }
+        """
+
+        variables = {"count": 50, "search": None}
+
+        response = self.query(query, variables=variables)
+        self.assertIsNone(response.errors, "omitting timeRange should not raise an error")
+        self.assertDictEqual(
+            response.data,
+            self.public_bilby_job_expected,
+            "publicBilbyJobs query returned unexpected data.",
+        )
+
+        self.assertEqual(
+            elasticsearch_search.mock_calls[-1].kwargs["q"],
+            "(*) AND _private_info_.private:false",
+        )
+
     @override_settings(EMBARGO_START_TIME=1234)
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
