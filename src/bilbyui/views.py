@@ -747,6 +747,9 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         with hdf5_path.open("wb") as f:
             f.writelines(hdf5_file.chunks())
 
+        # Validate the job name before it is used to construct the ini filename
+        validate_job_name(details.name)
+
         # Save the INI file with the correct naming convention
         job_name = details.name
         ini_filename = f"{job_name}_config_complete.ini"
