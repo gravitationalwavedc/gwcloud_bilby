@@ -3,6 +3,7 @@ from ast import literal_eval
 from unittest.mock import patch
 
 import responses
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import testcases
@@ -633,6 +634,75 @@ class TestJobSubmission(BilbyTestCase):
             response.data,
             "create bilbyJob mutation returned unexpected data.",
         )
+
+    @override_settings(EMBARGO_START_TIME=1.0)
+    @patch("bilbyui.models.submit_job")
+    def test_job_submission_embargoed_ligo_job(self, mock_api_call):
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+
+        mock_api_call.return_value = {"jobId": 4321}
+
+        params = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": "real_test_job_for_GW12345",
+                        "description": "real Test description 1234",
+                        "private": True,
+                    },
+                    "data": {
+                        "dataChoice": "real",
+                        "triggerTime": "1126259562.391",
+                        "channels": {
+                            "hanfordChannel": "GWOSC",
+                            "livingstonChannel": "GWOSC",
+                            "virgoChannel": "GWOSC",
+                        },
+                    },
+                    "detector": {
+                        "hanford": True,
+                        "hanfordMinimumFrequency": "20",
+                        "hanfordMaximumFrequency": "1024",
+                        "livingston": True,
+                        "livingstonMinimumFrequency": "20",
+                        "livingstonMaximumFrequency": "1024",
+                        "virgo": False,
+                        "virgoMinimumFrequency": "20",
+                        "virgoMaximumFrequency": "1024",
+                        "duration": "4",
+                        "samplingFrequency": "512",
+                    },
+                    "prior": {"priorDefault": "4s"},
+                    "sampler": {
+                        "nlive": 1000,
+                        "nact": 10,
+                        "maxmcmc": 5000,
+                        "walks": 1000,
+                        "dlogz": 0.1,
+                        "cpus": 1,
+                        "samplerChoice": "dynesty",
+                    },
+                    "waveform": {"model": None},
+                }
+            }
+        }
+
+        mutation = """
+            mutation NewJobMutation($input: BilbyJobMutationInput!) {
+              newBilbyJob(input: $input) {
+                result {
+                  jobId
+                }
+              }
+            }
+        """
+
+        response = self.query(mutation, input_data=params["input"])
+
+        self.assertIsNone(response.errors)
+
+        job = BilbyJob.objects.all().last()
+        self.assertTrue(job.is_ligo_job, "Real job on embargoed LIGO data should be marked as a LIGO job")
 
 
 class TestJobSubmissionNameValidation(BilbyTestCase):

@@ -212,6 +212,38 @@ class TestIniJobSubmission(BilbyTestCase):
             "Error submitting job, cluster 'not_real' is not one of [default another]",
         )
 
+    @override_settings(EMBARGO_START_TIME=1.0)
+    @patch("bilbyui.models.submit_job")
+    def test_ini_job_submission_embargoed_ligo_job(self, mock_api_call):
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+
+        mock_api_call.return_value = {"jobId": 4321}
+        test_name = "Test_Name"
+        test_description = "Test Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string(
+            {"label": test_name, "detectors": "['H1']", "n-simulation": 0, "trigger-time": 1128678900.4}
+        )
+
+        test_input = {
+            "params": {
+                "details": {
+                    "name": test_name,
+                    "description": test_description,
+                    "private": test_private,
+                },
+                "iniString": {"iniString": test_ini_string},
+            }
+        }
+
+        response = self.query(self.mutation_string, input_data=test_input)
+
+        self.assertIsNone(response.errors)
+
+        job = BilbyJob.objects.all().last()
+        self.assertTrue(job.is_ligo_job, "Real job on embargoed LIGO data should be marked as a LIGO job")
+
 
 class TestIniJobSubmissionNameValidation(BilbyTestCase):
     def setUp(self):
