@@ -370,3 +370,44 @@ class TestGWFlowQueries(BilbyTestCase):
         res_cursor = self.query(query, variables={"first": 20, "after": cursor_0})
         self.assertResponseNoErrors(res_cursor)
         self.assertEqual(len(res_cursor.data["gwflowJobs"]["edges"]), 1)
+
+    @mock.patch("bilbyui.schema.list_gwflow_jobs")
+    def test_gwflow_jobs_connection_malformed_cursor(self, mock_list_jobs):
+        query = """
+            query GetJobs($first: Int, $after: String) {
+                gwflowJobs(first: $first, after: $after) {
+                    edges {
+                        node {
+                            id
+                        }
+                    }
+                }
+            }
+        """
+        mock_list_jobs.return_value = {
+            "jobs": {self.job_public.id: self.job_public},
+            "records": [{"_id": str(self.job_public.id)}],
+            "has_next": False,
+            "page": 1,
+            "page_size": 20,
+        }
+
+        self._auth_as(self.normal_user)
+
+        # A malformed cursor (invalid base64 or a non-numeric id) should fall back to the first page
+        # instead of raising a ValueError and returning a 500.
+        for malformed_cursor in ["YXJyYXljb25uZWN0aW9uOmFiYw==", "bm90aGluZw==", "not-base64!!"]:
+            res = self.query(query, variables={"first": 20, "after": malformed_cursor})
+            self.assertResponseNoErrors(res)
+            edges = res.data["gwflowJobs"]["edges"]
+            self.assertEqual(len(edges), 1)
+            self.assertEqual(edges[0]["node"]["id"], to_global_id("GWFlowJob", self.job_public.id))
+
+        mock_list_jobs.assert_called_with(
+            self.normal_user,
+            search="",
+            time_range="all",
+            page_size=20,
+            offset=0,
+            include_pruned=False,
+        )

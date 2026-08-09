@@ -641,3 +641,25 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             {"publicBilbyJobs": {"edges": []}},
             "publicBilbyJobs query returned unexpected data.",
         )
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_malformed_cursor(self, request_job_filter, elasticsearch_search):
+        # A malformed cursor (invalid base64 or a non-numeric id) should fall back to the first page
+        # instead of raising a ValueError and returning a 500.
+        for malformed_cursor in ["YXJyYXljb25uZWN0aW9uOmFiYw==", "bm90aGluZw==", "not-base64!!"]:
+            variables = {"count": 50, "cursor": malformed_cursor, "search": None, "timeRange": "all"}
+
+            response = self.query(self.public_bilby_job_query, variables=variables)
+            self.assertIsNone(response.errors, "a malformed cursor should not raise an error")
+            self.assertDictEqual(
+                response.data,
+                self.public_bilby_job_expected,
+                "publicBilbyJobs query returned unexpected data.",
+            )
+
+            self.assertEqual(
+                elasticsearch_search.mock_calls[-1].kwargs["from_"],
+                0,
+                "a malformed cursor should fall back to offset 0",
+            )
