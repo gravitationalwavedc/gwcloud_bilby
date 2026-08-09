@@ -43,7 +43,7 @@ class TestRequestJobFilter(SimpleTestCase):
             status, result = request_job_filter(123)
 
             self.assertEqual(status, "UNKNOWN")
-            self.assertEqual(result, "Error getting job filter")
+            self.assertEqual(result, [])
         finally:
             logging.disable(logging.NOTSET)
 
