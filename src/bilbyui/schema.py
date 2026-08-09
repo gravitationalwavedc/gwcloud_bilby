@@ -482,14 +482,18 @@ class Query:
                     job_node.timestamp = bilby_job.creation_time
                 else:
                     job_controller_job = job_controller_jobs[bilby_job.id]
-                    history = job_controller_job["history"][0]
-                    job_node.job_status = JobStatusType(
-                        name=JobStatus.display_name(history["state"]),
-                        number=history["state"],
-                        date=history["timestamp"],
-                    )
+                    try:
+                        status_number, status_name, status_date = derive_job_status(job_controller_job["history"])
+                        job_node.job_status = JobStatusType(
+                            name=status_name,
+                            number=status_number,
+                            date=status_date.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                        )
+                        job_node.timestamp = status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
+                    except (AttributeError, KeyError, TypeError, ValueError):
+                        job_node.job_status = JobStatusType(name="Unknown", number=0, date=bilby_job.creation_time)
+                        job_node.timestamp = bilby_job.creation_time
                     job_node.labels = bilby_job.labels.all()
-                    job_node.timestamp = history["timestamp"]
 
             elif bilby_job.job_type in [BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL]:
                 job_node.job_status = JobStatusType(

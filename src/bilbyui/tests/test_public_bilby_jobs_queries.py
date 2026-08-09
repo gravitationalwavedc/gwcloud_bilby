@@ -107,7 +107,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         jobs = [
             {
                 "id": job.job_controller_id,
-                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00.000000 UTC"}],
             }
             for job in BilbyJob.objects.filter(user_id=1)
         ]
@@ -118,9 +118,23 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         jobs = [
             {
                 "id": job.job_controller_id,
-                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00.000000 UTC"}],
             }
             for job in BilbyJob.objects.filter(user_id=1)[1:]
+        ]
+
+        return "OK", jobs
+
+    def request_job_filter_mock_out_of_order_history(*args, **kwargs):
+        jobs = [
+            {
+                "id": job.job_controller_id,
+                "history": [
+                    {"state": 500, "timestamp": "2020-01-01 12:00:00.000000 UTC"},
+                    {"state": 400, "timestamp": "2020-01-02 12:00:00.000000 UTC"},
+                ],
+            }
+            for job in BilbyJob.objects.filter(user_id=1)
         ]
 
         return "OK", jobs
@@ -171,6 +185,50 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         self.assertEqual(list(request_job_filter.mock_calls[0].kwargs["ids"]), [1234, 2345])
         self.assertEqual(list(request_job_filter.mock_calls[1].kwargs["ids"]), [1234, 2345])
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch(
+        "bilbyui.services.jobs.request_job_filter",
+        side_effect=request_job_filter_mock_out_of_order_history,
+    )
+    def test_public_bilby_jobs_query_out_of_order_history(self, request_job_filter, elasticsearch_search):
+        # The job controller history is out of order, so the latest entry by timestamp
+        # should be reported even though it is not the first entry in the list.
+        expected = {
+            "publicBilbyJobs": {
+                "edges": [
+                    {
+                        "node": {
+                            "description": "A test job",
+                            "id": "QmlsYnlKb2JOb2RlOjI=",
+                            "name": "Test2",
+                            "jobStatus": {"name": "Error"},
+                            "timestamp": "2020-01-02 12:00:00 UTC",
+                            "user": "buffy summers",
+                        }
+                    },
+                    {
+                        "node": {
+                            "description": "first job",
+                            "id": "QmlsYnlKb2JOb2RlOjE=",
+                            "name": "Test1",
+                            "jobStatus": {"name": "Error"},
+                            "timestamp": "2020-01-02 12:00:00 UTC",
+                            "user": "buffy summers",
+                        }
+                    },
+                ]
+            }
+        }
+
+        variables = {"count": 50, "search": None, "timeRange": "all"}
+
+        response = self.query(self.public_bilby_job_query, variables=variables)
+        self.assertDictEqual(
+            response.data,
+            expected,
+            "publicBilbyJobs query reported the wrong history entry for out-of-order history.",
+        )
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch(

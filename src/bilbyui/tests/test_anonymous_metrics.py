@@ -121,7 +121,7 @@ class TestAnonymousMetrics(LiveServerTestCase):
         jobs = [
             {
                 "id": job.job_controller_id,
-                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}],
+                "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00.000000 UTC"}],
             }
             for job in BilbyJob.objects.filter(user_id=1)
         ]
