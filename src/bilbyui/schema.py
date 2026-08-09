@@ -225,8 +225,11 @@ class BilbyJobNode(DjangoObjectType):
 
         # Query any job controller information in one go - exclude any job controller ids that are not set
         job_controller_ids = set(qs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
-        _, jc_jobs = request_job_filter(user_id, ids=list(job_controller_ids))
-        info.context.job_controller_jobs = {job["id"]: job for job in jc_jobs}
+        job_controller_jobs = {}
+        if job_controller_ids:
+            _, jc_jobs = request_job_filter(user_id, ids=list(job_controller_ids))
+            job_controller_jobs = {job["id"]: job for job in jc_jobs}
+        info.context.job_controller_jobs = job_controller_jobs
 
         return qs
 
