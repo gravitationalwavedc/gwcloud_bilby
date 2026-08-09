@@ -244,6 +244,24 @@ class TestPublicJobsView(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Invalid range job")
 
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_invalid_page_defaults_to_one(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Invalid page job",
+            description="should still render",
+            job_controller_id=3301,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Invalid page job"}),
+        )
+
+        response = self.client.get(self.url, {"page": "abc"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Invalid page job")
+
     @override_settings(EMBARGO_START_TIME=1234.0)
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
