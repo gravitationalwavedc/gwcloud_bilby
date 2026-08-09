@@ -47,8 +47,14 @@ def request_file_download_ids(job, paths, user_id=None):
             jwt_expiry=datetime.timedelta(minutes=5),
         )
 
-        logger.info("Successfully generated %s download IDs for job %s", len(result["fileIds"]), job.id)
-        return True, result["fileIds"]
+        file_ids = result["fileIds"]
+
+        if not file_ids:
+            logger.warning("No file download IDs returned for job %s", job.id)
+            return False, "No file download IDs returned"
+
+        logger.info("Successfully generated %s download IDs for job %s", len(file_ids), job.id)
+        return True, file_ids
     except Exception:
         logger.exception("Error getting file download IDs for job %s", job.id)
         return False, "Error getting job file download id"
