@@ -41,6 +41,7 @@ from .services.event_ids import get_event_id, list_event_ids_for_user
 from .services.jobs import get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
 from .types import GWFlowPendingFile
+from .utils.derive_job_status import derive_job_status
 from .utils.embargo import should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update
@@ -998,7 +999,8 @@ def _job_status_name(bilby_job, job_controller_jobs):
         job_controller_job = job_controller_jobs.get(bilby_job.id)
         if job_controller_job is None or not job_controller_job["history"]:
             return "Unknown"
-        return JobStatus.display_name(job_controller_job["history"][0]["state"])
+        _, status_name, _ = derive_job_status(job_controller_job["history"])
+        return status_name
     elif bilby_job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
         return JobStatus.display_name(JobStatus.COMPLETED)
     else:
@@ -1158,9 +1160,8 @@ def _get_job_status_context(job, user):
         if job_controller_jobs:
             history = job_controller_jobs[0]["history"]
             if history:
-                latest = history[0]
-                status_name = JobStatus.display_name(latest["state"])
-                status_date = latest["timestamp"]
+                _, status_name, status_date = derive_job_status(history)
+                status_date = status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
 
     return {
         "status_name": status_name,
