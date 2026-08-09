@@ -380,7 +380,9 @@ class BilbyJob(models.Model):
         )
 
         # Get the user details for this job
-        _, users = request_lookup_users([self.user.id])
+        success, users = request_lookup_users([self.user.id])
+        if not success:
+            return
         user = users[0]
 
         # Generate the document for insertion or update in elastic search
