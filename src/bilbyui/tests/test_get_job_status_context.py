@@ -54,7 +54,7 @@ class TestGetJobStatusContext(BilbyTestCase):
         self.assertEqual(result["status_badge_class"], "dark")
         self.assertEqual(result["status_date"], self.job.last_updated)
 
-    @mock.patch("bilbyui.views.request_job_filter", return_value=(True, []))
+    @mock.patch("bilbyui.views.request_job_filter", return_value=("OK", []))
     def test_empty_filter_result_returns_unknown(self, mock_filter):
         result = _get_job_status_context(self.job, self.user)
 
@@ -63,8 +63,8 @@ class TestGetJobStatusContext(BilbyTestCase):
         self.assertEqual(result["status_date"], self.job.last_updated)
         mock_filter.assert_called_once_with(self.user.id, ids=[10001])
 
-    @mock.patch("bilbyui.views.request_job_filter", return_value=("UNKNOWN", []))
-    def test_unknown_filter_status_returns_unknown(self, mock_filter):
+    @mock.patch("bilbyui.views.request_job_filter", return_value=("UNKNOWN", "Error getting job filter"))
+    def test_controller_unavailable_returns_unknown(self, mock_filter):
         result = _get_job_status_context(self.job, self.user)
 
         self.assertEqual(result["status_name"], "Unknown")
@@ -74,7 +74,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
     @mock.patch(
         "bilbyui.views.request_job_filter",
-        return_value=(True, [{"history": []}]),
+        return_value=("OK", [{"history": []}]),
     )
     def test_empty_history_returns_unknown(self, mock_filter):
         result = _get_job_status_context(self.job, self.user)
@@ -85,7 +85,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
     @mock.patch(
         "bilbyui.views.request_job_filter",
-        return_value=(True, [{"history": [{"state": 500, "timestamp": "2024-03-01 10:00:00 UTC"}]}]),
+        return_value=("OK", [{"history": [{"state": 500, "timestamp": "2024-03-01 10:00:00 UTC"}]}]),
     )
     def test_successful_status_fetch(self, mock_filter):
         result = _get_job_status_context(self.job, self.user)
@@ -97,7 +97,7 @@ class TestGetJobStatusContext(BilbyTestCase):
     @mock.patch(
         "bilbyui.views.request_job_filter",
         return_value=(
-            True,
+            "OK",
             [
                 {
                     "history": [
