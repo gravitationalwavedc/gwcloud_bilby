@@ -680,21 +680,22 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             | {"index": settings.ELASTIC_SEARCH_INDEX, "size": 51, "from_": 99},
         )
 
-    @silence_errors
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_invalid_time_range(self, request_job_filter, elasticsearch_search):
         variables = {"count": 50, "search": None, "timeRange": "invalid"}
 
-        # Should return no results
+        # An invalid time range should fall back to "all" instead of raising an error.
         response = self.query(self.public_bilby_job_query, variables=variables)
         self.assertDictEqual(
             response.data,
-            {"publicBilbyJobs": None},
+            self.public_bilby_job_expected,
             "publicBilbyJobs query returned unexpected data.",
         )
-
-        self.assertEqual(response.errors[0]["message"], "Unexpected timeRange value invalid")
+        self.assertEqual(
+            elasticsearch_search.mock_calls[-1].kwargs["q"],
+            "(*) AND _private_info_.private:false",
+        )
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock_with_stale_record)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)

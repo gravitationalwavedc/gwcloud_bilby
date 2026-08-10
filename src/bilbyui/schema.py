@@ -66,6 +66,14 @@ from .views import (
 
 logger = logging.getLogger(__name__)
 
+_VALID_TIME_RANGES = ("all", "1d", "1w", "1m", "1y")
+
+
+def _normalize_time_range(time_range):
+    if time_range not in _VALID_TIME_RANGES:
+        return "all"
+    return time_range
+
 
 def _parse_after_cursor(kwargs):
     if kwargs.get("after") is None:
@@ -371,7 +379,7 @@ class Query:
         user = info.context.user
         user_id = user.id if user and user.is_authenticated else 0
         search_term = kwargs.get("search", "") or ""
-        time_range = kwargs.get("time_range", "all") or "all"
+        time_range = _normalize_time_range(kwargs.get("time_range", "all") or "all")
         include_pruned = kwargs.get("include_pruned", False) or False
 
         logger.info(
@@ -459,7 +467,7 @@ class Query:
         public_jobs = list_public_jobs(
             user,
             search=kwargs.get("search", "") or "",
-            time_range=kwargs.get("time_range", "all") or "all",
+            time_range=_normalize_time_range(kwargs.get("time_range", "all") or "all"),
             page_size=page_size,
             offset=offset,
         )
