@@ -236,10 +236,16 @@ def _check_and_download_inner(con, cur):
             logger.exception(error_msg)
             record_job_failure(con, cur, event_name, error_msg)
             continue
-        event_json = event_json["events"][event_name]
-        parameters = event_json["parameters"]
-        common_name = event_json["commonName"]
-        catalog_shortname = event_json["catalog.shortName"]
+        try:
+            event_json = event_json["events"][event_name]
+            parameters = event_json["parameters"]
+            common_name = event_json["commonName"]
+            catalog_shortname = event_json["catalog.shortName"]
+        except KeyError:
+            error_msg = f"Event {event_name} json payload is missing expected keys"
+            logger.exception(error_msg)
+            record_job_failure(con, cur, event_name, error_msg)
+            continue
 
         shared_common_names = [k for k, v in all_events.items() if v.get("commonName") == common_name]
         is_latest_version = compute_is_latest_version(event_name, shared_common_names)
