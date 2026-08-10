@@ -104,6 +104,17 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertContains(response, "Loading more")
         self.assertContains(response, f'hx-get="{reverse("bilbyui:gwflow_jobs")}?page=2')
 
+    def test_paging_sentinel_urlencodes_search(self):
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+
+        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect(has_next=True)):
+            response = self.client.get(self.url, {"search": "S2306* & co"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Loading more")
+        self.assertContains(response, "search=S2306%2A%20%26%20co")
+        self.assertNotContains(response, "search=S2306* & co")
+
     def test_mirror_progress_zero_files_shows_pending(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user)
 
