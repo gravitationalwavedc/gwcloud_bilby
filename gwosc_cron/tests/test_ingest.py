@@ -1124,3 +1124,70 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(len(error_rows), 1)
         self.assertEqual(error_rows[0]["job_id"], "GW000002_654321")
         self.assertEqual(error_rows[0]["failure_count"], 1)
+
+    @parameterized.expand(["events", "parameters", "commonName", "catalog.shortName"])
+    @responses.activate
+    def test_missing_key_in_event_json_does_not_crash(self, gwc, missing_key):
+        """If the per-event JSON payload is missing an expected key (events/<event_name>,
+        parameters, commonName, catalog.shortName), the whole cron run should not crash
+        with a KeyError."""
+        self.add_allevents_response(
+            {
+                "GW000002_654321": {
+                    "commonName": "GW000002_654321",
+                    "catalog.shortName": "GWTC-3-confident",
+                    "jsonurl": "https://test.org/GW000002_654321.json",
+                },
+                "GW000001_123456": {
+                    "commonName": "GW000001_123456",
+                    "catalog.shortName": "GWTC-3-confident",
+                    "jsonurl": "https://test.org/GW000001_123456.json",
+                },
+            }
+        )
+        event_payload = {
+            "commonName": "GW000002_654321",
+            "catalog.shortName": "GWTC-3-confident",
+            "GPS": 1729400000,
+            "gracedb_id": "S123456z",
+            "parameters": {
+                "AAAAA": {
+                    "is_preferred": True,
+                    "data_url": "https://test.org/GW000002.h5",
+                }
+            },
+        }
+        if missing_key == "events":
+            event_payload = {}
+        else:
+            del event_payload[missing_key]
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000002_654321.json",
+            json={"events": {"GW000002_654321": event_payload}},
+        )
+        self.add_event_response()
+        self.add_file_response()
+
+        with self.con_patch, self.assertLogs(level=logging.ERROR):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW000001_123456--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW000001.h5",
+        )
+
+        sqlite_rows = self.get_completed_jobs()
+        self.assertEqual(len(sqlite_rows), 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        self.assertEqual(row["success"], 1)
+        self.assertEqual(row["reason"], "completed_submit")
+
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 1)
+        self.assertEqual(error_rows[0]["job_id"], "GW000002_654321")
+        self.assertEqual(error_rows[0]["failure_count"], 1)
