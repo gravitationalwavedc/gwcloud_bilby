@@ -784,3 +784,35 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 0,
                 "a malformed cursor should fall back to offset 0",
             )
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_without_first(self, request_job_filter, elasticsearch_search):
+        # Omitting the optional relay `first` connection argument should fall back to the
+        # default page size instead of raising a KeyError (500) on this public endpoint.
+        query = """
+            query {
+                publicBilbyJobs {
+                    edges {
+                        node {
+                            user
+                            description
+                            name
+                            jobStatus {
+                                name
+                            }
+                            timestamp
+                            id
+                        }
+                    }
+                }
+            }
+        """
+
+        response = self.query(query)
+        self.assertIsNone(response.errors, "a publicBilbyJobs query without `first` should not raise an error")
+        self.assertDictEqual(
+            response.data,
+            self.public_bilby_job_expected,
+            "publicBilbyJobs query returned unexpected data.",
+        )

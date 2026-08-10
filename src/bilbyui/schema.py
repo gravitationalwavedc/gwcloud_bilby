@@ -453,7 +453,7 @@ class Query:
         # This ensures that "after" is either an int (from a b64 string) or None
         _parse_after_cursor(kwargs)
 
-        page_size = kwargs["first"]
+        page_size = kwargs.get("first", 20)
         offset = kwargs.get("after") or 0
 
         public_jobs = list_public_jobs(
