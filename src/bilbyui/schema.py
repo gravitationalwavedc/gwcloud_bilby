@@ -549,7 +549,10 @@ class Query:
         logger.info("User %s requesting result files for job %s", user_id, job_id)
 
         # Try to look up the job with the id provided
-        job = get_job(job_id, info.context.user)
+        try:
+            job = get_job(job_id, info.context.user)
+        except (BilbyJob.DoesNotExist, ValueError, TypeError):
+            return None
 
         if job.job_type == BilbyJobType.EXTERNAL:
             # There is nothing special we have to do here. The frontend or API will handle the job_type.
