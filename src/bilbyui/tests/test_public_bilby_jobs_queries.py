@@ -135,6 +135,38 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         return {"hits": {"hits": jobs}}
 
+    def elasticsearch_search_mock_with_corrupt_id(*args, **kwargs):
+        user = {"name": "buffy summers", "id": 1}
+
+        jobs = []
+        for job in BilbyJob.objects.filter(user_id=user["id"]):
+            doc = {"_source": generate_elastic_doc(job, user), "_id": job.id}
+            jobs.append(doc)
+
+        # Simulate a corrupt Elasticsearch record with a non-numeric _id, which
+        # must be filtered out rather than raising a ValueError (500).
+        jobs.append(
+            {
+                "_id": "corrupt-non-numeric-id",
+                "_source": {
+                    "user": {"name": "buffy summers"},
+                    "job": {
+                        "name": "Corrupt job",
+                        "description": "non-numeric id",
+                        "creationTime": "2020-01-01",
+                        "lastUpdatedTime": "2020-01-01",
+                    },
+                    "labels": [],
+                    "eventId": None,
+                    "ini": {},
+                    "params": {},
+                    "_private_info_": {"userId": 1, "private": False},
+                },
+            }
+        )
+
+        return {"hits": {"hits": jobs}}
+
     def request_job_filter_mock(*args, **kwargs):
         jobs = [
             {
@@ -695,6 +727,24 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         self.assertEqual(
             elasticsearch_search.mock_calls[-1].kwargs["q"],
             "(*) AND _private_info_.private:false",
+        )
+
+    @mock.patch(
+        "elasticsearch.Elasticsearch.search",
+        side_effect=elasticsearch_search_mock_with_corrupt_id,
+    )
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_corrupt_non_numeric_id(self, request_job_filter, elasticsearch_search):
+        # A corrupt ES record with a non-numeric _id should be filtered out rather
+        # than raising a ValueError and 500ing the publicBilbyJobs query.
+        variables = {"count": 50, "search": None, "timeRange": "all"}
+
+        response = self.query(self.public_bilby_job_query, variables=variables)
+        self.assertIsNone(response.errors, "a corrupt non-numeric _id should not raise an error")
+        self.assertDictEqual(
+            response.data,
+            self.public_bilby_job_expected,
+            "publicBilbyJobs query returned unexpected data.",
         )
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock_with_stale_record)
