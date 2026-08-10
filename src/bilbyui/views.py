@@ -1254,7 +1254,9 @@ def _get_job_status_context(job, user):
 
 def _build_result_files(job):
     if job.job_type == BilbyJobType.EXTERNAL:
-        external_job = ExternalBilbyJob.objects.get(job=job)
+        external_job = ExternalBilbyJob.objects.filter(job=job).first()
+        if external_job is None:
+            return []
         return [
             {
                 "path": external_job.url,
