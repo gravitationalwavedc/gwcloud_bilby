@@ -18,15 +18,25 @@ def derive_job_status(history):
         return JobStatus.DRAFT, "Unknown", None
 
     def parse_timestamp(entry):
-        timestamp = entry["timestamp"]
+        timestamp = entry.get("timestamp")
+        if not isinstance(timestamp, str):
+            return None
         for fmt in ("%Y-%m-%d %H:%M:%S.%f UTC", "%Y-%m-%d %H:%M:%S UTC"):
             try:
                 return datetime.datetime.strptime(timestamp, fmt)
             except ValueError:
                 continue
-        raise ValueError(f"Invalid job history timestamp: {timestamp!r}")
+        return None
 
-    latest = max(history, key=parse_timestamp)
+    valid_entries = [
+        entry
+        for entry in history
+        if isinstance(entry, dict) and "state" in entry and parse_timestamp(entry) is not None
+    ]
+    if not valid_entries:
+        return JobStatus.DRAFT, "Unknown", None
+
+    latest = max(valid_entries, key=parse_timestamp)
     state = latest["state"]
     display_name = JobStatus.display_name(state)
     timestamp = parse_timestamp(latest)
