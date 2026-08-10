@@ -152,7 +152,9 @@ def _create_bilby_job_record(user, details, args, job_type, ini_string=None):
 def create_bilby_job(user, params):
     logger.info("User %s creating Bilby job: %s", user.id, params.details.name)
 
-    if should_embargo_job(user, float(params.data.trigger_time), params.data.data_choice == "simulated"):
+    trigger_time = float(params.data.trigger_time) if params.data.trigger_time is not None else None
+
+    if should_embargo_job(user, trigger_time, params.data.data_choice == "simulated"):
         logger.warning("User %s attempted to run real job on embargoed data: %s", user.id, params.details.name)
         msg = "Only LIGO users may run real jobs on embargoed LIGO data"
         raise GraphQLError(msg)
@@ -161,7 +163,7 @@ def create_bilby_job(user, params):
 
     # Check if this job would be embargoed for non-LIGO users.
     # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
-    is_ligo_job = should_embargo_job(None, float(params.data.trigger_time), params.data.data_choice == "simulated")
+    is_ligo_job = should_embargo_job(None, trigger_time, params.data.data_choice == "simulated")
 
     # todo: request_cpus
 
