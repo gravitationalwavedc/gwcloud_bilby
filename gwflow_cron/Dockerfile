@@ -15,6 +15,6 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry install --without dev --no-interaction --no-root
 
 # Copy in the modules
-COPY settings.py state.py gwflow_ingest.py ./
+COPY settings.py state.py gwflow_ingest.py portal.py manifest.py ./
 
 ENTRYPOINT ["python", "gwflow_ingest.py"]
