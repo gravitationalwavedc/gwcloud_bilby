@@ -94,6 +94,16 @@ class TestSchemaCoverage(BilbyTestCase):
         self.assertIsNone(response.data["bilbyResultFiles"])
         self.assertIn("Error getting file list", str(response.errors[0]["message"]))
 
+    def test_bilby_result_files_malformed_job_id(self):
+        response = self.query(RESULT_FILES_QUERY % "not-a-valid-id")
+        self.assertIsNone(response.data["bilbyResultFiles"])
+        self.assertIsNone(response.errors)
+
+    def test_bilby_result_files_nonexistent_job(self):
+        response = self.query(RESULT_FILES_QUERY % to_global_id("BilbyJobNode", 999999))
+        self.assertIsNone(response.data["bilbyResultFiles"])
+        self.assertIsNone(response.errors)
+
     @silence_errors
     @mock.patch(
         "bilbyui.models.request_file_list", return_value=(True, [{"path": "/f.txt", "isDir": False, "fileSize": 1}])
