@@ -87,6 +87,17 @@ class TestViewJob(BilbyTestCase):
         self.assertContains(response, "Results")
         self.assertContains(response, "COMPLETED —")
 
+    @mock.patch(
+        "bilbyui.views.request_job_filter",
+        return_value=("OK", [{"history": [{"state": 500}]}]),
+    )
+    def test_history_with_missing_timestamp_renders_unknown(self, request_job_filter):
+        response = self.client.get(self.base_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Viewable job")
+        self.assertContains(response, "UNKNOWN —")
+
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_parameters_partial(self, request_job_filter):
         response = self.client.get(f"{self.base_url}parameters/")
