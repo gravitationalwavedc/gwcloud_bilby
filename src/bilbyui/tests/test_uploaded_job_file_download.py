@@ -2,12 +2,13 @@ import uuid
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, override_settings
 from django.urls import reverse
 
-from bilbyui.models import BilbyJob
+from bilbyui.models import BilbyJob, FileDownloadToken
 from bilbyui.tests.test_utils import (
     create_test_ini_string,
     create_test_upload_data,
@@ -122,6 +123,18 @@ class TestUploadedJobFileDownload(BilbyTestCase):
         self.assertEqual(response.status_code, 404)
 
         response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={uuid.uuid4()}")
+        self.assertEqual(response.status_code, 404)
+
+    @silence_errors
+    def test_path_traversal_blocked(self):
+        # Create a secret file outside the job's upload directory
+        secret_path = Path(settings.JOB_UPLOAD_DIR) / "secret.txt"
+        secret_path.write_text("secret")
+
+        # Create a token whose path escapes the job's upload directory
+        token = FileDownloadToken.objects.create(job=self.job, path="../secret.txt")
+
+        response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={token.token}")
         self.assertEqual(response.status_code, 404)
 
     @silence_errors
