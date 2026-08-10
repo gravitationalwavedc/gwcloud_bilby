@@ -1,0 +1,13 @@
+{% if payload %}
+  <dl>
+    {% for key, value in payload.items %}
+      <dt>{{ key }}</dt>
+      <dd>{{ value }}</dd>
+    {% endfor %}
+  </dl>
+{% else %}
+  <p class="text-muted">No metadata available.</p>
+{% endif %}
+{% if stale %}
+  <p class="text-muted small">Showing cached copy.</p>
+{% endif %}
