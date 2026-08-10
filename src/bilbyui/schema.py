@@ -553,7 +553,8 @@ class Query:
 
         if job.job_type == BilbyJobType.EXTERNAL:
             # There is nothing special we have to do here. The frontend or API will handle the job_type.
-            result = [BilbyResultFile(path=ExternalBilbyJob.objects.get(job=job).url)]
+            external_job = ExternalBilbyJob.objects.filter(job=job).first()
+            result = [BilbyResultFile(path=external_job.url)] if external_job else []
         else:
             # Fetch the file list from the job controller
             success, files = job.get_file_list()
