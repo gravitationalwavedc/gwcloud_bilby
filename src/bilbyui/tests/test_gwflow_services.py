@@ -138,3 +138,21 @@ class TestGWFlowServices(BilbyTestCase):
         res = list_gwflow_jobs(self.non_ligo_user)
         # Reconciliation will see count mismatch (1 returned from ES vs 0 passing DB filter for non_ligo)
         self.assertEqual(res["jobs"], {})
+
+    @patch("elasticsearch.Elasticsearch")
+    def test_list_gwflow_jobs_skips_malformed_non_numeric_id(self, mock_es_cls):
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": self.job_public.id},
+                    {"_id": "corrupt-non-numeric-id"},
+                ]
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user)
+
+        self.assertIn(self.job_public.id, res["jobs"])
+        self.assertEqual(len(res["records"]), 1)
