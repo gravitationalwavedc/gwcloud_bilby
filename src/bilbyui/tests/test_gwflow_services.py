@@ -181,3 +181,34 @@ class TestGWFlowServices(BilbyTestCase):
 
         self.assertFalse(res["has_next"])
         self.assertEqual(len(res["records"]), 2)
+
+    @patch("elasticsearch.Elasticsearch")
+    def test_list_gwflow_jobs_returns_extra_record_for_has_next(self, mock_es_cls):
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+        job2 = GWFlowJob.objects.create(
+            sname="S200101e",
+            user=self.non_ligo_user,
+            ligo_only=False,
+            is_pruned=False,
+        )
+        job3 = GWFlowJob.objects.create(
+            sname="S200101f",
+            user=self.non_ligo_user,
+            ligo_only=False,
+            is_pruned=False,
+        )
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": self.job_public.id},
+                    {"_id": job2.id},
+                    {"_id": job3.id},
+                ]
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user, page_size=2)
+
+        self.assertTrue(res["has_next"])
+        self.assertEqual(len(res["records"]), 3)
