@@ -12,7 +12,7 @@
         value="{{ search }}"
         hx-get="{% url jobs_list_url_name %}"
         hx-trigger="input changed delay:300ms, search"
-        hx-target="#job-list"
+        hx-target="#{{ list_target_id|default:'job-list' }}"
         hx-swap="innerHTML"
         hx-push-url="true"
       >
@@ -24,7 +24,7 @@
       class="form-control custom-select"
       hx-get="{% url jobs_list_url_name %}"
       hx-trigger="change"
-      hx-target="#job-list"
+      hx-target="#{{ list_target_id|default:'job-list' }}"
       hx-swap="innerHTML"
       hx-push-url="true"
     >

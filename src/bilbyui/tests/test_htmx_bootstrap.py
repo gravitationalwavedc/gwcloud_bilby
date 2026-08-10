@@ -83,7 +83,7 @@ class TestHtmxBootstrap(BilbyTestCase):
     def test_navbar_logo_links_home(self):
         response = self.client.get(self.health_url)
         content = response.content.decode()
-        self.assertIn('class="navbar-brand navbar-brand-link mr-auto" href="/"', content)
+        self.assertIn('class="navbar-brand navbar-brand-link" href="/"', content)
 
     def test_navbar_api_tokens_link(self):
         self.authenticate()
