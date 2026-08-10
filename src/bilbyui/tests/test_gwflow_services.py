@@ -156,3 +156,28 @@ class TestGWFlowServices(BilbyTestCase):
 
         self.assertIn(self.job_public.id, res["jobs"])
         self.assertEqual(len(res["records"]), 1)
+
+    @patch("elasticsearch.Elasticsearch")
+    def test_list_gwflow_jobs_has_next_ignores_non_numeric_trailing_id(self, mock_es_cls):
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+        job2 = GWFlowJob.objects.create(
+            sname="S200101d",
+            user=self.non_ligo_user,
+            ligo_only=False,
+            is_pruned=False,
+        )
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": self.job_public.id},
+                    {"_id": job2.id},
+                    {"_id": "corrupt-non-numeric-id"},
+                ]
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user, page_size=2)
+
+        self.assertFalse(res["has_next"])
+        self.assertEqual(len(res["records"]), 2)
