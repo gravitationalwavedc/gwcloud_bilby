@@ -273,7 +273,7 @@ def _check_and_download_inner(con, cur):
         if ignored:
             continue
 
-        found = [v for v in parameters.values() if v["is_preferred"]]
+        found = [v for v in parameters.values() if isinstance(v, dict) and v.get("is_preferred")]
         if len(found) != 1:
             logger.error("Unable to find preferred job for %s 😠", event_name)
             save_sqlite_job(
