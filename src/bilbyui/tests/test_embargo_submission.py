@@ -145,6 +145,19 @@ class TestBilbyEmbargoPermissions(BilbyTestCase):
             job = BilbyJob.objects.get(pk=job_id)
             job.delete()
 
+    @silence_errors
+    @override_settings(EMBARGO_START_TIME=MOCK_EMBARGO_START_TIME)
+    def test_job_without_trigger_time(self):
+        self.authenticate()
+
+        self.set_trigger_time_and_data_choice(None, "simulated")
+        response = self.query(self.query_string, input_data=self.params)
+
+        self.assertResponseNoErrors(response, "mutation should not have returned errors for a missing trigger time")
+        self.assertEqual(BilbyJob.objects.count(), 1)
+
+        self.assertIn("jobId", response.data["newBilbyJob"]["result"])
+
 
 class TestIniBilbyEmbargoPermissions(BilbyTestCase):
     def setUp(self):
