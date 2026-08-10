@@ -837,6 +837,10 @@ def file_download_job_file(request, fdl):
     # Get the full file path
     file_path = Path(job_dir) / file_path
 
+    # Verify that the file really sits under the job's upload directory
+    if not file_path.resolve().is_relative_to(Path(job_dir).resolve()):
+        raise Http404
+
     if not file_path.exists():
         raise Http404
 
