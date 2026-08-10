@@ -1283,7 +1283,11 @@ def _get_job_status_context(job, user):
     elif job.job_controller_id:
         status, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
         if status == "OK" and job_controller_jobs:
-            history = job_controller_jobs[0].get("history")
+            controller_job = next(
+                (record for record in job_controller_jobs if record.get("id") == job.job_controller_id),
+                job_controller_jobs[0],
+            )
+            history = controller_job.get("history")
             if history:
                 _, status_name, status_date = derive_job_status(history)
                 if status_date is not None:

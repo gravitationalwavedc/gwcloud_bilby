@@ -125,3 +125,20 @@ class TestGetJobStatusContext(BilbyTestCase):
         self.assertEqual(result["status_name"], "Completed")
         self.assertEqual(result["status_badge_class"], "primary")
         self.assertEqual(result["status_date"], "2024-03-02 10:00:00 UTC")
+
+    @mock.patch(
+        "bilbyui.views.request_job_filter",
+        return_value=(
+            "OK",
+            [
+                {"id": 999, "history": [{"state": 50, "timestamp": "2024-03-01 10:00:00 UTC"}]},
+                {"id": 10001, "history": [{"state": 500, "timestamp": "2024-03-02 10:00:00 UTC"}]},
+            ],
+        ),
+    )
+    def test_out_of_order_records_uses_matching_controller_id(self, mock_filter):
+        result = _get_job_status_context(self.job, self.user)
+
+        self.assertEqual(result["status_name"], "Completed")
+        self.assertEqual(result["status_badge_class"], "primary")
+        self.assertEqual(result["status_date"], "2024-03-02 10:00:00 UTC")
