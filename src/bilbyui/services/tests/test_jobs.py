@@ -169,6 +169,24 @@ class TestJobsService(BilbyTestCase):
         )
         mock_es.search.assert_called_once()
 
+    @patch("bilbyui.services.jobs.elasticsearch.Elasticsearch")
+    def test_list_public_jobs_empty_hits_returns_empty_result(self, mock_elasticsearch):
+        mock_es = mock_elasticsearch.return_value
+        mock_es.search.return_value = {"hits": {"total": 0, "hits": []}}
+        result = list_public_jobs(self.user)
+        self.assertEqual(
+            result,
+            {
+                "jobs": {},
+                "records": [],
+                "job_controller_jobs": {},
+                "has_next": False,
+                "page": 1,
+                "page_size": 20,
+            },
+        )
+        mock_es.search.assert_called_once()
+
     @patch("bilbyui.services.jobs.request_job_filter")
     @patch("bilbyui.services.jobs.elasticsearch.Elasticsearch")
     def test_list_public_jobs_skips_unexpected_controller_job_id(self, mock_elasticsearch, mock_request_job_filter):
