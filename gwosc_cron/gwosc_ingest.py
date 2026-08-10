@@ -213,14 +213,18 @@ def _check_and_download_inner(con, cur):
             )
             continue
 
-        logger.info("%s: %s", event_name, all_events[event_name]["jsonurl"])
+        jsonurl = all_events[event_name].get("jsonurl")
+        if jsonurl is None:
+            error_msg = f"Event {event_name} has no jsonurl in allevents payload"
+            logger.error(error_msg)
+            record_job_failure(con, cur, event_name, error_msg)
+            continue
 
-        r = requests.get(all_events[event_name]["jsonurl"], timeout=30)
+        logger.info("%s: %s", event_name, jsonurl)
+
+        r = requests.get(jsonurl, timeout=30)
         if r.status_code != 200:
-            error_msg = (
-                f"Unable to fetch event json (status: {r.status_code}, event: "
-                f"{event_name}, url: {all_events[event_name]['jsonurl']})"
-            )
+            error_msg = f"Unable to fetch event json (status: {r.status_code}, event: {event_name}, url: {jsonurl})"
             logger.error(error_msg)
             record_job_failure(con, cur, event_name, error_msg)
             continue
@@ -228,7 +232,7 @@ def _check_and_download_inner(con, cur):
         try:
             event_json = r.json()
         except ValueError:
-            error_msg = f"Unable to parse event json (event: {event_name}, url: {all_events[event_name]['jsonurl']})"
+            error_msg = f"Unable to parse event json (event: {event_name}, url: {jsonurl})"
             logger.exception(error_msg)
             record_job_failure(con, cur, event_name, error_msg)
             continue
