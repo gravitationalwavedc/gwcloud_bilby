@@ -237,7 +237,7 @@ def _check_and_download_inner(con, cur):
         common_name = event_json["commonName"]
         catalog_shortname = event_json["catalog.shortName"]
 
-        shared_common_names = [k for k, v in all_events.items() if v["commonName"] == common_name]
+        shared_common_names = [k for k, v in all_events.items() if v.get("commonName") == common_name]
         is_latest_version = compute_is_latest_version(event_name, shared_common_names)
 
         gps = event_json["GPS"]
