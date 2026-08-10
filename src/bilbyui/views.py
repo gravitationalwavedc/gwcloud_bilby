@@ -1243,7 +1243,8 @@ def _get_job_status_context(job, user):
             history = job_controller_jobs[0].get("history")
             if history:
                 _, status_name, status_date = derive_job_status(history)
-                status_date = status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
+                if status_date is not None:
+                    status_date = status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
 
     return {
         "status_name": status_name,
