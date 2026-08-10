@@ -16,7 +16,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
@@ -38,6 +38,7 @@ from .models import (
 )
 from .services.api_tokens import create_token, list_tokens, revoke_token, serialize_token
 from .services.event_ids import get_event_id, list_event_ids_for_user
+from .services.gwflow import list_gwflow_jobs
 from .services.jobs import get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
 from .types import GWFlowPendingFile
@@ -1026,6 +1027,48 @@ def _build_public_job_rows(public_jobs_result):
     return rows
 
 
+def _build_gwflow_job_rows(gwflow_jobs_result):
+    records = gwflow_jobs_result["records"]
+    page_size = gwflow_jobs_result["page_size"]
+    jobs = gwflow_jobs_result["jobs"]
+
+    job_ids = [int(record["_id"]) for record in records[:page_size]]
+    file_counts = {
+        row["job_id"]: (row["total"], row["uploaded"])
+        for row in GWFlowFile.objects.filter(job_id__in=job_ids)
+        .values("job_id")
+        .annotate(total=Count("id"), uploaded=Count("id", filter=Q(uploaded=True)))
+    }
+
+    rows = []
+    for record in records[:page_size]:
+        job = jobs.get(int(record["_id"]))
+        if job is None:
+            continue
+
+        es_source = record["_source"]
+        analysis_count = len(es_source.get("analyses") or [])
+
+        files_total, files_uploaded = file_counts.get(job.id, (0, 0))
+
+        rows.append(
+            {
+                "id": job.id,
+                "sname": job.sname,
+                "schema_version": job.schema_version,
+                "libraries": job.libraries or [],
+                "event_id_values": _event_id_display_values(job.event_id),
+                "analysis_count": analysis_count,
+                "files_uploaded": files_uploaded,
+                "files_total": files_total,
+                "last_updated": job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "is_pruned": job.is_pruned,
+            }
+        )
+
+    return rows
+
+
 def _build_user_job_rows(user_jobs_result, user):
     jobs = user_jobs_result["jobs"]
     page_size = user_jobs_result["page_size"]
@@ -1095,6 +1138,42 @@ def public_jobs_view(request):
         return TemplateResponse(request, "bilbyui/_job_list_fragment.html", context)
 
     return TemplateResponse(request, "bilbyui/public_jobs.html", context)
+
+
+def gwflow_jobs_view(request):
+    page = _parse_page(request)
+    search = request.GET.get("search", "")
+    time_range = request.GET.get("time_range", "all")
+    if time_range not in ("all", "1d", "1w", "1m", "1y"):
+        time_range = "all"
+
+    result = list_gwflow_jobs(
+        request.user,
+        search=search,
+        time_range=time_range,
+        page=page,
+    )
+
+    context = {
+        "rows": _build_gwflow_job_rows(result),
+        "search": search,
+        "time_range": time_range,
+        "page": page,
+        "has_next": result["has_next"],
+        "next_page": page + 1,
+        "user": request.user,
+        "jobs_list_url_name": "bilbyui:gwflow_jobs",
+        "list_target_id": "gwflow-job-list",
+    }
+
+    if request.headers.get("HX-Request") == "true":
+        return TemplateResponse(request, "bilbyui/_gwflow_job_list_fragment.html", context)
+
+    return TemplateResponse(request, "bilbyui/gwflow_jobs.html", context)
+
+
+def gwflow_job_detail_stub(request, sname):
+    return TemplateResponse(request, "bilbyui/gwflow_detail_stub.html", {"sname": sname})
 
 
 @login_required

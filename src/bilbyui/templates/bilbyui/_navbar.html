@@ -1,10 +1,17 @@
 {% load static %}
 <nav class="navbar navbar-expand navbar-light bg-light fixed-top">
-  <a class="navbar-brand navbar-brand-link mr-auto" href="/">
+  <a class="navbar-brand navbar-brand-link" href="/">
     <img src="{% static 'bilbyui/images/GWCloud-logo-primary200.png' %}" alt="GWCloud" class="navbar-nav-icon">
     GWCloud
   </a>
-  <ul class="navbar-nav ml-auto flex-row">
+  <ul class="navbar-nav flex-row mr-auto">
+    <li class="nav-item">
+      <a class="nav-link{% if request.resolver_match.url_name == 'gwflow_jobs' %} active{% endif %}" href="{% url 'bilbyui:gwflow_jobs' %}">
+        GWFlow
+      </a>
+    </li>
+  </ul>
+  <ul class="navbar-nav flex-row">
     {% if user.is_authenticated %}
       <li class="nav-item">
         <a class="nav-link mr-3" href="https://gwcloud-python.readthedocs.io/en/latest/gettingstarted.html" target="_blank" rel="noopener noreferrer">
