@@ -221,3 +221,28 @@ class TestJobsService(BilbyTestCase):
 
         self.assertEqual(list(result["job_controller_jobs"].keys()), [job.id])
         self.assertEqual(result["job_controller_jobs"][job.id]["id"], 42)
+
+    @patch("bilbyui.services.jobs.elasticsearch.Elasticsearch")
+    def test_list_public_jobs_has_next_ignores_non_numeric_trailing_id(self, mock_elasticsearch):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="public_job",
+            description="Public job",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        mock_es = mock_elasticsearch.return_value
+        mock_es.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": self.job1.id},
+                    {"_id": job.id},
+                    {"_id": "corrupt-non-numeric-id"},
+                ]
+            }
+        }
+
+        result = list_public_jobs(self.user, page_size=2)
+
+        self.assertFalse(result["has_next"])
+        self.assertEqual(len(result["records"]), 2)
