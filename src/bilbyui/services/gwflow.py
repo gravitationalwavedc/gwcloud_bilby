@@ -88,10 +88,9 @@ def list_gwflow_jobs(
         return empty_result
 
     records = results["hits"]["hits"]
-    has_next = len(records) > page_size
-    records_to_return = [
-        record for record in records[:page_size] if isinstance(record["_id"], int) or str(record["_id"]).isdigit()
-    ]
+    numeric_records = [record for record in records if isinstance(record["_id"], int) or str(record["_id"]).isdigit()]
+    has_next = len(numeric_records) > page_size
+    records_to_return = numeric_records[:page_size]
 
     hit_ids = [record["_id"] for record in records_to_return]
     qs_before = GWFlowJob.objects.filter(id__in=hit_ids).select_related("event_id", "user")
