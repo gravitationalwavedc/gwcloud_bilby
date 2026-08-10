@@ -4,12 +4,14 @@ import elasticsearch
 from django.core.management import call_command
 from django.test import override_settings
 
-from bilbyui.models import EventID, GWFlowJob
+from bilbyui.models import BilbyJob, EventID, GWFlowJob
+from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_es import (
     build_gwflow_es_doc,
     gwflow_elastic_search_remove,
     gwflow_elastic_search_update,
+    update_child_job_ids,
 )
 
 
@@ -122,6 +124,18 @@ class TestGWFlowESUpdateRemove(BilbyTestCase):
             sname="S150914b",
             user=self.user,
         )
+        self.child_job_1 = BilbyJob.objects.create(
+            user=self.user,
+            name="child_1",
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "job_1"}),
+            gwflow_job=self.job,
+        )
+        self.child_job_2 = BilbyJob.objects.create(
+            user=self.user,
+            name="child_2",
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "job_2"}),
+            gwflow_job=self.job,
+        )
 
     @override_settings(IGNORE_ELASTIC_SEARCH=True)
     @patch("elasticsearch.Elasticsearch")
@@ -166,6 +180,49 @@ class TestGWFlowESUpdateRemove(BilbyTestCase):
 
         gwflow_elastic_search_remove(self.job)
         mock_client.delete.assert_called_once()
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True)
+    @patch("elasticsearch.Elasticsearch")
+    def test_update_child_job_ids_ignored(self, mock_es):
+        update_child_job_ids(self.job)
+        mock_es.assert_not_called()
+
+    @override_settings(
+        IGNORE_ELASTIC_SEARCH=False,
+        ELASTIC_SEARCH_HOST="localhost",
+        ELASTIC_SEARCH_API_KEY="test_key",
+        ELASTIC_SEARCH_GWFLOW_INDEX="gwflow_test_idx",
+    )
+    @patch("elasticsearch.Elasticsearch")
+    def test_update_child_job_ids_updates_doc(self, mock_es_cls):
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+
+        update_child_job_ids(self.job)
+
+        mock_client.update.assert_called_once()
+        call_kwargs = mock_client.update.call_args.kwargs
+        self.assertEqual(call_kwargs["index"], "gwflow_test_idx")
+        self.assertEqual(call_kwargs["id"], self.job.id)
+        self.assertEqual(
+            call_kwargs["doc"]["childJobIds"],
+            list(self.job.bilby_jobs.values_list("id", flat=True)),
+        )
+
+    @override_settings(
+        IGNORE_ELASTIC_SEARCH=False,
+        ELASTIC_SEARCH_HOST="localhost",
+        ELASTIC_SEARCH_API_KEY="test_key",
+        ELASTIC_SEARCH_GWFLOW_INDEX="gwflow_test_idx",
+    )
+    @patch("elasticsearch.Elasticsearch")
+    def test_update_child_job_ids_swallows_not_found(self, mock_es_cls):
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+        mock_client.update.side_effect = elasticsearch.NotFoundError(404, "not found", {})
+
+        update_child_job_ids(self.job)
+        mock_client.update.assert_called_once()
 
     @override_settings(IGNORE_ELASTIC_SEARCH=False)
     @patch("bilbyui.models.gwflow_elastic_search_remove")
