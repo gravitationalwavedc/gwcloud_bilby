@@ -18,6 +18,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect
+from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
 from django.views.decorators.http import require_GET, require_POST
@@ -47,6 +48,7 @@ from .utils.embargo import should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update
 from .utils.gwflow_es import update_child_job_ids as update_gwflow_child_job_ids
+from .utils.gwflow_portal import get_superevent
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
 from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
@@ -1177,8 +1179,45 @@ def gwflow_jobs_view(request):
     return TemplateResponse(request, "bilbyui/gwflow_jobs.html", context)
 
 
-def gwflow_job_detail_stub(request, sname):
-    return TemplateResponse(request, "bilbyui/gwflow_detail_stub.html", {"sname": sname})
+def _get_gwflow_job_or_404(request, sname):
+    job = get_object_or_404(GWFlowJob, sname=sname)
+    if job.ligo_only and not is_ligo_user(request.user):
+        raise Http404
+    return job
+
+
+def gwflow_job_detail_view(request, sname):
+    job = _get_gwflow_job_or_404(request, sname)
+    files = job.files.all()
+    return TemplateResponse(
+        request,
+        "bilbyui/gwflow_detail.html",
+        {
+            "job": job,
+            "files_uploaded": files.filter(uploaded=True).count(),
+            "files_total": files.count(),
+        },
+    )
+
+
+def gwflow_job_files_partial(request, sname):
+    job = _get_gwflow_job_or_404(request, sname)
+    return TemplateResponse(request, "bilbyui/_gwflow_files.html", {"job": job})
+
+
+def gwflow_job_metadata_partial(request, sname):
+    job = _get_gwflow_job_or_404(request, sname)  # noqa: F841 - visibility check only
+    data, state = get_superevent(sname)
+    if state == "down":
+        return TemplateResponse(request, "bilbyui/_gwflow_portal_error.html", {"sname": sname})
+    return TemplateResponse(
+        request,
+        "bilbyui/_gwflow_metadata.html",
+        {
+            "payload": data,
+            "stale": state == "stale",
+        },
+    )
 
 
 @login_required

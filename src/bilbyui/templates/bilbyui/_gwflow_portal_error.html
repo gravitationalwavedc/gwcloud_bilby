@@ -1,0 +1,14 @@
+<div class="card gw-form-card">
+  <div class="card-body">
+    <p class="mb-3">The metadata service is currently unavailable.</p>
+    <button
+      type="button"
+      class="btn btn-primary"
+      hx-get="{% url 'bilbyui:gwflow_job_metadata' sname=sname %}"
+      hx-target="#metadata-pane"
+      hx-swap="innerHTML"
+    >
+      Retry
+    </button>
+  </div>
+</div>

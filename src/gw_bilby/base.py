@@ -218,5 +218,14 @@ ELASTIC_SEARCH_API_KEY = "very secure key"
 CBCFLOW_PORTAL_URL = None
 CBCFLOW_PORTAL_TOKEN = None
 
+# Shared DB cache for cbcflow-portal responses (stale-tolerance across workers)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "gwflow_portal_cache",
+        "TIMEOUT": 60 * 10,
+    }
+}
+
 # Google Analytics tracking ID (gtag.js). Set in prod.py; None disables tracking.
 GOOGLE_ANALYTICS_ID = None
