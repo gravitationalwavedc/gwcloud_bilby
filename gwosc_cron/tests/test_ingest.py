@@ -1026,3 +1026,49 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(row["is_latest_version"], 1)
         self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
         self.assertEqual(row["common_name"], "GW000001_123456")
+
+    @responses.activate
+    def test_missing_jsonurl_in_allevents_does_not_crash(self, gwc):
+        """If an event in the allevents payload is missing the jsonurl key, the
+        whole cron run should not crash with a KeyError."""
+        self.add_allevents_response(
+            {
+                "GW000002_654321": {
+                    "commonName": "GW000002_654321",
+                    "catalog.shortName": "GWTC-3-confident",
+                },
+                "GW000001_123456": {
+                    "commonName": "GW000001_123456",
+                    "catalog.shortName": "GWTC-3-confident",
+                    "jsonurl": "https://test.org/GW000001_123456.json",
+                },
+            }
+        )
+        self.add_event_response()
+        self.add_file_response()
+
+        with self.con_patch, self.assertLogs(level=logging.ERROR):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW000001_123456--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW000001.h5",
+        )
+
+        sqlite_rows = self.get_completed_jobs()
+        self.assertEqual(len(sqlite_rows), 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        self.assertEqual(row["success"], 1)
+        self.assertEqual(row["reason"], "completed_submit")
+        self.assertEqual(row["is_latest_version"], 1)
+        self.assertEqual(row["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(row["common_name"], "GW000001_123456")
+
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 1)
+        self.assertEqual(error_rows[0]["job_id"], "GW000002_654321")
+        self.assertEqual(error_rows[0]["failure_count"], 1)
