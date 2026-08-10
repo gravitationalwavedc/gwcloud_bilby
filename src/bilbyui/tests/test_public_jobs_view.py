@@ -98,7 +98,7 @@ def elasticsearch_search_mock(*args, **kwargs):
 
 
 def elasticsearch_search_mock_no_hits(*args, **kwargs):
-    return {"hits": {}}
+    return {"hits": {"hits": []}}
 
 
 def request_job_filter_mock(*args, **kwargs):

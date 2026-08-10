@@ -101,7 +101,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         return {"hits": {"hits": jobs}}
 
     def elasticsearch_search_mock_no_hits(*args, **kwargs):
-        return {"hits": {}}
+        return {"hits": {"hits": []}}
 
     def elasticsearch_search_mock_with_stale_record(*args, **kwargs):
         user = {"name": "buffy summers", "id": 1}
