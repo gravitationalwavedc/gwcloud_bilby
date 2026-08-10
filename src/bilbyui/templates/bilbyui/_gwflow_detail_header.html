@@ -1,0 +1,29 @@
+<div class="mb-4">
+  <h1 class="mb-3">{{ job.sname }}</h1>
+
+  {% if job.event_id %}
+    <div class="mb-2">
+      <span class="mr-2">Event ID: {{ job.event_id.event_id }}</span>
+      {% if job.event_id.trigger_id %}<span class="mr-2">Trigger ID: {{ job.event_id.trigger_id }}</span>{% endif %}
+      {% if job.event_id.nickname %}<span class="mr-2">Nickname: {{ job.event_id.nickname }}</span>{% endif %}
+    </div>
+  {% endif %}
+
+  <div class="mb-2">
+    {% for lib in job.libraries %}
+      <span class="badge badge-secondary mr-1">{{ lib }}</span>
+    {% endfor %}
+    {% if job.schema_version %}
+      <span class="badge badge-secondary mr-1">v{{ job.schema_version }}</span>
+    {% endif %}
+    {% if job.current_history_id %}
+      <span class="badge badge-secondary mr-1">{{ job.current_history_id|slice:":8" }}</span>
+      {% if job.current_history_timestamp %}
+        <span class="text-muted">{{ job.current_history_timestamp|date:"Y-m-d H:i:s" }} UTC</span>
+      {% endif %}
+    {% endif %}
+    {% if job.is_pruned %}
+      <span class="badge badge-dark mr-1">pruned</span>
+    {% endif %}
+  </div>
+</div>

@@ -238,9 +238,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertContains(response, f'href="{reverse("bilbyui:gwflow_jobs")}"')
         self.assertContains(response, 'class="nav-link active"')
 
-    def test_detail_stub(self):
+    def test_detail_missing_job_404(self):
         response = self.client.get(reverse("bilbyui:gwflow_job_detail", args=["S230601ag"]))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "S230601ag")
-        self.assertContains(response, "coming soon")
+        self.assertEqual(response.status_code, 404)
