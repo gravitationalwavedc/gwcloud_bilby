@@ -63,5 +63,7 @@ urlpatterns = [
         views.api_token_revoke,
         name="api_token_revoke",
     ),
+    path("gwflow/", views.gwflow_jobs_view, name="gwflow_jobs"),
+    path("gwflow/<str:sname>/", views.gwflow_job_detail_stub, name="gwflow_job_detail"),
     path("<path:path>", views.not_found_view, name="not_found"),
 ]
