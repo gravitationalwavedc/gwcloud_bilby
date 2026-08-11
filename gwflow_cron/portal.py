@@ -28,6 +28,8 @@ class PortalClient:
                 if attempt == max_attempts:
                     resp.raise_for_status()
                 logger.warning("Portal request attempt %s failed with status %s", attempt, resp.status_code)
+            except requests.HTTPError:
+                raise
             except Exception as e:
                 if attempt == max_attempts:
                     raise
