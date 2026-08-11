@@ -1242,3 +1242,27 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(len(error_rows), 1)
         self.assertEqual(error_rows[0]["job_id"], "GW000002_654321")
         self.assertEqual(error_rows[0]["failure_count"], 1)
+
+    @responses.activate
+    def test_allevents_missing_events_key_does_not_crash(self, gwc):
+        """If the allevents endpoint returns 200 with a body missing the top-level
+        "events" key, the cron logs "Nothing to do" and exits 0 instead of
+        crashing with a KeyError."""
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json={},
+        )
+
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit) as cm,
+            self.assertLogs(level=logging.INFO) as logs,
+        ):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("Nothing to do 😊", logs.output[-1])
+        self.assertEqual(len(self.get_completed_jobs()), 0)

@@ -160,7 +160,7 @@ def _check_and_download_inner(con, cur):
         logger.critical(f"Unable to fetch allevents json (status: {r.status_code})")
         sys.exit(1)
 
-    all_events = r.json()["events"]
+    all_events = r.json().get("events") or {}
     gwosc_events = list(all_events)
     logger.info("GWOSC events found: %s", len(gwosc_events))
 
