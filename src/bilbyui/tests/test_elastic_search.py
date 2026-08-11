@@ -165,6 +165,34 @@ class TestElasticSearch(BilbyTestCase):
 
         self.assertIsNotNone(job.id)
 
+    def request_lookup_users_empty_mock(*args, **kwargs):
+        return True, []
+
+    @mock.patch("elasticsearch.Elasticsearch.update")
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_empty_mock)
+    def test_job_save_user_lookup_empty_skips_indexing(self, lookup_users_mock, elasticsearch_update_mock):
+        """
+        Test that when the user lookup succeeds but returns no matching users, the job is still
+        saved without raising an IndexError and no document is indexed in elastic search
+        """
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Test1",
+            description="first job",
+            job_controller_id=2,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+        # request_lookup_users should have been called once with an array containing only the user id
+        self.assertEqual(lookup_users_mock.call_count, 1)
+        self.assertEqual(lookup_users_mock.mock_calls[0].args, ([1],))
+
+        # No elastic search update/index call should have been made
+        elasticsearch_update_mock.assert_not_called()
+
+        self.assertIsNotNone(job.id)
+
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_update_document(self, lookup_users_mock, elasticsearch_update_mock):
