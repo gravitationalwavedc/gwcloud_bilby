@@ -4,7 +4,6 @@ import urllib.parse
 import requests
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.db import DatabaseError
 
 from bilbyui.models import BilbyJob, GWFlowJob
 from bilbyui.utils.gwflow_es import gwflow_elastic_search_update
@@ -44,7 +43,7 @@ class Command(BaseCommand):
                 success_count += 1
                 logger.info("Job %s - %s has been ingested into Elasticsearch", job.id, job.name)
                 self.stdout.write(self.style.SUCCESS(f"✓ Job {job.id} - {job.name}"))
-            except DatabaseError as e:
+            except Exception as e:
                 error_count += 1
                 logger.exception("Job %s - %s could not be ingested", job.id, job.name)
                 self.stdout.write(self.style.ERROR(f"✗ Job {job.id} - {job.name}: {e}"))

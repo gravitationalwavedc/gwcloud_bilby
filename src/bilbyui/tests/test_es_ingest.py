@@ -41,3 +41,13 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertIn("Ingestion complete: 0 succeeded, 3 failed", output)
         self.assertIn("✗ Job", output)
         self.assertIn("boom", output)
+
+    def test_es_ingest_continues_after_non_database_error(self):
+        out = StringIO()
+        with mock.patch.object(BilbyJob, "save", autospec=True, side_effect=[ValueError("bad detectors"), None, None]):
+            call_command("es_ingest", stdout=out)
+
+        output = out.getvalue()
+        self.assertIn("Ingestion complete: 2 succeeded, 1 failed", output)
+        self.assertIn("✗ Job", output)
+        self.assertIn("bad detectors", output)
