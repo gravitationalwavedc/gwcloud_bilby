@@ -123,7 +123,12 @@ class UserBilbyJobFilter(FilterSet):
     @property
     def qs(self):
         user = self.request.user
-        return BilbyJob.user_bilby_job_filter(super().qs, user).prefetch_related("user")
+        return (
+            BilbyJob.user_bilby_job_filter(super().qs, user)
+            .select_related("event_id")
+            .prefetch_related("labels")
+            .prefetch_related("user")
+        )
 
 
 class PublicBilbyJobFilter(FilterSet):
@@ -227,7 +232,7 @@ class BilbyJobNode(DjangoObjectType):
         user_id = user.id if user.is_authenticated else 0
 
         qs = BilbyJob.bilby_job_filter(queryset, user)
-        qs = qs.prefetch_related("user")
+        qs = qs.select_related("event_id").prefetch_related("labels").prefetch_related("user")
 
         info.context.users = {}
 
