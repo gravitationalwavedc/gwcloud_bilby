@@ -559,7 +559,7 @@ class Query:
         # Try to look up the job with the id provided
         try:
             job = get_job(job_id, info.context.user)
-        except (BilbyJob.DoesNotExist, ValueError, TypeError):
+        except (BilbyJob.DoesNotExist, PermissionError, ValueError, TypeError):
             return None
 
         if job.job_type == BilbyJobType.EXTERNAL:
