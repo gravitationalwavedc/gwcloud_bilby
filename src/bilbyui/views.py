@@ -1025,9 +1025,9 @@ def _build_public_job_rows(public_jobs_result):
         rows.append(
             {
                 "id": bilby_job.id,
-                "user": job_source["user"]["name"],
-                "name": job_source["job"]["name"],
-                "description": job_source["job"]["description"] or "",
+                "user": job_source.get("user", {}).get("name", ""),
+                "name": job_source.get("job", {}).get("name", ""),
+                "description": job_source.get("job", {}).get("description", "") or "",
                 "status_name": status_name,
                 "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
                 "labels": list(bilby_job.labels.all()),
