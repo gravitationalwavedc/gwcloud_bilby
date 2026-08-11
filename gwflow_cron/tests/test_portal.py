@@ -141,6 +141,17 @@ class TestPortalClient(unittest.TestCase):
         with self.assertRaises(requests.RequestException):
             self.client.get_superevent("S_FAIL")
 
+    @responses.activate
+    @patch("time.sleep", return_value=None)
+    def test_4xx_raises_immediately_without_retry(self, mock_sleep):
+        url = f"{self.base_url}/api/v1/superevents/S_GONE/"
+        responses.add(responses.GET, url, status=404)
+
+        with self.assertRaises(requests.HTTPError):
+            self.client.get_superevent("S_GONE")
+        self.assertEqual(len(responses.calls), 1)
+        mock_sleep.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
