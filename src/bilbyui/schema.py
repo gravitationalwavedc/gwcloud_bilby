@@ -488,9 +488,9 @@ class Query:
                 continue
 
             job_node = BilbyPublicJobNode(
-                user=job["user"]["name"],
-                name=job["job"]["name"],
-                description=job["job"]["description"],
+                user=job.get("user", {}).get("name", ""),
+                name=job.get("job", {}).get("name", ""),
+                description=job.get("job", {}).get("description", ""),
                 event_id=EventIDType.get_node(info, id=bilby_job.event_id.id) if bilby_job.event_id else None,
                 id=to_global_id("BilbyJobNode", bilby_job.id),
             )
