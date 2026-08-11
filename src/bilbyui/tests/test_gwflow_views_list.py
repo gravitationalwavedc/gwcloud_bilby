@@ -162,6 +162,15 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertEqual(row["id"], job1.id)
         self.assertRegex(row["last_updated"], r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC$")
 
+    def test_row_building_malformed_analyses_counts_as_zero(self):
+        job = GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+
+        for malformed in ({"pe": ["a"]}, "not-a-list", 42, None):
+            result = _build_gwflow_result([job], analyses={job.id: malformed})
+            rows = _build_gwflow_job_rows(result)
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["analysis_count"], 0)
+
     def test_empty_state(self):
         with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()):
             response = self.client.get(self.url)
