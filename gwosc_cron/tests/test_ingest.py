@@ -1266,3 +1266,55 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(cm.exception.code, 0)
         self.assertIn("Nothing to do 😊", logs.output[-1])
         self.assertEqual(len(self.get_completed_jobs()), 0)
+
+    @responses.activate
+    def test_non_dict_event_in_allevents_does_not_crash(self, gwc):
+        """If an event in the allevents payload is not a dict, the whole cron run
+        should not crash with an AttributeError when reading event fields or
+        computing shared_common_names."""
+        self.add_allevents_response(
+            {
+                "GW000003_111111": "not-a-dict",
+                "GW000002_654321": "also-not-a-dict",
+                "GW000001_123456": {
+                    "commonName": "GW000001_123456",
+                    "catalog.shortName": "GWTC-3-confident",
+                    "jsonurl": "https://test.org/GW000001_123456.json",
+                },
+            }
+        )
+        self.seed_job_error("GW000002_654321", gwosc_ingest.MAX_RETRY_ATTEMPTS)
+        self.add_event_response()
+        self.add_file_response()
+
+        with self.con_patch, self.assertLogs(level=logging.ERROR):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW000001_123456--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW000001.h5",
+        )
+
+        # The main-flow non-dict event is recorded for retry, the max_retries
+        # non-dict event is permanently closed, and the valid event is processed.
+        sqlite_rows = self.get_completed_jobs()
+        self.assertEqual(len(sqlite_rows), 2)
+        self.assertEqual(sqlite_rows[0]["job_id"], "GW000002_654321")
+        self.assertEqual(sqlite_rows[0]["success"], 0)
+        self.assertEqual(sqlite_rows[0]["reason"], "max_retries_exceeded")
+        self.assertEqual(sqlite_rows[1]["job_id"], "GW000001_123456")
+        self.assertEqual(sqlite_rows[1]["success"], 1)
+        self.assertEqual(sqlite_rows[1]["reason"], "completed_submit")
+        self.assertEqual(sqlite_rows[1]["is_latest_version"], 1)
+        self.assertEqual(sqlite_rows[1]["catalog_shortname"], "GWTC-3-confident")
+        self.assertEqual(sqlite_rows[1]["common_name"], "GW000001_123456")
+
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 2)
+        self.assertEqual(error_rows[0]["job_id"], "GW000002_654321")
+        self.assertEqual(error_rows[0]["failure_count"], gwosc_ingest.MAX_RETRY_ATTEMPTS)
+        self.assertEqual(error_rows[1]["job_id"], "GW000003_111111")
+        self.assertEqual(error_rows[1]["failure_count"], 1)
