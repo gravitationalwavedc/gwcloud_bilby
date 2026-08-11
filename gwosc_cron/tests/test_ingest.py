@@ -1176,12 +1176,12 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(error_rows[0]["job_id"], "GW000002_654321")
         self.assertEqual(error_rows[0]["failure_count"], 1)
 
-    @parameterized.expand(["events", "parameters", "commonName", "catalog.shortName"])
+    @parameterized.expand(["events", "parameters", "commonName", "catalog.shortName", "GPS", "gracedb_id"])
     @responses.activate
     def test_missing_key_in_event_json_does_not_crash(self, gwc, missing_key):
         """If the per-event JSON payload is missing an expected key (events/<event_name>,
-        parameters, commonName, catalog.shortName), the whole cron run should not crash
-        with a KeyError."""
+        parameters, commonName, catalog.shortName, GPS, gracedb_id), the whole cron run
+        should not crash with a KeyError."""
         self.add_allevents_response(
             {
                 "GW000002_654321": {
