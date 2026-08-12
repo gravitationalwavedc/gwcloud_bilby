@@ -3,8 +3,9 @@ from unittest import mock
 
 from django.core.management import call_command
 from django.db import DatabaseError
+from django.test import override_settings
 
-from bilbyui.models import BilbyJob
+from bilbyui.models import BilbyJob, GWFlowJob
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -51,3 +52,33 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertIn("Ingestion complete: 2 succeeded, 1 failed", output)
         self.assertIn("✗ Job", output)
         self.assertIn("bad detectors", output)
+
+    def test_es_ingest_gwflow_non_dict_item_does_not_abort(self):
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+
+        class MockResponse:
+            def __init__(self, payload, status_code):
+                self._payload = payload
+                self.status_code = status_code
+
+            def json(self):
+                return self._payload
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return MockResponse({"results": ["S230601ag"], "next": None}, 200)
+            if url.endswith("/api/v1/superevents/S230601ag/"):
+                return MockResponse({}, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        out = StringIO()
+        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
+            with override_settings(
+                CBCFLOW_PORTAL_URL="https://portal.example.com",
+                CBCFLOW_PORTAL_TOKEN="token",
+            ):
+                call_command("es_ingest", "--gwflow", stdout=out)
+
+        output = out.getvalue()
+        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
+        self.assertNotIn("Error during gwflow ingestion loop", output)
