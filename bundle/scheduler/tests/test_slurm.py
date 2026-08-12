@@ -91,3 +91,17 @@ class TestSlurm(TestCase):
 
         self.assertFalse(result)
         check_output_mock.assert_called_once_with("scancel 1234", shell=True)
+
+    @patch("scheduler.slurm.subprocess.check_output", return_value=b"")
+    def test_submit_empty_output_returns_none(self, _check_output):
+        sched = SlurmScheduler()
+        result = sched.submit("test_script_path", "a/working/directory")
+
+        self.assertIsNone(result)
+
+    @patch("scheduler.slurm.subprocess.check_output", return_value=b"   \n\t")
+    def test_submit_whitespace_output_returns_none(self, _check_output):
+        sched = SlurmScheduler()
+        result = sched.submit("test_script_path", "a/working/directory")
+
+        self.assertIsNone(result)
