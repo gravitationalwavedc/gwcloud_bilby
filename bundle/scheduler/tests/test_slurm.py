@@ -67,7 +67,10 @@ class TestSlurm(TestCase):
             )
 
     def test_status_no_matching_job(self):
-        with patch("scheduler.slurm.subprocess.check_output", return_value=b"99999|COMPLETED 0:0\n"):
+        with patch(
+            "scheduler.slurm.subprocess.check_output",
+            return_value=b"99999|COMPLETED 0:0\n",
+        ):
             self.assertEqual(self.sched.status(12345, None), (None, None))
 
     def test_status_unknown_state(self):
@@ -115,7 +118,10 @@ class TestSlurm(TestCase):
         self.assertTrue(result)
         check_output_mock.assert_called_once_with("scancel 1234", shell=True)
 
-    @patch("scheduler.slurm.subprocess.check_output", side_effect=subprocess.CalledProcessError(1, "scancel 1234"))
+    @patch(
+        "scheduler.slurm.subprocess.check_output",
+        side_effect=subprocess.CalledProcessError(1, "scancel 1234"),
+    )
     def test_cancel_failure(self, check_output_mock):
         sched = SlurmScheduler()
         result = sched.cancel(1234, None)
@@ -136,3 +142,15 @@ class TestSlurm(TestCase):
         result = sched.submit("test_script_path", "a/working/directory")
 
         self.assertIsNone(result)
+
+
+class TestSlurmScheduler(TestCase):
+    def test_status_cancelled_plus_transitional_state(self):
+        sched = SlurmScheduler()
+        with patch(
+            "scheduler.slurm.subprocess.check_output",
+            return_value=b"12345|CANCELLED+  \n",
+        ):
+            status, info = sched.status(12345, {})
+        self.assertEqual(status, JobStatus.CANCELLED)
+        self.assertEqual(info, "CANCELLED+")
