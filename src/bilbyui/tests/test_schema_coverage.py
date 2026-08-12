@@ -117,6 +117,33 @@ class TestSchemaCoverage(BilbyTestCase):
         self.assertEqual(str(response.errors[0]["message"]), "download error")
 
     @silence_errors
+    def test_generate_file_download_ids_private_job_permission_denied(self):
+        User.objects.update_or_create(id=2, defaults={"name": "u2", "primary_email": "u2@test.com"})
+        private_job = BilbyJob.objects.create(
+            user_id=1,
+            name="P",
+            job_controller_id=3,
+            private=True,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        self.authenticate(user=User.objects.get(id=2))
+        response = self.query(
+            DOWNLOAD_IDS_MUTATION,
+            input_data={"jobId": to_global_id("BilbyJobNode", private_job.id), "downloadTokens": []},
+        )
+        self.assertIsNone(response.data["generateFileDownloadIds"])
+        self.assertEqual(str(response.errors[0]["message"]), "Permission Denied")
+
+    @silence_errors
+    def test_generate_file_download_ids_nonexistent_job(self):
+        response = self.query(
+            DOWNLOAD_IDS_MUTATION,
+            input_data={"jobId": to_global_id("BilbyJobNode", 999999), "downloadTokens": []},
+        )
+        self.assertIsNone(response.data["generateFileDownloadIds"])
+        self.assertEqual(str(response.errors[0]["message"]), "Job does not exist.")
+
+    @silence_errors
     def test_upload_supporting_files_invalid_token(self):
         test_file = SimpleUploadedFile(name="t.txt", content=b"x", content_type="text/plain")
         response = self.file_query(
