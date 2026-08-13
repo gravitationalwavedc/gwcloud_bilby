@@ -63,3 +63,18 @@ def bilby_args_to_ini_string(args):
 
         # Read the ini content
         return f.read().decode("utf-8")
+
+
+def prepare_args_for_data_input(args):
+    """
+    Prepares parsed arguments for use with DataGenerationInput
+
+    DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
+
+    :param args: The argument Namespace to prepare
+    """
+
+    args.idx = getattr(args, "idx", None)
+    if getattr(args, "generation_seed", None) is not None and args.idx is None:
+        args.idx = 0
+    args.ini = None

@@ -49,7 +49,7 @@ from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update
 from .utils.gwflow_es import update_child_job_ids as update_gwflow_child_job_ids
 from .utils.gwflow_portal import get_superevent
-from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
+from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args, prepare_args_for_data_input
 from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
 from .utils.jobs.request_file_download_id import request_file_download_ids
@@ -429,11 +429,7 @@ def bilby_ini_args_to_data_input(args):
     args.injection_file = None
     args.psd_dict = None
 
-    # DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
-    args.idx = getattr(args, "idx", None)
-    if getattr(args, "generation_seed", None) is not None and args.idx is None:
-        args.idx = 0
-    args.ini = None
+    prepare_args_for_data_input(args)
 
     if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
         args.prior_file = None
@@ -570,11 +566,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
             msg = "Only LIGO users may upload real jobs on embargoed LIGO data"
             raise PermissionError(msg)
 
-        # DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
-        args.idx = getattr(args, "idx", None)
-        if getattr(args, "generation_seed", None) is not None and args.idx is None:
-            args.idx = 0
-        args.ini = None
+        prepare_args_for_data_input(args)
 
         # Override the output directory - since in the supported directory structure the output is always relative to
         # the current working directory (root of the job)
@@ -687,11 +679,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
 
     # Strip the prior, gps, timeslide, and injection file
     # as DataGenerationInput has trouble without the actual file existing
-    # DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
-    args.idx = getattr(args, "idx", None)
-    if getattr(args, "generation_seed", None) is not None and args.idx is None:
-        args.idx = 0
-    args.ini = None
+    prepare_args_for_data_input(args)
 
     # Don't change the prior file if it's one of the defaults
     if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
