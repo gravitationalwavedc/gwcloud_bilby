@@ -482,7 +482,9 @@ class Query:
         result = []
 
         for record in records:
-            job = record["_source"]
+            job = record.get("_source")
+            if not isinstance(job, dict):
+                continue
             bilby_job = public_jobs["jobs"].get(int(record["_id"]))
             if bilby_job is None:
                 continue
