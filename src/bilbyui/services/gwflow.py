@@ -88,7 +88,11 @@ def list_gwflow_jobs(
         return empty_result
 
     records = results["hits"]["hits"]
-    numeric_records = [record for record in records if isinstance(record["_id"], int) or str(record["_id"]).isdigit()]
+    numeric_records = [
+        record
+        for record in records
+        if isinstance(record, dict) and (isinstance(record["_id"], int) or str(record["_id"]).isdigit())
+    ]
     has_next = len(numeric_records) > page_size
 
     hit_ids = [record["_id"] for record in numeric_records]
