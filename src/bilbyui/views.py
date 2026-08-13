@@ -1076,7 +1076,9 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
         if job is None:
             continue
 
-        es_source = record["_source"]
+        es_source = record.get("_source")
+        if not isinstance(es_source, dict):
+            continue
         raw_analyses = es_source.get("analyses")
         analysis_count = len(raw_analyses) if isinstance(raw_analyses, list) else 0
 
