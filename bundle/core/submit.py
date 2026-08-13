@@ -78,6 +78,18 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
     param: supporting_files: The supporting files for the job
     param: working_directory: The working directory for the job
     """
+    file_type_map = {
+        "psd": "psd_dict",
+        "cal": "spline_calibration_envelope_dict",
+        "pri": "prior_file",
+        "gps": "gps_file",
+        "tsl": "timeslide_file",
+        "inj": "injection_file",
+        "nmr": "numerical_relativity_file",
+        "dml": "distance_marginalization_lookup_table",
+        "dat": "data_dict",
+    }
+
     for supporting_file in supporting_files:
         # Make sure that the output directory exists for the supporting file type
         supporting_file_dir = Path(working_directory) / "supporting_files" / supporting_file["type"]
@@ -91,17 +103,6 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
         supporting_file_path.write_bytes(response.content)
 
         # Finally prepare the bilby args
-        file_type_map = {
-            "psd": "psd_dict",
-            "cal": "spline_calibration_envelope_dict",
-            "pri": "prior_file",
-            "gps": "gps_file",
-            "tsl": "timeslide_file",
-            "inj": "injection_file",
-            "nmr": "numerical_relativity_file",
-            "dml": "distance_marginalization_lookup_table",
-            "dat": "data_dict",
-        }
 
         # Need the path to the supporting file relative to the working directory
         relative_supporting_file_path = f"./{Path(supporting_file_path).relative_to(working_directory)}"
