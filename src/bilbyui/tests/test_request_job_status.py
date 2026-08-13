@@ -37,3 +37,12 @@ class TestRequestJobStatus(BilbyTestCase):
             status, detail = request_job_status(job)
         self.assertEqual(status, "UNKNOWN")
         self.assertEqual(detail, "Error getting job status")
+
+    def test_malformed_record(self):
+        job = FakeJob(4, 42, 1)
+        for malformed in ([{}], [None], [{"no_history": True}]):
+            with self.subTest(record=malformed):
+                with mock.patch("bilbyui.utils.jobs.request_job_status._make_job_controller_request") as mocked:
+                    mocked.return_value = malformed
+                    status, detail = request_job_status(job)
+                self.assertEqual(status, "UNKNOWN")
