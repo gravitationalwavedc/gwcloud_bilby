@@ -163,7 +163,9 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         status, job_controller_result = request_job_filter(user_id, ids=job_controller_ids.keys())
         if status == "OK":
             job_controller_jobs = {
-                job_controller_ids[job["id"]]: job for job in job_controller_result if job["id"] in job_controller_ids
+                job_controller_ids[job["id"]]: job
+                for job in job_controller_result
+                if isinstance(job, dict) and "id" in job and job["id"] in job_controller_ids
             }
 
     return {
