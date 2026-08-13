@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import elasticsearch
+import requests
 from django.core.management import call_command
 from django.test import override_settings
 
@@ -288,6 +289,29 @@ class TestESIngestGWFlowCommand(BilbyTestCase):
         valid_detail_resp.json.return_value = {"ParameterEstimation": {"results": []}}
 
         mock_get.side_effect = [list_resp, invalid_detail_resp, valid_detail_resp]
+
+        call_command("es_ingest", "--gwflow")
+        self.assertEqual(mock_get.call_count, 3)
+
+    @override_settings(
+        CBCFLOW_PORTAL_URL="https://portal.example.com",
+        CBCFLOW_PORTAL_TOKEN="Bearer token123",
+        IGNORE_ELASTIC_SEARCH=True,
+    )
+    @patch("requests.get")
+    def test_ingest_gwflow_skips_detail_request_error(self, mock_get):
+        list_resp = MagicMock()
+        list_resp.status_code = 200
+        list_resp.json.return_value = {
+            "results": [{"sname": "S230601ag"}, {"sname": "S230601ah"}],
+            "next": None,
+        }
+
+        detail_resp = MagicMock()
+        detail_resp.status_code = 200
+        detail_resp.json.return_value = {"ParameterEstimation": {"results": []}}
+
+        mock_get.side_effect = [list_resp, requests.ConnectionError("connection timeout"), detail_resp]
 
         call_command("es_ingest", "--gwflow")
         self.assertEqual(mock_get.call_count, 3)
