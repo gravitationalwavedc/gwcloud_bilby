@@ -1,3 +1,4 @@
+import subprocess
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -7,6 +8,7 @@ from scheduler.status import JobStatus
 
 class TestSlurm(TestCase):
     def setUp(self):
+        self.maxDiff = None
         self.sched = SlurmScheduler()
 
     def _mock_status(self, state):
@@ -71,3 +73,21 @@ class TestSlurm(TestCase):
     def test_status_unknown_state(self):
         with self._mock_status("UNKNOWN_STATE"):
             self.assertEqual(self.sched.status(12345, None), (None, None))
+
+    @patch("scheduler.slurm.subprocess.check_output")
+    def test_cancel_success(self, check_output_mock):
+        check_output_mock.return_value = b""
+
+        sched = SlurmScheduler()
+        result = sched.cancel(1234, None)
+
+        self.assertTrue(result)
+        check_output_mock.assert_called_once_with("scancel 1234", shell=True)
+
+    @patch("scheduler.slurm.subprocess.check_output", side_effect=subprocess.CalledProcessError(1, "scancel 1234"))
+    def test_cancel_failure(self, check_output_mock):
+        sched = SlurmScheduler()
+        result = sched.cancel(1234, None)
+
+        self.assertFalse(result)
+        check_output_mock.assert_called_once_with("scancel 1234", shell=True)
