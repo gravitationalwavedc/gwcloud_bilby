@@ -80,6 +80,35 @@ class TestRequestFileListNotUploaded(BilbyTestCase):
 
         self.assertEqual(result, (True, return_result))
 
+    @silence_errors
+    def test_request_file_list_malformed_response(self):
+        self.job.job_controller_id = 4321
+        self.job.save()
+
+        # Test a 200 response that omits the "files" key
+        self.responses.add(
+            responses.PATCH,
+            f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
+            body=json.dumps({}),
+            status=200,
+        )
+
+        result = request_file_list(self.job, ".", True, self.job.user_id)
+
+        self.assertEqual(result, (False, "Error getting job file list"))
+
+        # Test a 200 response that is not a dict
+        self.responses.add(
+            responses.PATCH,
+            f"{settings.GWCLOUD_JOB_CONTROLLER_API_URL}/file/",
+            body=json.dumps([]),
+            status=200,
+        )
+
+        result = request_file_list(self.job, ".", True, self.job.user_id)
+
+        self.assertEqual(result, (False, "Error getting job file list"))
+
 
 @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
 class TestRequestFileListUploaded(BilbyTestCase):
