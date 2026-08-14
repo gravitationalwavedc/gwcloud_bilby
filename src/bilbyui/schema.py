@@ -751,6 +751,10 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
             raise GraphQLError(f"Event ID '{kwargs.get('event_id')}' not found.")
         except BilbyPermissionError:
             raise GraphQLError("Permission Denied.")
+        except BilbyJob.DoesNotExist:
+            raise GraphQLError(f"Job '{job_model_id}' not found.")
+        except PermissionError:
+            raise GraphQLError("You must own the job to change it!")
 
         logger.info("Successfully updated job %s for user %s", job_model_id, user.id)
         # Return the bilby job id to the client
