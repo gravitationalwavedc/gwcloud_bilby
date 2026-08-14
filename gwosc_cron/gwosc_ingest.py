@@ -155,7 +155,11 @@ def _check_and_download_inner(con, cur):
     gwc = GWCloud(GWCLOUD_TOKEN, endpoint=ENDPOINT)
 
     # Collect list of events from GWOSC
-    r = requests.get("https://gwosc.org/eventapi/json/allevents", timeout=30)
+    try:
+        r = requests.get("https://gwosc.org/eventapi/json/allevents", timeout=30)
+    except requests.RequestException:
+        logger.critical("Unable to fetch allevents json (network error)")
+        sys.exit(1)
     if r.status_code != 200:
         logger.critical(f"Unable to fetch allevents json (status: {r.status_code})")
         sys.exit(1)
