@@ -1,3 +1,4 @@
+import decimal
 import logging
 from decimal import Decimal
 
@@ -311,6 +312,13 @@ class BilbyResultFiles(graphene.ObjectType):
     job_type = graphene.Int()
 
 
+def _parse_file_size(value):
+    try:
+        return Decimal(value)
+    except (decimal.InvalidOperation, TypeError):
+        return None
+
+
 class BilbyPublicJobNode(graphene.ObjectType):
     user = graphene.String()
     name = graphene.String()
@@ -585,7 +593,7 @@ class Query:
                 BilbyResultFile(
                     path=f["path"],
                     is_dir=f["isDir"],
-                    file_size=Decimal(f["fileSize"]),
+                    file_size=_parse_file_size(f["fileSize"]),
                     download_token=token_dict.get(f["path"]),
                 )
                 for f in files
