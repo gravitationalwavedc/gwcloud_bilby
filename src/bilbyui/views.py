@@ -1572,9 +1572,7 @@ def _render_job_field_event_id(request, job, error="", status=200, modifiable=No
 def _filter_event_ids_for_query(event_ids, query):
     q_lower = query.lower()
     return [
-        event
-        for event in event_ids
-        if any(q_lower in (value or "").lower() for value in _event_id_field_values(event))
+        event for event in event_ids if any(q_lower in (value or "").lower() for value in _event_id_field_values(event))
     ]
 
 
