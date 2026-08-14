@@ -129,7 +129,7 @@ class UserBilbyJobFilter(FilterSet):
             BilbyJob.user_bilby_job_filter(super().qs, user)
             .select_related("event_id")
             .prefetch_related("labels")
-            .prefetch_related("user")
+            .select_related("user")
         )
 
 
@@ -148,7 +148,7 @@ class PublicBilbyJobFilter(FilterSet):
     @property
     def qs(self):
         user = self.request.user
-        return BilbyJob.public_bilby_job_filter(super().qs, user).prefetch_related("user")
+        return BilbyJob.public_bilby_job_filter(super().qs, user).select_related("user")
 
 
 class GWFlowJobNode(DjangoObjectType):
@@ -170,7 +170,7 @@ class GWFlowJobNode(DjangoObjectType):
         user = info.context.user
         if not is_ligo_user(user):
             queryset = queryset.filter(ligo_only=False)
-        return queryset.prefetch_related("user")
+        return queryset.select_related("user")
 
     def resolve_user(self, info):
         try:
@@ -234,7 +234,7 @@ class BilbyJobNode(DjangoObjectType):
         user_id = user.id if user.is_authenticated else 0
 
         qs = BilbyJob.bilby_job_filter(queryset, user)
-        qs = qs.select_related("event_id", "gwflow_job").prefetch_related("labels").prefetch_related("user")
+        qs = qs.select_related("event_id", "gwflow_job").prefetch_related("labels").select_related("user")
 
         # Query any job controller information in one go - exclude any job controller ids that are not set
         job_controller_ids = set(qs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
