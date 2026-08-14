@@ -16,6 +16,7 @@ from .constants import BilbyJobType
 from .models import (
     BilbyJob,
     BilbyJobUploadToken,
+    BilbyPermissionError,
     EventID,
     ExternalBilbyJob,
     FileDownloadToken,
@@ -441,7 +442,7 @@ class Query:
     def resolve_event_id(self, info, event_id):
         try:
             return get_event_id(event_id, info.context.user)
-        except EventID.DoesNotExist:
+        except (EventID.DoesNotExist, BilbyPermissionError):
             return None
 
     def resolve_all_event_ids(self, info, **kwargs):
