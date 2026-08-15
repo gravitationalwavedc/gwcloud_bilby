@@ -122,8 +122,13 @@ class CondorScheduler(Scheduler):
         # Iterate over all submit events in order and find all stages that have been run
         submitted_stages = {}
         for event in filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events):
-            notes = event["LogNotes"]
-            submitted_stages[event.cluster] = next(filter(lambda x: x.startswith("DAG Node:"), notes.splitlines()))
+            try:
+                notes = event["LogNotes"]
+                submitted_stages[event.cluster] = next(
+                    filter(lambda x: x.startswith("DAG Node:"), notes.splitlines())
+                )
+            except (KeyError, StopIteration):
+                continue
 
         plot_started = any(filter(lambda x: x.endswith("_plot_arg_0"), submitted_stages.values()))
 
