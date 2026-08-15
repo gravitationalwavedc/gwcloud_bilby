@@ -1,6 +1,8 @@
+from unittest import mock
+
 from django.test import override_settings
 
-from bilbyui.models import BilbyJob, EventID, Label
+from bilbyui.models import BilbyJob, EventID, IniKeyValue, Label
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -65,3 +67,29 @@ class TestModelStrAndIniGuards(BilbyTestCase):
         )
         with override_settings(IGNORE_ELASTIC_SEARCH=False):
             self.assertIsNone(job.elastic_search_update())
+
+    def test_elastic_search_update_ignores_malformed_ini_value(self):
+        # A malformed/legacy IniKeyValue JSON value must not crash elastic_search_update;
+        # the offending key is indexed as None and the remaining keys are parsed normally.
+        IniKeyValue.objects.create(
+            job=self.job,
+            key="corrupt",
+            value="not-json{{",
+            index=0,
+            processed=False,
+        )
+        with override_settings(IGNORE_ELASTIC_SEARCH=False):
+            with (
+                mock.patch(
+                    "bilbyui.models.request_lookup_users",
+                    return_value=(True, [{"id": self.user.id, "name": "buffy summers"}]),
+                ),
+                mock.patch("elasticsearch.Elasticsearch.update") as update_mock,
+                mock.patch("elasticsearch.Elasticsearch.index"),
+            ):
+                self.job.elastic_search_update()
+
+        self.assertEqual(update_mock.call_count, 1)
+        doc = update_mock.call_args.kwargs["doc"]
+        self.assertIn("corrupt", doc["ini"])
+        self.assertIsNone(doc["ini"]["corrupt"])
