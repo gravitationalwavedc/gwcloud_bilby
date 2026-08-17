@@ -103,6 +103,9 @@ def request_file_list(job, path, recursive, user_id=None):
             user_id or job.user_id,
             data=data,
         )
+        if not isinstance(result, dict) or "files" not in result:
+            logger.error("Error getting job file list: malformed response from job controller")
+            return False, "Error getting job file list"
         return True, result["files"]
     except requests.RequestException as e:
         logger.error("Error getting job file list: %s", e, exc_info=True)
