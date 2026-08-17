@@ -248,6 +248,31 @@ class TestCondor(TestCase):
             write_next_event()
             self.assertEqual(sched.status(None, details), (None, None))
 
+    def test_status_malformed_submit_event_in_terminated_branch(self):
+        sched = CondorScheduler()
+
+        log_name = "malformed_submit.submit.nodes.log"
+
+        jel = htcondor.JobEventLog(str(Path(__file__).parent / "data" / log_name))
+        events = list(jel.events(stop_after=0))
+
+        with TemporaryDirectory() as td:
+            submit_dir = os.path.join(td, "job", "submit")
+            os.makedirs(submit_dir)
+            fn = os.path.join(submit_dir, log_name)
+
+            details = {"working_directory": td, "submit_directory": "job/submit"}
+
+            def write_next_event():
+                with open(fn, "a") as f:
+                    f.write(str(events.pop(0)))
+                    f.write("...\n")
+
+            for _ in range(len(events)):
+                write_next_event()
+
+            self.assertEqual(sched.status(None, details), (JobStatus.RUNNING, "Job is running"))
+
     def test_status_error_short(self):
         sched = CondorScheduler()
 
