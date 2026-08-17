@@ -94,7 +94,12 @@ class Command(BaseCommand):
 
                     # Fetch detail payload for this superevent
                     detail_url = f"{base_url}/api/v1/superevents/{urllib.parse.quote(sname)}/"
-                    detail_resp = requests.get(detail_url, headers=headers, timeout=30)
+                    try:
+                        detail_resp = requests.get(detail_url, headers=headers, timeout=30)
+                    except requests.RequestException as e:
+                        self.stdout.write(self.style.WARNING(f"Skipping {sname}: portal detail request failed: {e}"))
+                        error_count += 1
+                        continue
                     if detail_resp.status_code != HTTP_OK:
                         self.stdout.write(
                             self.style.WARNING(
