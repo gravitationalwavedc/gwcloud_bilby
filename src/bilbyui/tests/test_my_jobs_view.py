@@ -32,7 +32,7 @@ class TestMyJobsView(BilbyTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], f"{settings.LOGIN_URL}?next=/job-list/")
 
-    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_authenticated_returns_user_jobs(self, request_job_filter):
         self.authenticate()
         other_user = self.create_user(id=2, name="other", primary_email="other@gmail.com")
@@ -66,7 +66,7 @@ class TestMyJobsView(BilbyTestCase):
         self.assertNotContains(response, "Other job 2")
         self.assertContains(response, 'class="badge badge-primary mr-1">Completed</span>')
 
-    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_htmx_request_returns_fragment(self, request_job_filter):
         self.authenticate()
 
@@ -91,7 +91,7 @@ class TestMyJobsView(BilbyTestCase):
         self.assertContains(response, "Fragment job")
         self.assertNotContains(response, "My Jobs")
 
-    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_paging_works(self, request_job_filter):
         self.authenticate()
 
@@ -112,7 +112,7 @@ class TestMyJobsView(BilbyTestCase):
         self.assertContains(response, "Loading more")
         self.assertContains(response, "page=2")
 
-    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_invalid_time_range_defaults_to_all(self, request_job_filter):
         self.authenticate()
 
@@ -130,7 +130,7 @@ class TestMyJobsView(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Invalid range job")
 
-    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_invalid_page_defaults_to_one(self, request_job_filter):
         self.authenticate()
 
@@ -148,7 +148,7 @@ class TestMyJobsView(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Invalid page job")
 
-    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_renders_event_id_values(self, request_job_filter):
         self.authenticate()
 
@@ -176,7 +176,7 @@ class TestMyJobsView(BilbyTestCase):
         self.assertContains(response, "S123456a")
         self.assertContains(response, "GW123456")
 
-    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_renders_no_event_ids_when_missing(self, request_job_filter):
         self.authenticate()
 

@@ -37,7 +37,7 @@ class TestBuildUserJobRows(BilbyTestCase):
         defaults.update(kwargs)
         return BilbyJob.objects.create(**defaults)
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_normal_job_with_controller_status(self, request_job_filter):
         job = self._make_job(job_controller_id=42)
         request_job_filter.return_value = (
@@ -57,7 +57,7 @@ class TestBuildUserJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["labels"], [])
         self.assertEqual(rows[0]["event_id_values"], [])
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_normal_job_missing_controller_record_shows_unknown(self, request_job_filter):
         job = self._make_job(job_controller_id=99)
         request_job_filter.return_value = ("OK", [])
@@ -67,7 +67,7 @@ class TestBuildUserJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["status_name"], "Unknown")
         self.assertEqual(rows[0]["status_badge_class"], "dark")
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_controller_returns_unexpected_job_id_is_skipped(self, request_job_filter):
         job = self._make_job(job_controller_id=42)
         request_job_filter.return_value = (
@@ -84,7 +84,7 @@ class TestBuildUserJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["id"], job.id)
         self.assertEqual(rows[0]["status_name"], "Running")
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_controller_returns_non_dict_entry_is_skipped(self, request_job_filter):
         job = self._make_job(job_controller_id=42)
         request_job_filter.return_value = (
@@ -101,7 +101,7 @@ class TestBuildUserJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["id"], job.id)
         self.assertEqual(rows[0]["status_name"], "Running")
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_controller_unavailable_shows_unknown(self, request_job_filter):
         job = self._make_job(job_controller_id=42)
         request_job_filter.return_value = ("UNKNOWN", "Error getting job filter")
@@ -112,7 +112,7 @@ class TestBuildUserJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["status_name"], "Unknown")
         self.assertEqual(rows[0]["status_badge_class"], "dark")
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_uploaded_job_shows_completed(self, request_job_filter):
         job = self._make_job(job_type=BilbyJobType.UPLOADED)
 
@@ -122,7 +122,7 @@ class TestBuildUserJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["status_badge_class"], "primary")
         request_job_filter.assert_not_called()
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_external_job_shows_completed(self, request_job_filter):
         job = self._make_job(job_type=BilbyJobType.EXTERNAL)
 
@@ -131,7 +131,7 @@ class TestBuildUserJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["status_name"], "Completed")
         request_job_filter.assert_not_called()
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_unknown_job_type_shows_unknown(self, request_job_filter):
         job = self._make_job(job_type=99)
 
@@ -140,7 +140,7 @@ class TestBuildUserJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["status_name"], "Unknown")
         request_job_filter.assert_not_called()
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_empty_description_becomes_blank_string(self, request_job_filter):
         job = self._make_job(description=None, job_type=BilbyJobType.UPLOADED)
 
@@ -148,7 +148,7 @@ class TestBuildUserJobRows(BilbyTestCase):
 
         self.assertEqual(rows[0]["description"], "")
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_includes_labels_and_event_id_values(self, request_job_filter):
         job = self._make_job(job_type=BilbyJobType.UPLOADED, event_id=self.event)
         job.labels.add(self.label)
@@ -161,7 +161,7 @@ class TestBuildUserJobRows(BilbyTestCase):
             ["GW123456_123456", "S123456a", "GW123456"],
         )
 
-    @mock.patch("bilbyui.views.request_job_filter")
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_respects_page_size_slice(self, request_job_filter):
         jobs = [self._make_job(name=f"job_{i}", job_type=BilbyJobType.UPLOADED) for i in range(3)]
 

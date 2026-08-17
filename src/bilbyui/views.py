@@ -40,7 +40,7 @@ from .models import (
 from .services.api_tokens import create_token, list_tokens, revoke_token, serialize_token
 from .services.event_ids import get_event_id, list_event_ids_for_user
 from .services.gwflow import list_gwflow_jobs
-from .services.jobs import get_job, list_public_jobs, list_user_jobs, update_job
+from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
 from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
@@ -1104,16 +1104,7 @@ def _build_user_job_rows(user_jobs_result, user):
     jobs = user_jobs_result["jobs"]
     page_size = user_jobs_result["page_size"]
 
-    job_controller_ids = {job.job_controller_id: job.id for job in jobs if job.job_controller_id}
-    job_controller_jobs = {}
-    if job_controller_ids:
-        status, job_controller_result = request_job_filter(user.id, ids=job_controller_ids.keys())
-        if status == "OK":
-            job_controller_jobs = {
-                job_controller_ids[job["id"]]: job
-                for job in job_controller_result
-                if isinstance(job, dict) and "id" in job and job["id"] in job_controller_ids
-            }
+    job_controller_jobs = _fetch_job_controller_jobs(jobs, user.id)
 
     rows = []
     for bilby_job in jobs[:page_size]:
