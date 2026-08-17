@@ -563,6 +563,35 @@ class TestBilbyJobQueries(BilbyTestCase):
             "bilbyJobs query returned unexpected data when job controller is down.",
         )
 
+    @mock.patch(
+        "bilbyui.schema.request_job_filter",
+        return_value=("OK", ["malformed", {"id": 999, "history": []}]),
+    )
+    def test_bilby_jobs_query_malformed_controller_entry(self, *args):
+        """
+        bilbyJobs query should not raise when the job controller returns non-dict entries.
+        """
+        self.authenticate()
+        query = """
+                query {
+                    bilbyJobs {
+                        edges {
+                            node {
+                                userId
+                                name
+                            }
+                        }
+                    }
+                }
+            """
+        response = self.query(query)
+        self.assertIsNone(response.errors)
+        self.assertDictEqual(
+            response.data,
+            {"bilbyJobs": {"edges": [{"node": {"userId": 1, "name": "TestName"}}]}},
+            "bilbyJobs query returned unexpected data with malformed controller entries.",
+        )
+
     @mock.patch("bilbyui.schema.request_job_filter")
     def test_bilby_jobs_query_no_controller_ids_skips_request(self, request_job_filter_mock):
         """
