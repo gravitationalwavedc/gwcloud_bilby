@@ -1,5 +1,6 @@
 import argparse
 import contextlib
+import copy
 import fcntl
 import logging
 import sqlite3
@@ -10,6 +11,8 @@ from typing import Any
 import manifest
 import settings
 import state
+from fetch import fetch_to_staging
+from job_controller import ClusterOffline
 from portal import PortalClient
 
 logger = logging.getLogger("gwflow_ingest")
@@ -28,6 +31,22 @@ if not logger.handlers:
 
     logger.addHandler(fh)
     logger.addHandler(sh)
+
+
+def _get(rec: Any, key: str):
+    if isinstance(rec, dict):
+        return rec.get(key)
+    return getattr(rec, key)
+
+
+def _with_normalized_uid(rec: Any, analysis_uid: str) -> Any:
+    """Return a shallow copy of rec with analysis_uid normalized to a string."""
+    rec = copy.copy(rec)
+    if isinstance(rec, dict):
+        rec["analysis_uid"] = analysis_uid
+    else:
+        rec.analysis_uid = analysis_uid
+    return rec
 
 
 def gwc_known_unpruned_snames(gwc_client: Any) -> set[str]:
@@ -142,8 +161,56 @@ def phase_bilby_children():
     logger.info("phase_bilby_children: not implemented")
 
 
-def phase_file_mirror():
-    logger.info("phase_file_mirror: not implemented")
+def phase_file_mirror(jc: Any = None, gwc_client: Any = None, con: sqlite3.Connection | None = None):
+    if jc is None or gwc_client is None:
+        logger.info("phase_file_mirror: clients not wired (B1) - skipping")
+        return
+    logger.info("Starting phase_file_mirror")
+
+    close_con = False
+    if con is None:
+        con = sqlite3.connect(settings.DB_PATH)
+        con.row_factory = sqlite3.Row
+        close_con = True
+
+    try:
+        cur = con.cursor()
+        state.init_db(cur)
+
+        queue = list(gwc_client.get_gwflow_pending_files())
+        over_retry = set(state.failures_over(cur, settings.MAX_RETRY_ATTEMPTS))
+        bytes_done = files_done = 0
+        for rec in queue:
+            if not settings.BACKFILL and (
+                files_done >= settings.MAX_FILES_PER_RUN or bytes_done >= settings.MAX_BYTES_PER_RUN
+            ):
+                break
+            analysis_uid = _get(rec, "analysis_uid") or ""
+            key = f"{_get(rec, 'sname')}/{analysis_uid}/{_get(rec, 'path')}"
+            if key in over_retry:
+                continue
+            staged = None
+            try:
+                fetch_rec = _with_normalized_uid(rec, analysis_uid)
+                staged = fetch_to_staging(jc, fetch_rec)
+                size = staged.stat().st_size
+                gwc_client.upload_gwflow_file(_get(rec, "id"), staged)
+                bytes_done += size
+                files_done += 1
+                state.clear_failure(con, cur, key)
+            except ClusterOffline:
+                logger.warning("cluster offline - deferring remaining files")
+                break
+            except Exception as e:
+                state.record_failure(con, cur, key, repr(e))
+            finally:
+                if staged is not None:
+                    staged.unlink(missing_ok=True)
+    finally:
+        if close_con and con:
+            con.close()
+
+    logger.info("Completed phase_file_mirror")
 
 
 def parse_args(args=None):
