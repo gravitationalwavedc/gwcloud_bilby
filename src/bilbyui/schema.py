@@ -498,7 +498,7 @@ class Query:
             if bilby_job.job_type == BilbyJobType.NORMAL:
                 # If there is no job controller record for this job, or the record has no history,
                 # then the job is broken.
-                if bilby_job.id not in job_controller_jobs or not job_controller_jobs[bilby_job.id]["history"]:
+                if bilby_job.id not in job_controller_jobs or not job_controller_jobs[bilby_job.id].get("history"):
                     job_node.job_status = JobStatusType(name="Unknown", number=0, date=bilby_job.creation_time)
                     job_node.labels = bilby_job.labels.all()
                     job_node.timestamp = bilby_job.creation_time
