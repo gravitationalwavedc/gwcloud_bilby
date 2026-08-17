@@ -381,7 +381,7 @@ class BilbyJob(models.Model):
 
         # Get the user details for this job
         success, users = request_lookup_users([self.user.id])
-        if not success:
+        if not success or not users:
             return
         user = users[0]
 
