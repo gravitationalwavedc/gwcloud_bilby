@@ -16,6 +16,7 @@ from .constants import BilbyJobType
 from .models import (
     BilbyJob,
     BilbyJobUploadToken,
+    BilbyPermissionError,
     EventID,
     ExternalBilbyJob,
     FileDownloadToken,
@@ -755,7 +756,12 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
         )
 
         # Get the job these file downloads are for
-        job = get_job(job_model_id, user)
+        try:
+            job = get_job(job_model_id, user)
+        except BilbyPermissionError:
+            raise GraphQLError("Permission Denied")
+        except BilbyJob.DoesNotExist:
+            raise GraphQLError("Job does not exist.")
 
         # Verify the download tokens and get the paths
         paths = FileDownloadToken.get_paths(job, download_tokens)
