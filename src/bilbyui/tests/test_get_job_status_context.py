@@ -85,6 +85,31 @@ class TestGetJobStatusContext(BilbyTestCase):
 
     @mock.patch(
         "bilbyui.views.request_job_filter",
+        return_value=(
+            "OK",
+            [
+                "malformed",
+                {"id": 10001, "history": [{"state": 500, "timestamp": "2024-03-01 10:00:00 UTC"}]},
+            ],
+        ),
+    )
+    def test_non_dict_records_are_skipped(self, mock_filter):
+        result = _get_job_status_context(self.job, self.user)
+
+        self.assertEqual(result["status_name"], "Completed")
+        self.assertEqual(result["status_badge_class"], "primary")
+        self.assertEqual(result["status_date"], "2024-03-01 10:00:00 UTC")
+
+    @mock.patch("bilbyui.views.request_job_filter", return_value=("OK", ["malformed"]))
+    def test_all_non_dict_records_return_unknown(self, mock_filter):
+        result = _get_job_status_context(self.job, self.user)
+
+        self.assertEqual(result["status_name"], "Unknown")
+        self.assertEqual(result["status_badge_class"], "dark")
+        self.assertEqual(result["status_date"], self.job.last_updated)
+
+    @mock.patch(
+        "bilbyui.views.request_job_filter",
         return_value=("OK", [{}]),
     )
     def test_missing_history_key_returns_unknown(self, mock_filter):
