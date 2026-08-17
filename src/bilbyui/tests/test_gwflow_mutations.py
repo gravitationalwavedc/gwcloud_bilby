@@ -533,3 +533,328 @@ class TestGWFlowMutations(BilbyTestCase):
         )
         self.assertIsNotNone(res.errors)
         self.assertIn("Invalid job_id", res.errors[0]["message"])
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_reconciliation_deletes_removed_files(self):
+        """Create a job with 2 files, re-upsert with only 1 — dropped file must be deleted and listed in removedFiles."""
+        self._auth_as(self.ingest_user)
+
+        query = """
+            mutation Upsert($input: UpsertGwflowJobMutationInput!) {
+                upsertGwflowJob(input: $input) {
+                    result {
+                        sname
+                        created
+                        filesPending { id path fileName }
+                        removedFiles { id path fileName }
+                    }
+                }
+            }
+        """
+
+        create_input = {
+            "params": {
+                "sname": "S230801recon1",
+                "files": [
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/a.h5",
+                        "fileName": "a.h5",
+                        "fileSize": 100,
+                        "md5Sum": "aaa",
+                    },
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/b.h5",
+                        "fileName": "b.h5",
+                        "fileSize": 200,
+                        "md5Sum": "bbb",
+                    },
+                ],
+            }
+        }
+
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+            res_create = self.query(query, input_data=create_input)
+            self.assertIsNone(res_create.errors)
+            self.assertTrue(res_create.data["upsertGwflowJob"]["result"]["created"])
+
+            a_file = GWFlowFile.objects.get(job__sname="S230801recon1", path="outdir/a.h5")
+            b_file = GWFlowFile.objects.get(job__sname="S230801recon1", path="outdir/b.h5")
+
+            # Re-upsert with only a.h5
+            update_input = {
+                "params": {
+                    "sname": "S230801recon1",
+                    "files": [
+                        {
+                            "analysisUid": "pe_1",
+                            "path": "outdir/a.h5",
+                            "fileName": "a.h5",
+                            "fileSize": 100,
+                            "md5Sum": "aaa",
+                        },
+                    ],
+                }
+            }
+            res_update = self.query(query, input_data=update_input)
+            self.assertIsNone(res_update.errors)
+            result = res_update.data["upsertGwflowJob"]["result"]
+            self.assertFalse(result["created"])
+
+            # b.h5 row deleted, a.h5 remains
+            self.assertFalse(GWFlowFile.objects.filter(id=b_file.id).exists())
+            self.assertTrue(GWFlowFile.objects.filter(id=a_file.id).exists())
+
+            # removedFiles contains b.h5's id
+            removed_ids = [r["id"] for r in result["removedFiles"]]
+            self.assertEqual(len(removed_ids), 1)
+            self.assertEqual(removed_ids[0], to_global_id("GWFlowFileNode", b_file.id))
+            self.assertEqual(result["removedFiles"][0]["path"], "outdir/b.h5")
+            self.assertEqual(result["removedFiles"][0]["fileName"], "b.h5")
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_reconciliation_idempotent(self):
+        """Re-upserting the exact same manifest must not delete anything; removedFiles must be empty."""
+        self._auth_as(self.ingest_user)
+
+        query = """
+            mutation Upsert($input: UpsertGwflowJobMutationInput!) {
+                upsertGwflowJob(input: $input) {
+                    result {
+                        sname
+                        removedFiles { id path fileName }
+                    }
+                }
+            }
+        """
+
+        files_payload = [
+            {
+                "analysisUid": "pe_1",
+                "path": "outdir/a.h5",
+                "fileName": "a.h5",
+                "fileSize": 100,
+                "md5Sum": "aaa",
+            },
+            {
+                "analysisUid": "pe_1",
+                "path": "outdir/b.h5",
+                "fileName": "b.h5",
+                "fileSize": 200,
+                "md5Sum": "bbb",
+            },
+        ]
+        input_data = {"params": {"sname": "S230801recon_idem", "files": files_payload}}
+
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+            res_create = self.query(query, input_data=input_data)
+            self.assertIsNone(res_create.errors)
+
+            a_file = GWFlowFile.objects.get(job__sname="S230801recon_idem", path="outdir/a.h5")
+            b_file = GWFlowFile.objects.get(job__sname="S230801recon_idem", path="outdir/b.h5")
+
+            # Re-upsert with the same manifest
+            res_update = self.query(query, input_data=input_data)
+            self.assertIsNone(res_update.errors)
+            result = res_update.data["upsertGwflowJob"]["result"]
+            self.assertEqual(result["removedFiles"], [])
+
+            # Both rows still present
+            self.assertTrue(GWFlowFile.objects.filter(id=a_file.id).exists())
+            self.assertTrue(GWFlowFile.objects.filter(id=b_file.id).exists())
+            self.assertEqual(GWFlowFile.objects.filter(job__sname="S230801recon_idem").count(), 2)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_reconciliation_omitted_files_skips_reconcile(self):
+        """Omitting `files` on update must not delete anything (prune-path regression test)."""
+        self._auth_as(self.ingest_user)
+
+        query = """
+            mutation Upsert($input: UpsertGwflowJobMutationInput!) {
+                upsertGwflowJob(input: $input) {
+                    result {
+                        sname
+                        filesPending { id path fileName }
+                        removedFiles { id path fileName }
+                    }
+                }
+            }
+        """
+
+        create_input = {
+            "params": {
+                "sname": "S230801recon_omit",
+                "files": [
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/a.h5",
+                        "fileName": "a.h5",
+                        "fileSize": 100,
+                        "md5Sum": "aaa",
+                    },
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/b.h5",
+                        "fileName": "b.h5",
+                        "fileSize": 200,
+                        "md5Sum": "bbb",
+                    },
+                ],
+            }
+        }
+
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+            res_create = self.query(query, input_data=create_input)
+            self.assertIsNone(res_create.errors)
+
+            a_file = GWFlowFile.objects.get(job__sname="S230801recon_omit", path="outdir/a.h5")
+            b_file = GWFlowFile.objects.get(job__sname="S230801recon_omit", path="outdir/b.h5")
+
+            # Re-upsert omitting `files` (simulates A11 prune path).
+            omit_input = {
+                "params": {
+                    "sname": "S230801recon_omit",
+                    "isPruned": True,
+                }
+            }
+            res_update = self.query(query, input_data=omit_input)
+            self.assertIsNone(res_update.errors)
+            result = res_update.data["upsertGwflowJob"]["result"]
+
+            # No reconciliation
+            self.assertEqual(result["removedFiles"], [])
+            self.assertTrue(GWFlowFile.objects.filter(id=a_file.id).exists())
+            self.assertTrue(GWFlowFile.objects.filter(id=b_file.id).exists())
+            self.assertEqual(GWFlowFile.objects.filter(job__sname="S230801recon_omit").count(), 2)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_reconciliation_empty_files_deletes_all(self):
+        """Re-upsert with files=[] must delete all existing files; all ids must appear in removedFiles."""
+        self._auth_as(self.ingest_user)
+
+        query = """
+            mutation Upsert($input: UpsertGwflowJobMutationInput!) {
+                upsertGwflowJob(input: $input) {
+                    result {
+                        sname
+                        filesPending { id path fileName }
+                        removedFiles { id path fileName }
+                    }
+                }
+            }
+        """
+
+        create_input = {
+            "params": {
+                "sname": "S230801recon_empty",
+                "files": [
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/a.h5",
+                        "fileName": "a.h5",
+                        "fileSize": 100,
+                        "md5Sum": "aaa",
+                    },
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/b.h5",
+                        "fileName": "b.h5",
+                        "fileSize": 200,
+                        "md5Sum": "bbb",
+                    },
+                ],
+            }
+        }
+
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+            res_create = self.query(query, input_data=create_input)
+            self.assertIsNone(res_create.errors)
+
+            a_file = GWFlowFile.objects.get(job__sname="S230801recon_empty", path="outdir/a.h5")
+            b_file = GWFlowFile.objects.get(job__sname="S230801recon_empty", path="outdir/b.h5")
+
+            # Re-upsert with files=[]
+            empty_input = {"params": {"sname": "S230801recon_empty", "files": []}}
+            res_update = self.query(query, input_data=empty_input)
+            self.assertIsNone(res_update.errors)
+            result = res_update.data["upsertGwflowJob"]["result"]
+
+            # Both deleted
+            self.assertFalse(GWFlowFile.objects.filter(id=a_file.id).exists())
+            self.assertFalse(GWFlowFile.objects.filter(id=b_file.id).exists())
+            self.assertEqual(GWFlowFile.objects.filter(job__sname="S230801recon_empty").count(), 0)
+
+            # Both ids in removedFiles
+            removed_ids = sorted(r["id"] for r in result["removedFiles"])
+            self.assertEqual(removed_ids, sorted([to_global_id("GWFlowFileNode", a_file.id), to_global_id("GWFlowFileNode", b_file.id)]))
+            removed_paths = sorted(r["path"] for r in result["removedFiles"])
+            self.assertEqual(removed_paths, ["outdir/a.h5", "outdir/b.h5"])
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_reconciliation_md5_change_keeps_record(self):
+        """Same (analysis_uid, path) with a changed md5 must update the row, NOT delete it."""
+        self._auth_as(self.ingest_user)
+
+        query = """
+            mutation Upsert($input: UpsertGwflowJobMutationInput!) {
+                upsertGwflowJob(input: $input) {
+                    result {
+                        sname
+                        filesPending { id path fileName }
+                        removedFiles { id path fileName }
+                    }
+                }
+            }
+        """
+
+        create_input = {
+            "params": {
+                "sname": "S230801recon_md5",
+                "files": [
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/a.h5",
+                        "fileName": "a.h5",
+                        "fileSize": 100,
+                        "md5Sum": "oldmd5",
+                    },
+                ],
+            }
+        }
+
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+            res_create = self.query(query, input_data=create_input)
+            self.assertIsNone(res_create.errors)
+
+            f_obj = GWFlowFile.objects.get(job__sname="S230801recon_md5", path="outdir/a.h5")
+            # Simulate file already mirrored successfully; md5 change should reset uploaded=False.
+            f_obj.uploaded = True
+            f_obj.save()
+
+            # Re-upsert same path with a different md5
+            update_input = {
+                "params": {
+                    "sname": "S230801recon_md5",
+                    "files": [
+                        {
+                            "analysisUid": "pe_1",
+                            "path": "outdir/a.h5",
+                            "fileName": "a.h5",
+                            "fileSize": 100,
+                            "md5Sum": "newmd5",
+                        },
+                    ],
+                }
+            }
+            res_update = self.query(query, input_data=update_input)
+            self.assertIsNone(res_update.errors)
+            result = res_update.data["upsertGwflowJob"]["result"]
+
+            # Row remains, NOT in removedFiles
+            f_obj.refresh_from_db()
+            self.assertTrue(GWFlowFile.objects.filter(id=f_obj.id).exists())
+            self.assertEqual(f_obj.md5_sum, "newmd5")
+            self.assertFalse(f_obj.uploaded)
+            removed_ids = [r["id"] for r in result["removedFiles"]]
+            self.assertNotIn(to_global_id("GWFlowFileNode", f_obj.id), removed_ids)
