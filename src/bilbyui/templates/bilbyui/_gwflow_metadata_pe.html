@@ -1,0 +1,52 @@
+{% load gwflow_tags %}
+{% if pe.status or pe.results or pe.analysts or pe.reviewers or pe.notes %}
+  <div class="card gw-form-card mb-4">
+    <div class="card-header">Parameter Estimation</div>
+    <div class="card-body">
+      {% if pe.status %}
+        <p class="mb-3">
+          <span class="badge badge-secondary">{{ pe.status }}</span>
+        </p>
+      {% endif %}
+      {% if pe.results %}
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>UID</th>
+              <th>Inference Software</th>
+              <th>Waveform Approximant</th>
+              <th>Run Status</th>
+              <th>Review Status</th>
+              <th>Analysts</th>
+              <th>Reviewers</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in pe.results %}
+              <tr>
+                <td>{{ r.uid|default_if_none:"—" }}</td>
+                <td>{{ r.inference_software|default_if_none:"—" }}</td>
+                <td>{{ r.waveform_approximant|default_if_none:"—" }}</td>
+                <td>{{ r.run_status|default_if_none:"—" }}</td>
+                <td>{{ r.review_status|default_if_none:"—" }}</td>
+                <td>{% for a in r.analysts %}{{ a|get_item:"name"|default_if_none:"—" }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                <td>{% for rv in r.reviewers %}{{ rv|get_item:"name"|default_if_none:"—" }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                <td>{% if r.deprecated %}<span class="badge badge-warning">deprecated</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+      {% if pe.analysts or pe.reviewers %}
+        <p class="text-muted mb-0">
+          {% if pe.analysts %}Analysts: {{ pe.analysts|human_value }}{% endif %}
+          {% if pe.reviewers %}Reviewers: {{ pe.reviewers|human_value }}{% endif %}
+        </p>
+      {% endif %}
+      {% if pe.notes %}
+        <p class="text-muted mb-0 mt-2">{{ pe.notes }}</p>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}

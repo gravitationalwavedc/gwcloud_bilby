@@ -1,0 +1,36 @@
+{% load gwflow_tags %}
+{% if tgr %}
+  <div class="card gw-form-card mb-4">
+    <div class="card-header">TGR</div>
+    <div class="card-body">
+      {% for key, value in tgr|sort_items %}
+        {% if value and value.0.items %}
+          <h6 class="mt-3 mb-2">{{ key }}</h6>
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>UID</th>
+                <th>Analysis Software</th>
+                <th>Analysts</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in value %}
+                <tr>
+                  <td>{{ a.uid|default_if_none:"—" }}</td>
+                  <td>{{ a.analysis_software|default_if_none:"—" }}</td>
+                  <td>{% for person in a.analysts %}{{ person|get_item:"name"|default_if_none:"—" }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                  <td>{{ a.description|default_if_none:"—" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+      {% endfor %}
+      {% if tgr.notes %}
+        <p class="text-muted mb-0 mt-3">{{ tgr.notes }}</p>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}

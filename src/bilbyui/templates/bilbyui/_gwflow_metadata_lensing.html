@@ -1,0 +1,44 @@
+{% if lensing.multiplet_groups or lensing.singlet_analyses or lensing.notes %}
+  <div class="card gw-form-card mb-4">
+    <div class="card-header">Lensing</div>
+    <div class="card-body">
+      {% if lensing.multiplet_groups %}
+        <h6 class="mb-2">Multiplet Groups</h6>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Companion Sname</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in lensing.multiplet_groups %}
+              <tr>
+                <td>{{ g.companion_sname|default_if_none:"—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+      {% if lensing.singlet_analyses %}
+        <h6 class="mt-3 mb-2">Singlet Analyses</h6>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>UID</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in lensing.singlet_analyses %}
+              <tr>
+                <td>{{ s.uid|default_if_none:"—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+      {% if lensing.notes %}
+        <p class="text-muted mb-0 mt-3">{{ lensing.notes }}</p>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}

@@ -1,0 +1,48 @@
+{% load gwflow_tags %}
+<div class="card gw-form-card mb-4">
+  <div class="card-header">{{ section_name }}</div>
+  <div class="card-body">
+    <dl class="row mb-0">
+      {% for key, value in section|sort_items %}
+        {% if key != "notes" and not value.0.items %}
+          {% with hv=value|human_value %}
+            {% if hv %}
+              <dt class="col-sm-3">{{ key }}</dt>
+              <dd class="col-sm-9">{{ hv }}</dd>
+            {% endif %}
+          {% endwith %}
+        {% endif %}
+      {% endfor %}
+    </dl>
+    {% for key, value in section|sort_items %}
+      {% if value.0.items %}
+        <h6 class="mt-3 mb-2">{{ key }}</h6>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              {% for col in value.0.items %}
+                {% if forloop.counter <= 5 and not col.1.items and not col.1.0.items %}
+                  <th>{{ col.0 }}</th>
+                {% endif %}
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in value %}
+              <tr>
+                {% for col in value.0.items %}
+                  {% if forloop.counter <= 5 and not col.1.items and not col.1.0.items %}
+                    <td>{{ item|get_item:col.0|default_if_none:"—" }}</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    {% endfor %}
+    {% if section.notes %}
+      <p class="text-muted mb-0 mt-3">{{ section.notes }}</p>
+    {% endif %}
+  </div>
+</div>
