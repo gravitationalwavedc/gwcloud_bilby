@@ -138,7 +138,7 @@ class CondorScheduler(Scheduler):
                 # ???
                 return JobStatus.ERROR, "Job terminated abnormally"
 
-            del submitted_stages[event.cluster]
+            submitted_stages.pop(event.cluster, None)
 
         # If all submitted stages have finished, and the plotting stage has been submitted, then the job has finished
         if not submitted_stages and plot_started:

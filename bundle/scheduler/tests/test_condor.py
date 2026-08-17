@@ -155,6 +155,46 @@ class TestCondor(TestCase):
             write_next_event()
             self.assertEqual(sched.status(None, details), (JobStatus.COMPLETED, "All job stages finished successfully"))
 
+    def test_status_terminated_without_submit(self):
+        sched = CondorScheduler()
+
+        log_name = "completed_no_error_parallel.submit.nodes.log"
+
+        jel = htcondor.JobEventLog(str(Path(__file__).parent / "data" / log_name))
+        events = list(jel.events(stop_after=0))
+
+        # The JOB_TERMINATED event for cluster 94935110 (index 2) whose SUBMIT event (index 0)
+        # we omit below to simulate a truncated/partial log
+        orphaned_terminated = events[2]
+
+        with TemporaryDirectory() as td:
+            submit_dir = os.path.join(td, "job", "submit")
+            os.makedirs(submit_dir)
+            fn = os.path.join(submit_dir, log_name)
+
+            details = {"working_directory": td, "submit_directory": "job/submit"}
+
+            def write_next_event():
+                with open(fn, "a") as f:
+                    f.write(str(events.pop(0)))
+                    f.write("...\n")
+
+            # Discard the SUBMIT/EXECUTE/TERMINATED events for cluster 94935110
+            for _ in range(3):
+                events.pop(0)
+
+            # Write the SUBMIT events for the parallel analysis stages
+            for _ in range(5):
+                write_next_event()
+                self.assertEqual(sched.status(None, details), (JobStatus.RUNNING, "Job is running"))
+
+            # Write a JOB_TERMINATED event for a cluster with no matching SUBMIT event
+            with open(fn, "a") as f:
+                f.write(str(orphaned_terminated))
+                f.write("...\n")
+
+            self.assertEqual(sched.status(None, details), (JobStatus.RUNNING, "Job is running"))
+
     def test_status_error_no_parallel(self):
         sched = CondorScheduler()
 
