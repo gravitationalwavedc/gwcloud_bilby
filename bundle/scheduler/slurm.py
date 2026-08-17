@@ -151,8 +151,14 @@ class SlurmScheduler(Scheduler):
         command = f"scancel {job_id}"
 
         # Cancel the job
-        stdout = subprocess.check_output(command, shell=True)
+        stdout = None
+        try:
+            stdout = subprocess.check_output(command, shell=True)
+        except subprocess.CalledProcessError:
+            # Record the command and the output
+            logger.exception("Error: Command `%s` returned `%s`", command, stdout)
+            return False
 
-        # todo: Handle errors
         # Get the output
         logger.info("Command `%s` returned `%s`", command, stdout)
+        return True
