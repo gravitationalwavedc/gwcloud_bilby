@@ -92,7 +92,7 @@ def list_gwflow_jobs(
     has_next = len(numeric_records) > page_size
 
     hit_ids = [record["_id"] for record in numeric_records]
-    qs_before = GWFlowJob.objects.filter(id__in=hit_ids).select_related("event_id", "user")
+    qs_before = GWFlowJob.objects.filter(id__in=hit_ids).select_related("event_id", "user").prefetch_related("files")
 
     qs_after = qs_before
     if not is_ligo_user(user):
