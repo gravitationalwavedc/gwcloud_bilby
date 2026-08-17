@@ -34,8 +34,14 @@ def request_job_status(job, user_id=None):
             logger.warning("No status found for job %s in job controller", job.id)
             return "UNKNOWN", "Job not found in job controller"
 
+        try:
+            history = result[0]["history"]
+        except (KeyError, TypeError, IndexError):
+            logger.warning("Malformed status record for job %s in job controller", job.id)
+            return "UNKNOWN", "Job not found in job controller"
+
         logger.debug("Successfully retrieved status for job %s", job.id)
-        return "OK", result[0]["history"]
+        return "OK", history
     except requests.RequestException as e:
         logger.error("Error getting job status for job %s: %s", job.id, e, exc_info=True)
         return "UNKNOWN", "Error getting job status"
