@@ -211,6 +211,23 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(len(sqlite_rows), 0)
         self.assertIn("Unable to fetch allevents json", logs.output[0])
 
+    def test_download_allevents_network_error(self, gwc):
+        """If the allevents fetch raises a network exception (DNS/timeout/connection),
+        the script exits cleanly with a critical log instead of an uncaught traceback."""
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit),
+            self.assertLogs(level=logging.CRITICAL) as logs,
+            patch("gwosc_ingest.requests.get", side_effect=requests.RequestException("connection error")),
+        ):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        sqlite_rows = self.get_completed_jobs()
+        self.assertEqual(len(sqlite_rows), 0)
+        self.assertIn("Unable to fetch allevents json", logs.output[0])
+
     @responses.activate
     def test_download_specific_event_error(self, gwc):
         """If a specific event's JSON endpoint fails, the failure is recorded in job_errors."""
