@@ -88,7 +88,7 @@ class Command(BaseCommand):
                     break
 
                 for item in results:
-                    sname = item.get("sname") or item.get("name") if isinstance(item, dict) else str(item)
+                    sname = (item.get("sname") or item.get("name")) if isinstance(item, dict) else str(item)
                     if not sname:
                         continue
 
