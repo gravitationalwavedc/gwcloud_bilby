@@ -225,7 +225,14 @@ def _check_and_download_inner(con, cur):
 
         logger.info("%s: %s", event_name, jsonurl)
 
-        r = requests.get(jsonurl, timeout=30)
+        try:
+            r = requests.get(jsonurl, timeout=30)
+        except requests.RequestException:
+            error_msg = f"Unable to fetch event json (event: {event_name}, url: {jsonurl})"
+            logger.exception(error_msg)
+            record_job_failure(con, cur, event_name, error_msg)
+            continue
+
         if r.status_code != 200:
             error_msg = f"Unable to fetch event json (status: {r.status_code}, event: {event_name}, url: {jsonurl})"
             logger.error(error_msg)

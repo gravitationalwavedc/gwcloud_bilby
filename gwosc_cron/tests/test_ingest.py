@@ -5,6 +5,7 @@ from collections import namedtuple
 from unittest.mock import MagicMock, call, patch
 
 import h5py
+import requests
 import responses
 from gwdc_python.exceptions import GWDCUnknownException
 from parameterized import parameterized
@@ -219,6 +220,37 @@ class TestGWOSCCron(GWOSCTestBase):
             "https://test.org/GW000001_123456.json",
             json={"error": True},
             status=500,
+        )
+
+        with (
+            self.con_patch,
+            self.assertLogs(level=logging.ERROR) as logs,
+        ):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        # No completed_jobs row — transient failure
+        sqlite_rows = self.get_completed_jobs()
+        self.assertEqual(len(sqlite_rows), 0)
+
+        # But a job_errors row IS written
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 1)
+        self.assertEqual(error_rows[0]["job_id"], "GW000001_123456")
+        self.assertEqual(error_rows[0]["failure_count"], 1)
+
+        self.assertIn("Unable to fetch event json", logs.output[0])
+
+    @responses.activate
+    def test_event_json_connection_error_is_retryable(self, gwc):
+        """A transient network error (ConnectionError) fetching a specific event's
+        JSON is recorded as a retryable failure instead of crashing the run."""
+        self.add_allevents_response()
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001_123456.json",
+            body=requests.ConnectionError("connection refused"),
         )
 
         with (
