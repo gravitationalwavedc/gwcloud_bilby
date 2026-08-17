@@ -103,6 +103,55 @@ class TestChangeJobDetails(BilbyTestCase):
         self.assertIsNone(self.job.event_id)
 
     @silence_errors
+    def test_change_job_details_nonexistent_job(self):
+        """
+        Change details mutation should return a clean error when the job does not exist.
+        """
+        nonexistent_job_id = to_global_id("BilbyJobNode", 999999)
+
+        change_job_input = {
+            "jobId": nonexistent_job_id,
+            "name": "New_job_name",
+        }
+
+        response = self.query(self.mutation_string, input_data=change_job_input)
+
+        self.assertDictEqual({"updateBilbyJob": None}, response.data)
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Job '999999' not found.",
+        )
+
+    @silence_errors
+    def test_change_job_details_unowned_job(self):
+        """
+        Change details mutation should return a clean error when the user does not own the job.
+        """
+        other_user = self.create_user(id=2, name="other", primary_email="other@gmail.com")
+        other_job = BilbyJob.objects.create(
+            user_id=other_user.id,
+            name="other_users_job",
+            description="hidden",
+            job_controller_id=10002,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        other_job_id = to_global_id("BilbyJobNode", other_job.id)
+
+        change_job_input = {
+            "jobId": other_job_id,
+            "name": "stolen_name",
+        }
+
+        response = self.query(self.mutation_string, input_data=change_job_input)
+
+        self.assertDictEqual({"updateBilbyJob": None}, response.data)
+        self.assertEqual(
+            response.errors[0]["message"],
+            "You must own the job to change it!",
+        )
+
+    @silence_errors
     def test_change_job_name_symbols(self):
         """
         Try to update a bilby job with a name that contains symbols
