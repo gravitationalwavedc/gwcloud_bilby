@@ -325,7 +325,8 @@ class TestEventIDPermissions(BilbyTestCase):
         self.assertFalse(response.data["eventId"]["isLigoEvent"])
 
         response = self.query(get_event_id_query, variables=variables_ligo)
-        self.assertResponseHasErrors(response)
+        self.assertResponseNoErrors(response)
+        self.assertIsNone(response.data["eventId"])
 
         self.authenticate()
         response = self.query(get_event_id_query, variables=variables_not_ligo)
@@ -333,7 +334,8 @@ class TestEventIDPermissions(BilbyTestCase):
         self.assertFalse(response.data["eventId"]["isLigoEvent"])
 
         response = self.query(get_event_id_query, variables=variables_ligo)
-        self.assertResponseHasErrors(response)
+        self.assertResponseNoErrors(response)
+        self.assertIsNone(response.data["eventId"])
 
         self.authenticate(authentication_method="ligo_shibboleth")
         response = self.query(get_event_id_query, variables=variables_not_ligo)
