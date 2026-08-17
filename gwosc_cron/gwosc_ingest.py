@@ -192,6 +192,7 @@ def _check_and_download_inner(con, cur):
         sys.exit(0)
 
     for event_name in jobs_delta:
+        event_data = all_events[event_name]
         # Check if this event has exceeded the maximum retry attempts
         failure_count = get_job_failure_count(cur, event_name)
         if failure_count >= MAX_RETRY_ATTEMPTS:
@@ -199,13 +200,15 @@ def _check_and_download_inner(con, cur):
             err_row = cur.execute("SELECT last_error FROM job_errors WHERE job_id = ?", (event_name,)).fetchone()
             last_error = err_row["last_error"] if err_row else ""
             logger.error("%s has failed %s times, marking as permanently failed", event_name, failure_count)
-            common_name = all_events[event_name].get("commonName", "")
-            shared_common_names = [k for k, v in all_events.items() if v.get("commonName") == common_name]
+            common_name = event_data.get("commonName", "") if isinstance(event_data, dict) else ""
+            shared_common_names = [
+                k for k, v in all_events.items() if isinstance(v, dict) and v.get("commonName") == common_name
+            ]
             is_latest_version = compute_is_latest_version(event_name, shared_common_names)
             save_sqlite_job(
                 event_name,
                 common_name,
-                all_events[event_name].get("catalog.shortName", ""),
+                event_data.get("catalog.shortName", "") if isinstance(event_data, dict) else "",
                 False,
                 "max_retries_exceeded",
                 is_latest_version,
@@ -213,7 +216,7 @@ def _check_and_download_inner(con, cur):
             )
             continue
 
-        jsonurl = all_events[event_name].get("jsonurl")
+        jsonurl = event_data.get("jsonurl") if isinstance(event_data, dict) else None
         if jsonurl is None:
             error_msg = f"Event {event_name} has no jsonurl in allevents payload"
             logger.error(error_msg)
@@ -249,7 +252,9 @@ def _check_and_download_inner(con, cur):
             record_job_failure(con, cur, event_name, error_msg)
             continue
 
-        shared_common_names = [k for k, v in all_events.items() if v.get("commonName") == common_name]
+        shared_common_names = [
+            k for k, v in all_events.items() if isinstance(v, dict) and v.get("commonName") == common_name
+        ]
         is_latest_version = compute_is_latest_version(event_name, shared_common_names)
 
         # Check if this should be skipped for being in the wrong type of catalog
