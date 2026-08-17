@@ -1473,3 +1473,51 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(error_rows[0]["failure_count"], gwosc_ingest.MAX_RETRY_ATTEMPTS)
         self.assertEqual(error_rows[1]["job_id"], "GW000003_111111")
         self.assertEqual(error_rows[1]["failure_count"], 1)
+
+    @responses.activate
+    def test_allevents_non_dict_payload_does_not_crash(self, gwc):
+        """If the allevents endpoint returns 200 with a non-dict body (e.g. a JSON
+        list), the cron logs "Nothing to do" and exits 0 instead of crashing with
+        an AttributeError on .get()."""
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json=["not", "a", "dict"],
+        )
+
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit) as cm,
+            self.assertLogs(level=logging.INFO) as logs,
+        ):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("Nothing to do 😊", logs.output[-1])
+        self.assertEqual(len(self.get_completed_jobs()), 0)
+
+    @responses.activate
+    def test_allevents_non_dict_events_section_does_not_crash(self, gwc):
+        """If the allevents endpoint returns 200 with a non-dict "events" section
+        (e.g. a JSON list), the cron logs "Nothing to do" and exits 0 instead of
+        crashing with a TypeError when iterating all_events."""
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json={"events": ["not", "a", "dict"]},
+        )
+
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit) as cm,
+            self.assertLogs(level=logging.INFO) as logs,
+        ):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("Nothing to do 😊", logs.output[-1])
+        self.assertEqual(len(self.get_completed_jobs()), 0)
