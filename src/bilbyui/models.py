@@ -227,6 +227,10 @@ class BilbyJob(models.Model):
         if job.private and (user.is_anonymous or user.id != job.user.id):
             raise BilbyPermissionError
 
+        # Users can only access the job if they are a ligo user
+        if job.is_ligo_job and not is_ligo_user(user):
+            raise BilbyPermissionError
+
         return job
 
     @classmethod
