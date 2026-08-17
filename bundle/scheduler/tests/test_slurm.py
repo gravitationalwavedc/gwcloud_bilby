@@ -14,7 +14,7 @@ class TestSlurm(TestCase):
     def _mock_status(self, state):
         return patch(
             "scheduler.slurm.subprocess.check_output",
-            return_value=f"12345|{state}\n12345.batch|{state}\n".encode("utf-8"),
+            return_value=f"12345|{state}\n12345.batch|{state}\n".encode(),
         )
 
     def test_status_completed_with_exit_code(self):
