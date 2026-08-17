@@ -1120,12 +1120,16 @@ def _parse_page(request):
         return 1
 
 
+def _normalize_time_range(time_range):
+    if time_range not in ("all", "1d", "1w", "1m", "1y"):
+        return "all"
+    return time_range
+
+
 def public_jobs_view(request):
     page = _parse_page(request)
     search = request.GET.get("search", "")
-    time_range = request.GET.get("time_range", "all")
-    if time_range not in ("all", "1d", "1w", "1m", "1y"):
-        time_range = "all"
+    time_range = _normalize_time_range(request.GET.get("time_range", "all"))
 
     public_jobs_result = list_public_jobs(
         request.user,
@@ -1154,9 +1158,7 @@ def public_jobs_view(request):
 def gwflow_jobs_view(request):
     page = _parse_page(request)
     search = request.GET.get("search", "")
-    time_range = request.GET.get("time_range", "all")
-    if time_range not in ("all", "1d", "1w", "1m", "1y"):
-        time_range = "all"
+    time_range = _normalize_time_range(request.GET.get("time_range", "all"))
 
     result = list_gwflow_jobs(
         request.user,
@@ -1228,9 +1230,7 @@ def gwflow_job_metadata_partial(request, sname):
 def my_jobs_view(request):
     page = _parse_page(request)
     search = request.GET.get("search", "")
-    time_range = request.GET.get("time_range", "all")
-    if time_range not in ("all", "1d", "1w", "1m", "1y"):
-        time_range = "all"
+    time_range = _normalize_time_range(request.GET.get("time_range", "all"))
 
     user_jobs_result = list_user_jobs(
         request.user,
