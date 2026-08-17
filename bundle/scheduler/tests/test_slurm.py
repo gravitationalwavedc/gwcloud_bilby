@@ -84,6 +84,28 @@ class TestSlurm(TestCase):
             self.assertEqual(sched.status(1234, None), (None, None))
 
     @patch("scheduler.slurm.subprocess.check_output")
+    def test_status_skips_malformed_line(self, check_output_mock):
+        # A malformed sacct line (no `|` separator) whose first field matches the job id
+        # must be skipped instead of crashing the poll with an IndexError.
+        check_output_mock.return_value = b"1234\n1234|COMPLETED\n"
+
+        sched = SlurmScheduler()
+        status, info = sched.status(1234, None)
+
+        self.assertEqual(status, JobStatus.COMPLETED)
+        self.assertEqual(info, sched.SLURM_STATUS["COMPLETED"])
+
+    @patch("scheduler.slurm.subprocess.check_output")
+    def test_status_valid_line(self, check_output_mock):
+        check_output_mock.return_value = b"1234|RUNNING\n"
+
+        sched = SlurmScheduler()
+        status, info = sched.status(1234, None)
+
+        self.assertEqual(status, JobStatus.RUNNING)
+        self.assertEqual(info, sched.SLURM_STATUS["RUNNING"])
+
+    @patch("scheduler.slurm.subprocess.check_output")
     def test_cancel_success(self, check_output_mock):
         check_output_mock.return_value = b""
 
