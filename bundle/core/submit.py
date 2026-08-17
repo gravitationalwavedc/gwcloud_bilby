@@ -264,8 +264,6 @@ def run_data_generation(data_gen_command, wk_dir):
         stderr=subprocess.PIPE,
         shell=True,
     ) as p:
-        p.wait()
-
         # Get the output from the data generation command
         stdout, stderr = p.communicate()
 
