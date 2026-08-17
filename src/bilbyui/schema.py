@@ -552,7 +552,10 @@ class Query:
 
     def resolve_bilby_result_files(self, info, **kwargs):
         # Get the model id of the bilby job
-        _, job_id = from_global_id(kwargs.get("job_id"))
+        try:
+            _, job_id = from_global_id(kwargs.get("job_id"))
+        except (ValueError, TypeError):
+            return None
         user_id = info.context.user.id if info.context.user.is_authenticated else 0
         logger.info("User %s requesting result files for job %s", user_id, job_id)
 

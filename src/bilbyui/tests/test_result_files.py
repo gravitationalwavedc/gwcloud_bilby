@@ -340,3 +340,27 @@ class TestExternalJobResultFiles(BilbyTestCase):
             )
 
             self.authenticate()
+
+
+class TestResultFilesMalformedJobId(BilbyTestCase):
+    def setUp(self):
+        self.authenticate()
+
+    @silence_errors
+    @mock.patch("bilbyui.schema.from_global_id", side_effect=ValueError("malformed global id"))
+    def test_malformed_job_id_returns_none(self, _mock_from_global_id):
+        response = self.query(
+            """
+            query {
+                bilbyResultFiles (jobId: "not-a-valid-global-id") {
+                    files {
+                        path
+                    }
+                    jobType
+                }
+            }
+            """
+        )
+
+        self.assertIsNone(response.data["bilbyResultFiles"])
+        self.assertIsNone(response.errors)
