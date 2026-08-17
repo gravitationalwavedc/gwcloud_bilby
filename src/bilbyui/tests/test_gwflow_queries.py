@@ -194,6 +194,60 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertEqual(len(edges), 1)
         self.assertEqual(edges[0]["node"]["sname"], "S230601ag")
 
+    @mock.patch("elasticsearch.Elasticsearch")
+    def test_gwflow_jobs_connection_files_no_nplus1(self, mock_es_cls):
+        """
+        gwflowJobs connection querying files should not issue one query per node (N+1).
+        """
+        jobs = [self.job_public]
+        for i in range(2):
+            job = GWFlowJob.objects.create(
+                sname=f"S230601b{i}",
+                user=self.ingest_user,
+                schema_version="v1",
+                libraries=["cbc-workflow-o4a"],
+                ligo_only=False,
+                is_pruned=False,
+            )
+            GWFlowFile.objects.create(
+                job=job,
+                analysis_uid="c01:bilby",
+                path=f"outdir/result{i}.json",
+                file_name=f"result{i}.json",
+                file_size=1024,
+                uploaded=True,
+            )
+            jobs.append(job)
+
+        mock_client = mock.MagicMock()
+        mock_es_cls.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": job.id} for job in jobs],
+            }
+        }
+
+        query = """
+            query {
+                gwflowJobs(first: 20) {
+                    edges {
+                        node {
+                            sname
+                            files {
+                                fileName
+                            }
+                        }
+                    }
+                }
+            }
+        """
+
+        self._auth_as(self.normal_user)
+        with self.assertNumQueries(6):
+            res = self.query(query)
+        self.assertResponseNoErrors(res)
+        self.assertEqual(len(res.data["gwflowJobs"]["edges"]), 3)
+
     @mock.patch("bilbyui.schema.request_job_filter", return_value=(True, []))
     def test_bilby_job_node_gwflow_additions(self, mock_req_filter):
         # Create a BilbyJob linked to GWFlowJob
