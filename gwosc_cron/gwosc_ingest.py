@@ -253,7 +253,7 @@ def _check_and_download_inner(con, cur):
             catalog_shortname = event_json["catalog.shortName"]
             gps = event_json["GPS"]
             gracedb_id = event_json["gracedb_id"]
-        except KeyError:
+        except (KeyError, TypeError):
             error_msg = f"Event {event_name} json payload is missing expected keys"
             logger.exception(error_msg)
             record_job_failure(con, cur, event_name, error_msg)
