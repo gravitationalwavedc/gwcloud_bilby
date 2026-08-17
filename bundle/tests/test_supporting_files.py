@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.case import TestCase
 
+import requests
 import responses
 
 from tests.utils import args_to_bilby_ini, cd
@@ -487,3 +488,25 @@ class TestSupportingFiles(TestCase):
             args = self.perform_ini_save_load_cycle(args)
 
             self.assertEqual(args.distance_marginalization_lookup_table, "./supporting_files/dml/test.dml")
+
+    def test_supporting_file_download_failure(self):
+        token = str(uuid.uuid4())
+        self.responses.add(
+            responses.GET,
+            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            body="Not Found",
+            status=404,
+        )
+
+        supporting_files = [{"type": "psd", "key": "V1", "file_name": "test.psd", "token": token}]
+
+        from core.submit import bilby_ini_to_args, prepare_supporting_files
+
+        with TemporaryDirectory() as working_directory, cd(working_directory):
+            args = bilby_ini_to_args(self.ini_file_v1)
+            with self.assertRaises(requests.HTTPError):
+                prepare_supporting_files(args, supporting_files, working_directory)
+
+            self.assertFalse(
+                (Path(working_directory) / "supporting_files" / "psd" / "test.psd").is_file()
+            )
