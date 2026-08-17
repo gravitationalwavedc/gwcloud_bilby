@@ -979,6 +979,38 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_first_null(self, request_job_filter, elasticsearch_search):
+        # An explicit `first: null` connection argument should fall back to the default page
+        # size instead of raising a TypeError (500) on this public endpoint.
+        query = """
+            query {
+                publicBilbyJobs(first: null) {
+                    edges {
+                        node {
+                            user
+                            description
+                            name
+                            jobStatus {
+                                name
+                            }
+                            timestamp
+                            id
+                        }
+                    }
+                }
+            }
+        """
+
+        response = self.query(query)
+        self.assertIsNone(response.errors, "a publicBilbyJobs query with `first: null` should not raise an error")
+        self.assertDictEqual(
+            response.data,
+            self.public_bilby_job_expected,
+            "publicBilbyJobs query returned unexpected data.",
+        )
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_public_bilby_jobs_query_event_id_uses_prefetched_value(self, request_job_filter, elasticsearch_search):
         # eventId should resolve from the already-prefetched bilby_job.event_id instead of
         # issuing a per-row EventIDType.get_node query (N+1).
