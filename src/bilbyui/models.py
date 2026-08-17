@@ -18,6 +18,17 @@ from bilbyui.utils.jobs.request_file_list import request_file_list
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
 
 
+def _safe_json_loads(value):
+    """
+    Attempts to parse a JSON string, returning None for malformed/legacy values
+    instead of raising so a single corrupt IniKeyValue cannot break job saves.
+    """
+    try:
+        return json.loads(value)
+    except (ValueError, TypeError):
+        return None
+
+
 class BilbyPermissionError(PermissionError):
     message = "Permission Denied"
 
@@ -404,8 +415,8 @@ class BilbyJob(models.Model):
             },
             "labels": [{"name": label.name, "description": label.description} for label in self.labels.all()],
             "eventId": None,
-            "ini": {kv.key: json.loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=False)},
-            "params": {kv.key: json.loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=True)},
+            "ini": {kv.key: _safe_json_loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=False)},
+            "params": {kv.key: _safe_json_loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=True)},
             "_private_info_": {"userId": self.user.id, "private": self.private},
         }
 
