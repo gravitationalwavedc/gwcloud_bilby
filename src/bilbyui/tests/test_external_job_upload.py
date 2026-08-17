@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 
 from bilbyui.constants import BilbyJobType
-from bilbyui.models import BilbyJob, ExternalBilbyJob
+from bilbyui.models import BilbyJob, ExternalBilbyJob, Label
 from bilbyui.tests.test_utils import (
     compare_ini_kvs,
     create_test_ini_string,
@@ -228,6 +228,37 @@ class TestExternalJobUpload(BilbyTestCase):
 
         # It should add the "Official" label if it was added by the GWOSC_INGEST_USER
         self.assertEqual(job.labels.first().name, "Official")
+
+    @override_settings(GWOSC_INGEST_USER=1)
+    def test_gwosc_ingest_upload_without_official_label(self):
+        # If the "Official" label is missing from the database, the upload should
+        # still succeed rather than crashing with Label.DoesNotExist
+        Label.objects.filter(name="Official").delete()
+
+        test_name = "myjob"
+        test_description = "Test Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name}, complete=True)
+
+        test_input = {
+            "details": {
+                "name": test_name,
+                "description": test_description,
+                "private": test_private,
+            },
+            "iniFile": test_ini_string,
+            "resultUrl": "https://www.example.com/",
+        }
+
+        response = self.query(self.mutation_string, input_data=test_input)
+
+        expected = {"uploadExternalBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertDictEqual(expected, response.data)
+
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.labels.count(), 0)
 
     @override_settings(GWOSC_INGEST_USER=3)
     def test_not_gwosc_ingest_upload(self):
