@@ -176,6 +176,24 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(len(res["records"]), 1)
 
     @patch("elasticsearch.Elasticsearch")
+    def test_list_gwflow_jobs_skips_dict_hit_missing_id(self, mock_es_cls):
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": self.job_public.id},
+                    {"_source": {"job": "missing-id-hit"}},
+                ]
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user)
+
+        self.assertIn(self.job_public.id, res["jobs"])
+        self.assertEqual(len(res["records"]), 1)
+
+    @patch("elasticsearch.Elasticsearch")
     def test_list_gwflow_jobs_has_next_ignores_non_numeric_trailing_id(self, mock_es_cls):
         mock_client = MagicMock()
         mock_es_cls.return_value = mock_client
