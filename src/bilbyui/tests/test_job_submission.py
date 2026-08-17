@@ -617,7 +617,7 @@ class TestJobSubmission(BilbyTestCase):
 
         # Since the event id doesn't exist, it should raise an error here
         self.assertEqual(
-            "EventID matching query does not exist.",
+            "Event ID 'GW123456_123456' not found.",
             str(response.errors[0]["message"]),
             "create bilbyJob mutation returned unexpected data.",
         )
