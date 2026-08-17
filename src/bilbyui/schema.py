@@ -256,6 +256,8 @@ class BilbyJobNode(DjangoObjectType):
         return self.user_id
 
     def resolve_last_updated(self, info):
+        if not self.last_updated:
+            return None
         return self.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC")
 
     def resolve_params(self, info):
