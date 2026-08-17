@@ -85,6 +85,23 @@ class TestBuildUserJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["status_name"], "Running")
 
     @mock.patch("bilbyui.views.request_job_filter")
+    def test_controller_returns_non_dict_entry_is_skipped(self, request_job_filter):
+        job = self._make_job(job_controller_id=42)
+        request_job_filter.return_value = (
+            "OK",
+            [
+                {"id": 42, "history": [{"state": JobStatus.RUNNING, "timestamp": "2020-01-01 12:00:00 UTC"}]},
+                "malformed",
+            ],
+        )
+
+        rows = _build_user_job_rows({"jobs": [job], "page_size": 20}, self.user)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["id"], job.id)
+        self.assertEqual(rows[0]["status_name"], "Running")
+
+    @mock.patch("bilbyui.views.request_job_filter")
     def test_controller_unavailable_shows_unknown(self, request_job_filter):
         job = self._make_job(job_controller_id=42)
         request_job_filter.return_value = ("UNKNOWN", "Error getting job filter")

@@ -242,7 +242,7 @@ class BilbyJobNode(DjangoObjectType):
         job_controller_jobs = {}
         if job_controller_ids:
             _, jc_jobs = request_job_filter(user_id, ids=list(job_controller_ids))
-            job_controller_jobs = {job["id"]: job for job in jc_jobs}
+            job_controller_jobs = {job["id"]: job for job in jc_jobs if isinstance(job, dict) and "id" in job}
         info.context.job_controller_jobs = job_controller_jobs
 
         return qs

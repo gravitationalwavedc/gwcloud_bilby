@@ -170,6 +170,27 @@ class TestPublicJobsView(BilbyTestCase):
         self.assertContains(response, 'class="badge badge-dark mr-1">Unknown</span>')
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch(
+        "bilbyui.services.jobs.request_job_filter",
+        return_value=("OK", ["malformed", {"id": 999, "history": []}]),
+    )
+    def test_malformed_controller_entry_does_not_crash(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Malformed controller job",
+            description="should still render",
+            job_controller_id=1502,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Malformed controller job"}),
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Malformed controller job")
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_search_filters(self, request_job_filter, elasticsearch_search):
         self.user = self.create_user()
