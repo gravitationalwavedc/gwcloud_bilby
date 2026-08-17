@@ -320,6 +320,9 @@ class BilbyJob(models.Model):
         result = submit_job(self.user.id, job_params, self.cluster)
 
         # Save the job id
+        if "jobId" not in result:
+            msg = "Job controller returned a successful response without a jobId"
+            raise ValueError(msg)
         self.job_controller_id = result["jobId"]
         self.save()
 

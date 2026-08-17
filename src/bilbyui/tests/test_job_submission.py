@@ -11,7 +11,7 @@ from django.test.utils import override_settings
 
 from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, EventID, IniKeyValue
-from bilbyui.tests.test_utils import compare_ini_kvs, silence_errors
+from bilbyui.tests.test_utils import compare_ini_kvs, create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import validate_job_name
 
@@ -217,6 +217,24 @@ class TestJobSubmission(BilbyTestCase):
             IniKeyValue.objects.get(job=job, key="frequency_domain_source_model", processed=False).value,
             json.dumps("lal_binary_black_hole"),
         )
+
+    @patch("bilbyui.models.submit_job")
+    def test_job_submission_missing_job_id(self, mock_api_call):
+        # A successful job controller response that omits jobId should raise a clear error
+        mock_api_call.return_value = {}
+
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="test_job_missing_job_id",
+            description="Test description",
+            private=True,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+        with self.assertRaises(ValueError) as ex:
+            job.submit()
+
+        self.assertEqual(str(ex.exception), "Job controller returned a successful response without a jobId")
 
     @patch("bilbyui.models.submit_job")
     def test_real_job(self, mock_api_call):
