@@ -104,7 +104,13 @@ class Command(BaseCommand):
                         error_count += 1
                         continue
 
-                    metadata = detail_resp.json()
+                    try:
+                        metadata = detail_resp.json()
+                    except ValueError:
+                        self.stdout.write(self.style.WARNING(f"Skipping {sname}: portal detail returned invalid JSON"))
+                        error_count += 1
+                        continue
+
                     job = GWFlowJob.objects.filter(sname=sname).first()
 
                     if not job:
