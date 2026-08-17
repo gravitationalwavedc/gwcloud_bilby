@@ -111,3 +111,27 @@ class TestBuildResultFiles(BilbyTestCase):
             set(FileDownloadToken.objects.filter(job=job).values_list("path", flat=True)),
             {"/a.txt", "/b.txt"},
         )
+
+    def test_malformed_file_entry_missing_keys_does_not_crash(self):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="normal_job",
+            description="normal",
+            job_controller_id=1,
+            ini_string=self.ini,
+        )
+        files = [
+            {"path": "/dir", "isDir": True, "fileSize": 0},
+            {},
+            {"path": "/file.txt"},
+        ]
+
+        with mock.patch.object(BilbyJob, "get_file_list", return_value=(True, files)):
+            result = _build_result_files(job)
+
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]["path"], "/dir")
+        self.assertEqual(result[1], {"path": "", "is_dir": False, "file_size": 0, "download_token": None})
+        self.assertEqual(result[2]["path"], "/file.txt")
+        self.assertFalse(result[2]["is_dir"])
+        self.assertEqual(result[2]["file_size"], 0)

@@ -1321,16 +1321,16 @@ def _build_result_files(job):
     if not success:
         return []
 
-    paths = [f["path"] for f in files if not f["isDir"]]
+    paths = [f["path"] for f in files if not f.get("isDir", False) and f.get("path")]
     tokens = FileDownloadToken.create(job, paths)
     token_dict = {token.path: token.token for token in tokens}
 
     return [
         {
-            "path": file_entry["path"],
-            "is_dir": file_entry["isDir"],
-            "file_size": file_entry["fileSize"],
-            "download_token": token_dict.get(file_entry["path"]),
+            "path": file_entry.get("path", ""),
+            "is_dir": file_entry.get("isDir", False),
+            "file_size": file_entry.get("fileSize", 0),
+            "download_token": token_dict.get(file_entry.get("path", "")),
         }
         for file_entry in files
     ]
