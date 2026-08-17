@@ -1192,14 +1192,11 @@ def _get_gwflow_job_or_404(request, sname):
 
 def gwflow_job_detail_view(request, sname):
     job = _get_gwflow_job_or_404(request, sname)
-    files = job.files.all()
     return TemplateResponse(
         request,
         "bilbyui/gwflow_detail.html",
         {
             "job": job,
-            "files_uploaded": files.filter(uploaded=True).count(),
-            "files_total": files.count(),
         },
     )
 
