@@ -1,0 +1,56 @@
+{% if gracedb.events or gracedb.instruments or gracedb.advok or gracedb.superevent_far or gracedb.superevent_pastro or gracedb.notes %}
+  <div class="card gw-form-card mb-4">
+    <div class="card-header">GraceDB</div>
+    <div class="card-body">
+      {% if gracedb.events %}
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>UID</th>
+              <th>Pipeline</th>
+              <th>State</th>
+              <th>GPS Time</th>
+              <th>FAR</th>
+              <th>Network SNR</th>
+              <th>Pastro</th>
+              <th>p_bbh</th>
+              <th>p_bns</th>
+              <th>p_nsbh</th>
+              <th>Mass 1</th>
+              <th>Mass 2</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ev in gracedb.events %}
+              <tr>
+                <td>{{ ev.uid|default_if_none:"—" }}</td>
+                <td>{{ ev.pipeline|default_if_none:"—" }}</td>
+                <td>{{ ev.state|default_if_none:"—" }}</td>
+                <td>{{ ev.gps_time|default_if_none:"—" }}</td>
+                <td>{{ ev.far|default_if_none:"—" }}</td>
+                <td>{{ ev.network_snr|default_if_none:"—" }}</td>
+                <td>{{ ev.pastro|default_if_none:"—" }}</td>
+                <td>{{ ev.p_bbh|default_if_none:"—" }}</td>
+                <td>{{ ev.p_bns|default_if_none:"—" }}</td>
+                <td>{{ ev.p_nsbh|default_if_none:"—" }}</td>
+                <td>{{ ev.mass_1|default_if_none:"—" }}</td>
+                <td>{{ ev.mass_2|default_if_none:"—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+      {% if gracedb.instruments or gracedb.advok or gracedb.superevent_far or gracedb.superevent_pastro %}
+        <p class="text-muted mb-0">
+          {% if gracedb.instruments %}Instruments: {{ gracedb.instruments|join:", " }}{% endif %}
+          {% if gracedb.advok %}Advok: {{ gracedb.advok }}{% endif %}
+          {% if gracedb.superevent_far %}Superevent FAR: {{ gracedb.superevent_far }}{% endif %}
+          {% if gracedb.superevent_pastro %}Superevent Pastro: {{ gracedb.superevent_pastro }}{% endif %}
+        </p>
+      {% endif %}
+      {% if gracedb.notes %}
+        <p class="text-muted mb-0 mt-2">{{ gracedb.notes }}</p>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}

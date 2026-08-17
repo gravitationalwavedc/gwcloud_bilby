@@ -204,15 +204,25 @@ class TestGWFlowJobMetadataPartial(BilbyTestCase):
         self.job = _create_job(self.ligo_user)
         self.url = reverse("bilbyui:gwflow_job_metadata", args=[self.job.sname])
 
-    @mock.patch("bilbyui.views.get_superevent", return_value=({"sname": "S230601ag", "foo": "bar"}, "live"))
+    @mock.patch(
+        "bilbyui.views.get_superevent",
+        return_value=(
+            {
+                "sname": "S230601ag",
+                "schema_version": "3",
+                "gracedb": {"events": [{"uid": "E1", "pipeline": "gstlal"}]},
+            },
+            "live",
+        ),
+    )
     def test_live_payload_rendered_without_stale_note(self, mock_get_superevent):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
         mock_get_superevent.assert_called_once_with(self.job.sname)
-        self.assertContains(response, "S230601ag")
-        self.assertContains(response, "foo")
-        self.assertContains(response, "bar")
+        self.assertContains(response, "v3")
+        self.assertContains(response, "E1")
+        self.assertContains(response, "gstlal")
         self.assertNotContains(response, "Showing cached copy")
         self.assertNotContains(response, "<!doctype html>")
 
