@@ -643,6 +643,34 @@ class TestSupportingFile(BilbyTestCase):
         SupportingFile.save_from_parsed(self.job, self.parsed)
         self.assertIsNone(SupportingFile.get_by_upload_token(str(uuid.uuid4())))
 
+    def test_get_by_upload_tokens(self):
+        # Test that get_by_upload_tokens returns files in input order, with None for missing tokens
+        tokens = [t["token"] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
+
+        results = SupportingFile.get_by_upload_tokens(tokens)
+        self.assertEqual(len(results), len(tokens))
+        for result, token in zip(results, tokens):
+            self.assertIsNotNone(result)
+            self.assertEqual(result.upload_token, token)
+
+        # Missing tokens return None in the correct position
+        missing = str(uuid.uuid4())
+        results = SupportingFile.get_by_upload_tokens([tokens[0], missing, tokens[1]])
+        self.assertIsNotNone(results[0])
+        self.assertIsNone(results[1])
+        self.assertIsNotNone(results[2])
+
+    def test_get_by_upload_tokens_expired(self):
+        # Test that get_by_upload_tokens returns None for tokens of expired jobs
+        tokens = [t["token"] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
+
+        self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
+        self.job.save()
+
+        results = SupportingFile.get_by_upload_tokens(tokens)
+        self.assertTrue(all(result is None for result in results))
+        self.assertFalse(BilbyJob.objects.filter(id=self.job.id).exists())
+
     def test_get_by_download_token_invalid(self):
         # Test that a supporting file can't be fetched by an invalid token
         SupportingFile.save_from_parsed(self.job, self.parsed)

@@ -627,7 +627,10 @@ class SupportingFile(models.Model):
         Retrieves the SupportingFile objects matching the provided upload tokens. Returns None for any
         specific SupportingFile if the token doesn't exist or the bilby job's file uploads have expired.
         """
-        return [cls.get_by_upload_token(token) for token in tokens]
+        BilbyJob.prune_supporting_files_jobs()
+
+        files_by_token = {str(sf.upload_token): sf for sf in cls.objects.filter(upload_token__in=tokens)}
+        return [files_by_token.get(str(token)) for token in tokens]
 
     @classmethod
     def get_unuploaded_supporting_files(cls, job):
