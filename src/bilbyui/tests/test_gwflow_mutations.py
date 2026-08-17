@@ -1,5 +1,6 @@
 import hashlib
 import io
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
@@ -861,3 +862,147 @@ class TestGWFlowMutations(BilbyTestCase):
             self.assertFalse(f_obj.uploaded)
             removed_ids = [r["id"] for r in result["removedFiles"]]
             self.assertNotIn(to_global_id("GWFlowFileNode", f_obj.id), removed_ids)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_reconciliation_deletes_mirrored_file_from_disk(self):
+        """Dropping a file from the manifest must delete its mirrored file and .part sibling from disk."""
+        self._auth_as(self.ingest_user)
+
+        query = """
+            mutation Upsert($input: UpsertGwflowJobMutationInput!) {
+                upsertGwflowJob(input: $input) {
+                    result {
+                        sname
+                        removedFiles { id path fileName }
+                    }
+                }
+            }
+        """
+
+        create_input = {
+            "params": {
+                "sname": "S230801recon_disk",
+                "files": [
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/a.h5",
+                        "fileName": "a.h5",
+                        "fileSize": 100,
+                        "md5Sum": "aaa",
+                    },
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/b.h5",
+                        "fileName": "b.h5",
+                        "fileSize": 200,
+                        "md5Sum": "bbb",
+                    },
+                ],
+            }
+        }
+
+        with TemporaryDirectory() as tmpdir, override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
+            with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+                res_create = self.query(query, input_data=create_input)
+                self.assertIsNone(res_create.errors)
+
+                job = GWFlowJob.objects.get(sname="S230801recon_disk")
+                a_file = GWFlowFile.objects.get(job__sname="S230801recon_disk", path="outdir/a.h5")
+                b_file = GWFlowFile.objects.get(job__sname="S230801recon_disk", path="outdir/b.h5")
+
+                # Simulate both files mirrored on disk, b.h5 with an interrupted .part sibling.
+                for f in (a_file, b_file):
+                    file_path = Path(tmpdir) / str(job.id) / str(f.id)
+                    file_path.parent.mkdir(parents=True, exist_ok=True)
+                    file_path.write_bytes(b"mirrored content")
+                a_disk = Path(tmpdir) / str(job.id) / str(a_file.id)
+                b_disk = Path(tmpdir) / str(job.id) / str(b_file.id)
+                b_part = Path(tmpdir) / str(job.id) / f"{b_file.id}.part"
+                b_part.write_bytes(b"partial content")
+                self.assertTrue(a_disk.exists())
+                self.assertTrue(b_disk.exists())
+                self.assertTrue(b_part.exists())
+
+                # Re-upsert with only a.h5 -> b.h5 dropped.
+                update_input = {
+                    "params": {
+                        "sname": "S230801recon_disk",
+                        "files": [
+                            {
+                                "analysisUid": "pe_1",
+                                "path": "outdir/a.h5",
+                                "fileName": "a.h5",
+                                "fileSize": 100,
+                                "md5Sum": "aaa",
+                            },
+                        ],
+                    }
+                }
+                res_update = self.query(query, input_data=update_input)
+                self.assertIsNone(res_update.errors)
+                result = res_update.data["upsertGwflowJob"]["result"]
+
+                # Record deleted and listed in removedFiles.
+                self.assertFalse(GWFlowFile.objects.filter(id=b_file.id).exists())
+                self.assertTrue(GWFlowFile.objects.filter(id=a_file.id).exists())
+                removed_ids = [r["id"] for r in result["removedFiles"]]
+                self.assertEqual(removed_ids, [to_global_id("GWFlowFileNode", b_file.id)])
+
+                # Mirrored file and .part sibling removed from disk; kept file untouched.
+                self.assertFalse(b_disk.exists())
+                self.assertFalse(b_part.exists())
+                self.assertTrue(a_disk.exists())
+                self.assertEqual(a_disk.read_bytes(), b"mirrored content")
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_reconciliation_delete_missing_disk_file_no_error(self):
+        """Deleting a record whose mirrored file is already absent from disk must not error."""
+        self._auth_as(self.ingest_user)
+
+        query = """
+            mutation Upsert($input: UpsertGwflowJobMutationInput!) {
+                upsertGwflowJob(input: $input) {
+                    result {
+                        sname
+                        removedFiles { id path fileName }
+                    }
+                }
+            }
+        """
+
+        create_input = {
+            "params": {
+                "sname": "S230801recon_missing",
+                "files": [
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/a.h5",
+                        "fileName": "a.h5",
+                        "fileSize": 100,
+                        "md5Sum": "aaa",
+                    },
+                ],
+            }
+        }
+
+        with TemporaryDirectory() as tmpdir, override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
+            with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+                res_create = self.query(query, input_data=create_input)
+                self.assertIsNone(res_create.errors)
+
+                a_file = GWFlowFile.objects.get(job__sname="S230801recon_missing", path="outdir/a.h5")
+                job = GWFlowJob.objects.get(sname="S230801recon_missing")
+
+                # No file was ever mirrored to disk.
+                disk = Path(tmpdir) / str(job.id) / str(a_file.id)
+                self.assertFalse(disk.exists())
+
+                # Dropping the file must not raise on the missing disk file.
+                update_input = {"params": {"sname": "S230801recon_missing", "files": []}}
+                res_update = self.query(query, input_data=update_input)
+                self.assertIsNone(res_update.errors)
+                result = res_update.data["upsertGwflowJob"]["result"]
+
+                self.assertFalse(GWFlowFile.objects.filter(id=a_file.id).exists())
+                self.assertEqual(len(result["removedFiles"]), 1)
+                self.assertFalse(disk.exists())

@@ -1765,6 +1765,11 @@ def _reconcile_gwflow_files(job, file_entries):
                     "sname": job.sname,
                 }
             )
+            # Remove the mirrored file (and any interrupted .part sibling) from
+            # disk before dropping the record — same layout as upload_gwflow_file.
+            dest_dir = Path(settings.GWFLOW_FILE_UPLOAD_DIR) / str(job.id)
+            for orphan in (dest_dir / str(f.id), dest_dir / f"{f.id}.part"):
+                orphan.unlink(missing_ok=True)
             f.delete()
     return removed
 
