@@ -933,6 +933,7 @@ class UpsertGwflowJobMutation(relay.ClientIDMutation):
                 sname=data["sname"],
                 created=data["created"],
                 files_pending=data["files_pending"],
+                removed_files=data["removed_files"],
             )
         )
 
