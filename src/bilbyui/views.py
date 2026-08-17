@@ -986,11 +986,15 @@ def _health_view(request):
     return TemplateResponse(request, "bilbyui/base.html", {"page_title": "htmx-bootstrap"})
 
 
+def _event_id_field_values(event_id):
+    return (event_id.event_id, event_id.trigger_id, event_id.nickname)
+
+
 def _event_id_display_values(event_id):
     if event_id is None:
         return []
 
-    return [value for value in (event_id.event_id, event_id.trigger_id, event_id.nickname) if value]
+    return [value for value in _event_id_field_values(event_id) if value]
 
 
 def _job_status_name(bilby_job, job_controller_jobs):
@@ -1568,11 +1572,7 @@ def _render_job_field_event_id(request, job, error="", status=200, modifiable=No
 def _filter_event_ids_for_query(event_ids, query):
     q_lower = query.lower()
     return [
-        event
-        for event in event_ids
-        if q_lower in (event.event_id or "").lower()
-        or q_lower in (event.trigger_id or "").lower()
-        or q_lower in (event.nickname or "").lower()
+        event for event in event_ids if any(q_lower in (value or "").lower() for value in _event_id_field_values(event))
     ]
 
 
