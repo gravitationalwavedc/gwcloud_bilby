@@ -9,7 +9,7 @@ from django.utils import timezone
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.constants import BilbyJobType
-from bilbyui.models import BilbyJob
+from bilbyui.models import BilbyJob, EventID
 from bilbyui.tests.test_utils import (
     create_test_ini_string,
     generate_elastic_doc,
@@ -866,4 +866,63 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             response.data,
             self.public_bilby_job_expected,
             "publicBilbyJobs query returned unexpected data.",
+        )
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_event_id_uses_prefetched_value(self, request_job_filter, elasticsearch_search):
+        # eventId should resolve from the already-prefetched bilby_job.event_id instead of
+        # issuing a per-row EventIDType.get_node query (N+1).
+        event = EventID.objects.create(
+            event_id="GW123456_123456",
+            trigger_id="S123456a",
+            nickname="GW123456",
+            is_ligo_event=False,
+            gps_time=12345678.1234,
+        )
+        self.job1.event_id = event
+        self.job1.save()
+
+        query = """
+            query($count: Int!) {
+                publicBilbyJobs(first: $count) {
+                    edges {
+                        node {
+                            eventId {
+                                eventId
+                                triggerId
+                                nickname
+                            }
+                        }
+                    }
+                }
+            }
+        """
+
+        variables = {"count": 50}
+
+        with mock.patch("bilbyui.schema.EventIDType.get_node") as get_node_mock:
+            response = self.query(query, variables=variables)
+            self.assertIsNone(response.errors, "publicBilbyJobs query should not raise an error")
+            get_node_mock.assert_not_called()
+
+        self.assertDictEqual(
+            response.data,
+            {
+                "publicBilbyJobs": {
+                    "edges": [
+                        {
+                            "node": {
+                                "eventId": {
+                                    "eventId": "GW123456_123456",
+                                    "triggerId": "S123456a",
+                                    "nickname": "GW123456",
+                                }
+                            }
+                        },
+                        {"node": {"eventId": None}},
+                    ]
+                }
+            },
+            "publicBilbyJobs query returned unexpected eventId data.",
         )
