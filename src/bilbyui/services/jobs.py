@@ -67,6 +67,20 @@ def list_user_jobs(user, *, search="", time_range="all", page=1, page_size=20):
     }
 
 
+def _fetch_job_controller_jobs(jobs, user_id):
+    job_controller_ids = {job.job_controller_id: job.id for job in jobs if job.job_controller_id}
+    job_controller_jobs = {}
+    if job_controller_ids:
+        status, job_controller_result = request_job_filter(user_id, ids=job_controller_ids.keys())
+        if status == "OK":
+            job_controller_jobs = {
+                job_controller_ids[job["id"]]: job
+                for job in job_controller_result
+                if isinstance(job, dict) and "id" in job and job["id"] in job_controller_ids
+            }
+    return job_controller_jobs
+
+
 def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20, offset=None):
     if offset is None:
         offset = (page - 1) * page_size
@@ -160,17 +174,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
 
     jobs = {job.id: job for job in qs_after}
 
-    job_controller_ids = {job.job_controller_id: job.id for job in jobs.values() if job.job_controller_id}
-    job_controller_jobs = {}
-    if job_controller_ids:
-        user_id = user.id if user.is_authenticated else 0
-        status, job_controller_result = request_job_filter(user_id, ids=job_controller_ids.keys())
-        if status == "OK":
-            job_controller_jobs = {
-                job_controller_ids[job["id"]]: job
-                for job in job_controller_result
-                if isinstance(job, dict) and "id" in job and job["id"] in job_controller_ids
-            }
+    job_controller_jobs = _fetch_job_controller_jobs(jobs.values(), user.id if user.is_authenticated else 0)
 
     return {
         "jobs": jobs,
