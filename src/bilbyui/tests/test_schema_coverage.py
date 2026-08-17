@@ -121,6 +121,18 @@ class TestSchemaCoverage(BilbyTestCase):
         self.assertIsNone(response.data["bilbyResultFiles"])
         self.assertIsNone(response.errors)
 
+    @mock.patch(
+        "bilbyui.models.request_file_list",
+        return_value=(True, [{"path": "/ok.txt", "isDir": False, "fileSize": 1}, {}]),
+    )
+    def test_bilby_result_files_malformed_file_entry(self, *_):
+        response = self.query(RESULT_FILES_QUERY % self.global_id)
+        self.assertIsNone(response.errors)
+        files = response.data["bilbyResultFiles"]["files"]
+        self.assertEqual(len(files), 2)
+        self.assertEqual(files[0]["path"], "/ok.txt")
+        self.assertEqual(files[1]["path"], "")
+
     @silence_errors
     @mock.patch(
         "bilbyui.models.request_file_list", return_value=(True, [{"path": "/f.txt", "isDir": False, "fileSize": 1}])
