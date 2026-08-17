@@ -141,6 +141,17 @@ class TestSchemaCoverage(BilbyTestCase):
         self.assertEqual(files[0]["path"], "/ok.txt")
         self.assertEqual(files[1]["path"], "")
 
+    @mock.patch(
+        "bilbyui.models.request_file_list",
+        return_value=(True, [{"path": "/ok.txt", "isDir": False, "fileSize": 1}, "not-a-dict", None]),
+    )
+    def test_bilby_result_files_non_dict_file_entries_are_skipped(self, *_):
+        response = self.query(RESULT_FILES_QUERY % self.global_id)
+        self.assertIsNone(response.errors)
+        files = response.data["bilbyResultFiles"]["files"]
+        self.assertEqual(len(files), 1)
+        self.assertEqual(files[0]["path"], "/ok.txt")
+
     @silence_errors
     @mock.patch(
         "bilbyui.models.request_file_list", return_value=(True, [{"path": "/f.txt", "isDir": False, "fileSize": 1}])
