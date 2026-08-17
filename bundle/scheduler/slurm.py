@@ -95,7 +95,7 @@ class SlurmScheduler(Scheduler):
                 if int(bits[0]) == int(job_id):
                     _status = bits[1].decode("utf-8")
                     break
-            except ValueError:
+            except (ValueError, IndexError):
                 continue
 
         logger.info("Got job status %s for job %s", _status, job_id)
