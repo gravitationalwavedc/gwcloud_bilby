@@ -313,7 +313,10 @@ def create_bilby_job(user, params):
 
         ini_string = f.read().decode("utf-8")
 
-    event_id = EventID.get_by_event_id(params.data.event_id, user) if params.data.event_id else None
+    try:
+        event_id = EventID.get_by_event_id(params.data.event_id, user) if params.data.event_id else None
+    except EventID.DoesNotExist:
+        raise GraphQLError(f"Event ID '{params.data.event_id}' not found.")
 
     try:
         bilby_job = BilbyJob.objects.create(
