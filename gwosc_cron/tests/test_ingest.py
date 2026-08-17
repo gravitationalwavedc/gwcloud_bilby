@@ -1292,6 +1292,63 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(error_rows[0]["job_id"], "GW000002_654321")
         self.assertEqual(error_rows[0]["failure_count"], 1)
 
+    @parameterized.expand(["commonName", "catalog.shortName"])
+    @responses.activate
+    def test_null_common_name_or_catalog_shortname_does_not_crash(self, gwc, null_key):
+        """If the per-event JSON payload has a null commonName or catalog.shortName
+        value, the whole cron run should not crash with a TypeError from
+        re.Pattern.match/re.search on None."""
+        self.add_allevents_response(
+            {
+                "GW000002_654321": {
+                    "commonName": "GW000002_654321",
+                    "catalog.shortName": "GWTC-3-confident",
+                    "jsonurl": "https://test.org/GW000002_654321.json",
+                },
+            }
+        )
+        event_payload = {
+            "commonName": "GW000002_654321",
+            "catalog.shortName": "GWTC-3-confident",
+            "GPS": 1729400000,
+            "gracedb_id": "S123456z",
+            "parameters": {
+                "AAAAA": {
+                    "is_preferred": True,
+                    "data_url": "https://test.org/GW000002.h5",
+                }
+            },
+        }
+        event_payload[null_key] = None
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000002_654321.json",
+            json={"events": {"GW000002_654321": event_payload}},
+        )
+        self.add_file_response("good.h5", "GW000002.h5")
+
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW000002_654321--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW000002.h5",
+        )
+
+        sqlite_rows = self.get_completed_jobs()
+        self.assertEqual(len(sqlite_rows), 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000002_654321")
+        self.assertEqual(row["success"], 1)
+        self.assertEqual(row["reason"], "completed_submit")
+        if null_key == "commonName":
+            self.assertEqual(row["common_name"], "")
+        else:
+            self.assertEqual(row["catalog_shortname"], "")
+
     @responses.activate
     def test_non_dict_events_in_event_json_does_not_crash(self, gwc):
         """If the per-event JSON payload has a non-dict "events" container (e.g.

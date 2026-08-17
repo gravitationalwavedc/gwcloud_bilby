@@ -253,8 +253,8 @@ def _check_and_download_inner(con, cur):
         try:
             event_json = event_json["events"][event_name]
             parameters = event_json["parameters"]
-            common_name = event_json["commonName"]
-            catalog_shortname = event_json["catalog.shortName"]
+            common_name = event_json["commonName"] or ""
+            catalog_shortname = event_json["catalog.shortName"] or ""
             gps = event_json["GPS"]
             gracedb_id = event_json["gracedb_id"]
         except (KeyError, TypeError):
