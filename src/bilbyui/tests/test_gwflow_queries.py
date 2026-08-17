@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
-from bilbyui.schema import GWFlowJobNode, PublicBilbyJobFilter, UserBilbyJobFilter
+from bilbyui.schema import BilbyJobNode, GWFlowJobNode, PublicBilbyJobFilter, UserBilbyJobFilter
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.types import GWFlowFileType
 
@@ -383,6 +383,8 @@ class TestGWFlowQueries(BilbyTestCase):
         bad_job = BadUserJob()
         self.assertEqual(GWFlowJobNode.resolve_user(bad_job, info), "Unknown User")
         self.assertIsNone(GWFlowJobNode.resolve_last_updated(bad_job, info))
+        self.assertEqual(BilbyJobNode.resolve_user(bad_job, info), "Unknown User")
+        self.assertIsNone(BilbyJobNode.resolve_last_updated(bad_job, info))
 
     @mock.patch("bilbyui.schema.list_gwflow_jobs")
     def test_gwflow_jobs_connection_empty_and_cursor(self, mock_list_jobs):
