@@ -609,7 +609,7 @@ class TestBilbyJobQueries(BilbyTestCase):
             }
         """
 
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(6):
             response = self.query(query)
         self.assertIsNone(response.errors)
         self.assertEqual(len(response.data["bilbyJobs"]["edges"]), 4)
