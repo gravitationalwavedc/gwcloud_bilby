@@ -99,6 +99,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
             "inj": "injection_file",
             "nmr": "numerical_relativity_file",
             "dml": "distance_marginalization_lookup_table",
+            "dat": "data_dict",
         }
 
         # Need the path to the supporting file relative to the working directory
