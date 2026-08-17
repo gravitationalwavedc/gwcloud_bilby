@@ -74,6 +74,15 @@ class TestSlurm(TestCase):
         with self._mock_status("UNKNOWN_STATE"):
             self.assertEqual(self.sched.status(12345, None), (None, None))
 
+    def test_status_returns_none_when_sacct_fails(self):
+        sched = SlurmScheduler()
+
+        with patch(
+            "scheduler.slurm.subprocess.check_output",
+            side_effect=subprocess.CalledProcessError(1, "sacct"),
+        ):
+            self.assertEqual(sched.status(1234, None), (None, None))
+
     @patch("scheduler.slurm.subprocess.check_output")
     def test_cancel_success(self, check_output_mock):
         check_output_mock.return_value = b""
