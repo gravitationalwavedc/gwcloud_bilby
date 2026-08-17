@@ -77,3 +77,26 @@ class TestAnonymousMetricsMiddlewareResolve(BilbyTestCase):
         entry = AnonymousMetrics.objects.get(public_id=pid, session_id=sid)
         self.assertEqual(entry.request, "bilbyJob")
         self.assertEqual(entry.params, '{"foo": "bar"}')
+
+    def test_resolve_create_failure_does_not_break_request(self):
+        pid = uuid.uuid4()
+        sid = uuid.uuid4()
+        info = self._make_info(str(pid) + " " + str(sid))
+        next_mw = self._make_next()
+        with mock.patch(
+            "bilbyui.utils.anonymous_metrics.AnonymousMetrics.objects.create",
+            side_effect=Exception("db down"),
+        ):
+            self.assertEqual(AnonymousMetricsMiddleware().resolve(next_mw, None, info, foo="bar"), "next-result")
+        next_mw.assert_called_once()
+
+    def test_resolve_unserializable_arg_does_not_break_request(self):
+        pid = uuid.uuid4()
+        sid = uuid.uuid4()
+        info = self._make_info(str(pid) + " " + str(sid))
+        next_mw = self._make_next()
+        self.assertEqual(
+            AnonymousMetricsMiddleware().resolve(next_mw, None, info, file=object()),
+            "next-result",
+        )
+        next_mw.assert_called_once()
