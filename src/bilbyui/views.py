@@ -1001,6 +1001,19 @@ def _job_status_name(bilby_job, job_controller_jobs):
         return "Unknown"
 
 
+def _build_job_row(bilby_job, status_name, user_name, name, description):
+    return {
+        "id": bilby_job.id,
+        "user": user_name,
+        "name": name,
+        "description": description or "",
+        "status_name": status_name,
+        "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
+        "labels": list(bilby_job.labels.all()),
+        "event_id_values": _event_id_display_values(bilby_job.event_id),
+    }
+
+
 def _build_public_job_rows(public_jobs_result):
     records = public_jobs_result["records"]
     page_size = public_jobs_result["page_size"]
@@ -1020,16 +1033,13 @@ def _build_public_job_rows(public_jobs_result):
         status_name = _job_status_name(bilby_job, job_controller_jobs)
 
         rows.append(
-            {
-                "id": bilby_job.id,
-                "user": job_source.get("user", {}).get("name", ""),
-                "name": job_source.get("job", {}).get("name", ""),
-                "description": job_source.get("job", {}).get("description", "") or "",
-                "status_name": status_name,
-                "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
-                "labels": list(bilby_job.labels.all()),
-                "event_id_values": _event_id_display_values(bilby_job.event_id),
-            }
+            _build_job_row(
+                bilby_job,
+                status_name,
+                job_source.get("user", {}).get("name", ""),
+                job_source.get("job", {}).get("name", ""),
+                job_source.get("job", {}).get("description", ""),
+            )
         )
 
     return rows
@@ -1097,18 +1107,7 @@ def _build_user_job_rows(user_jobs_result, user):
     for bilby_job in jobs[:page_size]:
         status_name = _job_status_name(bilby_job, job_controller_jobs)
 
-        rows.append(
-            {
-                "id": bilby_job.id,
-                "user": user.name,
-                "name": bilby_job.name,
-                "description": bilby_job.description or "",
-                "status_name": status_name,
-                "status_badge_class": STATUS_BADGE_CLASSES.get(status_name, "primary"),
-                "labels": list(bilby_job.labels.all()),
-                "event_id_values": _event_id_display_values(bilby_job.event_id),
-            }
-        )
+        rows.append(_build_job_row(bilby_job, status_name, user.name, bilby_job.name, bilby_job.description))
 
     return rows
 
