@@ -194,6 +194,43 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertEqual(len(edges), 1)
         self.assertEqual(edges[0]["node"]["sname"], "S230601ag")
 
+    @mock.patch("bilbyui.schema.list_gwflow_jobs")
+    def test_gwflow_jobs_connection_first_null(self, mock_list_jobs):
+        # An explicit `first: null` connection argument should fall back to the default
+        # page size instead of raising a TypeError (500).
+        query = """
+            query {
+                gwflowJobs(first: null) {
+                    edges {
+                        node {
+                            id
+                            sname
+                        }
+                    }
+                }
+            }
+        """
+        mock_list_jobs.return_value = {
+            "jobs": {self.job_public.id: self.job_public},
+            "records": [{"_id": str(self.job_public.id)}],
+            "has_next": False,
+            "page": 1,
+            "page_size": 20,
+        }
+
+        self._auth_as(self.normal_user)
+        res = self.query(query)
+        self.assertResponseNoErrors(res)
+
+        mock_list_jobs.assert_called_once_with(
+            self.normal_user,
+            search="",
+            time_range="all",
+            page_size=20,
+            offset=0,
+            include_pruned=False,
+        )
+
     @mock.patch("elasticsearch.Elasticsearch")
     def test_gwflow_jobs_connection_files_no_nplus1(self, mock_es_cls):
         """

@@ -408,7 +408,7 @@ class Query:
 
         _parse_after_cursor(kwargs)
 
-        page_size = kwargs.get("first", 20)
+        page_size = kwargs.get("first") or 20
         offset = kwargs.get("after") or 0
 
         res_dict = list_gwflow_jobs(
@@ -477,7 +477,7 @@ class Query:
         # This ensures that "after" is either an int (from a b64 string) or None
         _parse_after_cursor(kwargs)
 
-        page_size = kwargs.get("first", 20)
+        page_size = kwargs.get("first") or 20
         offset = kwargs.get("after") or 0
 
         public_jobs = list_public_jobs(
