@@ -535,6 +535,46 @@ class TestBilbyJobQueries(BilbyTestCase):
 
     @mock.patch(
         "bilbyui.schema.request_job_filter",
+        side_effect=lambda *args, **kwargs: (True, []),
+    )
+    def test_bilby_jobs_query_labels_event_id_no_nplus1(self, *args):
+        """
+        bilbyJobs connection querying labels/eventId should not issue one query per job (N+1).
+        """
+        self.authenticate()
+
+        for i in range(3):
+            job = BilbyJob.objects.create(
+                user_id=self.user.id,
+                name=f"Job {i}",
+                job_controller_id=None,
+                is_ligo_job=False,
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+            job.labels.set([self.label])
+            job.event_id = self.event_id
+            job.save()
+
+        query = """
+            query {
+                bilbyJobs {
+                    edges {
+                        node {
+                            labels { name }
+                            eventId { eventId }
+                        }
+                    }
+                }
+            }
+        """
+
+        with self.assertNumQueries(7):
+            response = self.query(query)
+        self.assertIsNone(response.errors)
+        self.assertEqual(len(response.data["bilbyJobs"]["edges"]), 4)
+
+    @mock.patch(
+        "bilbyui.schema.request_job_filter",
         return_value=("UNKNOWN", []),
     )
     def test_bilby_jobs_query_job_controller_down(self, *args):
