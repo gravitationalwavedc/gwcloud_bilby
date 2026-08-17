@@ -135,3 +135,25 @@ class TestBuildResultFiles(BilbyTestCase):
         self.assertEqual(result[2]["path"], "/file.txt")
         self.assertFalse(result[2]["is_dir"])
         self.assertEqual(result[2]["file_size"], 0)
+
+    def test_non_dict_file_entries_are_skipped(self):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="normal_job",
+            description="normal",
+            job_controller_id=1,
+            ini_string=self.ini,
+        )
+        files = [
+            {"path": "/dir/file.txt", "isDir": False, "fileSize": 42},
+            "not-a-dict",
+            None,
+        ]
+
+        with mock.patch.object(BilbyJob, "get_file_list", return_value=(True, files)):
+            result = _build_result_files(job)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["path"], "/dir/file.txt")
+        self.assertEqual(result[0]["file_size"], 42)
+        self.assertEqual(FileDownloadToken.objects.filter(job=job).count(), 1)
