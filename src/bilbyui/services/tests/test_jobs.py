@@ -246,3 +246,27 @@ class TestJobsService(BilbyTestCase):
 
         self.assertFalse(result["has_next"])
         self.assertEqual(len(result["records"]), 2)
+
+    @patch("bilbyui.services.jobs.elasticsearch.Elasticsearch")
+    def test_list_public_jobs_skips_non_dict_hit(self, mock_elasticsearch):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="public_job",
+            description="Public job",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        mock_es = mock_elasticsearch.return_value
+        mock_es.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": job.id},
+                    "corrupt-non-dict-hit",
+                ]
+            }
+        }
+
+        result = list_public_jobs(self.user)
+
+        self.assertIn(job.id, result["jobs"])
+        self.assertEqual(len(result["records"]), 1)
