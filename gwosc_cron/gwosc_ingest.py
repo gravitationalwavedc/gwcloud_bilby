@@ -268,6 +268,12 @@ def _check_and_download_inner(con, cur):
             record_job_failure(con, cur, event_name, error_msg)
             continue
 
+        if not isinstance(parameters, dict):
+            error_msg = f"Event {event_name} json payload has a non-dict parameters section"
+            logger.error(error_msg)
+            record_job_failure(con, cur, event_name, error_msg)
+            continue
+
         shared_common_names = [
             k for k, v in all_events.items() if isinstance(v, dict) and v.get("commonName") == common_name
         ]
