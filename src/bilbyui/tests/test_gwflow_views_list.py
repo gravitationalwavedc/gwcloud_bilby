@@ -203,6 +203,18 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertEqual(rows[0]["sname"], "S230601ag")
         self.assertEqual(rows[0]["analysis_count"], 1)
 
+    def test_non_list_analyses_does_not_crash(self):
+        job = GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+
+        with mock.patch(
+            "bilbyui.views.list_gwflow_jobs",
+            side_effect=_gwflow_jobs_side_effect({job.id: "not-a-list"}),
+        ):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "S230601ag")
+
     def test_empty_state(self):
         with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()):
             response = self.client.get(self.url)
