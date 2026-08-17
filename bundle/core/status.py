@@ -57,6 +57,13 @@ def condor_status(job):
     :return: The same return type from submit()
     """
     sched = get_scheduler()
+
+    if "submit_id" not in job:
+        # A corrupt or legacy job record without a submit id cannot be tracked
+        result = [{"what": "submit", "status": JobStatus.ERROR, "info": "Job has no submit id"}]
+
+        return {"status": result, "complete": True}
+
     _status, info = sched.status(job["submit_id"], job)
     result = [{"what": "submit", "status": _status, "info": info}]
 
