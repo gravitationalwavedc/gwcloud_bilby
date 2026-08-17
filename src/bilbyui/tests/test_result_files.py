@@ -381,3 +381,42 @@ class TestResultFilesMalformedJobId(BilbyTestCase):
 
         self.assertIsNone(response.data["bilbyResultFiles"])
         self.assertIsNone(response.errors)
+
+
+class TestGenerateFileDownloadIdsMalformedJobId(BilbyTestCase):
+    def setUp(self):
+        self.authenticate()
+
+    @silence_errors
+    def test_malformed_job_id_returns_clean_error(self):
+        response = self.query(
+            """
+            mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
+                generateFileDownloadIds(input: $input) {
+                    result
+                }
+            }
+            """,
+            input_data={"jobId": "not-a-valid-id", "downloadTokens": ["some-token"]},
+        )
+
+        self.assertIsNone(response.data["generateFileDownloadIds"])
+        self.assertEqual(response.errors[0]["message"], "Invalid job_id")
+
+    @silence_errors
+    def test_malformed_job_id_returns_clean_error_anonymous(self):
+        self.deauthenticate()
+
+        response = self.query(
+            """
+            mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
+                generateFileDownloadIds(input: $input) {
+                    result
+                }
+            }
+            """,
+            input_data={"jobId": "not-a-valid-id", "downloadTokens": ["some-token"]},
+        )
+
+        self.assertIsNone(response.data["generateFileDownloadIds"])
+        self.assertEqual(response.errors[0]["message"], "Invalid job_id")

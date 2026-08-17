@@ -158,3 +158,18 @@ class TestChangeJobDetails(BilbyTestCase):
             response.errors[0]["message"],
             "Job name must be at least 5 characters long.",
         )
+
+    @silence_errors
+    def test_change_job_details_malformed_job_id(self):
+        """
+        Change details mutation should return a clean error when the job id is malformed or non-numeric.
+        """
+        change_job_input = {
+            "jobId": "not-a-valid-id",
+            "name": "New_job_name",
+        }
+
+        response = self.query(self.mutation_string, input_data=change_job_input)
+
+        self.assertDictEqual({"updateBilbyJob": None}, response.data)
+        self.assertEqual(response.errors[0]["message"], "Invalid job_id")
