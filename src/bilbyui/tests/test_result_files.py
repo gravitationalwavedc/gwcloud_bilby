@@ -155,6 +155,23 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
             "At least one token was invalid or expired.",
         )
 
+    @silence_errors
+    @mock.patch(
+        "bilbyui.models.request_file_list",
+        return_value=(
+            True,
+            [
+                {"path": "/bad.txt", "isDir": False, "fileSize": "not-a-number"},
+                {"path": "/null.txt", "isDir": False, "fileSize": None},
+            ],
+        ),
+    )
+    def test_malformed_file_size(self, *_):
+        response = self.query(self.query_string)
+        self.assertIsNone(response.errors)
+        files = response.data["bilbyResultFiles"]["files"]
+        self.assertEqual([f["fileSize"] for f in files], [None, None])
+
 
 @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
 class TestResultFilesAndGenerateFileDownloadIdsUploaded(BilbyTestCase):
