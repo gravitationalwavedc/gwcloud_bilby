@@ -267,10 +267,12 @@ def run_data_generation(data_gen_command, wk_dir):
         stdout, stderr = p.communicate()
 
         # Write the data generation output to output files
-        with (Path(wk_dir) / output_file).open("wb") as f:
-            f.write(stdout)
-        with (Path(wk_dir) / error_file).open("wb") as f:
-            f.write(stderr)
+        if output_file:
+            with (Path(wk_dir) / output_file).open("wb") as f:
+                f.write(stdout)
+        if error_file:
+            with (Path(wk_dir) / error_file).open("wb") as f:
+                f.write(stderr)
 
 
 def refactor_slurm_data_generation_step(slurm_script):

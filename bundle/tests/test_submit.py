@@ -428,6 +428,27 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
 
     @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    def test_run_data_generation_without_output_flags(self, *args, **kwargs):
+        # A data generation command without --output= or --error= flags should run the
+        # generation script without attempting to write output/error files
+        with TemporaryDirectory() as td:
+            script = os.path.join(td, "data_gen.sh")
+            with open(script, "w") as f:
+                f.write("#!/bin/bash\necho test\n")
+
+            popen_command = f"/bin/bash {script}"
+            self.popen.set_command(popen_command, stdout=b"stdout test", stderr=b"stderr test")
+
+            from core.submit import run_data_generation
+
+            run_data_generation("sbatch ./data_gen.sh", td)
+
+            # No output/error files should have been written
+            self.assertFalse(os.path.exists(os.path.join(td, "data_gen.sh.out")))
+            self.assertFalse(os.path.exists(os.path.join(td, "data_gen.sh.err")))
+
+    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.condor.CondorScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
     def test_submit_simulated_data_job_condor(self, *args, **kwargs):
