@@ -75,6 +75,15 @@ class TestGWFlowPortalClient(TestCase):
         self.assertIsNone(data)
 
     @responses.activate
+    def test_down_on_non_json_200_response_without_cache(self):
+        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", body="<html>proxy error</html>", status=200)
+
+        data, state = gwflow_portal.get_superevent("S230601ag")
+
+        self.assertEqual(state, "down")
+        self.assertIsNone(data)
+
+    @responses.activate
     def test_unconfigured_settings_logs_warning(self):
         with override_settings(CBCFLOW_PORTAL_URL=None, CBCFLOW_PORTAL_TOKEN=None):
             with self.assertLogs("bilbyui.utils.gwflow_portal", level="WARNING") as cm:
