@@ -1,3 +1,5 @@
+from functools import wraps
+
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
 from django.core import mail
@@ -11,6 +13,7 @@ def check_request_leak():
 
 
 def check_request_leak_decorator(fn):
+    @wraps(fn)
     def wrapper(*args, **kwargs):
         check_request_leak()
 
