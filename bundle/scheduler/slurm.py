@@ -62,7 +62,7 @@ class SlurmScheduler(Scheduler):
         # todo: Handle errors
         try:
             return int(stdout.strip().split()[-1])
-        except ValueError:
+        except (ValueError, IndexError):
             return None
 
     def status(self, job_id, _details):
