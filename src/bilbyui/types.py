@@ -254,6 +254,7 @@ class GWFlowUpsertResult(graphene.ObjectType):
     sname = graphene.String(required=True)
     created = graphene.Boolean(required=True)
     files_pending = graphene.List(GWFlowPendingFile, required=True)
+    removed_files = graphene.List(GWFlowPendingFile, required=True)
 
 
 class GWFlowFileType(graphene.ObjectType):

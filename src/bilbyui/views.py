@@ -1750,6 +1750,32 @@ def _gwflow_pending_file(f):
     )
 
 
+def _reconcile_gwflow_files(job, file_entries):
+    # Omit-vs-empty contract: file_entries is None -> skip reconcile entirely
+    # (A11 prune path); [] or non-empty -> reconcile against the manifest.
+    if file_entries is None:
+        return []
+
+    current_keys = {(getattr(entry, "analysis_uid", "") or "", entry.path) for entry in file_entries}
+    removed = []
+    for f in list(job.files.all()):
+        if (f.analysis_uid, f.path) not in current_keys:
+            # Capture id before delete() — Django clears f.pk on delete().
+            # Use job.sname (in-memory parent) to avoid an N+1 on f.job.sname.
+            removed.append(
+                {
+                    "id": f.id,
+                    "analysis_uid": f.analysis_uid,
+                    "path": f.path,
+                    "file_name": f.file_name,
+                    "md5_sum": f.md5_sum,
+                    "sname": job.sname,
+                }
+            )
+            f.delete()
+    return removed
+
+
 def upsert_gwflow_job(user, params):
     _check_gwflow_ingest_user(user)
 
@@ -1833,6 +1859,9 @@ def upsert_gwflow_job(user, params):
                     if changed:
                         f_obj.save()
 
+        # Reconcile GWFlowFile rows against the current manifest.
+        removed = _reconcile_gwflow_files(job, getattr(params, "files", None))
+
     # ES update runs outside the transaction so a connection error does not
     # roll back the DB write.
     metadata_param = getattr(params, "metadata", None)
@@ -1846,11 +1875,24 @@ def upsert_gwflow_job(user, params):
     pending_qs = job.files.filter(uploaded=False).select_related("job").order_by("job__sname", "analysis_uid", "path")
     files_pending = [_gwflow_pending_file(f) for f in pending_qs]
 
+    removed_files_list = [
+        GWFlowPendingFile(
+            id=to_global_id("GWFlowFileNode", entry["id"]),
+            sname=entry["sname"],
+            analysis_uid=entry["analysis_uid"],
+            path=entry["path"],
+            file_name=entry["file_name"],
+            md5_sum=entry["md5_sum"],
+        )
+        for entry in removed
+    ]
+
     return {
         "gwflow_job_id": to_global_id("GWFlowJobNode", job.id),
         "sname": job.sname,
         "created": created,
         "files_pending": files_pending,
+        "removed_files": removed_files_list,
     }
 
 
