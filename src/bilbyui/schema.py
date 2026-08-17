@@ -236,8 +236,6 @@ class BilbyJobNode(DjangoObjectType):
         qs = BilbyJob.bilby_job_filter(queryset, user)
         qs = qs.select_related("event_id").prefetch_related("labels").prefetch_related("user")
 
-        info.context.users = {}
-
         # Query any job controller information in one go - exclude any job controller ids that are not set
         job_controller_ids = set(qs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
         job_controller_jobs = {}
