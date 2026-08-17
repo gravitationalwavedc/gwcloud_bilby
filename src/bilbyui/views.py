@@ -1295,6 +1295,8 @@ def _get_job_status_context(job, user):
                     _, status_name, status_date = derive_job_status(history)
                     if status_date is not None:
                         status_date = status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
+                    else:
+                        status_date = job.last_updated
 
     return {
         "status_name": status_name,
