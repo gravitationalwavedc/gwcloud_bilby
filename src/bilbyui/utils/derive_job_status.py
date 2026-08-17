@@ -28,17 +28,17 @@ def derive_job_status(history):
                 continue
         return None
 
-    valid_entries = [
-        entry
-        for entry in history
-        if isinstance(entry, dict) and "state" in entry and parse_timestamp(entry) is not None
-    ]
+    valid_entries = []
+    for entry in history:
+        if isinstance(entry, dict) and "state" in entry:
+            timestamp = parse_timestamp(entry)
+            if timestamp is not None:
+                valid_entries.append((entry, timestamp))
     if not valid_entries:
         return JobStatus.DRAFT, "Unknown", None
 
-    latest = max(valid_entries, key=parse_timestamp)
+    latest, timestamp = max(valid_entries, key=lambda item: item[1])
     state = latest["state"]
     display_name = JobStatus.display_name(state)
-    timestamp = parse_timestamp(latest)
     logger.info("Derived job status: state=%s, display_name=%s, timestamp=%s", state, display_name, timestamp)
     return (state, display_name, timestamp)
