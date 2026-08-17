@@ -37,12 +37,17 @@ class AnonymousMetricsMiddleware:
             return next(root, info, **args)
 
         # Details of the request are valid, we can create the metrics entry
-        AnonymousMetrics.objects.create(
-            public_id=ids[0],
-            session_id=ids[1],
-            request=info.path.key,  # We only care about the top level object type being requested
-            params=json.dumps(args),
-        )
+        try:
+            AnonymousMetrics.objects.create(
+                public_id=ids[0],
+                session_id=ids[1],
+                request=info.path.key,  # We only care about the top level object type being requested
+                params=json.dumps(args),
+            )
+        except Exception as e:
+            # Instrumentation must never break the request: log and continue if the metrics entry
+            # cannot be created (e.g. a DB error or a non-JSON-serializable GraphQL arg).
+            logger.warning("Failed to record anonymous metrics: %s", e)
 
         # Continue the request
         return next(root, info, **args)
