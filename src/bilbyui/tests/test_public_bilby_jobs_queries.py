@@ -167,6 +167,21 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         return {"hits": {"hits": jobs}}
 
+    def elasticsearch_search_mock_with_missing_source(*args, **kwargs):
+        user = {"name": "buffy summers", "id": 1}
+
+        jobs = []
+        for job in BilbyJob.objects.filter(user_id=user["id"]):
+            doc = {"_source": generate_elastic_doc(job, user), "_id": job.id}
+            jobs.append(doc)
+
+        # Simulate a malformed Elasticsearch record with a missing or non-dict
+        # _source, which must be skipped rather than raising a KeyError (500).
+        jobs.append({"_id": 999998})
+        jobs.append({"_id": 999997, "_source": "not-a-dict"})
+
+        return {"hits": {"hits": jobs}}
+
     def request_job_filter_mock(*args, **kwargs):
         jobs = [
             {
@@ -754,6 +769,23 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         # The stale ES record with no matching BilbyJob should be skipped, not raise a KeyError.
         response = self.query(self.public_bilby_job_query, variables=variables)
+        self.assertDictEqual(
+            response.data,
+            self.public_bilby_job_expected,
+            "publicBilbyJobs query returned unexpected data.",
+        )
+
+    @mock.patch(
+        "elasticsearch.Elasticsearch.search",
+        side_effect=elasticsearch_search_mock_with_missing_source,
+    )
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_missing_or_non_dict_source(self, request_job_filter, elasticsearch_search):
+        variables = {"count": 50, "search": None, "timeRange": "all"}
+
+        # ES records with a missing or non-dict _source should be skipped, not raise a KeyError.
+        response = self.query(self.public_bilby_job_query, variables=variables)
+        self.assertIsNone(response.errors, "a missing or non-dict _source should not raise an error")
         self.assertDictEqual(
             response.data,
             self.public_bilby_job_expected,

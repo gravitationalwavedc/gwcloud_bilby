@@ -1018,7 +1018,9 @@ def _build_public_job_rows(public_jobs_result):
         if bilby_job is None:
             continue
 
-        job_source = record["_source"]
+        job_source = record.get("_source")
+        if not isinstance(job_source, dict):
+            continue
 
         status_name = _job_status_name(bilby_job, job_controller_jobs)
 
