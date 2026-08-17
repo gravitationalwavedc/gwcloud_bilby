@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import json
 import uuid
@@ -436,7 +437,10 @@ class BilbyJob(models.Model):
             verify_certs=False,
         )
 
-        es.delete(index=settings.ELASTIC_SEARCH_INDEX, id=self.id)
+        # Swallow NotFoundError so deleting a job whose ES document is missing
+        # (e.g. a legacy job that was never indexed) doesn't abort the DB delete
+        with contextlib.suppress(elasticsearch.NotFoundError):
+            es.delete(index=settings.ELASTIC_SEARCH_INDEX, id=self.id)
 
 
 def on_bilby_job_label_add_rem(sender, instance, action, pk_set, **kwargs):

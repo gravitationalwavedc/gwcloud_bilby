@@ -321,3 +321,36 @@ class TestElasticSearch(BilbyTestCase):
             elastic_search_delete.mock_calls[0].kwargs,
             {"index": settings.ELASTIC_SEARCH_INDEX, "id": job_id},
         )
+
+    @mock.patch(
+        "elasticsearch.Elasticsearch.delete",
+        side_effect=request_elasticsearch_update_mock_raises,
+    )
+    @mock.patch("elasticsearch.Elasticsearch.update")
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_job_delete_missing_document_still_deletes(
+        self, request_lookup_users, elastic_search_update, elastic_search_delete
+    ):
+        """
+        Test that deleting a job whose elastic search document is missing (e.g. a legacy job that
+        was never indexed) still deletes the job, without the pre_delete signal aborting on
+        elasticsearch.NotFoundError
+        """
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Test1",
+            description="first job",
+            job_controller_id=2,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+        job_id = job.id
+
+        job.delete()
+
+        # The delete call should still have been attempted
+        self.assertEqual(elastic_search_delete.call_count, 1)
+
+        # The job should no longer exist in the database
+        self.assertFalse(BilbyJob.objects.filter(id=job_id).exists())
