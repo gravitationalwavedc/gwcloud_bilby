@@ -704,6 +704,68 @@ class TestJobSubmission(BilbyTestCase):
         job = BilbyJob.objects.all().last()
         self.assertTrue(job.is_ligo_job, "Real job on embargoed LIGO data should be marked as a LIGO job")
 
+    @patch("bilbyui.models.submit_job")
+    def test_simulated_job_without_channels(self, mock_api_call):
+        mock_api_call.return_value = {"jobId": 4321}
+
+        params = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": "test_job_for_GW12345",
+                        "description": "Test description 1234",
+                        "private": True,
+                    },
+                    "data": {
+                        "dataChoice": "simulated",
+                        "triggerTime": "1126259462.391",
+                    },
+                    "detector": {
+                        "hanford": True,
+                        "hanfordMinimumFrequency": "20",
+                        "hanfordMaximumFrequency": "1024",
+                        "livingston": False,
+                        "livingstonMinimumFrequency": "20",
+                        "livingstonMaximumFrequency": "1024",
+                        "virgo": False,
+                        "virgoMinimumFrequency": "20",
+                        "virgoMaximumFrequency": "1024",
+                        "duration": "4",
+                        "samplingFrequency": "512",
+                    },
+                    "prior": {"priorDefault": "4s"},
+                    "sampler": {
+                        "nlive": 1000,
+                        "nact": 10,
+                        "maxmcmc": 5000,
+                        "walks": 1000,
+                        "dlogz": 0.1,
+                        "cpus": 1,
+                        "samplerChoice": "dynesty",
+                    },
+                    "waveform": {"model": None},
+                }
+            }
+        }
+
+        response = self.query(
+            """
+            mutation NewJobMutation($input: BilbyJobMutationInput!) {
+              newBilbyJob(input: $input) {
+                result {
+                  jobId
+                }
+              }
+            }
+            """,
+            input_data=params["input"],
+        )
+
+        self.assertIsNone(response.errors, "Omitting the optional channels object should not raise an error")
+
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, params["input"]["params"]["details"]["name"])
+
 
 class TestJobSubmissionNameValidation(BilbyTestCase):
     def setUp(self):

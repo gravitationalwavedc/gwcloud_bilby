@@ -180,7 +180,8 @@ def create_bilby_job(user, params):
             detectors.append(v)
             maximum_frequencies[v] = str(getattr(params.detector, k + "_maximum_frequency"))
             minimum_frequencies[v] = str(getattr(params.detector, k + "_minimum_frequency"))
-            channels[v] = getattr(params.data.channels, k + "_channel")
+            if params.data.channels is not None:
+                channels[v] = getattr(params.data.channels, k + "_channel")
 
     # Set the run type as simulation if required
     num_simulated = 0
