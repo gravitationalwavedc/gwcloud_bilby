@@ -54,7 +54,7 @@ from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
-from .utils.misc import is_ligo_user
+from .utils.misc import es_section_dict, is_ligo_user
 
 logger = logging.getLogger(__name__)
 
@@ -1048,9 +1048,9 @@ def _build_public_job_rows(public_jobs_result):
             _build_job_row(
                 bilby_job,
                 status_name,
-                (job_source.get("user") or {}).get("name", ""),
-                (job_source.get("job") or {}).get("name", ""),
-                (job_source.get("job") or {}).get("description", ""),
+                es_section_dict(job_source.get("user")).get("name", ""),
+                es_section_dict(job_source.get("job")).get("name", ""),
+                es_section_dict(job_source.get("job")).get("description", ""),
             )
         )
 

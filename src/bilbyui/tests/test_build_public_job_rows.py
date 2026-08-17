@@ -80,6 +80,16 @@ class TestBuildPublicJobRows(BilbyTestCase):
         self.assertEqual(rows[0]["name"], "")
         self.assertEqual(rows[0]["description"], "")
 
+    def test_malformed_record_non_dict_user_and_job_sections(self):
+        job = self._create_job()
+        record = {"_id": str(job.id), "_source": {"user": "not-a-dict", "job": "not-a-dict"}}
+        rows = _build_public_job_rows(_result([record], {job.id: job}))
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["user"], "")
+        self.assertEqual(rows[0]["name"], "")
+        self.assertEqual(rows[0]["description"], "")
+
     def test_normal_job_statuses(self):
         with_controller = self._create_job(job_type=BilbyJobType.NORMAL)
         without_controller = self._create_job(

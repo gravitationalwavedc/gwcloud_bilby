@@ -49,7 +49,7 @@ from .utils.derive_job_status import derive_job_status
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
-from .utils.misc import is_ligo_user
+from .utils.misc import es_section_dict, is_ligo_user
 from .views import (
     create_bilby_job,
     create_bilby_job_from_ini_string,
@@ -502,9 +502,9 @@ class Query:
                 continue
 
             job_node = BilbyPublicJobNode(
-                user=(job.get("user") or {}).get("name", ""),
-                name=(job.get("job") or {}).get("name", ""),
-                description=(job.get("job") or {}).get("description", ""),
+                user=es_section_dict(job.get("user")).get("name", ""),
+                name=es_section_dict(job.get("job")).get("name", ""),
+                description=es_section_dict(job.get("job")).get("description", ""),
                 event_id=bilby_job.event_id,
                 id=to_global_id("BilbyJobNode", bilby_job.id),
             )
