@@ -1058,7 +1058,8 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
             continue
 
         es_source = record["_source"]
-        analysis_count = len(es_source.get("analyses") or [])
+        raw_analyses = es_source.get("analyses")
+        analysis_count = len(raw_analyses) if isinstance(raw_analyses, list) else 0
 
         files_total, files_uploaded = file_counts.get(job.id, (0, 0))
 
