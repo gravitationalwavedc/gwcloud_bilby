@@ -807,7 +807,7 @@ class UploadBilbyJobMutation(relay.ClientIDMutation):
         job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
         # Return the bilby job id to the client
-        return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
+        return UploadBilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
 
 
 class UploadSupportingFilesMutation(relay.ClientIDMutation):
@@ -858,7 +858,7 @@ class UploadExternalBilbyJobMutation(relay.ClientIDMutation):
 
         logger.info("Successfully uploaded external job %s for user %s", bilby_job.id, user.id)
         # Return the bilby job id to the client
-        return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
+        return UploadExternalBilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
 
 
 class UploadHdf5BilbyJobMutation(relay.ClientIDMutation):
@@ -890,7 +890,7 @@ class UploadHdf5BilbyJobMutation(relay.ClientIDMutation):
         job_id = to_global_id("BilbyJobNode", bilby_job.id)
 
         # Return the bilby job id to the client
-        return BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
+        return UploadHdf5BilbyJobMutation(result=BilbyJobCreationResult(job_id=job_id))
 
 
 class UpsertGwflowJobMutation(relay.ClientIDMutation):

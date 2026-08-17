@@ -2,15 +2,23 @@ import json
 import uuid
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
+from graphene import ResolveInfo
 
 from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, IniKeyValue, SupportingFile
+from bilbyui.schema import (
+    UploadBilbyJobMutation,
+    UploadExternalBilbyJobMutation,
+    UploadHdf5BilbyJobMutation,
+)
 from bilbyui.tests.test_utils import (
     compare_ini_kvs,
     create_test_ini_string,
@@ -1671,3 +1679,65 @@ class TestHdf5JobUpload(BilbyTestCase):
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.name, test_name)
         self.assertFalse(job.is_ligo_job, "HDF5 job should not be marked as LIGO job for non-embargoed data")
+
+
+class TestUploadMutationReturnType(BilbyTestCase):
+    """Unit tests asserting each upload mutation returns an instance of its own class."""
+
+    def setUp(self):
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+
+    def _make_info(self, field_name):
+        return ResolveInfo(
+            field_name=field_name,
+            field_nodes=None,
+            return_type=None,
+            parent_type=None,
+            path=None,
+            schema=None,
+            fragments=None,
+            root_value=None,
+            operation=None,
+            variable_values=None,
+            context=SimpleNamespace(user=self.user),
+            is_awaitable=None,
+        )
+
+    @mock.patch("bilbyui.schema.upload_bilby_job")
+    @mock.patch("bilbyui.schema.BilbyJobUploadToken.get_by_token")
+    def test_upload_bilby_job_mutation_returns_own_class(self, mock_get_token, mock_upload):
+        mock_get_token.return_value = SimpleNamespace()
+        mock_upload.return_value = SimpleNamespace(id=1)
+
+        result = UploadBilbyJobMutation.mutate_and_get_payload(
+            None, self._make_info("uploadBilbyJob"), "token", {"name": "test"}, SimpleNamespace()
+        )
+
+        self.assertIsInstance(result, UploadBilbyJobMutation)
+
+    @mock.patch("bilbyui.schema.upload_external_bilby_job")
+    def test_upload_external_bilby_job_mutation_returns_own_class(self, mock_upload):
+        mock_upload.return_value = SimpleNamespace(id=1)
+
+        result = UploadExternalBilbyJobMutation.mutate_and_get_payload(
+            None, self._make_info("uploadExternalBilbyJob"), {"name": "test"}, "ini", "url"
+        )
+
+        self.assertIsInstance(result, UploadExternalBilbyJobMutation)
+
+    @mock.patch("bilbyui.schema.upload_hdf5_bilby_job")
+    @mock.patch("bilbyui.schema.BilbyJobUploadToken.get_by_token")
+    def test_upload_hdf5_bilby_job_mutation_returns_own_class(self, mock_get_token, mock_upload):
+        mock_get_token.return_value = SimpleNamespace()
+        mock_upload.return_value = SimpleNamespace(id=1)
+
+        result = UploadHdf5BilbyJobMutation.mutate_and_get_payload(
+            None,
+            self._make_info("uploadHdf5BilbyJob"),
+            "token",
+            {"name": "test"},
+            SimpleNamespace(),
+            SimpleNamespace(),
+        )
+
+        self.assertIsInstance(result, UploadHdf5BilbyJobMutation)
