@@ -234,7 +234,7 @@ class BilbyJobNode(DjangoObjectType):
         user_id = user.id if user.is_authenticated else 0
 
         qs = BilbyJob.bilby_job_filter(queryset, user)
-        qs = qs.select_related("event_id").prefetch_related("labels").prefetch_related("user")
+        qs = qs.select_related("event_id", "gwflow_job").prefetch_related("labels").prefetch_related("user")
 
         # Query any job controller information in one go - exclude any job controller ids that are not set
         job_controller_ids = set(qs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))

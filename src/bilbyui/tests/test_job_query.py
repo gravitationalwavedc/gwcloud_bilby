@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from graphql_relay.node.node import to_global_id
 from humps import camelize
 
-from bilbyui.models import BilbyJob, EventID, Label
+from bilbyui.models import BilbyJob, EventID, GWFlowJob, Label
 from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -562,6 +562,47 @@ class TestBilbyJobQueries(BilbyTestCase):
                         node {
                             labels { name }
                             eventId { eventId }
+                        }
+                    }
+                }
+            }
+        """
+
+        with self.assertNumQueries(7):
+            response = self.query(query)
+        self.assertIsNone(response.errors)
+        self.assertEqual(len(response.data["bilbyJobs"]["edges"]), 4)
+
+    @mock.patch(
+        "bilbyui.schema.request_job_filter",
+        side_effect=lambda *args, **kwargs: (True, []),
+    )
+    def test_bilby_jobs_query_gwflow_job_no_nplus1(self, *args):
+        """
+        bilbyJobs connection querying gwflowJob should not issue one query per node (N+1).
+        """
+        self.authenticate()
+
+        gwflow_job = GWFlowJob.objects.create(sname="S230601test", user=self.user, ligo_only=False)
+        for i in range(3):
+            job = BilbyJob.objects.create(
+                user_id=self.user.id,
+                name=f"Job {i}",
+                job_controller_id=None,
+                is_ligo_job=False,
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+            job.gwflow_job = gwflow_job
+            job.save()
+
+        query = """
+            query {
+                bilbyJobs {
+                    edges {
+                        node {
+                            gwflowJob {
+                                sname
+                            }
                         }
                     }
                 }
