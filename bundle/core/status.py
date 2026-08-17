@@ -25,7 +25,7 @@ def get_submit_status(job):
         _status, info = sched.status(job["submit_id"], job)
 
         # If the job is a state less than or equal to running, return its state
-        if _status <= JobStatus.RUNNING:
+        if _status is None or _status <= JobStatus.RUNNING:
             result = {"what": "submit", "status": _status, "info": info}
 
             return result, False
@@ -67,7 +67,7 @@ def condor_status(job):
     _status, info = sched.status(job["submit_id"], job)
     result = [{"what": "submit", "status": _status, "info": info}]
 
-    if _status <= JobStatus.RUNNING:
+    if _status is None or _status <= JobStatus.RUNNING:
         return {"status": result, "complete": False}
 
     # Job is completed, or an error occurred

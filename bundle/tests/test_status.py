@@ -70,6 +70,17 @@ class TestStatus(TestCase):
         # Update job (To remove the submit_id) should never have been called
         self.assertEqual(update_job_mock.call_count, 0)
 
+        status_mock.side_effect = Mock(return_value=(None, None))
+
+        result = status(details)
+
+        # An undeterminable status should not crash and should keep polling
+        self.assertEqual(result["status"], [{"what": "submit", "status": None, "info": None}])
+        self.assertEqual(result["complete"], False)
+
+        # Update job (To remove the submit_id) should never have been called
+        self.assertEqual(update_job_mock.call_count, 0)
+
     @patch("_bundledb.delete_job")
     @patch("_bundledb.create_or_update_job")
     @patch("_bundledb.get_job_by_id")
@@ -354,6 +365,20 @@ class TestStatus(TestCase):
             result["status"],
             [
                 {"status": 40, "what": "submit", "info": "Queued"},
+            ],
+        )
+        self.assertEqual(result["complete"], False)
+        self.assertEqual(delete_job_mock.call_count, 0)
+
+        job_status_result = None
+
+        result = status(details)
+
+        # An undeterminable status should not crash and should keep polling
+        self.assertEqual(
+            result["status"],
+            [
+                {"status": None, "what": "submit", "info": "Unknown"},
             ],
         )
         self.assertEqual(result["complete"], False)
