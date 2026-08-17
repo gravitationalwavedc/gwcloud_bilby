@@ -79,9 +79,14 @@ class SlurmScheduler(Scheduler):
         command = f"sacct -Pn -j {job_id} -o jobid,state%50"
 
         # Execute the sacct command for this job
-        stdout = subprocess.check_output(command, shell=True)
+        try:
+            stdout = subprocess.check_output(command, shell=True)
+        except subprocess.CalledProcessError:
+            logger.warning(
+                "Failed to get status for job %s: command `%s` failed", job_id, command
+            )
+            return None, None
 
-        # todo: Handle errors
         # Get the output
         logger.info("Command `%s` returned `%s`", command, stdout)
 
