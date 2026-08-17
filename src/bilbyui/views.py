@@ -147,7 +147,9 @@ def _create_bilby_job_record(user, details, args, job_type, ini_string=None):
 
     # Set official label for GWOSC ingest user
     if user.id == settings.GWOSC_INGEST_USER:
-        bilby_job.labels.set([Label.objects.get(name="Official")])
+        official_label = Label.objects.filter(name="Official").first()
+        if official_label is not None:
+            bilby_job.labels.set([official_label])
 
     return bilby_job
 
