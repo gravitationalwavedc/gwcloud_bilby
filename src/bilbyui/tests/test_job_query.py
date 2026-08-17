@@ -123,7 +123,8 @@ class TestBilbyJobQueries(BilbyTestCase):
     )
     def test_bilby_job_status_query_empty_history(self, *args):
         """
-        bilbyJob node jobStatus should resolve to Unknown when job controller history is empty/None
+        bilbyJob node jobStatus should resolve to Unknown with the job creation time as the
+        date when job controller history is empty/None
         """
         response = self.job_request("jobStatus {name \n number \n date}")
         expected = {
@@ -131,7 +132,7 @@ class TestBilbyJobQueries(BilbyTestCase):
                 "jobStatus": {
                     "name": "Unknown",
                     "number": 0,
-                    "date": "Unknown",
+                    "date": str(self.job.creation_time),
                 }
             }
         }
