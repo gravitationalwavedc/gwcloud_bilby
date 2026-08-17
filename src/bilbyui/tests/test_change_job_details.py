@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from graphql_relay.node.node import to_global_id
 
-from bilbyui.models import BilbyJob
+from bilbyui.models import BilbyJob, EventID
 from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -76,6 +76,31 @@ class TestChangeJobDetails(BilbyTestCase):
             response.errors[0]["message"],
             "Event ID 'non-existent-event' not found.",
         )
+
+    @silence_errors
+    def test_change_job_details_ligo_event_denied_for_non_ligo_user(self):
+        """
+        Change details mutation should deny a non-LIGO user from linking their job to an embargoed LIGO event.
+        """
+        EventID.create(
+            event_id="GW150914_123456",
+            gps_time=1126259462.391,
+            trigger_id="S123456a",
+            nickname="GW150914",
+            is_ligo_event=True,
+        )
+
+        change_job_input = {
+            "jobId": self.global_job_id,
+            "eventId": "GW150914_123456",
+        }
+
+        response = self.query(self.mutation_string, input_data=change_job_input)
+
+        self.assertDictEqual({"updateBilbyJob": None}, response.data)
+        self.assertEqual(response.errors[0]["message"], "Permission Denied.")
+        self.job.refresh_from_db()
+        self.assertIsNone(self.job.event_id)
 
     @silence_errors
     def test_change_job_name_symbols(self):
