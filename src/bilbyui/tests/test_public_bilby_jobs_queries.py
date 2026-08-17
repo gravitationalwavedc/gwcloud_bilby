@@ -1,3 +1,4 @@
+import copy
 import re
 from datetime import datetime, timedelta
 from unittest import mock
@@ -179,6 +180,23 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         # _source, which must be skipped rather than raising a KeyError (500).
         jobs.append({"_id": 999998})
         jobs.append({"_id": 999997, "_source": "not-a-dict"})
+
+        return {"hits": {"hits": jobs}}
+
+    def elasticsearch_search_mock_with_non_dict_sections(*args, **kwargs):
+        user = {"name": "buffy summers", "id": 1}
+
+        jobs = []
+        for job in BilbyJob.objects.filter(user_id=user["id"]):
+            doc = {"_source": generate_elastic_doc(job, user), "_id": job.id}
+            jobs.append(doc)
+
+        # Simulate a malformed Elasticsearch record whose "user" and "job" sections
+        # are non-dicts, which must be tolerated rather than raising an AttributeError (500).
+        test1 = BilbyJob.objects.get(name="Test1")
+        for job in jobs:
+            if job["_id"] == test1.id:
+                job["_source"] = {"user": "not-a-dict", "job": "not-a-dict"}
 
         return {"hits": {"hits": jobs}}
 
@@ -825,6 +843,29 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         self.assertDictEqual(
             response.data,
             self.public_bilby_job_expected,
+            "publicBilbyJobs query returned unexpected data.",
+        )
+
+    @mock.patch(
+        "elasticsearch.Elasticsearch.search",
+        side_effect=elasticsearch_search_mock_with_non_dict_sections,
+    )
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_public_bilby_jobs_query_non_dict_user_and_job_sections(self, request_job_filter, elasticsearch_search):
+        variables = {"count": 50, "search": None, "timeRange": "all"}
+
+        # ES records with non-dict "user"/"job" sections should be tolerated with empty
+        # strings rather than raising an AttributeError and 500ing the query.
+        expected = copy.deepcopy(self.public_bilby_job_expected)
+        expected["publicBilbyJobs"]["edges"][1]["node"]["name"] = ""
+        expected["publicBilbyJobs"]["edges"][1]["node"]["user"] = ""
+        expected["publicBilbyJobs"]["edges"][1]["node"]["description"] = ""
+
+        response = self.query(self.public_bilby_job_query, variables=variables)
+        self.assertIsNone(response.errors, "non-dict user/job sections should not raise an error")
+        self.assertDictEqual(
+            response.data,
+            expected,
             "publicBilbyJobs query returned unexpected data.",
         )
 

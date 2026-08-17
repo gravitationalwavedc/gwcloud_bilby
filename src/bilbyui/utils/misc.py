@@ -24,3 +24,7 @@ def check_request_leak_decorator(fn):
 
 def is_ligo_user(user) -> bool:
     return not user.is_anonymous and AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"] in user.authentication_methods
+
+
+def es_section_dict(section):
+    return section if isinstance(section, dict) else {}
