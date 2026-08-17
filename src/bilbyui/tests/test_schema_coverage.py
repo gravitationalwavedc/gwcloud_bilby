@@ -73,6 +73,14 @@ class TestSchemaCoverage(BilbyTestCase):
         response = self.query(JOB_STATUS_QUERY % self.global_id)
         self.assertEqual(response.data["bilbyJob"]["jobStatus"], {"name": "Unknown", "number": 0, "date": "Unknown"})
 
+    @mock.patch("bilbyui.schema.request_job_filter", return_value=(None, [{"id": 2, "history": []}]))
+    @mock.patch("bilbyui.schema.derive_job_status", return_value=(JobStatus.DRAFT, "Unknown", None))
+    def test_bilby_job_status_none_date_falls_back_to_creation_time(self, *_):
+        status = self.query(JOB_STATUS_QUERY % self.global_id).data["bilbyJob"]["jobStatus"]
+        self.assertEqual(status["name"], "Unknown")
+        self.assertEqual(status["number"], JobStatus.DRAFT)
+        self.assertEqual(status["date"], str(self.job.creation_time))
+
     @mock.patch("bilbyui.schema.request_job_filter", side_effect=lambda *a, **k: (True, []))
     def test_bilby_job_status_uploaded(self, *_):
         self.job.job_type = BilbyJobType.UPLOADED

@@ -295,7 +295,9 @@ class BilbyJobNode(DjangoObjectType):
             return {
                 "name": status_name,
                 "number": status_number,
-                "date": status_date.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "date": status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
+                if status_date is not None
+                else self.creation_time,
             }
         except (AttributeError, KeyError, TypeError, ValueError):
             return {"name": "Unknown", "number": 0, "date": "Unknown"}
