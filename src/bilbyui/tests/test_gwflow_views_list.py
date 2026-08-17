@@ -181,6 +181,28 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["sname"], "S230601ag")
 
+    def test_row_building_skips_missing_or_non_dict_source(self):
+        job = GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+
+        records = [
+            {"_id": str(job.id)},
+            {"_id": str(job.id), "_source": "not-a-dict"},
+            {"_id": str(job.id), "_source": {"analyses": ["a"]}},
+        ]
+        result = {
+            "jobs": {job.id: job},
+            "records": records,
+            "has_next": False,
+            "page": 1,
+            "page_size": 20,
+        }
+
+        rows = _build_gwflow_job_rows(result)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["sname"], "S230601ag")
+        self.assertEqual(rows[0]["analysis_count"], 1)
+
     def test_empty_state(self):
         with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()):
             response = self.client.get(self.url)
