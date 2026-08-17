@@ -137,7 +137,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
     records = [
         record
         for record in records
-        if isinstance(record, dict) and (isinstance(record["_id"], int) or str(record["_id"]).isdigit())
+        if isinstance(record, dict) and (isinstance(record.get("_id"), int) or str(record.get("_id")).isdigit())
     ]
     has_next = len(records) > page_size
 
