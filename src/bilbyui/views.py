@@ -111,7 +111,11 @@ def check_job_embargo_status(user, args):
     n_simulation = args.n_simulation
     # Convert to boolean for embargo checking (0 = False, non-zero = True)
     if n_simulation is not None:
-        n_simulation = bool(int(n_simulation))
+        try:
+            n_simulation = bool(int(n_simulation))
+        except (TypeError, ValueError):
+            # Malformed n_simulation value - treat as not simulated (embargo-safe)
+            n_simulation = False
 
     # Delegate to the core embargo logic in utils/embargo.py
     return should_embargo_job(user, trigger_time, n_simulation)

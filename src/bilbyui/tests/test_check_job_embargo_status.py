@@ -82,6 +82,11 @@ class TestCheckJobEmbargoStatus(BilbyTestCase):
         self.assertTrue(check_job_embargo_status(None, args))
 
     @override_settings(EMBARGO_START_TIME=1.5)
+    def test_malformed_n_simulation_treated_as_not_simulated(self):
+        args = _args(trigger_time="2.0", n_simulation="not-a-number")
+        self.assertTrue(check_job_embargo_status(None, args))
+
+    @override_settings(EMBARGO_START_TIME=1.5)
     def test_ligo_user_bypasses_embargo(self):
         args = _args(trigger_time="2.0", n_simulation="0")
         self.user, _ = User.objects.update_or_create(
