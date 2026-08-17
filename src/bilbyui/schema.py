@@ -741,7 +741,10 @@ class UpdateBilbyJobMutation(relay.ClientIDMutation):
         user = info.context.user
 
         job_id = kwargs.pop("job_id")
-        job_model_id = from_global_id(job_id)[1]
+        try:
+            job_model_id = int(from_global_id(job_id)[1])
+        except (ValueError, TypeError):
+            raise GraphQLError("Invalid job_id")
         logger.info("User %s updating job %s: %s", user.id, job_model_id, list(kwargs.keys()))
 
         # Update privacy of bilby job
@@ -768,7 +771,10 @@ class GenerateFileDownloadIds(relay.ClientIDMutation):
     def mutate_and_get_payload(cls, _root, info, job_id, download_tokens):
         user = info.context.user
         user_id = user.id if user.is_authenticated else 0
-        job_model_id = from_global_id(job_id)[1]
+        try:
+            job_model_id = int(from_global_id(job_id)[1])
+        except (ValueError, TypeError):
+            raise GraphQLError("Invalid job_id")
         logger.info(
             "User %s requesting file download IDs for job %s: %s files", user_id, job_model_id, len(download_tokens)
         )
