@@ -262,7 +262,7 @@ class BilbyJobNode(DjangoObjectType):
         try:
             logger.debug("Generating parameters for job %s", self.id)
             return generate_parameter_output(self)
-        except (AttributeError, KeyError, TypeError) as e:
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
             logger.exception("Failed to generate parameter output for job %s: %s", self.id, type(e).__name__)
             return None
 
