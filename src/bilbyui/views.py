@@ -630,6 +630,13 @@ def upload_bilby_job(user, upload_token, details, job_file):
             supporting_file_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(bilby_job.id)
             supporting_file_dir.mkdir(exist_ok=True, parents=True)
 
+            # Because we're in a transaction here, the bulk_create in `SupportingFile.save_from_parsed` isn't saved
+            # so we need to fetch the instances again from the database to get the inserted IDs
+            supporting_file_instances = SupportingFile.objects.filter(
+                download_token__in=[f["download_token"] for f in supporting_file_details]
+            )
+            supporting_file_instances = {f.download_token: f for f in supporting_file_instances}
+
             # Make sure the source supporting file exists
             for supporting_file in supporting_file_details:
                 source_file = Path(job_staging_dir) / supporting_file["file_path"]
@@ -637,9 +644,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
                     msg = f"Supporting file {supporting_file['file_path']} does not exist."
                     raise FileNotFoundError(msg)
 
-                # Because we're in a transaction here, the bulk_create in `SupportingFile.save_from_parsed` isn't saved
-                # so we need to fetch it again from the database to get the inserted ID
-                supporting_file_instance = SupportingFile.objects.get(download_token=supporting_file["download_token"])
+                supporting_file_instance = supporting_file_instances[supporting_file["download_token"]]
                 shutil.copyfile(source_file, supporting_file_dir / str(supporting_file_instance.id))
 
             # Now we have the bilby job id, we can move the staging directory to the actual job directory
