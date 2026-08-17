@@ -63,6 +63,10 @@ class TestSchemaCoverage(BilbyTestCase):
     def test_resolve_params_exception_returns_none(self, *_):
         self.assertIsNone(BilbyJobNode.resolve_params(mock.Mock(), mock.Mock()))
 
+    @mock.patch("bilbyui.schema.generate_parameter_output", side_effect=ValueError("Detectors must be set"))
+    def test_resolve_params_value_error_returns_none(self, *_):
+        self.assertIsNone(BilbyJobNode.resolve_params(mock.Mock(), mock.Mock()))
+
     @mock.patch("bilbyui.schema.request_job_filter", return_value=(None, [{"id": 2, "history": None}]))
     @mock.patch("bilbyui.schema.derive_job_status", side_effect=KeyError("status unavailable"))
     def test_bilby_job_status_exception_fallback(self, *_):
