@@ -1,13 +1,74 @@
+<div class="mb-4">
+  {% if payload.schema_version %}
+    <span class="badge badge-secondary mr-1">v{{ payload.schema_version }}</span>
+  {% endif %}
+  {% if payload.commit_sha %}
+    <span class="badge badge-secondary mr-1">{{ payload.commit_sha|slice:":8" }}</span>
+  {% endif %}
+  {% if payload.commit_timestamp %}
+    <span class="text-muted">{{ payload.commit_timestamp }}</span>
+  {% endif %}
+  {% if stale %}
+    <span class="text-muted small">Showing cached copy.</span>
+  {% endif %}
+</div>
+
 {% if payload %}
-  <dl>
-    {% for key, value in payload.items %}
-      <dt>{{ key }}</dt>
-      <dd>{{ value }}</dd>
-    {% endfor %}
-  </dl>
+  {% if payload.info %}
+    {% with info=payload.info %}
+      {% include "bilbyui/_gwflow_metadata_info.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if payload.gracedb %}
+    {% with gracedb=payload.gracedb %}
+      {% include "bilbyui/_gwflow_metadata_gracedb.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if payload.pe %}
+    {% with pe=payload.pe %}
+      {% include "bilbyui/_gwflow_metadata_pe.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if payload.tgr %}
+    {% with tgr=payload.tgr %}
+      {% include "bilbyui/_gwflow_metadata_tgr.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if payload.lensing %}
+    {% with lensing=payload.lensing %}
+      {% include "bilbyui/_gwflow_metadata_lensing.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if payload.detchar %}
+    {% with section=payload.detchar section_name="Detchar" %}
+      {% include "bilbyui/_gwflow_metadata_generic.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if payload.extreme_matter %}
+    {% with section=payload.extreme_matter section_name="Extreme Matter" %}
+      {% include "bilbyui/_gwflow_metadata_generic.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if payload.cosmology %}
+    {% with section=payload.cosmology section_name="Cosmology" %}
+      {% include "bilbyui/_gwflow_metadata_generic.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if payload.rnp %}
+    {% with section=payload.rnp section_name="RNP" %}
+      {% include "bilbyui/_gwflow_metadata_generic.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if payload.catalog_tracking %}
+    {% with section=payload.catalog_tracking section_name="Catalog Tracking" %}
+      {% include "bilbyui/_gwflow_metadata_generic.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if payload.publications %}
+    {% with section=payload.publications section_name="Publications" %}
+      {% include "bilbyui/_gwflow_metadata_generic.html" %}
+    {% endwith %}
+  {% endif %}
 {% else %}
   <p class="text-muted">No metadata available.</p>
-{% endif %}
-{% if stale %}
-  <p class="text-muted small">Showing cached copy.</p>
 {% endif %}
