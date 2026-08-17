@@ -78,7 +78,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                     detail = portal_client.get_superevent(row_sname)
                     files = manifest.extract_file_manifest(detail)
                     libraries = (
-                        [lib["name"] for lib in detail.get("libraries", [])]
+                        [lib["name"] for lib in detail.get("libraries", []) if isinstance(lib, dict)]
                         if isinstance(detail.get("libraries"), list)
                         else []
                     )

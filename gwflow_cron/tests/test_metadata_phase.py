@@ -61,6 +61,39 @@ class TestMetadataPhase(GWFlowTestBase):
         self.assertEqual(state.get_watermark(cur), "2026-01-02T12:00:00Z")
         self.assertEqual(state.get_last_sname(cur), "S260102b")
 
+    def test_malformed_libraries_entry_is_skipped(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = [
+            {
+                "sname": "S_LIBS",
+                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "schema_version": "1.0",
+                "commit_sha": "sha1",
+            },
+        ]
+        mock_portal.get_superevent.return_value = {
+            "sname": "S_LIBS",
+            "raw_payload": {"sname": "S_LIBS"},
+            "libraries": ["not-a-dict", {"name": "bilby"}, None, {"name": "gwpy"}],
+        }
+        mock_portal.iter_current_snames.return_value = ["S_LIBS"]
+
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = []
+
+        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once_with(
+            sname="S_LIBS",
+            schema_version="1.0",
+            metadata={"sname": "S_LIBS"},
+            libraries=["bilby", "gwpy"],
+            is_pruned=False,
+            current_history_id="sha1",
+            current_history_timestamp="2026-01-01T10:00:00Z",
+            files=[],
+        )
+
     def test_tie_resume(self):
         cur = self.con.cursor()
         # Set watermark and last_sname in state
