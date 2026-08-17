@@ -104,6 +104,19 @@ class TestSchemaCoverage(BilbyTestCase):
         self.assertIsNone(response.data["bilbyResultFiles"])
         self.assertIsNone(response.errors)
 
+    def test_bilby_result_files_private_job_not_owned(self):
+        User.objects.update_or_create(id=2, defaults={"name": "u2", "primary_email": "u2@test.com"})
+        private_job = BilbyJob.objects.create(
+            user_id=2,
+            name="Private",
+            job_controller_id=3,
+            private=True,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        response = self.query(RESULT_FILES_QUERY % to_global_id("BilbyJobNode", private_job.id))
+        self.assertIsNone(response.data["bilbyResultFiles"])
+        self.assertIsNone(response.errors)
+
     @silence_errors
     @mock.patch(
         "bilbyui.models.request_file_list", return_value=(True, [{"path": "/f.txt", "isDir": False, "fileSize": 1}])
