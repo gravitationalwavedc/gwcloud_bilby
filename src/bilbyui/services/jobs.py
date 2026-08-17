@@ -195,7 +195,7 @@ def update_job(job_id, user, private=None, labels=None, event_id=None, name=None
             bilby_job.labels.set(Label.filter_by_name(labels) | protected_labels)
 
         if event_id is not None:
-            bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
+            bilby_job.event_id = None if event_id == "" else EventID.get_by_event_id(event_id, user)
 
         if private is not None:
             bilby_job.private = private
@@ -212,7 +212,7 @@ def update_job(job_id, user, private=None, labels=None, event_id=None, name=None
         return True, "Job saved!"
 
     if user.id in settings.PERMITTED_EVENT_CREATION_USER_IDS and event_id is not None:
-        bilby_job.event_id = None if event_id == "" else EventID.objects.get(event_id=event_id)
+        bilby_job.event_id = None if event_id == "" else EventID.get_by_event_id(event_id, user)
 
         bilby_job.save()
 
