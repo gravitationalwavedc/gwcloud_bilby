@@ -96,7 +96,7 @@ class TestSubmit(TestCase):
 
             # Check that the job script generation successfully called the the popen command
             process = call.Popen(popen_command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, cwd=td, shell=True)
-            compare(self.popen.all_calls, expected=[process, process.wait(), process.communicate(), process.wait()])
+            compare(self.popen.all_calls, expected=[process, process.communicate(), process.wait()])
 
             # Check the stdout and stderr logs for the data generation step are correctly written to their respective
             # log files
