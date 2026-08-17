@@ -591,7 +591,7 @@ class Query:
                 raise GraphQLError("Error getting file list. " + str(files))
 
             # Generate download tokens for the list of files
-            paths = [f["path"] for f in files if not f.get("isDir", False) and f.get("path")]
+            paths = [f["path"] for f in files if isinstance(f, dict) and not f.get("isDir", False) and f.get("path")]
             tokens = FileDownloadToken.create(job, paths)
 
             # Generate a dict that can be used to query the generated tokens
@@ -606,6 +606,7 @@ class Query:
                     download_token=token_dict.get(f.get("path", "")),
                 )
                 for f in files
+                if isinstance(f, dict)
             ]
 
         return BilbyResultFiles(files=result, job_type=job.job_type)
