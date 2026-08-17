@@ -1756,9 +1756,7 @@ def _reconcile_gwflow_files(job, file_entries):
     if file_entries is None:
         return []
 
-    current_keys = {
-        (getattr(entry, "analysis_uid", "") or "", entry.path) for entry in file_entries
-    }
+    current_keys = {(getattr(entry, "analysis_uid", "") or "", entry.path) for entry in file_entries}
     removed = []
     for f in list(job.files.all()):
         if (f.analysis_uid, f.path) not in current_keys:

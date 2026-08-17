@@ -787,7 +787,10 @@ class TestGWFlowMutations(BilbyTestCase):
 
             # Both ids in removedFiles
             removed_ids = sorted(r["id"] for r in result["removedFiles"])
-            self.assertEqual(removed_ids, sorted([to_global_id("GWFlowFileNode", a_file.id), to_global_id("GWFlowFileNode", b_file.id)]))
+            self.assertEqual(
+                removed_ids,
+                sorted([to_global_id("GWFlowFileNode", a_file.id), to_global_id("GWFlowFileNode", b_file.id)]),
+            )
             removed_paths = sorted(r["path"] for r in result["removedFiles"])
             self.assertEqual(removed_paths, ["outdir/a.h5", "outdir/b.h5"])
 
