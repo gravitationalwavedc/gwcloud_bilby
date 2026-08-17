@@ -502,9 +502,9 @@ class Query:
                 continue
 
             job_node = BilbyPublicJobNode(
-                user=job.get("user", {}).get("name", ""),
-                name=job.get("job", {}).get("name", ""),
-                description=job.get("job", {}).get("description", ""),
+                user=(job.get("user") or {}).get("name", ""),
+                name=(job.get("job") or {}).get("name", ""),
+                description=(job.get("job") or {}).get("description", ""),
                 event_id=bilby_job.event_id,
                 id=to_global_id("BilbyJobNode", bilby_job.id),
             )

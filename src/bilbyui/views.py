@@ -1048,9 +1048,9 @@ def _build_public_job_rows(public_jobs_result):
             _build_job_row(
                 bilby_job,
                 status_name,
-                job_source.get("user", {}).get("name", ""),
-                job_source.get("job", {}).get("name", ""),
-                job_source.get("job", {}).get("description", ""),
+                (job_source.get("user") or {}).get("name", ""),
+                (job_source.get("job") or {}).get("name", ""),
+                (job_source.get("job") or {}).get("description", ""),
             )
         )
 
