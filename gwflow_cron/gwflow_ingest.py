@@ -33,7 +33,12 @@ if not logger.handlers:
 def gwc_known_unpruned_snames(gwc_client: Any) -> set[str]:
     """Query GWCloud for active (unpruned) superevent snames."""
     jobs = gwc_client.get_gwflow_job_list(include_pruned=False)
-    return {j["sname"] if isinstance(j, dict) else j.sname for j in jobs}
+    snames = set()
+    for j in jobs:
+        sname = j.get("sname") if isinstance(j, dict) else getattr(j, "sname", None)
+        if sname:
+            snames.add(sname)
+    return snames
 
 
 def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlite3.Connection | None = None):

@@ -191,6 +191,18 @@ class TestMetadataPhase(GWFlowTestBase):
         with self.assertRaises(AttributeError):
             gwc_known_unpruned_snames(object())
 
+    def test_gwc_known_unpruned_snames_skips_entries_without_sname(self):
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = [
+            {"sname": "S_OK"},
+            {},
+            SimpleNamespace(sname="S_OBJ"),
+            SimpleNamespace(),
+            "S_STR",
+        ]
+
+        self.assertEqual(gwc_known_unpruned_snames(mock_gwc), {"S_OK", "S_OBJ"})
+
     @patch("portal.PortalClient")
     def test_phase_metadata_creates_connection_when_con_is_none(self, mock_portal_cls):
         mock_portal = MagicMock()
