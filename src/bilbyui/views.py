@@ -1094,7 +1094,7 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
                 "analysis_count": analysis_count,
                 "files_uploaded": files_uploaded,
                 "files_total": files_total,
-                "last_updated": job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "last_updated": job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC") if job.last_updated else "",
                 "is_pruned": job.is_pruned,
             }
         )

@@ -162,6 +162,16 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertEqual(row["id"], job1.id)
         self.assertRegex(row["last_updated"], r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC$")
 
+    def test_row_building_none_last_updated_does_not_crash(self):
+        job = GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+        job.last_updated = None
+        result = _build_gwflow_result([job])
+
+        rows = _build_gwflow_job_rows(result)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["last_updated"], "")
+
     def test_row_building_malformed_analyses_counts_as_zero(self):
         job = GWFlowJob.objects.create(sname="S230601ag", user=self.user)
 
