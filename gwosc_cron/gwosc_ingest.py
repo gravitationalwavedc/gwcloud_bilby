@@ -17,14 +17,15 @@ logger = logging.getLogger("gwosc_ingest")
 logger.setLevel(logging.DEBUG)
 
 
-fh = logging.FileHandler("gwosc_ingest.log")
-fh.setLevel(logging.DEBUG)
+if not logger.handlers:
+    fh = logging.FileHandler("gwosc_ingest.log")
+    fh.setLevel(logging.DEBUG)
 
-sh = logging.StreamHandler(sys.stdout)
-sh.setLevel(logging.INFO)
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(logging.INFO)
 
-logger.addHandler(fh)
-logger.addHandler(sh)
+    logger.addHandler(fh)
+    logger.addHandler(sh)
 
 try:
     from local import DB_PATH, ENDPOINT, GWCLOUD_TOKEN
