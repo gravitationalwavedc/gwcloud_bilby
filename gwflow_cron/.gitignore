@@ -5,3 +5,4 @@ sqlite.db
 .coverage
 coverage.xml
 junit.xml
+TEST-*.xml

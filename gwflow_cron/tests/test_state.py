@@ -38,6 +38,44 @@ class TestState(GWFlowTestBase):
         self.assertEqual(state.failures_over(cur, cap=1), [])
 
 
+class TestChangedSnames(GWFlowTestBase):
+    def test_get_changed_snames_empty(self):
+        cur = self.con.cursor()
+        self.assertEqual(state.get_changed_snames(cur), [])
+
+    def test_clear_record_get_round_trip(self):
+        cur = self.con.cursor()
+        self.assertEqual(state.get_changed_snames(cur), [])
+
+        state.record_changed_sname(self.con, cur, "S1")
+        state.record_changed_sname(self.con, cur, "S2")
+        state.record_changed_sname(self.con, cur, "S3")
+
+        self.assertEqual(state.get_changed_snames(cur), ["S1", "S2", "S3"])
+
+        state.clear_changed_snames(self.con, cur)
+        self.assertEqual(state.get_changed_snames(cur), [])
+
+    def test_record_changed_sname_idempotent(self):
+        cur = self.con.cursor()
+        state.record_changed_sname(self.con, cur, "S1")
+        state.record_changed_sname(self.con, cur, "S1")
+        state.record_changed_sname(self.con, cur, "S1")
+
+        self.assertEqual(state.get_changed_snames(cur), ["S1"])
+
+    def test_commit_persists_across_cursor(self):
+        cur = self.con.cursor()
+        state.record_changed_sname(self.con, cur, "S1")
+        state.record_changed_sname(self.con, cur, "S2")
+
+        cur2 = self.con.cursor()
+        self.assertEqual(state.get_changed_snames(cur2), ["S1", "S2"])
+
+        state.clear_changed_snames(self.con, cur)
+        self.assertEqual(state.get_changed_snames(cur2), [])
+
+
 if __name__ == "__main__":
     import unittest
 

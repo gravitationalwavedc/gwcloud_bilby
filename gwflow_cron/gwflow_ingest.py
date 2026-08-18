@@ -3,6 +3,7 @@ import contextlib
 import copy
 import fcntl
 import logging
+import shutil
 import sqlite3
 import sys
 from pathlib import Path
@@ -13,6 +14,7 @@ from gwcloud_python import GWCloud
 import manifest
 import settings
 import state
+from bilby_children import find_bilby_pe_analyses, make_archive, resolve_event_id_for, synthesize_job_tree
 from fetch import fetch_to_staging
 from job_controller import ClusterOffline, JobControllerClient
 from portal import PortalClient
@@ -51,6 +53,17 @@ def _with_normalized_uid(rec: Any, analysis_uid: str) -> Any:
     return rec
 
 
+def rec_for(file_ref: dict, sname: str, uid: str) -> dict:
+    """Build a pending-file-shaped record for fetch_to_staging."""
+    return {
+        "sname": sname,
+        "analysis_uid": uid,
+        "path": file_ref["path"],
+        "file_name": Path(file_ref["path"]).name,
+        "md5_sum": file_ref.get("md5_sum") or "",
+    }
+
+
 def gwc_known_unpruned_snames(gwc_client: Any) -> set[str]:
     """Query GWCloud for active (unpruned) superevent snames."""
     jobs = gwc_client.get_gwflow_job_list(include_pruned=False)
@@ -74,6 +87,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
     try:
         cur = con.cursor()
         state.init_db(cur)
+        state.clear_changed_snames(con, cur)
 
         if portal_client is None:
             portal_client = PortalClient(settings.CBCFLOW_PORTAL_URL, settings.CBCFLOW_PORTAL_TOKEN)
@@ -123,6 +137,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                         )
 
                     state.clear_failure(con, cur, row_sname)
+                    state.record_changed_sname(con, cur, row_sname)
                     if not has_failure_in_run:
                         state.set_watermark(con, cur, row_ts)
                         state.set_last_sname(con, cur, row_sname)
@@ -159,8 +174,119 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
     logger.info("Completed phase_metadata")
 
 
-def phase_bilby_children(gwc_client: Any = None, jc: Any = None, con: sqlite3.Connection | None = None):
-    logger.info("phase_bilby_children: not implemented")
+def phase_bilby_children(
+    portal_client: Any = None,
+    gwc_client: Any = None,
+    jc: Any = None,
+    con: sqlite3.Connection | None = None,
+):
+    if gwc_client is None or jc is None:
+        logger.info("phase_bilby_children: clients not wired - skipping")
+        return
+    logger.info("Starting phase_bilby_children")
+
+    close_con = False
+    if con is None:
+        con = sqlite3.connect(settings.DB_PATH)
+        con.row_factory = sqlite3.Row
+        close_con = True
+
+    try:
+        cur = con.cursor()
+        state.init_db(cur)
+
+        if portal_client is None:
+            portal_client = PortalClient(settings.CBCFLOW_PORTAL_URL, settings.CBCFLOW_PORTAL_TOKEN)
+
+        over_retry = set(state.failures_over(cur, settings.MAX_RETRY_ATTEMPTS))
+        bytes_done = files_done = 0
+
+        for sname in state.get_changed_snames(cur):
+            try:
+                detail = portal_client.get_superevent(sname)
+            except Exception as e:
+                logger.warning("failed to fetch detail for %s: %s", sname, e)
+                state.record_failure(con, cur, sname, repr(e))
+                continue
+
+            linked: set[str] = set()
+            try:
+                job = gwc_client.get_gwflow_job(sname)
+                if job is not None:
+                    bilby_jobs = getattr(job, "bilby_jobs", None) or []
+                    linked = {getattr(j, "gwflow_analysis_uid", "") for j in bilby_jobs}
+                    linked.discard("")
+            except Exception as e:
+                logger.warning("failed to fetch linked jobs for %s: %s", sname, e)
+                state.record_failure(con, cur, sname, repr(e))
+                continue
+
+            cluster_offline = False
+            cap_reached = False
+            for analysis in find_bilby_pe_analyses(detail):
+                uid = analysis["uid"]
+                key = f"{sname}/{uid}"
+                if uid in linked:
+                    continue
+                if key in over_retry:
+                    continue
+
+                workdir = Path(settings.STAGING_DIR) / key
+                archive = Path(settings.STAGING_DIR) / f"{key}.tar.gz"
+
+                try:
+                    ini_path = fetch_to_staging(jc, rec_for(analysis["config_file"], sname, uid))
+                    ini_text = ini_path.read_text(encoding="utf-8")
+                    results: list[Path] = []
+                    for f in (analysis["result_file"], analysis["pesummary_result_file"]):
+                        if f:
+                            results.append(fetch_to_staging(jc, rec_for(f, sname, uid)))
+
+                    if not settings.BACKFILL and (
+                        files_done >= settings.MAX_FILES_PER_RUN or bytes_done >= settings.MAX_BYTES_PER_RUN
+                    ):
+                        cap_reached = True
+                        break
+
+                    name = f"{sname}--{uid}"
+                    tree = synthesize_job_tree(workdir, name, ini_text, results)
+                    make_archive(tree, archive)
+
+                    job = gwc_client.upload_job_archive(
+                        description=f"gwflow {sname} PE {uid}",
+                        job_archive=archive,
+                        public=True,
+                    )
+                    gwc_client.link_bilby_job_to_gwflow(job.id, sname, uid)
+
+                    try:
+                        ev = resolve_event_id_for(sname, detail)
+                        if ev:
+                            gwc_client.create_event_id(ev[0], ev[1], trigger_id=sname)
+                            job.set_event_id(ev[0])
+                    except Exception:
+                        logger.warning("event id link failed for %s", key)
+
+                    bytes_done += ini_path.stat().st_size + sum(r.stat().st_size for r in results)
+                    files_done += 1
+                    state.clear_failure(con, cur, key)
+                except ClusterOffline:
+                    logger.warning("cluster offline - deferring remaining analyses")
+                    cluster_offline = True
+                    break
+                except Exception as e:
+                    state.record_failure(con, cur, key, repr(e))
+                finally:
+                    shutil.rmtree(workdir, ignore_errors=True)
+                    archive.unlink(missing_ok=True)
+
+            if cluster_offline or cap_reached:
+                break
+
+        logger.info("Completed phase_bilby_children")
+    finally:
+        if close_con and con:
+            con.close()
 
 
 def phase_file_mirror(jc: Any = None, gwc_client: Any = None, con: sqlite3.Connection | None = None):
