@@ -11,6 +11,9 @@ def cancel(details, job_data):
     """
     sched = get_scheduler()
 
+    if sched is None:
+        return False
+
     if "submit_id" in job_data:
         return sched.cancel(job_data["submit_id"], details)
 
