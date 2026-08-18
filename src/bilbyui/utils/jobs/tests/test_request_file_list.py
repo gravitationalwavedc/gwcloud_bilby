@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 import responses
 from django.conf import settings
@@ -224,3 +225,21 @@ class TestRequestFileListUploaded(BilbyTestCase):
 
         self.assertTrue(result[0])
         self.assertNotIn("broken_link", [entry["path"] for entry in result[1]])
+
+    def test_request_file_list_recursive_skips_missing_directory(self):
+        job_dir = self.job.get_upload_directory()
+        target_dir = Path(job_dir) / "data" / "disappearing_dir"
+        target_dir.mkdir()
+
+        real_stat = Path.stat
+
+        def stat_side_effect(self_obj, *, follow_symlinks=True):
+            if self_obj == target_dir:
+                raise FileNotFoundError
+            return real_stat(self_obj, follow_symlinks=follow_symlinks)
+
+        with mock.patch.object(Path, "stat", new=stat_side_effect):
+            result = request_file_list(self.job, "./data", True, self.job.user_id)
+
+        self.assertTrue(result[0])
+        self.assertNotIn("disappearing_dir", [entry["path"] for entry in result[1]])

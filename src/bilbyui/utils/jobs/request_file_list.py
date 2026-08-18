@@ -47,14 +47,16 @@ def request_file_list(job, path, recursive, user_id=None):
                     # Construct the real path to this directory
                     real_file_name = Path(root, item)
                     # Add the file entry
-                    file_list.append(
-                        {
-                            # Remove the leading working directory
-                            "path": str(real_file_name)[len(job_dir) :],
-                            "isDir": True,
-                            "fileSize": real_file_name.stat().st_size,
-                        }
-                    )
+                    with contextlib.suppress(FileNotFoundError):
+                        # Happens when trying to stat a symlink
+                        file_list.append(
+                            {
+                                # Remove the leading working directory
+                                "path": str(real_file_name)[len(job_dir) :],
+                                "isDir": True,
+                                "fileSize": real_file_name.stat().st_size,
+                            }
+                        )
 
                 for item in filenames:
                     # Construct the real path to this file
