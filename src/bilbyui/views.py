@@ -21,6 +21,7 @@ from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirec
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 from graphql import GraphQLError
 from graphql_relay.node.node import from_global_id, to_global_id
@@ -48,7 +49,7 @@ from .utils.embargo import should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update
 from .utils.gwflow_es import update_child_job_ids as update_gwflow_child_job_ids
-from .utils.gwflow_portal import get_superevent
+from .utils.gwflow_portal import get_superevent, get_version, get_versions
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args, prepare_args_for_data_input
 from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
@@ -1221,6 +1222,59 @@ def gwflow_job_metadata_partial(request, sname):
         request,
         "bilbyui/_gwflow_metadata.html",
         {
+            "payload": data,
+            "stale": state == "stale",
+        },
+    )
+
+
+def gwflow_job_history_partial(request, sname):
+    job = _get_gwflow_job_or_404(request, sname)
+    versions, state = get_versions(sname)
+    if state == "down" or versions is None:
+        return TemplateResponse(
+            request,
+            "bilbyui/_gwflow_portal_error.html",
+            {
+                "sname": sname,
+                "retry_url": reverse("bilbyui:gwflow_job_history", args=[sname]),
+                "retry_target": "#history-pane",
+                "error_message": "The history service is currently unavailable.",
+            },
+        )
+    return TemplateResponse(
+        request,
+        "bilbyui/_gwflow_history.html",
+        {
+            "job": job,
+            "versions": versions,
+            "stale": state == "stale",
+        },
+    )
+
+
+def gwflow_job_history_version_partial(request, sname, history_id):
+    job = _get_gwflow_job_or_404(request, sname)
+    data, state = get_version(sname, history_id)
+    if state == "down":
+        return TemplateResponse(
+            request,
+            "bilbyui/_gwflow_portal_error.html",
+            {
+                "sname": sname,
+                "retry_url": reverse("bilbyui:gwflow_job_history_version", args=[sname, history_id]),
+                "retry_target": "#gwflow-history-version",
+                "error_message": "The version details service is currently unavailable.",
+            },
+        )
+    if data is None:
+        raise Http404("Version not found")
+    return TemplateResponse(
+        request,
+        "bilbyui/_gwflow_history_version.html",
+        {
+            "job": job,
+            "history_id": history_id,
             "payload": data,
             "stale": state == "stale",
         },

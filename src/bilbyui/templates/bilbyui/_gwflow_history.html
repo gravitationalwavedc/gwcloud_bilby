@@ -1,0 +1,42 @@
+<div class="card gw-form-card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>History</span>
+    {% if stale %}
+      <span class="text-muted small">Showing cached copy.</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if versions %}
+      <div class="list-group">
+        {% for v in versions %}
+          <a
+            href="#"
+            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+            hx-get="{% url 'bilbyui:gwflow_job_history_version' sname=job.sname history_id=v.commit_sha %}"
+            hx-target="#gwflow-history-version"
+            hx-swap="innerHTML"
+          >
+            <div>
+              <span class="badge badge-secondary mr-1">{{ v.commit_sha|slice:":8" }}</span>
+              {% if v.schema_version %}
+                <span class="badge badge-secondary mr-1">v{{ v.schema_version }}</span>
+              {% endif %}
+              {% if job.current_history_id == v.commit_sha %}
+                <span class="badge badge-primary">current</span>
+              {% elif not job.current_history_id and v.is_current %}
+                <span class="badge badge-primary">current</span>
+              {% endif %}
+            </div>
+            {% if v.commit_timestamp %}
+              <span class="text-muted small">{{ v.commit_timestamp }}</span>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted mb-0">No history available.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div id="gwflow-history-version" class="mt-4"></div>
