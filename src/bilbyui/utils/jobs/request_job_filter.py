@@ -38,5 +38,8 @@ def request_job_filter(user_id, ids=None, end_time_gt=None):
         logger.exception("Error getting job filter for user %s", user_id)
         return "UNKNOWN", []
     else:
+        if not isinstance(result, list):
+            logger.error("Error getting job filter for user %s: malformed response from job controller", user_id)
+            return "UNKNOWN", []
         logger.debug("Successfully retrieved %s jobs for user %s", len(result), user_id)
         return "OK", result

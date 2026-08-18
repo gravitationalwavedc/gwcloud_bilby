@@ -47,6 +47,38 @@ class TestRequestJobFilter(SimpleTestCase):
         finally:
             logging.disable(logging.NOTSET)
 
+    def test_malformed_response_fallback(self):
+        try:
+            logging.disable(logging.CRITICAL)
+
+            # Test a 200 response that is a dict
+            self.responses.add(
+                responses.GET,
+                f"{self.base_url}?",
+                body=json.dumps({"error": "oops"}),
+                status=200,
+            )
+
+            status, result = request_job_filter(123)
+
+            self.assertEqual(status, "UNKNOWN")
+            self.assertEqual(result, [])
+
+            # Test a 200 response that is null
+            self.responses.add(
+                responses.GET,
+                f"{self.base_url}?",
+                body=json.dumps(None),
+                status=200,
+            )
+
+            status, result = request_job_filter(123)
+
+            self.assertEqual(status, "UNKNOWN")
+            self.assertEqual(result, [])
+        finally:
+            logging.disable(logging.NOTSET)
+
     def test_query_params(self):
         jobs = [{"id": 42}]
         end_time = datetime.datetime(2020, 1, 1, tzinfo=datetime.UTC)
