@@ -1,4 +1,5 @@
 import decimal
+import math
 from decimal import Decimal
 from math import floor
 
@@ -39,6 +40,10 @@ def to_dec(val):
         # and return the original value
         logger.debug("to_dec: invalid decimal string '%s' — returning original value", val)
         return val
+
+    # Non-finite floats (inf/-inf/nan) cannot be passed to floor() — parse them directly
+    if math.isinf(val) or math.isnan(val):
+        return Decimal(str(val))
 
     # It's a numeric type, if there is a remainder, convert the value to a string and parse it with Decimal
     if val - floor(val):
