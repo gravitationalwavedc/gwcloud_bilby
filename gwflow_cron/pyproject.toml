@@ -10,7 +10,7 @@ python = "^3.12"
 requests = "*"
 pyjwt = "*"
 urllib3 = "<2"
-gwcloud-python = "2.0.0"
+gwcloud-python = "2.1.0"
 
 [tool.ruff]
 line-length = 120

@@ -9,6 +9,27 @@ from tests.base import GWFlowTestBase
 
 
 class TestLockingAndExecution(GWFlowTestBase):
+    def setUp(self):
+        super().setUp()
+        self.patch_gwc = patch("gwflow_ingest.GWCloud")
+        self.patch_jc = patch("gwflow_ingest.JobControllerClient")
+        self.patch_meta = patch("gwflow_ingest.phase_metadata")
+        self.patch_bilby = patch("gwflow_ingest.phase_bilby_children")
+        self.patch_mirror = patch("gwflow_ingest.phase_file_mirror")
+        self.mock_gwc_cls = self.patch_gwc.start()
+        self.mock_jc_cls = self.patch_jc.start()
+        self.mock_meta = self.patch_meta.start()
+        self.mock_bilby = self.patch_bilby.start()
+        self.mock_mirror = self.patch_mirror.start()
+
+    def tearDown(self):
+        self.patch_mirror.stop()
+        self.patch_bilby.stop()
+        self.patch_meta.stop()
+        self.patch_jc.stop()
+        self.patch_gwc.stop()
+        super().tearDown()
+
     def test_run_success(self):
         with tempfile.NamedTemporaryFile(suffix=".db") as tmp, patch.object(settings, "DB_PATH", tmp.name):
             res = gwflow_ingest.run([])
