@@ -46,7 +46,14 @@ BACKFILL = False
 
 
 def validate_settings():
-    """Verify essential settings and exit if DB_PATH is unset."""
-    if not DB_PATH:
-        logger.critical("DB_PATH setting is missing or empty")
-        sys.exit(1)
+    """Verify essential settings and exit if any required setting is unset."""
+    required = [
+        ("DB_PATH", DB_PATH),
+        ("GWCLOUD_TOKEN", GWCLOUD_TOKEN),
+        ("JOB_CONTROLLER_JWT_SECRET", JOB_CONTROLLER_JWT_SECRET),
+        ("JOB_CONTROLLER_BUNDLE", JOB_CONTROLLER_BUNDLE),
+    ]
+    for name, val in required:
+        if not val:
+            logger.critical(f"{name} setting is missing or empty")
+            sys.exit(1)
