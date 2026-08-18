@@ -28,6 +28,13 @@ def init_db(con_or_cur):
     );
     """
     )
+    cur.execute(
+        """
+    CREATE TABLE IF NOT EXISTS changed_snames (
+        sname TEXT PRIMARY KEY
+    );
+    """
+    )
     if con:
         con.commit()
 
@@ -86,3 +93,26 @@ def clear_failure(con, cur, job_id: str):
 def failures_over(cur, cap: int) -> list[str]:
     rows = cur.execute("SELECT job_id FROM job_errors WHERE failure_count >= ?", (cap,)).fetchall()
     return [row["job_id"] for row in rows]
+
+
+def clear_changed_snames(con, cur):
+    """Clear all rows from the changed_snames table."""
+    cur.execute("DELETE FROM changed_snames")
+    if con:
+        con.commit()
+
+
+def record_changed_sname(con, cur, sname: str):
+    """Record a changed sname (idempotent via PRIMARY KEY)."""
+    cur.execute(
+        "INSERT OR REPLACE INTO changed_snames (sname) VALUES (?)",
+        (sname,),
+    )
+    if con:
+        con.commit()
+
+
+def get_changed_snames(cur) -> list[str]:
+    """Return all recorded changed snames."""
+    rows = cur.execute("SELECT sname FROM changed_snames").fetchall()
+    return [row["sname"] for row in rows]
