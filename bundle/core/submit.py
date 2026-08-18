@@ -291,7 +291,7 @@ def refactor_slurm_data_generation_step(slurm_script):
 
     # Find the line for data generation and the first echo after that, then remove the dependency from the following
     # sbatch command
-    data_gen_idx = None
+    data_gen_line = None
     data_gen_command = None
     new_lines = []
     generation_jid = None
@@ -299,7 +299,7 @@ def refactor_slurm_data_generation_step(slurm_script):
     for line in slines:
         # Check for the sbatch command to generate the data
         if "log_data_generation" in line:
-            data_gen_idx = line
+            data_gen_line = line
             data_gen_command = line
             generation_jid = data_gen_command.split("=")[0]
 
@@ -307,13 +307,13 @@ def refactor_slurm_data_generation_step(slurm_script):
             continue
 
         # Check for the first echo command after the sbatch command
-        if data_gen_idx and "echo" in line and not echo_found:
+        if data_gen_line and "echo" in line and not echo_found:
             echo_found = True
             # Nothing more to do, exclude this line from the new sbatch script
             continue
 
         # Check if this line is the next sbatch command using jid0 as a
-        if data_gen_idx:
+        if data_gen_line:
             dep_str = f"--dependency=afterok:${{{generation_jid}[-1]}}"
             if dep_str in line:
                 # Remove the dependency
