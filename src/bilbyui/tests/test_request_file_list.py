@@ -145,3 +145,22 @@ class TestRequestFileListUploaded(BilbyTestCase):
         success, result = request_file_list(job, "", False)
         self.assertFalse(success)
         self.assertEqual(result, "Error getting job file list")
+
+    @mock.patch("bilbyui.utils.jobs.request_file_list._make_job_controller_request")
+    @mock.patch("bilbyui.utils.jobs.request_file_list.check_request_leak")
+    def test_non_list_files_response_returns_error(self, check_request_leak, make_request):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="TestNormal3",
+            description="normal job 3",
+            job_controller_id=6,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            job_type=BilbyJobType.NORMAL,
+        )
+
+        for malformed_files in (None, "not-a-list", {"path": "/x"}):
+            make_request.return_value = {"files": malformed_files}
+            success, result = request_file_list(job, "some/path", False)
+            self.assertFalse(success, f"files={malformed_files!r} should be rejected")
+            self.assertEqual(result, "Error getting job file list")
