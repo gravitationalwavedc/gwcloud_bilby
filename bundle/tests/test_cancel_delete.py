@@ -20,6 +20,16 @@ class TestCancel(TestCase):
         sched_mock.cancel.assert_called_once_with(1234, details)
 
     @patch("core.cancel.get_scheduler")
+    def test_cancel_with_unknown_scheduler(self, get_scheduler_mock):
+        get_scheduler_mock.return_value = None
+
+        from core.cancel import cancel
+
+        result = cancel({"job_id": 1}, {"submit_id": 1234})
+
+        self.assertFalse(result)
+
+    @patch("core.cancel.get_scheduler")
     def test_cancel_without_submit_id(self, get_scheduler_mock):
         sched_mock = Mock()
         get_scheduler_mock.return_value = sched_mock
