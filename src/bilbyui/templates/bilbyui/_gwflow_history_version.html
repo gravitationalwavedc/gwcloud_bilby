@@ -1,0 +1,5 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5>Version: <span class="badge badge-secondary">{{ history_id|slice:":8" }}</span></h5>
+</div>
+
+{% include "bilbyui/_gwflow_metadata.html" with payload=payload stale=stale %}

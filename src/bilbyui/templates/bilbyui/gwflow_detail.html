@@ -66,9 +66,13 @@
           hx-trigger="click once from:#files-tab"
           hx-swap="innerHTML"
         ></div>
-        <div x-show="tab === 'history'" id="history-pane">
-          <p class="text-muted">History coming soon.</p>
-        </div>
+        <div
+          x-show="tab === 'history'"
+          id="history-pane"
+          hx-get="{% url 'bilbyui:gwflow_job_history' sname=job.sname %}"
+          hx-trigger="click once from:#history-tab"
+          hx-swap="innerHTML"
+        ></div>
       </div>
     </div>
   </div>

@@ -67,5 +67,11 @@ urlpatterns = [
     path("gwflow/<str:sname>/", views.gwflow_job_detail_view, name="gwflow_job_detail"),
     path("gwflow/<str:sname>/files/", views.gwflow_job_files_partial, name="gwflow_job_files"),
     path("gwflow/<str:sname>/metadata/", views.gwflow_job_metadata_partial, name="gwflow_job_metadata"),
+    path("gwflow/<str:sname>/history/", views.gwflow_job_history_partial, name="gwflow_job_history"),
+    path(
+        "gwflow/<str:sname>/history/<str:history_id>/",
+        views.gwflow_job_history_version_partial,
+        name="gwflow_job_history_version",
+    ),
     path("<path:path>", views.not_found_view, name="not_found"),
 ]
