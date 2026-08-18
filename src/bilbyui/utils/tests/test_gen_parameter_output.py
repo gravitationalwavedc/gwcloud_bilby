@@ -26,3 +26,8 @@ class TestToDec(BilbyTestCase):
 
     def test_converts_whole_int(self):
         self.assertEqual(to_dec(42), Decimal(42))
+
+    def test_converts_non_finite_float(self):
+        self.assertEqual(to_dec(float("inf")), Decimal("Infinity"))
+        self.assertEqual(to_dec(float("-inf")), Decimal("-Infinity"))
+        self.assertTrue(to_dec(float("nan")).is_nan())
