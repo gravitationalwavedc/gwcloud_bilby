@@ -117,14 +117,13 @@ class SlurmScheduler(Scheduler):
         # Check for general failure
         if base_status in [
             "BOOT_FAIL",
-            "CANCELLED",
             "DEADLINE",
             "FAILED",
             "NODE_FAIL",
             "PREEMPTED",
             "REVOKED",
         ]:
-            return JobStatus.ERROR, status_info
+            return JobStatus.ERROR, self.SLURM_STATUS[base_status]
 
         # Check for cancelled job
         if base_status.startswith("CANCELLED"):
