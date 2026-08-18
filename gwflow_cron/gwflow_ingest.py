@@ -8,11 +8,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from gwcloud_python import GWCloud
+
 import manifest
 import settings
 import state
 from fetch import fetch_to_staging
-from job_controller import ClusterOffline
+from job_controller import ClusterOffline, JobControllerClient
 from portal import PortalClient
 
 logger = logging.getLogger("gwflow_ingest")
@@ -157,7 +159,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
     logger.info("Completed phase_metadata")
 
 
-def phase_bilby_children():
+def phase_bilby_children(gwc_client: Any = None, jc: Any = None, con: sqlite3.Connection | None = None):
     logger.info("phase_bilby_children: not implemented")
 
 
@@ -238,13 +240,22 @@ def run(args=None):
 
     try:
         logger.info("Starting gwflow_ingest run")
+        gwc = GWCloud(token=settings.GWCLOUD_TOKEN, endpoint=settings.GWCLOUD_ENDPOINT)
+        jc = JobControllerClient(
+            api_url=settings.JOB_CONTROLLER_API_URL,
+            jwt_secret=settings.JOB_CONTROLLER_JWT_SECRET,
+            user_id=0,
+            cluster=settings.JOB_CONTROLLER_CLUSTER,
+            bundle=settings.JOB_CONTROLLER_BUNDLE,
+        )
+
         con = sqlite3.connect(settings.DB_PATH)
         con.row_factory = sqlite3.Row
         state.init_db(con)
 
-        phase_metadata(con=con)
-        phase_bilby_children()
-        phase_file_mirror()
+        phase_metadata(gwc_client=gwc, con=con)
+        phase_bilby_children(gwc_client=gwc, jc=jc, con=con)
+        phase_file_mirror(jc=jc, gwc_client=gwc, con=con)
 
         con.close()
         logger.info("Completed gwflow_ingest run")
