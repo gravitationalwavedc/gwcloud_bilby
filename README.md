@@ -96,6 +96,12 @@ The `gwosc_cron/` directory contains the script that ingests Bilby jobs from the
 
 To set up and run the ingest script, see [`gwosc_cron/README.md`](gwosc_cron/README.md).
 
+## GWFlow Ingest
+
+The `gwflow_cron/` directory contains the cron service that mirrors the current GWFlow superevent set from cbcflow-portal into GWCloud. It follows the GWOSC cron deployment pattern with a Docker image, host cron schedule, bind-mounted sqlite state, bind-mounted staging storage, and a public ingest log.
+
+To set up and run the service, see [`gwflow_cron/README.md`](gwflow_cron/README.md).
+
 ## Running locally
 
 ```bash
