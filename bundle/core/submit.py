@@ -443,6 +443,10 @@ def submit(details, job_parameters):
     # Actually submit the job
     sched = get_scheduler()
 
+    # If the scheduler is unknown, get_scheduler() returns None and the job cannot be submitted
+    if not sched:
+        return None
+
     # Working directory changes need to be synchronous
     with chdir_lock, set_directory(wk_dir):
         submit_bash_id = sched.submit(submission_script, wk_dir)

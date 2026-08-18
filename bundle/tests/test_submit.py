@@ -357,6 +357,48 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
 
     @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("core.submit.get_scheduler", return_value=None)
+    @patch.object(settings, "scheduler", EScheduler.SLURM)
+    def test_submit_unknown_scheduler_returns_none(self, *args, **kwargs):
+        # Generate a minimal ini file
+        ini = args_to_bilby_ini(
+            {
+                "label": "test-unknown-scheduler",
+                "detectors": ["H1"],
+                "trigger-time": "12345678",
+                "n-simulation": 1,
+                "gaussian_noise": True,
+                "injection-numbers": [],
+            }
+        ).decode("utf-8")
+
+        details = {"job_id": 1}
+
+        with TemporaryDirectory() as td:
+            global working_directory_mock_return, update_job_result
+
+            update_job_result = None
+
+            working_directory_mock_return = td
+
+            # Some bilby_pipe versions probe the CPU architecture via `uname -p` during dag generation
+            self.popen.set_command("uname -p", stdout=b"x86_64")
+
+            # Local imports so that the mocks work as expected
+            from core.submit import submit
+
+            params = {"name": "test-unknown-scheduler", "description": "Some description", "ini_string": ini}
+
+            result = submit(details, json.dumps(params))
+
+            # Check that the return value is None when the scheduler is unknown
+            self.assertEqual(result, None)
+
+            # Check that the internal job object was not created
+            self.assertEqual(update_job_result, None)
+
+    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.condor.CondorScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
     def test_submit_real_data_job_condor(self, *args, **kwargs):
