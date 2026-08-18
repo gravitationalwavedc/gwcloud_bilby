@@ -49,7 +49,7 @@ class TestSlurm(TestCase):
         with self._mock_status("CANCELLED 0:0"):
             self.assertEqual(
                 self.sched.status(12345, None),
-                (JobStatus.ERROR, self.sched.SLURM_STATUS["CANCELLED"]),
+                (JobStatus.CANCELLED, self.sched.SLURM_STATUS["CANCELLED"]),
             )
 
     def test_status_running(self):
