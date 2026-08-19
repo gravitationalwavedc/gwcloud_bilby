@@ -380,8 +380,8 @@ def run(args=None):
         state.init_db(con)
 
         phase_metadata(gwc_client=gwc, con=con)
-        phase_bilby_children(gwc_client=gwc, jc=jc, con=con)
         phase_file_mirror(jc=jc, gwc_client=gwc, con=con)
+        phase_bilby_children(gwc_client=gwc, jc=jc, con=con)
 
         con.close()
         logger.info("Completed gwflow_ingest run")
