@@ -217,6 +217,15 @@ class TestRequestFileListUploaded(BilbyTestCase):
         result = request_file_list(self.job, "results_page", True, self.job.user_id)
         self.assertTrue(len([x for x in result[1] if "overview.html" in x["path"]]))
 
+    def test_request_file_list_uploaded_with_symlinked_upload_dir(self):
+        real_dir = settings.JOB_UPLOAD_DIR
+        with TemporaryDirectory() as link_base:
+            symlink = Path(link_base) / "upload_link"
+            symlink.symlink_to(real_dir, target_is_directory=True)
+            with override_settings(JOB_UPLOAD_DIR=str(symlink)):
+                result = request_file_list(self.job, "./data", True, self.job.user_id)
+        self.assertTrue(result[0])
+
     def test_request_file_list_recursive_skips_broken_symlink(self):
         job_dir = self.job.get_upload_directory()
         (Path(job_dir) / "data" / "broken_link").symlink_to("/nonexistent/target")
