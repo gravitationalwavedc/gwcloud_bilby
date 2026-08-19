@@ -450,6 +450,10 @@ def bilby_ini_args_to_data_input(args):
 
 def create_bilby_job_from_ini_string(user, params):
     # Parse the job ini file and create a bilby input class that can be used to read values from the ini
+    if params.ini_string is None or params.ini_string.ini_string is None:
+        msg = "A valid ini string must be provided."
+        raise GraphQLError(msg)
+
     args = bilby_ini_string_to_args(params.ini_string.ini_string.encode("utf-8"))
 
     if check_job_embargo_status(user, args):
