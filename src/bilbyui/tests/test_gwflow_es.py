@@ -116,6 +116,66 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         doc = build_gwflow_es_doc(self.job, {})
         self.assertIsNone(doc["eventId"])
 
+    def test_build_gwflow_es_doc_user_name_fallback(self):
+        user = self.job.user
+        user.name = ""
+        user.first_name = "Jane"
+        user.last_name = "Doe"
+        doc = build_gwflow_es_doc(self.job, {})
+        self.assertEqual(doc["user"]["name"], "Jane Doe")
+
+    def test_build_gwflow_es_doc_single_dict_section(self):
+        metadata = {
+            "ParameterEstimation": {
+                "uid": "pe-uid-2",
+                "inference_software": "bilby",
+                "analysts": ["Alice"],
+            }
+        }
+        doc = build_gwflow_es_doc(self.job, metadata)
+        self.assertEqual(len(doc["analyses"]), 1)
+        self.assertEqual(doc["analyses"][0]["uid"], "pe-uid-2")
+        self.assertEqual(doc["analyses"][0]["analysts"], ["Alice"])
+
+    def test_build_gwflow_es_doc_skips_non_dict_section_items(self):
+        metadata = {
+            "ParameterEstimation": [
+                {"uid": "pe-uid-3", "analysts": ["Alice"]},
+                "not-a-dict",
+                None,
+            ]
+        }
+        doc = build_gwflow_es_doc(self.job, metadata)
+        self.assertEqual(len(doc["analyses"]), 1)
+        self.assertEqual(doc["analyses"][0]["uid"], "pe-uid-3")
+
+    def test_build_gwflow_es_doc_non_list_analysts_reviewers(self):
+        metadata = {"ParameterEstimation": [{"uid": "pe-uid-4", "analysts": "Alice", "reviewers": "Bob"}]}
+        doc = build_gwflow_es_doc(self.job, metadata)
+        self.assertEqual(doc["analyses"][0]["analysts"], ["Alice"])
+        self.assertEqual(doc["analyses"][0]["reviewers"], ["Bob"])
+
+    def test_build_gwflow_es_doc_string_gracedb_events(self):
+        metadata = {"GraceDB": {"Events": ["G197392", "G197393"]}}
+        doc = build_gwflow_es_doc(self.job, metadata)
+        self.assertEqual(doc["gracedb"]["uids"], ["G197392", "G197393"])
+
+    def test_build_gwflow_es_doc_analysis_parse_error_is_swallowed(self):
+        class RaisingItemsDict(dict):
+            def items(self):
+                raise ValueError("boom")
+
+        doc = build_gwflow_es_doc(self.job, RaisingItemsDict())
+        self.assertEqual(doc["analyses"], [])
+
+    def test_build_gwflow_es_doc_gracedb_parse_error_is_swallowed(self):
+        class RaisingGetDict(dict):
+            def get(self, *args, **kwargs):
+                raise ValueError("boom")
+
+        doc = build_gwflow_es_doc(self.job, RaisingGetDict())
+        self.assertEqual(doc["gracedb"]["uids"], [])
+
 
 class TestGWFlowESUpdateRemove(BilbyTestCase):
     def setUp(self):
