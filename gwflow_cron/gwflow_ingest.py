@@ -303,9 +303,7 @@ def phase_bilby_children(
 
             if not cluster_offline and not cap_reached:
                 remaining = [
-                    k
-                    for k in state.failures_under(cur, settings.MAX_RETRY_ATTEMPTS)
-                    if k.startswith(f"bilby:{sname}/")
+                    k for k in state.failures_under(cur, settings.MAX_RETRY_ATTEMPTS) if k.startswith(f"bilby:{sname}/")
                 ]
                 if not remaining:
                     state.clear_failure(con, cur, f"bilby:{sname}")

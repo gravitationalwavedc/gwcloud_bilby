@@ -59,7 +59,9 @@ class TestEnsurePending(GWFlowTestBase):
         cur = self.con.cursor()
         state.ensure_pending(self.con, cur, "bilby:S1/uid1")
         self.assertEqual(state.get_failure_count(cur, "bilby:S1/uid1"), 0)
-        row = cur.execute("SELECT last_failure, last_error FROM job_errors WHERE job_id = ?", ("bilby:S1/uid1",)).fetchone()
+        row = cur.execute(
+            "SELECT last_failure, last_error FROM job_errors WHERE job_id = ?", ("bilby:S1/uid1",)
+        ).fetchone()
         self.assertIsNone(row["last_failure"])
         self.assertIsNone(row["last_error"])
 
