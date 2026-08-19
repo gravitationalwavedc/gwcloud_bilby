@@ -31,6 +31,21 @@ class TestStatus(TestCase):
         )
         self.assertEqual(result["complete"], True)
 
+    @patch("_bundledb.get_job_by_id")
+    @patch.object(settings, "scheduler", "unknown")
+    def test_status_unknown_scheduler(self, get_job_by_id_mock):
+        db_job = {"submit_id": 1234, "working_directory": "a/working/directory", "submit_directory": "submit"}
+
+        get_job_by_id_mock.side_effect = Mock(return_value=db_job)
+
+        details = {"scheduler_id": 1234}
+
+        from core.status import status
+
+        result = status(details)
+
+        self.assertIsNone(result)
+
     @patch("_bundledb.create_or_update_job")
     @patch("_bundledb.get_job_by_id")
     @patch("os.path.exists")
