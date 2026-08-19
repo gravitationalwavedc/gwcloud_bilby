@@ -1345,16 +1345,17 @@ def _get_job_status_context(job, user):
             controller_jobs = [record for record in job_controller_jobs if isinstance(record, dict)]
             if controller_jobs:
                 controller_job = next(
-                    (record for record in controller_jobs if record.get("id") == job.job_controller_id),
-                    controller_jobs[0],
+                    (record for record in controller_jobs if record.get("id") in (None, job.job_controller_id)),
+                    None,
                 )
-                history = controller_job.get("history")
-                if history:
-                    _, status_name, status_date = derive_job_status(history)
-                    if status_date is not None:
-                        status_date = status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
-                    else:
-                        status_date = job.last_updated
+                if controller_job is not None:
+                    history = controller_job.get("history")
+                    if history:
+                        _, status_name, status_date = derive_job_status(history)
+                        if status_date is not None:
+                            status_date = status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
+                        else:
+                            status_date = job.last_updated
 
     return {
         "status_name": status_name,
