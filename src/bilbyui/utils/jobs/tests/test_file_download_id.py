@@ -116,3 +116,13 @@ class TestFileDownloadIds(BilbyTestCase):
         result = request_file_download_ids(self.job, ["test_path"])
 
         self.assertEqual(result, (False, "No file download IDs returned"))
+
+    @mock.patch("bilbyui.utils.jobs.request_file_download_id._make_job_controller_request")
+    def test_request_file_download_ids_non_list_result(self, make_request):
+        make_request.return_value = {"fileIds": "not-a-list"}
+        self.job.job_controller_id = 4321
+        self.job.save()
+
+        result = request_file_download_ids(self.job, ["test_path"])
+
+        self.assertEqual(result, (False, "No file download IDs returned"))

@@ -49,7 +49,7 @@ def request_file_download_ids(job, paths, user_id=None):
 
         file_ids = result["fileIds"]
 
-        if not file_ids:
+        if not isinstance(file_ids, list) or not file_ids:
             logger.warning("No file download IDs returned for job %s", job.id)
             return False, "No file download IDs returned"
 
