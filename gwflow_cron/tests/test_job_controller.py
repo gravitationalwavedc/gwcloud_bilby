@@ -70,6 +70,29 @@ class TestJobControllerClient(unittest.TestCase):
         self.assertIn("controller exploded", str(ctx.exception))
 
     @responses.activate
+    def test_create_file_downloads_raises_fetch_error_on_malformed_200_body(self):
+        for payload in (
+            {"error": "internal error"},
+            ["a1a1a1a1-0000-4000-8000-000000000001"],
+            "not json",
+        ):
+            with self.subTest(payload=payload):
+                responses.reset()
+                if payload == "not json":
+                    responses.add(responses.POST, f"{API_URL}/file/", body="not json", status=200)
+                else:
+                    responses.add(responses.POST, f"{API_URL}/file/", json=payload, status=200)
+                with self.assertRaises(FetchError):
+                    self.client.create_file_downloads(["/data/pe1/config.ini"])
+
+    @responses.activate
+    def test_create_file_downloads_raises_fetch_error_on_empty_file_ids(self):
+        responses.add(responses.POST, f"{API_URL}/file/", json={"fileIds": []}, status=200)
+
+        with self.assertRaises(FetchError):
+            self.client.create_file_downloads(["/data/pe1/config.ini"])
+
+    @responses.activate
     def test_download_streams_bytes_to_dest_via_part_file(self):
         content = b"a" * (3 * 1024 * 1024)
         responses.add(
