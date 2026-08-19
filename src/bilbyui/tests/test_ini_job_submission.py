@@ -244,6 +244,33 @@ class TestIniJobSubmission(BilbyTestCase):
         job = BilbyJob.objects.all().last()
         self.assertTrue(job.is_ligo_job, "Real job on embargoed LIGO data should be marked as a LIGO job")
 
+    @silence_errors
+    def test_ini_job_submission_no_ini_string(self):
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+
+        test_input = {
+            "params": {
+                "details": {
+                    "name": "Test_Name",
+                    "description": "a description",
+                    "private": True,
+                }
+            }
+        }
+
+        response = self.query(self.mutation_string, input_data=test_input)
+
+        self.assertDictEqual(
+            {"newBilbyJobFromIniString": None},
+            response.data,
+            "create bilbyJob mutation returned unexpected data.",
+        )
+
+        self.assertEqual(
+            response.errors[0]["message"],
+            "A valid ini string must be provided.",
+        )
+
 
 class TestIniJobSubmissionNameValidation(BilbyTestCase):
     def setUp(self):
