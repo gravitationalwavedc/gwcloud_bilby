@@ -178,3 +178,17 @@ class TestGetJobStatusContext(BilbyTestCase):
         self.assertEqual(result["status_name"], "Completed")
         self.assertEqual(result["status_badge_class"], "primary")
         self.assertEqual(result["status_date"], "2024-03-02 10:00:00 UTC")
+
+    @mock.patch(
+        "bilbyui.views.request_job_filter",
+        return_value=(
+            "OK",
+            [{"id": 999, "history": [{"state": 500, "timestamp": "2024-03-01 10:00:00 UTC"}]}],
+        ),
+    )
+    def test_no_matching_controller_id_returns_unknown(self, mock_filter):
+        result = _get_job_status_context(self.job, self.user)
+
+        self.assertEqual(result["status_name"], "Unknown")
+        self.assertEqual(result["status_badge_class"], "dark")
+        self.assertEqual(result["status_date"], self.job.last_updated)
