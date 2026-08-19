@@ -107,12 +107,16 @@ def synthesize_job_tree(workdir: Path, name: str, ini_text: str, result_files: l
 
 
 def make_archive(tree: Path, dest: Path) -> Path:
-    """tar.gz the tree contents. Arcnames are relative to the tree root."""
+    """tar.gz the tree contents with a '.' root member (standard `tar -czf .` layout).
+
+    gwcloud's upload handler unpacks with `tar -xvf <file> .`, which requires the
+    archive to contain a '.' member; arcnames relative to the tree root alone are
+    rejected as "Invalid or corrupt tar.gz file".
+    """
     tree = Path(tree)
     dest = Path(dest)
     with tarfile.open(dest, "w:gz") as tar:
-        for item in sorted(tree.rglob("*")):
-            tar.add(item, arcname=item.relative_to(tree))
+        tar.add(tree, arcname=".")
     return dest
 
 

@@ -953,19 +953,29 @@ class UpsertGwflowJobMutation(relay.ClientIDMutation):
         )
 
 
+class UploadGwflowFileResult(graphene.ObjectType):
+    success = graphene.Boolean(required=True)
+    file_size = graphene.BigInt()
+
+
 class UploadGwflowFileMutation(relay.ClientIDMutation):
     class Input:
         gwflow_file_id = graphene.ID(required=True)
         file = Upload(required=True)
 
-    success = graphene.Boolean(required=True)
-    file_size = graphene.BigInt()
+    result = graphene.Field(UploadGwflowFileResult)
 
     @classmethod
     def mutate_and_get_payload(cls, _root, info, gwflow_file_id, file):
         user = info.context.user
         res = upload_gwflow_file(user, gwflow_file_id, file)
-        return UploadGwflowFileMutation(success=res["success"], file_size=res["file_size"])
+        return UploadGwflowFileMutation(
+            result=UploadGwflowFileResult(success=res["success"], file_size=res["file_size"])
+        )
+
+
+class LinkBilbyJobToGwflowResult(graphene.ObjectType):
+    success = graphene.Boolean(required=True)
 
 
 class LinkBilbyJobToGwflowMutation(relay.ClientIDMutation):
@@ -974,13 +984,13 @@ class LinkBilbyJobToGwflowMutation(relay.ClientIDMutation):
         sname = graphene.String(required=True)
         analysis_uid = graphene.String(required=True)
 
-    success = graphene.Boolean(required=True)
+    result = graphene.Field(LinkBilbyJobToGwflowResult)
 
     @classmethod
     def mutate_and_get_payload(cls, _root, info, job_id, sname, analysis_uid):
         user = info.context.user
         res = link_bilby_job_to_gwflow(user, job_id, sname, analysis_uid)
-        return LinkBilbyJobToGwflowMutation(success=res["success"])
+        return LinkBilbyJobToGwflowMutation(result=LinkBilbyJobToGwflowResult(success=res["success"]))
 
 
 class Mutation(graphene.ObjectType):

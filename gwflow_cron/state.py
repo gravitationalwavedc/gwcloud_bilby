@@ -28,6 +28,9 @@ def init_db(con_or_cur):
     );
     """
     )
+    cols = [row[1] for row in cur.execute("PRAGMA table_info(job_errors)").fetchall()]
+    if "job_ref" not in cols:
+        cur.execute("ALTER TABLE job_errors ADD COLUMN job_ref TEXT")
     cur.execute(
         """
     CREATE TABLE IF NOT EXISTS changed_snames (
@@ -69,11 +72,12 @@ def set_last_sname(con, cur, value: str):
     set_sync_state(con, cur, "last_sname", value)
 
 
-def record_failure(con, cur, job_id: str, error_msg: str):
+def record_failure(con, cur, job_id: str, error_msg: str, job_ref: str | None = None):
     cur.execute(
-        "INSERT INTO job_errors (job_id, failure_count, last_failure, last_error) VALUES (?, 1, CURRENT_TIMESTAMP, ?) "
-        "ON CONFLICT(job_id) DO UPDATE SET failure_count = failure_count + 1, last_failure = CURRENT_TIMESTAMP, last_error = ?",
-        (job_id, error_msg, error_msg),
+        "INSERT INTO job_errors (job_id, failure_count, last_failure, last_error, job_ref) VALUES (?, 1, CURRENT_TIMESTAMP, ?, ?) "
+        "ON CONFLICT(job_id) DO UPDATE SET failure_count = failure_count + 1, last_failure = CURRENT_TIMESTAMP, last_error = ?, "
+        "job_ref = COALESCE(excluded.job_ref, job_errors.job_ref)",
+        (job_id, error_msg, job_ref, error_msg),
     )
     if con:
         con.commit()
@@ -93,6 +97,33 @@ def clear_failure(con, cur, job_id: str):
 def failures_over(cur, cap: int) -> list[str]:
     rows = cur.execute("SELECT job_id FROM job_errors WHERE failure_count >= ?", (cap,)).fetchall()
     return [row["job_id"] for row in rows]
+
+
+def failures_under(cur, cap: int) -> list[str]:
+    rows = cur.execute("SELECT job_id FROM job_errors WHERE failure_count < ?", (cap,)).fetchall()
+    return [row["job_id"] for row in rows]
+
+
+def ensure_pending(con, cur, job_id: str):
+    """Create a pending marker row without touching an existing row's failure_count."""
+    cur.execute(
+        "INSERT OR IGNORE INTO job_errors (job_id, failure_count, last_failure, last_error) VALUES (?, 0, NULL, NULL)",
+        (job_id,),
+    )
+    if con:
+        con.commit()
+
+
+def set_job_ref(con, cur, job_id: str, job_ref: str):
+    """Persist the id of a successfully-uploaded-but-unlinked job for this key."""
+    cur.execute("UPDATE job_errors SET job_ref = ? WHERE job_id = ?", (job_ref, job_id))
+    if con:
+        con.commit()
+
+
+def get_failure_job_ref(cur, job_id: str) -> str | None:
+    row = cur.execute("SELECT job_ref FROM job_errors WHERE job_id = ?", (job_id,)).fetchone()
+    return row["job_ref"] if row else None
 
 
 def clear_changed_snames(con, cur):
