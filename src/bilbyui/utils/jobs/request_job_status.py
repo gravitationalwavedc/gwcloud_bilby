@@ -35,7 +35,12 @@ def request_job_status(job, user_id=None):
             return "UNKNOWN", "Job not found in job controller"
 
         try:
-            history = result[0]["history"]
+            controller_jobs = [record for record in result if isinstance(record, dict)]
+            controller_job = next(
+                (record for record in controller_jobs if record.get("id") == job.job_controller_id),
+                controller_jobs[0],
+            )
+            history = controller_job["history"]
         except (KeyError, TypeError, IndexError):
             logger.warning("Malformed status record for job %s in job controller", job.id)
             return "UNKNOWN", "Job not found in job controller"
