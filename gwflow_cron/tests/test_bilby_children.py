@@ -1,3 +1,4 @@
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -242,7 +243,7 @@ class TestSynthesizeJobTree(unittest.TestCase):
 
 
 class TestMakeArchive(unittest.TestCase):
-    def test_produces_valid_tar_gz_with_relative_arcnames(self):
+    def test_produces_valid_tar_gz_with_dot_root_member(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tree = Path(tmpdir) / "tree"
             (tree / "data").mkdir(parents=True)
@@ -259,10 +260,34 @@ class TestMakeArchive(unittest.TestCase):
 
             with tarfile.open(dest, "r:gz") as tar:
                 names = tar.getnames()
-            self.assertIn("myjob_config_complete.ini", names)
-            self.assertIn("result/result.hdf5", names)
-            self.assertIn("result/summary.html", names)
-            self.assertNotIn(str(tree), " ".join(names))
+            self.assertIn(".", names)
+            self.assertIn("./myjob_config_complete.ini", names)
+            self.assertIn("./result/result.hdf5", names)
+            self.assertIn("./result/summary.html", names)
+
+    def test_extractable_with_django_tar_dot_command(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tree = Path(tmpdir) / "tree"
+            (tree / "data").mkdir(parents=True)
+            (tree / "result").mkdir()
+            (tree / "results_page").mkdir()
+            (tree / "myjob_config_complete.ini").write_text("label = myjob\n")
+            (tree / "result" / "result.hdf5").write_bytes(b"x")
+
+            dest = Path(tmpdir) / "out.tar.gz"
+            make_archive(tree, dest)
+
+            staging = Path(tmpdir) / "staging"
+            staging.mkdir()
+            proc = subprocess.run(
+                ["tar", "-xvf", str(dest), "."],
+                capture_output=True,
+                cwd=staging,
+            )
+            self.assertEqual(proc.returncode, 0, f"tar failed: {proc.stderr.decode()}")
+            for sub in ("data", "result", "results_page"):
+                self.assertTrue((staging / sub).is_dir(), f"missing {sub} after extract")
+            self.assertTrue((staging / "myjob_config_complete.ini").is_file())
 
     def test_includes_empty_dirs(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -280,7 +305,7 @@ class TestMakeArchive(unittest.TestCase):
                 members = tar.getmembers()
             arcnames = [m.name for m in members]
             for sub in ("data", "result", "results_page"):
-                self.assertIn(sub, arcnames, f"empty dir {sub} not in archive")
+                self.assertIn(f"./{sub}", arcnames, f"empty dir {sub} not in archive")
 
     def test_arcnames_relative_to_tree_root(self):
         with tempfile.TemporaryDirectory() as tmpdir:
