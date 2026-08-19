@@ -664,6 +664,36 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         gwc.upload_job_archive.assert_not_called()
         gwc.link_bilby_job_to_gwflow.assert_not_called()
 
+    def test_stale_linked_child_row_cleared(self):
+        sname = "S_STALE"
+        analysis = _bilby_analysis(uid="uid1")
+        detail = _bilby_detail(sname=sname, analyses=[analysis])
+
+        cur = self.con.cursor()
+        state.ensure_pending(self.con, cur, f"bilby:{sname}")
+        state.record_failure(self.con, cur, f"bilby:{sname}/uid1", "link timeout", job_ref="orphan-1")
+
+        portal = MagicMock()
+        portal.get_superevent.return_value = detail
+
+        job = MagicMock()
+        bilby = MagicMock(gwflow_analysis_uid="uid1")
+        job.bilby_jobs = [bilby]
+        gwc, _ = _make_gwc(job=job)
+        jc = MagicMock()
+
+        with patch.object(settings, "STAGING_DIR", tempfile.mkdtemp()):
+            with patch("gwflow_ingest.fetch_to_staging") as mock_fetch:
+                phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
+
+        self.assertEqual(state.get_failure_count(cur, f"bilby:{sname}/uid1"), 0)
+        self.assertIsNone(state.get_failure_job_ref(cur, f"bilby:{sname}/uid1"))
+        marker = cur.execute("SELECT 1 FROM job_errors WHERE job_id = ?", (f"bilby:{sname}",)).fetchone()
+        self.assertIsNone(marker)
+        mock_fetch.assert_not_called()
+        gwc.upload_job_archive.assert_not_called()
+        gwc.link_bilby_job_to_gwflow.assert_not_called()
+
     def test_non_bilby_ignored(self):
         sname = "S_NONBILBY"
         analysis = _bilby_analysis(uid="uid1", software="pycbc")
@@ -732,8 +762,8 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         jc = MagicMock()
 
         cur = self.con.cursor()
-        key_a1 = f"{sname}/uid1"
-        key_a2 = f"{sname}/uid2"
+        key_a1 = f"bilby:{sname}/uid1"
+        key_a2 = f"bilby:{sname}/uid2"
 
         with tempfile.TemporaryDirectory() as staging:
             with tempfile.TemporaryDirectory() as fetch_dir:
@@ -763,7 +793,7 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         jc = MagicMock()
 
         cur = self.con.cursor()
-        key = f"{sname}/uid1"
+        key = f"bilby:{sname}/uid1"
         for _ in range(settings.MAX_RETRY_ATTEMPTS):
             state.record_failure(self.con, cur, key, "earlier failure")
 
@@ -820,6 +850,120 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
                     phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
 
         self.assertEqual(gwc.upload_job_archive.call_count, 1)
+
+    def test_failed_child_retried_without_portal_change(self):
+        sname = "S_RETRY2"
+        analysis = _bilby_analysis(uid="uid1", config_path="/data/pe/config.ini", result_path="/data/pe/result.h5")
+        detail = _bilby_detail(sname=sname, analyses=[analysis])
+
+        cur = self.con.cursor()
+        state.record_failure(self.con, cur, f"bilby:{sname}/uid1", "earlier failure")
+
+        portal = MagicMock()
+        portal.get_superevent.return_value = detail
+        gwc, uploaded = _make_gwc()
+        jc = MagicMock()
+
+        with tempfile.TemporaryDirectory() as staging:
+            with tempfile.TemporaryDirectory() as fetch_dir:
+                ini = _write_fetch_files(fetch_dir, [("config.ini", "label = old\n")])[0]
+                result = _write_fetch_files(fetch_dir, [("result.h5", b"x")])[0]
+
+                with (
+                    patch("gwflow_ingest.fetch_to_staging", side_effect=[ini, result]),
+                    patch.object(settings, "STAGING_DIR", staging),
+                ):
+                    phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
+
+        self.assertEqual(gwc.upload_job_archive.call_count, 1)
+        gwc.link_bilby_job_to_gwflow.assert_called_once_with(uploaded.id, sname, "uid1")
+        self.assertEqual(state.get_failure_count(cur, f"bilby:{sname}/uid1"), 0)
+        self.assertEqual(state.get_failure_count(cur, f"bilby:{sname}"), 0)
+
+    def test_link_failure_orphan_links_persisted_job_ref(self):
+        sname = "S_ORPHAN"
+        analysis = _bilby_analysis(uid="uid1", config_path="/data/pe/config.ini", result_path="/data/pe/result.h5")
+        detail = _bilby_detail(sname=sname, analyses=[analysis])
+
+        self._seed_changed_sname(sname)
+        portal = MagicMock()
+        portal.get_superevent.return_value = detail
+        gwc, _ = _make_gwc(uploaded_id="orphan-1")
+        gwc.link_bilby_job_to_gwflow.side_effect = RuntimeError("graphql down")
+        jc = MagicMock()
+
+        with tempfile.TemporaryDirectory() as staging:
+            with tempfile.TemporaryDirectory() as fetch_dir:
+                ini = _write_fetch_files(fetch_dir, [("config.ini", "label = old\n")])[0]
+                result = _write_fetch_files(fetch_dir, [("result.h5", b"x")])[0]
+
+                with (
+                    patch("gwflow_ingest.fetch_to_staging", side_effect=[ini, result]),
+                    patch.object(settings, "STAGING_DIR", staging),
+                ):
+                    phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
+
+        cur = self.con.cursor()
+        self.assertEqual(state.get_failure_count(cur, f"bilby:{sname}/uid1"), 1)
+        self.assertEqual(state.get_failure_job_ref(cur, f"bilby:{sname}/uid1"), "orphan-1")
+        self.assertEqual(gwc.upload_job_archive.call_count, 1)
+
+        gwc.link_bilby_job_to_gwflow.side_effect = None
+        with tempfile.TemporaryDirectory() as staging:
+            with patch("gwflow_ingest.fetch_to_staging") as mock_fetch:
+                with patch.object(settings, "STAGING_DIR", staging):
+                    phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
+
+        gwc.link_bilby_job_to_gwflow.assert_called_with("orphan-1", sname, "uid1")
+        self.assertEqual(gwc.upload_job_archive.call_count, 1)
+        mock_fetch.assert_not_called()
+        self.assertEqual(state.get_failure_count(cur, f"bilby:{sname}/uid1"), 0)
+
+    def test_sname_marker_persists_for_kill_recovery(self):
+        sname = "S_KILL"
+        analysis = _bilby_analysis(uid="uid1")
+        detail = _bilby_detail(sname=sname, analyses=[analysis])
+        self._seed_changed_sname(sname)
+        portal = MagicMock()
+        portal.get_superevent.return_value = detail
+        gwc, _ = _make_gwc()
+        jc = MagicMock()
+
+        with patch.object(settings, "STAGING_DIR", tempfile.mkdtemp()):
+            with patch("gwflow_ingest.fetch_to_staging", side_effect=ClusterOffline("offline")):
+                phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
+
+        cur = self.con.cursor()
+        marker = cur.execute("SELECT 1 FROM job_errors WHERE job_id = ?", (f"bilby:{sname}",)).fetchone()
+        self.assertIsNotNone(marker)
+
+        no_child_sname = "S_NOKIDS"
+        self._seed_changed_sname(no_child_sname)
+        portal2 = MagicMock()
+        portal2.get_superevent.side_effect = lambda s: _bilby_detail(sname=s, analyses=[])
+        gwc2, _ = _make_gwc()
+        with patch.object(settings, "STAGING_DIR", tempfile.mkdtemp()):
+            with patch("gwflow_ingest.fetch_to_staging"):
+                phase_bilby_children(portal_client=portal2, gwc_client=gwc2, jc=jc, con=self.con)
+
+        marker2 = cur.execute("SELECT 1 FROM job_errors WHERE job_id = ?", (f"bilby:{no_child_sname}",)).fetchone()
+        self.assertIsNone(marker2)
+
+    def test_detail_fetch_failure_retried(self):
+        sname = "S_DETAIL"
+        self._seed_changed_sname(sname)
+        portal = MagicMock()
+        portal.get_superevent.side_effect = RuntimeError("portal down")
+        gwc, _ = _make_gwc()
+        jc = MagicMock()
+
+        with patch.object(settings, "STAGING_DIR", tempfile.mkdtemp()):
+            phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
+
+        cur = self.con.cursor()
+        self.assertEqual(state.get_failure_count(cur, f"bilby:{sname}"), 1)
+        bare = cur.execute("SELECT 1 FROM job_errors WHERE job_id = ?", (sname,)).fetchone()
+        self.assertIsNone(bare)
 
     def test_phase_metadata_records_changed_snames(self):
         portal = MagicMock()
