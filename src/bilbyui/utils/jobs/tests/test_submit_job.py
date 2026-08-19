@@ -85,6 +85,15 @@ class TestSubmitJob(BilbyTestCase):
         self.assertIn("Job controller returned 500", str(ctx.exception))
 
     @silence_errors
+    def test_malformed_response(self):
+        self.responses.add(responses.POST, JOB_URL, body=json.dumps(None), status=200)
+
+        with self.assertRaises(RuntimeError) as ctx:
+            submit_job(USER_ID, PARAMS, "default")
+
+        self.assertIn("malformed response", str(ctx.exception))
+
+    @silence_errors
     @patch("bilbyui.utils.jobs.submit_job.requests.request")
     def test_request_exception(self, mock_request):
         mock_request.side_effect = requests.ConnectionError("connection refused")

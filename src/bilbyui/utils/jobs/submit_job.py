@@ -95,5 +95,10 @@ def submit_job(user_id, params, cluster):
     else:
         logger.info("Job submitted successfully for user %s: status 200", user_id)
 
+        if not isinstance(result_data, dict):
+            msg = "Job controller returned a malformed response (expected an object with a jobId)"
+            logger.error(msg)
+            raise RuntimeError(f"Error submitting job: {msg}")
+
         logger.info("Job controller assigned ID %s for user %s", result_data.get("jobId"), user_id)
         return result_data
