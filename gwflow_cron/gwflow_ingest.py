@@ -138,6 +138,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
 
                     state.clear_failure(con, cur, row_sname)
                     state.record_changed_sname(con, cur, row_sname)
+                    state.ensure_pending(con, cur, f"bilby:{row_sname}")
                     if not has_failure_in_run:
                         state.set_watermark(con, cur, row_ts)
                         state.set_last_sname(con, cur, row_sname)
