@@ -18,9 +18,9 @@ def _get(rec, key):
     return getattr(rec, key)
 
 
-def _unsafe_component(value: str) -> bool:
+def _unsafe_component(value: str | None) -> bool:
     """True if a path component could traverse out of its parent directory."""
-    return "\x00" in value or "/" in value or ".." in value.split("/")
+    return value is None or "\x00" in value or "/" in value or ".." in value.split("/")
 
 
 def fetch_to_staging(jc, rec, staging_dir=None) -> Path:
@@ -44,7 +44,7 @@ def fetch_to_staging(jc, rec, staging_dir=None) -> Path:
     sname = _get(rec, "sname")
     analysis_uid = _get(rec, "analysis_uid")
     for name, value in (("sname", sname), ("analysis_uid", analysis_uid)):
-        if value is not None and _unsafe_component(value):
+        if _unsafe_component(value):
             raise FetchError(f"unsafe staging component {name!r}: {value!r}")
 
     file_id = jc.create_file_downloads([remote])[0]
