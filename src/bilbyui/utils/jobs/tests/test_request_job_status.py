@@ -56,6 +56,32 @@ class TestRequestJobStatus(BilbyTestCase):
         )
 
     @mock.patch("bilbyui.utils.jobs.request_job_status._make_job_controller_request")
+    def test_selects_record_matching_controller_id(self, make_request):
+        matching_history = [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}]
+        make_request.return_value = [
+            {"id": 99999, "history": [{"state": 400, "timestamp": "2019-01-01 12:00:00 UTC"}]},
+            {"id": self.job.job_controller_id, "history": matching_history},
+        ]
+
+        status, result = request_job_status(self.job)
+
+        self.assertEqual(status, "OK")
+        self.assertEqual(result, matching_history)
+
+    @mock.patch("bilbyui.utils.jobs.request_job_status._make_job_controller_request")
+    def test_falls_back_to_first_record_when_no_id_match(self, make_request):
+        history = [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}]
+        make_request.return_value = [
+            {"id": 99999, "history": history},
+            {"id": 88888, "history": []},
+        ]
+
+        status, result = request_job_status(self.job)
+
+        self.assertEqual(status, "OK")
+        self.assertEqual(result, history)
+
+    @mock.patch("bilbyui.utils.jobs.request_job_status._make_job_controller_request")
     def test_returns_unknown_when_job_not_in_controller(self, make_request):
         make_request.return_value = []
 
