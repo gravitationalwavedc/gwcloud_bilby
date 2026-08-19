@@ -199,6 +199,15 @@ class TestFetchToStaging(unittest.TestCase):
                         fetch_to_staging(self.client, _record(**overrides))
                     self.assertEqual(list(Path(tmp).rglob("*")), [])
 
+    def test_none_sname_or_analysis_uid_raises_fetch_error(self):
+        for overrides in ({"sname": None}, {"analysis_uid": None}):
+            with self.subTest(overrides=overrides):
+                with TemporaryDirectory() as tmp:
+                    settings.STAGING_DIR = tmp
+                    with self.assertRaises(FetchError):
+                        fetch_to_staging(self.client, _record(**overrides))
+                    self.assertEqual(list(Path(tmp).rglob("*")), [])
+
 
 if __name__ == "__main__":
     unittest.main()
