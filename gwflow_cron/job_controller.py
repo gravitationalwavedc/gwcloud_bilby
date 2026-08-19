@@ -41,7 +41,13 @@ class JobControllerClient:
         resp = requests.post(url, json=body, headers=headers, timeout=10)
         if resp.status_code != 200:
             raise FetchError(f"create_file_downloads failed with status {resp.status_code}: {resp.text}")
-        return resp.json()["fileIds"]
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            raise FetchError(f"create_file_downloads returned malformed response: {resp.text}") from exc
+        if not isinstance(data, dict) or not isinstance(data.get("fileIds"), list) or not data["fileIds"]:
+            raise FetchError(f"create_file_downloads returned malformed response: {resp.text}")
+        return data["fileIds"]
 
     def download(self, file_id: str, dest: Path) -> None:
         url = urljoin(self.api_url, "file/")
