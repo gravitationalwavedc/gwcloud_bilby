@@ -41,14 +41,18 @@ class TestGWFlowMutations(BilbyTestCase):
         upload_query = """
             mutation Upload($input: UploadGwflowFileMutationInput!) {
                 uploadGwflowFile(input: $input) {
-                    success
+                    result {
+                        success
+                    }
                 }
             }
         """
         link_query = """
             mutation Link($input: LinkBilbyJobToGwflowMutationInput!) {
                 linkBilbyJobToGwflow(input: $input) {
-                    success
+                    result {
+                        success
+                    }
                 }
             }
         """
@@ -263,8 +267,10 @@ class TestGWFlowMutations(BilbyTestCase):
         query = """
             mutation Upload($input: UploadGwflowFileMutationInput!) {
                 uploadGwflowFile(input: $input) {
-                    success
-                    fileSize
+                    result {
+                        success
+                        fileSize
+                    }
                 }
             }
         """
@@ -294,8 +300,8 @@ class TestGWFlowMutations(BilbyTestCase):
 
             res_good = self.file_query(query, input_data=good_input, files=good_files)
             self.assertIsNone(res_good.errors)
-            self.assertTrue(res_good.data["uploadGwflowFile"]["success"])
-            self.assertEqual(res_good.data["uploadGwflowFile"]["fileSize"], len(content))
+            self.assertTrue(res_good.data["uploadGwflowFile"]["result"]["success"])
+            self.assertEqual(res_good.data["uploadGwflowFile"]["result"]["fileSize"], len(content))
 
             gwflow_file.refresh_from_db()
             self.assertTrue(gwflow_file.uploaded)
@@ -314,7 +320,9 @@ class TestGWFlowMutations(BilbyTestCase):
         query = """
             mutation Link($input: LinkBilbyJobToGwflowMutationInput!) {
                 linkBilbyJobToGwflow(input: $input) {
-                    success
+                    result {
+                        success
+                    }
                 }
             }
         """
@@ -331,7 +339,7 @@ class TestGWFlowMutations(BilbyTestCase):
             }
             res1 = self.query(query, input_data=input_data1)
             self.assertIsNone(res1.errors)
-            self.assertTrue(res1.data["linkBilbyJobToGwflow"]["success"])
+            self.assertTrue(res1.data["linkBilbyJobToGwflow"]["result"]["success"])
 
             bilby_job1.refresh_from_db()
             self.assertEqual(bilby_job1.gwflow_job, gwflow_job)
@@ -472,7 +480,9 @@ class TestGWFlowMutations(BilbyTestCase):
         query = """
             mutation Upload($input: UploadGwflowFileMutationInput!) {
                 uploadGwflowFile(input: $input) {
-                    success
+                    result {
+                        success
+                    }
                 }
             }
         """
@@ -498,7 +508,7 @@ class TestGWFlowMutations(BilbyTestCase):
 
         query = """
             mutation Link($input: LinkBilbyJobToGwflowMutationInput!) {
-                linkBilbyJobToGwflow(input: $input) { success }
+                linkBilbyJobToGwflow(input: $input) { result { success } }
             }
         """
         res = self.query(
@@ -521,7 +531,7 @@ class TestGWFlowMutations(BilbyTestCase):
 
         query = """
             mutation Link($input: LinkBilbyJobToGwflowMutationInput!) {
-                linkBilbyJobToGwflow(input: $input) { success }
+                linkBilbyJobToGwflow(input: $input) { result { success } }
             }
         """
         res = self.query(

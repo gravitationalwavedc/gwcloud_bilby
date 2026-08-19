@@ -201,12 +201,23 @@ def phase_bilby_children(
         over_retry = set(state.failures_over(cur, settings.MAX_RETRY_ATTEMPTS))
         bytes_done = files_done = 0
 
-        for sname in state.get_changed_snames(cur):
+        changed = set(state.get_changed_snames(cur))
+        retry_snames = {
+            key.split(":", 1)[1].split("/", 1)[0]
+            for key in state.failures_under(cur, settings.MAX_RETRY_ATTEMPTS)
+            if key.startswith("bilby:")
+        }
+        processing = sorted(changed | retry_snames)
+
+        for sname in processing:
+            state.ensure_pending(con, cur, f"bilby:{sname}")
+
+        for sname in processing:
             try:
                 detail = portal_client.get_superevent(sname)
             except Exception as e:
                 logger.warning("failed to fetch detail for %s: %s", sname, e)
-                state.record_failure(con, cur, sname, repr(e))
+                state.record_failure(con, cur, f"bilby:{sname}", repr(e))
                 continue
 
             linked: set[str] = set()
@@ -218,7 +229,7 @@ def phase_bilby_children(
                     linked.discard("")
             except Exception as e:
                 logger.warning("failed to fetch linked jobs for %s: %s", sname, e)
-                state.record_failure(con, cur, sname, repr(e))
+                state.record_failure(con, cur, f"bilby:{sname}", repr(e))
                 continue
 
             cluster_offline = False
@@ -226,59 +237,76 @@ def phase_bilby_children(
             for analysis in find_bilby_pe_analyses(detail):
                 uid = analysis["uid"]
                 key = f"{sname}/{uid}"
+                fail_key = f"bilby:{sname}/{uid}"
                 if uid in linked:
+                    state.clear_failure(con, cur, fail_key)
                     continue
-                if key in over_retry:
+                if fail_key in over_retry:
                     continue
+
+                state.ensure_pending(con, cur, fail_key)
 
                 workdir = Path(settings.STAGING_DIR) / key
                 archive = Path(settings.STAGING_DIR) / f"{key}.tar.gz"
 
+                job_ref = state.get_failure_job_ref(cur, fail_key)
                 try:
-                    ini_path = fetch_to_staging(jc, rec_for(analysis["config_file"], sname, uid))
-                    ini_text = ini_path.read_text(encoding="utf-8")
-                    results: list[Path] = []
-                    for f in (analysis["result_file"], analysis["pesummary_result_file"]):
-                        if f:
-                            results.append(fetch_to_staging(jc, rec_for(f, sname, uid)))
+                    if job_ref is not None:
+                        gwc_client.link_bilby_job_to_gwflow(job_ref, sname, uid)
+                        state.clear_failure(con, cur, fail_key)
+                    else:
+                        ini_path = fetch_to_staging(jc, rec_for(analysis["config_file"], sname, uid))
+                        ini_text = ini_path.read_text(encoding="utf-8")
+                        results: list[Path] = []
+                        for f in (analysis["result_file"], analysis["pesummary_result_file"]):
+                            if f:
+                                results.append(fetch_to_staging(jc, rec_for(f, sname, uid)))
 
-                    if not settings.BACKFILL and (
-                        files_done >= settings.MAX_FILES_PER_RUN or bytes_done >= settings.MAX_BYTES_PER_RUN
-                    ):
-                        cap_reached = True
-                        break
+                        if not settings.BACKFILL and (
+                            files_done >= settings.MAX_FILES_PER_RUN or bytes_done >= settings.MAX_BYTES_PER_RUN
+                        ):
+                            cap_reached = True
+                            break
 
-                    name = f"{sname}--{uid}"
-                    tree = synthesize_job_tree(workdir, name, ini_text, results)
-                    make_archive(tree, archive)
+                        name = f"{sname}--{uid}"
+                        tree = synthesize_job_tree(workdir, name, ini_text, results)
+                        make_archive(tree, archive)
 
-                    job = gwc_client.upload_job_archive(
-                        description=f"gwflow {sname} PE {uid}",
-                        job_archive=archive,
-                        public=True,
-                    )
-                    gwc_client.link_bilby_job_to_gwflow(job.id, sname, uid)
+                        job = gwc_client.upload_job_archive(
+                            description=f"gwflow {sname} PE {uid}",
+                            job_archive=archive,
+                            public=True,
+                        )
+                        state.set_job_ref(con, cur, fail_key, str(job.id))
+                        gwc_client.link_bilby_job_to_gwflow(job.id, sname, uid)
 
-                    try:
-                        ev = resolve_event_id_for(sname, detail)
-                        if ev:
-                            gwc_client.create_event_id(ev[0], ev[1], trigger_id=sname)
-                            job.set_event_id(ev[0])
-                    except Exception:
-                        logger.warning("event id link failed for %s", key)
+                        try:
+                            ev = resolve_event_id_for(sname, detail)
+                            if ev:
+                                gwc_client.create_event_id(ev[0], ev[1], trigger_id=sname)
+                                job.set_event_id(ev[0])
+                        except Exception:
+                            logger.warning("event id link failed for %s", key)
 
-                    bytes_done += ini_path.stat().st_size + sum(r.stat().st_size for r in results)
-                    files_done += 1
-                    state.clear_failure(con, cur, key)
+                        bytes_done += ini_path.stat().st_size + sum(r.stat().st_size for r in results)
+                        files_done += 1
+                        state.clear_failure(con, cur, fail_key)
                 except ClusterOffline:
                     logger.warning("cluster offline - deferring remaining analyses")
                     cluster_offline = True
                     break
                 except Exception as e:
-                    state.record_failure(con, cur, key, repr(e))
+                    state.record_failure(con, cur, fail_key, repr(e))
                 finally:
                     shutil.rmtree(workdir, ignore_errors=True)
                     archive.unlink(missing_ok=True)
+
+            if not cluster_offline and not cap_reached:
+                remaining = [
+                    k for k in state.failures_under(cur, settings.MAX_RETRY_ATTEMPTS) if k.startswith(f"bilby:{sname}/")
+                ]
+                if not remaining:
+                    state.clear_failure(con, cur, f"bilby:{sname}")
 
             if cluster_offline or cap_reached:
                 break
@@ -380,8 +408,8 @@ def run(args=None):
         state.init_db(con)
 
         phase_metadata(gwc_client=gwc, con=con)
-        phase_bilby_children(gwc_client=gwc, jc=jc, con=con)
         phase_file_mirror(jc=jc, gwc_client=gwc, con=con)
+        phase_bilby_children(gwc_client=gwc, jc=jc, con=con)
 
         con.close()
         logger.info("Completed gwflow_ingest run")

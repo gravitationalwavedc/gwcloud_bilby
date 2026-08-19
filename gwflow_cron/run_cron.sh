@@ -4,7 +4,16 @@ set -euo pipefail
 # GWFlow cron runner wrapper.
 # Assuming that you've tagged the built docker image with gwflow_ingest,
 # created a sqlite.db file, and created a .env file.
-source .env
+
+# Load .env without shell evaluation: values (e.g. JOB_CONTROLLER_JWT_SECRET)
+# may contain shell-special characters that `source` would interpret.
+while IFS='=' read -r key value; do
+  case "$key" in
+    ''|\#*) continue ;;
+    *[!A-Za-z0-9_]*|'') continue ;;
+  esac
+  export "$key=$value"
+done < .env
 
 : "${HOST_DB_PATH:?HOST_DB_PATH must be set in .env}"
 : "${DB_PATH:?DB_PATH must be set in .env}"

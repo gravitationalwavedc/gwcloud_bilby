@@ -163,6 +163,13 @@ class TestIngestWiring(GWFlowTestBase):
                 self.assertIn("Completed phase_metadata", log_output)
                 self.assertIn("Starting phase_file_mirror", log_output)
                 self.assertIn("Completed phase_file_mirror", log_output)
+                # Phase order: metadata -> file_mirror -> bilby_children (bilby is secondary)
+                self.assertLess(
+                    log_output.index("Starting phase_metadata"), log_output.index("Starting phase_file_mirror")
+                )
+                self.assertLess(
+                    log_output.index("Starting phase_file_mirror"), log_output.index("Starting phase_bilby_children")
+                )
 
         # Verify metadata upsert
         mock_gwc.upsert_gwflow_job.assert_called_once_with(
