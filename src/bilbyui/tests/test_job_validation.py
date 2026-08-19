@@ -4,6 +4,11 @@ from bilbyui.utils.job_validation import validate_job_name
 
 
 class TestValidateJobName(BilbyTestCase):
+    def test_rejects_none(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_job_name(None)
+        self.assertEqual(str(ctx.exception), "Job name must not be None.")
+
     def test_rejects_too_short(self):
         with self.assertRaises(ValueError) as ctx:
             validate_job_name("abc")

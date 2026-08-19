@@ -9,6 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 def validate_job_name(name):
+    if name is None:
+        msg = "Job name must not be None."
+        logger.warning("Job name is None: %s", msg)
+        raise ValueError(msg)
+
     # This constraint is not enforced in the database
     if len(name) < MIN_JOB_NAME_LENGTH:
         msg = f"Job name must be at least {MIN_JOB_NAME_LENGTH} characters long."
