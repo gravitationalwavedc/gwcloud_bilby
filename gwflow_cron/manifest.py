@@ -9,7 +9,7 @@ def _build_file_entry(analysis_uid: str, file_obj: dict | None) -> dict | None:
     if not isinstance(file_obj, dict):
         return None
     path = file_obj.get("path")
-    if not path:
+    if not isinstance(path, str) or not path:
         return None
 
     file_name = Path(path).name

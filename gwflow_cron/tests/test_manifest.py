@@ -136,6 +136,21 @@ class TestManifestExtraction(unittest.TestCase):
         files = extract_file_manifest(payload)
         self.assertEqual(files, [])
 
+    def test_non_string_path_is_skipped(self):
+        payload = {
+            "pe": {
+                "results": [
+                    {
+                        "uid": "uid-non-str",
+                        "config_file": {"path": 12345, "file_size": 100},
+                        "result_file": {"path": ["/data/list.dat"], "file_size": 200},
+                    }
+                ]
+            }
+        }
+        files = extract_file_manifest(payload)
+        self.assertEqual(files, [])
+
     def test_section_exception_handling(self):
         payload = {"failing_section": {"uid": "uid-1"}}
         with patch("manifest._build_file_entry", side_effect=Exception("mock error")):
