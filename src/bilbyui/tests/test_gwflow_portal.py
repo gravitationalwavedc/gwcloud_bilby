@@ -66,6 +66,17 @@ class TestGWFlowPortalClient(TestCase):
         self.assertIsNone(data)
 
     @responses.activate
+    def test_down_on_non_200_logs_status(self):
+        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", status=500)
+
+        with self.assertLogs("bilbyui.utils.gwflow_portal", level="WARNING") as cm:
+            data, state = gwflow_portal.get_superevent("S230601ag")
+
+        self.assertEqual(state, "down")
+        self.assertIsNone(data)
+        self.assertIn("500", cm.output[0])
+
+    @responses.activate
     def test_down_on_connection_error_without_cache(self):
         responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", body=requests.ConnectionError("boom"))
 
