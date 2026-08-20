@@ -194,7 +194,19 @@ class GWFlowJobNode(DjangoObjectType):
 
     def resolve_bilby_jobs(self, info):
         user = info.context.user
-        return BilbyJob.bilby_job_filter(self.bilby_jobs.all(), user)
+        user_id = user.id if user.is_authenticated else 0
+
+        jobs = BilbyJob.bilby_job_filter(self.bilby_jobs.all(), user)
+
+        # Query any job controller information in one go - exclude any job controller ids that are not set
+        job_controller_ids = set(jobs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
+        job_controller_jobs = {}
+        if job_controller_ids:
+            _, jc_jobs = request_job_filter(user_id, ids=list(job_controller_ids))
+            job_controller_jobs = {job["id"]: job for job in jc_jobs if isinstance(job, dict) and "id" in job}
+        info.context.job_controller_jobs = job_controller_jobs
+
+        return jobs
 
 
 class GWFlowJobConnection(relay.Connection):

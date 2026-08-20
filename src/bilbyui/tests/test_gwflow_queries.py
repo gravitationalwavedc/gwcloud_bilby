@@ -369,6 +369,43 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertIsNotNone(res_ligo.data["bilbyJob"]["gwflowJob"])
         self.assertEqual(res_ligo.data["bilbyJob"]["gwflowJob"]["sname"], "S230601ah")
 
+    @mock.patch("bilbyui.schema.request_job_filter")
+    def test_gwflow_bilby_jobs_resolve_real_job_status(self, mock_req_filter):
+        # A BilbyJob linked to a GWFlowJob with a job_controller_id should resolve its
+        # real controller status (not "Unknown") when queried via bilbyJobs.
+        BilbyJob.objects.create(
+            user=self.normal_user,
+            name="Test Linked Bilby Job",
+            gwflow_job=self.job_public,
+            gwflow_analysis_uid="c01:bilby",
+            job_controller_id=42,
+        )
+        mock_req_filter.return_value = (
+            True,
+            [{"id": 42, "history": [{"state": 500, "timestamp": "2024-01-01 00:00:00 UTC"}]}],
+        )
+
+        query = """
+            query GetGwflowBilbyJobs($sname: String!) {
+                gwflowJobBySname(sname: $sname) {
+                    bilbyJobs {
+                        jobStatus {
+                            name
+                            number
+                        }
+                    }
+                }
+            }
+        """
+
+        self._auth_as(self.normal_user)
+        res = self.query(query, variables={"sname": "S230601ag"})
+        self.assertResponseNoErrors(res)
+
+        status = res.data["gwflowJobBySname"]["bilbyJobs"][0]["jobStatus"]
+        self.assertEqual(status["name"], "Completed")
+        self.assertEqual(status["number"], 500)
+
     def test_filter_qs_properties(self):
         class DummyRequest:
             def __init__(self, user):
