@@ -29,3 +29,13 @@ class TestRequestLookupUsers(BilbyTestCase):
         self.assertFalse(success)
         self.assertEqual(result, "Error looking up users: auth failed")
         auth_request_mock.assert_called_once_with("get_users", {"ids": [1, 2]})
+
+    @mock.patch("bilbyui.utils.auth.lookup_users.auth_request")
+    def test_request_lookup_users_malformed_response(self, auth_request_mock):
+        auth_request_mock.return_value = {"unexpected": "data"}
+
+        success, result = request_lookup_users([1])
+
+        self.assertFalse(success)
+        self.assertEqual(result, "Error looking up users: malformed response from auth service")
+        auth_request_mock.assert_called_once_with("get_users", {"ids": [1]})

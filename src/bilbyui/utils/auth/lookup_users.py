@@ -19,6 +19,9 @@ def request_lookup_users(ids):
 
     try:
         resp = auth_request("get_users", {"ids": ids})
+        if not isinstance(resp, dict) or not isinstance(resp.get("users"), list):
+            logger.error("Error looking up users: malformed response from auth service")
+            return False, "Error looking up users: malformed response from auth service"
         return True, resp["users"]
     except AuthConnectionException as e:
         logger.error("Error looking up users: %s", e, exc_info=True)
