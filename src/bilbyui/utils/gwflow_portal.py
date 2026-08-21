@@ -37,6 +37,7 @@ def portal_get(path: str, *, cache_key: str):
             data = resp.json()
             cache.set(cache_key, data, CACHE_TTL)
             return data, "live"
+        logger.warning("Portal request failed for %s: unexpected status %s", path, resp.status_code)
     except (requests.RequestException, ValueError) as exc:
         logger.warning("Portal request failed for %s: %s", path, exc)
     return None, "down"
