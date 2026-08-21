@@ -329,6 +329,31 @@ class TestStatus(TestCase):
 
     @patch("_bundledb.delete_job")
     @patch("_bundledb.get_job_by_id")
+    @patch("scheduler.slurm.SlurmScheduler.status")
+    @patch.object(settings, "scheduler", EScheduler.SLURM)
+    def test_status_slurm_no_submit_directory(self, status_mock, get_job_by_id_mock, delete_job_mock):
+        db_job = {"working_directory": "a/working/directory", "submit_id": 1234}
+
+        get_job_by_id_mock.side_effect = Mock(return_value=db_job)
+
+        details = {"scheduler_id": 1234}
+
+        from core.status import status
+
+        result = status(details)
+
+        self.assertEqual(
+            result["status"],
+            [
+                {"status": 400, "what": "submit", "info": "Job has no submit directory"},
+            ],
+        )
+        self.assertEqual(result["complete"], True)
+        self.assertEqual(status_mock.call_count, 0)
+        self.assertEqual(delete_job_mock.call_count, 0)
+
+    @patch("_bundledb.delete_job")
+    @patch("_bundledb.get_job_by_id")
     @patch("scheduler.condor.CondorScheduler.status")
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
     def test_status_condor_no_submit_id(self, status_mock, get_job_by_id_mock, delete_job_mock):
