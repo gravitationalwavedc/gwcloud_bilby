@@ -884,6 +884,23 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             "publicBilbyJobs query returned unexpected data.",
         )
 
+    @mock.patch(
+        "elasticsearch.Elasticsearch.search",
+        side_effect=lambda *args, **kwargs: {},
+    )
+    def test_public_bilby_jobs_query_missing_hits_key(self, elasticsearch_search):
+        variables = {"count": 50, "search": None, "timeRange": "all"}
+
+        # A malformed ES response without a "hits" key should return an empty list
+        # rather than raising a KeyError (500) on the public jobs landing page.
+        response = self.query(self.public_bilby_job_query, variables=variables)
+        self.assertIsNone(response.errors, "a missing 'hits' key should not raise an error")
+        self.assertDictEqual(
+            response.data,
+            {"publicBilbyJobs": {"edges": []}},
+            "publicBilbyJobs query returned unexpected data.",
+        )
+
     @override_settings(EMBARGO_START_TIME=1234)
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
