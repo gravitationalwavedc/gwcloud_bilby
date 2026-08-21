@@ -37,9 +37,12 @@ def request_job_status(job, user_id=None):
         try:
             controller_jobs = [record for record in result if isinstance(record, dict)]
             controller_job = next(
-                (record for record in controller_jobs if record.get("id") == job.job_controller_id),
-                controller_jobs[0],
+                (record for record in controller_jobs if record.get("id") in (None, job.job_controller_id)),
+                None,
             )
+            if controller_job is None:
+                logger.warning("No status found for job %s in job controller", job.id)
+                return "UNKNOWN", "Job not found in job controller"
             history = controller_job["history"]
         except (KeyError, TypeError, IndexError):
             logger.warning("Malformed status record for job %s in job controller", job.id)
