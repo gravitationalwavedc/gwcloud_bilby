@@ -20,7 +20,7 @@ def _get(rec, key):
 
 def _unsafe_component(value: str | None) -> bool:
     """True if a path component could traverse out of its parent directory."""
-    return value is None or "\x00" in value or "/" in value or ".." in value.split("/")
+    return value is None or not isinstance(value, str) or "\x00" in value or "/" in value or ".." in value.split("/")
 
 
 def fetch_to_staging(jc, rec, staging_dir=None) -> Path:
