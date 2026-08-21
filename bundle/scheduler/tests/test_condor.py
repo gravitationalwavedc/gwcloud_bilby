@@ -301,3 +301,29 @@ class TestCondor(TestCase):
 
             write_next_event()
             self.assertEqual(sched.status(None, details), (JobStatus.ERROR, "Job terminated with return value 1"))
+
+    def test_status_no_log_file(self):
+        sched = CondorScheduler()
+
+        with TemporaryDirectory() as td:
+            submit_dir = os.path.join(td, "job", "submit")
+            os.makedirs(submit_dir)
+
+            details = {"working_directory": td, "submit_directory": "job/submit"}
+
+            self.assertEqual(sched.status(None, details), (None, None))
+
+    def test_status_multiple_log_files(self):
+        sched = CondorScheduler()
+
+        with TemporaryDirectory() as td:
+            submit_dir = os.path.join(td, "job", "submit")
+            os.makedirs(submit_dir)
+
+            for name in ("a.submit.nodes.log", "b.submit.nodes.log"):
+                with open(os.path.join(submit_dir, name), "w"):
+                    pass
+
+            details = {"working_directory": td, "submit_directory": "job/submit"}
+
+            self.assertEqual(sched.status(None, details), (None, None))
