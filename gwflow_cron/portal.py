@@ -91,6 +91,11 @@ class PortalClient:
                 results = data
                 next_url = None
 
+            if not isinstance(results, list):
+                logger.warning("Skipping portal page with non-list results: %r", results)
+                url = next_url
+                continue
+
             for row in results:
                 if isinstance(row, dict):
                     if "sname" in row:
