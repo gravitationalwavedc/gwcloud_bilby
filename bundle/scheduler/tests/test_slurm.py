@@ -99,6 +99,18 @@ class TestSlurm(TestCase):
         self.assertEqual(info, sched.SLURM_STATUS["COMPLETED"])
 
     @patch("scheduler.slurm.subprocess.check_output")
+    def test_status_skips_non_utf8_line(self, check_output_mock):
+        # A sacct line whose state field is not valid UTF-8 must be skipped instead
+        # of crashing the poll with a UnicodeDecodeError.
+        check_output_mock.return_value = b"1234|\xff\xfe\n1234|COMPLETED\n"
+
+        sched = SlurmScheduler()
+        status, info = sched.status(1234, None)
+
+        self.assertEqual(status, JobStatus.COMPLETED)
+        self.assertEqual(info, sched.SLURM_STATUS["COMPLETED"])
+
+    @patch("scheduler.slurm.subprocess.check_output")
     def test_status_valid_line(self, check_output_mock):
         check_output_mock.return_value = b"1234|RUNNING\n"
 
