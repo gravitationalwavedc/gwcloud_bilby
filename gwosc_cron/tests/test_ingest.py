@@ -538,19 +538,22 @@ class TestGWOSCCron(GWOSCTestBase):
         [
             ("empty_dataset", []),
             ("non_bytes_dataset", ["not-bytes"]),
+            ("non_utf8_bytes", [b"\xff\xfe"]),
         ]
     )
     @responses.activate
     def test_h5_malformed_config_records_job_failure(self, gwc, case_name, config_value):
-        """A malformed config dataset (empty -> IndexError, non-bytes -> AttributeError)
-        records a job_errors row for retry and does not crash the whole script."""
+        """A malformed config dataset (empty -> IndexError, non-bytes -> AttributeError,
+        non-UTF-8 bytes -> UnicodeDecodeError) records a job_errors row for retry and
+        does not crash the whole script."""
         self.add_allevents_response()
         self.add_event_response()
         self.add_file_response()
 
         # Build a mock H5 object that passes all isinstance/membership checks but
         # yields a config dataset that cannot be decoded: an empty dataset raises
-        # IndexError on [0], a non-bytes dataset raises AttributeError on .decode().
+        # IndexError on [0], a non-bytes dataset raises AttributeError on .decode(),
+        # and non-UTF-8 bytes raise UnicodeDecodeError (a ValueError subclass).
         mock_config = MagicMock()
         mock_config.__class__ = h5py.Group
         mock_config.keys.return_value = ["param1"]
