@@ -74,7 +74,7 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.get_superevent.return_value = {
             "sname": "S_LIBS",
             "raw_payload": {"sname": "S_LIBS"},
-            "libraries": ["not-a-dict", {"name": "bilby"}, None, {"name": "gwpy"}],
+            "libraries": ["not-a-dict", {"name": "bilby"}, None, {"name": "gwpy"}, {"foo": "bar"}],
         }
         mock_portal.iter_current_snames.return_value = ["S_LIBS"]
 
