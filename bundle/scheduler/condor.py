@@ -130,7 +130,7 @@ class CondorScheduler(Scheduler):
                 submitted_stages[event.cluster] = next(
                     filter(lambda x: x.startswith("DAG Node:"), notes.splitlines())
                 )
-            except (KeyError, StopIteration, AttributeError):
+            except (KeyError, StopIteration, AttributeError, TypeError):
                 continue
 
         plot_started = any(filter(lambda x: x.endswith("_plot_arg_0"), submitted_stages.values()))
