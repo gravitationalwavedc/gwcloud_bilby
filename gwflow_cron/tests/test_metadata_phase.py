@@ -94,6 +94,29 @@ class TestMetadataPhase(GWFlowTestBase):
             files=[],
         )
 
+    def test_non_dict_superevent_detail_is_skipped_with_warning(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = [
+            {
+                "sname": "S_BAD_DETAIL",
+                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "schema_version": "1.0",
+            },
+        ]
+        mock_portal.get_superevent.return_value = "malformed-response"
+        mock_portal.iter_current_snames.return_value = ["S_BAD_DETAIL"]
+
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = []
+
+        cur = self.con.cursor()
+        with self.assertLogs("gwflow_ingest", level="WARNING") as logs:
+            phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        mock_gwc.upsert_gwflow_job.assert_not_called()
+        self.assertEqual(state.get_failure_count(cur, "S_BAD_DETAIL"), 0)
+        self.assertIn("non-dict superevent detail", " ".join(logs.output))
+
     def test_tie_resume(self):
         cur = self.con.cursor()
         # Set watermark and last_sname in state
