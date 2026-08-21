@@ -69,6 +69,8 @@ class JobControllerClient:
             raise
 
     def map_remote_path(self, path: str) -> str:
+        if not isinstance(path, str):
+            raise FetchError(f"unsafe remote path {path!r}: not a string")
         mapped = path.removeprefix("CIT:")
         if not mapped.startswith("/"):
             raise FetchError(f"unsafe remote path {path!r}: not an absolute path")

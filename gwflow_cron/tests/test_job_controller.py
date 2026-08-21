@@ -157,6 +157,12 @@ class TestJobControllerClient(unittest.TestCase):
                 with self.assertRaises(FetchError):
                     self.client.map_remote_path(bad)
 
+    def test_map_remote_path_rejects_non_string_path(self):
+        for bad in [None, 12345, ["/data/pe1/result.hdf5"], {"path": "/data/pe1/result.hdf5"}]:
+            with self.subTest(path=bad):
+                with self.assertRaises(FetchError):
+                    self.client.map_remote_path(bad)
+
     def test_map_remote_path_allows_dot_prefix_and_trailing_slash(self):
         self.assertEqual(self.client.map_remote_path("/data/.hidden/file.h5"), "/data/.hidden/file.h5")
         self.assertEqual(self.client.map_remote_path("/data/pe1/"), "/data/pe1/")
