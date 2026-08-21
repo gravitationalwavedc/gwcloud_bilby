@@ -510,6 +510,29 @@ class TestSupportingFiles(TestCase):
                 (Path(working_directory) / "supporting_files" / "unknown" / "test.unknown").is_file()
             )
 
+    def test_unsafe_supporting_file_name(self):
+        token = str(uuid.uuid4())
+        self.responses.add(
+            responses.GET,
+            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            body=self.content.encode("utf-8"),
+            status=200,
+        )
+
+        from core.submit import bilby_ini_to_args, prepare_supporting_files
+
+        with TemporaryDirectory() as working_directory, cd(working_directory):
+            supporting_files = [
+                {"type": "psd", "key": "V1", "file_name": "../../evil.psd", "token": token},
+                {"type": "psd", "key": "V1", "file_name": f"{working_directory}/evil.psd", "token": token},
+            ]
+
+            args = bilby_ini_to_args(self.ini_file_v1)
+            prepare_supporting_files(args, supporting_files, working_directory)
+
+            # Unsafe file names are skipped, so no file is written outside the supporting_files dir
+            self.assertFalse((Path(working_directory) / "evil.psd").is_file())
+
     def test_supporting_file_download_failure(self):
         token = str(uuid.uuid4())
         self.responses.add(
