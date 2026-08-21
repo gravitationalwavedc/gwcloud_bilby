@@ -97,6 +97,12 @@ def slurm_status(job):
     if error:
         return {"status": result_status, "complete": True}
 
+    if "working_directory" not in job:
+        # A corrupt or legacy job record without a working directory cannot be tracked
+        result = [{"what": "submit", "status": JobStatus.ERROR, "info": "Job has no working directory"}]
+
+        return {"status": result, "complete": True}
+
     # Get the path to the slurm id's file
     sid_file = Path(job["working_directory"]) / job["submit_directory"] / "slurm_ids"
 
