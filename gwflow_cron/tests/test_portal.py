@@ -68,6 +68,31 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(rows[0]["sname"], "S260101a")
 
     @responses.activate
+    def test_iter_changed_skips_non_list_results_and_continues(self):
+        url1 = f"{self.base_url}/api/v1/superevents/?ordering=commit_timestamp%2Csname&page_size=50"
+        url2 = f"{self.base_url}/api/v1/superevents/?page=2"
+
+        responses.add(
+            responses.GET,
+            url1,
+            json={"results": None, "next": url2},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            url2,
+            json={
+                "results": [{"sname": "S260101a", "commit_timestamp": "2026-01-01T10:00:00Z"}],
+                "next": None,
+            },
+            status=200,
+        )
+
+        rows = list(self.client.iter_changed())
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["sname"], "S260101a")
+
+    @responses.activate
     def test_get_superevent(self):
         sname = "S260101a"
         url = f"{self.base_url}/api/v1/superevents/{sname}/"
