@@ -144,7 +144,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         logger.exception("Failed to connect to Elasticsearch")
         return empty_result
 
-    if not results["hits"]["hits"]:
+    if not results or "hits" not in results or not results["hits"]["hits"]:
         return empty_result
 
     records = results["hits"]["hits"]
