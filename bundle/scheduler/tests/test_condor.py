@@ -330,6 +330,15 @@ class TestCondor(TestCase):
             with patch("htcondor.JobEventLog", lambda path: FakeJobEventLog(path, events)):
                 self.assertEqual(sched.status(None, details), (JobStatus.RUNNING, "Job is running"))
 
+            # A submit event in the terminated branch has a bytes LogNotes value
+            events = [
+                FakeEvent(htcondor.JobEventType.SUBMIT, cluster=222, log_notes=b"DAG Node: foo_plot_arg_0"),
+                FakeEvent(htcondor.JobEventType.SUBMIT, cluster=333, log_notes="DAG Node: foo_plot_arg_0"),
+                FakeEvent(htcondor.JobEventType.JOB_TERMINATED, cluster=111, terminated_normally=True, return_value=0),
+            ]
+            with patch("htcondor.JobEventLog", lambda path: FakeJobEventLog(path, events)):
+                self.assertEqual(sched.status(None, details), (JobStatus.RUNNING, "Job is running"))
+
     def test_status_error_short(self):
         sched = CondorScheduler()
 
