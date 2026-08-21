@@ -114,6 +114,27 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(snames, ["S260101a", "S260102b"])
 
     @responses.activate
+    def test_iter_current_snames_skips_non_list_results_and_continues(self):
+        url1 = f"{self.base_url}/api/v1/superevents/"
+        url2 = f"{self.base_url}/api/v1/superevents/?page=2"
+
+        responses.add(
+            responses.GET,
+            url1,
+            json={"results": None, "next": url2},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            url2,
+            json={"results": [{"sname": "S260101a"}, "S260102b"], "next": None},
+            status=200,
+        )
+
+        snames = list(self.client.iter_current_snames())
+        self.assertEqual(snames, ["S260101a", "S260102b"])
+
+    @responses.activate
     @patch("time.sleep", return_value=None)
     def test_retry_on_5xx_server_error(self, mock_sleep):
         url = f"{self.base_url}/api/v1/superevents/S260101a/"
