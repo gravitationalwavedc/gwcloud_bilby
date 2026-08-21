@@ -7,6 +7,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import bilby_pipe
+import requests
 from adacs_sso_plugin.models import APISessionToken
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
@@ -103,7 +104,7 @@ def check_job_embargo_status(user, args):
     except ValueError:  # If trigger time is not able to be converted to a float
         try:
             trigger_time = event_gps(args.trigger_time)  # Try to resolve event name to GPS time
-        except ValueError:  # If event_gps cannot find the event, raises a ValueError
+        except (ValueError, requests.RequestException):  # If event_gps cannot resolve the event or gwosc is unreachable
             trigger_time = None
     except TypeError:
         trigger_time = None

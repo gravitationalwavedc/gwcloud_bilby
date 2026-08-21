@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import requests
 from adacs_sso_plugin.anonymous_user import ADACSAnonymousUser
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
@@ -57,6 +58,15 @@ class TestCheckJobEmbargoStatus(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=1.5)
     @patch("bilbyui.views.event_gps", side_effect=ValueError("unknown event"))
     def test_unresolvable_trigger_time_not_embargoed(self, _mock_event_gps):
+        args = _args(trigger_time="NOT_A_REAL_EVENT", n_simulation="0")
+        self.assertFalse(check_job_embargo_status(None, args))
+
+    @override_settings(EMBARGO_START_TIME=1.5)
+    @patch(
+        "bilbyui.views.event_gps",
+        side_effect=requests.HTTPError("404 Client Error: Not Found for url"),
+    )
+    def test_gwosc_http_error_trigger_time_not_embargoed(self, _mock_event_gps):
         args = _args(trigger_time="NOT_A_REAL_EVENT", n_simulation="0")
         self.assertFalse(check_job_embargo_status(None, args))
 
