@@ -69,11 +69,23 @@ class TestRequestJobStatus(BilbyTestCase):
         self.assertEqual(result, matching_history)
 
     @mock.patch("bilbyui.utils.jobs.request_job_status._make_job_controller_request")
-    def test_falls_back_to_first_record_when_no_id_match(self, make_request):
+    def test_returns_unknown_when_no_controller_id_match(self, make_request):
+        make_request.return_value = [
+            {"id": 99999, "history": [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}]},
+            {"id": 88888, "history": []},
+        ]
+
+        status, message = request_job_status(self.job)
+
+        self.assertEqual(status, "UNKNOWN")
+        self.assertEqual(message, "Job not found in job controller")
+
+    @mock.patch("bilbyui.utils.jobs.request_job_status._make_job_controller_request")
+    def test_falls_back_to_idless_record_when_no_id_match(self, make_request):
         history = [{"state": 500, "timestamp": "2020-01-01 12:00:00 UTC"}]
         make_request.return_value = [
-            {"id": 99999, "history": history},
-            {"id": 88888, "history": []},
+            {"id": 99999, "history": []},
+            {"history": history},
         ]
 
         status, result = request_job_status(self.job)
