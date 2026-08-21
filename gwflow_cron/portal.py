@@ -55,6 +55,12 @@ class PortalClient:
                 results = data
                 next_url = None
 
+            if not isinstance(results, list):
+                logger.warning("Skipping portal page with non-list results: %r", results)
+                url = next_url
+                params = None  # Subsequent page URLs include query parameters
+                continue
+
             # Sort rows on page by (commit_timestamp, sname)
             sorted_results = sorted(
                 results,
