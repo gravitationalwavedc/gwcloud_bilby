@@ -100,6 +100,17 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
             )
             continue
 
+        # Skip supporting files whose file name is not a plain basename so that a malformed
+        # file name (path traversal or absolute path) cannot write outside the supporting
+        # files directory or crash job submission with a ValueError from relative_to
+        file_name = supporting_file["file_name"]
+        if not file_name or file_name in (".", "..") or Path(file_name).name != file_name:
+            logger.warning(
+                "Skipping supporting file with invalid file name: %s",
+                file_name,
+            )
+            continue
+
         # Make sure that the output directory exists for the supporting file type
         supporting_file_dir = Path(working_directory) / "supporting_files" / supporting_file["type"]
         supporting_file_dir.mkdir(exist_ok=True, parents=True)
