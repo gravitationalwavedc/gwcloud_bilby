@@ -119,6 +119,17 @@ class TestViewJob(BilbyTestCase):
         generate_parameter_output.assert_called_once_with(self.job)
         self.assertNotContains(response, "<!doctype html>")
 
+    @mock.patch("bilbyui.views.generate_parameter_output", side_effect=TypeError("unsupported operand type"))
+    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    def test_parameters_partial_generate_parameter_output_type_error(
+        self, request_job_filter, generate_parameter_output
+    ):
+        response = self.client.get(f"{self.base_url}parameters/")
+
+        self.assertEqual(response.status_code, 200)
+        generate_parameter_output.assert_called_once_with(self.job)
+        self.assertNotContains(response, "<!doctype html>")
+
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_results_partial(self, request_job_filter):
         files = [
