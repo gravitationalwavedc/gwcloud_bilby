@@ -75,6 +75,9 @@ class CondorScheduler(Scheduler):
         # is for
         submit_event = next(filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events))
         notes = submit_event.get("LogNotes", "")
+        if not isinstance(notes, str):
+            logger.warning("Malformed LogNotes value found for the most recent job submission")
+            return None, None
         stage = list(filter(lambda x: x.startswith("DAG Node:"), notes.splitlines()))
 
         # There should be exactly one stage found, which is the name of the job dag for the submitted job
@@ -127,7 +130,7 @@ class CondorScheduler(Scheduler):
                 submitted_stages[event.cluster] = next(
                     filter(lambda x: x.startswith("DAG Node:"), notes.splitlines())
                 )
-            except (KeyError, StopIteration):
+            except (KeyError, StopIteration, AttributeError):
                 continue
 
         plot_started = any(filter(lambda x: x.endswith("_plot_arg_0"), submitted_stages.values()))
