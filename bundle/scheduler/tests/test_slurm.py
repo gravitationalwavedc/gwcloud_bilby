@@ -99,6 +99,19 @@ class TestSlurm(TestCase):
         self.assertEqual(info, sched.SLURM_STATUS["COMPLETED"])
 
     @patch("scheduler.slurm.subprocess.check_output")
+    def test_status_non_int_job_id_returns_none(self, check_output_mock):
+        # A corrupt/legacy job record with a non-int (e.g. None) submit_id must not
+        # crash the poll with a TypeError on int(None); it should return (None, None)
+        # so the job keeps polling.
+        check_output_mock.return_value = b"1234|COMPLETED\n"
+
+        sched = SlurmScheduler()
+        status, info = sched.status(None, None)
+
+        self.assertEqual(status, None)
+        self.assertEqual(info, None)
+
+    @patch("scheduler.slurm.subprocess.check_output")
     def test_status_skips_non_utf8_line(self, check_output_mock):
         # A sacct line whose state field is not valid UTF-8 must be skipped instead
         # of crashing the poll with a UnicodeDecodeError.
