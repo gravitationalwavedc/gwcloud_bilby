@@ -83,7 +83,7 @@ def slurm_status(job):
     :param job: The internal job object representing the job to check the status for
     :return: The same return type from submit()
     """
-    if "submit_directory" not in job:
+    if job.get("submit_directory") is None:
         # A corrupt or legacy job record without a submit directory cannot be tracked
         result = [{"what": "submit", "status": JobStatus.ERROR, "info": "Job has no submit directory"}]
 
@@ -97,7 +97,7 @@ def slurm_status(job):
     if error:
         return {"status": result_status, "complete": True}
 
-    if "working_directory" not in job:
+    if job.get("working_directory") is None:
         # A corrupt or legacy job record without a working directory cannot be tracked
         result = [{"what": "submit", "status": JobStatus.ERROR, "info": "Job has no working directory"}]
 
