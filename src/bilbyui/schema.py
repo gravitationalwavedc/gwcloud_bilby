@@ -50,6 +50,7 @@ from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
 from .utils.misc import es_section_dict, is_ligo_user
+from .utils.time_range import _normalize_time_range
 from .views import (
     create_bilby_job,
     create_bilby_job_from_ini_string,
@@ -67,14 +68,6 @@ from .views import (
 )
 
 logger = logging.getLogger(__name__)
-
-_VALID_TIME_RANGES = ("all", "1d", "1w", "1m", "1y")
-
-
-def _normalize_time_range(time_range):
-    if time_range not in _VALID_TIME_RANGES:
-        return "all"
-    return time_range
 
 
 def _parse_after_cursor(kwargs):

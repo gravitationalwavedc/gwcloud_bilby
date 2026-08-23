@@ -57,6 +57,7 @@ from .utils.job_validation import validate_job_name
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
 from .utils.misc import es_section_dict, is_ligo_user
+from .utils.time_range import _normalize_time_range
 
 logger = logging.getLogger(__name__)
 
@@ -1128,12 +1129,6 @@ def _parse_page(request):
         return max(int(request.GET.get("page", 1)), 1)
     except (TypeError, ValueError):
         return 1
-
-
-def _normalize_time_range(time_range):
-    if time_range not in ("all", "1d", "1w", "1m", "1y"):
-        return "all"
-    return time_range
 
 
 def public_jobs_view(request):
