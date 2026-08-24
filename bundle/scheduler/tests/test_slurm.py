@@ -128,7 +128,9 @@ class TestSlurm(TestCase):
         result = sched.cancel(1234, None)
 
         self.assertTrue(result)
-        check_output_mock.assert_called_once_with("scancel 1234", shell=True)
+        check_output_mock.assert_called_once_with(
+            "scancel 1234", shell=True, timeout=30
+        )
 
     @patch(
         "scheduler.slurm.subprocess.check_output",
@@ -139,7 +141,9 @@ class TestSlurm(TestCase):
         result = sched.cancel(1234, None)
 
         self.assertFalse(result)
-        check_output_mock.assert_called_once_with("scancel 1234", shell=True)
+        check_output_mock.assert_called_once_with(
+            "scancel 1234", shell=True, timeout=30
+        )
 
     @patch("scheduler.slurm.subprocess.check_output", return_value=b"")
     def test_submit_empty_output_returns_none(self, _check_output):
