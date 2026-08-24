@@ -607,11 +607,7 @@ class Query:
                 raise GraphQLError("Error getting file list. " + str(files))
 
             # Generate download tokens for the list of files
-            paths = [f["path"] for f in files if isinstance(f, dict) and not f.get("isDir", False) and f.get("path")]
-            tokens = FileDownloadToken.create(job, paths)
-
-            # Generate a dict that can be used to query the generated tokens
-            token_dict = {tk.path: tk.token for tk in tokens}
+            token_dict = FileDownloadToken.create_token_map(job, files)
 
             # Build the resulting file list and send it back to the client
             result = [
