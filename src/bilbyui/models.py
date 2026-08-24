@@ -13,6 +13,7 @@ from django.db.models.signals import m2m_changed, post_save, pre_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
+from bilbyui.utils.gwflow_es import get_es_client
 from bilbyui.utils.jobs.request_file_list import request_file_list
 
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
@@ -392,11 +393,7 @@ class BilbyJob(models.Model):
         if not (self.ini_string and self.ini_string.strip()):
             return
 
-        es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST],
-            api_key=settings.ELASTIC_SEARCH_API_KEY,
-            verify_certs=False,
-        )
+        es = get_es_client()
 
         # Get the user details for this job
         success, users = request_lookup_users([self.user.id])
@@ -442,11 +439,7 @@ class BilbyJob(models.Model):
         if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
             return
 
-        es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST],
-            api_key=settings.ELASTIC_SEARCH_API_KEY,
-            verify_certs=False,
-        )
+        es = get_es_client()
 
         # Swallow NotFoundError so deleting a job whose ES document is missing
         # (e.g. a legacy job that was never indexed) doesn't abort the DB delete
