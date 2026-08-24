@@ -54,6 +54,14 @@ class CondorScheduler(Scheduler):
         :return: A tuple with JobStatus, additional info as a string. None if no job status could be obtained
         """
 
+        if (
+            details.get("working_directory") is None
+            or details.get("submit_directory") is None
+        ):
+            # A corrupt or legacy job record without a working or submit directory cannot be tracked
+            logger.warning("Job record has no working_directory or submit_directory")
+            return None, None
+
         p = Path(details["working_directory"]) / details["submit_directory"]
 
         logger.info("Trying to get status of job with working directory %s...", p)
