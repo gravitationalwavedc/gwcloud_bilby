@@ -1068,7 +1068,9 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
     page_size = gwflow_jobs_result["page_size"]
     jobs = gwflow_jobs_result["jobs"]
 
-    job_ids = [int(record["_id"]) for record in records[:page_size]]
+    page_records = records[:page_size]
+
+    job_ids = [int(record["_id"]) for record in page_records]
     file_counts = {
         row["job_id"]: (row["total"], row["uploaded"])
         for row in GWFlowFile.objects.filter(job_id__in=job_ids)
@@ -1077,7 +1079,7 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
     }
 
     rows = []
-    for record in records[:page_size]:
+    for record in page_records:
         job = jobs.get(int(record["_id"]))
         if job is None:
             continue
