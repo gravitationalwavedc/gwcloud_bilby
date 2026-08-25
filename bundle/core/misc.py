@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def working_directory(details, *args, **kwargs):
-    if isinstance(details, dict):
+    if isinstance(details, dict) and "job_id" in details:
         return str(Path(settings.job_directory, str(details["job_id"])))
 
     return settings.default_working_directory

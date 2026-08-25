@@ -24,6 +24,12 @@ class TestMisc(unittest.TestCase):
 
         self.assertEqual(working_directory(details), settings.default_working_directory)
 
+    @patch("settings.default_working_directory", "/my/default/directory")
+    def test_working_directory_missing_job_id(self):
+        details = {}
+
+        self.assertEqual(working_directory(details), settings.default_working_directory)
+
     @patch("settings.scheduler", None)
     def test_get_scheduler_slurm(self):
         with patch("settings.scheduler", EScheduler.SLURM):
