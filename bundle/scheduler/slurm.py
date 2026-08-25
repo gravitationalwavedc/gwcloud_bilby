@@ -49,8 +49,8 @@ class SlurmScheduler(Scheduler):
         # Execute the sbatch command
         stdout = None
         try:
-            stdout = subprocess.check_output(command, shell=True)
-        except subprocess.CalledProcessError:
+            stdout = subprocess.check_output(command, shell=True, timeout=30)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             # Record the command and the output
             logger.exception("Error: Command `%s` returned `%s`", command, stdout)
             return None
@@ -80,8 +80,8 @@ class SlurmScheduler(Scheduler):
 
         # Execute the sacct command for this job
         try:
-            stdout = subprocess.check_output(command, shell=True)
-        except subprocess.CalledProcessError:
+            stdout = subprocess.check_output(command, shell=True, timeout=30)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             logger.warning(
                 "Failed to get status for job %s: command `%s` failed", job_id, command
             )
@@ -168,8 +168,8 @@ class SlurmScheduler(Scheduler):
         # Cancel the job
         stdout = None
         try:
-            stdout = subprocess.check_output(command, shell=True)
-        except subprocess.CalledProcessError:
+            stdout = subprocess.check_output(command, shell=True, timeout=30)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             # Record the command and the output
             logger.exception("Error: Command `%s` returned `%s`", command, stdout)
             return False
