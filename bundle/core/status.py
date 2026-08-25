@@ -163,7 +163,7 @@ def status(details, *args, **kwargs):
     }
     """
     # Get the job
-    job = _bundledb.get_job_by_id(details["scheduler_id"])
+    job = _bundledb.get_job_by_id(details.get("scheduler_id"))
     if not job:
         # Job doesn't exist. Report error
         result = [

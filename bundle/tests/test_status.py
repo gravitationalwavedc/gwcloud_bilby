@@ -32,6 +32,21 @@ class TestStatus(TestCase):
         self.assertEqual(result["complete"], True)
 
     @patch("_bundledb.get_job_by_id")
+    def test_status_missing_scheduler_id(self, get_job_by_id_mock):
+        get_job_by_id_mock.side_effect = Mock(return_value=None)
+
+        from core.status import status
+
+        result = status({})
+
+        self.assertEqual(
+            result["status"],
+            [{"what": "system", "status": 400, "info": "Job does not exist. Perhaps it failed to start?"}],
+        )
+        self.assertEqual(result["complete"], True)
+        get_job_by_id_mock.assert_called_once_with(None)
+
+    @patch("_bundledb.get_job_by_id")
     @patch.object(settings, "scheduler", "unknown")
     def test_status_unknown_scheduler(self, get_job_by_id_mock):
         db_job = {"submit_id": 1234, "working_directory": "a/working/directory", "submit_directory": "submit"}
