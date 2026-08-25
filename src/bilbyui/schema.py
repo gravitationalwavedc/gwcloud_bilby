@@ -83,9 +83,7 @@ def _parse_after_cursor(kwargs):
 
 
 def _pad_result_for_cursor(after, nodes):
-    after_value = int((after or -1) + 1)
-    if after == 0:
-        after_value = 1
+    after_value = 0 if after is None else after + 1
     real_result = [None] * after_value
     real_result.extend(nodes)
     return real_result
