@@ -237,6 +237,24 @@ class TestJobSubmission(BilbyTestCase):
         self.assertEqual(str(ex.exception), "Job controller returned a successful response without a jobId")
 
     @patch("bilbyui.models.submit_job")
+    def test_job_submission_null_job_id(self, mock_api_call):
+        # A successful job controller response with a null jobId should raise a clear error
+        mock_api_call.return_value = {"jobId": None}
+
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="test_job_null_job_id",
+            description="Test description",
+            private=True,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+        with self.assertRaises(ValueError) as ex:
+            job.submit()
+
+        self.assertEqual(str(ex.exception), "Job controller returned a successful response without a jobId")
+
+    @patch("bilbyui.models.submit_job")
     def test_real_job(self, mock_api_call):
         mock_api_call.return_value = {"jobId": 4321}
 
