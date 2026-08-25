@@ -13,6 +13,22 @@ from bilbyui.utils.misc import check_request_leak
 logger = logging.getLogger(__name__)
 
 
+def _make_file_entry(real_file_name, is_dir, job_dir):
+    """
+    Constructs a file entry dict for the given path, or None if the path
+    cannot be stat'ed (e.g. a broken symlink).
+    """
+    with contextlib.suppress(FileNotFoundError):
+        # Happens when trying to stat a symlink
+        return {
+            # Remove the leading working directory
+            "path": str(real_file_name)[len(job_dir) :],
+            "isDir": is_dir,
+            "fileSize": real_file_name.stat().st_size,
+        }
+    return None
+
+
 def request_file_list(job, path, recursive, user_id=None):
     """
     Requests the file list for a job
@@ -44,50 +60,20 @@ def request_file_list(job, path, recursive, user_id=None):
             for root, dirnames, filenames in os.walk(dir_path):
                 # Iterate over the directories
                 for item in dirnames:
-                    # Construct the real path to this directory
-                    real_file_name = Path(root, item)
-                    # Add the file entry
-                    with contextlib.suppress(FileNotFoundError):
-                        # Happens when trying to stat a symlink
-                        file_list.append(
-                            {
-                                # Remove the leading working directory
-                                "path": str(real_file_name)[len(job_dir) :],
-                                "isDir": True,
-                                "fileSize": real_file_name.stat().st_size,
-                            }
-                        )
+                    entry = _make_file_entry(Path(root, item), True, job_dir)
+                    if entry is not None:
+                        file_list.append(entry)
 
                 for item in filenames:
-                    # Construct the real path to this file
-                    real_file_name = Path(root, item)
-                    # Add the file entry
-                    with contextlib.suppress(FileNotFoundError):
-                        # Happens when trying to stat a symlink
-                        file_list.append(
-                            {
-                                # Remove the leading working directory
-                                "path": str(real_file_name)[len(job_dir) :],
-                                "isDir": False,
-                                "fileSize": real_file_name.stat().st_size,
-                            }
-                        )
+                    entry = _make_file_entry(Path(root, item), False, job_dir)
+                    if entry is not None:
+                        file_list.append(entry)
         else:
             # Not a recursive search
             for item in dir_path_obj.iterdir():
-                # Construct the real path to this file/directory
-                real_file_name = item
-                # Add the file entry
-                with contextlib.suppress(FileNotFoundError):
-                    # Happens when trying to stat a symlink
-                    file_list.append(
-                        {
-                            # Remove the leading working directory
-                            "path": str(real_file_name)[len(job_dir) :],
-                            "isDir": real_file_name.is_dir(),
-                            "fileSize": real_file_name.stat().st_size,
-                        }
-                    )
+                entry = _make_file_entry(item, item.is_dir(), job_dir)
+                if entry is not None:
+                    file_list.append(entry)
 
         return True, file_list
 
