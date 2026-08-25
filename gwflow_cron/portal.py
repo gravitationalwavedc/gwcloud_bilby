@@ -37,14 +37,7 @@ class PortalClient:
             time.sleep(backoff)
             backoff *= 2.0
 
-    def iter_changed(self, since: str | None = None, page_size: int = 50):
-        url = urljoin(self.base_url, "api/v1/superevents/")
-        params = {"ordering": "commit_timestamp,sname"}
-        if since:
-            params["commit_timestamp__gte"] = since
-        if page_size:
-            params["page_size"] = str(page_size)
-
+    def _iter_pages(self, url: str, params: dict | None = None):
         while url:
             resp = self._request_with_retry("GET", url, params=params)
             data = resp.json()
@@ -61,6 +54,20 @@ class PortalClient:
                 params = None  # Subsequent page URLs include query parameters
                 continue
 
+            yield results, next_url
+
+            url = next_url
+            params = None  # Subsequent page URLs include query parameters
+
+    def iter_changed(self, since: str | None = None, page_size: int = 50):
+        url = urljoin(self.base_url, "api/v1/superevents/")
+        params = {"ordering": "commit_timestamp,sname"}
+        if since:
+            params["commit_timestamp__gte"] = since
+        if page_size:
+            params["page_size"] = str(page_size)
+
+        for results, _ in self._iter_pages(url, params):
             # Sort rows on page by (commit_timestamp, sname)
             sorted_results = sorted(
                 results,
@@ -71,9 +78,6 @@ class PortalClient:
             )
             yield from sorted_results
 
-            url = next_url
-            params = None  # Subsequent page URLs include query parameters
-
     def get_superevent(self, sname: str) -> dict:
         url = urljoin(self.base_url, f"api/v1/superevents/{sname}/")
         resp = self._request_with_retry("GET", url)
@@ -81,26 +85,10 @@ class PortalClient:
 
     def iter_current_snames(self):
         url = urljoin(self.base_url, "api/v1/superevents/")
-        while url:
-            resp = self._request_with_retry("GET", url)
-            data = resp.json()
-            if isinstance(data, dict):
-                results = data.get("results", [])
-                next_url = data.get("next")
-            else:
-                results = data
-                next_url = None
-
-            if not isinstance(results, list):
-                logger.warning("Skipping portal page with non-list results: %r", results)
-                url = next_url
-                continue
-
+        for results, _ in self._iter_pages(url):
             for row in results:
                 if isinstance(row, dict):
                     if "sname" in row:
                         yield row["sname"]
                 elif isinstance(row, str):
                     yield row
-
-            url = next_url
