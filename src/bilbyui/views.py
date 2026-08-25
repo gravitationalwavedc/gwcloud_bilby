@@ -1790,13 +1790,24 @@ def _check_gwflow_ingest_user(user):
 
 
 def _gwflow_pending_file(f):
+    if isinstance(f, dict):
+        entry = f
+    else:
+        entry = {
+            "id": f.id,
+            "sname": f.job.sname,
+            "analysis_uid": f.analysis_uid,
+            "path": f.path,
+            "file_name": f.file_name,
+            "md5_sum": f.md5_sum,
+        }
     return GWFlowPendingFile(
-        id=to_global_id("GWFlowFileNode", f.id),
-        sname=f.job.sname,
-        analysis_uid=f.analysis_uid,
-        path=f.path,
-        file_name=f.file_name,
-        md5_sum=f.md5_sum,
+        id=to_global_id("GWFlowFileNode", entry["id"]),
+        sname=entry["sname"],
+        analysis_uid=entry["analysis_uid"],
+        path=entry["path"],
+        file_name=entry["file_name"],
+        md5_sum=entry["md5_sum"],
     )
 
 
@@ -1930,17 +1941,7 @@ def upsert_gwflow_job(user, params):
     pending_qs = job.files.filter(uploaded=False).select_related("job").order_by("job__sname", "analysis_uid", "path")
     files_pending = [_gwflow_pending_file(f) for f in pending_qs]
 
-    removed_files_list = [
-        GWFlowPendingFile(
-            id=to_global_id("GWFlowFileNode", entry["id"]),
-            sname=entry["sname"],
-            analysis_uid=entry["analysis_uid"],
-            path=entry["path"],
-            file_name=entry["file_name"],
-            md5_sum=entry["md5_sum"],
-        )
-        for entry in removed
-    ]
+    removed_files_list = [_gwflow_pending_file(entry) for entry in removed]
 
     return {
         "gwflow_job_id": to_global_id("GWFlowJobNode", job.id),
