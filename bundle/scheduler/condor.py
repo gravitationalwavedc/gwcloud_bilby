@@ -139,14 +139,22 @@ class CondorScheduler(Scheduler):
         for event in filter(lambda x: x.type == htcondor.JobEventType.JOB_TERMINATED, events):
             # Jobs that terminate normally and have a return value of 0 completed successfully, otherwise
             # some error has occurred
-            if event["TerminatedNormally"]:
-                if event["ReturnValue"] != 0:
-                    return JobStatus.ERROR, f"Job terminated with return value {event['ReturnValue']}"
+            try:
+                terminated_normally = event["TerminatedNormally"]
+                return_value = event["ReturnValue"]
+                cluster = event.cluster
+            except (KeyError, AttributeError):
+                logger.warning("Malformed JOB_TERMINATED event found for job %s", details["working_directory"])
+                return None, None
+
+            if terminated_normally:
+                if return_value != 0:
+                    return JobStatus.ERROR, f"Job terminated with return value {return_value}"
             else:
                 # ???
                 return JobStatus.ERROR, "Job terminated abnormally"
 
-            submitted_stages.pop(event.cluster, None)
+            submitted_stages.pop(cluster, None)
 
         # If all submitted stages have finished, and the plotting stage has been submitted, then the job has finished
         if not submitted_stages and plot_started:
