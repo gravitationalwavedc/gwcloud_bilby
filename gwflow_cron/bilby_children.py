@@ -11,12 +11,20 @@ _TRUTHY_PREFERRED = (True, "true", "True", "yes")
 _HDF5_SUFFIXES = {".hdf5", ".h5"}
 
 
+def _valid_file_ref(file_ref) -> bool:
+    """True when file_ref is absent/None or a dict with a truthy path."""
+    if file_ref is None:
+        return True
+    return isinstance(file_ref, dict) and bool(file_ref.get("path"))
+
+
 def find_bilby_pe_analyses(detail: dict) -> list[dict]:
     """Walk detail["pe"]["results"] and return bilby-PE analyses with config_file.
 
     A result is kept when:
       - re.search(r"bilby", inference_software, re.IGNORECASE) matches, AND
       - config_file is a dict with a truthy path, AND
+      - result_file / pesummary_result_file are absent/None or dicts with a truthy path, AND
       - uid is a non-empty string.
 
     Returns [{uid, config_file, result_file, pesummary_result_file, software}].
@@ -50,12 +58,17 @@ def find_bilby_pe_analyses(detail: dict) -> list[dict]:
         if not isinstance(config_file, dict) or not config_file.get("path"):
             continue
 
+        result_file = res.get("result_file")
+        pesummary_result_file = res.get("pesummary_result_file")
+        if not _valid_file_ref(result_file) or not _valid_file_ref(pesummary_result_file):
+            continue
+
         analyses.append(
             {
                 "uid": uid,
                 "config_file": config_file,
-                "result_file": res.get("result_file"),
-                "pesummary_result_file": res.get("pesummary_result_file"),
+                "result_file": result_file,
+                "pesummary_result_file": pesummary_result_file,
                 "software": inference_software,
             }
         )

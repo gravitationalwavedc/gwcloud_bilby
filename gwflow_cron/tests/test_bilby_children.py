@@ -62,6 +62,26 @@ class TestFindBilbyPeAnalyses(unittest.TestCase):
         detail = {"pe": {"results": [self._good_result(config_file={"file_size": 10})]}}
         self.assertEqual(find_bilby_pe_analyses(detail), [])
 
+    def test_malformed_result_file_skipped(self):
+        detail = {"pe": {"results": [self._good_result(result_file="not-a-dict")]}}
+        self.assertEqual(find_bilby_pe_analyses(detail), [])
+
+    def test_result_file_without_path_skipped(self):
+        detail = {"pe": {"results": [self._good_result(result_file={"file_size": 10})]}}
+        self.assertEqual(find_bilby_pe_analyses(detail), [])
+
+    def test_malformed_pesummary_result_file_skipped(self):
+        detail = {"pe": {"results": [self._good_result(pesummary_result_file="nope")]}}
+        self.assertEqual(find_bilby_pe_analyses(detail), [])
+
+    def test_pesummary_result_file_without_path_skipped(self):
+        detail = {"pe": {"results": [self._good_result(pesummary_result_file={})]}}
+        self.assertEqual(find_bilby_pe_analyses(detail), [])
+
+    def test_none_result_files_kept(self):
+        detail = {"pe": {"results": [self._good_result(result_file=None, pesummary_result_file=None)]}}
+        self.assertEqual(len(find_bilby_pe_analyses(detail)), 1)
+
     def test_missing_uid_skipped(self):
         detail = {"pe": {"results": [self._good_result(uid="")]}}
         self.assertEqual(find_bilby_pe_analyses(detail), [])
