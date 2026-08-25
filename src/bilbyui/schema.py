@@ -89,6 +89,16 @@ def _pad_result_for_cursor(after, nodes):
     return real_result
 
 
+def _cache_job_controller_jobs(queryset, user_id, context):
+    # Query any job controller information in one go - exclude any job controller ids that are not set
+    job_controller_ids = set(queryset.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
+    job_controller_jobs = {}
+    if job_controller_ids:
+        _, jc_jobs = request_job_filter(user_id, ids=list(job_controller_ids))
+        job_controller_jobs = {job["id"]: job for job in jc_jobs if isinstance(job, dict) and "id" in job}
+    context.job_controller_jobs = job_controller_jobs
+
+
 class LabelType(DjangoObjectType):
     class Meta:
         model = Label
@@ -189,13 +199,7 @@ class GWFlowJobNode(DjangoObjectType):
 
         jobs = BilbyJob.bilby_job_filter(self.bilby_jobs.all(), user)
 
-        # Query any job controller information in one go - exclude any job controller ids that are not set
-        job_controller_ids = set(jobs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
-        job_controller_jobs = {}
-        if job_controller_ids:
-            _, jc_jobs = request_job_filter(user_id, ids=list(job_controller_ids))
-            job_controller_jobs = {job["id"]: job for job in jc_jobs if isinstance(job, dict) and "id" in job}
-        info.context.job_controller_jobs = job_controller_jobs
+        _cache_job_controller_jobs(jobs, user_id, info.context)
 
         return jobs
 
@@ -239,13 +243,7 @@ class BilbyJobNode(DjangoObjectType):
         qs = BilbyJob.bilby_job_filter(queryset, user)
         qs = qs.select_related("event_id", "gwflow_job").prefetch_related("labels").select_related("user")
 
-        # Query any job controller information in one go - exclude any job controller ids that are not set
-        job_controller_ids = set(qs.exclude(job_controller_id=None).values_list("job_controller_id", flat=True))
-        job_controller_jobs = {}
-        if job_controller_ids:
-            _, jc_jobs = request_job_filter(user_id, ids=list(job_controller_ids))
-            job_controller_jobs = {job["id"]: job for job in jc_jobs if isinstance(job, dict) and "id" in job}
-        info.context.job_controller_jobs = job_controller_jobs
+        _cache_job_controller_jobs(qs, user_id, info.context)
 
         return qs
 
