@@ -47,13 +47,9 @@ def request_file_download_ids(job, paths, user_id=None):
             jwt_expiry=datetime.timedelta(minutes=5),
         )
 
-        if not isinstance(result, dict) or not isinstance(result.get("fileIds"), list):
-            logger.warning("No file download IDs returned for job %s", job.id)
-            return False, "No file download IDs returned"
+        file_ids = result.get("fileIds") if isinstance(result, dict) else None
 
-        file_ids = result["fileIds"]
-
-        if not file_ids:
+        if not isinstance(file_ids, list) or not file_ids:
             logger.warning("No file download IDs returned for job %s", job.id)
             return False, "No file download IDs returned"
 
