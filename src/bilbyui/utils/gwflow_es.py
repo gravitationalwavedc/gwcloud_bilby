@@ -166,7 +166,7 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
     }
 
 
-def _get_es_client():
+def get_es_client():
     return elasticsearch.Elasticsearch(
         hosts=[settings.ELASTIC_SEARCH_HOST],
         api_key=settings.ELASTIC_SEARCH_API_KEY,
@@ -182,7 +182,7 @@ def gwflow_elastic_search_update(job, metadata: dict) -> None:
     if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
         return
 
-    es = _get_es_client()
+    es = get_es_client()
 
     doc = build_gwflow_es_doc(job, metadata)
 
@@ -199,7 +199,7 @@ def gwflow_elastic_search_remove(job) -> None:
     if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
         return
 
-    es = _get_es_client()
+    es = get_es_client()
 
     with contextlib.suppress(elasticsearch.NotFoundError):
         es.delete(index=settings.ELASTIC_SEARCH_GWFLOW_INDEX, id=job.id)
@@ -213,7 +213,7 @@ def update_child_job_ids(job) -> None:
     if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
         return
 
-    es = _get_es_client()
+    es = get_es_client()
 
     child_job_ids = list(job.bilby_jobs.values_list("id", flat=True))
 
