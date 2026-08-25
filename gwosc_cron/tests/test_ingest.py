@@ -40,6 +40,27 @@ class TestComputeIsLatestVersion(unittest.TestCase):
         self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914_alt", names))
 
 
+class TestIsLatestVersion(unittest.TestCase):
+    """Unit tests for _is_latest_version."""
+
+    def test_shared_common_name_grouping(self):
+        all_events = {
+            "GW150914-v1": {"commonName": "GW150914"},
+            "GW150914-v2": {"commonName": "GW150914"},
+            "GW170817": {"commonName": "GW170817"},
+        }
+        self.assertTrue(gwosc_ingest._is_latest_version("GW150914-v2", all_events, "GW150914"))
+        self.assertFalse(gwosc_ingest._is_latest_version("GW150914-v1", all_events, "GW150914"))
+        self.assertTrue(gwosc_ingest._is_latest_version("GW170817", all_events, "GW170817"))
+
+    def test_ignores_non_matching_common_names(self):
+        all_events = {
+            "GW150914-v1": {"commonName": "GW150914"},
+            "GW170817": {"commonName": "GW170817"},
+        }
+        self.assertTrue(gwosc_ingest._is_latest_version("GW150914-v1", all_events, "GW150914"))
+
+
 @unittest.mock.patch("gwosc_ingest.GWCloud", autospec=True)
 class TestGWOSCCron(GWOSCTestBase):
     @responses.activate
