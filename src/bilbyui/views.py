@@ -1109,63 +1109,67 @@ def _parse_page(request):
         return 1
 
 
-def public_jobs_view(request):
+def _render_job_list(
+    request, rows, has_next, jobs_list_url_name, template_name, fragment_template_name, list_target_id=None
+):
     page = _parse_page(request)
     search = request.GET.get("search", "")
     time_range = _normalize_time_range(request.GET.get("time_range", "all"))
 
-    public_jobs_result = list_public_jobs(
-        request.user,
-        search=search,
-        time_range=time_range,
-        page=page,
-    )
-
     context = {
-        "rows": _build_public_job_rows(public_jobs_result),
+        "rows": rows,
         "search": search,
         "time_range": time_range,
         "page": page,
-        "has_next": public_jobs_result["has_next"],
+        "has_next": has_next,
         "next_page": page + 1,
         "user": request.user,
-        "jobs_list_url_name": "bilbyui:public_jobs",
+        "jobs_list_url_name": jobs_list_url_name,
     }
+    if list_target_id is not None:
+        context["list_target_id"] = list_target_id
 
     if request.headers.get("HX-Request") == "true":
-        return TemplateResponse(request, "bilbyui/_job_list_fragment.html", context)
+        return TemplateResponse(request, fragment_template_name, context)
 
-    return TemplateResponse(request, "bilbyui/public_jobs.html", context)
+    return TemplateResponse(request, template_name, context)
+
+
+def public_jobs_view(request):
+    public_jobs_result = list_public_jobs(
+        request.user,
+        search=request.GET.get("search", ""),
+        time_range=_normalize_time_range(request.GET.get("time_range", "all")),
+        page=_parse_page(request),
+    )
+
+    return _render_job_list(
+        request,
+        rows=_build_public_job_rows(public_jobs_result),
+        has_next=public_jobs_result["has_next"],
+        jobs_list_url_name="bilbyui:public_jobs",
+        template_name="bilbyui/public_jobs.html",
+        fragment_template_name="bilbyui/_job_list_fragment.html",
+    )
 
 
 def gwflow_jobs_view(request):
-    page = _parse_page(request)
-    search = request.GET.get("search", "")
-    time_range = _normalize_time_range(request.GET.get("time_range", "all"))
-
     result = list_gwflow_jobs(
         request.user,
-        search=search,
-        time_range=time_range,
-        page=page,
+        search=request.GET.get("search", ""),
+        time_range=_normalize_time_range(request.GET.get("time_range", "all")),
+        page=_parse_page(request),
     )
 
-    context = {
-        "rows": _build_gwflow_job_rows(result),
-        "search": search,
-        "time_range": time_range,
-        "page": page,
-        "has_next": result["has_next"],
-        "next_page": page + 1,
-        "user": request.user,
-        "jobs_list_url_name": "bilbyui:gwflow_jobs",
-        "list_target_id": "gwflow-job-list",
-    }
-
-    if request.headers.get("HX-Request") == "true":
-        return TemplateResponse(request, "bilbyui/_gwflow_job_list_fragment.html", context)
-
-    return TemplateResponse(request, "bilbyui/gwflow_jobs.html", context)
+    return _render_job_list(
+        request,
+        rows=_build_gwflow_job_rows(result),
+        has_next=result["has_next"],
+        jobs_list_url_name="bilbyui:gwflow_jobs",
+        template_name="bilbyui/gwflow_jobs.html",
+        fragment_template_name="bilbyui/_gwflow_job_list_fragment.html",
+        list_target_id="gwflow-job-list",
+    )
 
 
 def _get_gwflow_job_or_404(request, sname):
@@ -1261,32 +1265,21 @@ def gwflow_job_history_version_partial(request, sname, history_id):
 
 @login_required
 def my_jobs_view(request):
-    page = _parse_page(request)
-    search = request.GET.get("search", "")
-    time_range = _normalize_time_range(request.GET.get("time_range", "all"))
-
     user_jobs_result = list_user_jobs(
         request.user,
-        search=search,
-        time_range=time_range,
-        page=page,
+        search=request.GET.get("search", ""),
+        time_range=_normalize_time_range(request.GET.get("time_range", "all")),
+        page=_parse_page(request),
     )
 
-    context = {
-        "rows": _build_user_job_rows(user_jobs_result, request.user),
-        "search": search,
-        "time_range": time_range,
-        "page": page,
-        "has_next": user_jobs_result["has_next"],
-        "next_page": page + 1,
-        "user": request.user,
-        "jobs_list_url_name": "bilbyui:my_jobs",
-    }
-
-    if request.headers.get("HX-Request") == "true":
-        return TemplateResponse(request, "bilbyui/_job_list_fragment.html", context)
-
-    return TemplateResponse(request, "bilbyui/my_jobs.html", context)
+    return _render_job_list(
+        request,
+        rows=_build_user_job_rows(user_jobs_result, request.user),
+        has_next=user_jobs_result["has_next"],
+        jobs_list_url_name="bilbyui:my_jobs",
+        template_name="bilbyui/my_jobs.html",
+        fragment_template_name="bilbyui/_job_list_fragment.html",
+    )
 
 
 def _get_view_job_or_404(job_id, user):
