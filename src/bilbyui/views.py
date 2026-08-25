@@ -432,19 +432,23 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
     return supporting_files
 
 
-def bilby_ini_args_to_data_input(args):
+def _strip_supporting_file_args(args):
     # Strip the prior, gps, timeslide, and injection file
     # as DataGenerationInput has trouble without the actual file existing
     # Don't change the prior file if it's one of the defaults
+    if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
+        args.prior_file = None
+
     args.gps_file = None
     args.timeslide_file = None
     args.injection_file = None
     args.psd_dict = None
 
-    prepare_args_for_data_input(args)
 
-    if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
-        args.prior_file = None
+def bilby_ini_args_to_data_input(args):
+    _strip_supporting_file_args(args)
+
+    prepare_args_for_data_input(args)
 
     return DataGenerationInput(args, [], create_data=False)
 
@@ -702,14 +706,7 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
     # as DataGenerationInput has trouble without the actual file existing
     prepare_args_for_data_input(args)
 
-    # Don't change the prior file if it's one of the defaults
-    if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
-        args.prior_file = None
-
-    args.gps_file = None
-    args.timeslide_file = None
-    args.injection_file = None
-    args.psd_dict = None
+    _strip_supporting_file_args(args)
 
     # Create the bilby job record
     bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.EXTERNAL)
@@ -789,15 +786,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         # Strip the prior, gps, timeslide, and injection file
         # as DataGenerationInput has trouble without the actual file existing
         # For HDF5 uploads, these files don't actually exist as physical files
-
-        # Don't change the prior file if it's one of the defaults
-        if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
-            args.prior_file = None
-
-        args.gps_file = None
-        args.timeslide_file = None
-        args.injection_file = None
-        args.psd_dict = None
+        _strip_supporting_file_args(args)
 
         # TODO: Better handle supporting files for HDF5 uploads if it's even possible
         # For now, we skip supporting files since they don't exist as physical files
