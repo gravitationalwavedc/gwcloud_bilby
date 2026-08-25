@@ -19,7 +19,6 @@ from .models import (
     BilbyJobUploadToken,
     BilbyPermissionError,
     EventID,
-    ExternalBilbyJob,
     FileDownloadToken,
     GWFlowJob,
     Label,
@@ -52,6 +51,7 @@ from .utils.jobs.request_job_filter import request_job_filter
 from .utils.misc import es_section_dict, is_ligo_user
 from .utils.time_range import _normalize_time_range
 from .views import (
+    _build_result_file_entries,
     create_bilby_job,
     create_bilby_job_from_ini_string,
     create_event_id,
@@ -582,31 +582,21 @@ class Query:
         except (BilbyJob.DoesNotExist, PermissionError, ValueError, TypeError):
             return None
 
-        if job.job_type == BilbyJobType.EXTERNAL:
-            # There is nothing special we have to do here. The frontend or API will handle the job_type.
-            external_job = ExternalBilbyJob.objects.filter(job=job).first()
-            result = [BilbyResultFile(path=external_job.url)] if external_job else []
-        else:
-            # Fetch the file list from the job controller
-            success, files = job.get_file_list()
-            if not success:
-                logger.error("Failed to get file list for job %s: %s", job_id, files)
-                raise GraphQLError("Error getting file list. " + str(files))
+        try:
+            entries = _build_result_file_entries(job, external_is_dir=None)
+        except RuntimeError as e:
+            logger.error("Failed to get file list for job %s: %s", job_id, e)
+            raise GraphQLError("Error getting file list. " + str(e)) from e
 
-            # Generate download tokens for the list of files
-            token_dict = FileDownloadToken.create_token_map(job, files)
-
-            # Build the resulting file list and send it back to the client
-            result = [
-                BilbyResultFile(
-                    path=f.get("path", ""),
-                    is_dir=f.get("isDir", False),
-                    file_size=_parse_file_size(f.get("fileSize", 0)),
-                    download_token=token_dict.get(f.get("path", "")),
-                )
-                for f in files
-                if isinstance(f, dict)
-            ]
+        result = [
+            BilbyResultFile(
+                path=entry["path"],
+                is_dir=entry["is_dir"],
+                file_size=_parse_file_size(entry["file_size"]),
+                download_token=entry["download_token"],
+            )
+            for entry in entries
+        ]
 
         return BilbyResultFiles(files=result, job_type=job.job_type)
 
