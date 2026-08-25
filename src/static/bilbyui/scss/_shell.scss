@@ -1,0 +1,136 @@
+// Application shell primitives: measured navbar offset, breakpoint-scoped
+// navbar positioning, skip link, reduced-motion handling and fluid container.
+//
+// Compiled after theme.scss, so every Bootstrap 4.6 variable/mixin referenced
+// here is already defined by the vendor import chain.
+
+// ---------------------------------------------------------------------------
+// Navbar height budget (Sass-precomputed, no runtime JS measurement).
+//
+// These mirror the box styles that determine the rendered bar height. They
+// MUST be recomputed if the header contents or paddings change (brand/logo
+// size, nav-link or toggler padding, navbar-padding-y, borders).
+//
+// Row boxes (content only, excluding .navbar vertical padding):
+//   brand/nav-link box = font-size-base * line-height-base + nav-link padding-y * 2
+//     (Bootstrap sizes .navbar-brand padding-y so its box equals the nav-link box)
+//   toggler box = toggler font-size * line-height 1 + toggler padding-y * 2 + border * 2
+// ---------------------------------------------------------------------------
+
+// 2.5rem (40px): GWCloud logo glyph is 1.25rem inside this flex-centered box,
+// so the brand never exceeds it.
+$shell-brand-nav-box: $font-size-base * $line-height-base + $nav-link-padding-y * 2;
+
+// 1.875rem (30px): smaller than the brand box, so it only matters if header
+// contents ever change. The trailing term is the toggler's top+bottom borders
+// (2 * $border-width, i.e. 1px each ≈ 0.125rem); written in rem because Sass
+// cannot add px to rem statically.
+$shell-toggler-box: $navbar-toggler-font-size + $navbar-toggler-padding-y * 2 + 0.125rem;
+
+// .navbar vertical padding: $spacer * .5 top + bottom.
+$shell-bar-padding: $navbar-padding-y * 2;
+
+:root {
+    // Mobile (below lg): only the brand + toggler row renders; the collapse
+    // wrapper is display:none while closed.
+    --navbar-h-collapsed: #{max($shell-brand-nav-box, $shell-toggler-box) + $shell-bar-padding};
+    // Desktop (lg+): fully expanded bar (nav links share the brand row height).
+    --navbar-h: #{$shell-brand-nav-box + $shell-bar-padding};
+}
+
+// ---------------------------------------------------------------------------
+// Breakpoint-scoped positioning: static/in-flow below lg (default — no fixed
+// class in markup, nothing re-fixes it), pinned above content at lg+ where the
+// bar spans the full viewport width.
+// ---------------------------------------------------------------------------
+
+// Offset consumption: keeps #main clear of whichever bar variant renders.
+.app-offset {
+    padding-top: var(--navbar-h-collapsed);
+
+    @include media-breakpoint-up(lg) {
+        padding-top: var(--navbar-h);
+    }
+}
+
+@include media-breakpoint-up(lg) {
+    .navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: $zindex-fixed;
+    }
+
+    // Anchor jumps must not land beneath the fixed bar.
+    html {
+        scroll-padding-top: var(--navbar-h);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Skip link: visually hidden until focused, then a high-contrast pill at the
+// top-left stacked above the fixed navbar so keyboard users can bypass the nav.
+// ---------------------------------------------------------------------------
+.skip-link {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+
+    &:focus {
+        position: fixed;
+        top: 0.75rem;
+        left: 0.75rem;
+        z-index: #{$zindex-fixed + 1};
+        width: auto;
+        height: auto;
+        margin: 0;
+        padding: 0.5rem 1rem;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+        color: $white;
+        background-color: $gray-900;
+        border-radius: 0.25rem;
+        outline: 2px solid $blue-500;
+        outline-offset: 2px;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Reduced motion: honour the OS-level preference globally (Frontend Bible
+// rule 10) — animations/transitions collapse to near-zero duration and smooth
+// scrolling is disabled.
+// ---------------------------------------------------------------------------
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Fluid container utility: full width with a generous cap so dense data tables
+// regain tablet/desktop width (replaces col-md-10 offset-md-1 layouts).
+// Deliberately not a Bootstrap .container-* class.
+// ---------------------------------------------------------------------------
+$app-container-max-width: 1400px;
+
+.app-container {
+    width: 100%;
+    max-width: $app-container-max-width;
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: $grid-gutter-width * 0.5;
+    padding-left: $grid-gutter-width * 0.5;
+}

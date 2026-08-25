@@ -1,46 +1,51 @@
 {% load static %}
-<nav class="navbar navbar-expand navbar-light bg-light fixed-top">
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
   <a class="navbar-brand navbar-brand-link" href="/">
     <img src="{% static 'bilbyui/images/GWCloud-logo-primary200.png' %}" alt="GWCloud" class="navbar-nav-icon">
     GWCloud
   </a>
-  <ul class="navbar-nav flex-row mr-auto">
-    <li class="nav-item">
-      <a class="nav-link{% if request.resolver_match.url_name == 'gwflow_jobs' %} active{% endif %}" href="{% url 'bilbyui:gwflow_jobs' %}">
-        GWFlow
-      </a>
-    </li>
-  </ul>
-  <ul class="navbar-nav flex-row">
-    {% if user.is_authenticated %}
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#appNavbar" aria-controls="appNavbar" aria-expanded="false" aria-label="Toggle navigation menu">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="appNavbar">
+    <ul class="navbar-nav flex-row mr-auto">
       <li class="nav-item">
-        <a class="nav-link mr-3" href="https://gwcloud-python.readthedocs.io/en/latest/gettingstarted.html" target="_blank" rel="noopener noreferrer">
-          <i class="bi bi-code navbar-nav-icon" aria-hidden="true"></i>
-          Python API
+        <a class="nav-link{% if request.resolver_match.url_name == 'gwflow_jobs' %} active{% endif %}" {% if request.resolver_match.url_name == 'gwflow_jobs' %}aria-current="page"{% endif %} href="{% url 'bilbyui:gwflow_jobs' %}">
+          GWFlow
         </a>
       </li>
-      <li class="nav-item">
-        <a class="nav-link mr-3" href="/api-token/">
-          <i class="bi bi-key navbar-nav-icon" aria-hidden="true"></i>
-          API Tokens
-        </a>
-      </li>
-      <li class="nav-item">
-        <span class="navbar-text mr-3">
-          <i class="bi bi-person navbar-nav-icon" aria-hidden="true"></i>
-          {{ user.name }}
-        </span>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="/sso/logout/">
-          <i class="bi bi-box-arrow-right navbar-nav-icon" aria-hidden="true"></i>
-          Logout
-        </a>
-      </li>
-    {% else %}
-      <li class="nav-item">
-        <a class="nav-link" href="{% url 'sso:login' %}">Login</a>
-      </li>
-    {% endif %}
-  </ul>
+    </ul>
+    <ul class="navbar-nav flex-row">
+      {% if user.is_authenticated %}
+        <li class="nav-item">
+          <a class="nav-link mr-3" href="https://gwcloud-python.readthedocs.io/en/latest/gettingstarted.html" target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-code navbar-nav-icon" aria-hidden="true"></i>
+            Python API
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link mr-3" href="/api-token/">
+            <i class="bi bi-key navbar-nav-icon" aria-hidden="true"></i>
+            API Tokens
+          </a>
+        </li>
+        <li class="nav-item">
+          <span class="navbar-text mr-3">
+            <i class="bi bi-person navbar-nav-icon" aria-hidden="true"></i>
+            {{ user.name }}
+          </span>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/sso/logout/">
+            <i class="bi bi-box-arrow-right navbar-nav-icon" aria-hidden="true"></i>
+            Logout
+          </a>
+        </li>
+      {% else %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'sso:login' %}">Login</a>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
 </nav>
