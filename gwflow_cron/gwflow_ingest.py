@@ -15,7 +15,7 @@ import manifest
 import settings
 import state
 from bilby_children import find_bilby_pe_analyses, make_archive, resolve_event_id_for, synthesize_job_tree
-from fetch import fetch_to_staging
+from fetch import _get, fetch_to_staging
 from job_controller import ClusterOffline, JobControllerClient
 from portal import PortalClient
 
@@ -35,12 +35,6 @@ if not logger.handlers:
 
     logger.addHandler(fh)
     logger.addHandler(sh)
-
-
-def _get(rec: Any, key: str):
-    if isinstance(rec, dict):
-        return rec.get(key)
-    return getattr(rec, key)
 
 
 def _with_normalized_uid(rec: Any, analysis_uid: str) -> Any:
