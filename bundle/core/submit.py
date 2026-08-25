@@ -91,12 +91,12 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
     }
 
     for supporting_file in supporting_files:
-        # Skip supporting files with an unknown type so that job submission does not crash
-        # with a KeyError if the UI sends a type that is not in the file_type_map
-        if supporting_file["type"] not in file_type_map:
+        # Skip supporting files with an unknown or missing type so that job submission does not
+        # crash with a KeyError if the UI sends a type that is not in the file_type_map
+        if supporting_file.get("type") not in file_type_map:
             logger.warning(
                 "Skipping supporting file with unknown type: %s",
-                supporting_file["type"],
+                supporting_file.get("type"),
             )
             continue
 
