@@ -716,6 +716,16 @@ class FileDownloadToken(models.Model):
         return cls.objects.bulk_create(data)
 
     @classmethod
+    def create_token_map(cls, job, files):
+        """
+        Creates download tokens for the non-directory files in a file list and returns a dict mapping
+        each file path to its generated token
+        """
+        paths = [f["path"] for f in files if isinstance(f, dict) and not f.get("isDir", False) and f.get("path")]
+        tokens = cls.create(job, paths)
+        return {token.path: token.token for token in tokens}
+
+    @classmethod
     def prune(cls):
         """
         Removes any expired tokens from the database
