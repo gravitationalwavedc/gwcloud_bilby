@@ -126,7 +126,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
 
         # Request the file from the GWCloud and write it to disk
         file_download_url = f"https://gwcloud.org.au/bilby/file_download/?fileId={supporting_file['token']}"
-        response = requests.get(file_download_url, allow_redirects=True)
+        response = requests.get(file_download_url, allow_redirects=True, timeout=10)
         response.raise_for_status()
         supporting_file_path = supporting_file_dir / supporting_file["file_name"]
         supporting_file_path.write_bytes(response.content)
