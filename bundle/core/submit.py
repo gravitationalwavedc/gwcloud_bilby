@@ -100,6 +100,15 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
             )
             continue
 
+        # Skip supporting files missing the token, key, or file_name keys so that a malformed
+        # supporting file entry is skipped instead of crashing job submission with a KeyError
+        if any(key not in supporting_file for key in ("token", "key", "file_name")):
+            logger.warning(
+                "Skipping supporting file missing required keys: %s",
+                supporting_file,
+            )
+            continue
+
         # Skip supporting files whose file name is not a plain basename so that a malformed
         # file name (path traversal or absolute path) cannot write outside the supporting
         # files directory or crash job submission with a ValueError from relative_to

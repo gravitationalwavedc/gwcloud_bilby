@@ -554,6 +554,30 @@ class TestSupportingFiles(TestCase):
             # Unsafe file names are skipped, so no file is written outside the supporting_files dir
             self.assertFalse((Path(working_directory) / "evil.psd").is_file())
 
+    def test_supporting_file_missing_keys(self):
+        token = str(uuid.uuid4())
+        self.responses.add(
+            responses.GET,
+            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            body=self.content.encode("utf-8"),
+            status=200,
+        )
+
+        from core.submit import bilby_ini_to_args, prepare_supporting_files
+
+        with TemporaryDirectory() as working_directory, cd(working_directory):
+            supporting_files = [
+                {"type": "psd", "key": "V1", "file_name": "test.psd"},
+                {"type": "psd", "key": "V1", "token": token},
+                {"type": "psd", "file_name": "test.psd", "token": token},
+            ]
+
+            args = bilby_ini_to_args(self.ini_file_v1)
+            prepare_supporting_files(args, supporting_files, working_directory)
+
+            # Entries missing the token/key/file_name keys are skipped, so no file is written
+            self.assertFalse((Path(working_directory) / "supporting_files" / "psd" / "test.psd").is_file())
+
     def test_supporting_file_download_failure(self):
         token = str(uuid.uuid4())
         self.responses.add(
