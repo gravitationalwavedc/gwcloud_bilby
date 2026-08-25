@@ -1383,9 +1383,7 @@ def _build_result_files(job):
     if not success:
         return []
 
-    paths = [f["path"] for f in files if isinstance(f, dict) and not f.get("isDir", False) and f.get("path")]
-    tokens = FileDownloadToken.create(job, paths)
-    token_dict = {token.path: token.token for token in tokens}
+    token_dict = FileDownloadToken.create_token_map(job, files)
 
     return [
         {
