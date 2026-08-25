@@ -1845,31 +1845,18 @@ def upsert_gwflow_job(user, params):
     with transaction.atomic():
         job, created = GWFlowJob.objects.get_or_create(sname=sname, defaults={"user": user})
 
-        # ligo_only handling
-        ligo_only_param = getattr(params, "ligo_only", None)
-        if ligo_only_param is not None:
-            job.ligo_only = ligo_only_param
-
         # Update current-state fields if provided
-        schema_version_param = getattr(params, "schema_version", None)
-        if schema_version_param is not None:
-            job.schema_version = schema_version_param
-
-        libraries_param = getattr(params, "libraries", None)
-        if libraries_param is not None:
-            job.libraries = libraries_param
-
-        is_pruned_param = getattr(params, "is_pruned", None)
-        if is_pruned_param is not None:
-            job.is_pruned = is_pruned_param
-
-        history_id_param = getattr(params, "current_history_id", None)
-        if history_id_param is not None:
-            job.current_history_id = history_id_param
-
-        history_ts_param = getattr(params, "current_history_timestamp", None)
-        if history_ts_param is not None:
-            job.current_history_timestamp = history_ts_param
+        for attr in (
+            "ligo_only",
+            "schema_version",
+            "libraries",
+            "is_pruned",
+            "current_history_id",
+            "current_history_timestamp",
+        ):
+            param = getattr(params, attr, None)
+            if param is not None:
+                setattr(job, attr, param)
 
         # Best-effort event link
         event_id_param = getattr(params, "event_id", None)
