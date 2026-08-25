@@ -120,8 +120,9 @@ def slurm_status(job):
     # Iterate over each job id and record its status
     sched = get_scheduler()
     for _sid in slurm_ids:
-        what = _sid.split(" ")[0]
-        sid = _sid.split(" ")[1]
+        parts = _sid.split(" ")
+        what = parts[0]
+        sid = parts[1]
 
         jid_status, info = sched.status(sid, job)
 
