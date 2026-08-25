@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from bilbyui.models import GWFlowJob
 from bilbyui.services.jobs import _time_range_to_timedelta
+from bilbyui.utils.gwflow_es import get_es_client
 from bilbyui.utils.misc import is_ligo_user
 
 logger = logging.getLogger(__name__)
@@ -46,11 +47,7 @@ def list_gwflow_jobs(
         return empty_result
 
     try:
-        es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST],
-            api_key=settings.ELASTIC_SEARCH_API_KEY,
-            verify_certs=False,
-        )
+        es = get_es_client()
     except elasticsearch.exceptions.ConnectionError:
         logger.exception("Failed to connect to Elasticsearch")
         return empty_result

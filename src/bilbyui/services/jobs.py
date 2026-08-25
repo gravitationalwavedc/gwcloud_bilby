@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from bilbyui.models import BilbyJob, EventID, Label
 from bilbyui.utils.embargo import embargo_filter, user_subject_to_embargo
+from bilbyui.utils.gwflow_es import get_es_client
 from bilbyui.utils.job_validation import validate_job_name
 from bilbyui.utils.jobs.request_job_filter import request_job_filter
 
@@ -97,11 +98,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
     }
 
     try:
-        es = elasticsearch.Elasticsearch(
-            hosts=[settings.ELASTIC_SEARCH_HOST],
-            api_key=settings.ELASTIC_SEARCH_API_KEY,
-            verify_certs=False,
-        )
+        es = get_es_client()
     except elasticsearch.exceptions.ConnectionError:
         logger.exception("Failed to connect to Elasticsearch")
         return empty_result
