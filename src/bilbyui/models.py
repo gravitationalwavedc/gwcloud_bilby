@@ -403,6 +403,8 @@ class BilbyJob(models.Model):
         if not success or not users:
             return
         user = users[0]
+        if not isinstance(user, dict) or "name" not in user:
+            return
 
         # Generate the document for insertion or update in elastic search
         doc = {
