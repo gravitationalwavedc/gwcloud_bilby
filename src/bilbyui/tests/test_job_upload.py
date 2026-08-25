@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest import mock
 
+from adacs_sso_plugin.anonymous_user import ADACSAnonymousUser
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -13,7 +14,7 @@ from django.test import override_settings
 from graphene import ResolveInfo
 
 from bilbyui.constants import BilbyJobType
-from bilbyui.models import BilbyJob, IniKeyValue, SupportingFile
+from bilbyui.models import BilbyJob, BilbyJobUploadToken, IniKeyValue, Label, SupportingFile
 from bilbyui.schema import (
     UploadBilbyJobMutation,
     UploadExternalBilbyJobMutation,
@@ -26,6 +27,7 @@ from bilbyui.tests.test_utils import (
     silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.views import upload_bilby_job, upload_hdf5_bilby_job
 
 User = get_user_model()
 
@@ -150,6 +152,80 @@ class TestJobUpload(BilbyTestCase):
         self.assertTrue((Path(job_dir) / "myjob_config_complete.ini").is_file())
 
         self.assertTrue((Path(job_dir) / "archive.tar.gz").is_file())
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_with_anonymous_request_context(self):
+        """Test that an anonymous multipart upload with a valid token creates the BilbyJob owned by token.user."""
+        token = self.get_upload_token()
+        token_owner = self.user
+
+        # Deauthenticate request context (simulates cron / anonymous multipart upload)
+        self.deauthenticate()
+
+        test_name = "anon_upload_job"
+        test_description = "Test Anonymous Upload Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+        self.assertIsNone(response.errors)
+
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertEqual(job.user, token_owner)
+        self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, GWOSC_INGEST_USER=245)
+    def test_job_upload_official_label_for_ingest_user_with_token(self):
+        """Test that when GWOSC ingest user creates an upload token, the created job receives the Official label."""
+        ingest_user = self.create_user(
+            id=245,
+            name="gwosc ingest",
+            primary_email="gwosc@gwcloud.org.au",
+            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"],
+        )
+        Label.objects.create(name="Official", description="Official bilby runs")
+
+        # Generate upload token for the ingest user
+        upload_token = BilbyJobUploadToken.create(ingest_user)
+
+        # Deauthenticate request context
+        self.deauthenticate()
+
+        test_name = "official_job"
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": str(upload_token.token),
+            "details": {"description": "Official run", "private": False},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+        self.assertIsNone(response.errors)
+
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.user, ingest_user)
+        self.assertTrue(job.labels.filter(name="Official").exists())
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_success_outdir_replace(self):
@@ -642,6 +718,80 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
             job = BilbyJob.objects.all().last()
             self.assertFalse(job.is_ligo_job)
             job.delete()
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
+    def test_job_upload_embargoed_token_user_ligo_with_anonymous_context(self):
+        """Test that an anonymous request with a LIGO member's upload token can upload embargoed data."""
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+        token = self.get_upload_token()
+        token_owner = self.user
+
+        self.deauthenticate()
+
+        test_name = "embargoed_ligo_anon_job"
+        test_ini_string = create_test_ini_string(
+            {
+                "label": test_name,
+                "outdir": "./",
+                "trigger-time": "2.0",
+                "n-simulation": "0",
+            },
+            True,
+        )
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+        test_input = {
+            "uploadToken": token,
+            "details": {"description": "Embargoed LIGO", "private": False},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+        self.assertIsNone(response.errors)
+
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertEqual(job.user, token_owner)
+        self.assertTrue(job.is_ligo_job)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
+    @silence_errors
+    def test_job_upload_embargoed_token_user_non_ligo_fails_with_anonymous_context(self):
+        """Test that an anonymous request with a non-LIGO user's upload token is rejected on embargoed data."""
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["PASSWORD"])
+        token = self.get_upload_token()
+
+        self.deauthenticate()
+
+        test_name = "embargoed_non_ligo_anon_job"
+        test_ini_string = create_test_ini_string(
+            {
+                "label": test_name,
+                "outdir": "./",
+                "trigger-time": "2.0",
+                "n-simulation": "0",
+            },
+            True,
+        )
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+        test_input = {
+            "uploadToken": token,
+            "details": {"description": "Embargoed non-LIGO", "private": False},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+        self.assertEqual(response.errors[0]["message"], "Only LIGO users may upload real jobs on embargoed LIGO data")
+        self.assertFalse(BilbyJob.objects.filter(name=test_name).exists())
 
 
 class TestJobUploadSupportingFiles(BilbyTestCase):
@@ -1485,6 +1635,42 @@ class TestHdf5JobUpload(BilbyTestCase):
         self.assertTrue((Path(job_dir) / "archive.tar.gz").is_file())
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_hdf5_job_upload_with_anonymous_request_context(self):
+        """Test that an anonymous multipart HDF5 upload with a valid token creates the BilbyJob owned by token.user."""
+        token = self.get_upload_token()
+        token_owner = self.user
+
+        # Deauthenticate request context (simulates anonymous multipart upload)
+        self.deauthenticate()
+
+        test_name = "anon_hdf5_job"
+        test_description = "Test Anonymous HDF5 Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+        hdf5_file = self.create_test_hdf5_file()
+        ini_file = self.create_test_ini_file(test_ini_string)
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"name": test_name, "description": test_description, "private": test_private},
+            "hdf5File": None,
+            "iniFile": None,
+        }
+        test_files = {
+            "input.hdf5File": hdf5_file,
+            "input.iniFile": ini_file,
+        }
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+        self.assertIsNone(response.errors)
+
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertEqual(job.user, token_owner)
+        self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_hdf5_job_upload_invalid_hdf5_extension(self):
         """Test HDF5 job upload with invalid file extension."""
         token = self.get_upload_token()
@@ -1741,3 +1927,41 @@ class TestUploadMutationReturnType(BilbyTestCase):
         )
 
         self.assertIsInstance(result, UploadHdf5BilbyJobMutation)
+
+
+class TestDirectUploadFunctions(BilbyTestCase):
+    def setUp(self):
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_direct_upload_bilby_job_with_anonymous_user(self):
+        """Test calling upload_bilby_job directly with ADACSAnonymousUser and valid upload_token."""
+        token = BilbyJobUploadToken.create(self.user)
+        test_name = "direct_anon_upload"
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+        details = SimpleNamespace(description="direct upload", private=False, name=test_name)
+        job = upload_bilby_job(ADACSAnonymousUser(), token, details, test_file)
+
+        self.assertIsNotNone(job)
+        self.assertEqual(job.user, self.user)
+        self.assertEqual(job.name, test_name)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_direct_upload_hdf5_bilby_job_with_anonymous_user(self):
+        """Test calling upload_hdf5_bilby_job directly with ADACSAnonymousUser and valid upload_token."""
+        token = BilbyJobUploadToken.create(self.user)
+        test_name = "direct_hdf5_anon_upload"
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+        hdf5_file = SimpleUploadedFile(name="result.hdf5", content=b"dummy hdf5 content")
+        ini_file = SimpleUploadedFile(name=f"{test_name}.ini", content=test_ini_string.encode("utf-8"))
+        details = SimpleNamespace(name=test_name, description="direct hdf5 upload", private=False)
+        job = upload_hdf5_bilby_job(ADACSAnonymousUser(), token, details, hdf5_file, ini_file)
+
+        self.assertIsNotNone(job)
+        self.assertEqual(job.user, self.user)
+        self.assertEqual(job.name, test_name)

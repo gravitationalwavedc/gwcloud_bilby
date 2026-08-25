@@ -519,11 +519,11 @@ def create_bilby_job_from_ini_string(user, params):
 
 
 def upload_bilby_job(user, upload_token, details, job_file):
-    logger.info("User %s uploading Bilby job: %s, file: %s", user.id, details.name, job_file.name)
+    logger.info("User %s uploading Bilby job: %s, file: %s", upload_token.user.id, details.name, job_file.name)
 
     # Check that the uploaded file is a tar.gz file
     if not job_file.name.endswith("tar.gz"):
-        logger.error("User %s attempted to upload non-tar.gz file: %s", user.id, job_file.name)
+        logger.error("User %s attempted to upload non-tar.gz file: %s", upload_token.user.id, job_file.name)
         msg = "Job upload should be a tar.gz file"
         raise ValueError(msg)
 
@@ -583,7 +583,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
         args = _parse_and_validate_ini(ini_content)
 
         # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
-        if check_job_embargo_status(user, args):
+        if check_job_embargo_status(upload_token.user, args):
             msg = "Only LIGO users may upload real jobs on embargoed LIGO data"
             raise PermissionError(msg)
 
@@ -631,10 +631,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
             # * The generation of the archive.tar.gz file fails (Disk full etc)
 
             # Create the bilby job record
-            bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.UPLOADED, ini_string)
-            # Override the user_id to use the upload token's user
-            bilby_job.user = upload_token.user
-            bilby_job.save()
+            bilby_job = _create_bilby_job_record(upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string)
 
             # Save any supporting file records
             supporting_file_details = SupportingFile.save_from_parsed(bilby_job, supporting_files, uploaded=True)
@@ -678,12 +675,12 @@ def upload_bilby_job(user, upload_token, details, job_file):
             logger.debug("stderr: %s", err)
 
             if p.returncode != 0:
-                logger.error("Failed to repack uploaded job for user %s", user.id)
+                logger.error("Failed to repack uploaded job for user %s", upload_token.user.id)
                 msg = "Unable to repack the uploaded job"
                 raise RuntimeError(msg)
 
         # Job is validated and uploaded, return the job
-        logger.info("Successfully uploaded and created job %s for user %s", bilby_job.id, user.id)
+        logger.info("Successfully uploaded and created job %s for user %s", bilby_job.id, upload_token.user.id)
         return bilby_job
 
 
@@ -777,7 +774,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         args = _parse_and_validate_ini(ini_content)
 
         # Validate embargo permissions - only LIGO users may upload real jobs on embargoed LIGO data
-        if check_job_embargo_status(user, args):
+        if check_job_embargo_status(upload_token.user, args):
             msg = "Only LIGO users may upload real jobs on embargoed LIGO data"
             raise PermissionError(msg)
 
@@ -798,10 +795,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
 
         with transaction.atomic():
             # Create the bilby job record
-            bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.UPLOADED, ini_string)
-            # Override the user_id to use the upload token's user
-            bilby_job.user = upload_token.user
-            bilby_job.save()
+            bilby_job = _create_bilby_job_record(upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string)
 
             # Move the staging directory to the actual job directory
             job_dir = bilby_job.get_upload_directory()
