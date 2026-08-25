@@ -71,15 +71,15 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_after_cursor(kwargs):
-    if kwargs.get("after") is None:
-        kwargs["after"] = None
-    else:
+    after = kwargs.get("after")
+    if after is not None:
         try:
-            kwargs["after"] = int(from_global_id(kwargs["after"])[1])
+            after = int(from_global_id(after)[1])
         except (ValueError, TypeError):
             # A malformed cursor (e.g. invalid base64 or a non-numeric id) should
             # fall back to the first page instead of raising and returning a 500.
-            kwargs["after"] = None
+            after = None
+    kwargs["after"] = after
 
 
 def _pad_result_for_cursor(after, nodes):
