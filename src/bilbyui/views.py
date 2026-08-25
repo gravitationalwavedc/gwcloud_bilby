@@ -839,6 +839,16 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         return bilby_job
 
 
+def _file_response(request, file_path, filename):
+    # Use a django file response object to stream the file back to the client
+    return FileResponse(
+        file_path.open("rb"),
+        as_attachment="forceDownload" in request.GET,
+        filename=filename,
+        content_type="application/octet-stream",
+    )
+
+
 def file_download_job_file(request, fdl):
     # Get the job path
     job_dir = fdl.job.get_upload_directory()
@@ -856,13 +866,7 @@ def file_download_job_file(request, fdl):
     if not file_path.exists():
         raise Http404
 
-    # Use a django file response object to stream the file back to the client
-    return FileResponse(
-        file_path.open("rb"),
-        as_attachment="forceDownload" in request.GET,
-        filename=file_path.name,
-        content_type="application/octet-stream",
-    )
+    return _file_response(request, file_path, file_path.name)
 
 
 def file_download_supporting_file(request, supporting_file):
@@ -875,13 +879,7 @@ def file_download_supporting_file(request, supporting_file):
     if not file_path.exists():
         raise Http404
 
-    # Use a django file response object to stream the file back to the client
-    return FileResponse(
-        file_path.open("rb"),
-        as_attachment="forceDownload" in request.GET,
-        filename=supporting_file.file_name,
-        content_type="application/octet-stream",
-    )
+    return _file_response(request, file_path, supporting_file.file_name)
 
 
 def file_download_gwflow_file(request, gwflow_file):
@@ -897,12 +895,7 @@ def file_download_gwflow_file(request, gwflow_file):
     if not file_path.exists():
         raise Http404
 
-    return FileResponse(
-        file_path.open("rb"),
-        as_attachment="forceDownload" in request.GET,
-        filename=gwflow_file.file_name,
-        content_type="application/octet-stream",
-    )
+    return _file_response(request, file_path, gwflow_file.file_name)
 
 
 def file_download(request):
