@@ -448,3 +448,17 @@ class TestCondor(TestCase):
             details = {"working_directory": td, "submit_directory": "job/submit"}
 
             self.assertEqual(sched.status(None, details), (None, None))
+
+    def test_status_none_working_directory(self):
+        sched = CondorScheduler()
+
+        details = {"working_directory": None, "submit_directory": "job/submit"}
+
+        self.assertEqual(sched.status(None, details), (None, None))
+
+    def test_status_none_submit_directory(self):
+        sched = CondorScheduler()
+
+        details = {"working_directory": "a/working/directory", "submit_directory": None}
+
+        self.assertEqual(sched.status(None, details), (None, None))
