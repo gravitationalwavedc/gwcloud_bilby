@@ -65,6 +65,18 @@ def compute_is_latest_version(event_name, shared_common_names):
     return current_version == max(all_versions)
 
 
+def _is_latest_version(event_name, all_events, common_name):
+    """Return True if *event_name* is the latest-versioned event sharing *common_name*.
+
+    Collects every event in *all_events* that shares the same common name, then
+    delegates the version comparison to :func:`compute_is_latest_version`.
+    """
+    shared_common_names = [
+        k for k, v in all_events.items() if isinstance(v, dict) and v.get("commonName") == common_name
+    ]
+    return compute_is_latest_version(event_name, shared_common_names)
+
+
 def fix_job_name(name):
     """Sanitize a string for use as a BilbyJob name.
 
@@ -211,10 +223,7 @@ def _check_and_download_inner(con, cur):
             last_error = err_row["last_error"] if err_row else ""
             logger.error("%s has failed %s times, marking as permanently failed", event_name, failure_count)
             common_name = event_data.get("commonName", "") if isinstance(event_data, dict) else ""
-            shared_common_names = [
-                k for k, v in all_events.items() if isinstance(v, dict) and v.get("commonName") == common_name
-            ]
-            is_latest_version = compute_is_latest_version(event_name, shared_common_names)
+            is_latest_version = _is_latest_version(event_name, all_events, common_name)
             save_sqlite_job(
                 event_name,
                 common_name,
@@ -275,10 +284,7 @@ def _check_and_download_inner(con, cur):
             record_job_failure(con, cur, event_name, error_msg)
             continue
 
-        shared_common_names = [
-            k for k, v in all_events.items() if isinstance(v, dict) and v.get("commonName") == common_name
-        ]
-        is_latest_version = compute_is_latest_version(event_name, shared_common_names)
+        is_latest_version = _is_latest_version(event_name, all_events, common_name)
 
         # Check if this should be skipped for being in the wrong type of catalog
         ignore_patterns = [
