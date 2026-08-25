@@ -1339,7 +1339,6 @@ def _get_job_status_context(job, user):
 
     if job.job_type in (BilbyJobType.UPLOADED, BilbyJobType.EXTERNAL):
         status_name = JobStatus.display_name(JobStatus.COMPLETED)
-        status_date = job.last_updated
     elif job.job_controller_id:
         status, job_controller_jobs = request_job_filter(user.id, ids=[job.job_controller_id])
         if status == "OK" and job_controller_jobs:
