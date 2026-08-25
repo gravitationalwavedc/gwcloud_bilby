@@ -20,6 +20,10 @@ class IsLigoUserTestCase(BilbyTestCase):
         # An anonymous user is not authenticated, so is_ligo_user must return False
         self.assertFalse(is_ligo_user(ADACSAnonymousUser()))
 
+    def test_none_user_is_not_ligo(self):
+        # A None user is treated as non-LIGO, matching the documented should_embargo_job contract
+        self.assertFalse(is_ligo_user(None))
+
     def test_authenticated_non_ligo_user_is_not_ligo(self):
         # An authenticated user without LIGO Shibboleth auth is not a LIGO user
         user = self.create_user(authentication_method="password")
