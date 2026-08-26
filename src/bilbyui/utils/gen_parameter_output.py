@@ -2,6 +2,7 @@ import decimal
 import math
 from decimal import Decimal
 from math import floor
+from numbers import Number
 
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.input import Input
@@ -39,6 +40,11 @@ def to_dec(val):
         # If the string is not able to be converted, simply assume it's a string type not representing a decimal
         # and return the original value
         logger.debug("to_dec: invalid decimal string '%s' — returning original value", val)
+        return val
+
+    # Non-numeric, non-string values (e.g. a malformed sampler-kwargs list) cannot be passed to
+    # math.isinf/isnan or floor() — return them unchanged
+    if not isinstance(val, Number):
         return val
 
     # Non-finite floats (inf/-inf/nan) cannot be passed to floor() — parse them directly
