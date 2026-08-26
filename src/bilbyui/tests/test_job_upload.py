@@ -1,4 +1,5 @@
 import json
+import subprocess
 import uuid
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -152,6 +153,100 @@ class TestJobUpload(BilbyTestCase):
         self.assertTrue((Path(job_dir) / "myjob_config_complete.ini").is_file())
 
         self.assertTrue((Path(job_dir) / "archive.tar.gz").is_file())
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_with_conda_env_does_not_invoke_conda_subprocess(self):
+        token = self.get_upload_token()
+
+        test_name = "conda_strip_job"
+        test_description = "Conda Strip Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string(
+            {"label": test_name, "outdir": "./", "conda-env": "igwn-py311-20260701"}, True
+        )
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        completed_process = subprocess.CompletedProcess([], returncode=0, stdout=b"", stderr=b"")
+        run_mock = mock.MagicMock(return_value=completed_process)
+        popen_mock = mock.Mock(wraps=subprocess.Popen)
+
+        with mock.patch("subprocess.run", run_mock), mock.patch("subprocess.Popen", popen_mock):
+            response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        expected = {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertIsNone(response.errors)
+        self.assertDictEqual(expected, response.data)
+
+        job = BilbyJob.objects.all().last()
+        compare_ini_kvs(self, job, test_ini_string, ignored=["conda_env"])
+
+        self.assertEqual(job.name, test_name)
+        self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
+
+        for call_args in [*run_mock.call_args_list, *popen_mock.call_args_list]:
+            command = call_args.args[0] if call_args.args else None
+            if isinstance(command, (list, tuple)):
+                self.assertNotEqual("conda", command[0])
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_success_without_conda_env(self):
+        token = self.get_upload_token()
+
+        test_name = "no_conda_job"
+        test_description = "No Conda Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        completed_process = subprocess.CompletedProcess([], returncode=0, stdout=b"", stderr=b"")
+        run_mock = mock.MagicMock(return_value=completed_process)
+        popen_mock = mock.Mock(wraps=subprocess.Popen)
+
+        with mock.patch("subprocess.run", run_mock), mock.patch("subprocess.Popen", popen_mock):
+            response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        expected = {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}}
+
+        self.assertIsNone(response.errors)
+        self.assertDictEqual(expected, response.data)
+
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertEqual(job.description, test_description)
+        self.assertEqual(job.private, test_private)
+        self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
+
+        for call_args in [*run_mock.call_args_list, *popen_mock.call_args_list]:
+            command = call_args.args[0] if call_args.args else None
+            if isinstance(command, (list, tuple)):
+                self.assertNotEqual("conda", command[0])
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_with_anonymous_request_context(self):

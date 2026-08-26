@@ -1,6 +1,8 @@
+from types import SimpleNamespace
+
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
+from bilbyui.utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args, prepare_args_for_data_input
 
 
 class TestBilbyIniStringToArgs(BilbyTestCase):
@@ -29,3 +31,23 @@ class TestBilbyIniStringToArgs(BilbyTestCase):
         self.assertEqual(round_trip_args.label, "round-trip")
         self.assertEqual(round_trip_args.duration, args.duration)
         self.assertEqual(round_trip_args.sampler, args.sampler)
+
+
+class TestPrepareArgsForDataInput(BilbyTestCase):
+    def test_nulls_conda_env(self):
+        ini = create_test_ini_string({"label": "conda-strip", "conda-env": "igwn-py311-20260701"}, True)
+        args = bilby_ini_string_to_args(ini.encode("utf-8"))
+
+        self.assertEqual(args.conda_env, "igwn-py311-20260701")
+
+        prepare_args_for_data_input(args)
+
+        self.assertIsNone(args.conda_env)
+
+    def test_tolerates_namespace_without_attributes(self):
+        args = SimpleNamespace()
+
+        prepare_args_for_data_input(args)
+
+        self.assertIsNone(args.idx)
+        self.assertIsNone(args.ini)

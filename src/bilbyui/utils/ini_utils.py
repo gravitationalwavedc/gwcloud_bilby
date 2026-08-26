@@ -6,6 +6,14 @@ from bilby_pipe.utils import parse_args
 
 logger = logging.getLogger(__name__)
 
+# bilby_pipe's conda_env setter resolves named environments via
+# subprocess.run(["conda", "env", "list"]), but conda does not exist in this container, so any non-null value raises
+# FileNotFoundError. Attributes listed here are nulled by prepare_args_for_data_input before bilby_pipe input
+# construction. Note this is an intentional consequence for stored jobs: the ini_string regenerated from args will no
+# longer contain conda-env, as GWCloud jobs never run in CIT conda environments.
+# Future pre-construction overrides should be added here rather than at individual call sites.
+DATA_INPUT_STRIP_ARGS = ("conda_env",)
+
 
 def bilby_ini_string_to_args(ini):
     """
@@ -69,7 +77,8 @@ def prepare_args_for_data_input(args):
     """
     Prepares parsed arguments for use with DataGenerationInput
 
-    DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed is set
+    DataGenerationInput expects args.idx; its generation_seed setter asserts idx is not None only when generation_seed
+    is set. Also nulls any attributes listed in DATA_INPUT_STRIP_ARGS before bilby_pipe input construction.
 
     :param args: The argument Namespace to prepare
     """
@@ -78,3 +87,7 @@ def prepare_args_for_data_input(args):
     if getattr(args, "generation_seed", None) is not None and args.idx is None:
         args.idx = 0
     args.ini = None
+
+    for attr in DATA_INPUT_STRIP_ARGS:
+        if getattr(args, attr, None) is not None:
+            setattr(args, attr, None)
