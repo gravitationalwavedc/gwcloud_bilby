@@ -1,3 +1,6 @@
+import subprocess
+from unittest import mock
+
 import bilby_pipe
 from bilby_pipe.data_generation import DataGenerationInput
 
@@ -71,3 +74,17 @@ class TestBilbyIniArgsToDataInput(BilbyTestCase):
         bilby_ini_args_to_data_input(args)
 
         self.assertIsNone(args.idx)
+
+    def test_strips_conda_env_without_invoking_subprocess(self):
+        args = _args_from_ini({"detectors": "['H1']", "conda-env": "igwn-py311-20260701"})
+
+        self.assertEqual(args.conda_env, "igwn-py311-20260701")
+
+        run_mock = mock.MagicMock(return_value=subprocess.CompletedProcess([], returncode=0, stdout=b"", stderr=b""))
+
+        with mock.patch("subprocess.run", run_mock):
+            result = bilby_ini_args_to_data_input(args)
+
+        self.assertIsInstance(result, DataGenerationInput)
+        self.assertIsNone(args.conda_env)
+        run_mock.assert_not_called()
