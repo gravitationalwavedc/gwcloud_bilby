@@ -21,7 +21,7 @@ class PortalClient:
         backoff = 1.0
         for attempt in range(1, max_attempts + 1):
             try:
-                resp = self.session.request(method, url, **kwargs)
+                resp = self.session.request(method, url, timeout=10, **kwargs)
                 if resp.status_code < 500:
                     resp.raise_for_status()
                     return resp
