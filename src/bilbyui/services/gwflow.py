@@ -5,7 +5,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from bilbyui.models import GWFlowJob
-from bilbyui.services.jobs import _time_range_to_timedelta
+from bilbyui.services.jobs import _numeric_es_records, _time_range_to_timedelta
 from bilbyui.utils.gwflow_es import get_es_client
 from bilbyui.utils.misc import is_ligo_user
 
@@ -85,11 +85,7 @@ def list_gwflow_jobs(
         return empty_result
 
     records = results["hits"]["hits"]
-    numeric_records = [
-        record
-        for record in records
-        if isinstance(record, dict) and (isinstance(record.get("_id"), int) or str(record.get("_id")).isdigit())
-    ]
+    numeric_records = _numeric_es_records(records)
     has_next = len(numeric_records) > page_size
 
     hit_ids = [record["_id"] for record in numeric_records]
