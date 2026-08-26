@@ -198,6 +198,10 @@ FILE_UPLOAD_TEMP_DIR = EXTERNAL_STORAGE_PATH / "upload"
 # Where supporting files are permanently stored
 SUPPORTING_FILE_UPLOAD_DIR = EXTERNAL_STORAGE_PATH / "supporting_files"
 
+# How long (in seconds) a tar subprocess may run while unpacking/repacking an uploaded archive
+# before it is killed. Deployments handling very large archives may need to raise this.
+TAR_PROCESS_TIMEOUT = 30
+
 # Where mirrored gwflow files are permanently stored
 GWFLOW_FILE_UPLOAD_DIR = EXTERNAL_STORAGE_PATH / "gwflow"
 

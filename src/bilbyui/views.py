@@ -64,7 +64,7 @@ from .utils.time_range import _normalize_time_range
 
 logger = logging.getLogger(__name__)
 
-TAR_PROCESS_TIMEOUT = 30
+TAR_PROCESS_TIMEOUT = getattr(settings, "TAR_PROCESS_TIMEOUT", 30)
 
 STATUS_BADGE_CLASSES = {
     "Completed": "primary",
