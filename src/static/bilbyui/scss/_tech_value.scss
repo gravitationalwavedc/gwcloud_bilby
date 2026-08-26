@@ -1,0 +1,128 @@
+// Technical-value primitive (issue #49): compact primary label with copy and
+// disclosure controls for long paths/identifiers. Markup contract lives in
+// src/bilbyui/templates/bilbyui/_tech_value.html; design contract is
+// docs/plans/designs/005-ux2-technical-value-component.md §2.
+//
+// Compiled after theme.scss, so every Bootstrap 4.6 variable/mixin referenced
+// here is already defined by the vendor import chain.
+//
+// Deliberately contains no transition/animation properties: reduced-motion
+// safe by construction (Frontend Bible rule 10).
+
+// ---------------------------------------------------------------------------
+// Root clamp: a 500-char path must never widen its table cell or the page.
+// min-width:0 defeats the flex-item minimum-content floor; flex-wrap lets the
+// revealed full-value block drop onto its own full-width line instead of
+// forcing horizontal overflow.
+// ---------------------------------------------------------------------------
+.tech-value {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    max-width: 100%;
+    min-width: 0;
+}
+
+// Every flex child (label, buttons, status) defaults to min-width:auto, whose
+// implicit minimum-content floor lets an unbreakable run — e.g. a 40-character
+// SHA rendered as the id-kind label — refuse to shrink and push the clamped
+// root past its container. min-width:0 removes that floor so the root's
+// max-width is the only width constraint that matters.
+.tech-value > * {
+    min-width: 0;
+}
+
+.tech-value-label {
+    // Bold-ish emphasis over secondary content (ellipsis, status, chip).
+    font-weight: 600;
+
+    // Identifiers and hostile values may contain no break opportunities
+    // (overflow-wrap:anywhere also feeds the shorter min-content size into the
+    // shrink calculation). Frontend Bible §3: values wrap safely; they never
+    // widen their container.
+    overflow-wrap: anywhere;
+}
+
+// Identifier kind renders the raw technical value as the primary label —
+// monospace signals "this is copyable data", matching the full-value chip.
+.tech-value--id .tech-value-label {
+    font-family: $font-family-monospace;
+}
+
+// Truncated variant: the ellipsis marker is decoration for the clipped
+// directory chain. The label itself gets an ellipsis guard so even a
+// pathological primary stays inside the clamped root.
+.tech-value-ellipsis {
+    color: $text-muted;
+    user-select: none;
+}
+
+.tech-value--truncated .tech-value-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// ---------------------------------------------------------------------------
+// Quiet borderless controls (precedent: .edit-button/.save-button in
+// styles.scss). Both stay >=24x24 even when icon-only (truncated variant /
+// toggle); ~28px gives a comfortable tap target. The hover/focus tint reuses
+// the .edit-button accent; the focus-visible outline is added explicitly and
+// the UA default outline is never removed.
+// ---------------------------------------------------------------------------
+.tech-value-copy,
+.tech-value-toggle {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: 0.25rem;
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    color: $text-muted;
+
+    &:hover,
+    &:focus {
+        color: #0592eb;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $primary;
+        outline-offset: 1px;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Full value block: code-chip presentation of the exact copied/disclosed
+// string. width:100% makes it occupy its own wrapped row within the clamped
+// root; overflow-wrap:anywhere guarantees arbitrary hostile strings wrap.
+// Collapse is handled purely by the hidden attribute — the display rule only
+// applies when it is absent, so [hidden] is never overridden.
+// ---------------------------------------------------------------------------
+.tech-value-full {
+    width: 100%;
+    margin-top: $spacer * 0.25;
+    padding: $spacer * 0.25 $spacer * 0.5;
+    font-family: $font-family-monospace;
+    font-size: $font-size-sm;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word; // legacy fallback where overflow-wrap is unsupported
+    color: $body-color;
+    background-color: $gray-100;
+    border: $border-width solid $border-color;
+    border-radius: $border-radius;
+}
+
+.tech-value-full:not([hidden]) {
+    display: block;
+}
+
+// Copy feedback ("Copied" via role=status): secondary tone, small.
+.tech-value-status {
+    color: $text-muted;
+    font-size: $font-size-sm;
+}

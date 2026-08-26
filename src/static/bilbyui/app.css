@@ -9493,6 +9493,87 @@ a.text-dark:hover, a.text-dark:focus {
   padding-left: 15px;
 }
 
+.tech-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tech-value > * {
+  min-width: 0;
+}
+
+.tech-value-label {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.tech-value--id .tech-value-label {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.tech-value-ellipsis {
+  color: #44546a;
+  user-select: none;
+}
+
+.tech-value--truncated .tech-value-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tech-value-copy,
+.tech-value-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 0.25rem;
+  min-width: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: #44546a;
+}
+.tech-value-copy:hover, .tech-value-copy:focus,
+.tech-value-toggle:hover,
+.tech-value-toggle:focus {
+  color: #0592eb;
+}
+.tech-value-copy:focus-visible,
+.tech-value-toggle:focus-visible {
+  outline: 2px solid #059cfa;
+  outline-offset: 1px;
+}
+
+.tech-value-full {
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  color: #02244b;
+  background-color: #eff2f6;
+  border: 1px solid #afbacb;
+  border-radius: 0.25rem;
+}
+
+.tech-value-full:not([hidden]) {
+  display: block;
+}
+
+.tech-value-status {
+  color: #44546a;
+  font-size: 0.875rem;
+}
+
 .edit-button {
   background: none;
   border: none;

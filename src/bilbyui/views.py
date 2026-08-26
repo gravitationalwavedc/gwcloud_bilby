@@ -1999,3 +1999,19 @@ def get_gwflow_pending_files(user):
     )
 
     return [_gwflow_pending_file(f) for f in pending_files]
+
+
+@login_required
+def tech_value_demo(request):
+    """Demo/audit surface rendering every technical-value component variant (issue #49)."""
+    return TemplateResponse(
+        request,
+        "bilbyui/demo_tech_value.html",
+        {
+            # Hostile fixtures come from context, not template literals: Django
+            # resolves template-tag string literals as safe, which would bypass
+            # the autoescaping this section exists to demonstrate.
+            "hostile_script": "<script>alert(1)</script>",
+            "quoted_path": 'O\'Brien "quoted" path/x.h5',
+        },
+    )

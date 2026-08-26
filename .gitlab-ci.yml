@@ -65,6 +65,7 @@ stages:
         - src/poetry.lock
     paths:
       - ~/.cache/pypoetry
+      - ~/.cache/ms-playwright
       - src/.venv
   before_script:
     - !reference [.apt_build, script]
@@ -106,6 +107,11 @@ stages:
 django-tests:
   extends: .src_poetry_base
   script:
+    # e2e suite needs Node.js/npm (shared Chromium server) and headless Chromium;
+    # --with-deps apt-installs browser system libs (job runs as root). Node is
+    # installed HERE, not in .apt_build, so cron base templates stay Node-free.
+    - apt -y install nodejs npm
+    - src/.venv/bin/playwright install --with-deps chromium
     - mkdir -p src/job_uploads/upload src/reports
     - cd src/ && PATH=".venv/bin:$PATH" bash run_coverage.sh --parallel
     - .venv/bin/python -m coverage xml -o reports/coverage.xml

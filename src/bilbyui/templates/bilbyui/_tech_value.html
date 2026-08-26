@@ -1,0 +1,22 @@
+{# Reusable technical-value primitive (issue #49): compact primary label, copy button and full-value disclosure for long paths/identifiers. Contract: docs/plans/designs/005-ux2-technical-value-component.md. #}
+{# Params: value (required), primary, kind ("path"|"id", default "path"), copy_label, truncated. All output is autoescaped — never pass pre-escaped/safe values. #}
+{# Inline handlers only (token-page precedent); handlers read .tech-value-full textContent so values never sit inside attributes; no element ids are emitted. #}
+{# Default primary label: explicit primary wins, id-kind shows the raw value, otherwise the path basename via the frontend_tags basename filter. #}
+{% load frontend_tags %}
+<span class="tech-value{% if kind == "id" %} tech-value--id{% endif %}{% if truncated %} tech-value--truncated{% endif %}">
+    {% if truncated %}<span class="tech-value-ellipsis" aria-hidden="true">…</span> {% endif %}<span class="tech-value-label">{% if primary %}{{ primary }}{% elif kind == "id" %}{{ value }}{% else %}{{ value|basename }}{% endif %}</span>
+    <button type="button"
+            class="tech-value-copy"
+            onclick="var r = this.closest('.tech-value'); navigator.clipboard.writeText(r.querySelector('.tech-value-full').textContent); r.querySelector('.tech-value-status').textContent = 'Copied';">
+        <i class="bi-clipboard" aria-hidden="true"></i>
+        {% if copy_label %}{{ copy_label }}{% elif kind == "id" %}Copy identifier{% else %}Copy path{% endif %}
+    </button>
+    <button type="button"
+            class="tech-value-toggle"
+            aria-expanded="false"
+            onclick="var r = this.closest('.tech-value'); var f = r.querySelector('.tech-value-full'); f.hidden = !f.hidden; this.setAttribute('aria-expanded', f.hidden ? 'false' : 'true');">
+        <i class="bi-chevron-down" aria-hidden="true"></i>
+        <span class="sr-only">{% if kind == "id" %}Show full identifier{% else %}Show full path{% endif %}</span>
+    </button>
+    <span class="tech-value-full" hidden>{{ value }}</span><span class="tech-value-status" role="status"></span>
+</span>
