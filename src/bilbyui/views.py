@@ -1001,13 +1001,7 @@ def _build_job_row(bilby_job, status_name, user_name, name, description):
     }
 
 
-def _build_public_job_rows(public_jobs_result):
-    records = public_jobs_result["records"]
-    page_size = public_jobs_result["page_size"]
-    job_controller_jobs = public_jobs_result["job_controller_jobs"]
-    jobs = public_jobs_result["jobs"]
-
-    rows = []
+def _iter_es_job_records(records, jobs, page_size):
     for record in records[:page_size]:
         bilby_job = jobs.get(int(record["_id"]))
         if bilby_job is None:
@@ -1017,6 +1011,18 @@ def _build_public_job_rows(public_jobs_result):
         if not isinstance(job_source, dict):
             continue
 
+        yield record, bilby_job
+
+
+def _build_public_job_rows(public_jobs_result):
+    records = public_jobs_result["records"]
+    page_size = public_jobs_result["page_size"]
+    job_controller_jobs = public_jobs_result["job_controller_jobs"]
+    jobs = public_jobs_result["jobs"]
+
+    rows = []
+    for record, bilby_job in _iter_es_job_records(records, jobs, page_size):
+        job_source = record.get("_source")
         status_name = _job_status_name(bilby_job, job_controller_jobs)
 
         rows.append(
@@ -1037,9 +1043,7 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
     page_size = gwflow_jobs_result["page_size"]
     jobs = gwflow_jobs_result["jobs"]
 
-    page_records = records[:page_size]
-
-    job_ids = [int(record["_id"]) for record in page_records]
+    job_ids = [int(record["_id"]) for record in records[:page_size]]
     file_counts = {
         row["job_id"]: (row["total"], row["uploaded"])
         for row in GWFlowFile.objects.filter(job_id__in=job_ids)
@@ -1048,14 +1052,8 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
     }
 
     rows = []
-    for record in page_records:
-        job = jobs.get(int(record["_id"]))
-        if job is None:
-            continue
-
+    for record, job in _iter_es_job_records(records, jobs, page_size):
         es_source = record.get("_source")
-        if not isinstance(es_source, dict):
-            continue
         analyses = es_source.get("analyses") or []
         analysis_count = len(analyses) if isinstance(analyses, list) else 0
 
