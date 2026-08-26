@@ -1339,7 +1339,7 @@ def _get_job_status_context(job, user):
     }
 
 
-def _build_result_files(job):
+def _build_result_file_entries(job, external_is_dir=False):
     if job.job_type == BilbyJobType.EXTERNAL:
         external_job = ExternalBilbyJob.objects.filter(job=job).first()
         if external_job is None:
@@ -1347,7 +1347,7 @@ def _build_result_files(job):
         return [
             {
                 "path": external_job.url,
-                "is_dir": False,
+                "is_dir": external_is_dir,
                 "file_size": None,
                 "download_token": None,
             }
@@ -1355,7 +1355,7 @@ def _build_result_files(job):
 
     success, files = job.get_file_list()
     if not success:
-        return []
+        raise RuntimeError(f"Failed to get file list for job {job.id}: {files}")
 
     token_dict = FileDownloadToken.create_token_map(job, files)
 
@@ -1369,6 +1369,13 @@ def _build_result_files(job):
         for file_entry in files
         if isinstance(file_entry, dict)
     ]
+
+
+def _build_result_files(job):
+    try:
+        return _build_result_file_entries(job)
+    except RuntimeError:
+        return []
 
 
 def _available_labels_for_job(job):
