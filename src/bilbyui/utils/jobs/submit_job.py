@@ -40,6 +40,7 @@ def _make_job_controller_request(method, url, user_id, data=None, jwt_expiry=Non
     }
     if data is not None:
         kwargs["data"] = json.dumps(data)
+        kwargs["headers"]["Content-Type"] = "application/json"
 
     result = requests.request(method, url, **kwargs)
 

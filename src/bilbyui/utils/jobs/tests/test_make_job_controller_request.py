@@ -45,6 +45,7 @@ class TestMakeJobControllerRequest(BilbyTestCase):
         result = _make_job_controller_request("POST", f"{BASE_URL}/job/", USER_ID, data=data)
 
         self.assertEqual(result, {"jobId": 42})
+        self.assertEqual(self.responses.calls[0].request.headers["Content-Type"], "application/json")
         body = json.loads(self.responses.calls[0].request.body)
         self.assertEqual(body, data)
 
