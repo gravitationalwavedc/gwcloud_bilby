@@ -163,6 +163,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
             [
                 {"path": "/bad.txt", "isDir": False, "fileSize": "not-a-number"},
                 {"path": "/null.txt", "isDir": False, "fileSize": None},
+                {"path": "/list.txt", "isDir": False, "fileSize": [1, 2]},
             ],
         ),
     )
@@ -170,7 +171,7 @@ class TestResultFilesAndGenerateFileDownloadIdsNotUploaded(BilbyTestCase):
         response = self.query(self.query_string)
         self.assertIsNone(response.errors)
         files = response.data["bilbyResultFiles"]["files"]
-        self.assertEqual([f["fileSize"] for f in files], [None, None])
+        self.assertEqual([f["fileSize"] for f in files], [None, None, None])
 
 
 @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
