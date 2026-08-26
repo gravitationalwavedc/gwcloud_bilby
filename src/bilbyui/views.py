@@ -446,6 +446,21 @@ def _strip_supporting_file_args(args):
     args.psd_dict = None
 
 
+def _capture_supporting_files(args):
+    # Get the files for any supporting files if they exist
+    # Don't change the prior file if it's one of the defaults
+    prior_file = None
+    if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
+        prior_file = args.prior_file
+
+    gps_file = args.gps_file
+    timeslide_file = args.timeslide_file
+    injection_file = args.injection_file
+    psd_dict = args.psd_dict
+
+    return prior_file, gps_file, timeslide_file, injection_file, psd_dict
+
+
 def bilby_ini_args_to_data_input(args):
     _strip_supporting_file_args(args)
 
@@ -474,14 +489,7 @@ def create_bilby_job_from_ini_string(user, params):
         args.outdir = "./"
 
     # Get the files for any supporting files if they exist
-    prior_file = None
-    if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
-        prior_file = args.prior_file
-
-    gps_file = args.gps_file
-    timeslide_file = args.timeslide_file
-    injection_file = args.injection_file
-    psd_dict = args.psd_dict
+    prior_file, gps_file, timeslide_file, injection_file, psd_dict = _capture_supporting_files(args)
 
     parser = bilby_ini_args_to_data_input(args)
 
@@ -595,24 +603,8 @@ def upload_bilby_job(user, upload_token, details, job_file):
 
         # Strip the prior, gps, timeslide, and injection file
         # as DataGenerationInput has trouble without the actual file existing
-
-        # Don't change the prior file if it's one of the defaults
-        prior_file = None
-        if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
-            prior_file = args.prior_file
-            args.prior_file = None
-
-        gps_file = args.gps_file
-        args.gps_file = None
-
-        timeslide_file = args.timeslide_file
-        args.timeslide_file = None
-
-        injection_file = args.injection_file
-        args.injection_file = None
-
-        psd_dict = args.psd_dict
-        args.psd_dict = None
+        prior_file, gps_file, timeslide_file, injection_file, psd_dict = _capture_supporting_files(args)
+        _strip_supporting_file_args(args)
 
         parser = DataGenerationInput(args, [], create_data=False)
 
