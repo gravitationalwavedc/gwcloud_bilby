@@ -252,3 +252,39 @@ class TestRequestFileListUploaded(BilbyTestCase):
 
         self.assertTrue(result[0])
         self.assertNotIn("disappearing_dir", [entry["path"] for entry in result[1]])
+
+    def test_request_file_list_recursive_skips_unreadable_file(self):
+        job_dir = self.job.get_upload_directory()
+        target_file = Path(job_dir) / "data" / "unreadable_file.txt"
+        target_file.touch()
+
+        real_stat = Path.stat
+
+        def stat_side_effect(self_obj, *, follow_symlinks=True):
+            if self_obj == target_file:
+                raise PermissionError
+            return real_stat(self_obj, follow_symlinks=follow_symlinks)
+
+        with mock.patch.object(Path, "stat", new=stat_side_effect):
+            result = request_file_list(self.job, "./data", True, self.job.user_id)
+
+        self.assertTrue(result[0])
+        self.assertNotIn("unreadable_file.txt", [entry["path"] for entry in result[1]])
+
+    def test_request_file_list_recursive_skips_path_escaping_entry(self):
+        job_dir = self.job.get_upload_directory()
+        target_file = Path(job_dir) / "data" / "escaping_file.txt"
+        target_file.touch()
+
+        real_relative_to = Path.relative_to
+
+        def relative_to_side_effect(self_obj, *args, **kwargs):
+            if self_obj == target_file:
+                raise ValueError
+            return real_relative_to(self_obj, *args, **kwargs)
+
+        with mock.patch.object(Path, "relative_to", new=relative_to_side_effect):
+            result = request_file_list(self.job, "./data", True, self.job.user_id)
+
+        self.assertTrue(result[0])
+        self.assertNotIn("escaping_file.txt", [entry["path"] for entry in result[1]])
