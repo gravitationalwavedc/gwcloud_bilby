@@ -93,6 +93,20 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(rows[0]["sname"], "S260101a")
 
     @responses.activate
+    def test_iter_changed_stops_on_non_json_200_response(self):
+        url = f"{self.base_url}/api/v1/superevents/?ordering=commit_timestamp%2Csname&page_size=50"
+        responses.add(
+            responses.GET,
+            url,
+            body="<html><body>proxy error</body></html>",
+            status=200,
+            content_type="text/html",
+        )
+
+        rows = list(self.client.iter_changed())
+        self.assertEqual(rows, [])
+
+    @responses.activate
     def test_get_superevent(self):
         sname = "S260101a"
         url = f"{self.base_url}/api/v1/superevents/{sname}/"
