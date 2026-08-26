@@ -31,6 +31,14 @@ def _time_range_to_timedelta(time_range):
         raise ValueError(msg) from None
 
 
+def _numeric_es_records(records):
+    return [
+        record
+        for record in records
+        if isinstance(record, dict) and (isinstance(record.get("_id"), int) or str(record.get("_id")).isdigit())
+    ]
+
+
 def _apply_time_range_filter(qs, time_range, field_name="last_updated"):
     if time_range == "all":
         return qs
@@ -144,12 +152,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
     if not results or "hits" not in results or not results["hits"]["hits"]:
         return empty_result
 
-    records = results["hits"]["hits"]
-    records = [
-        record
-        for record in records
-        if isinstance(record, dict) and (isinstance(record.get("_id"), int) or str(record.get("_id")).isdigit())
-    ]
+    records = _numeric_es_records(results["hits"]["hits"])
     has_next = len(records) > page_size
 
     qs_before = (
