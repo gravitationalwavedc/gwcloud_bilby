@@ -1,0 +1,145 @@
+// Application shell primitives: measured navbar offset, breakpoint-scoped
+// navbar positioning, skip link, reduced-motion handling and fluid container.
+//
+// Compiled after theme.scss, so every Bootstrap 4.6 variable/mixin referenced
+// here is already defined by the vendor import chain.
+
+// ---------------------------------------------------------------------------
+// Navbar height budget (Sass-precomputed, no runtime JS measurement).
+//
+// This mirrors the box styles that determine the rendered desktop bar height.
+// It MUST be recomputed if the header contents or paddings change (brand/logo
+// size, nav-link padding, navbar-padding-y).
+//
+// The bound relies on an enforced layout invariant: every header item renders
+// as a single line (see the .app-navbar-user truncation below), so the bar
+// height can never exceed this budget regardless of username length, font
+// metrics or zoom level.
+//
+// Brand/nav-link box = font-size-base * line-height-base + nav-link padding-y * 2
+//   (Bootstrap sizes .navbar-brand padding-y so its box equals the nav-link box)
+// ---------------------------------------------------------------------------
+
+// 2.5rem (40px): GWCloud logo glyph is 1.25rem inside this flex-centered box,
+// so the brand never exceeds it.
+$shell-brand-nav-box: $font-size-base * $line-height-base + $nav-link-padding-y * 2;
+
+// .navbar vertical padding: $spacer * .5 top + bottom.
+$shell-bar-padding: $navbar-padding-y * 2;
+
+:root {
+    // Desktop (lg+) fully expanded bar; consumed by the main-content offset
+    // and scroll-padding-top. Only meaningful at lg+ where the bar is fixed.
+    --navbar-h: #{$shell-brand-nav-box + $shell-bar-padding};
+}
+
+// ---------------------------------------------------------------------------
+// Breakpoint-scoped positioning: static/in-flow below lg (default — no fixed
+// class in markup, nothing re-fixes it), pinned above content at lg+ where the
+// bar spans the full viewport width.
+//
+// Below lg the bar occupies normal document flow, so #main needs NO offset —
+// reserving space there would double-pad the page.
+// ---------------------------------------------------------------------------
+
+@include media-breakpoint-up(lg) {
+    // Scoped to the application shell navbar so any future secondary .navbar
+    // is not accidentally pinned to the viewport.
+    .app-navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: $zindex-fixed;
+    }
+
+    // Offset consumption: keeps #main clear of the fixed bar.
+    .app-offset {
+        padding-top: var(--navbar-h);
+    }
+
+    // Anchor jumps must not land beneath the fixed bar.
+    html {
+        scroll-padding-top: var(--navbar-h);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Header height invariant: the authenticated username is the only header item
+// with unbounded content. Truncate it so the bar can never grow taller than
+// the precomputed --navbar-h budget (which would push content beneath the
+// fixed bar out of scroll-padding reach).
+// ---------------------------------------------------------------------------
+.app-navbar-user {
+    max-width: 16rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// ---------------------------------------------------------------------------
+// Skip link: visually hidden until focused, then a high-contrast pill at the
+// top-left stacked above the fixed navbar so keyboard users can bypass the nav.
+// ---------------------------------------------------------------------------
+.skip-link {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+
+    &:focus {
+        position: fixed;
+        top: 0.75rem;
+        left: 0.75rem;
+        z-index: #{$zindex-fixed + 1};
+        width: auto;
+        height: auto;
+        margin: 0;
+        padding: 0.5rem 1rem;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+        color: $white;
+        background-color: $gray-900;
+        border-radius: 0.25rem;
+        outline: 2px solid $blue-500;
+        outline-offset: 2px;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Reduced motion: honour the OS-level preference globally (Frontend Bible
+// rule 10) — animations/transitions collapse to near-zero duration and smooth
+// scrolling is disabled.
+// ---------------------------------------------------------------------------
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Fluid container utility: full width with a generous cap so dense data tables
+// regain tablet/desktop width (replaces col-md-10 offset-md-1 layouts).
+// Deliberately not a Bootstrap .container-* class.
+// ---------------------------------------------------------------------------
+$app-container-max-width: 1400px;
+
+.app-container {
+    width: 100%;
+    max-width: $app-container-max-width;
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: $grid-gutter-width * 0.5;
+    padding-left: $grid-gutter-width * 0.5;
+}

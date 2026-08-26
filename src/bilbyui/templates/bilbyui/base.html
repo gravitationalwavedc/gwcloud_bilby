@@ -3,14 +3,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ page_title|default:"GWCloud Bilby" }}{% endblock %}</title>
   {% include "bilbyui/_google_analytics.html" %}
   <link rel="stylesheet" href="{% static 'bilbyui/app.css' %}">
   <link rel="stylesheet" href="{% static 'bilbyui/vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to main content</a>
   {% include "bilbyui/_navbar.html" %}
-  <main class="h-100" style="padding-top: 64px;">
+  <main id="main" class="h-100 app-offset">
     {% block content %}{% endblock %}
   </main>
   <script defer src="{% static 'bilbyui/vendor/jquery/jquery-3.7.1.min.js' %}"></script>

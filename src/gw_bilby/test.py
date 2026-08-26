@@ -9,3 +9,7 @@ AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 
 # Test-specific settings
 ADACS_SSO_CLIENT_SECRET = "test_secret_for_ci"
+
+# Never let the dev-mode SSO shim answer user lookups under test — auth tests
+# mock the real lookup path and assert against it.
+ADACS_SSO_LOCAL_MODE = False
