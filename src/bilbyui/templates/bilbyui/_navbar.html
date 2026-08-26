@@ -1,5 +1,5 @@
 {% load static %}
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
+<nav class="app-navbar navbar navbar-expand-lg navbar-light bg-light">
   <a class="navbar-brand navbar-brand-link" href="/">
     <img src="{% static 'bilbyui/images/GWCloud-logo-primary200.png' %}" alt="GWCloud" class="navbar-nav-icon">
     GWCloud
@@ -8,14 +8,14 @@
     <span class="navbar-toggler-icon"></span>
   </button>
   <div class="collapse navbar-collapse" id="appNavbar">
-    <ul class="navbar-nav flex-row mr-auto">
+    <ul class="navbar-nav flex-lg-row mr-auto">
       <li class="nav-item">
         <a class="nav-link{% if request.resolver_match.url_name == 'gwflow_jobs' %} active{% endif %}" {% if request.resolver_match.url_name == 'gwflow_jobs' %}aria-current="page"{% endif %} href="{% url 'bilbyui:gwflow_jobs' %}">
           GWFlow
         </a>
       </li>
     </ul>
-    <ul class="navbar-nav flex-row">
+    <ul class="navbar-nav flex-lg-row">
       {% if user.is_authenticated %}
         <li class="nav-item">
           <a class="nav-link mr-3" href="https://gwcloud-python.readthedocs.io/en/latest/gettingstarted.html" target="_blank" rel="noopener noreferrer">
@@ -30,7 +30,7 @@
           </a>
         </li>
         <li class="nav-item">
-          <span class="navbar-text mr-3">
+          <span class="navbar-text app-navbar-user mr-3">
             <i class="bi bi-person navbar-nav-icon" aria-hidden="true"></i>
             {{ user.name }}
           </span>

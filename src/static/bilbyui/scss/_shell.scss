@@ -7,34 +7,29 @@
 // ---------------------------------------------------------------------------
 // Navbar height budget (Sass-precomputed, no runtime JS measurement).
 //
-// These mirror the box styles that determine the rendered bar height. They
-// MUST be recomputed if the header contents or paddings change (brand/logo
-// size, nav-link or toggler padding, navbar-padding-y, borders).
+// This mirrors the box styles that determine the rendered desktop bar height.
+// It MUST be recomputed if the header contents or paddings change (brand/logo
+// size, nav-link padding, navbar-padding-y).
 //
-// Row boxes (content only, excluding .navbar vertical padding):
-//   brand/nav-link box = font-size-base * line-height-base + nav-link padding-y * 2
-//     (Bootstrap sizes .navbar-brand padding-y so its box equals the nav-link box)
-//   toggler box = toggler font-size * line-height 1 + toggler padding-y * 2 + border * 2
+// The bound relies on an enforced layout invariant: every header item renders
+// as a single line (see the .app-navbar-user truncation below), so the bar
+// height can never exceed this budget regardless of username length, font
+// metrics or zoom level.
+//
+// Brand/nav-link box = font-size-base * line-height-base + nav-link padding-y * 2
+//   (Bootstrap sizes .navbar-brand padding-y so its box equals the nav-link box)
 // ---------------------------------------------------------------------------
 
 // 2.5rem (40px): GWCloud logo glyph is 1.25rem inside this flex-centered box,
 // so the brand never exceeds it.
 $shell-brand-nav-box: $font-size-base * $line-height-base + $nav-link-padding-y * 2;
 
-// 1.875rem (30px): smaller than the brand box, so it only matters if header
-// contents ever change. The trailing term is the toggler's top+bottom borders
-// (2 * $border-width, i.e. 1px each ≈ 0.125rem); written in rem because Sass
-// cannot add px to rem statically.
-$shell-toggler-box: $navbar-toggler-font-size + $navbar-toggler-padding-y * 2 + 0.125rem;
-
 // .navbar vertical padding: $spacer * .5 top + bottom.
 $shell-bar-padding: $navbar-padding-y * 2;
 
 :root {
-    // Mobile (below lg): only the brand + toggler row renders; the collapse
-    // wrapper is display:none while closed.
-    --navbar-h-collapsed: #{max($shell-brand-nav-box, $shell-toggler-box) + $shell-bar-padding};
-    // Desktop (lg+): fully expanded bar (nav links share the brand row height).
+    // Desktop (lg+) fully expanded bar; consumed by the main-content offset
+    // and scroll-padding-top. Only meaningful at lg+ where the bar is fixed.
     --navbar-h: #{$shell-brand-nav-box + $shell-bar-padding};
 }
 
@@ -42,19 +37,15 @@ $shell-bar-padding: $navbar-padding-y * 2;
 // Breakpoint-scoped positioning: static/in-flow below lg (default — no fixed
 // class in markup, nothing re-fixes it), pinned above content at lg+ where the
 // bar spans the full viewport width.
+//
+// Below lg the bar occupies normal document flow, so #main needs NO offset —
+// reserving space there would double-pad the page.
 // ---------------------------------------------------------------------------
 
-// Offset consumption: keeps #main clear of whichever bar variant renders.
-.app-offset {
-    padding-top: var(--navbar-h-collapsed);
-
-    @include media-breakpoint-up(lg) {
-        padding-top: var(--navbar-h);
-    }
-}
-
 @include media-breakpoint-up(lg) {
-    .navbar {
+    // Scoped to the application shell navbar so any future secondary .navbar
+    // is not accidentally pinned to the viewport.
+    .app-navbar {
         position: fixed;
         top: 0;
         left: 0;
@@ -62,10 +53,28 @@ $shell-bar-padding: $navbar-padding-y * 2;
         z-index: $zindex-fixed;
     }
 
+    // Offset consumption: keeps #main clear of the fixed bar.
+    .app-offset {
+        padding-top: var(--navbar-h);
+    }
+
     // Anchor jumps must not land beneath the fixed bar.
     html {
         scroll-padding-top: var(--navbar-h);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Header height invariant: the authenticated username is the only header item
+// with unbounded content. Truncate it so the bar can never grow taller than
+// the precomputed --navbar-h budget (which would push content beneath the
+// fixed bar out of scroll-padding reach).
+// ---------------------------------------------------------------------------
+.app-navbar-user {
+    max-width: 16rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 // ---------------------------------------------------------------------------

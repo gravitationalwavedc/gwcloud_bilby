@@ -16,6 +16,17 @@ def _to_utc(value):
 
 @register.filter
 def utc_timestamp(value):
+    """Format a datetime or ISO-8601 string as "YYYY-MM-DD HH:MM UTC".
+
+    Input contract (deliberate for a presentation formatter — malformed data
+    renders as empty rather than raising in templates):
+
+    - aware datetime: converted to UTC, then formatted.
+    - naive datetime: assumed to already be UTC.
+    - str: parsed as ISO-8601 (naive strings treated as UTC).
+    - None, empty/whitespace-only string, unparseable string, or any other
+      type: rendered as "".
+    """
     if value is None or (isinstance(value, str) and not value.strip()):
         return ""
     if isinstance(value, datetime):

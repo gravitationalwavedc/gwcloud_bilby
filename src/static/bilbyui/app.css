@@ -9419,31 +9419,31 @@ a.text-dark:hover, a.text-dark:focus {
   }
 }
 :root {
-  --navbar-h-collapsed: 3.5rem;
   --navbar-h: 3.5rem;
 }
 
-.app-offset {
-  padding-top: var(--navbar-h-collapsed);
-}
 @media (min-width: 992px) {
-  .app-offset {
-    padding-top: var(--navbar-h);
-  }
-}
-
-@media (min-width: 992px) {
-  .navbar {
+  .app-navbar {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 1030;
   }
+  .app-offset {
+    padding-top: var(--navbar-h);
+  }
   html {
     scroll-padding-top: var(--navbar-h);
   }
 }
+.app-navbar-user {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .skip-link {
   position: absolute;
   width: 1px;
