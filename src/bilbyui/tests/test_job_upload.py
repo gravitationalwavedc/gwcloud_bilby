@@ -30,6 +30,11 @@ from bilbyui.tests.test_utils import (
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import upload_bilby_job, upload_hdf5_bilby_job
 
+with Path("bilbyui/tests/regression_data/a18_conda_env_replica.ini").open() as f:
+    REPLICA_UPLOAD_INI = f.read()
+REPLICA_UPLOAD_INI_WITHOUT_CONDA_ENV = REPLICA_UPLOAD_INI.replace("conda-env=igwn-py311-20260701\n", "")
+REPLICA_JOB_NAME = "E2309xyz--bilby-IMRPhenomXPHM-SpinTaylor-7"
+
 User = get_user_model()
 
 
@@ -158,17 +163,14 @@ class TestJobUpload(BilbyTestCase):
     def test_job_upload_with_conda_env_does_not_invoke_conda_subprocess(self):
         token = self.get_upload_token()
 
-        test_name = "conda_strip_job"
         test_description = "Conda Strip Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string(
-            {"label": test_name, "outdir": "./", "conda-env": "igwn-py311-20260701"}, True
-        )
+        test_ini_string = REPLICA_UPLOAD_INI
 
         test_file = SimpleUploadedFile(
             name="test.tar.gz",
-            content=create_test_upload_data(test_ini_string, test_name),
+            content=create_test_upload_data(test_ini_string, "replica_conda_job"),
             content_type="application/gzip",
         )
 
@@ -192,9 +194,12 @@ class TestJobUpload(BilbyTestCase):
         self.assertDictEqual(expected, response.data)
 
         job = BilbyJob.objects.all().last()
-        compare_ini_kvs(self, job, test_ini_string, ignored=["conda_env"])
+        # outdir is intentionally rewritten to ./ by the upload path; conda_env is stripped before storage
+        compare_ini_kvs(self, job, test_ini_string, ignored=["conda_env", "outdir"])
 
-        self.assertEqual(job.name, test_name)
+        self.assertEqual(job.name, REPLICA_JOB_NAME)
+        self.assertEqual(job.description, test_description)
+        self.assertEqual(job.private, test_private)
         self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
 
         for call_args in [*run_mock.call_args_list, *popen_mock.call_args_list]:
@@ -206,15 +211,14 @@ class TestJobUpload(BilbyTestCase):
     def test_job_upload_success_without_conda_env(self):
         token = self.get_upload_token()
 
-        test_name = "no_conda_job"
         test_description = "No Conda Description"
         test_private = False
 
-        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+        test_ini_string = REPLICA_UPLOAD_INI_WITHOUT_CONDA_ENV
 
         test_file = SimpleUploadedFile(
             name="test.tar.gz",
-            content=create_test_upload_data(test_ini_string, test_name),
+            content=create_test_upload_data(test_ini_string, "replica_no_conda_job"),
             content_type="application/gzip",
         )
 
@@ -238,7 +242,7 @@ class TestJobUpload(BilbyTestCase):
         self.assertDictEqual(expected, response.data)
 
         job = BilbyJob.objects.all().last()
-        self.assertEqual(job.name, test_name)
+        self.assertEqual(job.name, REPLICA_JOB_NAME)
         self.assertEqual(job.description, test_description)
         self.assertEqual(job.private, test_private)
         self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
