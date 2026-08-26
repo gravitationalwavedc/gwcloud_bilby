@@ -18,6 +18,12 @@ class TestToDec(BilbyTestCase):
     def test_returns_non_numeric_string_unchanged(self):
         self.assertEqual(to_dec("not-a-number"), "not-a-number")
 
+    def test_returns_non_numeric_list_unchanged(self):
+        self.assertEqual(to_dec([1, 2]), [1, 2])
+
+    def test_returns_non_numeric_mapping_unchanged(self):
+        self.assertEqual(to_dec({"nlive": 1}), {"nlive": 1})
+
     def test_converts_fractional_float(self):
         self.assertEqual(to_dec(1.5), Decimal("1.5"))
 
