@@ -21,8 +21,8 @@ def _make_file_entry(real_file_name, is_dir, job_dir):
     with contextlib.suppress(FileNotFoundError):
         # Happens when trying to stat a symlink
         return {
-            # Remove the leading working directory
-            "path": str(real_file_name)[len(job_dir) :],
+            # Report the path relative to the working directory
+            "path": f"/{real_file_name.relative_to(job_dir)}",
             "isDir": is_dir,
             "fileSize": real_file_name.stat().st_size,
         }
