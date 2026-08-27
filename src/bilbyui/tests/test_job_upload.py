@@ -1734,6 +1734,40 @@ class TestHdf5JobUpload(BilbyTestCase):
         self.assertTrue((Path(job_dir) / "archive.tar.gz").is_file())
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_hdf5_job_upload_strips_conda_env_from_stored_ini(self):
+        """Test that conda_env is stripped from the stored ini_string for HDF5 uploads."""
+        token = self.get_upload_token()
+
+        test_name = "hdf5_conda_job"
+        test_description = "Test HDF5 Conda Strip"
+        test_private = False
+
+        test_ini_string = create_test_ini_string(
+            {"label": test_name, "outdir": "./", "conda-env": "igwn-py311-20260701"}, True
+        )
+        hdf5_file = self.create_test_hdf5_file()
+        ini_file = self.create_test_ini_file(test_ini_string)
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"name": test_name, "description": test_description, "private": test_private},
+            "hdf5File": None,
+            "iniFile": None,
+        }
+        test_files = {
+            "input.hdf5File": hdf5_file,
+            "input.iniFile": ini_file,
+        }
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+        self.assertIsNone(response.errors)
+
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.name, test_name)
+        self.assertNotIn("igwn-py311-20260701", job.ini_string)
+        self.assertIn("conda-env=None", job.ini_string)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_hdf5_job_upload_with_anonymous_request_context(self):
         """Test that an anonymous multipart HDF5 upload with a valid token creates the BilbyJob owned by token.user."""
         token = self.get_upload_token()
