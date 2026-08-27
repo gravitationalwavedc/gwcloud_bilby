@@ -85,7 +85,7 @@ class TestFileDownloadIds(BilbyTestCase):
             self.job.job_controller_id = None
             self.job.save()
 
-            result = request_file_download_ids(self.job, "test_path")
+            result = request_file_download_ids(self.job, ["test_path1", "test_path2", "test_path3"])
 
             self.assertEqual(result, (False, "Job not submitted"))
 
@@ -93,7 +93,7 @@ class TestFileDownloadIds(BilbyTestCase):
             self.job.job_controller_id = 4321
             self.job.save()
 
-            result = request_file_download_ids(self.job, "test_path")
+            result = request_file_download_ids(self.job, ["test_path1", "test_path2", "test_path3"])
 
             self.assertEqual(result, (False, "Error getting job file download id"))
 
@@ -101,7 +101,7 @@ class TestFileDownloadIds(BilbyTestCase):
             self.job.job_controller_id = 4321
             self.job.save()
 
-            result = request_file_download_ids(self.job, "test_path")
+            result = request_file_download_ids(self.job, ["test_path1", "test_path2", "test_path3"])
 
             self.assertEqual(result, (True, return_result))
         finally:
@@ -136,3 +136,13 @@ class TestFileDownloadIds(BilbyTestCase):
         result = request_file_download_ids(self.job, ["test_path"])
 
         self.assertEqual(result, (False, "No file download IDs returned"))
+
+    @mock.patch("bilbyui.utils.jobs.request_file_download_id._make_job_controller_request")
+    def test_request_file_download_ids_mismatched_count(self, make_request):
+        make_request.return_value = {"fileIds": ["id1"]}
+        self.job.job_controller_id = 4321
+        self.job.save()
+
+        result = request_file_download_ids(self.job, ["test_path1", "test_path2"])
+
+        self.assertEqual(result, (False, "File download ID count mismatch"))
