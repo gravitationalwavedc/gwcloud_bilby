@@ -671,6 +671,84 @@ class TestJobSubmission(BilbyTestCase):
             "create bilbyJob mutation returned unexpected data.",
         )
 
+    @patch("bilbyui.models.submit_job")
+    def test_job_submission_ligo_event_denied_for_non_ligo_user(self, mock_api_call):
+        mock_api_call.return_value = {"jobId": 4321}
+
+        EventID.create(
+            event_id="GW150914_123456",
+            gps_time=1126259462.391,
+            trigger_id="S123456a",
+            nickname="GW150914",
+            is_ligo_event=True,
+        )
+
+        params = {
+            "input": {
+                "params": {
+                    "details": {
+                        "name": "real_test_job_for_GW12345",
+                        "description": "real Test description 1234",
+                        "private": True,
+                    },
+                    "data": {
+                        "dataChoice": "real",
+                        "triggerTime": "1126259562.391",
+                        "channels": {
+                            "hanfordChannel": "GWOSC",
+                            "livingstonChannel": "GWOSC",
+                            "virgoChannel": "GWOSC",
+                        },
+                        "eventId": "GW150914_123456",
+                    },
+                    "detector": {
+                        "hanford": True,
+                        "hanfordMinimumFrequency": "20",
+                        "hanfordMaximumFrequency": "1024",
+                        "livingston": True,
+                        "livingstonMinimumFrequency": "20",
+                        "livingstonMaximumFrequency": "1024",
+                        "virgo": False,
+                        "virgoMinimumFrequency": "20",
+                        "virgoMaximumFrequency": "1024",
+                        "duration": "4",
+                        "samplingFrequency": "512",
+                    },
+                    "prior": {"priorDefault": "4s"},
+                    "sampler": {
+                        "nlive": 1000,
+                        "nact": 10,
+                        "maxmcmc": 5000,
+                        "walks": 1000,
+                        "dlogz": 0.1,
+                        "cpus": 1,
+                        "samplerChoice": "dynesty",
+                    },
+                    "waveform": {"model": None},
+                }
+            }
+        }
+
+        mutation = """
+            mutation NewJobMutation($input: BilbyJobMutationInput!) {
+              newBilbyJob(input: $input) {
+                result {
+                  jobId
+                }
+              }
+            }
+        """
+
+        response = self.query(mutation, input_data=params["input"])
+
+        self.assertDictEqual({"newBilbyJob": None}, response.data)
+        self.assertEqual(
+            "Permission Denied.",
+            str(response.errors[0]["message"]),
+            "create bilbyJob mutation returned unexpected data.",
+        )
+        self.assertFalse(BilbyJob.objects.all().exists())
+
     @override_settings(EMBARGO_START_TIME=1.0)
     @patch("bilbyui.models.submit_job")
     def test_job_submission_embargoed_ligo_job(self, mock_api_call):
