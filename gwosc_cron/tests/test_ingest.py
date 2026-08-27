@@ -1580,6 +1580,31 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(len(self.get_completed_jobs()), 0)
 
     @responses.activate
+    def test_allevents_invalid_json_body_exits_cleanly(self, gwc):
+        """If the allevents endpoint returns 200 with a non-JSON body (e.g. an HTML
+        proxy error page), the cron logs a critical message and exits 1 instead of
+        crashing with an unhandled ValueError on r.json()."""
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            body="<html><body>Bad Gateway</body></html>",
+            content_type="text/html",
+        )
+
+        with (
+            self.con_patch,
+            self.assertRaises(SystemExit) as cm,
+            self.assertLogs(level=logging.CRITICAL) as logs,
+        ):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_not_called()
+
+        self.assertEqual(cm.exception.code, 1)
+        self.assertIn("Unable to fetch allevents json", logs.output[0])
+        self.assertEqual(len(self.get_completed_jobs()), 0)
+
+    @responses.activate
     def test_allevents_non_dict_events_section_does_not_crash(self, gwc):
         """If the allevents endpoint returns 200 with a non-dict "events" section
         (e.g. a JSON list), the cron logs "Nothing to do" and exits 0 instead of
