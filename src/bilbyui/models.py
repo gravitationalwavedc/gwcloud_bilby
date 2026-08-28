@@ -6,6 +6,7 @@ from pathlib import Path
 
 import elasticsearch
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
@@ -646,7 +647,10 @@ class SupportingFile(models.Model):
         """
         BilbyJob.prune_supporting_files_jobs()
 
-        files_by_token = {str(sf.upload_token): sf for sf in cls.objects.filter(upload_token__in=tokens)}
+        try:
+            files_by_token = {str(sf.upload_token): sf for sf in cls.objects.filter(upload_token__in=tokens)}
+        except ValidationError:
+            return [None] * len(tokens)
         return [files_by_token.get(str(token)) for token in tokens]
 
     @classmethod
@@ -779,7 +783,10 @@ class BilbyJobUploadToken(models.Model):
         cls.prune()
 
         # Next try to find the instance matching the specified token
-        return cls.objects.filter(token=token).first()
+        try:
+            return cls.objects.filter(token=token).first()
+        except ValidationError:
+            return None
 
     @classmethod
     def create(cls, user):
