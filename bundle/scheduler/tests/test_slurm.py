@@ -1,3 +1,4 @@
+import logging
 import subprocess
 from unittest import TestCase
 from unittest.mock import patch
@@ -132,6 +133,24 @@ class TestSlurm(TestCase):
 
         self.assertEqual(status, JobStatus.RUNNING)
         self.assertEqual(info, sched.SLURM_STATUS["RUNNING"])
+
+    @patch("scheduler.slurm.subprocess.check_output")
+    def test_status_logs_at_debug_not_info(self, check_output_mock):
+        # The per-poll status path must log at DEBUG so the hot polling loop
+        # does not emit INFO lines (including full sacct stdout) on every poll.
+        check_output_mock.return_value = b"1234|RUNNING\n"
+
+        sched = SlurmScheduler()
+        with self.assertLogs("scheduler.slurm", level="DEBUG") as cm:
+            sched.status(1234, None)
+
+        self.assertTrue(
+            any("Trying to get status of job 1234..." in m for m in cm.output)
+        )
+        self.assertTrue(
+            any("Got job status RUNNING for job 1234" in m for m in cm.output)
+        )
+        self.assertTrue(all(r.levelno == logging.DEBUG for r in cm.records))
 
     @patch("scheduler.slurm.subprocess.check_output")
     def test_cancel_success(self, check_output_mock):
