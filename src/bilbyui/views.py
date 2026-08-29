@@ -1,3 +1,4 @@
+import functools
 import hashlib
 import json
 import logging
@@ -433,11 +434,16 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
     return supporting_files
 
 
+@functools.lru_cache(maxsize=1)
+def _get_default_prior_files():
+    return frozenset(bilby_pipe.main.Input([], []).default_prior_files)
+
+
 def _strip_supporting_file_args(args):
     # Strip the prior, gps, timeslide, and injection file
     # as DataGenerationInput has trouble without the actual file existing
     # Don't change the prior file if it's one of the defaults
-    if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
+    if args.prior_file not in _get_default_prior_files():
         args.prior_file = None
 
     args.gps_file = None
@@ -450,7 +456,7 @@ def _capture_supporting_files(args):
     # Get the files for any supporting files if they exist
     # Don't change the prior file if it's one of the defaults
     prior_file = None
-    if args.prior_file not in bilby_pipe.main.Input([], []).default_prior_files:
+    if args.prior_file not in _get_default_prior_files():
         prior_file = args.prior_file
 
     gps_file = args.gps_file
