@@ -6,6 +6,7 @@ from pathlib import Path
 
 import elasticsearch
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
@@ -745,7 +746,10 @@ class FileDownloadToken(models.Model):
         cls.prune()
 
         # Get all objects matching the list of tokens
-        objects = {str(rec.token): rec.path for rec in cls.objects.filter(job=job, token__in=tokens)}
+        try:
+            objects = {str(rec.token): rec.path for rec in cls.objects.filter(job=job, token__in=tokens)}
+        except ValidationError:
+            return [None] * len(tokens)
 
         # Generate the list and return
         return [objects.get(str(tok)) for tok in tokens]

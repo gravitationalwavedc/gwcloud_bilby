@@ -345,6 +345,11 @@ class TestFileDownloadToken(BilbyTestCase):
         # No records should exist in the database anymore
         self.assertFalse(FileDownloadToken.objects.exists())
 
+    def test_get_paths_malformed(self):
+        # Test that get_paths returns None for malformed (non-UUID) tokens rather than raising
+        result = FileDownloadToken.get_paths(self.job, ["not-a-uuid"])
+        self.assertEqual(result, [None])
+
 
 class TestBilbyJobUploadToken(BilbyTestCase):
     def setUp(self):
