@@ -18,8 +18,10 @@ def _make_file_entry(real_file_name, is_dir, job_dir):
     Constructs a file entry dict for the given path, or None if the path
     cannot be stat'ed (e.g. a broken symlink).
     """
-    with contextlib.suppress(FileNotFoundError):
-        # Happens when trying to stat a symlink
+    with contextlib.suppress(FileNotFoundError, PermissionError, ValueError):
+        # FileNotFoundError happens when trying to stat a symlink,
+        # PermissionError when the file is unreadable, and ValueError when
+        # the path escapes the job directory.
         return {
             # Report the path relative to the working directory
             "path": f"/{real_file_name.relative_to(job_dir)}",
