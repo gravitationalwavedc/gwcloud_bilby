@@ -9514,6 +9514,15 @@ a.text-dark:hover, a.text-dark:focus {
   font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
+.tech-value-secondary {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #44546a;
+  margin-left: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
 .tech-value-ellipsis {
   color: #44546a;
   user-select: none;
@@ -9523,6 +9532,13 @@ a.text-dark:hover, a.text-dark:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tech-value--truncated .tech-value-secondary {
+  max-width: 14rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .tech-value-copy,

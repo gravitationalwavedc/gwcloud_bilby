@@ -3,20 +3,33 @@ Lifecycle for the shared Playwright Node.js browser server.
 
 One headless Chromium is started via ``chromium.launchServer()`` and shared by
 every e2e test in the process over a WebSocket endpoint. The Node side of
-Playwright is installed into ``<repo-root>/.playwright/`` on first use; the
-install is skipped entirely when the installed version already matches the
-Python ``playwright`` package and axe-core is present.
+Playwright is installed into ``<repo-root>/.playwright/`` on first use.
+
+Dependencies are pinned exactly: ``playwright`` is pinned to the Python
+package version and ``axe-core`` to :data:`AXE_CORE_VERSION`. The npm install
+runs with ``--ignore-scripts`` (no lifecycle scripts execute in the privileged
+CI environment), ``--no-audit`` and ``--no-fund``. Parallel workers serialize
+the install with an advisory file lock and re-check before installing, so the
+shared tree is mutated by at most one npm process at a time.
 """
 
 from __future__ import annotations
 
 import contextlib
+import fcntl
 import json
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
+
+AXE_CORE_VERSION = "4.10.3"
+"""Exact axe-core version installed alongside Playwright for e2e scans."""
+
+_INSTALL_LOCK_TIMEOUT_SECONDS = 300
+"""How long a worker waits for another worker's npm install before proceeding."""
 
 
 @dataclass
@@ -55,8 +68,8 @@ def _check_node_available() -> None:
         ) from e
 
 
-def _read_installed_version(playwright_dir: Path) -> str | None:
-    package_json = playwright_dir / "node_modules" / "playwright" / "package.json"
+def _read_installed_version(playwright_dir: Path, package: str) -> str | None:
+    package_json = playwright_dir / "node_modules" / package / "package.json"
     if not package_json.exists():
         return None
     with contextlib.suppress(OSError, json.JSONDecodeError):
@@ -64,31 +77,34 @@ def _read_installed_version(playwright_dir: Path) -> str | None:
     return None
 
 
-def _ensure_playwright_installed() -> Path:
-    """
-    Ensure Node playwright (matching the Python package) and axe-core are installed.
+def _deps_satisfied(playwright_dir: Path, python_version: str) -> bool:
+    """Return True when installed Node deps match the exact pinned versions."""
+    if _read_installed_version(playwright_dir, "playwright") != python_version:
+        return False
+    return _read_installed_version(playwright_dir, "axe-core") == AXE_CORE_VERSION
 
-    Returns the dependency directory. Re-runs ``npm install`` only when the
-    installed playwright version differs from the Python package or axe-core
-    is missing, so parallel workers and repeat runs stay cheap.
-    """
-    python_version = _get_python_playwright_version()
-    _check_node_available()
 
-    playwright_dir = get_playwright_dir()
-    playwright_dir.mkdir(exist_ok=True)
-
-    axe_core_marker = playwright_dir / "node_modules" / "axe-core" / "package.json"
-    if _read_installed_version(playwright_dir) == python_version and axe_core_marker.exists():
-        return playwright_dir
-
+def _run_npm_install(playwright_dir: Path, python_version: str) -> None:
+    """Run the pinned, lifecycle-script-free npm install into ``playwright_dir``."""
     package_json = playwright_dir / "package.json"
     if not package_json.exists():
         package_json.write_text('{"name": "e2e-test-deps", "private": true}\n')
 
-    print(f"Installing Node playwright v{python_version} and axe-core...", file=sys.stderr)
+    print(
+        f"Installing Node playwright v{python_version} and axe-core v{AXE_CORE_VERSION}...",
+        file=sys.stderr,
+    )
     result = subprocess.run(
-        ["npm", "install", "--no-audit", "--no-fund", f"playwright@{python_version}", "axe-core"],
+        [
+            "npm",
+            "install",
+            "--ignore-scripts",
+            "--no-audit",
+            "--no-fund",
+            "--save-exact",
+            f"playwright@{python_version}",
+            f"axe-core@{AXE_CORE_VERSION}",
+        ],
         cwd=playwright_dir,
         capture_output=True,
         text=True,
@@ -97,7 +113,54 @@ def _ensure_playwright_installed() -> Path:
     if result.returncode != 0:
         raise RuntimeError(f"Failed to install e2e Node dependencies:\n{result.stderr}")
 
+
+def _ensure_playwright_installed() -> Path:
+    """
+    Ensure Node playwright (matching the Python package) and axe-core are installed.
+
+    Returns the dependency directory. Re-runs ``npm install`` only when the
+    installed playwright version differs from the Python package or the
+    installed axe-core version differs from :data:`AXE_CORE_VERSION`. Parallel
+    workers serialize the install with an advisory file lock
+    (``.playwright/.install.lock``) and double-check before installing, so the
+    shared tree is mutated by at most one npm process at a time.
+    """
+    python_version = _get_python_playwright_version()
+    _check_node_available()
+
+    playwright_dir = get_playwright_dir()
+    playwright_dir.mkdir(exist_ok=True)
+
+    if _deps_satisfied(playwright_dir, python_version):
+        return playwright_dir
+
+    lock_path = playwright_dir / ".install.lock"
+    with open(lock_path, "w") as lock_file:
+        _acquire_install_lock(lock_file)
+        try:
+            # Double-checked locking: another worker may have finished the
+            # install while we waited for the lock.
+            if _deps_satisfied(playwright_dir, python_version):
+                return playwright_dir
+            _run_npm_install(playwright_dir, python_version)
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
     return playwright_dir
+
+
+def _acquire_install_lock(lock_file) -> None:
+    """Block on the install lock (with a timeout), then proceed regardless."""
+    deadline = time.monotonic() + _INSTALL_LOCK_TIMEOUT_SECONDS
+    while True:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return
+        except OSError:
+            if time.monotonic() >= deadline:
+                # Give up waiting; npm install is idempotent so proceeding is safe.
+                return
+            time.sleep(0.2)
 
 
 LAUNCH_SERVER_MJS = """

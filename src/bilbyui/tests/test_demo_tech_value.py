@@ -93,3 +93,12 @@ class TestTechValueDemoPage(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertContains(response, "Copy superevent ID")
+
+    def test_analysis_uid_copy_label_rendered(self):
+        self.authenticate()
+
+        response = self.client.get(self.url)
+
+        # The UID fixture's copy button must expose "Copy analysis UID" as its
+        # accessible name (the component renders copy_label as button text).
+        self.assertContains(response, "Copy analysis UID")

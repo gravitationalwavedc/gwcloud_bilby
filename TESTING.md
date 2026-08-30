@@ -24,9 +24,21 @@ that drive a real browser via [Playwright](https://playwright.dev/python/):
 - **Lazy start means unit-only runs never need Node.** The server is only
   started from within the `async_e2e_test` decorator. Running any other test
   module never imports a browser, spawns Node, or touches `.playwright/`.
-- **Version-checked install skip.** The `npm install` step is skipped entirely
-  when `.playwright/node_modules/playwright/package.json` already matches the
-  Python `playwright` version and axe-core is present.
+- **Exact-pinned, lifecycle-script-free install.** `pw_server.py` installs
+  `playwright@{python version}` and `axe-core@4.10.3` (exact pins) with
+  `--ignore-scripts --no-audit --no-fund --save-exact`, so no npm lifecycle
+  scripts run in the privileged CI environment. The install is skipped only
+  when `.playwright/node_modules/playwright/package.json` matches the Python
+  `playwright` version **and** the installed `axe-core` version equals the
+  pinned `4.10.3`.
+- **Serial install in CI.** The `django-tests` job initializes
+  `.playwright/` once, serially, before `run_coverage.sh --parallel` spawns
+  workers, so parallel workers never race to mutate the shared npm tree.
+- **Inter-process lock for local parallel runs.** The Python bootstrap wraps
+  the npm mutation in an advisory `fcntl.flock` on
+  `.playwright/.install.lock` (blocking with a timeout) and double-checks the
+  pinned versions after acquiring the lock, so local `--parallel N` runs
+  serialize the install too.
 
 Infrastructure lives in `src/bilbyui/tests/e2e/`:
 
@@ -86,3 +98,15 @@ region by region.
 
 - Axe scope: scans run against the page content region, not app chrome;
   shell-wide contrast fixes are tracked outside this suite.
+
+## Technical-value component
+
+The `_tech_value.html` primitive (issue #49) is covered by render, keyboard,
+overflow, and clipboard e2e tests:
+
+- **Disclosure.** The toggle is a `<button>` with `aria-expanded` and an
+  optional `disclosure_id` parameter; when supplied, `aria-controls` points at
+  the full-value span's matching unique ID.
+- **Clipboard.** The copy handler is async: it reports "Copied" only when
+  `navigator.clipboard.writeText` resolves and "Copy failed" when it rejects,
+  so a denied or unavailable clipboard never announces a false success.

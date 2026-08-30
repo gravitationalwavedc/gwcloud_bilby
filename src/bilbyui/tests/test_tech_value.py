@@ -11,8 +11,10 @@ DEEP_PATH = "/home/buffy/bilby/O3/GW150914/output/posteriors.h5"
 
 COPY_ONCLICK = (
     "var r = this.closest('.tech-value'); "
-    "navigator.clipboard.writeText(r.querySelector('.tech-value-full').textContent); "
-    "r.querySelector('.tech-value-status').textContent = 'Copied';"
+    "var s = r.querySelector('.tech-value-status'); "
+    "navigator.clipboard.writeText(r.querySelector('.tech-value-full').textContent)"
+    ".then(function () { s.textContent = 'Copied'; }, "
+    "function () { s.textContent = 'Copy failed'; });"
 )
 TOGGLE_ONCLICK = (
     "var r = this.closest('.tech-value'); var f = r.querySelector('.tech-value-full'); "
@@ -45,7 +47,11 @@ class TestTechValuePathKind(TechValueRenderTestMixin, BilbyTestCase):
         html = normalise(self.render_tech_value(value=DEEP_PATH))
         self.assertIn('class="tech-value-copy"', html)
         self.assertIn(f'onclick="{COPY_ONCLICK}"', html)
-        self.assertIn('<i class="bi-clipboard" aria-hidden="true"></i> Copy path </button>', html)
+        self.assertIn(
+            '<i class="bi-clipboard" aria-hidden="true"></i> '
+            '<span class="tech-value-copy-label">Copy path</span> </button>',
+            html,
+        )
 
     def test_disclosure_button_initially_collapsed_with_path_hint(self):
         html = normalise(self.render_tech_value(value=DEEP_PATH))
@@ -65,15 +71,24 @@ class TestTechValuePathKind(TechValueRenderTestMixin, BilbyTestCase):
             html,
         )
 
-    def test_no_element_ids_emitted(self):
+    def test_no_ids_or_aria_controls_without_disclosure_id(self):
         html = self.render_tech_value(value=DEEP_PATH)
         self.assertNotIn('id="', html)
+        self.assertNotIn("aria-controls=", html)
+
+    def test_disclosure_id_wires_aria_controls_and_full_value_id(self):
+        html = normalise(self.render_tech_value(value=DEEP_PATH, disclosure_id="uid-1"))
+        self.assertIn(
+            'class="tech-value-toggle" aria-expanded="false" aria-controls="uid-1"',
+            html,
+        )
+        self.assertIn(f'<span id="uid-1" class="tech-value-full" hidden>{DEEP_PATH}</span>', html)
 
     def test_custom_primary_and_copy_label_override_defaults(self):
         html = normalise(self.render_tech_value(value=DEEP_PATH, primary="posteriors", copy_label="Copy file"))
         self.assertEqual(self.label_of(html), "posteriors")
         self.assertNotIn("Copy path", html)
-        self.assertIn(" Copy file </button>", html)
+        self.assertIn(' <span class="tech-value-copy-label">Copy file</span> </button>', html)
 
     def test_trailing_slash_falls_back_to_full_value_label(self):
         html = self.render_tech_value(value="/a/b/data/")
@@ -83,12 +98,32 @@ class TestTechValuePathKind(TechValueRenderTestMixin, BilbyTestCase):
         html = self.render_tech_value(value="results.h5")
         self.assertEqual(self.label_of(html), "results.h5")
 
+    def test_path_kind_renders_secondary_parent_dir(self):
+        html = normalise(self.render_tech_value(value=DEEP_PATH))
+        self.assertIn(
+            '<span class="tech-value-secondary">/home/buffy/bilby/O3/GW150914/output</span>',
+            html,
+        )
+
 
 class TestTechValueTruncated(TechValueRenderTestMixin, BilbyTestCase):
     def test_truncated_adds_modifier_class_and_ellipsis_marker(self):
         html = normalise(self.render_tech_value(value=DEEP_PATH, truncated=True))
         self.assertIn('<span class="tech-value tech-value--truncated">', html)
         self.assertIn('<span class="tech-value-ellipsis" aria-hidden="true">…</span>', html)
+
+    def test_truncated_secondary_carries_ellipsis_marker(self):
+        html = normalise(self.render_tech_value(value=DEEP_PATH, truncated=True))
+        self.assertIn(
+            '<span class="tech-value-secondary">'
+            '<span class="tech-value-ellipsis" aria-hidden="true">…</span>'
+            "/home/buffy/bilby/O3/GW150914/output</span>",
+            html,
+        )
+
+    def test_truncated_copy_label_is_sr_only(self):
+        html = normalise(self.render_tech_value(value=DEEP_PATH, truncated=True))
+        self.assertIn('<span class="tech-value-copy-label sr-only">Copy path</span>', html)
 
     def test_not_truncated_omits_modifier_and_marker(self):
         html = self.render_tech_value(value=DEEP_PATH)
@@ -111,8 +146,12 @@ class TestTechValueIdKind(TechValueRenderTestMixin, BilbyTestCase):
 
     def test_id_kind_default_copy_label_and_toggle_hint(self):
         html = normalise(self.render_tech_value(value="S230518h", kind="id"))
-        self.assertIn(" Copy identifier </button>", html)
+        self.assertIn(' <span class="tech-value-copy-label">Copy identifier</span> </button>', html)
         self.assertIn('<span class="sr-only">Show full identifier</span>', html)
+
+    def test_id_kind_renders_no_secondary(self):
+        html = self.render_tech_value(value="S230518h", kind="id")
+        self.assertNotIn("tech-value-secondary", html)
 
 
 class TestTechValueEscaping(TechValueRenderTestMixin, BilbyTestCase):
@@ -171,5 +210,5 @@ class TestTechValueIncludeSignature(TechValueRenderTestMixin, BilbyTestCase):
         html = normalise(template.render(Context({"value": "GW150914/run01"})))
         self.assertEqual(self.label_of(html), "run01")
         self.assertIn('<span class="tech-value tech-value--id tech-value--truncated">', html)
-        self.assertIn(" Copy run </button>", html)
+        self.assertIn(' <span class="tech-value-copy-label sr-only">Copy run</span> </button>', html)
         self.assertIn('<span class="sr-only">Show full identifier</span>', html)

@@ -113,6 +113,14 @@ django-tests:
     - apt -y install nodejs npm
     - src/.venv/bin/playwright install --with-deps chromium
     - mkdir -p src/job_uploads/upload src/reports
+    # Install the Node-side e2e deps ONCE, serially, before parallel workers
+    # spawn. Each worker reaching an e2e test would otherwise race to mutate
+    # .playwright/ (package.json, package-lock.json, node_modules) via its own
+    # npm process. Flags mirror pw_server.py: exact pins, no lifecycle scripts,
+    # no audit/fund chatter.
+    - mkdir -p .playwright
+    - test -f .playwright/package.json || printf '%s\n' '{"name":"e2e-test-deps","private":true}' > .playwright/package.json
+    - npm install --prefix .playwright --ignore-scripts --no-audit --no-fund --save-exact "playwright@$(src/.venv/bin/python -c 'from importlib.metadata import version; print(version("playwright"))')" "axe-core@4.10.3"
     - cd src/ && PATH=".venv/bin:$PATH" bash run_coverage.sh --parallel
     - .venv/bin/python -m coverage xml -o reports/coverage.xml
   # Match coverage.py "TOTAL ... 95%" line; capture group is the percentage (GitLab displays in MR/pipeline)

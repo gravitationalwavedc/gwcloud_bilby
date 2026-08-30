@@ -49,6 +49,23 @@
     font-family: $font-family-monospace;
 }
 
+// Secondary parent-directory text (kind="path" only): subdued monospace that
+// sits after the bold primary label. In truncated mode it carries the ellipsis
+// marker and is clamped so the directory tail is visually clipped.
+.tech-value-secondary {
+    font-family: $font-family-monospace;
+    font-size: $font-size-sm;
+    font-weight: 400;
+    color: $text-muted;
+    margin-left: 0.5rem;
+
+    // Long parent-directory chains must wrap (at slashes or anywhere) rather
+    // than widen the cell: the root gives this child min-width:0 so the
+    // wrap-anywhere min-content size feeds the shrink calculation. Frontend
+    // Bible §3: values wrap safely; they never widen their container.
+    overflow-wrap: anywhere;
+}
+
 // Truncated variant: the ellipsis marker is decoration for the clipped
 // directory chain. The label itself gets an ellipsis guard so even a
 // pathological primary stays inside the clamped root.
@@ -61,6 +78,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.tech-value--truncated .tech-value-secondary {
+    max-width: 14rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 // ---------------------------------------------------------------------------
