@@ -82,3 +82,26 @@ class TestEsIngestCommand(BilbyTestCase):
         output = out.getvalue()
         self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
         self.assertNotIn("Error during gwflow ingestion loop", output)
+
+    def test_es_ingest_gwflow_invalid_list_json_stops_cleanly(self):
+        class MockResponse:
+            def __init__(self, status_code):
+                self.status_code = status_code
+
+            def json(self):
+                raise ValueError("No JSON object could be decoded")
+
+        def fake_get(url, headers=None, timeout=None):
+            return MockResponse(200)
+
+        out = StringIO()
+        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
+            with override_settings(
+                CBCFLOW_PORTAL_URL="https://portal.example.com",
+                CBCFLOW_PORTAL_TOKEN="token",
+            ):
+                call_command("es_ingest", "--gwflow", stdout=out)
+
+        output = out.getvalue()
+        self.assertIn("invalid JSON", output)
+        self.assertNotIn("Error during gwflow ingestion loop", output)

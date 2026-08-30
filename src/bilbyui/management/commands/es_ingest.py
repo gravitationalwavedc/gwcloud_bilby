@@ -79,7 +79,13 @@ class Command(BaseCommand):
                     logger.error(msg)
                     break
 
-                data = response.json()
+                try:
+                    data = response.json()
+                except ValueError:
+                    msg = "Portal returned invalid JSON for superevents list"
+                    self.stdout.write(self.style.WARNING(msg))
+                    logger.warning(msg)
+                    break
                 results = data.get("results") if isinstance(data, dict) and "results" in data else data
                 if not isinstance(results, list):
                     msg = f"Unexpected portal response shape: {type(data)}"
