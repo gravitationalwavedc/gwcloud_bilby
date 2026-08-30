@@ -4,7 +4,7 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import settings
 from scheduler.scheduler import EScheduler
@@ -96,7 +96,7 @@ class TestSubmit(TestCase):
 
             # Check that the job script generation successfully called the the popen command
             process = call.Popen(popen_command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, cwd=td, shell=True)
-            compare(self.popen.all_calls, expected=[process, process.communicate(), process.wait()])
+            compare(self.popen.all_calls, expected=[process, process.communicate(timeout=600), process.wait()])
 
             # Check the stdout and stderr logs for the data generation step are correctly written to their respective
             # log files
@@ -488,6 +488,28 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
             # No output/error files should have been written
             self.assertFalse(os.path.exists(os.path.join(td, "data_gen.sh.out")))
             self.assertFalse(os.path.exists(os.path.join(td, "data_gen.sh.err")))
+
+    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    def test_run_data_generation_timeout(self, *args, **kwargs):
+        # A hung data generation script should be killed and a clean error raised
+        with TemporaryDirectory() as td:
+            script = os.path.join(td, "data_gen.sh")
+            with open(script, "w") as f:
+                f.write("#!/bin/bash\necho test\n")
+
+            proc = MagicMock()
+            proc.communicate.side_effect = subprocess.TimeoutExpired("cmd", 600)
+            proc.__enter__.return_value = proc
+
+            from core.submit import run_data_generation
+
+            with patch("core.submit.subprocess.Popen", return_value=proc):
+                with self.assertRaises(RuntimeError):
+                    run_data_generation("sbatch ./data_gen.sh", td)
+
+            proc.kill.assert_called_once()
+            proc.wait.assert_called()
 
     @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
