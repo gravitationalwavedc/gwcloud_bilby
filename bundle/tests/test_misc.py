@@ -30,14 +30,12 @@ class TestMisc(unittest.TestCase):
 
         self.assertEqual(working_directory(details), settings.default_working_directory)
 
-    @patch("settings.scheduler", None)
     def test_get_scheduler_slurm(self):
         with patch("settings.scheduler", EScheduler.SLURM):
             scheduler = get_scheduler()
 
         self.assertIsInstance(scheduler, SlurmScheduler)
 
-    @patch("settings.scheduler", None)
     def test_get_scheduler_condor(self):
         with patch("settings.scheduler", EScheduler.CONDOR):
             scheduler = get_scheduler()
