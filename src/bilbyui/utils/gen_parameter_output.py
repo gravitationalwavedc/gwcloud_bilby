@@ -1,6 +1,7 @@
 import decimal
 import math
 from decimal import Decimal
+from functools import lru_cache
 from math import floor
 from numbers import Number
 
@@ -22,6 +23,12 @@ from bilbyui.utils.ini_utils import bilby_ini_string_to_args, prepare_args_for_d
 
 # Override the log level so it's silent
 logger.setLevel("CRITICAL")
+
+
+@lru_cache(maxsize=1)
+def _get_default_prior_files():
+    """Return the bundled default prior files, computed once and cached."""
+    return Input([], []).get_default_prior_files()
 
 
 def to_dec(val):
@@ -89,7 +96,7 @@ def generate_parameter_output(job):
 
     # Prior files can be defaults (like 4s, 32s etc), if it's one of the defaults - then the prior file is valid, so
     # leave the prior file as is.
-    if args.prior_file not in Input([], []).get_default_prior_files():
+    if args.prior_file not in _get_default_prior_files():
         sanitized_fields.append("prior_file")
 
     for field in sanitized_fields:
