@@ -642,6 +642,12 @@ def upload_bilby_job(user, upload_token, details, job_file):
             # Make sure the source supporting file exists
             for supporting_file in supporting_file_details:
                 source_file = Path(job_staging_dir) / supporting_file["file_path"]
+
+                # Verify that the file really sits under the job staging directory
+                if not source_file.resolve().is_relative_to(Path(job_staging_dir).resolve()):
+                    msg = f"Supporting file {supporting_file['file_path']} is outside the job staging directory."
+                    raise ValueError(msg)
+
                 if not source_file.is_file():
                     msg = f"Supporting file {supporting_file['file_path']} does not exist."
                     raise FileNotFoundError(msg)

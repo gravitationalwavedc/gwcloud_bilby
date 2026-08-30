@@ -995,6 +995,46 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         self.assertEqual(BilbyJob.objects.count(), 0)
         self.assertEqual(SupportingFile.objects.count(), 0)
 
+    @silence_errors
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_failure_path_traversal(self):
+        # A supporting file path that escapes the job staging directory must be rejected
+        test_ini_string = create_test_ini_string(
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "psd-dict": "{V1:/etc/passwd}",
+            },
+            True,
+        )
+
+        supporting_files = ["supporting_files/psd/V1-psd.dat"]
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, self.test_name, supporting_files=supporting_files),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": self.token,
+            "details": {
+                "description": self.test_description,
+                "private": self.test_private,
+            },
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        expected = {"uploadBilbyJob": None}
+
+        self.assertDictEqual(expected, response.data)
+
+        self.assertEqual(BilbyJob.objects.count(), 0)
+        self.assertEqual(SupportingFile.objects.count(), 0)
+
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_psd1(self):
         test_ini_string = create_test_ini_string(
