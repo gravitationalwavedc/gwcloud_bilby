@@ -40,5 +40,5 @@ def derive_job_status(history):
     latest, timestamp = max(valid_entries, key=lambda item: item[1])
     state = latest["state"]
     display_name = JobStatus.display_name(state)
-    logger.info("Derived job status: state=%s, display_name=%s, timestamp=%s", state, display_name, timestamp)
+    logger.debug("Derived job status: state=%s, display_name=%s, timestamp=%s", state, display_name, timestamp)
     return (state, display_name, timestamp)
