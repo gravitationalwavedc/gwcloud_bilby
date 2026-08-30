@@ -609,6 +609,31 @@ class TestIniJobSubmission(BilbyTestCase):
         with file_path.open("rb") as f:
             self.assertEqual(content, f.read())
 
+    @silence_errors
+    def test_download_supporting_files_missing_disk_file_returns_404(self):
+        test_ini_string = create_test_ini_string(
+            {
+                "label": "Test_Name",
+                "detectors": "['H1']",
+                "psd-dict": "{V1:./supporting_files/psd/V1-psd.dat}",
+            },
+        )
+
+        self.mock_ini_job_submission_with_supporting_files(
+            test_ini_string,
+            [["V1", "./supporting_files/psd/V1-psd.dat", SupportingFile.PSD]],
+            "psd_dict",
+        )
+
+        supporting_file = SupportingFile.objects.last()
+
+        # Delete the file on disk
+        file_path = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id) / str(supporting_file.id)
+        file_path.unlink()
+
+        response = self.http_client.get(f"{reverse(viewname='file_download')}?fileId={supporting_file.download_token}")
+        self.assertEqual(response.status_code, 404)
+
     def test_download_supporting_files_valid_token(self):
         test_ini_string = create_test_ini_string(
             {
