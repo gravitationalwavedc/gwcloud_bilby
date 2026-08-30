@@ -64,7 +64,7 @@ class CondorScheduler(Scheduler):
 
         p = Path(details["working_directory"]) / details["submit_directory"]
 
-        logger.info("Trying to get status of job with working directory %s...", p)
+        logger.debug("Trying to get status of job with working directory %s...", p)
 
         log_file = list(p.glob("*.submit.nodes.log"))
 
