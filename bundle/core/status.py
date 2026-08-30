@@ -106,8 +106,8 @@ def slurm_status(job):
     # Get the path to the slurm id's file
     sid_file = Path(job["working_directory"]) / job["submit_directory"] / "slurm_ids"
 
-    # Check if the slurm_ids file exists
-    if not sid_file.exists():
+    # Check if the slurm_ids file exists (and is a file, not a directory)
+    if not sid_file.is_file():
         return {"status": result_status, "complete": False}
 
     with sid_file.open() as f:
