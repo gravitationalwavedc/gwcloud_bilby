@@ -52,7 +52,7 @@ class SlurmScheduler(Scheduler):
             stdout = subprocess.check_output(command, shell=True, timeout=30)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             # Record the command and the output
-            logger.exception("Error: Command `%s` returned `%s`", command, stdout)
+            logger.warning("Error: Command `%s` returned `%s`", command, stdout)
             return None
 
         # Record the command and the output
@@ -171,7 +171,7 @@ class SlurmScheduler(Scheduler):
             stdout = subprocess.check_output(command, shell=True, timeout=30)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             # Record the command and the output
-            logger.exception("Error: Command `%s` returned `%s`", command, stdout)
+            logger.warning("Error: Command `%s` returned `%s`", command, stdout)
             return False
 
         # Get the output
