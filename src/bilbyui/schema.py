@@ -583,7 +583,7 @@ class Query:
             return None
 
         try:
-            entries = _build_result_file_entries(job, external_is_dir=None)
+            entries = _build_result_file_entries(job)
         except RuntimeError as e:
             logger.error("Failed to get file list for job %s: %s", job_id, e)
             raise GraphQLError("Error getting file list. " + str(e)) from e

@@ -351,7 +351,7 @@ class TestExternalJobResultFiles(BilbyTestCase):
                 response.data["bilbyResultFiles"]["files"][0],
                 {
                     "path": self.external_job.url,
-                    "isDir": None,
+                    "isDir": False,
                     "fileSize": None,
                     "downloadToken": None,
                 },

@@ -1322,7 +1322,7 @@ def _get_job_status_context(job, user):
     }
 
 
-def _build_result_file_entries(job, external_is_dir=False):
+def _build_result_file_entries(job):
     if job.job_type == BilbyJobType.EXTERNAL:
         external_job = ExternalBilbyJob.objects.filter(job=job).first()
         if external_job is None:
@@ -1330,7 +1330,7 @@ def _build_result_file_entries(job, external_is_dir=False):
         return [
             {
                 "path": external_job.url,
-                "is_dir": external_is_dir,
+                "is_dir": False,
                 "file_size": None,
                 "download_token": None,
             }
