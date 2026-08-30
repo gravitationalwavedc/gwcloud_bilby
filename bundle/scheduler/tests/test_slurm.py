@@ -191,6 +191,16 @@ class TestSlurm(TestCase):
 
         self.assertIsNone(result)
 
+    @patch(
+        "scheduler.slurm.subprocess.check_output",
+        return_value=b"Submitted batch job 12345\n",
+    )
+    def test_submit_success_returns_job_id(self, _check_output):
+        sched = SlurmScheduler()
+        result = sched.submit("test_script_path", "a/working/directory")
+
+        self.assertEqual(result, 12345)
+
 
 class TestSlurmScheduler(TestCase):
     def test_status_cancelled_plus_transitional_state(self):
