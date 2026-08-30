@@ -39,7 +39,7 @@ class CondorScheduler(Scheduler):
                 return result.cluster()
             except Exception as e:
                 # Record the error occurred
-                logger.info("Error: condor submit failed, trying again %d/5", attempt)
+                logger.warning("Error: condor submit failed, trying again %d/5", attempt)
                 logger.debug("condor submit error: %s", e)
 
         logger.warning("Condor submit failed 5 times in a row, assuming something is wrong.")
