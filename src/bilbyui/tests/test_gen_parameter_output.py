@@ -41,6 +41,17 @@ class TestGenerateParameterOutput(BilbyTestCase):
         self.assertEqual(to_dec(3.14), Decimal("3.14"))
         self.assertEqual(to_dec("hello"), "hello")
 
+    def test_to_dec_non_finite(self):
+        self.assertEqual(to_dec(float("inf")), Decimal("Infinity"))
+        self.assertEqual(to_dec(float("-inf")), Decimal("-Infinity"))
+        result = to_dec(float("nan"))
+        self.assertIsInstance(result, Decimal)
+        self.assertTrue(result.is_nan())
+
+    def test_to_dec_non_number(self):
+        value = ["malformed", "sampler", "kwargs"]
+        self.assertIs(to_dec(value), value)
+
     def test_basic_job(self):
         job = self._make_job(
             "detectors=['H1', 'L1', 'V1']\n" + INI_BASE + "sampler-kwargs={'nlive': 1024, 'sample': 'rwalk'}\n"
