@@ -24,5 +24,5 @@ def request_lookup_users(ids):
             return False, "Error looking up users: malformed response from auth service"
         return True, resp["users"]
     except AuthConnectionException as e:
-        logger.error("Error looking up users: %s", e, exc_info=True)
+        logger.warning("Error looking up users: %s", e)
         return False, f"Error looking up users: {e}"
