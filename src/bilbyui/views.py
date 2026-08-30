@@ -31,6 +31,7 @@ from gwosc.datasets import event_gps
 from .constants import BilbyJobType
 from .models import (
     BilbyJob,
+    BilbyPermissionError,
     EventID,
     ExternalBilbyJob,
     FileDownloadToken,
@@ -331,6 +332,8 @@ def create_bilby_job(user, params):
         event_id = EventID.get_by_event_id(params.data.event_id, user) if params.data.event_id else None
     except EventID.DoesNotExist:
         raise GraphQLError(f"Event ID '{params.data.event_id}' not found.")
+    except BilbyPermissionError:
+        raise GraphQLError("Permission Denied.")
 
     try:
         bilby_job = BilbyJob.objects.create(
