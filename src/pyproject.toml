@@ -44,6 +44,7 @@ coverage = "*"
 unittest-xml-reporting = "*"
 testfixtures = "^12.3.0"
 pytest = "^9.1.1"
+playwright = "*"
 
 [build-system]
 requires = ["poetry-core"]

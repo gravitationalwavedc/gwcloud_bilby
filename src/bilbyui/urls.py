@@ -73,5 +73,6 @@ urlpatterns = [
         views.gwflow_job_history_version_partial,
         name="gwflow_job_history_version",
     ),
+    path("demo/tech-value/", views.tech_value_demo, name="tech_value_demo"),
     path("<path:path>", views.not_found_view, name="not_found"),
 ]

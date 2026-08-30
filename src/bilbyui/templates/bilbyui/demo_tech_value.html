@@ -1,0 +1,82 @@
+{% extends "bilbyui/base.html" %}
+{# Component demo/audit surface for the technical-value primitive (issue #49). Fixture data is hardcoded on purpose — this page exercises every variant of bilbyui/_tech_value.html. #}
+
+{% block title %}Technical Value Component Demo — GWCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="app-container mb-5">
+    <h1 class="pt-5 mb-4">Technical Value Component Demo</h1>
+
+    <p class="mb-4">
+      This page is a component demo and audit surface for the technical-value primitive
+      (<code>bilbyui/_tech_value.html</code>). It renders every variant side by side — compact
+      paths, truncated paths, identifier mode, extreme-length stress values, and hostile input —
+      so copy buttons, full-value disclosure, clipping, and autoescaping can be verified at a glance.
+    </p>
+
+    <div class="card gw-form-card mb-3">
+      <div class="card-body">
+        <h2 class="h5 card-title">Path — compact</h2>
+        {% include "bilbyui/_tech_value.html" with value="/home/lewis.cit/cbc/o4a/S230601ag/abc123-pe/posterior.h5" %}
+      </div>
+    </div>
+
+    <div class="card gw-form-card mb-3">
+      <div class="card-body">
+        <h2 class="h5 card-title">Path — truncated variant</h2>
+        <div class="row">
+          <div class="col-md-3">
+            {% include "bilbyui/_tech_value.html" with value="/home/lewis.cit/cbc/o4a/S230601ag/abc123-pe/posterior.h5" truncated=True %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card gw-form-card mb-3">
+      <div class="card-body">
+        <h2 class="h5 card-title">Identifier mode</h2>
+        <ul class="list-unstyled mb-0">
+          <li class="mb-2">{% include "bilbyui/_tech_value.html" with value="S230601ag" kind="id" copy_label="Copy superevent ID" %}</li>
+          <li class="mb-2">{% include "bilbyui/_tech_value.html" with value="abc123-pe-2026-08-24-123456" kind="id" copy_label="Copy analysis UID" %}</li>
+          <li class="mb-2">{% include "bilbyui/_tech_value.html" with value="a1b2c3d4e5f6a7b8c9d0e5f6a7b8c9d0e5f6a7b8" kind="id" %}</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card gw-form-card mb-3">
+      <div class="card-body">
+        <h2 class="h5 card-title">Stress — long paths</h2>
+        <table class="table table-sm">
+          <tbody>
+            <tr>
+              <th scope="row">500 characters</th>
+              <td>{% include "bilbyui/_tech_value.html" with value="/home/lewis.cit/cbc/o4a/S230601ag/pe-runs/data000/data001/data002/data003/data004/data005/data006/data007/data008/data009/data010/data011/data012/data013/data014/data015/data016/data017/data018/data019/data020/data021/data022/data023/data024/data025/data026/data027/data028/data029/data030/data031/data032/data033/data034/data035/data036/data037/data038/data039/data040/data041/data042/data043/data044/data045/data046/data047/data048/data049/data050/data051/data052/data053/posterior_samplesxxxxxx.h5" %}</td>
+            </tr>
+            <tr>
+              <th scope="row">1000 characters</th>
+              <td>{% include "bilbyui/_tech_value.html" with value="/home/lewis.cit/cbc/o4a/S230601ag/pe-runs/data000/data001/data002/data003/data004/data005/data006/data007/data008/data009/data010/data011/data012/data013/data014/data015/data016/data017/data018/data019/data020/data021/data022/data023/data024/data025/data026/data027/data028/data029/data030/data031/data032/data033/data034/data035/data036/data037/data038/data039/data040/data041/data042/data043/data044/data045/data046/data047/data048/data049/data050/data051/data052/data053/data054/data055/data056/data057/data058/data059/data060/data061/data062/data063/data064/data065/data066/data067/data068/data069/data070/data071/data072/data073/data074/data075/data076/data077/data078/data079/data080/data081/data082/data083/data084/data085/data086/data087/data088/data089/data090/data091/data092/data093/data094/data095/data096/data097/data098/data099/data100/data101/data102/data103/data104/data105/data106/data107/data108/data109/data110/data111/data112/data113/data114/data115/data116/posterior_samplesxx.h5" %}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="w-25 mt-2">
+          {% include "bilbyui/_tech_value.html" with value="/home/lewis.cit/cbc/o4a/S230601ag/pe-runs/data000/data001/data002/data003/data004/data005/data006/data007/data008/data009/data010/data011/data012/data013/data014/data015/data016/data017/data018/data019/data020/data021/data022/data023/data024/data025/data026/data027/data028/data029/data030/data031/data032/data033/data034/data035/data036/data037/data038/data039/data040/data041/data042/data043/data044/data045/data046/data047/data048/data049/data050/data051/data052/data053/posterior_samplesxxxxxx.h5" %}
+        </div>
+        <div class="w-25 mt-2">
+          {% include "bilbyui/_tech_value.html" with value="/home/lewis.cit/cbc/o4a/S230601ag/pe-runs/data000/data001/data002/data003/data004/data005/data006/data007/data008/data009/data010/data011/data012/data013/data014/data015/data016/data017/data018/data019/data020/data021/data022/data023/data024/data025/data026/data027/data028/data029/data030/data031/data032/data033/data034/data035/data036/data037/data038/data039/data040/data041/data042/data043/data044/data045/data046/data047/data048/data049/data050/data051/data052/data053/data054/data055/data056/data057/data058/data059/data060/data061/data062/data063/data064/data065/data066/data067/data068/data069/data070/data071/data072/data073/data074/data075/data076/data077/data078/data079/data080/data081/data082/data083/data084/data085/data086/data087/data088/data089/data090/data091/data092/data093/data094/data095/data096/data097/data098/data099/data100/data101/data102/data103/data104/data105/data106/data107/data108/data109/data110/data111/data112/data113/data114/data115/data116/posterior_samplesxx.h5" %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card gw-form-card mb-3">
+      <div class="card-body">
+        <h2 class="h5 card-title">Hostile input</h2>
+        <ul class="list-unstyled mb-0">
+          <li class="mb-2">{% include "bilbyui/_tech_value.html" with value=hostile_script %}</li>
+          <li class="mb-2">{% include "bilbyui/_tech_value.html" with value=quoted_path %}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
