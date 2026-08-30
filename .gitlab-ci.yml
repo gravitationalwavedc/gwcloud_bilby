@@ -110,7 +110,14 @@ django-tests:
     # e2e suite needs Node.js/npm (shared Chromium server) and headless Chromium;
     # --with-deps apt-installs browser system libs (job runs as root). Node is
     # installed HERE, not in .apt_build, so cron base templates stay Node-free.
-    - apt -y install nodejs npm
+    # Node 20+ is pinned via NodeSource because Playwright requires >= 20 (the
+    # Ubuntu 24.04 apt default is Node 18, which Playwright rejects).
+    - apt -y install ca-certificates curl gnupg
+    - mkdir -p /etc/apt/keyrings
+    - curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+    - echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+    - apt -y update
+    - apt -y install nodejs
     - src/.venv/bin/playwright install --with-deps chromium
     - mkdir -p src/job_uploads/upload src/reports
     # Install the Node-side e2e deps ONCE, serially, before parallel workers

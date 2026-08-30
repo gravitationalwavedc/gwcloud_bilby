@@ -11,6 +11,10 @@ runs with ``--ignore-scripts`` (no lifecycle scripts execute in the privileged
 CI environment), ``--no-audit`` and ``--no-fund``. Parallel workers serialize
 the install with an advisory file lock and re-check before installing, so the
 shared tree is mutated by at most one npm process at a time.
+
+Node.js 20 or later is required: Playwright 1.62 drops support for older
+runtimes, so :func:`_check_node_available` rejects any Node major version
+below 20 before the browser server is started.
 """
 
 from __future__ import annotations
@@ -59,13 +63,19 @@ def _get_python_playwright_version() -> str:
 
 def _check_node_available() -> None:
     try:
-        subprocess.run(["node", "--version"], capture_output=True, check=True)
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        raise RuntimeError(
-            "Node.js is not installed but is required to run e2e tests.\n"
-            "On Ubuntu/Debian: sudo apt install nodejs npm\n"
-            "On macOS: brew install node"
-        ) from e
+        result = subprocess.run(
+            ["node", "--version"],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+        node_version = result.stdout.strip().removeprefix("v")
+        node_major = int(node_version.split(".", maxsplit=1)[0])
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError) as e:
+        raise RuntimeError("Node.js 20 or later is required to run e2e tests.") from e
+
+    if node_major < 20:
+        raise RuntimeError(f"Node.js 20 or later is required to run e2e tests; found {node_version}.")
 
 
 def _read_installed_version(playwright_dir: Path, package: str) -> str | None:
