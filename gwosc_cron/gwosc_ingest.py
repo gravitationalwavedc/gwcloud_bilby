@@ -177,7 +177,11 @@ def _check_and_download_inner(con, cur):
         logger.critical(f"Unable to fetch allevents json (status: {r.status_code})")
         sys.exit(1)
 
-    allevents_payload = r.json()
+    try:
+        allevents_payload = r.json()
+    except ValueError:
+        logger.critical("Unable to fetch allevents json (invalid JSON body)")
+        sys.exit(1)
     if not isinstance(allevents_payload, dict):
         all_events = {}
     else:
