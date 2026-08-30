@@ -87,6 +87,29 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             response = self.client.get(f"/file_download/?fileId={gwflow_file.download_token}")
             self.assertEqual(response.status_code, 404)
 
+    def test_file_download_gwflow_file_directory_on_disk_returns_404(self):
+        """Test download fails with 404 when the disk path resolves to a directory."""
+        with override_settings(GWFLOW_FILE_UPLOAD_DIR=self.temp_dir.name):
+            job = GWFlowJob.objects.create(
+                sname="S230601ag_directory",
+                user=self.user,
+                ligo_only=False,
+            )
+            gwflow_file = GWFlowFile.objects.create(
+                job=job,
+                analysis_uid="",
+                path="outdir/data.h5",
+                file_name="data.h5",
+                uploaded=True,
+            )
+
+            job_file_dir = Path(self.temp_dir.name) / str(job.id)
+            job_file_dir.mkdir(parents=True, exist_ok=True)
+            (job_file_dir / str(gwflow_file.id)).mkdir()
+
+            response = self.client.get(f"/file_download/?fileId={gwflow_file.download_token}")
+            self.assertEqual(response.status_code, 404)
+
     def test_file_download_gwflow_file_ligo_only_visibility_matrix(self):
         """Test ligo_only visibility matrix across user authentication states."""
         with override_settings(GWFLOW_FILE_UPLOAD_DIR=self.temp_dir.name):
