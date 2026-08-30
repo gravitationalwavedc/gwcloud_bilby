@@ -823,8 +823,8 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
             out, err = p.communicate()
 
             logger.info("Packing uploaded HDF5 job archive for %s had return code %s", job_name, p.returncode)
-            logger.info("stdout: %s", out)
-            logger.info("stderr: %s", err)
+            logger.debug("stdout: %s", out)
+            logger.debug("stderr: %s", err)
 
             if p.returncode != 0:
                 msg = "Unable to repack the uploaded HDF5 job"
