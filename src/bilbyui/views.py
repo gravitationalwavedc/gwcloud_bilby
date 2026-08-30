@@ -1611,7 +1611,6 @@ def _render_job_field_event_id(request, job, error="", status=200, modifiable=No
         "bilbyui/_job_field_event_id.html",
         {
             "job": job,
-            "all_event_ids": list_event_ids_for_user(request.user),
             "error": error,
             "modifiable": modifiable,
         },
