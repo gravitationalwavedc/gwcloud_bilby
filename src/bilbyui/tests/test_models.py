@@ -437,6 +437,10 @@ class TestBilbyJobUploadToken(BilbyTestCase):
         # No records should exist in the database anymore
         self.assertFalse(BilbyJobUploadToken.objects.exists())
 
+    def test_get_by_token_malformed(self):
+        # Test that get_by_token returns None for a malformed (non-UUID) token rather than raising
+        self.assertIsNone(BilbyJobUploadToken.get_by_token("not-a-uuid"))
+
 
 class TestSupportingFile(BilbyTestCase):
     @classmethod
@@ -659,6 +663,12 @@ class TestSupportingFile(BilbyTestCase):
         self.assertIsNotNone(results[0])
         self.assertIsNone(results[1])
         self.assertIsNotNone(results[2])
+
+    def test_get_by_upload_tokens_malformed(self):
+        # Test that get_by_upload_tokens returns None for malformed (non-UUID) tokens rather than raising
+        SupportingFile.save_from_parsed(self.job, self.parsed)
+        results = SupportingFile.get_by_upload_tokens(["not-a-uuid"])
+        self.assertEqual(results, [None])
 
     def test_get_by_upload_tokens_expired(self):
         # Test that get_by_upload_tokens returns None for tokens of expired jobs
