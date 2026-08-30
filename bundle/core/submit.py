@@ -294,7 +294,13 @@ def run_data_generation(data_gen_command, wk_dir):
         shell=True,
     ) as p:
         # Get the output from the data generation command
-        stdout, stderr = p.communicate()
+        try:
+            stdout, stderr = p.communicate(timeout=600)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait()
+            logger.error("Data generation step timed out after 600 seconds and was killed")
+            raise RuntimeError("Data generation step timed out after 600 seconds and was killed")
 
         # Write the data generation output to output files
         if output_file:
