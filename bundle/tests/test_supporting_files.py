@@ -578,6 +578,18 @@ class TestSupportingFiles(TestCase):
             # Entries missing the token/key/file_name keys are skipped, so no file is written
             self.assertFalse((Path(working_directory) / "supporting_files" / "psd" / "test.psd").is_file())
 
+    def test_non_dict_supporting_file_entry(self):
+        from core.submit import bilby_ini_to_args, prepare_supporting_files
+
+        with TemporaryDirectory() as working_directory, cd(working_directory):
+            supporting_files = [None, "not-a-dict", 42]
+
+            args = bilby_ini_to_args(self.ini_file_v1)
+            prepare_supporting_files(args, supporting_files, working_directory)
+
+            # Non-dict entries are skipped, so no supporting_files directory is created
+            self.assertFalse((Path(working_directory) / "supporting_files").exists())
+
     def test_supporting_file_download_failure(self):
         token = str(uuid.uuid4())
         self.responses.add(

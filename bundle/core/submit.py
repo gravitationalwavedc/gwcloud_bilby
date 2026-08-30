@@ -91,6 +91,16 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
     }
 
     for supporting_file in supporting_files:
+        # Skip supporting files that are not dicts so that a malformed supporting file entry
+        # (e.g. null, string, or int) is skipped instead of crashing job submission with an
+        # AttributeError from .get
+        if not isinstance(supporting_file, dict):
+            logger.warning(
+                "Skipping non-dict supporting file entry: %s",
+                supporting_file,
+            )
+            continue
+
         # Skip supporting files with an unknown or missing type so that job submission does not
         # crash with a KeyError if the UI sends a type that is not in the file_type_map
         if supporting_file.get("type") not in file_type_map:
