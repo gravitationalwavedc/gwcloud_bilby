@@ -53,6 +53,15 @@ def request_file_download_ids(job, paths, user_id=None):
             logger.warning("No file download IDs returned for job %s", job.id)
             return False, "No file download IDs returned"
 
+        if len(file_ids) != len(paths):
+            logger.warning(
+                "File download ID count mismatch for job %s: requested %s paths, got %s IDs",
+                job.id,
+                len(paths),
+                len(file_ids),
+            )
+            return False, "File download ID count mismatch"
+
         logger.info("Successfully generated %s download IDs for job %s", len(file_ids), job.id)
         return True, file_ids
     except Exception:
