@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -422,6 +423,25 @@ class TestCondor(TestCase):
 
             write_next_event()
             self.assertEqual(sched.status(None, details), (JobStatus.ERROR, "Job terminated with return value 1"))
+
+    def test_status_logs_at_debug_not_info(self):
+        # The per-poll status path must log at DEBUG so the hot polling loop
+        # does not emit INFO lines on every poll.
+        sched = CondorScheduler()
+
+        with TemporaryDirectory() as td:
+            submit_dir = os.path.join(td, "job", "submit")
+            os.makedirs(submit_dir)
+
+            details = {"working_directory": td, "submit_directory": "job/submit"}
+
+            with self.assertLogs("scheduler.condor", level="DEBUG") as cm:
+                sched.status(None, details)
+
+        self.assertTrue(
+            any("Trying to get status of job with working directory" in m for m in cm.output)
+        )
+        self.assertFalse(any(r.levelno == logging.INFO for r in cm.records))
 
     def test_status_no_log_file(self):
         sched = CondorScheduler()
