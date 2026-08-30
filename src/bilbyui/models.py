@@ -749,7 +749,10 @@ class FileDownloadToken(models.Model):
         cls.prune()
 
         # Get all objects matching the list of tokens
-        objects = {str(rec.token): rec.path for rec in cls.objects.filter(job=job, token__in=tokens)}
+        try:
+            objects = {str(rec.token): rec.path for rec in cls.objects.filter(job=job, token__in=tokens)}
+        except ValidationError:
+            return [None] * len(tokens)
 
         # Generate the list and return
         return [objects.get(str(tok)) for tok in tokens]
