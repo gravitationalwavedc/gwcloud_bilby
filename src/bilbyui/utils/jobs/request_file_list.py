@@ -96,5 +96,5 @@ def request_file_list(job, path, recursive, user_id=None):
             return False, "Error getting job file list"
         return True, result["files"]
     except requests.RequestException as e:
-        logger.error("Error getting job file list: %s", e, exc_info=True)
+        logger.warning("Error getting job file list: %s", e)
         return False, "Error getting job file list"

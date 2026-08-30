@@ -31,7 +31,7 @@ def request_job_filter(user_id, ids=None):
     try:
         result = _make_job_controller_request("GET", url, user_id)
     except requests.RequestException:
-        logger.exception("Error getting job filter for user %s", user_id)
+        logger.warning("Error getting job filter for user %s", user_id)
         return "UNKNOWN", []
     else:
         if not isinstance(result, list):

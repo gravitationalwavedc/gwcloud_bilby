@@ -51,5 +51,5 @@ def request_job_status(job, user_id=None):
         logger.debug("Successfully retrieved status for job %s", job.id)
         return "OK", history
     except requests.RequestException as e:
-        logger.error("Error getting job status for job %s: %s", job.id, e, exc_info=True)
+        logger.warning("Error getting job status for job %s: %s", job.id, e)
         return "UNKNOWN", "Error getting job status"
