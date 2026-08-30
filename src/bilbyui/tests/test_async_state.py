@@ -1,9 +1,9 @@
+import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import elasticsearch
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
-from django.contrib.auth import get_user_model
 from django.template.loader import get_template
 from django.urls import reverse
 
@@ -14,8 +14,6 @@ from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
 APP_CSS = Path(__file__).resolve().parents[2] / "static" / "bilbyui" / "app.css"
-
-User = get_user_model()
 
 
 def render_state(**kwargs):
@@ -127,7 +125,7 @@ class TestAsyncStatePartialRender(BilbyTestCase):
             retry_target="#metadata-pane",
         )
         self.assertIn("async-notice", html)
-        self.assertIn("Showing cached the metadata.", html)
+        self.assertIn("The cached copy of the metadata is shown.", html)
         self.assertIn("bi-exclamation-triangle", html)
         self.assertIn("Refresh", html)
         self.assertIn('role="alert"', html)
@@ -211,6 +209,19 @@ class TestAsyncStateCompiledCss(BilbyTestCase):
         self.assertIn("prefers-reduced-motion", css)
         self.assertIn("animation-duration: 0.01ms !important", css)
         self.assertIn("animation-iteration-count: 1 !important", css)
+
+    def test_skeleton_explicitly_static_under_reduced_motion(self):
+        """Selector-specific: the .async-skeleton-row rule inside a
+        prefers-reduced-motion block must disable the shimmer animation
+        (issue #50 acceptance criterion E), not rely on the global rule."""
+        css = APP_CSS.read_text()
+        block = re.search(
+            r"@media \(prefers-reduced-motion: reduce\)\s*\{([^}]*\.async-skeleton-row[^}]*)\}",
+            css,
+            re.S,
+        )
+        self.assertIsNotNone(block, "no reduced-motion block scoping .async-skeleton-row found")
+        self.assertIn("animation: none", block.group(1))
 
 
 # ============================================================================

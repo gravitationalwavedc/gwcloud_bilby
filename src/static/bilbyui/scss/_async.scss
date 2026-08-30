@@ -26,6 +26,13 @@
     background-size: 200% 100%;
     animation: async-shimmer 1.4s ease-in-out infinite;
 
+    // Component-scoped reduced-motion: the skeleton MUST be explicitly static
+    // (issue #50 acceptance criterion E), not merely shortened by the global
+    // prefers-reduced-motion block in _shell.scss.
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+
     &:last-child {
         margin-bottom: 0;
     }

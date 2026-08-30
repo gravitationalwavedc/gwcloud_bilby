@@ -9604,6 +9604,11 @@ a.text-dark:hover, a.text-dark:focus {
   background-size: 200% 100%;
   animation: async-shimmer 1.4s ease-in-out infinite;
 }
+@media (prefers-reduced-motion: reduce) {
+  .async-skeleton-row {
+    animation: none;
+  }
+}
 .async-skeleton-row:last-child {
   margin-bottom: 0;
 }

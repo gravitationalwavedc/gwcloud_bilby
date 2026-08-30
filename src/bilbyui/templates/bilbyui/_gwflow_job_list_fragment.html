@@ -1,5 +1,5 @@
 {% if service_state == "down" %}
-  {% include "bilbyui/_async_state.html" with state="error" thing="the GWFlow jobs" region_label="GWFlow job list" %}
+  {% include "bilbyui/_async_state.html" with state="error" thing="the GWFlow jobs" region_label="GWFlow job list" retry_url=retry_url retry_target=retry_target %}
 {% else %}
   {% for node in rows %}
     {% include "bilbyui/_gwflow_job_row.html" %}
