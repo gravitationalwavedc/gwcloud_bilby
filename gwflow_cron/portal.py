@@ -40,7 +40,11 @@ class PortalClient:
     def _iter_pages(self, url: str, params: dict | None = None):
         while url:
             resp = self._request_with_retry("GET", url, params=params)
-            data = resp.json()
+            try:
+                data = resp.json()
+            except ValueError as exc:
+                logger.warning("Skipping portal page with non-JSON body: %s", exc)
+                break
             if isinstance(data, dict):
                 results = data.get("results", [])
                 next_url = data.get("next")
