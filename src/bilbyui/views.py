@@ -838,7 +838,7 @@ def file_download_job_file(request, fdl):
     if not file_path.resolve().is_relative_to(Path(job_dir).resolve()):
         raise Http404
 
-    if not file_path.exists():
+    if not file_path.is_file():
         raise Http404
 
     return _file_response(request, file_path, file_path.name)
@@ -851,7 +851,7 @@ def file_download_supporting_file(request, supporting_file):
     # Make sure that there is no leading slash on the file path
     file_path = job_dir / str(supporting_file.id)
 
-    if not file_path.exists():
+    if not file_path.is_file():
         raise Http404
 
     return _file_response(request, file_path, supporting_file.file_name)
@@ -867,7 +867,7 @@ def file_download_gwflow_file(request, gwflow_file):
         raise Http404
 
     file_path = Path(settings.GWFLOW_FILE_UPLOAD_DIR) / str(gwflow_file.job.id) / str(gwflow_file.id)
-    if not file_path.exists():
+    if not file_path.is_file():
         raise Http404
 
     return _file_response(request, file_path, gwflow_file.file_name)
