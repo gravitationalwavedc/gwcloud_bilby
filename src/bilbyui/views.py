@@ -602,7 +602,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
         ini_file = ini_file[0]
 
         # Read the ini file
-        with (Path(job_staging_dir) / ini_file).open() as f:
+        with ini_file.open() as f:
             ini_content = f.read()
 
         # Parse and validate the INI file
