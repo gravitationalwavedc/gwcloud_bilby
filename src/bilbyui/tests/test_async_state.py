@@ -191,6 +191,17 @@ class TestAsyncStatePartialRender(BilbyTestCase):
         stale_html = render_state(state="stale")
         self.assertNotIn("Refresh", stale_html)
 
+    def test_no_action_with_retry_url_but_no_target(self):
+        """Same-target contract: an action renders only when BOTH retry_url and
+        retry_target are supplied — URL-only input must not render a control
+        whose HTMX swap would default to the button itself."""
+        error_html = render_state(state="error", retry_url="/some/url/")
+        self.assertNotIn("Retry", error_html)
+        self.assertNotIn("hx-get", error_html)
+        stale_html = render_state(state="stale", retry_url="/some/url/")
+        self.assertNotIn("Refresh", stale_html)
+        self.assertNotIn("hx-get", stale_html)
+
 
 # ============================================================================
 # task-2: compiled-CSS reduced-motion contract (issue #50)

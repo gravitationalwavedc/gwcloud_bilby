@@ -21,8 +21,8 @@
 <div class="async-notice" role="alert" aria-label="{{ region_label }}">
   <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
   <span class="async-notice-text">The cached copy of {{ thing_label }} is shown.</span>
-  {% if retry_url %}
-  <button type="button" class="btn btn-primary btn-sm" hx-get="{{ retry_url }}"{% if retry_target %} hx-target="{{ retry_target }}"{% endif %} hx-swap="innerHTML">Refresh</button>
+  {% if retry_url and retry_target %}
+  <button type="button" class="btn btn-primary btn-sm" hx-get="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="innerHTML">Refresh</button>
   {% endif %}
 </div>
 {% elif state == "error" %}
@@ -31,8 +31,8 @@
     <span class="sr-only">Error:</span>
     Couldn't load {{ thing_label }} because {{ reason|default:"the service is temporarily unavailable" }}.
   </p>
-  {% if retry_url %}
-  <button type="button" class="btn btn-primary" hx-get="{{ retry_url }}"{% if retry_target %} hx-target="{{ retry_target }}"{% endif %} hx-swap="innerHTML">Retry</button>
+  {% if retry_url and retry_target %}
+  <button type="button" class="btn btn-primary" hx-get="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="innerHTML">Retry</button>
   {% endif %}
 </div>
 {% endif %}
