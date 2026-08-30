@@ -99,6 +99,13 @@ def check_job_embargo_status(user, args):
     Returns:
         bool: True if the job should be embargoed, False otherwise.
     """
+    trigger_time, n_simulation = _parse_embargo_args(args)
+    # Delegate to the core embargo logic in utils/embargo.py
+    return should_embargo_job(user, trigger_time, n_simulation)
+
+
+def _parse_embargo_args(args):
+    """Extract the trigger_time and n_simulation flags from parsed INI args for embargo checks."""
     # Parse trigger_time from INI args - can be a float or event name like "GW150914"
     try:
         trigger_time = float(args.trigger_time)
@@ -120,8 +127,7 @@ def check_job_embargo_status(user, args):
             # Malformed n_simulation value - treat as not simulated (embargo-safe)
             n_simulation = False
 
-    # Delegate to the core embargo logic in utils/embargo.py
-    return should_embargo_job(user, trigger_time, n_simulation)
+    return trigger_time, n_simulation
 
 
 def _parse_and_validate_ini(ini_content):
@@ -477,13 +483,16 @@ def create_bilby_job_from_ini_string(user, params):
 
     args = bilby_ini_string_to_args(params.ini_string.ini_string.encode("utf-8"))
 
-    if check_job_embargo_status(user, args):
+    # Parse embargo args once so event-name trigger times only resolve via gwosc a single time
+    trigger_time, simulated = _parse_embargo_args(args)
+
+    if should_embargo_job(user, trigger_time, simulated):
         msg = "Only LIGO users may run real jobs on embargoed LIGO data"
         raise GraphQLError(msg)
 
     # Check if this job would be embargoed for non-LIGO users.
     # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
-    is_ligo_job = check_job_embargo_status(None, args)
+    is_ligo_job = should_embargo_job(None, trigger_time, simulated)
 
     if args.outdir == ".":
         args.outdir = "./"
