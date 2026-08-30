@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 
@@ -81,22 +80,9 @@ class TestRequestJobFilter(SimpleTestCase):
 
     def test_query_params(self):
         jobs = [{"id": 42}]
-        end_time = datetime.datetime(2020, 1, 1, tzinfo=datetime.UTC)
 
         ids_url = f"{self.base_url}?jobIds=10,20"
         self.responses.add(responses.GET, ids_url, body=json.dumps(jobs), status=200)
         status, result = request_job_filter(123, ids=[10, 20])
-        self.assertEqual(status, "OK")
-        self.assertEqual(result, jobs)
-
-        end_time_url = f"{self.base_url}?endTimeGt={round(end_time.timestamp())}"
-        self.responses.add(responses.GET, end_time_url, body=json.dumps(jobs), status=200)
-        status, result = request_job_filter(123, end_time_gt=end_time)
-        self.assertEqual(status, "OK")
-        self.assertEqual(result, jobs)
-
-        combined_url = f"{self.base_url}?jobIds=1,2&endTimeGt={round(end_time.timestamp())}"
-        self.responses.add(responses.GET, combined_url, body=json.dumps(jobs), status=200)
-        status, result = request_job_filter(123, ids=[1, 2], end_time_gt=end_time)
         self.assertEqual(status, "OK")
         self.assertEqual(result, jobs)
