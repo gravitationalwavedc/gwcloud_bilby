@@ -779,6 +779,8 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
             msg = "Only LIGO users may upload real jobs on embargoed LIGO data"
             raise PermissionError(msg)
 
+        prepare_args_for_data_input(args)
+
         # Override the output directory
         args.outdir = "./"
 
