@@ -30,3 +30,6 @@ docs
 !src/docs/data/
 !src/docs/data/.keep
 
+
+# Playwright e2e runtime (Node packages + browser launcher wrapper)
+.playwright/
