@@ -73,7 +73,7 @@ class SlurmScheduler(Scheduler):
         :param details: The internal job details object
         :return: A tuple with JobStatus, additional info as a string. None if no job status could be obtained
         """
-        logger.info("Trying to get status of job %s...", job_id)
+        logger.debug("Trying to get status of job %s...", job_id)
 
         # Construct the command
         command = f"sacct -Pn -j {job_id} -o jobid,state%50"
@@ -88,7 +88,7 @@ class SlurmScheduler(Scheduler):
             return None, None
 
         # Get the output
-        logger.info("Command `%s` returned `%s`", command, stdout)
+        logger.debug("Command `%s` returned `%s`", command, stdout)
 
         _status = None
         # Iterate over the lines
@@ -103,7 +103,7 @@ class SlurmScheduler(Scheduler):
             except (TypeError, ValueError, IndexError, UnicodeDecodeError):
                 continue
 
-        logger.info("Got job status %s for job %s", _status, job_id)
+        logger.debug("Got job status %s for job %s", _status, job_id)
 
         # Check that we got a status for this job
         if not _status:
