@@ -129,6 +129,7 @@ class TestJobsService(BilbyTestCase):
                 "has_next": False,
                 "page": 1,
                 "page_size": 20,
+                "state": "down",
             },
         )
         mock_elasticsearch.assert_called_once()
@@ -147,6 +148,7 @@ class TestJobsService(BilbyTestCase):
                 "has_next": False,
                 "page": 1,
                 "page_size": 20,
+                "state": "down",
             },
         )
         mock_es.search.assert_called_once()
@@ -165,6 +167,7 @@ class TestJobsService(BilbyTestCase):
                 "has_next": False,
                 "page": 1,
                 "page_size": 20,
+                "state": "down",
             },
         )
         mock_es.search.assert_called_once()
@@ -183,6 +186,7 @@ class TestJobsService(BilbyTestCase):
                 "has_next": False,
                 "page": 1,
                 "page_size": 20,
+                "state": "ok",
             },
         )
         mock_es.search.assert_called_once()

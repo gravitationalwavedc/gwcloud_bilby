@@ -1,6 +1,10 @@
-{% for node in rows %}
-  {% include "bilbyui/_job_row.html" %}
-{% empty %}
-  <p class="text-muted">Create a new job or try searching 'Any time'.</p>
-{% endfor %}
-{% include "bilbyui/_paging_sentinel.html" %}
+{% if service_state == "down" %}
+  {% include "bilbyui/_async_state.html" with state="error" thing="the job list" region_label="Job list" %}
+{% else %}
+  {% for node in rows %}
+    {% include "bilbyui/_job_row.html" %}
+  {% empty %}
+    <p class="text-muted">Create a new job or try searching 'Any time'.</p>
+  {% endfor %}
+  {% include "bilbyui/_paging_sentinel.html" %}
+{% endif %}

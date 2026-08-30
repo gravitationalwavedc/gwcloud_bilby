@@ -73,6 +73,7 @@ def list_user_jobs(user, *, search="", time_range="all", page=1, page_size=20):
         "has_next": has_next,
         "page": page,
         "page_size": page_size,
+        "state": "ok",
     }
 
 
@@ -103,12 +104,14 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         "has_next": False,
         "page": page,
         "page_size": page_size,
+        "state": "ok",
     }
 
     try:
         es = get_es_client()
     except elasticsearch.exceptions.ConnectionError:
         logger.exception("Failed to connect to Elasticsearch")
+        empty_result["state"] = "down"
         return empty_result
 
     q = search or "*"
@@ -144,9 +147,11 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
             "Elasticsearch index missing or not found: %s",
             settings.ELASTIC_SEARCH_INDEX,
         )
+        empty_result["state"] = "down"
         return empty_result
     except elasticsearch.exceptions.ConnectionError:
         logger.exception("Failed to connect to Elasticsearch")
+        empty_result["state"] = "down"
         return empty_result
 
     if not results or "hits" not in results or not results["hits"]["hits"]:
@@ -183,6 +188,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         "has_next": has_next,
         "page": page,
         "page_size": page_size,
+        "state": "ok",
     }
 
 

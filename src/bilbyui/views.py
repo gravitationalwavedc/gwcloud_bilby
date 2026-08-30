@@ -5,6 +5,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
+from urllib.parse import quote
 
 import bilby_pipe
 import requests
@@ -1100,11 +1101,20 @@ def _parse_page(request):
 
 
 def _render_job_list(
-    request, rows, has_next, jobs_list_url_name, template_name, fragment_template_name, list_target_id=None
+    request,
+    rows,
+    has_next,
+    jobs_list_url_name,
+    template_name,
+    fragment_template_name,
+    list_target_id=None,
+    service_state="ok",
 ):
     page = _parse_page(request)
     search = request.GET.get("search", "")
     time_range = _normalize_time_range(request.GET.get("time_range", "all"))
+
+    retry_url = f"{reverse(jobs_list_url_name)}?page={page}&search={quote(search)}&time_range={time_range}"
 
     context = {
         "rows": rows,
@@ -1115,6 +1125,9 @@ def _render_job_list(
         "next_page": page + 1,
         "user": request.user,
         "jobs_list_url_name": jobs_list_url_name,
+        "service_state": service_state,
+        "retry_url": retry_url,
+        "retry_target": f"#{list_target_id}" if list_target_id else "#job-list",
     }
     if list_target_id is not None:
         context["list_target_id"] = list_target_id
@@ -1140,6 +1153,7 @@ def public_jobs_view(request):
         jobs_list_url_name="bilbyui:public_jobs",
         template_name="bilbyui/public_jobs.html",
         fragment_template_name="bilbyui/_job_list_fragment.html",
+        service_state=public_jobs_result.get("state", "ok"),
     )
 
 
@@ -1159,6 +1173,7 @@ def gwflow_jobs_view(request):
         template_name="bilbyui/gwflow_jobs.html",
         fragment_template_name="bilbyui/_gwflow_job_list_fragment.html",
         list_target_id="gwflow-job-list",
+        service_state=result.get("state", "ok"),
     )
 
 
@@ -1189,7 +1204,17 @@ def gwflow_job_metadata_partial(request, sname):
     job = _get_gwflow_job_or_404(request, sname)  # noqa: F841 - visibility check only
     data, state = get_superevent(sname)
     if state == "down":
-        return TemplateResponse(request, "bilbyui/_gwflow_portal_error.html", {"sname": sname})
+        return TemplateResponse(
+            request,
+            "bilbyui/_async_state.html",
+            {
+                "state": "error",
+                "thing": "the metadata",
+                "region_label": "Metadata",
+                "retry_url": reverse("bilbyui:gwflow_job_metadata", args=[sname]),
+                "retry_target": "#metadata-pane",
+            },
+        )
     return TemplateResponse(
         request,
         "bilbyui/_gwflow_metadata.html",
@@ -1206,12 +1231,13 @@ def gwflow_job_history_partial(request, sname):
     if state == "down" or versions is None:
         return TemplateResponse(
             request,
-            "bilbyui/_gwflow_portal_error.html",
+            "bilbyui/_async_state.html",
             {
-                "sname": sname,
+                "state": "error",
+                "thing": "the history",
+                "region_label": "History",
                 "retry_url": reverse("bilbyui:gwflow_job_history", args=[sname]),
                 "retry_target": "#history-pane",
-                "error_message": "The history service is currently unavailable.",
             },
         )
     return TemplateResponse(
@@ -1231,12 +1257,13 @@ def gwflow_job_history_version_partial(request, sname, history_id):
     if state == "down":
         return TemplateResponse(
             request,
-            "bilbyui/_gwflow_portal_error.html",
+            "bilbyui/_async_state.html",
             {
-                "sname": sname,
+                "state": "error",
+                "thing": "the version details",
+                "region_label": "Version details",
                 "retry_url": reverse("bilbyui:gwflow_job_history_version", args=[sname, history_id]),
                 "retry_target": "#gwflow-history-version",
-                "error_message": "The version details service is currently unavailable.",
             },
         )
     if data is None:
@@ -1269,6 +1296,7 @@ def my_jobs_view(request):
         jobs_list_url_name="bilbyui:my_jobs",
         template_name="bilbyui/my_jobs.html",
         fragment_template_name="bilbyui/_job_list_fragment.html",
+        service_state=user_jobs_result.get("state", "ok"),
     )
 
 

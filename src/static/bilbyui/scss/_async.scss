@@ -1,0 +1,111 @@
+// Async state machine styling (issue #50): skeleton shimmer, warning-grade
+// stale notice and GOV.UK-style error block. Markup contract lives in
+// src/bilbyui/templates/bilbyui/_async_state.html; design contract is
+// docs/plans/designs/006-ux3-async-state-machine-error-conventions.md §2.
+//
+// Compiled after theme.scss, so every Bootstrap 4.6 variable/mixin referenced
+// here is already defined by the vendor import chain.
+
+// ---------------------------------------------------------------------------
+// Skeleton shimmer placeholder rows. The shimmer is animation-based so the
+// global prefers-reduced-motion block in _shell.scss (Frontend Bible rule 10)
+// collapses it to a static block: animation-duration ~0 + iteration-count 1
+// leaves the base background-color visible with no movement.
+// ---------------------------------------------------------------------------
+.async-skeleton {
+    display: block;
+    width: 100%;
+}
+
+.async-skeleton-row {
+    height: 1rem;
+    margin-bottom: $spacer * 0.5;
+    border-radius: $border-radius;
+    background-color: $gray-200;
+    background-image: linear-gradient(90deg, $gray-200 0%, $gray-100 50%, $gray-200 100%);
+    background-size: 200% 100%;
+    animation: async-shimmer 1.4s ease-in-out infinite;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+
+    // Varied widths so the placeholder reads as content lines, not a solid bar.
+    &:nth-child(1) {
+        width: 100%;
+    }
+
+    &:nth-child(2) {
+        width: 85%;
+    }
+
+    &:nth-child(3) {
+        width: 70%;
+    }
+}
+
+@keyframes async-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.async-loading-text {
+    margin-top: $spacer * 0.5;
+    margin-bottom: 0;
+}
+
+// ---------------------------------------------------------------------------
+// Warning-grade stale notice: amber background + icon + text label. Colour is
+// never the only signal (Frontend Bible rule 4) — the exclamation icon and the
+// "cached" wording carry the meaning for non-sighted users.
+// ---------------------------------------------------------------------------
+.async-notice {
+    display: flex;
+    align-items: center;
+    gap: $spacer * 0.5;
+    padding: $spacer * 0.5 $spacer;
+    margin-bottom: $spacer;
+    color: $gray-900; // dark text on pale amber keeps >=4.5:1 contrast
+    background-color: lighten($warning, 30%);
+    border: $border-width solid darken($warning, 15%);
+    border-radius: $border-radius;
+
+    .bi {
+        flex-shrink: 0;
+        font-size: $font-size-lg;
+    }
+
+    .async-notice-text {
+        flex: 1 1 auto;
+    }
+
+    .btn {
+        flex-shrink: 0;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// GOV.UK-style error block: what happened + how to fix, no jargon codes or
+// blame. The visually hidden "Error:" prefix (.sr-only) is provided in markup.
+// ---------------------------------------------------------------------------
+.async-error {
+    padding: $spacer;
+    margin-bottom: $spacer;
+    border-left: 4px solid $danger;
+    background-color: lighten($danger, 42%);
+    border-radius: $border-radius;
+
+    .async-error-message {
+        margin-bottom: $spacer * 0.5;
+        color: $gray-900;
+    }
+
+    .btn {
+        margin-top: $spacer * 0.25;
+    }
+}
