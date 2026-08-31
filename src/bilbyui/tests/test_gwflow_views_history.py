@@ -152,11 +152,17 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         self.assertContains(response, "Showing cached copy.")
 
     @mock.patch("bilbyui.views.get_versions", return_value=(None, "down"))
-    def test_down_renders_portal_error_with_history_retry(self, mock_get_versions):
+    def test_down_renders_error_state_with_history_retry(self, mock_get_versions):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "The history service is currently unavailable.")
+        self.assertContains(response, "async-error")
+        self.assertContains(response, 'role="alert"')
+        self.assertContains(response, '<span class="sr-only">Error:</span>')
+        self.assertContains(
+            response,
+            "Couldn't load the history because the service is temporarily unavailable.",
+        )
         self.assertContains(
             response,
             f'hx-get="{reverse("bilbyui:gwflow_job_history", args=[self.job.sname])}"',
@@ -164,6 +170,7 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         self.assertContains(response, 'hx-target="#history-pane"')
         self.assertContains(response, "Retry")
         self.assertNotContains(response, "<!doctype html>")
+        self.assertEqual(response.content.decode().count('role="alert"'), 1)
 
     @mock.patch("bilbyui.views.get_versions", return_value=([], "live"))
     def test_empty_versions_list(self, mock_get_versions):
@@ -227,11 +234,17 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.assertContains(response, "Showing cached copy.")
 
     @mock.patch("bilbyui.views.get_version", return_value=(None, "down"))
-    def test_down_renders_portal_error_with_version_retry(self, mock_get_version):
+    def test_down_renders_error_state_with_version_retry(self, mock_get_version):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "The version details service is currently unavailable.")
+        self.assertContains(response, "async-error")
+        self.assertContains(response, 'role="alert"')
+        self.assertContains(response, '<span class="sr-only">Error:</span>')
+        self.assertContains(
+            response,
+            "Couldn't load the version details because the service is temporarily unavailable.",
+        )
         self.assertContains(
             response,
             f'hx-get="{reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.sha])}"',
@@ -239,6 +252,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.assertContains(response, 'hx-target="#gwflow-history-version"')
         self.assertContains(response, "Retry")
         self.assertNotContains(response, "<!doctype html>")
+        self.assertEqual(response.content.decode().count('role="alert"'), 1)
 
     @mock.patch("bilbyui.views.get_version", return_value=(None, "live"))
     def test_missing_version_raises_404(self, mock_get_version):
