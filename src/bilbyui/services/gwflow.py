@@ -2,20 +2,108 @@ import logging
 
 import elasticsearch
 from django.conf import settings
+from django.core.cache import cache
 from django.utils import timezone
 
 from bilbyui.models import GWFlowJob
-from bilbyui.services.jobs import _numeric_es_records, _time_range_to_timedelta
+from bilbyui.services.jobs import _extract_es_total, _numeric_es_records, _time_range_to_timedelta
 from bilbyui.utils.gwflow_es import get_es_client
 from bilbyui.utils.misc import is_ligo_user
 
 logger = logging.getLogger(__name__)
+
+LIBRARIES_CACHE_KEY = "gwflow_filter_libraries"
+REVIEW_STATUSES_CACHE_KEY = "gwflow_filter_review_statuses"
+FILTER_OPTIONS_TTL = 3600
+REVIEW_STATUS_FALLBACK = ["reviewed", "unreviewed", "pending", "approved"]
+
+_ES_TERM_SPECIAL_CHARS = set('\\"*?:()[]{}')
+
+
+def _escape_es_term(value):
+    """Escape a value for safe insertion into an ES query_string exact-term
+    clause. Backslash-escapes quotes, wildcards, colons, brackets, braces and
+    whitespace so user-supplied filter values cannot alter the query."""
+    return "".join(f"\\{ch}" if ch in _ES_TERM_SPECIAL_CHARS or ch.isspace() else ch for ch in str(value))
+
+
+def _collect_library_options():
+    libraries = set()
+    for item in GWFlowJob.objects.filter(ligo_only=False).values_list("libraries", flat=True):
+        if not item:
+            continue
+        if isinstance(item, str):
+            libraries.add(item)
+        elif isinstance(item, (list, tuple)):
+            for lib in item:
+                if lib:
+                    libraries.add(str(lib))
+        else:
+            libraries.add(str(item))
+    return sorted(libraries, key=str.casefold)
+
+
+def _collect_review_status_options():
+    try:
+        es = get_es_client()
+    except elasticsearch.exceptions.ConnectionError:
+        logger.exception("Failed to connect to Elasticsearch for review status aggregation")
+        return None
+
+    try:
+        results = es.search(
+            index=settings.ELASTIC_SEARCH_GWFLOW_INDEX,
+            q="isPruned:false AND ligoOnly:false",
+            size=0,
+            aggs={
+                "review_statuses": {
+                    "terms": {"field": "analyses.reviewStatus.keyword", "size": 50},
+                }
+            },
+        )
+    except (elasticsearch.NotFoundError, elasticsearch.exceptions.ConnectionError):
+        logger.exception("Failed to aggregate review statuses from Elasticsearch")
+        return None
+
+    buckets = results.get("aggregations", {}).get("review_statuses", {}).get("buckets", [])
+    statuses = [bucket.get("key") for bucket in buckets if isinstance(bucket, dict) and bucket.get("key")]
+    if not statuses:
+        return None
+    return statuses
+
+
+def list_gwflow_filter_options():
+    """Return the filter options for the GWFlow job list surface:
+    DB-driven libraries and ES-aggregated review statuses, both cached.
+
+    The options reflect publicly-visible data only (ligo_only=False jobs and
+    ligoOnly:false documents) because the cache is global and shared by all
+    users. LIGO users can still reach any value via the advanced-syntax input.
+    """
+    libraries = cache.get(LIBRARIES_CACHE_KEY)
+    if libraries is None:
+        libraries = _collect_library_options()
+        cache.set(LIBRARIES_CACHE_KEY, libraries, FILTER_OPTIONS_TTL)
+
+    review_statuses = cache.get(REVIEW_STATUSES_CACHE_KEY)
+    if review_statuses is None:
+        review_statuses = _collect_review_status_options()
+        if review_statuses is None:
+            # ES unavailable or no buckets — hardcoded fallback, not cached so
+            # the next call retries ES once it is back.
+            review_statuses = REVIEW_STATUS_FALLBACK
+        else:
+            cache.set(REVIEW_STATUSES_CACHE_KEY, review_statuses, FILTER_OPTIONS_TTL)
+
+    return {"libraries": libraries, "review_statuses": review_statuses}
 
 
 def list_gwflow_jobs(
     user,
     *,
     search="",
+    library="",
+    review_status="",
     time_range="all",
     page=1,
     page_size=20,
@@ -24,7 +112,8 @@ def list_gwflow_jobs(
 ):
     """
     Mirror of list_public_jobs for the gwflow index. Returns the same result
-    dict shape as list_public_jobs (jobs dict, records, has_next, page, page_size).
+    dict shape as list_public_jobs (jobs dict, records, has_next, total, page,
+    page_size).
     """
     if offset is None:
         offset = (page - 1) * page_size
@@ -35,12 +124,18 @@ def list_gwflow_jobs(
         "jobs": {},
         "records": [],
         "has_next": False,
+        "total": 0,
         "page": page,
         "page_size": page_size,
         "state": "ok",
     }
 
     q = search or "*"
+
+    if library:
+        q = f'{q} AND libraries:"{_escape_es_term(library)}"'
+    if review_status:
+        q = f'{q} AND analyses.reviewStatus:"{_escape_es_term(review_status)}"'
 
     if "_private_info_" in q:
         user_id = user.id if user and user.is_authenticated else 0
@@ -116,6 +211,7 @@ def list_gwflow_jobs(
         "jobs": jobs,
         "records": numeric_records,
         "has_next": has_next,
+        "total": _extract_es_total(results),
         "page": page,
         "page_size": page_size,
         "state": "ok",

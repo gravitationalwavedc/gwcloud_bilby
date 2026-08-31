@@ -2,9 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import elasticsearch
 from django.contrib.auth import get_user_model
+from django.core.cache import caches
 
 from bilbyui.models import GWFlowJob
-from bilbyui.services.gwflow import list_gwflow_jobs
+from bilbyui.services.gwflow import _escape_es_term, list_gwflow_filter_options, list_gwflow_jobs
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
@@ -248,3 +249,223 @@ class TestGWFlowServices(BilbyTestCase):
 
         self.assertTrue(res["has_next"])
         self.assertEqual(len(res["records"]), 3)
+
+    def test_escape_es_term_escapes_special_chars(self):
+        escaped = _escape_es_term('a"b*c?d:e\\f(g)h[i]j{k}l m')
+        self.assertEqual(escaped, 'a\\"b\\*c\\?d\\:e\\\\f\\(g\\)h\\[i\\]j\\{k\\}l\\ m')
+
+    def test_escape_es_term_escapes_whitespace_and_tabs(self):
+        self.assertEqual(_escape_es_term("a b\tc"), "a\\ b\\\tc")
+
+    def test_escape_es_term_leaves_plain_values_untouched(self):
+        self.assertEqual(_escape_es_term("cbc-workflow-o4a"), "cbc-workflow-o4a")
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_maps_library_and_review_status(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job_public.id}],
+                "total": {"value": 1},
+            }
+        }
+
+        res = list_gwflow_jobs(
+            self.non_ligo_user,
+            search="GW150914",
+            library='cbc-workflow "o4a"',
+            review_status="approved",
+        )
+
+        call_kwargs = mock_client.search.call_args[1]
+        q = call_kwargs["q"]
+        self.assertIn('libraries:"cbc-workflow\\ \\"o4a\\""', q)
+        self.assertIn('analyses.reviewStatus:"approved"', q)
+        self.assertIn("ligoOnly:false", q)
+        self.assertIn("isPruned:false", q)
+        self.assertIn(self.job_public.id, res["jobs"])
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_maps_review_status_with_special_chars(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job_public.id}],
+                "total": {"value": 1},
+            }
+        }
+
+        list_gwflow_jobs(self.non_ligo_user, review_status="a:b*c")
+
+        q = mock_client.search.call_args[1]["q"]
+        self.assertIn('analyses.reviewStatus:"a\\:b\\*c"', q)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_returns_total(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job_public.id}],
+                "total": {"value": 42},
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user)
+
+        self.assertEqual(res["total"], 42)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_total_guards_string_value(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job_public.id}],
+                "total": {"value": "42"},
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user)
+
+        self.assertEqual(res["total"], 42)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_total_missing_returns_zero(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job_public.id}],
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user)
+
+        self.assertEqual(res["total"], 0)
+
+
+class TestGWFlowFilterOptions(BilbyTestCase):
+    def setUp(self):
+        super().setUp()
+        caches["default"].clear()
+        self.user = self.create_user(id=200, name="Filter User", primary_email="filter@example.com")
+
+    @patch("bilbyui.services.gwflow.get_es_client", side_effect=elasticsearch.exceptions.ConnectionError("down"))
+    def test_libraries_from_db_sorted_deduped(self, mock_get_es_client):
+        GWFlowJob.objects.create(
+            sname="S200201a", user=self.user, ligo_only=False, libraries=["b-library", "a-library"]
+        )
+        GWFlowJob.objects.create(
+            sname="S200201b", user=self.user, ligo_only=False, libraries=["a-library", "c-library"]
+        )
+
+        options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], ["a-library", "b-library", "c-library"])
+        self.assertEqual(
+            caches["default"].get("gwflow_filter_libraries"),
+            ["a-library", "b-library", "c-library"],
+        )
+
+    @patch("bilbyui.services.gwflow.get_es_client", side_effect=elasticsearch.exceptions.ConnectionError("down"))
+    def test_libraries_from_db_case_insensitive_sort(self, mock_get_es_client):
+        GWFlowJob.objects.create(sname="S200201c", user=self.user, ligo_only=False, libraries=["Zeta", "alpha"])
+
+        options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], ["alpha", "Zeta"])
+
+    @patch("bilbyui.services.gwflow.get_es_client", side_effect=elasticsearch.exceptions.ConnectionError("down"))
+    def test_libraries_cached(self, mock_get_es_client):
+        GWFlowJob.objects.create(sname="S200201d", user=self.user, ligo_only=False, libraries=["a-library"])
+        list_gwflow_filter_options()
+
+        GWFlowJob.objects.create(sname="S200201e", user=self.user, ligo_only=False, libraries=["b-library"])
+
+        options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], ["a-library"])
+
+    @patch("bilbyui.services.gwflow.get_es_client", side_effect=elasticsearch.exceptions.ConnectionError("down"))
+    def test_libraries_exclude_ligo_only_jobs(self, mock_get_es_client):
+        GWFlowJob.objects.create(sname="S200201f", user=self.user, ligo_only=False, libraries=["public-lib"])
+        GWFlowJob.objects.create(sname="S200201g", user=self.user, ligo_only=True, libraries=["ligo-secret-lib"])
+
+        options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], ["public-lib"])
+        self.assertNotIn("ligo-secret-lib", options["libraries"])
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_review_statuses_from_es_aggregation(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "aggregations": {
+                "review_statuses": {
+                    "buckets": [
+                        {"key": "approved", "doc_count": 10},
+                        {"key": "pending", "doc_count": 5},
+                    ]
+                }
+            }
+        }
+
+        options = list_gwflow_filter_options()
+
+        self.assertEqual(options["review_statuses"], ["approved", "pending"])
+        self.assertEqual(
+            caches["default"].get("gwflow_filter_review_statuses"),
+            ["approved", "pending"],
+        )
+        call_kwargs = mock_client.search.call_args[1]
+        self.assertEqual(call_kwargs["q"], "isPruned:false AND ligoOnly:false")
+        self.assertEqual(call_kwargs["size"], 0)
+
+    @patch("bilbyui.services.gwflow.get_es_client", side_effect=elasticsearch.exceptions.ConnectionError("down"))
+    def test_review_statuses_fallback_on_connection_error(self, mock_get_es_client):
+        options = list_gwflow_filter_options()
+
+        self.assertEqual(options["review_statuses"], ["reviewed", "unreviewed", "pending", "approved"])
+        self.assertIsNone(caches["default"].get("gwflow_filter_review_statuses"))
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_review_statuses_fallback_on_not_found(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.side_effect = elasticsearch.NotFoundError(404, "index not found", {})
+
+        options = list_gwflow_filter_options()
+
+        self.assertEqual(options["review_statuses"], ["reviewed", "unreviewed", "pending", "approved"])
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_review_statuses_fallback_on_empty_buckets(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"aggregations": {"review_statuses": {"buckets": []}}}
+
+        options = list_gwflow_filter_options()
+
+        self.assertEqual(options["review_statuses"], ["reviewed", "unreviewed", "pending", "approved"])
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_review_statuses_cached(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "aggregations": {
+                "review_statuses": {
+                    "buckets": [{"key": "approved", "doc_count": 1}],
+                }
+            }
+        }
+
+        list_gwflow_filter_options()
+        mock_client.search.reset_mock()
+        list_gwflow_filter_options()
+
+        mock_client.search.assert_not_called()

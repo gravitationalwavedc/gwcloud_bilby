@@ -1,6 +1,6 @@
 {% extends "bilbyui/base.html" %}
 
-{% block title %}GWFlow — GWCloud{% endblock %}
+{% block title %}{% if page > 1 %}{{ page_title_prefix }} — page {{ page }} — GWCloud{% else %}{{ page_title_prefix }} — GWCloud{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -11,8 +11,8 @@
 
     <div class="card gw-form-card">
       <div class="card-body">
-        {% include "bilbyui/_search_form.html" %}
-        {% include "bilbyui/_gwflow_search_help.html" %}
+        {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_gwflow_search_help.html" show_gwflow_filters=True filter_options=filter_options list_target_id="gwflow-job-list" %}
+        {% include "bilbyui/_search_state_sync.html" %}
         <div id="gwflow-job-list" class="mt-4">
           {% include "bilbyui/_gwflow_job_list_fragment.html" %}
         </div>

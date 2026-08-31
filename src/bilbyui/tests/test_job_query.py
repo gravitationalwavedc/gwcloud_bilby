@@ -8,6 +8,7 @@ from graphql_relay.node.node import to_global_id
 from humps import camelize
 
 from bilbyui.models import BilbyJob, EventID, GWFlowJob, Label
+from bilbyui.services.jobs import list_public_jobs, list_user_jobs
 from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -697,3 +698,91 @@ class TestBilbyJobQueries(BilbyTestCase):
         response = self.query(query)
         self.assertIsNone(response.errors)
         self.assertFalse(request_job_filter_mock.called)
+
+
+class TestJobQueryTotal(BilbyTestCase):
+    """Service contract: list_public_jobs / list_user_jobs return total."""
+
+    def setUp(self):
+        super().setUp()
+        self.user = self.create_user(id=400, name="Total User", primary_email="total@example.com")
+        self.job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Total job",
+            description="total",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Total job"}),
+        )
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_returns_total(self, mock_get_es_client):
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job.id, "_source": {}}],
+                "total": {"value": 7},
+            }
+        }
+
+        res = list_public_jobs(self.user)
+
+        self.assertEqual(res["total"], 7)
+        self.assertIn(self.job.id, res["jobs"])
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_total_guards_string_value(self, mock_get_es_client):
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job.id, "_source": {}}],
+                "total": {"value": "7"},
+            }
+        }
+
+        res = list_public_jobs(self.user)
+
+        self.assertEqual(res["total"], 7)
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_total_missing_returns_zero(self, mock_get_es_client):
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job.id, "_source": {}}],
+            }
+        }
+
+        res = list_public_jobs(self.user)
+
+        self.assertEqual(res["total"], 0)
+
+    def test_list_user_jobs_returns_total(self):
+        res = list_user_jobs(self.user)
+
+        self.assertEqual(res["total"], 1)
+        self.assertEqual(len(res["jobs"]), 1)
+
+    def test_list_user_jobs_total_respects_filters(self):
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Another job",
+            description="another",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Another job"}),
+        )
+
+        res = list_user_jobs(self.user, search="Another")
+
+        self.assertEqual(res["total"], 1)
+        self.assertEqual(len(res["jobs"]), 1)
+
+    def test_list_user_jobs_total_empty(self):
+        self.job.delete()
+
+        res = list_user_jobs(self.user)
+
+        self.assertEqual(res["total"], 0)
+        self.assertEqual(res["jobs"], [])

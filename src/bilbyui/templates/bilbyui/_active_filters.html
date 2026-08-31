@@ -1,0 +1,27 @@
+{# Removable active-filter chips + Reset all (issue #51 UX-4). Rendered only when >=1 filter is active; lives inside the swapped list region so it stays consistent with the list. Contract: active_filters (list of {label, remove_url}), reset_url, list_target_id. #}
+{% if active_filters %}
+<div class="active-filters" aria-label="Active filters">
+  {% for f in active_filters %}
+  <span class="filter-chip">
+    <span class="filter-chip-label">{{ f.label }}</span>
+    <button
+      type="button"
+      class="filter-chip-remove"
+      aria-label="Remove {{ f.label }}"
+      hx-get="{{ f.remove_url }}"
+      hx-target="#{{ list_target_id|default:'job-list' }}"
+      hx-swap="innerHTML"
+      hx-push-url="true"
+    >&times;</button>
+  </span>
+  {% endfor %}
+  <a
+    class="filter-reset"
+    href="{{ reset_url }}"
+    hx-get="{{ reset_url }}"
+    hx-target="#{{ list_target_id|default:'job-list' }}"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+  >Reset all</a>
+</div>
+{% endif %}

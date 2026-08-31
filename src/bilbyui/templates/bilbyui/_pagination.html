@@ -1,0 +1,50 @@
+{# Numbered pagination with prev/next (issue #51 UX-4). Rendered only when total_pages > 1. Real hrefs carry every active param (JS-disabled crawl works) and are enhanced with hx-get (progressive enhancement). Contract: total_pages, page_range, page, has_next, search, library, review_status, time_range, jobs_list_url_name, list_target_id. #}
+{% if total_pages > 1 %}
+{% with search_q=search|urlencode library_q=library|urlencode review_status_q=review_status|urlencode %}
+<nav class="pagination-wrap" aria-label="Pagination">
+  <ul class="pagination">
+    {% if page > 1 %}
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="{% url jobs_list_url_name %}?page={{ page|add:"-1" }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        rel="prev"
+        aria-label="Previous page"
+        hx-get="{% url jobs_list_url_name %}?page={{ page|add:"-1" }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        hx-target="#{{ list_target_id|default:'job-list' }}"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+      >&laquo;</a>
+    </li>
+    {% endif %}
+    {% for p in page_range %}
+    <li class="page-item{% if p == page %} active{% endif %}">
+      <a
+        class="page-link"
+        href="{% url jobs_list_url_name %}?page={{ p }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        {% if p == page %}aria-current="page"{% endif %}
+        hx-get="{% url jobs_list_url_name %}?page={{ p }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        hx-target="#{{ list_target_id|default:'job-list' }}"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+      >{{ p }}</a>
+    </li>
+    {% endfor %}
+    {% if has_next %}
+    <li class="page-item">
+      <a
+        class="page-link"
+        href="{% url jobs_list_url_name %}?page={{ page|add:"1" }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        rel="next"
+        aria-label="Next page"
+        hx-get="{% url jobs_list_url_name %}?page={{ page|add:"1" }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        hx-target="#{{ list_target_id|default:'job-list' }}"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+      >&raquo;</a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endwith %}
+{% endif %}

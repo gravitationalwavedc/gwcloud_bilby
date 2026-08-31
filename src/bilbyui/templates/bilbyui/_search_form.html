@@ -1,39 +1,148 @@
-<form class="form-row">
-  <div class="col-lg-3">
-    <div class="input-group">
-      <div class="input-group-prepend">
-        <span class="input-group-text"><i class="bi bi-search"></i></span>
-      </div>
-      <input
-        type="search"
-        name="search"
-        class="form-control"
-        placeholder="Find a job..."
-        value="{{ search }}"
-        hx-get="{% url jobs_list_url_name %}"
-        hx-trigger="input changed delay:300ms, search"
-        hx-target="#{{ list_target_id|default:'job-list' }}"
-        hx-swap="innerHTML"
-        hx-push-url="true"
+{# Search/filter form for job-list surfaces (issue #51, task-3). #}
+{# One coordinated HTMX form: every control submits the same GET request into the #}
+{# list region; hx-sync="this:replace" guarantees a single in-flight request stream #}
+{# (last request wins). The form itself is NOT part of the swap target, so focus #}
+{# stays on the triggering control (WCAG 3.2.2). #}
+{# #}
+{# Include contract (page templates pass these): #}
+{#   jobs_list_url_name    - url name of the list view (required) #}
+{#   list_target_id        - id of the HTMX swap target (default "job-list") #}
+{#   search_help_template  - path of the surface-specific help partial #}
+{#                           (default derived from jobs_list_url_name) #}
+{#   show_gwflow_filters   - bool; render GWFlow-only Library/Review status selects #}
+{#                           (default: True for the gwflow list, else False) #}
+{#   filter_options        - {"libraries": [...], "review_statuses": [...]} #}
+{#   search / library / review_status / time_range - current values #}
+{# #}
+{# The help partial is included here (not separately by the page template) and is #}
+{# toggled in place by the "(?)" button below (WCAG 3.2.6: same position/label on #}
+{# every surface). #}
+<form
+  class="gwflow-search-form"
+  hx-get="{% url jobs_list_url_name %}"
+  hx-target="#{{ list_target_id|default:'job-list' }}"
+  hx-swap="innerHTML"
+  hx-sync="this:replace"
+  hx-push-url="true"
+>
+  <input type="hidden" name="page" value="1">
+
+  {# Row 1: visual search anchor + filter selects (desktop inline, mobile behind "Filters" disclosure) #}
+  <div class="form-row">
+    <div class="col-12">
+      <button
+        class="btn btn-outline-secondary btn-block d-md-none mb-2"
+        type="button"
+        data-toggle="collapse"
+        data-target="#search-filters"
+        aria-expanded="false"
+        aria-controls="search-filters"
       >
+        Filters
+      </button>
+
+      <div class="collapse d-md-block" id="search-filters">
+        <div class="form-row align-items-end">
+          <div class="col-12 col-md-3 d-none d-md-block">
+            <span class="mb-0">
+              <i class="bi bi-search" aria-hidden="true"></i> Search
+            </span>
+          </div>
+          {% if show_gwflow_filters or jobs_list_url_name == "bilbyui:gwflow_jobs" %}
+          <div class="col-12 col-md-3">
+            <label for="library">Library</label>
+            <select
+              id="library"
+              name="library"
+              class="form-control custom-select"
+              hx-get="{% url jobs_list_url_name %}"
+              hx-include="closest form"
+              hx-trigger="change"
+            >
+              <option value="">All libraries</option>
+              {% for option in filter_options.libraries %}
+              <option value="{{ option }}"{% if library == option %} selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-3">
+            <label for="review_status">Review status</label>
+            <select
+              id="review_status"
+              name="review_status"
+              class="form-control custom-select"
+              hx-get="{% url jobs_list_url_name %}"
+              hx-include="closest form"
+              hx-trigger="change"
+            >
+              <option value="">All review statuses</option>
+              {% for option in filter_options.review_statuses %}
+              <option value="{{ option }}"{% if review_status == option %} selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+          <div class="col-12 col-md-3">
+            <label for="time_range">Updated</label>
+            <select
+              id="time_range"
+              name="time_range"
+              class="form-control custom-select"
+              hx-get="{% url jobs_list_url_name %}"
+              hx-include="closest form"
+              hx-trigger="change"
+            >
+              <option value="all"{% if time_range == "all" %} selected{% endif %}>Any time</option>
+              <option value="1d"{% if time_range == "1d" %} selected{% endif %}>Updated past 24 hours</option>
+              <option value="1w"{% if time_range == "1w" %} selected{% endif %}>Updated past week</option>
+              <option value="1m"{% if time_range == "1m" %} selected{% endif %}>Updated past month</option>
+              <option value="1y"{% if time_range == "1y" %} selected{% endif %}>Updated past year</option>
+            </select>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="col-lg-2">
-    <select
-      name="time_range"
-      class="form-control custom-select"
-      hx-get="{% url jobs_list_url_name %}"
-      hx-trigger="change"
-      hx-target="#{{ list_target_id|default:'job-list' }}"
-      hx-swap="innerHTML"
-      hx-push-url="true"
-    >
-      <option value="all"{% if time_range == "all" %} selected{% endif %}>Any time</option>
-      <option value="1d"{% if time_range == "1d" %} selected{% endif %}>Past 24 hours</option>
-      <option value="1w"{% if time_range == "1w" %} selected{% endif %}>Past week</option>
-      <option value="1m"{% if time_range == "1m" %} selected{% endif %}>Past month</option>
-      <option value="1y"{% if time_range == "1y" %} selected{% endif %}>Past year</option>
-    </select>
+
+  {# Row 2: advanced-syntax input (always visible) + "(?)" in-place help toggle #}
+  <div class="form-row mt-2">
+    <div class="col-12">
+      <label for="search">Advanced syntax:</label>
+      <div class="input-group">
+        <input
+          type="search"
+          id="search"
+          name="search"
+          class="form-control"
+          placeholder="e.g. sname:S2306*"
+          value="{{ search }}"
+          hx-get="{% url jobs_list_url_name %}"
+          hx-include="closest form"
+          hx-trigger="keyup changed delay:300ms, search"
+        >
+        <div class="input-group-append">
+          <button
+            class="btn btn-outline-secondary"
+            type="button"
+            data-toggle="collapse"
+            data-target="#search-help"
+            aria-expanded="false"
+            aria-controls="search-help"
+            aria-label="Search help"
+          >
+            (?)
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
-  <input type="hidden" name="page" value="1">
+
+  {# Surface-specific in-place help panel, toggled by the "(?)" button above #}
+  {% if search_help_template %}
+    {% include search_help_template %}
+  {% elif jobs_list_url_name == "bilbyui:gwflow_jobs" %}
+    {% include "bilbyui/_gwflow_search_help.html" %}
+  {% else %}
+    {% include "bilbyui/_bilby_search_help.html" %}
+  {% endif %}
 </form>

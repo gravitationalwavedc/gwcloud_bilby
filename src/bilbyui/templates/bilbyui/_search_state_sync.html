@@ -1,0 +1,24 @@
+{# Popstate / htmx:historyRestore form-state sync (issue #51 UX-4). HTMX history only restores the swapped list region, not the search form; this dependency-free script restores the form controls from the URL params so back/forward/refresh keep the settled state. #}
+<script>
+(function () {
+  "use strict";
+  function syncSearchFormFromUrl() {
+    var searchInput = document.querySelector("form input[name='search']");
+    if (!searchInput || !searchInput.form) {
+      return;
+    }
+    var form = searchInput.form;
+    var params = new URLSearchParams(window.location.search);
+    ["search", "library", "review_status", "time_range", "page"].forEach(function (name) {
+      var control = form.elements[name];
+      if (!control) {
+        return;
+      }
+      var value = params.get(name);
+      control.value = value === null ? (name === "page" ? "1" : "") : value;
+    });
+  }
+  window.addEventListener("popstate", syncSearchFormFromUrl);
+  document.addEventListener("htmx:historyRestore", syncSearchFormFromUrl);
+})();
+</script>

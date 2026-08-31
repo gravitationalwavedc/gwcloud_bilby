@@ -1,10 +1,13 @@
+<title>{% if page > 1 %}{{ page_title_prefix }} — page {{ page }} — GWCloud{% else %}{{ page_title_prefix }} — GWCloud{% endif %}</title>
 {% if service_state == "down" %}
   {% include "bilbyui/_async_state.html" with state="error" thing="the GWFlow jobs" region_label="GWFlow job list" retry_url=retry_url retry_target=retry_target %}
 {% else %}
+  <p class="result-count" role="status">{{ total }} superevent{{ total|pluralize }} match</p>
+  {% include "bilbyui/_active_filters.html" %}
   {% for node in rows %}
     {% include "bilbyui/_gwflow_job_row.html" %}
   {% empty %}
     <p class="text-muted">No GWFlow jobs found.</p>
   {% endfor %}
-  {% include "bilbyui/_paging_sentinel.html" %}
+  {% include "bilbyui/_pagination.html" %}
 {% endif %}

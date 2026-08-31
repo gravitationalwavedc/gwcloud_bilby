@@ -39,6 +39,21 @@ def _numeric_es_records(records):
     ]
 
 
+def _extract_es_total(results):
+    """Return the total hit count from an ES response, guarding against a
+    missing total block or a string-typed value."""
+    try:
+        total = results["hits"]["total"]["value"]
+    except (KeyError, TypeError):
+        return 0
+    if isinstance(total, str):
+        try:
+            return int(total)
+        except (TypeError, ValueError):
+            return 0
+    return total if isinstance(total, int) else 0
+
+
 def _apply_time_range_filter(qs, time_range, field_name="last_updated"):
     if time_range == "all":
         return qs
@@ -67,6 +82,8 @@ def list_user_jobs(user, *, search="", time_range="all", page=1, page_size=20):
     qs = _apply_search_filter(qs, search)
     qs = _apply_time_range_filter(qs, time_range)
 
+    total = qs.count()
+
     offset = (page - 1) * page_size
     jobs_slice = list(qs[offset : offset + page_size + 1])
     has_next = len(jobs_slice) > page_size
@@ -74,6 +91,7 @@ def list_user_jobs(user, *, search="", time_range="all", page=1, page_size=20):
     return {
         "jobs": jobs_slice[:page_size],
         "has_next": has_next,
+        "total": total,
         "page": page,
         "page_size": page_size,
         "state": "ok",
@@ -105,6 +123,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         "records": [],
         "job_controller_jobs": {},
         "has_next": False,
+        "total": 0,
         "page": page,
         "page_size": page_size,
         "state": "ok",
@@ -189,6 +208,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         "records": records,
         "job_controller_jobs": job_controller_jobs,
         "has_next": has_next,
+        "total": _extract_es_total(results),
         "page": page,
         "page_size": page_size,
         "state": "ok",

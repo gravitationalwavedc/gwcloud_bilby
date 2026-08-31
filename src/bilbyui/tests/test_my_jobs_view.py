@@ -89,7 +89,8 @@ class TestMyJobsView(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "<!doctype html>", status_code=200)
         self.assertContains(response, "Fragment job")
-        self.assertNotContains(response, "My Jobs")
+        self.assertContains(response, "<title>My Jobs — GWCloud</title>")
+        self.assertNotContains(response, "<h1")
 
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_paging_works(self, request_job_filter):
@@ -109,8 +110,46 @@ class TestMyJobsView(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Paged job 29")
-        self.assertContains(response, "Loading more")
+        self.assertContains(response, 'aria-label="Pagination"')
         self.assertContains(response, "page=2")
+
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_full_page_title_includes_page_number_when_greater_than_one(self, request_job_filter):
+        self.authenticate()
+
+        for index in range(30):
+            BilbyJob.objects.create(
+                user_id=self.user.id,
+                name=f"Paged job {index}",
+                description=f"Paged description {index}",
+                job_controller_id=9100 + index,
+                private=False,
+                ini_string=create_test_ini_string({"detectors": "['H1']", "label": f"Paged job {index}"}),
+            )
+
+        response = self.client.get(self.url, {"page": 2})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<title>My Jobs — page 2 — GWCloud</title>")
+
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_fragment_title_renders_page_number_and_prefix(self, request_job_filter):
+        self.authenticate()
+
+        for index in range(30):
+            BilbyJob.objects.create(
+                user_id=self.user.id,
+                name=f"Paged job {index}",
+                description=f"Paged description {index}",
+                job_controller_id=9200 + index,
+                private=False,
+                ini_string=create_test_ini_string({"detectors": "['H1']", "label": f"Paged job {index}"}),
+            )
+
+        response = self.client.get(self.url, {"page": 2}, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<title>My Jobs — page 2 — GWCloud</title>")
 
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_invalid_time_range_defaults_to_all(self, request_job_filter):
