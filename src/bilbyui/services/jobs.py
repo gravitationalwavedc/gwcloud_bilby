@@ -41,11 +41,13 @@ def _numeric_es_records(records):
 
 def _extract_es_total(results):
     """Return the total hit count from an ES response, guarding against a
-    missing total block or a string-typed value."""
+    missing total block, a string-typed value, or the legacy integer shape."""
     try:
-        total = results["hits"]["total"]["value"]
+        total = results["hits"]["total"]
     except (KeyError, TypeError):
         return 0
+    if isinstance(total, dict):
+        total = total.get("value", 0)
     if isinstance(total, str):
         try:
             return int(total)
@@ -176,7 +178,11 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         empty_result["state"] = "down"
         return empty_result
 
-    if not results or "hits" not in results or not results["hits"]["hits"]:
+    if not results or "hits" not in results:
+        return empty_result
+    total = _extract_es_total(results)
+    if not results["hits"]["hits"]:
+        empty_result["total"] = total
         return empty_result
 
     records = _numeric_es_records(results["hits"]["hits"])
@@ -208,7 +214,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         "records": records,
         "job_controller_jobs": job_controller_jobs,
         "has_next": has_next,
-        "total": _extract_es_total(results),
+        "total": total,
         "page": page,
         "page_size": page_size,
         "state": "ok",

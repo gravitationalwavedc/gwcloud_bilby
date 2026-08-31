@@ -370,7 +370,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
             {
                 "search": "S2306* & co",
                 "library": "cbc-workflow-o4a",
-                "review_status": "reviewed",
+                "review": "reviewed",
                 "time_range": "1d",
                 "page": 3,
             },
@@ -381,7 +381,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         context = response.context
         self.assertEqual(context["search"], "S2306* & co")
         self.assertEqual(context["library"], "cbc-workflow-o4a")
-        self.assertEqual(context["review_status"], "reviewed")
+        self.assertEqual(context["review"], "reviewed")
         self.assertEqual(context["time_range"], "1d")
         self.assertEqual(context["page"], 3)
         self.assertEqual(context["total"], 57)
@@ -412,7 +412,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         ):
             response = self.client.get(
                 self.url,
-                {"search": "foo", "library": "lib-a", "review_status": "reviewed", "time_range": "1w", "page": 2},
+                {"search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1w", "page": 2},
                 HTTP_HX_REQUEST="true",
             )
 
@@ -421,7 +421,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         context = response.context
         self.assertEqual(context["search"], "foo")
         self.assertEqual(context["library"], "lib-a")
-        self.assertEqual(context["review_status"], "reviewed")
+        self.assertEqual(context["review"], "reviewed")
         self.assertEqual(context["time_range"], "1w")
         self.assertEqual(context["page"], 2)
         self.assertEqual(context["total"], 12)
@@ -476,7 +476,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
 
     def test_active_filters_chips_and_reset(self):
         context = self._render_context(
-            {"search": "foo", "library": "lib-a", "review_status": "reviewed", "time_range": "1d"},
+            {"search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d"},
             total=10,
         )
 
@@ -487,23 +487,32 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         )
         self.assertEqual(
             [f["param_name"] for f in active_filters],
-            ["search", "library", "review_status", "time_range"],
+            ["search", "library", "review", "time_range"],
+        )
+        self.assertEqual(
+            [f["remove_label"] for f in active_filters],
+            [
+                "Remove search filter",
+                "Remove library filter",
+                "Remove review status filter",
+                "Remove time filter",
+            ],
         )
 
         search_chip = active_filters[0]
         self.assertEqual(
             search_chip["remove_url"],
-            f"{reverse('bilbyui:gwflow_jobs')}?library=lib-a&review_status=reviewed&time_range=1d&page=1",
+            f"{reverse('bilbyui:gwflow_jobs')}?library=lib-a&review=reviewed&time_range=1d&page=1",
         )
         library_chip = active_filters[1]
         self.assertEqual(
             library_chip["remove_url"],
-            f"{reverse('bilbyui:gwflow_jobs')}?search=foo&review_status=reviewed&time_range=1d&page=1",
+            f"{reverse('bilbyui:gwflow_jobs')}?search=foo&review=reviewed&time_range=1d&page=1",
         )
         time_chip = active_filters[3]
         self.assertEqual(
             time_chip["remove_url"],
-            f"{reverse('bilbyui:gwflow_jobs')}?search=foo&library=lib-a&review_status=reviewed&page=1",
+            f"{reverse('bilbyui:gwflow_jobs')}?search=foo&library=lib-a&review=reviewed&page=1",
         )
 
         self.assertEqual(context["reset_url"], reverse("bilbyui:gwflow_jobs"))
@@ -539,13 +548,13 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
 
     def test_retry_url_carries_all_params(self):
         context = self._render_context(
-            {"search": "foo", "library": "lib-a", "review_status": "reviewed", "time_range": "1d", "page": 2},
+            {"search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d", "page": 2},
             total=10,
         )
 
         self.assertEqual(
             context["retry_url"],
-            f"{reverse('bilbyui:gwflow_jobs')}?page=2&search=foo&time_range=1d&library=lib-a&review_status=reviewed",
+            f"{reverse('bilbyui:gwflow_jobs')}?page=2&search=foo&time_range=1d&library=lib-a&review=reviewed",
         )
 
     def test_retry_url_quotes_values(self):
@@ -596,7 +605,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
                 return_value={"libraries": [], "review_statuses": []},
             ),
         ):
-            response = self.client.get(self.url, {"library": "cbc-workflow-o4a", "review_status": "reviewed"})
+            response = self.client.get(self.url, {"library": "cbc-workflow-o4a", "review": "reviewed"})
 
         self.assertEqual(response.status_code, 200)
         mock_list.assert_called_once_with(
@@ -608,7 +617,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
             page=1,
         )
         self.assertEqual(response.context["library"], "cbc-workflow-o4a")
-        self.assertEqual(response.context["review_status"], "reviewed")
+        self.assertEqual(response.context["review"], "reviewed")
 
     def test_fragment_title_renders_page_number_and_prefix(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user)

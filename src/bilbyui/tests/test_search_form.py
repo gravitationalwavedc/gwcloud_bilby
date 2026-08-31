@@ -5,7 +5,7 @@ Issue #51 (UX-4 GWFlow search/filtering/pagination), task-3. Renders
 job-list views, asserting the coordinated-form contract:
 
 * every control has a programmatic ``<label>`` (WCAG 3.3.2)
-* one coordinated request stream (``hx-sync="this:replace"`` + 300 ms debounce)
+* one coordinated request stream (``hx-sync="#jobs-search-region:replace"`` + 300 ms debounce)
 * hidden ``page=1`` reset on any filter change
 * GWFlow-only selects appear only when ``show_gwflow_filters``
 * the advanced-syntax input is always visible
@@ -34,7 +34,7 @@ def _render_search_form(**overrides):
         },
         "search": "",
         "library": "",
-        "review_status": "",
+        "review": "",
         "time_range": "all",
     }
     context.update(overrides)
@@ -117,7 +117,7 @@ class TestSearchFormStructure(BilbyTestCase):
 
     def test_form_has_coordinated_htmx_attributes(self):
         html = _render_search_form()
-        self.assertIn('hx-sync="this:replace"', html)
+        self.assertIn('hx-sync="#jobs-search-region:replace"', html)
         self.assertIn('hx-push-url="true"', html)
         self.assertIn('hx-swap="innerHTML"', html)
         self.assertIn('hx-get="/gwflow/"', html)
@@ -134,19 +134,21 @@ class TestSearchFormStructure(BilbyTestCase):
     def test_search_input_has_300ms_debounce(self):
         html = _render_search_form()
         self.assertIn('name="search"', html)
-        self.assertIn('hx-trigger="keyup changed delay:300ms, search"', html)
+        self.assertIn('hx-trigger="input changed delay:300ms, search"', html)
 
     def test_advanced_syntax_input_always_visible_and_single(self):
         html = _render_search_form()
         self.assertEqual(html.count('name="search"'), 1)
         self.assertIn('id="search"', html)
-        self.assertIn('<label for="search">Advanced syntax:</label>', html)
+        self.assertIn('<label for="search">Search</label>', html)
+        self.assertIn('<label for="advanced-search">Advanced syntax:</label>', html)
+        self.assertIn('id="advanced-search"', html)
         self.assertEqual(html.count('<label for="search"'), 1, "search input must have exactly one label (WCAG 3.3.2)")
 
     def test_gwflow_selects_rendered_when_show_gwflow_filters(self):
         html = _render_search_form(show_gwflow_filters=True)
         self.assertIn('name="library"', html)
-        self.assertIn('name="review_status"', html)
+        self.assertIn('name="review"', html)
         self.assertIn("cbc-workflow-o4a", html)
         self.assertIn("reviewed", html)
 
@@ -157,7 +159,7 @@ class TestSearchFormStructure(BilbyTestCase):
             show_gwflow_filters=False,
         )
         self.assertNotIn('name="library"', html)
-        self.assertNotIn('name="review_status"', html)
+        self.assertNotIn('name="review"', html)
 
     def test_gwflow_selects_absent_on_bilby_url_without_param(self):
         html = _render_search_form(
@@ -165,12 +167,12 @@ class TestSearchFormStructure(BilbyTestCase):
             list_target_id="job-list",
         )
         self.assertNotIn('name="library"', html)
-        self.assertNotIn('name="review_status"', html)
+        self.assertNotIn('name="review"', html)
 
     def test_gwflow_selects_default_on_gwflow_url_without_param(self):
         html = _render_search_form(jobs_list_url_name="bilbyui:gwflow_jobs")
         self.assertIn('name="library"', html)
-        self.assertIn('name="review_status"', html)
+        self.assertIn('name="review"', html)
 
     def test_updated_select_present_on_all_surfaces(self):
         html = _render_search_form(show_gwflow_filters=False)
@@ -198,7 +200,7 @@ class TestSearchFormStructure(BilbyTestCase):
         html = _render_search_form(
             search="sname:S2306*",
             library="cbc-workflow-o4c",
-            review_status="reviewed",
+            review="reviewed",
             time_range="1w",
         )
         self.assertIn('value="sname:S2306*"', html)
@@ -231,6 +233,13 @@ class TestSearchHelpPartials(BilbyTestCase):
         ):
             self.assertIn(f"<code>{field}</code>", html)
         self.assertIn("sname:S2306*", html)
+        for abbreviation in ("UID", "PE", "TGR", "GraceDB", "CBC"):
+            self.assertIn(f"<code>{abbreviation}</code>", html)
+
+    def test_sync_script_defaults_time_range_to_all(self):
+        html = get_template("bilbyui/_search_state_sync.html").render({})
+        self.assertIn('name === "time_range" ? "all" : ""', html)
+        self.assertIn('name === "page" ? "1"', html)
 
     def test_bilby_help_lists_all_searchable_fields(self):
         html = get_template("bilbyui/_bilby_search_help.html").render({})
@@ -268,7 +277,7 @@ class TestHelpOnAllSurfaces(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="search-help"')
         self.assertContains(response, "<code>analyses.waveform</code>")
-        self.assertContains(response, 'hx-sync="this:replace"')
+        self.assertContains(response, 'hx-sync="#jobs-search-region:replace"')
 
     @mock.patch("bilbyui.views.list_user_jobs", return_value=_user_jobs_ok_result())
     def test_my_jobs_surface_renders_bilby_help(self, mock_jobs):
@@ -276,7 +285,7 @@ class TestHelpOnAllSurfaces(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="search-help"')
         self.assertContains(response, "<code>job.name</code>")
-        self.assertContains(response, 'hx-sync="this:replace"')
+        self.assertContains(response, 'hx-sync="#jobs-search-region:replace"')
 
     @mock.patch("bilbyui.views.list_public_jobs", return_value=_public_jobs_ok_result())
     def test_public_jobs_surface_renders_bilby_help(self, mock_jobs):
@@ -284,17 +293,17 @@ class TestHelpOnAllSurfaces(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="search-help"')
         self.assertContains(response, "<code>job.name</code>")
-        self.assertContains(response, 'hx-sync="this:replace"')
+        self.assertContains(response, 'hx-sync="#jobs-search-region:replace"')
 
     @mock.patch("bilbyui.views.list_gwflow_filter_options", return_value={"libraries": [], "review_statuses": []})
     @mock.patch("bilbyui.views.list_gwflow_jobs", return_value=_gwflow_ok_result())
     def test_gwflow_surface_shows_gwflow_selects(self, mock_jobs, mock_options):
         response = self.client.get(reverse("bilbyui:gwflow_jobs"))
         self.assertContains(response, 'name="library"')
-        self.assertContains(response, 'name="review_status"')
+        self.assertContains(response, 'name="review"')
 
     @mock.patch("bilbyui.views.list_user_jobs", return_value=_user_jobs_ok_result())
     def test_my_jobs_surface_hides_gwflow_selects(self, mock_jobs):
         response = self.client.get(reverse("bilbyui:my_jobs"))
         self.assertNotContains(response, 'name="library"')
-        self.assertNotContains(response, 'name="review_status"')
+        self.assertNotContains(response, 'name="review"')

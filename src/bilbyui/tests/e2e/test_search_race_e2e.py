@@ -1,7 +1,7 @@
 """Race-condition e2e test for the coordinated GWFlow search form.
 
 The form owns every control and coordinates requests with
-``hx-sync="this:replace"`` plus a 300 ms debounce on the search input. This
+``hx-sync="#jobs-search-region:replace"`` plus a 300 ms debounce on the search input. This
 test fires a search-input change and a filter-select change in quick
 succession (within the debounce window) and asserts the final rendered list
 matches the LAST request's state — exactly one final DOM state, no
@@ -73,6 +73,14 @@ class TestGWFlowSearchRace(GWFlowJobsPageBase):
         await page.wait_for_timeout(700)
         self.assertIn("1003 superevents match", await page.locator(".result-count").text_content())
 
+        # Focus stays on the triggering control (WCAG 3.2.2): the search input
+        # is outside the swapped list region and must not be replaced.
+        self.assertEqual(
+            await page.evaluate("document.activeElement ? document.activeElement.id : null"),
+            "search",
+            "focus must remain on the search input after the list swap",
+        )
+
         # The settled state is encoded in the URL and the active-filter chip.
         self.assertIn("search=abc", page.url)
         self.assertIn("library=lib1", page.url)
@@ -102,3 +110,43 @@ class TestGWFlowSearchRace(GWFlowJobsPageBase):
         )
         await page.wait_for_timeout(700)
         self.assertIn("2003 superevents match", await page.locator(".result-count").text_content())
+
+
+class TestGWFlowSiblingSourceRace(GWFlowJobsPageBase):
+    """A chip-removal request overlapping a form request settles on the last request.
+
+    Both sources target the same list region and share the
+    ``#jobs-search-region`` synchronisation boundary, so the chip removal must
+    replace the in-flight (or pending) form request rather than resolve
+    out-of-order.
+    """
+
+    gwflow_jobs_side_effect = staticmethod(_slow_race_side_effect)
+
+    @async_e2e_test
+    async def test_chip_removal_overlapping_form_request_wins(self):
+        page = self.page
+        # Load with a library filter active so a removable chip is rendered.
+        await page.goto(f"{self.gwflow_url()}?library=lib1")
+        await page.wait_for_selector(".filter-chip")
+        await page.wait_for_selector(".result-count")
+
+        # Fire a search-input change (slow request A) ...
+        search = page.locator("#search")
+        await search.press_sequentially("abc")
+        # Wait for the debounced form request to fire and be in-flight (the
+        # slow mock sleeps SLOW_ES_DELAY_SECONDS) ...
+        await page.wait_for_timeout(350)
+        # ... then click the chip removal while request A is still in flight.
+        await page.locator(".filter-chip-remove").click()
+
+        # The shared sync boundary must settle on the LAST request: the chip
+        # removal (library removed, search cleared) -> total = 0, no chips.
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('0 superevents match'); }",
+            timeout=10000,
+        )
+        await page.wait_for_timeout(700)
+        self.assertIn("0 superevents match", await page.locator(".result-count").text_content())
+        self.assertEqual(await page.locator(".filter-chip").count(), 0, "no chips must remain after removal")
+        self.assertNotIn("library=", page.url, "URL must reflect the chip removal")

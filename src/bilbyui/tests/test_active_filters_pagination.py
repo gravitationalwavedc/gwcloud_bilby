@@ -136,7 +136,7 @@ class TestActiveFiltersPagination(BilbyTestCase):
     # ------------------------------------------------------------------
     def test_active_filters_chips_render_with_remove_buttons(self):
         response = self._render_fragment(
-            {"search": "foo", "library": "lib-a", "review_status": "reviewed", "time_range": "1d"},
+            {"search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d"},
             total=10,
         )
 
@@ -144,10 +144,10 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertContains(response, "Library: lib-a")
         self.assertContains(response, "Review status: reviewed")
         self.assertContains(response, "Updated: Past 24 hours")
-        self.assertContains(response, 'aria-label="Remove Search: foo"')
-        self.assertContains(response, 'aria-label="Remove Library: lib-a"')
-        self.assertContains(response, 'aria-label="Remove Review status: reviewed"')
-        self.assertContains(response, 'aria-label="Remove Updated: Past 24 hours"')
+        self.assertContains(response, 'aria-label="Remove search filter"')
+        self.assertContains(response, 'aria-label="Remove library filter"')
+        self.assertContains(response, 'aria-label="Remove review status filter"')
+        self.assertContains(response, 'aria-label="Remove time filter"')
         self.assertContains(response, "Reset all")
 
     def test_active_filters_remove_url_and_target(self):
@@ -194,11 +194,11 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertContains(response, 'class="page-item active"')
         self.assertContains(
             response,
-            f'href="{reverse("bilbyui:gwflow_jobs")}?page=1&search=&library=&review_status=&time_range=all"',
+            f'href="{reverse("bilbyui:gwflow_jobs")}?page=1&search=&library=&review=&time_range=all"',
         )
         self.assertContains(
             response,
-            f'href="{reverse("bilbyui:gwflow_jobs")}?page=3&search=&library=&review_status=&time_range=all"',
+            f'href="{reverse("bilbyui:gwflow_jobs")}?page=3&search=&library=&review=&time_range=all"',
         )
 
     def test_pagination_links_are_progressively_enhanced(self):
@@ -209,19 +209,32 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertContains(response, 'hx-push-url="true"')
         self.assertContains(
             response,
-            f'hx-get="{reverse("bilbyui:gwflow_jobs")}?page=2&search=&library=&review_status=&time_range=all"',
+            f'hx-get="{reverse("bilbyui:gwflow_jobs")}?page=1&search=&library=&review=&time_range=all"',
+        )
+        self.assertContains(
+            response,
+            f'hx-get="{reverse("bilbyui:gwflow_jobs")}?page=3&search=&library=&review=&time_range=all"',
+        )
+
+    def test_current_page_is_non_actionable(self):
+        response = self._render_fragment({"page": 2}, total=40, has_next=True)
+
+        self.assertContains(response, '<span class="page-link" aria-current="page">2</span>')
+        self.assertNotContains(
+            response,
+            f'hx-get="{reverse("bilbyui:gwflow_jobs")}?page=2&search=&library=&review=&time_range=all"',
         )
 
     def test_pagination_carries_all_params(self):
         response = self._render_fragment(
-            {"search": "foo", "library": "lib-a", "review_status": "reviewed", "time_range": "1d", "page": 1},
+            {"search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d", "page": 1},
             total=40,
             has_next=True,
         )
 
         self.assertContains(
             response,
-            "search=foo&library=lib-a&review_status=reviewed&time_range=1d",
+            "search=foo&library=lib-a&review=reviewed&time_range=1d",
         )
 
     def test_pagination_urlencodes_values(self):
@@ -283,14 +296,14 @@ class TestActiveFiltersPagination(BilbyTestCase):
     def test_gwflow_view_renders_count_chips_and_pagination(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user)
         response = self._get_gwflow(
-            {"search": "foo", "library": "lib-a", "review_status": "reviewed", "time_range": "1d"},
+            {"search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d"},
             total=40,
             has_next=True,
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "40 superevents match")
-        self.assertContains(response, 'aria-label="Remove Search: foo"')
+        self.assertContains(response, 'aria-label="Remove search filter"')
         self.assertContains(response, "Reset all")
         self.assertContains(response, 'aria-label="Pagination"')
         self.assertContains(response, 'aria-current="page"')

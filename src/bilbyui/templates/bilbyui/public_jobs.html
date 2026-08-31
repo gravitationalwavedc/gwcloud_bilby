@@ -23,10 +23,12 @@
 
     <div class="card gw-form-card">
       <div class="card-body">
-        {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_bilby_search_help.html" show_gwflow_filters=False list_target_id="job-list" %}
-        {% include "bilbyui/_search_state_sync.html" %}
-        <div id="job-list" class="mt-4">
-          {% include "bilbyui/_job_list_fragment.html" %}
+        <div id="jobs-search-region">
+          {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_bilby_search_help.html" show_gwflow_filters=False list_target_id="job-list" %}
+          {% include "bilbyui/_search_state_sync.html" %}
+          <div id="job-list" class="mt-4">
+            {% include "bilbyui/_job_list_fragment.html" %}
+          </div>
         </div>
       </div>
     </div>

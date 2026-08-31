@@ -1,45 +1,51 @@
-{# Numbered pagination with prev/next (issue #51 UX-4). Rendered only when total_pages > 1. Real hrefs carry every active param (JS-disabled crawl works) and are enhanced with hx-get (progressive enhancement). Contract: total_pages, page_range, page, has_next, search, library, review_status, time_range, jobs_list_url_name, list_target_id. #}
+{# Numbered pagination with prev/next (issue #51 UX-4). Rendered only when total_pages > 1. Real hrefs carry every active param (JS-disabled crawl works) and are enhanced with hx-get (progressive enhancement). All requests sync through #jobs-search-region (shared with the form and chips) so only one list request is in flight at a time. The current page renders as a non-actionable span with aria-current="page". Contract: total_pages, page_range, page, has_next, search, library, review, time_range, jobs_list_url_name, list_target_id. #}
 {% if total_pages > 1 %}
-{% with search_q=search|urlencode library_q=library|urlencode review_status_q=review_status|urlencode %}
+{% with search_q=search|urlencode library_q=library|urlencode review_q=review|urlencode %}
 <nav class="pagination-wrap" aria-label="Pagination">
   <ul class="pagination">
     {% if page > 1 %}
     <li class="page-item">
       <a
         class="page-link"
-        href="{% url jobs_list_url_name %}?page={{ page|add:"-1" }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        href="{% url jobs_list_url_name %}?page={{ page|add:"-1" }}&search={{ search_q }}&library={{ library_q }}&review={{ review_q }}&time_range={{ time_range|urlencode }}"
         rel="prev"
         aria-label="Previous page"
-        hx-get="{% url jobs_list_url_name %}?page={{ page|add:"-1" }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        hx-get="{% url jobs_list_url_name %}?page={{ page|add:"-1" }}&search={{ search_q }}&library={{ library_q }}&review={{ review_q }}&time_range={{ time_range|urlencode }}"
         hx-target="#{{ list_target_id|default:'job-list' }}"
         hx-swap="innerHTML"
+        hx-sync="#jobs-search-region:replace"
         hx-push-url="true"
       >&laquo;</a>
     </li>
     {% endif %}
     {% for p in page_range %}
     <li class="page-item{% if p == page %} active{% endif %}">
+      {% if p == page %}
+      <span class="page-link" aria-current="page">{{ p }}</span>
+      {% else %}
       <a
         class="page-link"
-        href="{% url jobs_list_url_name %}?page={{ p }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
-        {% if p == page %}aria-current="page"{% endif %}
-        hx-get="{% url jobs_list_url_name %}?page={{ p }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        href="{% url jobs_list_url_name %}?page={{ p }}&search={{ search_q }}&library={{ library_q }}&review={{ review_q }}&time_range={{ time_range|urlencode }}"
+        hx-get="{% url jobs_list_url_name %}?page={{ p }}&search={{ search_q }}&library={{ library_q }}&review={{ review_q }}&time_range={{ time_range|urlencode }}"
         hx-target="#{{ list_target_id|default:'job-list' }}"
         hx-swap="innerHTML"
+        hx-sync="#jobs-search-region:replace"
         hx-push-url="true"
       >{{ p }}</a>
+      {% endif %}
     </li>
     {% endfor %}
     {% if has_next %}
     <li class="page-item">
       <a
         class="page-link"
-        href="{% url jobs_list_url_name %}?page={{ page|add:"1" }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        href="{% url jobs_list_url_name %}?page={{ page|add:"1" }}&search={{ search_q }}&library={{ library_q }}&review={{ review_q }}&time_range={{ time_range|urlencode }}"
         rel="next"
         aria-label="Next page"
-        hx-get="{% url jobs_list_url_name %}?page={{ page|add:"1" }}&search={{ search_q }}&library={{ library_q }}&review_status={{ review_status_q }}&time_range={{ time_range|urlencode }}"
+        hx-get="{% url jobs_list_url_name %}?page={{ page|add:"1" }}&search={{ search_q }}&library={{ library_q }}&review={{ review_q }}&time_range={{ time_range|urlencode }}"
         hx-target="#{{ list_target_id|default:'job-list' }}"
         hx-swap="innerHTML"
+        hx-sync="#jobs-search-region:replace"
         hx-push-url="true"
       >&raquo;</a>
     </li>

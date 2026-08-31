@@ -1143,24 +1143,31 @@ def _build_jobs_list_url(jobs_list_url_name, params):
     return reverse(jobs_list_url_name)
 
 
-def _build_active_filters(jobs_list_url_name, search, library, review_status, time_range):
+def _build_active_filters(jobs_list_url_name, search, library, review, time_range):
     """Build removable active-filter chips. Each chip removes exactly one active
-    filter while keeping the remaining params, resetting to page 1."""
+    filter while keeping the remaining params, resetting to page 1. The remove
+    button's accessible name follows the issue contract (e.g. "Remove library
+    filter")."""
     params = {
         "search": search,
         "library": library,
-        "review_status": review_status,
+        "review": review,
         "time_range": time_range,
     }
     filter_defs = (
-        ("search", search, f"Search: {search}"),
-        ("library", library, f"Library: {library}"),
-        ("review_status", review_status, f"Review status: {review_status}"),
-        ("time_range", time_range, f"Updated: {_TIME_RANGE_LABELS.get(time_range, time_range)}"),
+        ("search", search, f"Search: {search}", "Remove search filter"),
+        ("library", library, f"Library: {library}", "Remove library filter"),
+        ("review", review, f"Review status: {review}", "Remove review status filter"),
+        (
+            "time_range",
+            time_range,
+            f"Updated: {_TIME_RANGE_LABELS.get(time_range, time_range)}",
+            "Remove time filter",
+        ),
     )
 
     active_filters = []
-    for param_name, param_value, label in filter_defs:
+    for param_name, param_value, label, remove_label in filter_defs:
         if not param_value:
             continue
         if param_name == "time_range" and param_value == "all":
@@ -1174,6 +1181,7 @@ def _build_active_filters(jobs_list_url_name, search, library, review_status, ti
         active_filters.append(
             {
                 "label": label,
+                "remove_label": remove_label,
                 "param_name": param_name,
                 "param_value": param_value,
                 "remove_url": _build_jobs_list_url(jobs_list_url_name, remaining),
@@ -1199,20 +1207,20 @@ def _render_job_list(
     page = _parse_page(request)
     search = request.GET.get("search", "")
     library = request.GET.get("library", "")
-    review_status = request.GET.get("review_status", "")
+    review = request.GET.get("review", "")
     time_range = _normalize_time_range(request.GET.get("time_range", "all"))
 
     retry_params = {"page": page, "search": search, "time_range": time_range}
     if library:
         retry_params["library"] = library
-    if review_status:
-        retry_params["review_status"] = review_status
+    if review:
+        retry_params["review"] = review
     retry_url = _build_jobs_list_url(jobs_list_url_name, retry_params)
 
     total_pages = max(1, math.ceil(total / page_size)) if page_size and page_size > 0 else 1
     page_range = list(range(max(1, page - 2), min(total_pages, page + 2) + 1))
 
-    active_filters = _build_active_filters(jobs_list_url_name, search, library, review_status, time_range)
+    active_filters = _build_active_filters(jobs_list_url_name, search, library, review, time_range)
 
     context = {
         "rows": rows,
@@ -1227,7 +1235,7 @@ def _render_job_list(
         "retry_target": f"#{list_target_id}" if list_target_id else "#job-list",
         "total": total,
         "library": library,
-        "review_status": review_status,
+        "review": review,
         "filter_options": filter_options if filter_options is not None else {"libraries": [], "review_statuses": []},
         "total_pages": total_pages,
         "page_range": page_range,
@@ -1268,20 +1276,22 @@ def public_jobs_view(request):
 
 def gwflow_jobs_view(request):
     library = request.GET.get("library", "")
-    review_status = request.GET.get("review_status", "")
+    review = request.GET.get("review", "")
     result = list_gwflow_jobs(
         request.user,
         search=request.GET.get("search", ""),
         library=library,
-        review_status=review_status,
+        review_status=review,
         time_range=_normalize_time_range(request.GET.get("time_range", "all")),
         page=_parse_page(request),
     )
 
-    try:
-        filter_options = list_gwflow_filter_options()
-    except Exception:
-        filter_options = {"libraries": [], "review_statuses": []}
+    filter_options = {"libraries": [], "review_statuses": []}
+    if request.headers.get("HX-Request") != "true":
+        try:
+            filter_options = list_gwflow_filter_options()
+        except Exception:
+            logger.exception("Failed to load GWFlow filter options")
 
     return _render_job_list(
         request,
@@ -1995,8 +2005,10 @@ def upsert_gwflow_job(user, params):
 
         job.save()
 
-        # Libraries may have changed — invalidate the cached filter options.
-        cache.delete(LIBRARIES_CACHE_KEY)
+        # Libraries may have changed — invalidate the cached filter options only
+        # after the transaction commits so a concurrent refill cannot cache old
+        # values and a rollback does not invalidate a cache for uncommitted data.
+        transaction.on_commit(lambda: cache.delete(LIBRARIES_CACHE_KEY))
 
         # Process file manifest
         file_entries = getattr(params, "files", None) or []

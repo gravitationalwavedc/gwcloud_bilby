@@ -1,4 +1,8 @@
-{# Popstate / htmx:historyRestore form-state sync (issue #51 UX-4). HTMX history only restores the swapped list region, not the search form; this dependency-free script restores the form controls from the URL params so back/forward/refresh keep the settled state. #}
+{# Popstate / htmx:historyRestore form-state sync + advanced-syntax mirror (issue #51 UX-4). #}
+{# HTMX history only restores the swapped list region, not the search form; this #}
+{# dependency-free script restores the form controls from the URL params so #}
+{# back/forward/refresh keep the settled state. It also mirrors the row-1 search #}
+{# input and the row-2 "Advanced syntax:" input so both present the same ?search= value. #}
 <script>
 (function () {
   "use strict";
@@ -9,16 +13,38 @@
     }
     var form = searchInput.form;
     var params = new URLSearchParams(window.location.search);
-    ["search", "library", "review_status", "time_range", "page"].forEach(function (name) {
+    ["search", "library", "review", "time_range", "page"].forEach(function (name) {
       var control = form.elements[name];
       if (!control) {
         return;
       }
       var value = params.get(name);
-      control.value = value === null ? (name === "page" ? "1" : "") : value;
+      var defaultValue = name === "page" ? "1" : (name === "time_range" ? "all" : "");
+      control.value = value === null ? defaultValue : value;
+    });
+    var advanced = document.getElementById("advanced-search");
+    if (advanced) {
+      advanced.value = searchInput.value;
+    }
+  }
+
+  function bindAdvancedMirror() {
+    var basic = document.querySelector("form input[name='search']");
+    var advanced = document.getElementById("advanced-search");
+    if (!basic || !advanced) {
+      return;
+    }
+    basic.addEventListener("input", function () {
+      advanced.value = basic.value;
+    });
+    advanced.addEventListener("input", function () {
+      basic.value = advanced.value;
+      basic.dispatchEvent(new Event("input", { bubbles: true }));
     });
   }
+
   window.addEventListener("popstate", syncSearchFormFromUrl);
   document.addEventListener("htmx:historyRestore", syncSearchFormFromUrl);
+  bindAdvancedMirror();
 })();
 </script>

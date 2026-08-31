@@ -11,10 +11,12 @@
 
     <div class="card gw-form-card">
       <div class="card-body">
-        {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_gwflow_search_help.html" show_gwflow_filters=True filter_options=filter_options list_target_id="gwflow-job-list" %}
-        {% include "bilbyui/_search_state_sync.html" %}
-        <div id="gwflow-job-list" class="mt-4">
-          {% include "bilbyui/_gwflow_job_list_fragment.html" %}
+        <div id="jobs-search-region">
+          {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_gwflow_search_help.html" show_gwflow_filters=True filter_options=filter_options list_target_id="gwflow-job-list" %}
+          {% include "bilbyui/_search_state_sync.html" %}
+          <div id="gwflow-job-list" class="mt-4">
+            {% include "bilbyui/_gwflow_job_list_fragment.html" %}
+          </div>
         </div>
       </div>
     </div>

@@ -303,6 +303,49 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertIn('analyses.reviewStatus:"a\\:b\\*c"', q)
 
     @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_groups_free_form_query_before_structured_filters(self, mock_get_es_client):
+        """An OR expression must not leave a branch unconstrained by the
+        Library/Review filters (query-policy bypass)."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        list_gwflow_jobs(
+            self.non_ligo_user,
+            search="sname:S1 OR sname:S2",
+            library="lib-a",
+            review_status="reviewed",
+        )
+
+        q = mock_client.search.call_args[1]["q"]
+        self.assertIn('(sname:S1 OR sname:S2) AND libraries:"lib-a"', q)
+        self.assertIn(
+            '((sname:S1 OR sname:S2) AND libraries:"lib-a") AND analyses.reviewStatus:"reviewed"',
+            q,
+        )
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_preserves_total_on_empty_page(self, mock_get_es_client):
+        """An out-of-range page with a positive ES total must not hide the total."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [], "total": {"value": 57}}}
+
+        res = list_gwflow_jobs(self.non_ligo_user, page=99)
+
+        self.assertEqual(res["total"], 57)
+        self.assertEqual(res["jobs"], {})
+        self.assertFalse(res["has_next"])
+
+    def test_extract_es_total_legacy_integer_shape(self):
+        from bilbyui.services.jobs import _extract_es_total
+
+        self.assertEqual(_extract_es_total({"hits": {"total": 42}}), 42)
+        self.assertEqual(_extract_es_total({"hits": {"total": {"value": 42}}}), 42)
+        self.assertEqual(_extract_es_total({"hits": {"total": "42"}}), 42)
+        self.assertEqual(_extract_es_total({"hits": {}}), 0)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_returns_total(self, mock_get_es_client):
         mock_client = MagicMock()
         mock_get_es_client.return_value = mock_client

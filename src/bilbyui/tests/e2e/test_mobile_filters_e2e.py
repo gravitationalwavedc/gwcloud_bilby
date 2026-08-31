@@ -13,7 +13,7 @@ from bilbyui.tests.e2e.utils import async_e2e_test
 
 MOBILE_VIEWPORT = {"width": 375, "height": 700}
 
-FILTER_SELECT_IDS = ("library", "review_status", "time_range")
+FILTER_SELECT_IDS = ("library", "review", "time_range")
 
 
 class TestGWFlowMobileFilters(GWFlowJobsPageBase):
@@ -30,17 +30,20 @@ class TestGWFlowMobileFilters(GWFlowJobsPageBase):
         self.assertTrue(await filters_button.is_visible(), "Filters disclosure button must be visible at mobile width")
 
         # The advanced-syntax input is always visible and sits directly under
-        # the Filters button (not hidden behind the disclosure).
+        # the search input (issue contract: "advanced toggle sits DIRECTLY
+        # under search").
         search_input = page.locator("#search")
-        self.assertTrue(await search_input.is_visible(), "advanced-syntax input must be visible at mobile width")
-        button_box = await filters_button.bounding_box()
-        input_box = await search_input.bounding_box()
-        self.assertIsNotNone(button_box, "Filters button must have a bounding box")
-        self.assertIsNotNone(input_box, "advanced-syntax input must have a bounding box")
+        advanced_input = page.locator("#advanced-search")
+        self.assertTrue(await search_input.is_visible(), "search input must be visible at mobile width")
+        self.assertTrue(await advanced_input.is_visible(), "advanced-syntax input must be visible at mobile width")
+        search_box = await search_input.bounding_box()
+        advanced_box = await advanced_input.bounding_box()
+        self.assertIsNotNone(search_box, "search input must have a bounding box")
+        self.assertIsNotNone(advanced_box, "advanced-syntax input must have a bounding box")
         self.assertGreaterEqual(
-            input_box["y"],
-            button_box["y"] + button_box["height"] - 1,
-            "advanced-syntax input must be directly under the Filters button",
+            advanced_box["y"],
+            search_box["y"] + search_box["height"] - 1,
+            "advanced-syntax input must be directly under the search input",
         )
 
         # The labelled selects start collapsed behind the disclosure.

@@ -133,9 +133,9 @@ def list_gwflow_jobs(
     q = search or "*"
 
     if library:
-        q = f'{q} AND libraries:"{_escape_es_term(library)}"'
+        q = f'({q}) AND libraries:"{_escape_es_term(library)}"'
     if review_status:
-        q = f'{q} AND analyses.reviewStatus:"{_escape_es_term(review_status)}"'
+        q = f'({q}) AND analyses.reviewStatus:"{_escape_es_term(review_status)}"'
 
     if "_private_info_" in q:
         user_id = user.id if user and user.is_authenticated else 0
@@ -180,7 +180,11 @@ def list_gwflow_jobs(
         empty_result["state"] = "down"
         return empty_result
 
-    if not results or "hits" not in results or not results["hits"]["hits"]:
+    if not results or "hits" not in results:
+        return empty_result
+    total = _extract_es_total(results)
+    if not results["hits"]["hits"]:
+        empty_result["total"] = total
         return empty_result
 
     records = results["hits"]["hits"]
@@ -211,7 +215,7 @@ def list_gwflow_jobs(
         "jobs": jobs,
         "records": numeric_records,
         "has_next": has_next,
-        "total": _extract_es_total(results),
+        "total": total,
         "page": page,
         "page_size": page_size,
         "state": "ok",

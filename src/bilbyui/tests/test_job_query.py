@@ -759,6 +759,19 @@ class TestJobQueryTotal(BilbyTestCase):
 
         self.assertEqual(res["total"], 0)
 
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_preserves_total_on_empty_page(self, mock_get_es_client):
+        """An out-of-range page with a positive ES total must not hide the total."""
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [], "total": {"value": 9}}}
+
+        res = list_public_jobs(self.user, page=99)
+
+        self.assertEqual(res["total"], 9)
+        self.assertEqual(res["jobs"], {})
+        self.assertFalse(res["has_next"])
+
     def test_list_user_jobs_returns_total(self):
         res = list_user_jobs(self.user)
 
