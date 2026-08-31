@@ -41,12 +41,20 @@ def _numeric_es_records(records):
 
 def _extract_es_total(results):
     """Return the total hit count from an ES response, guarding against a
-    missing total block, a string-typed value, or the legacy integer shape."""
+    missing total block, a string-typed value, or the legacy integer shape.
+
+    A lower-bound total (``relation != "eq"``, e.g. a capped 10000) is never
+    presented as exact: the helper returns 0 so pagination does not truncate
+    against a value that understates the real hit count. Callers that need an
+    exact total issue the search with ``track_total_hits=True``.
+    """
     try:
         total = results["hits"]["total"]
     except (KeyError, TypeError):
         return 0
     if isinstance(total, dict):
+        if total.get("relation", "eq") != "eq":
+            return 0
         total = total.get("value", 0)
     if isinstance(total, str):
         try:
@@ -164,6 +172,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
             size=page_size + 1,
             from_=offset,
             sort="job.lastUpdatedTime:desc",
+            track_total_hits=True,
         )
     except elasticsearch.NotFoundError:
         # Missing index (common in fresh local setups) — show empty list, not 500.

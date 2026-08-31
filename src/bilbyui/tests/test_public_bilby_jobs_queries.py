@@ -295,6 +295,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     "size": 51,
                     "from_": 0,
                     "sort": "job.lastUpdatedTime:desc",
+                    "track_total_hits": True,
                 },
             )
 
@@ -392,6 +393,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     "size": 51,
                     "from_": 0,
                     "sort": "job.lastUpdatedTime:desc",
+                    "track_total_hits": True,
                 },
             )
 
@@ -480,6 +482,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     "size": 51,
                     "from_": 99,
                     "sort": "job.lastUpdatedTime:desc",
+                    "track_total_hits": True,
                 },
             )
 
@@ -504,6 +507,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                         "size": 26,
                         "from_": idx,
                         "sort": "job.lastUpdatedTime:desc",
+                        "track_total_hits": True,
                     },
                 )
 
@@ -531,6 +535,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     "size": 26,
                     "from_": 0,
                     "sort": "job.lastUpdatedTime:desc",
+                    "track_total_hits": True,
                 },
             )
 

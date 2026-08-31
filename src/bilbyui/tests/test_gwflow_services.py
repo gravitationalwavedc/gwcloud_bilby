@@ -325,6 +325,20 @@ class TestGWFlowServices(BilbyTestCase):
         )
 
     @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_passes_advanced_syntax_through_unchanged(self, mock_get_es_client):
+        """AC7: advanced query syntax is preserved verbatim (wrapped, not
+        rewritten), so structured filters do not change its semantics."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        advanced = "sname:S2306* AND (analyses.software:bilby OR analyses.software:pycbc)"
+        list_gwflow_jobs(self.non_ligo_user, search=advanced)
+
+        q = mock_client.search.call_args[1]["q"]
+        self.assertIn(f"({advanced})", q)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_preserves_total_on_empty_page(self, mock_get_es_client):
         """An out-of-range page with a positive ES total must not hide the total."""
         mock_client = MagicMock()
@@ -344,6 +358,24 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(_extract_es_total({"hits": {"total": {"value": 42}}}), 42)
         self.assertEqual(_extract_es_total({"hits": {"total": "42"}}), 42)
         self.assertEqual(_extract_es_total({"hits": {}}), 0)
+
+    def test_extract_es_total_rejects_lower_bound_relation(self):
+        from bilbyui.services.jobs import _extract_es_total
+
+        # A capped total (relation "gte") must never be presented as exact.
+        self.assertEqual(_extract_es_total({"hits": {"total": {"value": 10000, "relation": "gte"}}}), 0)
+        # Explicit "eq" relation is exact.
+        self.assertEqual(_extract_es_total({"hits": {"total": {"value": 10000, "relation": "eq"}}}), 10000)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_requests_exact_total(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        list_gwflow_jobs(self.non_ligo_user)
+
+        self.assertTrue(mock_client.search.call_args[1].get("track_total_hits"))
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_returns_total(self, mock_get_es_client):

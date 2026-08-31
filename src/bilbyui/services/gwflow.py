@@ -167,6 +167,7 @@ def list_gwflow_jobs(
             size=page_size + 1,
             from_=offset,
             sort="lastUpdatedTime:desc",
+            track_total_hits=True,
         )
     except elasticsearch.NotFoundError:
         logger.exception(

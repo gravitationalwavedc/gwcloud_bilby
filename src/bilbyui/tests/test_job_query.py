@@ -729,6 +729,7 @@ class TestJobQueryTotal(BilbyTestCase):
 
         self.assertEqual(res["total"], 7)
         self.assertIn(self.job.id, res["jobs"])
+        self.assertTrue(mock_client.search.call_args[1].get("track_total_hits"))
 
     @mock.patch("bilbyui.services.jobs.get_es_client")
     def test_list_public_jobs_total_guards_string_value(self, mock_get_es_client):
