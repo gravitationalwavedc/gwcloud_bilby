@@ -257,6 +257,22 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertNotContains(response, 'rel="prev"')
         self.assertContains(response, 'rel="next"')
 
+    def test_pagination_out_of_range_renders_recovery_links(self):
+        # page=99 with 3 total pages (60 results / 20 per page): the window is
+        # clamped to the last valid page so numbered recovery links and a
+        # current-page marker are still rendered.
+        response = self._render_fragment({"page": 99}, total=60, has_next=False)
+
+        self.assertContains(response, 'aria-label="Pagination"')
+        self.assertContains(response, 'aria-current="page"')
+        self.assertContains(response, '<span class="page-link" aria-current="page">3</span>')
+        for p in (1, 2):
+            self.assertContains(
+                response,
+                f'href="{reverse("bilbyui:gwflow_jobs")}?page={p}&search=&library=&review=&time_range=all"',
+            )
+        self.assertNotContains(response, "page=99")
+
     # ------------------------------------------------------------------
     # Sentinel removal
     # ------------------------------------------------------------------

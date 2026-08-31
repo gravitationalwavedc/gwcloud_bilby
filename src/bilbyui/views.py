@@ -1218,8 +1218,8 @@ def _render_job_list(
     retry_url = _build_jobs_list_url(jobs_list_url_name, retry_params)
 
     total_pages = max(1, math.ceil(total / page_size)) if page_size and page_size > 0 else 1
-    page_range = list(range(max(1, page - 2), min(total_pages, page + 2) + 1))
-
+    pagination_page = min(page, total_pages)
+    page_range = list(range(max(1, pagination_page - 2), min(total_pages, pagination_page + 2) + 1))
     active_filters = _build_active_filters(jobs_list_url_name, search, library, review, time_range)
 
     context = {
@@ -1238,6 +1238,7 @@ def _render_job_list(
         "review": review,
         "filter_options": filter_options if filter_options is not None else {"libraries": [], "review_statuses": []},
         "total_pages": total_pages,
+        "pagination_page": pagination_page,
         "page_range": page_range,
         "active_filters": active_filters,
         "reset_url": reverse(jobs_list_url_name),

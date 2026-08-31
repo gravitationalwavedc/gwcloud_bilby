@@ -634,7 +634,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "<title>GWFlow — GWCloud</title>")
-        self.assertNotContains(response, "page 1")
+        self.assertNotContains(response, "<title>GWFlow — page 1 — GWCloud</title>")
 
     def test_full_page_title_includes_page_number_when_greater_than_one(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user)
@@ -651,4 +651,4 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "<title>GWFlow — GWCloud</title>")
-        self.assertNotContains(response, "page 1")
+        self.assertNotContains(response, "<title>GWFlow — page 1 — GWCloud</title>")

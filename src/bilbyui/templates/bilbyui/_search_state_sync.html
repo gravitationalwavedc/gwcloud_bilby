@@ -13,13 +13,17 @@
     }
     var form = searchInput.form;
     var params = new URLSearchParams(window.location.search);
-    ["search", "library", "review", "time_range", "page"].forEach(function (name) {
+    // Restore filter controls only — NOT the hidden page control. The hidden
+    // page input keeps its form default of 1 so any subsequent filter change
+    // resets to page 1 (GOV.UK filtering rule); pagination links encode their
+    // requested page independently.
+    ["search", "library", "review", "time_range"].forEach(function (name) {
       var control = form.elements[name];
       if (!control) {
         return;
       }
       var value = params.get(name);
-      var defaultValue = name === "page" ? "1" : (name === "time_range" ? "all" : "");
+      var defaultValue = name === "time_range" ? "all" : "";
       control.value = value === null ? defaultValue : value;
     });
     var advanced = document.getElementById("advanced-search");

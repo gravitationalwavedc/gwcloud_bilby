@@ -239,7 +239,14 @@ class TestSearchHelpPartials(BilbyTestCase):
     def test_sync_script_defaults_time_range_to_all(self):
         html = get_template("bilbyui/_search_state_sync.html").render({})
         self.assertIn('name === "time_range" ? "all" : ""', html)
-        self.assertIn('name === "page" ? "1"', html)
+        self.assertNotIn('"page"', html.split("forEach")[1].split(";")[0], "page must not be restored from the URL")
+
+    def test_sync_script_does_not_restore_page(self):
+        html = get_template("bilbyui/_search_state_sync.html").render({})
+        # The hidden page control must keep its form default of 1 so a filter
+        # change after history restoration resets to page 1 (GOV.UK rule).
+        self.assertNotIn('"search", "library", "review", "time_range", "page"', html)
+        self.assertIn('["search", "library", "review", "time_range"]', html)
 
     def test_bilby_help_lists_all_searchable_fields(self):
         html = get_template("bilbyui/_bilby_search_help.html").render({})
