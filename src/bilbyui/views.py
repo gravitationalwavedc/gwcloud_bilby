@@ -64,6 +64,8 @@ from .utils.time_range import _normalize_time_range
 
 logger = logging.getLogger(__name__)
 
+TAR_PROCESS_TIMEOUT = getattr(settings, "TAR_PROCESS_TIMEOUT", 30)
+
 STATUS_BADGE_CLASSES = {
     "Completed": "primary",
     "Error": "danger",
@@ -575,7 +577,14 @@ def upload_bilby_job(user, upload_token, details, job_file):
             stderr=subprocess.PIPE,
             cwd=job_staging_dir,
         )
-        out, err = p.communicate()
+        try:
+            out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            out, err = p.communicate()
+            logger.error("Timed out unpacking uploaded job archive %s", job_file.name)
+            msg = "Timed out unpacking the uploaded archive"
+            raise ValueError(msg) from None
 
         logger.info("Unpacking uploaded job archive %s had return code %s", job_file.name, p.returncode)
         logger.debug("stdout: %s", out)
@@ -685,7 +694,14 @@ def upload_bilby_job(user, upload_token, details, job_file):
                 stderr=subprocess.PIPE,
                 cwd=job_dir,
             )
-            out, err = p.communicate()
+            try:
+                out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                p.kill()
+                out, err = p.communicate()
+                logger.error("Timed out repacking uploaded job for user %s", upload_token.user.id)
+                msg = "Timed out repacking the uploaded job"
+                raise RuntimeError(msg) from None
 
             logger.info("Packing uploaded job archive for %s had return code %s", job_file.name, p.returncode)
             logger.debug("stdout: %s", out)
@@ -827,7 +843,14 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
                 stderr=subprocess.PIPE,
                 cwd=job_dir,
             )
-            out, err = p.communicate()
+            try:
+                out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                p.kill()
+                out, err = p.communicate()
+                logger.error("Timed out repacking uploaded HDF5 job archive for %s", job_name)
+                msg = "Timed out repacking the uploaded HDF5 job"
+                raise RuntimeError(msg) from None
 
             logger.info("Packing uploaded HDF5 job archive for %s had return code %s", job_name, p.returncode)
             logger.debug("stdout: %s", out)
