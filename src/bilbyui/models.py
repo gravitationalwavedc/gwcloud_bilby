@@ -637,7 +637,10 @@ class SupportingFile(models.Model):
         """
         BilbyJob.prune_supporting_files_jobs()
 
-        return cls.objects.filter(upload_token=token).first()
+        try:
+            return cls.objects.filter(upload_token=token).first()
+        except ValidationError:
+            return None
 
     @classmethod
     def get_by_upload_tokens(cls, tokens):
