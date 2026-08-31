@@ -235,6 +235,39 @@ class TestMetadataPhase(GWFlowTestBase):
 
         phase_metadata(gwc_client=MagicMock())
 
+    def test_non_dict_raw_payload_is_normalized_to_empty_dict(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = [
+            {
+                "sname": "S_RAW",
+                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "schema_version": "1.0",
+                "commit_sha": "sha1",
+            },
+        ]
+        mock_portal.get_superevent.return_value = {
+            "sname": "S_RAW",
+            "raw_payload": "not-a-dict",
+            "libraries": [],
+        }
+        mock_portal.iter_current_snames.return_value = ["S_RAW"]
+
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = []
+
+        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once_with(
+            sname="S_RAW",
+            schema_version="1.0",
+            metadata={},
+            libraries=[],
+            is_pruned=False,
+            current_history_id="sha1",
+            current_history_timestamp="2026-01-01T10:00:00Z",
+            files=[],
+        )
+
     def test_max_retry_attempts_reached_logs_error(self):
         mock_portal = MagicMock()
         mock_portal.iter_changed.return_value = [
