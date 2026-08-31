@@ -234,11 +234,17 @@ class TestGWFlowJobMetadataPartial(BilbyTestCase):
         self.assertContains(response, "Showing cached copy")
 
     @mock.patch("bilbyui.views.get_superevent", return_value=(None, "down"))
-    def test_down_renders_portal_error_with_retry(self, mock_get_superevent):
+    def test_down_renders_error_state_with_retry(self, mock_get_superevent):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "The metadata service is currently unavailable.")
+        self.assertContains(response, "async-error")
+        self.assertContains(response, 'role="alert"')
+        self.assertContains(response, '<span class="sr-only">Error:</span>')
+        self.assertContains(
+            response,
+            "Couldn't load the metadata because the service is temporarily unavailable.",
+        )
         self.assertContains(
             response,
             f'hx-get="{reverse("bilbyui:gwflow_job_metadata", args=[self.job.sname])}"',
@@ -246,6 +252,7 @@ class TestGWFlowJobMetadataPartial(BilbyTestCase):
         self.assertContains(response, 'hx-target="#metadata-pane"')
         self.assertContains(response, "Retry")
         self.assertNotContains(response, "<!doctype html>")
+        self.assertEqual(response.content.decode().count('role="alert"'), 1)
 
 
 class TestGWFlowJobVisibility(BilbyTestCase):

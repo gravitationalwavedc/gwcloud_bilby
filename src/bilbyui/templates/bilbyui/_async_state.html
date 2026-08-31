@@ -1,0 +1,40 @@
+{# Reusable async state machine partial (issue #50). Renders ONLY state chrome — the caller owns the role="region" wrapper and any content. Contract: docs/plans/designs/006-ux3-async-state-machine-error-conventions.md §1. #}
+{# Context (all optional except state): state (idle|loading|content|empty|stale|error), thing (default "this"), region_label (default thing), reason (default "the service is temporarily unavailable"), empty_hint (default ""), retry_url, retry_target. #}
+{# Announcement budget: exactly one live region per render — role="status" for loading/empty, role="alert" for stale/error; idle/content render nothing. #}
+{# State vocabulary: the issue's "seven states" count error+retry as one state — error renders the alert + Retry action, and retry is the transition that re-requests into the same target (retry_url/retry_target), re-entering loading. #}
+{% with thing_label=thing|default:"this" %}
+{% with region_label=region_label|default:thing_label %}
+{% if state == "loading" %}
+<div class="async-loading" role="status" aria-label="{{ region_label }}">
+  <div class="async-skeleton" aria-hidden="true">
+    <div class="async-skeleton-row"></div>
+    <div class="async-skeleton-row"></div>
+    <div class="async-skeleton-row"></div>
+  </div>
+  <p class="async-loading-text text-muted mb-0">Loading {{ thing_label }}…</p>
+</div>
+{% elif state == "empty" %}
+<div class="async-empty" role="status" aria-label="{{ region_label }}">
+  <p class="text-muted mb-0">No {{ thing_label }} yet.{% if empty_hint %} {{ empty_hint }}{% endif %}</p>
+</div>
+{% elif state == "stale" %}
+<div class="async-notice" role="alert" aria-label="{{ region_label }}">
+  <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+  <span class="async-notice-text">The cached copy of {{ thing_label }} is shown.</span>
+  {% if retry_url and retry_target %}
+  <button type="button" class="btn btn-primary btn-sm" hx-get="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="innerHTML">Refresh</button>
+  {% endif %}
+</div>
+{% elif state == "error" %}
+<div class="async-error" role="alert" aria-label="{{ region_label }}">
+  <p class="async-error-message mb-0">
+    <span class="sr-only">Error:</span>
+    Couldn't load {{ thing_label }} because {{ reason|default:"the service is temporarily unavailable" }}.
+  </p>
+  {% if retry_url and retry_target %}
+  <button type="button" class="btn btn-primary" hx-get="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="innerHTML">Retry</button>
+  {% endif %}
+</div>
+{% endif %}
+{% endwith %}
+{% endwith %}

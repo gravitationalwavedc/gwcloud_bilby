@@ -37,6 +37,7 @@ def list_gwflow_jobs(
         "has_next": False,
         "page": page,
         "page_size": page_size,
+        "state": "ok",
     }
 
     q = search or "*"
@@ -50,6 +51,7 @@ def list_gwflow_jobs(
         es = get_es_client()
     except elasticsearch.exceptions.ConnectionError:
         logger.exception("Failed to connect to Elasticsearch")
+        empty_result["state"] = "down"
         return empty_result
 
     if time_range != "all":
@@ -76,9 +78,11 @@ def list_gwflow_jobs(
             "Elasticsearch gwflow index missing or not found: %s",
             settings.ELASTIC_SEARCH_GWFLOW_INDEX,
         )
+        empty_result["state"] = "down"
         return empty_result
     except elasticsearch.exceptions.ConnectionError:
         logger.exception("Failed to connect to Elasticsearch")
+        empty_result["state"] = "down"
         return empty_result
 
     if not results or "hits" not in results or not results["hits"]["hits"]:
@@ -114,4 +118,5 @@ def list_gwflow_jobs(
         "has_next": has_next,
         "page": page,
         "page_size": page_size,
+        "state": "ok",
     }

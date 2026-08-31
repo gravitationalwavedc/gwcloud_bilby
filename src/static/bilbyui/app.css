@@ -9590,6 +9590,88 @@ a.text-dark:hover, a.text-dark:focus {
   font-size: 0.875rem;
 }
 
+.async-skeleton {
+  display: block;
+  width: 100%;
+}
+
+.async-skeleton-row {
+  height: 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.25rem;
+  background-color: #e5eaf0;
+  background-image: linear-gradient(90deg, #e5eaf0 0%, #eff2f6 50%, #e5eaf0 100%);
+  background-size: 200% 100%;
+  animation: async-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .async-skeleton-row {
+    animation: none;
+  }
+}
+.async-skeleton-row:last-child {
+  margin-bottom: 0;
+}
+.async-skeleton-row:nth-child(1) {
+  width: 100%;
+}
+.async-skeleton-row:nth-child(2) {
+  width: 85%;
+}
+.async-skeleton-row:nth-child(3) {
+  width: 70%;
+}
+
+@keyframes async-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.async-loading-text {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.async-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  color: #191e24;
+  background-color: rgb(100%, 90.6862745098%, 62.7450980392%);
+  border: 1px solid rgb(72.7450980392%, 54.5588235294%, 0%);
+  border-radius: 0.25rem;
+}
+.async-notice .bi {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+}
+.async-notice .async-notice-text {
+  flex: 1 1 auto;
+}
+.async-notice .btn {
+  flex-shrink: 0;
+}
+
+.async-error {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-left: 4px solid #dc3545;
+  background-color: rgb(98.6795730951%, 92.3792504344%, 92.9828741623%);
+  border-radius: 0.25rem;
+}
+.async-error .async-error-message {
+  margin-bottom: 0.5rem;
+  color: #191e24;
+}
+.async-error .btn {
+  margin-top: 0.25rem;
+}
+
 .edit-button {
   background: none;
   border: none;
