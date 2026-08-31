@@ -438,9 +438,7 @@ class TestCondor(TestCase):
             with self.assertLogs("scheduler.condor", level="DEBUG") as cm:
                 sched.status(None, details)
 
-        self.assertTrue(
-            any("Trying to get status of job with working directory" in m for m in cm.output)
-        )
+        self.assertTrue(any("Trying to get status of job with working directory" in m for m in cm.output))
         self.assertFalse(any(r.levelno == logging.INFO for r in cm.records))
 
     def test_status_no_log_file(self):
