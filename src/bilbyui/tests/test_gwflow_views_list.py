@@ -153,6 +153,25 @@ class TestGWFlowJobsListView(BilbyTestCase):
             page=2,
         )
 
+    def test_review_url_param_maps_to_service_review_status(self):
+        """The public URL key is `review` (Issue #51); it maps to the service
+        `review_status` keyword and survives generated state links."""
+        with mock.patch(
+            "bilbyui.views.list_gwflow_jobs",
+            side_effect=_gwflow_jobs_side_effect(total=40),
+        ) as mock_list:
+            response = self.client.get(self.url, {"review": "approved", "page": 1})
+
+        self.assertEqual(response.status_code, 200)
+        mock_list.assert_called_once_with(
+            self.user,
+            search="",
+            library="",
+            review_status="approved",
+            time_range="all",
+            page=1,
+        )
+
     def test_out_of_range_page_refetches_last_valid_page(self):
         calls = []
 
