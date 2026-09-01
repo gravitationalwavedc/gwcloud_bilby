@@ -106,6 +106,13 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertContains(response, "0 superevents match")
         self.assertContains(response, "No GWFlow jobs found.")
 
+    def test_gwflow_empty_page_with_positive_total_shows_recovery_copy(self):
+        response = self._get_gwflow(total=40)
+
+        self.assertContains(response, "40 superevents match")
+        self.assertContains(response, "This page has no GWFlow jobs. Choose another page below.")
+        self.assertNotContains(response, "No GWFlow jobs found.")
+
     def test_job_fragment_result_count(self):
         response = self._render_fragment(
             total=3,
@@ -124,6 +131,17 @@ class TestActiveFiltersPagination(BilbyTestCase):
         )
 
         self.assertContains(response, "1 job match")
+
+    def test_job_empty_page_with_positive_total_shows_recovery_copy(self):
+        response = self._render_fragment(
+            total=40,
+            fragment_template="bilbyui/_job_list_fragment.html",
+            list_target_id="job-list",
+        )
+
+        self.assertContains(response, "40 jobs match")
+        self.assertContains(response, "This page has no jobs. Choose another page below.")
+        self.assertNotContains(response, "Create a new job or try searching 'Any time'.")
 
     def test_error_branch_omits_result_count(self):
         response = self._render_fragment(total=5, service_state="down")

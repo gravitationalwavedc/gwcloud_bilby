@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import caches
 
 from bilbyui.models import GWFlowJob
-from bilbyui.services.gwflow import _escape_es_term, list_gwflow_filter_options, list_gwflow_jobs
+from bilbyui.services.gwflow import list_gwflow_filter_options, list_gwflow_jobs
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
@@ -94,11 +94,14 @@ class TestGWFlowServices(BilbyTestCase):
         res = list_gwflow_jobs(self.non_ligo_user, search="GW150914", time_range="1d")
 
         mock_client.search.assert_called_once()
-        call_kwargs = mock_client.search.call_args[1]
-        q = call_kwargs["q"]
-        self.assertIn("ligoOnly:false", q)
-        self.assertIn("isPruned:false", q)
-        self.assertIn("lastUpdatedTime:", q)
+        query = mock_client.search.call_args[1]["query"]
+        filter_terms = {}
+        for f in query["bool"]["filter"]:
+            for _clause_type, clause in f.items():
+                filter_terms.update(clause)
+        self.assertIn("ligoOnly", filter_terms)
+        self.assertIn("isPruned", filter_terms)
+        self.assertIn("lastUpdatedTime", filter_terms)
 
         self.assertIn(self.job_public.id, res["jobs"])
 
@@ -116,10 +119,13 @@ class TestGWFlowServices(BilbyTestCase):
 
         res = list_gwflow_jobs(self.ligo_user, include_pruned=True)
 
-        call_kwargs = mock_client.search.call_args[1]
-        q = call_kwargs["q"]
-        self.assertNotIn("ligoOnly:false", q)
-        self.assertNotIn("isPruned:false", q)
+        query = mock_client.search.call_args[1]["query"]
+        filter_terms = {}
+        for f in query["bool"]["filter"]:
+            for _clause_type, clause in f.items():
+                filter_terms.update(clause)
+        self.assertNotIn("ligoOnly", filter_terms)
+        self.assertNotIn("isPruned", filter_terms)
 
         self.assertIn(self.job_ligo.id, res["jobs"])
 
@@ -321,16 +327,6 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertIn("stale", logged)
         self.assertIn("restricted", logged)
 
-    def test_escape_es_term_escapes_special_chars(self):
-        escaped = _escape_es_term('a"b*c?d:e\\f(g)h[i]j{k}l m')
-        self.assertEqual(escaped, 'a\\"b\\*c\\?d\\:e\\\\f\\(g\\)h\\[i\\]j\\{k\\}l\\ m')
-
-    def test_escape_es_term_escapes_whitespace_and_tabs(self):
-        self.assertEqual(_escape_es_term("a b\tc"), "a\\ b\\\tc")
-
-    def test_escape_es_term_leaves_plain_values_untouched(self):
-        self.assertEqual(_escape_es_term("cbc-workflow-o4a"), "cbc-workflow-o4a")
-
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_maps_library_and_review_status(self, mock_get_es_client):
         mock_client = MagicMock()
@@ -349,12 +345,15 @@ class TestGWFlowServices(BilbyTestCase):
             review_status="approved",
         )
 
-        call_kwargs = mock_client.search.call_args[1]
-        q = call_kwargs["q"]
-        self.assertIn('libraries:"cbc-workflow\\ \\"o4a\\""', q)
-        self.assertIn('analyses.reviewStatus:"approved"', q)
-        self.assertIn("ligoOnly:false", q)
-        self.assertIn("isPruned:false", q)
+        query = mock_client.search.call_args[1]["query"]
+        filter_terms = {}
+        for f in query["bool"]["filter"]:
+            for _clause_type, clause in f.items():
+                filter_terms.update(clause)
+        self.assertEqual(filter_terms["libraries.keyword"], 'cbc-workflow "o4a"')
+        self.assertEqual(filter_terms["analyses.reviewStatus.keyword"], "approved")
+        self.assertIn("ligoOnly", filter_terms)
+        self.assertIn("isPruned", filter_terms)
         self.assertIn(self.job_public.id, res["jobs"])
 
     @patch("bilbyui.services.gwflow.get_es_client")
@@ -370,8 +369,12 @@ class TestGWFlowServices(BilbyTestCase):
 
         list_gwflow_jobs(self.non_ligo_user, review_status="a:b*c")
 
-        q = mock_client.search.call_args[1]["q"]
-        self.assertIn('analyses.reviewStatus:"a\\:b\\*c"', q)
+        query = mock_client.search.call_args[1]["query"]
+        filter_terms = {}
+        for f in query["bool"]["filter"]:
+            for _clause_type, clause in f.items():
+                filter_terms.update(clause)
+        self.assertEqual(filter_terms["analyses.reviewStatus.keyword"], "a:b*c")
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_groups_free_form_query_before_structured_filters(self, mock_get_es_client):
@@ -388,12 +391,38 @@ class TestGWFlowServices(BilbyTestCase):
             review_status="reviewed",
         )
 
-        q = mock_client.search.call_args[1]["q"]
-        self.assertIn('(sname:S1 OR sname:S2) AND libraries:"lib-a"', q)
-        self.assertIn(
-            '((sname:S1 OR sname:S2) AND libraries:"lib-a") AND analyses.reviewStatus:"reviewed"',
-            q,
+        query = mock_client.search.call_args[1]["query"]
+        self.assertEqual(query["bool"]["must"][0]["query_string"]["query"], "sname:S1 OR sname:S2")
+        filter_terms = {}
+        for f in query["bool"]["filter"]:
+            for _clause_type, clause in f.items():
+                filter_terms.update(clause)
+        self.assertEqual(filter_terms["libraries.keyword"], "lib-a")
+        self.assertEqual(filter_terms["analyses.reviewStatus.keyword"], "reviewed")
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_structured_filters_never_reach_query_string(self, mock_get_es_client):
+        """Lucene operators in library/review values must stay in term filters,
+        never in the query_string must clause (ES query-string injection)."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        list_gwflow_jobs(
+            self.non_ligo_user,
+            search="sname:S1",
+            library='x" OR ligoOnly:true OR libraries:"y',
+            review_status="a && b || !c",
         )
+
+        query = mock_client.search.call_args[1]["query"]
+        self.assertEqual(query["bool"]["must"][0]["query_string"]["query"], "sname:S1")
+        filter_terms = {}
+        for f in query["bool"]["filter"]:
+            for _clause_type, clause in f.items():
+                filter_terms.update(clause)
+        self.assertEqual(filter_terms["libraries.keyword"], 'x" OR ligoOnly:true OR libraries:"y')
+        self.assertEqual(filter_terms["analyses.reviewStatus.keyword"], "a && b || !c")
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_passes_advanced_syntax_through_unchanged(self, mock_get_es_client):
@@ -406,8 +435,8 @@ class TestGWFlowServices(BilbyTestCase):
         advanced = "sname:S2306* AND (analyses.software:bilby OR analyses.software:pycbc)"
         list_gwflow_jobs(self.non_ligo_user, search=advanced)
 
-        q = mock_client.search.call_args[1]["q"]
-        self.assertIn(f"({advanced})", q)
+        query = mock_client.search.call_args[1]["query"]
+        self.assertEqual(query["bool"]["must"][0]["query_string"]["query"], advanced)
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_advanced_syntax_corpus_parity(self, mock_get_es_client):
@@ -427,8 +456,8 @@ class TestGWFlowServices(BilbyTestCase):
         for advanced in corpus:
             with self.subTest(advanced=advanced):
                 list_gwflow_jobs(self.non_ligo_user, search=advanced)
-                q = mock_client.search.call_args[1]["q"]
-                self.assertIn(f"({advanced})", q)
+                query = mock_client.search.call_args[1]["query"]
+                self.assertEqual(query["bool"]["must"][0]["query_string"]["query"], advanced)
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_preserves_total_on_empty_page(self, mock_get_es_client):
@@ -451,11 +480,12 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(_extract_es_total({"hits": {"total": "42"}}), 42)
         self.assertEqual(_extract_es_total({"hits": {}}), 0)
 
-    def test_extract_es_total_rejects_lower_bound_relation(self):
+    def test_extract_es_total_preserves_lower_bound(self):
         from bilbyui.services.jobs import _extract_es_total
 
-        # A capped total (relation "gte") must never be presented as exact.
-        self.assertEqual(_extract_es_total({"hits": {"total": {"value": 10000, "relation": "gte"}}}), 0)
+        # A capped total (relation "gte") keeps its known value: a positive
+        # lower bound must never be converted into a false exact zero.
+        self.assertEqual(_extract_es_total({"hits": {"total": {"value": 10000, "relation": "gte"}}}), 10000)
         # Explicit "eq" relation is exact.
         self.assertEqual(_extract_es_total({"hits": {"total": {"value": 10000, "relation": "eq"}}}), 10000)
 

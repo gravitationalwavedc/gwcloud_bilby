@@ -43,18 +43,16 @@ def _extract_es_total(results):
     """Return the total hit count from an ES response, guarding against a
     missing total block, a string-typed value, or the legacy integer shape.
 
-    A lower-bound total (``relation != "eq"``, e.g. a capped 10000) is never
-    presented as exact: the helper returns 0 so pagination does not truncate
-    against a value that understates the real hit count. Callers that need an
-    exact total issue the search with ``track_total_hits=True``.
+    A lower-bound total (``relation != "eq"``, e.g. a capped 10000) is returned
+    as its known value rather than converted to zero: a positive lower bound is
+    still useful and must never be presented as an exact zero. Callers that need
+    an exact total issue the search with ``track_total_hits=True``.
     """
     try:
         total = results["hits"]["total"]
     except (KeyError, TypeError):
         return 0
     if isinstance(total, dict):
-        if total.get("relation", "eq") != "eq":
-            return 0
         total = total.get("value", 0)
     if isinstance(total, str):
         try:

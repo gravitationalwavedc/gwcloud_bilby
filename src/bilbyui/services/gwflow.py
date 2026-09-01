@@ -17,15 +17,6 @@ REVIEW_STATUSES_CACHE_KEY = "gwflow_filter_review_statuses"
 FILTER_OPTIONS_TTL = 3600
 REVIEW_STATUS_FALLBACK = ["reviewed", "unreviewed", "pending", "approved"]
 
-_ES_TERM_SPECIAL_CHARS = set('\\"*?:()[]{}')
-
-
-def _escape_es_term(value):
-    """Escape a value for safe insertion into an ES query_string exact-term
-    clause. Backslash-escapes quotes, wildcards, colons, brackets, braces and
-    whitespace so user-supplied filter values cannot alter the query."""
-    return "".join(f"\\{ch}" if ch in _ES_TERM_SPECIAL_CHARS or ch.isspace() else ch for ch in str(value))
-
 
 def _collect_library_options():
     libraries = set()
@@ -131,14 +122,7 @@ def list_gwflow_jobs(
         "state": "ok",
     }
 
-    q = search or "*"
-
-    if library:
-        q = f'({q}) AND libraries:"{_escape_es_term(library)}"'
-    if review_status:
-        q = f'({q}) AND analyses.reviewStatus:"{_escape_es_term(review_status)}"'
-
-    if "_private_info_" in q:
+    if "_private_info_" in search:
         user_id = user.id if user and user.is_authenticated else 0
         logger.warning("User %s attempted to search private info in gwflow index", user_id)
         return empty_result
@@ -150,21 +134,31 @@ def list_gwflow_jobs(
         empty_result["state"] = "down"
         return empty_result
 
+    # Intentional advanced syntax stays in a query_string must-clause; all
+    # structured constraints (library, review status, time, visibility, pruning)
+    # are encoded as DSL filter values so user input never reaches the query
+    # parser as syntax.
+    must = [{"query_string": {"query": search}}] if search else [{"match_all": {}}]
+    filters = []
+    if library:
+        filters.append({"term": {"libraries.keyword": library}})
+    if review_status:
+        filters.append({"term": {"analyses.reviewStatus.keyword": review_status}})
     if time_range != "all":
         now = timezone.now()
         then = now - _time_range_to_timedelta(time_range)
-        q = f'({q}) AND lastUpdatedTime:["{then.isoformat()}" TO "{now.isoformat()}"]'
-
+        filters.append({"range": {"lastUpdatedTime": {"gte": then.isoformat(), "lte": now.isoformat()}}})
     if not is_ligo_user(user):
-        q = f"({q}) AND ligoOnly:false"
-
+        filters.append({"term": {"ligoOnly": False}})
     if not include_pruned:
-        q = f"({q}) AND isPruned:false"
+        filters.append({"term": {"isPruned": False}})
+
+    query = {"bool": {"must": must, "filter": filters}}
 
     try:
         results = es.search(
             index=settings.ELASTIC_SEARCH_GWFLOW_INDEX,
-            q=q,
+            query=query,
             size=page_size + 1,
             from_=offset,
             sort="lastUpdatedTime:desc",
