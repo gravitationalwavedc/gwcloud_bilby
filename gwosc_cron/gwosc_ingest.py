@@ -214,7 +214,7 @@ def _check_and_download_inner(con, cur):
     logger.info("Not matching events: %s", len(jobs_delta))
 
     if not jobs_delta:
-        logger.info("Nothing to do 😊")
+        logger.info("Nothing to do")
         sys.exit(0)
 
     for event_name in jobs_delta:
@@ -318,7 +318,7 @@ def _check_and_download_inner(con, cur):
 
         found = [v for v in parameters.values() if isinstance(v, dict) and v.get("is_preferred")]
         if len(found) != 1:
-            logger.error("Unable to find preferred job for %s 😠", event_name)
+            logger.error("Unable to find preferred job for %s", event_name)
             save_sqlite_job(
                 event_name,
                 common_name,
@@ -331,7 +331,7 @@ def _check_and_download_inner(con, cur):
 
         h5url = found[0].get("data_url")
         if not h5url:
-            logger.error("Preferred job for %s does not contain a dataurl 😠", event_name)
+            logger.error("Preferred job for %s does not contain a dataurl", event_name)
             save_sqlite_job(event_name, common_name, catalog_shortname, False, "no dataurl", is_latest_version)
             continue
 
@@ -366,7 +366,7 @@ def _check_and_download_inner(con, cur):
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
             except requests.RequestException:
-                error_msg = f"Downloading {h5url} failed 😠"
+                error_msg = f"Downloading {h5url} failed"
                 logger.exception(error_msg)
                 record_job_failure(con, cur, event_name, error_msg)
                 download_failed = True
@@ -417,7 +417,7 @@ def _check_and_download_inner(con, cur):
                             ini_str,
                             h5url,
                         )
-                        logger.info("BilbyJob %s created 😊", job.id)
+                        logger.info("BilbyJob %s created", job.id)
                         if event_id is not None:
                             job.set_event_id(event_id)
                             logger.info(" and set event_id to %s", event_id.event_id)
@@ -427,7 +427,7 @@ def _check_and_download_inner(con, cur):
                     except GWDCUnknownException:
                         all_succeeded = False
                         # we don't just raise here as we want to potentially upload other jobs
-                        logger.exception("Failed to create BilbyJob 😠")
+                        logger.exception("Failed to create BilbyJob")
 
             if h5_iteration_error:
                 continue
