@@ -290,6 +290,39 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(res["jobs"], {})
 
     @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_rejects_overlong_search(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+
+        res = list_gwflow_jobs(self.non_ligo_user, search="x" * 300)
+
+        self.assertEqual(res["state"], "invalid")
+        mock_client.search.assert_not_called()
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_stale_only_invalidates_exact_total(self, mock_get_es_client):
+        """Stale ES rows (no DB row) must invalidate the exact total and
+        continuation, not just restricted rows."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": self.job_public.id},
+                    {"_id": 999999},  # stale: no DB row
+                ],
+                "total": {"value": 2},
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user, page_size=20)
+
+        self.assertIn(self.job_public.id, res["jobs"])
+        self.assertEqual(len(res["jobs"]), 1)
+        self.assertEqual(res["total"], 1)
+        self.assertFalse(res["has_next"])
+
+    @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_reconciliation_preserves_authorised_rows(self, mock_get_es_client):
         """A stale/restricted hit must not blank the whole page: authorised rows
         are preserved and stale vs restricted are logged separately."""
@@ -595,6 +628,28 @@ class TestGWFlowFilterOptions(BilbyTestCase):
 
         self.assertEqual(options["libraries"], ["public-lib"])
         self.assertNotIn("ligo-secret-lib", options["libraries"])
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_libraries_exclude_pruned_only_values(self, mock_get_es_client):
+        GWFlowJob.objects.create(
+            sname="S200201h",
+            user=self.user,
+            ligo_only=False,
+            is_pruned=True,
+            libraries=["pruned-only-lib"],
+        )
+        GWFlowJob.objects.create(
+            sname="S200201i",
+            user=self.user,
+            ligo_only=False,
+            is_pruned=False,
+            libraries=["visible-lib"],
+        )
+
+        options = list_gwflow_filter_options()
+
+        self.assertIn("visible-lib", options["libraries"])
+        self.assertNotIn("pruned-only-lib", options["libraries"])
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_review_statuses_from_es_aggregation(self, mock_get_es_client):

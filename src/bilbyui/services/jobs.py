@@ -236,10 +236,10 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
                 user_id,
                 len(restricted_ids),
             )
-            # Fail closed: the ES total may include restricted records, so never
-            # expose it as an exact count. Show only the authorised page-local
-            # count with no continuation (a page-local count must not be
-            # presented as a complete global total).
+        if stale_ids or restricted_ids:
+            # ES and the authoritative DB disagree, so the global ES count and
+            # continuation state cannot be presented as exact. Show only the
+            # authorised page-local count with no continuation.
             total = len(jobs)
             has_next = False
 

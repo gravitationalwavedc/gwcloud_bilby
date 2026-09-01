@@ -20,7 +20,11 @@ REVIEW_STATUS_FALLBACK = ["reviewed", "unreviewed", "pending", "approved"]
 
 def _collect_library_options():
     libraries = set()
-    for item in GWFlowJob.objects.filter(ligo_only=False).values_list("libraries", flat=True).iterator(chunk_size=2000):
+    for item in (
+        GWFlowJob.objects.filter(ligo_only=False, is_pruned=False)
+        .values_list("libraries", flat=True)
+        .iterator(chunk_size=2000)
+    ):
         if not item:
             continue
         if isinstance(item, str):
@@ -127,6 +131,11 @@ def list_gwflow_jobs(
         logger.warning("User %s attempted to search private info in gwflow index", user_id)
         return empty_result
 
+    if len(search) > 256:
+        logger.warning("Rejected overlong GWFlow search expression")
+        empty_result["state"] = "invalid"
+        return empty_result
+
     try:
         es = get_es_client()
     except elasticsearch.exceptions.ConnectionError:
@@ -137,8 +146,20 @@ def list_gwflow_jobs(
     # Intentional advanced syntax stays in a query_string must-clause; all
     # structured constraints (library, review status, time, visibility, pruning)
     # are encoded as DSL filter values so user input never reaches the query
-    # parser as syntax.
-    must = [{"query_string": {"query": search}}] if search else [{"match_all": {}}]
+    # parser as syntax. Leading-wildcard expansion is disabled to bound cost.
+    must = (
+        [
+            {
+                "query_string": {
+                    "query": search,
+                    "allow_leading_wildcard": False,
+                    "analyze_wildcard": False,
+                }
+            }
+        ]
+        if search
+        else [{"match_all": {}}]
+    )
     filters = []
     if library:
         filters.append({"term": {"libraries.keyword": library}})
@@ -227,10 +248,10 @@ def list_gwflow_jobs(
                 user_id,
                 len(restricted_ids),
             )
-            # Fail closed: the ES total may include restricted records, so never
-            # expose it as an exact count. Show only the authorised page-local
-            # count with no continuation (a page-local count must not be
-            # presented as a complete global total).
+        if stale_ids or restricted_ids:
+            # ES and the authoritative DB disagree, so the global ES count and
+            # continuation state cannot be presented as exact. Show only the
+            # authorised page-local count with no continuation.
             total = len(jobs)
             has_next = False
 
