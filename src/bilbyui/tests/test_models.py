@@ -652,6 +652,11 @@ class TestSupportingFile(BilbyTestCase):
         SupportingFile.save_from_parsed(self.job, self.parsed)
         self.assertIsNone(SupportingFile.get_by_upload_token(str(uuid.uuid4())))
 
+    def test_get_by_upload_token_malformed(self):
+        # Test that get_by_upload_token returns None for malformed (non-UUID) tokens rather than raising
+        SupportingFile.save_from_parsed(self.job, self.parsed)
+        self.assertIsNone(SupportingFile.get_by_upload_token("not-a-uuid"))
+
     def test_get_by_upload_tokens(self):
         # Test that get_by_upload_tokens returns files in input order, with None for missing tokens
         tokens = [t["token"] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
