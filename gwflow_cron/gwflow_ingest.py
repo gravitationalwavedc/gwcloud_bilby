@@ -120,6 +120,8 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                         else []
                     )
                     metadata = detail.get("raw_payload", {})
+                    if not isinstance(metadata, dict):
+                        metadata = {}
 
                     if gwc_client is not None:
                         gwc_client.upsert_gwflow_job(
