@@ -47,6 +47,19 @@ class TestStatus(TestCase):
         get_job_by_id_mock.assert_called_once_with(None)
 
     @patch("_bundledb.get_job_by_id")
+    def test_status_non_dict_details(self, get_job_by_id_mock):
+        from core.status import status
+
+        result = status("not-a-dict")
+
+        self.assertEqual(
+            result["status"],
+            [{"what": "system", "status": 400, "info": "Invalid job details payload"}],
+        )
+        self.assertEqual(result["complete"], True)
+        get_job_by_id_mock.assert_not_called()
+
+    @patch("_bundledb.get_job_by_id")
     @patch.object(settings, "scheduler", "unknown")
     def test_status_unknown_scheduler(self, get_job_by_id_mock):
         db_job = {"submit_id": 1234, "working_directory": "a/working/directory", "submit_directory": "submit"}

@@ -164,6 +164,14 @@ def status(details, *args, **kwargs):
     }
     """
     # Get the job
+    if not isinstance(details, dict):
+        # A corrupt or malformed details payload cannot be tracked
+        result = [
+            {"what": "system", "status": JobStatus.ERROR, "info": "Invalid job details payload"}
+        ]
+
+        return {"status": result, "complete": True}
+
     job = _bundledb.get_job_by_id(details.get("scheduler_id"))
     if not job:
         # Job doesn't exist. Report error
