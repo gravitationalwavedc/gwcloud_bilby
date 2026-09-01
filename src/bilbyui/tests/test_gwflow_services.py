@@ -241,7 +241,8 @@ class TestGWFlowServices(BilbyTestCase):
                     {"_id": self.job_public.id},
                     {"_id": job2.id},
                     {"_id": job3.id},
-                ]
+                ],
+                "total": {"value": 3},
             }
         }
 
@@ -249,6 +250,38 @@ class TestGWFlowServices(BilbyTestCase):
 
         self.assertTrue(res["has_next"])
         self.assertEqual(len(res["records"]), 3)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_has_next_follows_total_with_non_numeric_ids(self, mock_get_es_client):
+        """has_next follows the exact ES total, not the numeric-only records, so
+        a non-numeric ID on the page cannot hide the next page."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": self.job_public.id},
+                    {"_id": "non-numeric-id"},
+                ],
+                "total": {"value": 3},
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user, page_size=1)
+
+        self.assertTrue(res["has_next"])
+        self.assertEqual(len(res["records"]), 1)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_bad_request_error_returns_down(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.side_effect = elasticsearch.exceptions.BadRequestError(400, "bad request", {})
+
+        res = list_gwflow_jobs(self.non_ligo_user)
+
+        self.assertEqual(res["state"], "down")
+        self.assertEqual(res["jobs"], {})
 
     def test_escape_es_term_escapes_special_chars(self):
         escaped = _escape_es_term('a"b*c?d:e\\f(g)h[i]j{k}l m')

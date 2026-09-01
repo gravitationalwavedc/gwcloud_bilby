@@ -29,7 +29,7 @@ def _escape_es_term(value):
 
 def _collect_library_options():
     libraries = set()
-    for item in GWFlowJob.objects.filter(ligo_only=False).values_list("libraries", flat=True):
+    for item in GWFlowJob.objects.filter(ligo_only=False).values_list("libraries", flat=True).iterator(chunk_size=2000):
         if not item:
             continue
         if isinstance(item, str):
@@ -180,6 +180,10 @@ def list_gwflow_jobs(
         logger.exception("Failed to connect to Elasticsearch")
         empty_result["state"] = "down"
         return empty_result
+    except elasticsearch.exceptions.BadRequestError:
+        logger.exception("Elasticsearch rejected the gwflow list query")
+        empty_result["state"] = "down"
+        return empty_result
 
     if not results or "hits" not in results:
         return empty_result
@@ -190,7 +194,9 @@ def list_gwflow_jobs(
 
     records = results["hits"]["hits"]
     numeric_records = _numeric_es_records(records)
-    has_next = len(numeric_records) > page_size
+    # Continuation follows the exact ES total (same population as `total`), not
+    # the numeric-only records, so non-numeric IDs cannot hide the next page.
+    has_next = offset + page_size < total
 
     hit_ids = [record["_id"] for record in numeric_records]
     qs_before = GWFlowJob.objects.filter(id__in=hit_ids).select_related("event_id", "user").prefetch_related("files")

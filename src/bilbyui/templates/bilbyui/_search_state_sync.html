@@ -49,6 +49,7 @@
 
   window.addEventListener("popstate", syncSearchFormFromUrl);
   document.addEventListener("htmx:historyRestore", syncSearchFormFromUrl);
+  document.addEventListener("htmx:pushedIntoHistory", syncSearchFormFromUrl);
   bindAdvancedMirror();
 })();
 </script>

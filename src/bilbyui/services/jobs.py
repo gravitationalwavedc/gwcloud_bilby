@@ -186,6 +186,10 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         logger.exception("Failed to connect to Elasticsearch")
         empty_result["state"] = "down"
         return empty_result
+    except elasticsearch.exceptions.BadRequestError:
+        logger.exception("Elasticsearch rejected the public jobs list query")
+        empty_result["state"] = "down"
+        return empty_result
 
     if not results or "hits" not in results:
         return empty_result
@@ -195,7 +199,9 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         return empty_result
 
     records = _numeric_es_records(results["hits"]["hits"])
-    has_next = len(records) > page_size
+    # Continuation follows the exact ES total (same population as `total`), not
+    # the numeric-only records, so non-numeric IDs cannot hide the next page.
+    has_next = offset + page_size < total
 
     qs_before = (
         BilbyJob.objects.filter(id__in=[record["_id"] for record in records])

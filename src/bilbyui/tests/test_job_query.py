@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
+import elasticsearch
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
 from graphql_relay.node.node import to_global_id
@@ -772,6 +773,17 @@ class TestJobQueryTotal(BilbyTestCase):
         self.assertEqual(res["total"], 9)
         self.assertEqual(res["jobs"], {})
         self.assertFalse(res["has_next"])
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_bad_request_error_returns_down(self, mock_get_es_client):
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.side_effect = elasticsearch.exceptions.BadRequestError(400, "bad request", {})
+
+        res = list_public_jobs(self.user)
+
+        self.assertEqual(res["state"], "down")
+        self.assertEqual(res["jobs"], {})
 
     def test_list_user_jobs_returns_total(self):
         res = list_user_jobs(self.user)

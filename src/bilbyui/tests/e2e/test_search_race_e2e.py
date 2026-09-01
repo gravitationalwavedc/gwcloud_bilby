@@ -150,3 +150,38 @@ class TestGWFlowSiblingSourceRace(GWFlowJobsPageBase):
         self.assertIn("0 superevents match", await page.locator(".result-count").text_content())
         self.assertEqual(await page.locator(".filter-chip").count(), 0, "no chips must remain after removal")
         self.assertNotIn("library=", page.url, "URL must reflect the chip removal")
+
+
+class TestChipRemovalSyncsForm(GWFlowJobsPageBase):
+    """Chip removal must sync the persistent form so a removed filter is not
+    silently reintroduced by the next form submission (round-4 finding)."""
+
+    @async_e2e_test
+    async def test_chip_removal_resets_form_control(self):
+        page = self.page
+        await page.goto(f"{self.gwflow_url()}?library=lib1")
+        await page.wait_for_selector(".filter-chip")
+        await page.wait_for_selector(".result-count")
+
+        # The Library select reflects the active filter.
+        self.assertEqual(await page.locator("#library").input_value(), "lib1")
+
+        # Remove the library chip.
+        await page.locator(".filter-chip-remove").click()
+        await page.wait_for_function(
+            "() => document.querySelector('.filter-chip') === null",
+            timeout=10000,
+        )
+
+        # The persistent form control is reset (htmx:pushedIntoHistory sync).
+        self.assertEqual(await page.locator("#library").input_value(), "")
+        self.assertNotIn("library=lib1", page.url)
+
+        # A subsequent filter change must not reintroduce the removed library.
+        await page.locator("#review").select_option("approved")
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('3000'); }",
+            timeout=10000,
+        )
+        self.assertNotIn("library=lib1", page.url)
+        self.assertIn("review=approved", page.url)

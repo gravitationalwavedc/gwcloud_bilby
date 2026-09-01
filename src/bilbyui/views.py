@@ -1123,9 +1123,12 @@ def _build_user_job_rows(user_jobs_result, user):
 
 def _parse_page(request):
     try:
-        return max(int(request.GET.get("page", 1)), 1)
+        page = int(request.GET.get("page", 1))
     except (TypeError, ValueError):
         return 1
+    # Cap the page so a crafted value cannot push the ES `from_` offset past
+    # index.max_result_window (default 10000) on unauthenticated endpoints.
+    return min(max(page, 1), 500)
 
 
 _TIME_RANGE_LABELS = {
