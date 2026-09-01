@@ -684,7 +684,7 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(len(sqlite_rows), 1)
         self.assertEqual(sqlite_rows[0]["job_id"], "GW000001_123456")
         self.assertEqual(sqlite_rows[0]["success"], 1)
-        self.assertIn("Nothing to do 😊", logs.output[-1])
+        self.assertIn("Nothing to do", logs.output[-1])
 
     @responses.activate
     def test_no_dataurl(self, gwc):
@@ -1500,7 +1500,7 @@ class TestGWOSCCron(GWOSCTestBase):
         gwc.return_value.upload_external_job.assert_not_called()
 
         self.assertEqual(cm.exception.code, 0)
-        self.assertIn("Nothing to do 😊", logs.output[-1])
+        self.assertIn("Nothing to do", logs.output[-1])
         self.assertEqual(len(self.get_completed_jobs()), 0)
 
     @responses.activate
@@ -1576,7 +1576,7 @@ class TestGWOSCCron(GWOSCTestBase):
         gwc.return_value.upload_external_job.assert_not_called()
 
         self.assertEqual(cm.exception.code, 0)
-        self.assertIn("Nothing to do 😊", logs.output[-1])
+        self.assertIn("Nothing to do", logs.output[-1])
         self.assertEqual(len(self.get_completed_jobs()), 0)
 
     @responses.activate
@@ -1625,5 +1625,5 @@ class TestGWOSCCron(GWOSCTestBase):
         gwc.return_value.upload_external_job.assert_not_called()
 
         self.assertEqual(cm.exception.code, 0)
-        self.assertIn("Nothing to do 😊", logs.output[-1])
+        self.assertIn("Nothing to do", logs.output[-1])
         self.assertEqual(len(self.get_completed_jobs()), 0)
