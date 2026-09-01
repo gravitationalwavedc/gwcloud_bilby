@@ -279,14 +279,14 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(len(res["records"]), 1)
 
     @patch("bilbyui.services.gwflow.get_es_client")
-    def test_list_gwflow_jobs_bad_request_error_returns_down(self, mock_get_es_client):
+    def test_list_gwflow_jobs_bad_request_error_returns_invalid(self, mock_get_es_client):
         mock_client = MagicMock()
         mock_get_es_client.return_value = mock_client
         mock_client.search.side_effect = elasticsearch.exceptions.BadRequestError(400, "bad request", {})
 
         res = list_gwflow_jobs(self.non_ligo_user)
 
-        self.assertEqual(res["state"], "down")
+        self.assertEqual(res["state"], "invalid")
         self.assertEqual(res["jobs"], {})
 
     @patch("bilbyui.services.gwflow.get_es_client")
@@ -298,6 +298,42 @@ class TestGWFlowServices(BilbyTestCase):
 
         self.assertEqual(res["state"], "invalid")
         mock_client.search.assert_not_called()
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_reconciliation_with_string_ids(self, mock_get_es_client):
+        """Real ES returns string _id values; reconciliation must normalise them
+        to ints so valid hits are not misclassified as stale."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": str(self.job_public.id)}],  # string, as real ES returns
+                "total": {"value": 1},
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user, page_size=20)
+
+        self.assertIn(self.job_public.id, res["jobs"])
+        self.assertEqual(len(res["jobs"]), 1)
+        self.assertEqual(res["total"], 1)
+        self.assertFalse(res["has_next"])
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_string_ids_preserve_exact_total_and_pagination(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": str(self.job_public.id)}],
+                "total": {"value": 40},
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user, page_size=20)
+
+        self.assertEqual(res["total"], 40)
+        self.assertTrue(res["has_next"])
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_stale_only_invalidates_exact_total(self, mock_get_es_client):

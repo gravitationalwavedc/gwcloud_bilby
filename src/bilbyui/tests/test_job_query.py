@@ -775,15 +775,34 @@ class TestJobQueryTotal(BilbyTestCase):
         self.assertFalse(res["has_next"])
 
     @mock.patch("bilbyui.services.jobs.get_es_client")
-    def test_list_public_jobs_bad_request_error_returns_down(self, mock_get_es_client):
+    def test_list_public_jobs_bad_request_error_returns_invalid(self, mock_get_es_client):
         mock_client = mock.MagicMock()
         mock_get_es_client.return_value = mock_client
         mock_client.search.side_effect = elasticsearch.exceptions.BadRequestError(400, "bad request", {})
 
         res = list_public_jobs(self.user)
 
-        self.assertEqual(res["state"], "down")
+        self.assertEqual(res["state"], "invalid")
         self.assertEqual(res["jobs"], {})
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_reconciliation_with_string_ids(self, mock_get_es_client):
+        """Real ES returns string _id values; reconciliation must normalise them
+        to ints so valid hits are not misclassified as stale."""
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": str(self.job.id), "_source": {}}],
+                "total": {"value": 40},
+            }
+        }
+
+        res = list_public_jobs(self.user, page_size=20)
+
+        self.assertIn(self.job.id, res["jobs"])
+        self.assertEqual(res["total"], 40)
+        self.assertTrue(res["has_next"])
 
     def test_list_user_jobs_returns_total(self):
         res = list_user_jobs(self.user)

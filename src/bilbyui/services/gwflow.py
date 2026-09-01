@@ -146,7 +146,11 @@ def list_gwflow_jobs(
     # Intentional advanced syntax stays in a query_string must-clause; all
     # structured constraints (library, review status, time, visibility, pruning)
     # are encoded as DSL filter values so user input never reaches the query
-    # parser as syntax. Leading-wildcard expansion is disabled to bound cost.
+    # parser as syntax. Complexity controls: expressions are capped at 256
+    # chars and leading-wildcard / wildcard-analysis expansion is disabled.
+    # Full Lucene query_string syntax (fielded, Boolean, fuzzy, regex) is an
+    # intentional Issue #51 feature; residual parser cost is bounded by the
+    # above controls and by Elasticsearch request timeouts / monitoring.
     must = (
         [
             {
@@ -198,7 +202,7 @@ def list_gwflow_jobs(
         return empty_result
     except elasticsearch.exceptions.BadRequestError:
         logger.exception("Elasticsearch rejected the gwflow list query")
-        empty_result["state"] = "down"
+        empty_result["state"] = "invalid"
         return empty_result
 
     if not results or "hits" not in results:

@@ -32,11 +32,23 @@ def _time_range_to_timedelta(time_range):
 
 
 def _numeric_es_records(records):
-    return [
-        record
-        for record in records
-        if isinstance(record, dict) and (isinstance(record.get("_id"), int) or str(record.get("_id")).isdigit())
-    ]
+    """Return ES hit records whose ``_id`` is numeric, normalised to an int.
+
+    Elasticsearch serialises document ``_id`` as a string (e.g. ``"42"``),
+    while Django primary keys are integers. Normalising here means downstream
+    reconciliation compares like types (int ES IDs vs int Django PKs) instead of
+    misclassifying every valid hit as stale.
+    """
+    normalized = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        raw_id = record.get("_id")
+        if isinstance(raw_id, int):
+            normalized.append(record)
+        elif isinstance(raw_id, str) and raw_id.isdigit():
+            normalized.append({**record, "_id": int(raw_id)})
+    return normalized
 
 
 def _extract_es_total(results):
@@ -186,7 +198,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         return empty_result
     except elasticsearch.exceptions.BadRequestError:
         logger.exception("Elasticsearch rejected the public jobs list query")
-        empty_result["state"] = "down"
+        empty_result["state"] = "invalid"
         return empty_result
 
     if not results or "hits" not in results:
