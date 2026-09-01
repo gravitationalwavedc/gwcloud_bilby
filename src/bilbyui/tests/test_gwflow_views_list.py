@@ -1,5 +1,6 @@
 from unittest import mock
 
+import elasticsearch
 from django.test import RequestFactory
 from django.urls import reverse
 
@@ -403,7 +404,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         with (
             mock.patch(
                 "bilbyui.views.list_gwflow_jobs",
-                side_effect=_gwflow_jobs_side_effect(total=12),
+                side_effect=_gwflow_jobs_side_effect(total=40),
             ) as mock_list,
             mock.patch(
                 "bilbyui.views.list_gwflow_filter_options",
@@ -424,7 +425,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         self.assertEqual(context["review"], "reviewed")
         self.assertEqual(context["time_range"], "1w")
         self.assertEqual(context["page"], 2)
-        self.assertEqual(context["total"], 12)
+        self.assertEqual(context["total"], 40)
         mock_list.assert_called_once_with(
             self.user,
             search="foo",
@@ -549,7 +550,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
     def test_retry_url_carries_all_params(self):
         context = self._render_context(
             {"search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d", "page": 2},
-            total=10,
+            total=40,
         )
 
         self.assertEqual(
@@ -558,7 +559,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         )
 
     def test_retry_url_quotes_values(self):
-        context = self._render_context({"search": "S2306* & co", "library": "a b", "page": 2}, total=10)
+        context = self._render_context({"search": "S2306* & co", "library": "a b", "page": 2}, total=40)
 
         self.assertEqual(
             context["retry_url"],
@@ -566,7 +567,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         )
 
     def test_retry_url_omits_empty_library_and_review_status(self):
-        context = self._render_context({"search": "foo", "page": 2}, total=10)
+        context = self._render_context({"search": "foo", "page": 2}, total=40)
 
         self.assertEqual(
             context["retry_url"],
@@ -586,7 +587,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
             ),
             mock.patch(
                 "bilbyui.views.list_gwflow_filter_options",
-                side_effect=ConnectionError("es down"),
+                side_effect=elasticsearch.exceptions.ConnectionError("es down"),
             ),
         ):
             response = self.client.get(self.url)

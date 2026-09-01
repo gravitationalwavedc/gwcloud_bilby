@@ -30,13 +30,19 @@ class TestParsePage(BilbyTestCase):
         self.assertEqual(_parse_page(self.factory.get("/?page=0")), 1)
 
     def test_max_page_allowed(self):
-        self.assertEqual(_parse_page(self.factory.get("/?page=500")), 500)
+        self.assertEqual(_parse_page(self.factory.get("/?page=499")), 499)
 
     def test_page_capped_at_max(self):
-        # A crafted page must not push the ES from_ offset past
+        # A crafted page must not push the ES from_ + size past
         # index.max_result_window on unauthenticated endpoints.
-        self.assertEqual(_parse_page(self.factory.get("/?page=501")), 500)
-        self.assertEqual(_parse_page(self.factory.get("/?page=999999999")), 500)
+        self.assertEqual(_parse_page(self.factory.get("/?page=500")), 499)
+        self.assertEqual(_parse_page(self.factory.get("/?page=999999999")), 499)
+
+    def test_max_page_keeps_from_plus_size_within_result_window(self):
+        page = _parse_page(self.factory.get("/?page=499"))
+        page_size = 20
+        from_ = (page - 1) * page_size
+        self.assertLessEqual(from_ + (page_size + 1), 10000)
 
 
 class TestNormalizeTimeRange(BilbyTestCase):

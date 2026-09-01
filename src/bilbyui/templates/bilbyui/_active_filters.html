@@ -13,7 +13,7 @@
       hx-swap="innerHTML"
       hx-sync="#jobs-search-region:replace"
       hx-push-url="true"
-      hx-on::after-swap="document.querySelector(&quot;form input[name='search']&quot;)?.focus()"
+      hx-on::after-swap="document.querySelector('.active-filters .filter-chip-remove, .filter-reset, form input[name=&quot;search&quot;]')?.focus()"
     >&times;</button>
   </span>
   {% endfor %}

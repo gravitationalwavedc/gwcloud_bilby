@@ -918,12 +918,11 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         )
         self.job1.save()
 
-        # Should return no results because the number of results returned from elastic search are now a different
-        # length to those returned after the embargo filter is applied
+        # The embargoed job is excluded per-record; the authorised job remains.
         response = self.query(self.public_bilby_job_query, variables=variables)
         self.assertDictEqual(
             response.data,
-            {"publicBilbyJobs": {"edges": []}},
+            {"publicBilbyJobs": {"edges": [self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]]}},
             "publicBilbyJobs query returned unexpected data.",
         )
 
@@ -936,12 +935,11 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         self.job1.private = True
         self.job1.save()
 
-        # Should return no results because the number of results returned from elastic search are now a different
-        # length to those returned after the embargo filter is applied
+        # The private job is excluded per-record; the authorised job remains.
         response = self.query(self.public_bilby_job_query, variables=variables)
         self.assertDictEqual(
             response.data,
-            {"publicBilbyJobs": {"edges": []}},
+            {"publicBilbyJobs": {"edges": [self.public_bilby_job_expected["publicBilbyJobs"]["edges"][0]]}},
             "publicBilbyJobs query returned unexpected data.",
         )
 

@@ -283,6 +283,42 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(res["state"], "down")
         self.assertEqual(res["jobs"], {})
 
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_reconciliation_preserves_authorised_rows(self, mock_get_es_client):
+        """A stale/restricted hit must not blank the whole page: authorised rows
+        are preserved and stale vs restricted are logged separately."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        pruned = GWFlowJob.objects.create(
+            sname="S200101p",
+            user=self.non_ligo_user,
+            ligo_only=False,
+            is_pruned=True,
+        )
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": self.job_public.id},
+                    {"_id": pruned.id},
+                    {"_id": "non-numeric-id"},
+                    {"_id": 999999},  # stale: no DB row
+                ],
+                "total": {"value": 4},
+            }
+        }
+
+        with patch("bilbyui.services.gwflow.logger.warning") as mock_warn:
+            res = list_gwflow_jobs(self.non_ligo_user, page_size=20)
+
+        self.assertIn(self.job_public.id, res["jobs"])
+        self.assertNotIn(pruned.id, res["jobs"])
+        self.assertEqual(len(res["jobs"]), 1)
+        self.assertEqual(res["total"], 4)
+        self.assertFalse(res["has_next"])
+        logged = " ".join(str(c.args) for c in mock_warn.call_args_list)
+        self.assertIn("stale", logged)
+        self.assertIn("restricted", logged)
+
     def test_escape_es_term_escapes_special_chars(self):
         escaped = _escape_es_term('a"b*c?d:e\\f(g)h[i]j{k}l m')
         self.assertEqual(escaped, 'a\\"b\\*c\\?d\\:e\\\\f\\(g\\)h\\[i\\]j\\{k\\}l\\ m')

@@ -214,13 +214,30 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
 
     qs_after = qs_after.filter(private=False)
 
-    if qs_before.count() != qs_after.count():
-        user_id = user.id if user.is_authenticated else 0
-        msg = f"User {user_id} query violated embargo or included private job"
-        logger.warning(msg)
-        return empty_result
-
     jobs = {job.id: job for job in qs_after}
+
+    # Reconcile ES hits against the DB: preserve authorised rows and surface
+    # stale (missing DB row) vs restricted (policy-filtered) records separately
+    # instead of blanking the whole page on any single mismatch.
+    authorized_ids = set(jobs)
+    es_ids = {record["_id"] for record in records}
+    if authorized_ids != es_ids:
+        user_id = user.id if user.is_authenticated else 0
+        db_ids = set(qs_before.values_list("id", flat=True))
+        stale_ids = es_ids - db_ids
+        restricted_ids = es_ids - authorized_ids - stale_ids
+        if stale_ids:
+            logger.warning(
+                "Bilby ES index has %d stale record(s) with no DB row (user %s)",
+                len(stale_ids),
+                user_id,
+            )
+        if restricted_ids:
+            logger.warning(
+                "User %s query excluded %d embargoed or private BilbyJob record(s)",
+                user_id,
+                len(restricted_ids),
+            )
 
     job_controller_jobs = _fetch_job_controller_jobs(jobs.values(), user.id if user.is_authenticated else 0)
 

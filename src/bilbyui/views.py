@@ -10,6 +10,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from urllib.parse import quote
 
 import bilby_pipe
+import elasticsearch
 import requests
 from adacs_sso_plugin.models import APISessionToken
 from bilby_pipe.data_generation import DataGenerationInput
@@ -1126,9 +1127,11 @@ def _parse_page(request):
         page = int(request.GET.get("page", 1))
     except (TypeError, ValueError):
         return 1
-    # Cap the page so a crafted value cannot push the ES `from_` offset past
-    # index.max_result_window (default 10000) on unauthenticated endpoints.
-    return min(max(page, 1), 500)
+    # The ES-backed list queries request page_size + 1 records. With the
+    # default max_result_window of 10,000 and page_size 20, page 499 is the
+    # highest page whose from_ + size stays within the window; a crafted page
+    # must not push the offset past it on unauthenticated endpoints.
+    return min(max(page, 1), 499)
 
 
 _TIME_RANGE_LABELS = {
@@ -1213,6 +1216,14 @@ def _render_job_list(
     review = request.GET.get("review", "")
     time_range = _normalize_time_range(request.GET.get("time_range", "all"))
 
+    total_pages = max(1, math.ceil(total / page_size)) if page_size and page_size > 0 else 1
+    # Normalise an out-of-range page to the last valid page so the title,
+    # current-page marker, prev/next links, and retry URL all agree.
+    if service_state == "ok" and total and page > total_pages:
+        page = total_pages
+    pagination_page = min(page, total_pages)
+    page_range = list(range(max(1, pagination_page - 2), min(total_pages, pagination_page + 2) + 1))
+
     retry_params = {"page": page, "search": search, "time_range": time_range}
     if library:
         retry_params["library"] = library
@@ -1220,9 +1231,6 @@ def _render_job_list(
         retry_params["review"] = review
     retry_url = _build_jobs_list_url(jobs_list_url_name, retry_params)
 
-    total_pages = max(1, math.ceil(total / page_size)) if page_size and page_size > 0 else 1
-    pagination_page = min(page, total_pages)
-    page_range = list(range(max(1, pagination_page - 2), min(total_pages, pagination_page + 2) + 1))
     active_filters = _build_active_filters(jobs_list_url_name, search, library, review, time_range)
 
     context = {
@@ -1294,7 +1302,10 @@ def gwflow_jobs_view(request):
     if request.headers.get("HX-Request") != "true":
         try:
             filter_options = list_gwflow_filter_options()
-        except Exception:
+        except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError):
+            # The service handles expected ES failures internally; this narrow
+            # catch only guards the boundary so an ES transport/api hiccup
+            # degrades to an empty option list rather than a 500.
             logger.exception("Failed to load GWFlow filter options")
 
     return _render_job_list(

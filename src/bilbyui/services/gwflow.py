@@ -44,9 +44,10 @@ def _collect_library_options():
 
 
 def _collect_review_status_options():
+    es_errors = (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError)
     try:
         es = get_es_client()
-    except elasticsearch.exceptions.ConnectionError:
+    except es_errors:
         logger.exception("Failed to connect to Elasticsearch for review status aggregation")
         return None
 
@@ -61,7 +62,7 @@ def _collect_review_status_options():
                 }
             },
         )
-    except (elasticsearch.NotFoundError, elasticsearch.exceptions.ConnectionError):
+    except es_errors:
         logger.exception("Failed to aggregate review statuses from Elasticsearch")
         return None
 
@@ -208,15 +209,30 @@ def list_gwflow_jobs(
     if not include_pruned:
         qs_after = qs_after.filter(is_pruned=False)
 
-    if qs_before.count() != qs_after.count():
-        user_id = user.id if user and user.is_authenticated else 0
-        logger.warning(
-            "User %s query returned unauthorized or pruned GWFlowJob records during reconciliation",
-            user_id,
-        )
-        return empty_result
-
     jobs = {job.id: job for job in qs_after}
+
+    # Reconcile ES hits against the DB: preserve authorised rows and surface
+    # stale (missing DB row) vs restricted (policy-filtered) records separately
+    # instead of blanking the whole page on any single mismatch.
+    authorized_ids = set(jobs)
+    es_ids = set(hit_ids)
+    if authorized_ids != es_ids:
+        user_id = user.id if user and user.is_authenticated else 0
+        db_ids = set(qs_before.values_list("id", flat=True))
+        stale_ids = es_ids - db_ids
+        restricted_ids = es_ids - authorized_ids - stale_ids
+        if stale_ids:
+            logger.warning(
+                "GWFlow ES index has %d stale record(s) with no DB row (user %s)",
+                len(stale_ids),
+                user_id,
+            )
+        if restricted_ids:
+            logger.warning(
+                "User %s query excluded %d restricted or pruned GWFlowJob record(s)",
+                user_id,
+                len(restricted_ids),
+            )
 
     return {
         "jobs": jobs,
