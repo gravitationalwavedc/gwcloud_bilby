@@ -506,9 +506,7 @@ class TestSupportingFiles(TestCase):
             args = bilby_ini_to_args(self.ini_file_v1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
-            self.assertFalse(
-                (Path(working_directory) / "supporting_files" / "unknown" / "test.unknown").is_file()
-            )
+            self.assertFalse((Path(working_directory) / "supporting_files" / "unknown" / "test.unknown").is_file())
 
     def test_supporting_file_missing_type(self):
         token = str(uuid.uuid4())
@@ -527,9 +525,7 @@ class TestSupportingFiles(TestCase):
             args = bilby_ini_to_args(self.ini_file_v1)
             prepare_supporting_files(args, supporting_files, working_directory)
 
-            self.assertFalse(
-                (Path(working_directory) / "supporting_files" / "psd" / "test.psd").is_file()
-            )
+            self.assertFalse((Path(working_directory) / "supporting_files" / "psd" / "test.psd").is_file())
 
     def test_unsafe_supporting_file_name(self):
         token = str(uuid.uuid4())
@@ -608,6 +604,4 @@ class TestSupportingFiles(TestCase):
             with self.assertRaises(requests.HTTPError):
                 prepare_supporting_files(args, supporting_files, working_directory)
 
-            self.assertFalse(
-                (Path(working_directory) / "supporting_files" / "psd" / "test.psd").is_file()
-            )
+            self.assertFalse((Path(working_directory) / "supporting_files" / "psd" / "test.psd").is_file())
