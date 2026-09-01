@@ -32,14 +32,15 @@ class TestParsePage(BilbyTestCase):
     def test_max_page_allowed(self):
         self.assertEqual(_parse_page(self.factory.get("/?page=499")), 499)
 
-    def test_page_capped_at_max(self):
-        # A crafted page must not push the ES from_ + size past
-        # index.max_result_window on unauthenticated endpoints.
-        self.assertEqual(_parse_page(self.factory.get("/?page=500")), 499)
-        self.assertEqual(_parse_page(self.factory.get("/?page=999999999")), 499)
+    def test_parse_page_is_backend_neutral(self):
+        # The ES result-window cap is applied at the ES-backed view boundaries,
+        # not in the shared parser (My Jobs is database-backed and must reach
+        # pages beyond 499).
+        self.assertEqual(_parse_page(self.factory.get("/?page=500")), 500)
+        self.assertEqual(_parse_page(self.factory.get("/?page=999999999")), 999999999)
 
     def test_max_page_keeps_from_plus_size_within_result_window(self):
-        page = _parse_page(self.factory.get("/?page=499"))
+        page = 499
         page_size = 20
         from_ = (page - 1) * page_size
         self.assertLessEqual(from_ + (page_size + 1), 10000)

@@ -238,6 +238,12 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
                 user_id,
                 len(restricted_ids),
             )
+            # Fail closed: the ES total may include restricted records, so never
+            # expose it as an exact count. Show only the authorised page-local
+            # count with no continuation (a page-local count must not be
+            # presented as a complete global total).
+            total = len(jobs)
+            has_next = False
 
     job_controller_jobs = _fetch_job_controller_jobs(jobs.values(), user.id if user.is_authenticated else 0)
 

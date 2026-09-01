@@ -137,7 +137,10 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertContains(response, "badge-warning")
 
     def test_search_time_range_page_passed_through(self):
-        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()) as mock_list:
+        with mock.patch(
+            "bilbyui.views.list_gwflow_jobs",
+            side_effect=_gwflow_jobs_side_effect(total=40),
+        ) as mock_list:
             response = self.client.get(self.url, {"search": "foo", "time_range": "1d", "page": 2})
 
         self.assertEqual(response.status_code, 200)
@@ -149,6 +152,28 @@ class TestGWFlowJobsListView(BilbyTestCase):
             time_range="1d",
             page=2,
         )
+
+    def test_out_of_range_page_refetches_last_valid_page(self):
+        calls = []
+
+        def side_effect(user, *, search="", time_range="all", page=1, page_size=20, **kwargs):
+            calls.append(page)
+            return _build_gwflow_result(
+                list(GWFlowJob.objects.order_by("id")),
+                has_next=False,
+                page=page,
+                page_size=page_size,
+                total=40,
+            )
+
+        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=side_effect):
+            response = self.client.get(self.url, {"page": 99})
+
+        self.assertEqual(response.status_code, 200)
+        # The view re-fetches the last valid page so the rendered rows match the
+        # page label (never relabel rows fetched from another offset).
+        self.assertEqual(calls, [99, 2])
+        self.assertEqual(response.context["page"], 2)
 
     def test_row_building_counts_from_db(self):
         job1 = GWFlowJob.objects.create(sname="S230601ag", user=self.user)

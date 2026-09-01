@@ -1122,16 +1122,33 @@ def _build_user_job_rows(user_jobs_result, user):
     return rows
 
 
+#: Highest page whose ES ``from_ + size`` stays within the default
+#: ``index.max_result_window`` (10,000) for ``page_size=20`` and a sentinel hit.
+#: Applied only at the ES-backed Public Jobs / GWFlow boundaries, never to the
+#: database-backed My Jobs surface.
+ES_MAX_PAGE = 499
+
+
 def _parse_page(request):
+    """Parse a positive page number. Backend-neutral: ES result-window limits
+    are applied at the ES-backed view boundaries, not here."""
     try:
         page = int(request.GET.get("page", 1))
     except (TypeError, ValueError):
         return 1
-    # The ES-backed list queries request page_size + 1 records. With the
-    # default max_result_window of 10,000 and page_size 20, page 499 is the
-    # highest page whose from_ + size stays within the window; a crafted page
-    # must not push the offset past it on unauthenticated endpoints.
-    return min(max(page, 1), 499)
+    return max(page, 1)
+
+
+def _resolve_page(result, page, page_size, fetch):
+    """Clamp an out-of-range page to the last valid page and re-fetch it so the
+    rendered rows match the page label (never relabel rows from another offset)."""
+    if result.get("state") == "down":
+        return result, page
+    total_pages = max(1, math.ceil(result.get("total", 0) / page_size)) if page_size and page_size > 0 else 1
+    if page > total_pages:
+        page = total_pages
+        result = fetch(page)
+    return result, page
 
 
 _TIME_RANGE_LABELS = {
@@ -1209,18 +1226,16 @@ def _render_job_list(
     page_size=20,
     filter_options=None,
     page_title_prefix="",
+    page=None,
 ):
-    page = _parse_page(request)
+    if page is None:
+        page = _parse_page(request)
     search = request.GET.get("search", "")
     library = request.GET.get("library", "")
     review = request.GET.get("review", "")
     time_range = _normalize_time_range(request.GET.get("time_range", "all"))
 
     total_pages = max(1, math.ceil(total / page_size)) if page_size and page_size > 0 else 1
-    # Normalise an out-of-range page to the last valid page so the title,
-    # current-page marker, prev/next links, and retry URL all agree.
-    if service_state == "ok" and total and page > total_pages:
-        page = total_pages
     pagination_page = min(page, total_pages)
     page_range = list(range(max(1, pagination_page - 2), min(total_pages, pagination_page + 2) + 1))
 
@@ -1265,11 +1280,23 @@ def _render_job_list(
 
 
 def public_jobs_view(request):
+    page = min(_parse_page(request), ES_MAX_PAGE)
     public_jobs_result = list_public_jobs(
         request.user,
         search=request.GET.get("search", ""),
         time_range=_normalize_time_range(request.GET.get("time_range", "all")),
-        page=_parse_page(request),
+        page=page,
+    )
+    public_jobs_result, page = _resolve_page(
+        public_jobs_result,
+        page,
+        public_jobs_result.get("page_size", 20),
+        lambda p: list_public_jobs(
+            request.user,
+            search=request.GET.get("search", ""),
+            time_range=_normalize_time_range(request.GET.get("time_range", "all")),
+            page=p,
+        ),
     )
 
     return _render_job_list(
@@ -1283,19 +1310,34 @@ def public_jobs_view(request):
         fragment_template_name="bilbyui/_job_list_fragment.html",
         service_state=public_jobs_result.get("state", "ok"),
         page_title_prefix="Public Jobs",
+        page=page,
     )
 
 
 def gwflow_jobs_view(request):
     library = request.GET.get("library", "")
     review = request.GET.get("review", "")
+    page = min(_parse_page(request), ES_MAX_PAGE)
     result = list_gwflow_jobs(
         request.user,
         search=request.GET.get("search", ""),
         library=library,
         review_status=review,
         time_range=_normalize_time_range(request.GET.get("time_range", "all")),
-        page=_parse_page(request),
+        page=page,
+    )
+    result, page = _resolve_page(
+        result,
+        page,
+        result.get("page_size", 20),
+        lambda p: list_gwflow_jobs(
+            request.user,
+            search=request.GET.get("search", ""),
+            library=library,
+            review_status=review,
+            time_range=_normalize_time_range(request.GET.get("time_range", "all")),
+            page=p,
+        ),
     )
 
     filter_options = {"libraries": [], "review_statuses": []}
@@ -1321,6 +1363,7 @@ def gwflow_jobs_view(request):
         list_target_id="gwflow-job-list",
         service_state=result.get("state", "ok"),
         page_title_prefix="GWFlow",
+        page=page,
     )
 
 
@@ -1429,11 +1472,23 @@ def gwflow_job_history_version_partial(request, sname, history_id):
 
 @login_required
 def my_jobs_view(request):
+    page = _parse_page(request)
     user_jobs_result = list_user_jobs(
         request.user,
         search=request.GET.get("search", ""),
         time_range=_normalize_time_range(request.GET.get("time_range", "all")),
-        page=_parse_page(request),
+        page=page,
+    )
+    user_jobs_result, page = _resolve_page(
+        user_jobs_result,
+        page,
+        user_jobs_result.get("page_size", 20),
+        lambda p: list_user_jobs(
+            request.user,
+            search=request.GET.get("search", ""),
+            time_range=_normalize_time_range(request.GET.get("time_range", "all")),
+            page=p,
+        ),
     )
 
     return _render_job_list(
@@ -1447,6 +1502,7 @@ def my_jobs_view(request):
         fragment_template_name="bilbyui/_job_list_fragment.html",
         service_state=user_jobs_result.get("state", "ok"),
         page_title_prefix="My Jobs",
+        page=page,
     )
 
 

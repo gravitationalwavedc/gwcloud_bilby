@@ -207,13 +207,16 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertContains(response, 'hx-target="#gwflow-job-list"')
         self.assertContains(response, 'hx-swap="innerHTML"')
         self.assertContains(response, 'hx-push-url="true"')
+        # HTMX boosts the canonical native href (no duplicated hx-get URL).
+        self.assertContains(response, 'hx-boost="true"')
+        self.assertNotContains(response, "hx-get=")
         self.assertContains(
             response,
-            f'hx-get="{reverse("bilbyui:gwflow_jobs")}?page=1&search=&library=&review=&time_range=all"',
+            f'href="{reverse("bilbyui:gwflow_jobs")}?page=1&search=&library=&review=&time_range=all"',
         )
         self.assertContains(
             response,
-            f'hx-get="{reverse("bilbyui:gwflow_jobs")}?page=3&search=&library=&review=&time_range=all"',
+            f'href="{reverse("bilbyui:gwflow_jobs")}?page=3&search=&library=&review=&time_range=all"',
         )
 
     def test_current_page_is_non_actionable(self):

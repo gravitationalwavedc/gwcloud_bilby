@@ -313,7 +313,9 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertIn(self.job_public.id, res["jobs"])
         self.assertNotIn(pruned.id, res["jobs"])
         self.assertEqual(len(res["jobs"]), 1)
-        self.assertEqual(res["total"], 4)
+        # Fail closed: the ES total may include restricted records, so it is not
+        # exposed as an exact count.
+        self.assertEqual(res["total"], 1)
         self.assertFalse(res["has_next"])
         logged = " ".join(str(c.args) for c in mock_warn.call_args_list)
         self.assertIn("stale", logged)

@@ -233,6 +233,12 @@ def list_gwflow_jobs(
                 user_id,
                 len(restricted_ids),
             )
+            # Fail closed: the ES total may include restricted records, so never
+            # expose it as an exact count. Show only the authorised page-local
+            # count with no continuation (a page-local count must not be
+            # presented as a complete global total).
+            total = len(jobs)
+            has_next = False
 
     return {
         "jobs": jobs,

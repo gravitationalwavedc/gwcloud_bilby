@@ -113,6 +113,27 @@ class TestMyJobsView(BilbyTestCase):
         self.assertContains(response, 'aria-label="Pagination"')
         self.assertContains(response, "page=2")
 
+    @mock.patch("bilbyui.views.list_user_jobs")
+    def test_page_500_is_not_capped_for_db_backed_surface(self, mock_list_user_jobs):
+        # My Jobs is database-backed and must reach pages beyond the ES
+        # result-window cap (the cap applies only to ES-backed surfaces).
+        self.authenticate()
+        mock_list_user_jobs.return_value = {
+            "jobs": [],
+            "records": [],
+            "has_next": False,
+            "total": 10000,
+            "page": 500,
+            "page_size": 20,
+            "state": "ok",
+        }
+
+        response = self.client.get(self.url, {"page": 500})
+
+        self.assertEqual(response.status_code, 200)
+        mock_list_user_jobs.assert_called_once()
+        self.assertEqual(mock_list_user_jobs.call_args.kwargs["page"], 500)
+
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_full_page_title_includes_page_number_when_greater_than_one(self, request_job_filter):
         self.authenticate()
