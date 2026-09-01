@@ -372,6 +372,27 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertIn(f"({advanced})", q)
 
     @patch("bilbyui.services.gwflow.get_es_client")
+    def test_advanced_syntax_corpus_parity(self, mock_get_es_client):
+        """AC7: a corpus of advanced queries produces the same ES query-string
+        construction as the pre-change path (wrapped, never rewritten)."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        corpus = [
+            "sname:S2306*",
+            "analyses.software:bilby AND analyses.waveform:IMRPhenomXPHM",
+            "libraries:cbc-workflow-o4c AND analyses.reviewStatus:reviewed",
+            "gracedb.instruments:H1 OR gracedb.instruments:L1",
+            "eventId.triggerId:S230601ag",
+        ]
+        for advanced in corpus:
+            with self.subTest(advanced=advanced):
+                list_gwflow_jobs(self.non_ligo_user, search=advanced)
+                q = mock_client.search.call_args[1]["q"]
+                self.assertIn(f"({advanced})", q)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_preserves_total_on_empty_page(self, mock_get_es_client):
         """An out-of-range page with a positive ES total must not hide the total."""
         mock_client = MagicMock()

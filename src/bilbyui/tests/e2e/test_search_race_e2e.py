@@ -81,6 +81,10 @@ class TestGWFlowSearchRace(GWFlowJobsPageBase):
             "focus must remain on the search input after the list swap",
         )
 
+        # Exactly one live status region per settled fragment (announced once).
+        status_count = await page.evaluate("document.querySelectorAll('[role=\"status\"]').length")
+        self.assertEqual(status_count, 1, "exactly one role=status region per settled fragment")
+
         # The settled state is encoded in the URL and the active-filter chip.
         self.assertIn("search=abc", page.url)
         self.assertIn("library=lib1", page.url)
