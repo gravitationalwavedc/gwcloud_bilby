@@ -82,9 +82,7 @@ class SlurmScheduler(Scheduler):
         try:
             stdout = subprocess.check_output(command, shell=True, timeout=30)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            logger.warning(
-                "Failed to get status for job %s: command `%s` failed", job_id, command
-            )
+            logger.warning("Failed to get status for job %s: command `%s` failed", job_id, command)
             return None, None
 
         # Get the output

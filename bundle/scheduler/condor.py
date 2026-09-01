@@ -54,10 +54,7 @@ class CondorScheduler(Scheduler):
         :return: A tuple with JobStatus, additional info as a string. None if no job status could be obtained
         """
 
-        if (
-            details.get("working_directory") is None
-            or details.get("submit_directory") is None
-        ):
+        if details.get("working_directory") is None or details.get("submit_directory") is None:
             # A corrupt or legacy job record without a working or submit directory cannot be tracked
             logger.warning("Job record has no working_directory or submit_directory")
             return None, None
@@ -135,9 +132,7 @@ class CondorScheduler(Scheduler):
         for event in filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events):
             try:
                 notes = event["LogNotes"]
-                submitted_stages[event.cluster] = next(
-                    filter(lambda x: x.startswith("DAG Node:"), notes.splitlines())
-                )
+                submitted_stages[event.cluster] = next(filter(lambda x: x.startswith("DAG Node:"), notes.splitlines()))
             except (KeyError, StopIteration, AttributeError, TypeError):
                 continue
 
