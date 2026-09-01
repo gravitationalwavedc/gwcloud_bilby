@@ -128,7 +128,16 @@ django-tests:
     - mkdir -p .playwright
     - test -f .playwright/package.json || printf '%s\n' '{"name":"e2e-test-deps","private":true}' > .playwright/package.json
     - npm install --prefix .playwright --ignore-scripts --no-audit --no-fund --save-exact "playwright@$(src/.venv/bin/python -c 'from importlib.metadata import version; print(version("playwright"))')" "axe-core@4.10.3"
-    - cd src/ && PATH=".venv/bin:$PATH" bash run_coverage.sh --parallel
+    # Start ONE shared Playwright browser server and export its endpoint so every
+    # parallel Django worker reuses it. Without this each worker that reaches an
+    # e2e test spawns its own Node process + headless Chromium, which exhausts
+    # container memory and can kill workers mid-run (silent CI test-runner crash).
+    - cd src/
+    - PATH=".venv/bin:$PATH" python -m bilbyui.tests.e2e.pw_server_standalone > /tmp/pw_endpoint.txt 2>/tmp/pw_server.err &
+    - for i in $(seq 1 60); do [ -s /tmp/pw_endpoint.txt ] && break; sleep 1; done
+    - test -s /tmp/pw_endpoint.txt || { echo "Playwright server failed to start"; cat /tmp/pw_server.err; exit 1; }
+    - export PW_WS_ENDPOINT=$(cat /tmp/pw_endpoint.txt)
+    - PATH=".venv/bin:$PATH" bash run_coverage.sh --parallel
     - .venv/bin/python -m coverage xml -o reports/coverage.xml
   # Match coverage.py "TOTAL ... 95%" line; capture group is the percentage (GitLab displays in MR/pipeline)
   coverage: '/TOTAL.+ (\d+%)/'
