@@ -6,11 +6,13 @@ from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.test import override_settings
+from graphql import GraphQLError
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.views import _check_gwflow_ingest_user
 
 User = get_user_model()
 
@@ -1044,3 +1046,33 @@ class TestGWFlowMutations(BilbyTestCase):
                 self.assertFalse(GWFlowFile.objects.filter(id=a_file.id).exists())
                 self.assertEqual(len(result["removedFiles"]), 1)
                 self.assertFalse(disk.exists())
+
+
+class TestCheckGwflowIngestUser(BilbyTestCase):
+    def setUp(self):
+        super().setUp()
+        self.ingest_user = self.create_user(id=99, name="ingest user", primary_email="ingest@gwflow.org")
+
+    def test_user_none_raises(self):
+        with self.assertRaises(GraphQLError):
+            _check_gwflow_ingest_user(None)
+
+    def test_unauthenticated_user_raises(self):
+        user = mock.Mock(is_authenticated=False)
+        with self.assertRaises(GraphQLError):
+            _check_gwflow_ingest_user(user)
+
+    def test_unset_ingest_user_setting_raises(self):
+        with override_settings(GWFLOW_INGEST_USER=None):
+            with self.assertRaises(GraphQLError):
+                _check_gwflow_ingest_user(self.ingest_user)
+
+    def test_mismatched_user_id_raises(self):
+        other_user = self.create_user(id=2, name="other", primary_email="other@test.com")
+        with override_settings(GWFLOW_INGEST_USER=99):
+            with self.assertRaises(GraphQLError):
+                _check_gwflow_ingest_user(other_user)
+
+    def test_matching_user_id_passes(self):
+        with override_settings(GWFLOW_INGEST_USER=99):
+            _check_gwflow_ingest_user(self.ingest_user)
