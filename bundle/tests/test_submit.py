@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -591,3 +592,32 @@ Parent test-simulated_data0_87654321-0_analysis_H1V1_arg_0 Child test-simulated_
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.accounting, "no.group")
                 self.assertEqual(args.transfer_files, False)
+
+
+class TestSetDirectory(TestCase):
+    def test_set_directory_changes_cwd(self):
+        from core.submit import set_directory
+
+        with TemporaryDirectory() as td:
+            with set_directory(Path(td)):
+                self.assertEqual(os.getcwd(), td)
+
+    def test_set_directory_restores_cwd_on_normal_exit(self):
+        from core.submit import set_directory
+
+        origin = os.getcwd()
+        with TemporaryDirectory() as td:
+            with set_directory(Path(td)):
+                self.assertEqual(os.getcwd(), td)
+            self.assertEqual(os.getcwd(), origin)
+
+    def test_set_directory_restores_cwd_on_exception(self):
+        from core.submit import set_directory
+
+        origin = os.getcwd()
+        with TemporaryDirectory() as td:
+            with self.assertRaises(RuntimeError):
+                with set_directory(Path(td)):
+                    self.assertEqual(os.getcwd(), td)
+                    raise RuntimeError("boom")
+            self.assertEqual(os.getcwd(), origin)
