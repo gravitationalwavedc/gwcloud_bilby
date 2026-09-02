@@ -55,6 +55,11 @@ class TestApplySearchFilter(BilbyTestCase):
         result = _apply_search_filter(qs, "gw_search_match")
         self.assertEqual(list(result.values_list("pk", flat=True)), [self.match_description.pk])
 
+    def test_search_no_match_returns_empty(self):
+        qs = BilbyJob.objects.all()
+        result = _apply_search_filter(qs, "no_such_term_anywhere")
+        self.assertEqual(list(result.values_list("pk", flat=True)), [])
+
 
 class TestApplyTimeRangeFilter(BilbyTestCase):
     def setUp(self):
