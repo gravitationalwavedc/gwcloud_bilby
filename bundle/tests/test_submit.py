@@ -714,7 +714,6 @@ class TestWriteSubmissionScripts(TestCase):
             mock_slurm.assert_not_called()
             self.assertIsNone(result)
 
-
 class TestSetDirectory(TestCase):
     def setUp(self):
         sys.path.append(str(Path(__file__).parent / "misc"))
