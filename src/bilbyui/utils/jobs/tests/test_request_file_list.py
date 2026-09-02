@@ -16,9 +16,67 @@ from bilbyui.tests.test_utils import (
     silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.jobs.request_file_list import request_file_list
+from bilbyui.utils.jobs.request_file_list import _make_file_entry, request_file_list
 
 User = get_user_model()
+
+
+class TestMakeFileEntry(BilbyTestCase):
+    def setUp(self):
+        self.tempdir = TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.job_dir = self.tempdir.name
+
+    def test_make_file_entry_normal_file(self):
+        file_path = Path(self.job_dir) / "file.txt"
+        file_path.write_text("hello")
+
+        entry = _make_file_entry(file_path, False, self.job_dir)
+
+        self.assertEqual(entry, {"path": "/file.txt", "isDir": False, "fileSize": 5})
+
+    def test_make_file_entry_directory(self):
+        dir_path = Path(self.job_dir) / "subdir"
+        dir_path.mkdir()
+
+        entry = _make_file_entry(dir_path, True, self.job_dir)
+
+        self.assertEqual(entry["path"], "/subdir")
+        self.assertTrue(entry["isDir"])
+
+    def test_make_file_entry_broken_symlink_returns_none(self):
+        link_path = Path(self.job_dir) / "broken_link"
+        link_path.symlink_to("/nonexistent/target")
+
+        self.assertIsNone(_make_file_entry(link_path, False, self.job_dir))
+
+    def test_make_file_entry_unreadable_file_returns_none(self):
+        file_path = Path(self.job_dir) / "unreadable.txt"
+        file_path.touch()
+
+        real_stat = Path.stat
+
+        def stat_side_effect(self_obj, *, follow_symlinks=True):
+            if self_obj == file_path:
+                raise PermissionError
+            return real_stat(self_obj, follow_symlinks=follow_symlinks)
+
+        with mock.patch.object(Path, "stat", new=stat_side_effect):
+            self.assertIsNone(_make_file_entry(file_path, False, self.job_dir))
+
+    def test_make_file_entry_path_escaping_returns_none(self):
+        file_path = Path(self.job_dir) / "escaping.txt"
+        file_path.touch()
+
+        real_relative_to = Path.relative_to
+
+        def relative_to_side_effect(self_obj, *args, **kwargs):
+            if self_obj == file_path:
+                raise ValueError
+            return real_relative_to(self_obj, *args, **kwargs)
+
+        with mock.patch.object(Path, "relative_to", new=relative_to_side_effect):
+            self.assertIsNone(_make_file_entry(file_path, False, self.job_dir))
 
 
 @override_settings(ALLOW_HTTP_LEAKS=True)
