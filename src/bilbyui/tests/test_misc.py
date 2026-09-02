@@ -4,7 +4,7 @@ from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.test import override_settings
 
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.misc import check_request_leak, check_request_leak_decorator, is_ligo_user
+from bilbyui.utils.misc import check_request_leak, check_request_leak_decorator, es_section_dict, is_ligo_user
 
 
 def _leak_helper():
@@ -65,3 +65,23 @@ class CheckRequestLeakTestCase(BilbyTestCase):
         # When leaks are allowed, the decorator must call and return the wrapped function's result
         with override_settings(ALLOW_HTTP_LEAKS=True):
             self.assertEqual(_leak_helper_wrapped(), "value")
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class EsSectionDictTestCase(BilbyTestCase):
+    def test_dict_input_returned_unchanged(self):
+        # A dict section must be returned as-is, preserving its contents
+        section = {"key": "value", "nested": {"a": 1}}
+        self.assertEqual(es_section_dict(section), section)
+
+    def test_none_input_returns_empty_dict(self):
+        # A None section must be normalised to an empty dict
+        self.assertEqual(es_section_dict(None), {})
+
+    def test_list_input_returns_empty_dict(self):
+        # A list section must be normalised to an empty dict
+        self.assertEqual(es_section_dict(["a", "b"]), {})
+
+    def test_string_input_returns_empty_dict(self):
+        # A string section must be normalised to an empty dict
+        self.assertEqual(es_section_dict("section"), {})
