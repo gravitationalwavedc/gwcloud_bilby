@@ -443,6 +443,28 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         )
         mock_options.assert_called_once_with()
 
+    def test_url_state_parameter_combination_matrix(self):
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+        combos = [
+            {},
+            {"search": "foo"},
+            {"search": "foo", "library": "lib-a"},
+            {"search": "foo", "library": "lib-a", "review": "reviewed"},
+            {"search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d"},
+            {"search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d", "page": 2},
+            {"library": "lib-a", "review": "reviewed", "time_range": "1w", "page": 3},
+        ]
+        for params in combos:
+            with self.subTest(params=params):
+                with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect(total=60)):
+                    response = self.client.get(self.url, params)
+                self.assertEqual(response.status_code, 200)
+                ctx = response.context
+                self.assertEqual(ctx["search"], params.get("search", ""))
+                self.assertEqual(ctx["library"], params.get("library", ""))
+                self.assertEqual(ctx["review"], params.get("review", ""))
+                self.assertEqual(ctx["time_range"], params.get("time_range", "all"))
+
     def test_url_state_round_trip_fragment(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user)
         with (

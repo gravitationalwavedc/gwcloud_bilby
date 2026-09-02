@@ -272,11 +272,18 @@ class TestListGWFlowJobsStateFlag(BilbyTestCase):
         self.assertEqual(res["jobs"], {})
 
     @patch("elasticsearch.Elasticsearch")
-    def test_private_info_search_returns_state_ok(self, mock_es_cls):
+    def test_private_info_search_proceeds_to_es(self, mock_es_cls):
+        # The GWFlow index has no `_private_info_` field (SEC-01 closure), so the
+        # query proceeds to ES; the unknown field simply matches nothing.
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [], "total": {"value": 0}}}
+
         res = list_gwflow_jobs(self.user, search="_private_info_.userId:100")
+
         self.assertEqual(res["state"], "ok")
         self.assertEqual(res["jobs"], {})
-        mock_es_cls.assert_not_called()
+        mock_client.search.assert_called_once()
 
     @patch("elasticsearch.Elasticsearch")
     def test_reconciliation_mismatch_returns_state_ok(self, mock_es_cls):

@@ -54,10 +54,17 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertFalse(res["has_next"])
 
     @patch("elasticsearch.Elasticsearch")
-    def test_list_gwflow_jobs_private_info_query(self, mock_es_cls):
+    def test_list_gwflow_jobs_private_info_query_proceeds_to_es(self, mock_es_cls):
+        # The GWFlow index has no `_private_info_` field (SEC-01 closure), so the
+        # query proceeds to ES rather than being short-circuited.
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [], "total": {"value": 0}}}
+
         res = list_gwflow_jobs(self.non_ligo_user, search="_private_info_.userId:100")
+
         self.assertEqual(res["jobs"], {})
-        mock_es_cls.assert_not_called()
+        mock_client.search.assert_called_once()
 
     @patch("elasticsearch.Elasticsearch")
     def test_list_gwflow_jobs_index_not_found(self, mock_es_cls):

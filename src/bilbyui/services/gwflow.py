@@ -126,11 +126,6 @@ def list_gwflow_jobs(
         "state": "ok",
     }
 
-    if "_private_info_" in search:
-        user_id = user.id if user and user.is_authenticated else 0
-        logger.warning("User %s attempted to search private info in gwflow index", user_id)
-        return empty_result
-
     if len(search) > 256:
         logger.warning("Rejected overlong GWFlow search expression")
         empty_result["state"] = "invalid"
@@ -188,6 +183,7 @@ def list_gwflow_jobs(
             from_=offset,
             sort="lastUpdatedTime:desc",
             track_total_hits=True,
+            request_timeout=10,
         )
     except elasticsearch.NotFoundError:
         logger.exception(

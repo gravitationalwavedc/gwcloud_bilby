@@ -1227,6 +1227,7 @@ def _render_job_list(
     filter_options=None,
     page_title_prefix="",
     page=None,
+    max_page=None,
 ):
     if page is None:
         page = _parse_page(request)
@@ -1235,7 +1236,9 @@ def _render_job_list(
     review = request.GET.get("review", "")
     time_range = _normalize_time_range(request.GET.get("time_range", "all"))
 
-    total_pages = max(1, math.ceil(total / page_size)) if page_size and page_size > 0 else 1
+    effective_total_pages = max(1, math.ceil(total / page_size)) if page_size and page_size > 0 else 1
+    total_pages = min(effective_total_pages, max_page) if max_page is not None else effective_total_pages
+    has_next = has_next and page < total_pages
     pagination_page = min(page, total_pages)
     page_range = list(range(max(1, pagination_page - 2), min(total_pages, pagination_page + 2) + 1))
 
@@ -1311,6 +1314,7 @@ def public_jobs_view(request):
         service_state=public_jobs_result.get("state", "ok"),
         page_title_prefix="Public Jobs",
         page=page,
+        max_page=ES_MAX_PAGE,
     )
 
 
@@ -1364,6 +1368,7 @@ def gwflow_jobs_view(request):
         service_state=result.get("state", "ok"),
         page_title_prefix="GWFlow",
         page=page,
+        max_page=ES_MAX_PAGE,
     )
 
 

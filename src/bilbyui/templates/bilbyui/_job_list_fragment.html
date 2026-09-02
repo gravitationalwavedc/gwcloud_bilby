@@ -1,6 +1,10 @@
 <title>{% if page > 1 %}{{ page_title_prefix }} — page {{ page }} — GWCloud{% else %}{{ page_title_prefix }} — GWCloud{% endif %}</title>
 {% if service_state == "down" %}
   {% include "bilbyui/_async_state.html" with state="error" thing="the job list" region_label="Job list" retry_url=retry_url retry_target=retry_target %}
+{% elif service_state == "invalid" %}
+  <div class="alert alert-warning" role="alert">
+    The search expression is invalid. Check the advanced syntax and try again.
+  </div>
 {% else %}
   <p class="result-count" role="status">{{ total }} job{{ total|pluralize }} match</p>
   {% include "bilbyui/_active_filters.html" %}

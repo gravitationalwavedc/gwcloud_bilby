@@ -203,7 +203,7 @@ class TestActiveFiltersPagination(BilbyTestCase):
     # Pagination
     # ------------------------------------------------------------------
     def test_pagination_renders_numbered_links_with_aria_current(self):
-        response = self._render_fragment({"page": 2}, total=40, has_next=True)
+        response = self._render_fragment({"page": 2}, total=60, has_next=True)
 
         self.assertContains(response, 'aria-label="Pagination"')
         self.assertContains(response, 'rel="prev"')
@@ -220,7 +220,7 @@ class TestActiveFiltersPagination(BilbyTestCase):
         )
 
     def test_pagination_links_are_progressively_enhanced(self):
-        response = self._render_fragment({"page": 2}, total=40, has_next=True)
+        response = self._render_fragment({"page": 2}, total=60, has_next=True)
 
         self.assertContains(response, 'hx-target="#gwflow-job-list"')
         self.assertContains(response, 'hx-swap="innerHTML"')
@@ -238,7 +238,7 @@ class TestActiveFiltersPagination(BilbyTestCase):
         )
 
     def test_current_page_is_non_actionable(self):
-        response = self._render_fragment({"page": 2}, total=40, has_next=True)
+        response = self._render_fragment({"page": 2}, total=60, has_next=True)
 
         self.assertContains(response, '<span class="page-link" aria-current="page">2</span>')
         self.assertNotContains(
