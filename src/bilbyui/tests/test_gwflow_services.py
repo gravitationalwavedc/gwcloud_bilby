@@ -5,7 +5,11 @@ from django.contrib.auth import get_user_model
 from django.core.cache import caches
 
 from bilbyui.models import GWFlowJob
-from bilbyui.services.gwflow import list_gwflow_filter_options, list_gwflow_jobs
+from bilbyui.services.gwflow import (
+    _collect_review_status_options,
+    list_gwflow_filter_options,
+    list_gwflow_jobs,
+)
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
@@ -805,3 +809,44 @@ class TestGWFlowFilterOptions(BilbyTestCase):
         list_gwflow_filter_options()
 
         mock_client.search.assert_not_called()
+
+
+class TestCollectReviewStatusOptions(BilbyTestCase):
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_returns_none_on_es_connection_error(self, mock_get_es_client):
+        mock_get_es_client.side_effect = elasticsearch.exceptions.ConnectionError("down")
+
+        self.assertIsNone(_collect_review_status_options())
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_returns_none_on_search_error(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.side_effect = elasticsearch.exceptions.NotFoundError(404, "index not found", {})
+
+        self.assertIsNone(_collect_review_status_options())
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_returns_none_on_empty_buckets(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"aggregations": {"review_statuses": {"buckets": []}}}
+
+        self.assertIsNone(_collect_review_status_options())
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_returns_valid_buckets(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "aggregations": {
+                "review_statuses": {
+                    "buckets": [
+                        {"key": "approved", "doc_count": 10},
+                        {"key": "pending", "doc_count": 5},
+                    ]
+                }
+            }
+        }
+
+        self.assertEqual(_collect_review_status_options(), ["approved", "pending"])
