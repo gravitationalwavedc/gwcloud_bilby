@@ -804,6 +804,29 @@ class TestJobQueryTotal(BilbyTestCase):
         self.assertEqual(res["total"], 40)
         self.assertTrue(res["has_next"])
 
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_multi_page_drift_preserves_pagination(self, mock_get_es_client):
+        """A stale hit on page 2 must not collapse pagination: the global total
+        is preserved so later pages remain reachable."""
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": str(self.job.id), "_source": {}},
+                    {"_id": "999999", "_source": {}},  # stale: no DB row
+                ],
+                "total": {"value": 60},
+            }
+        }
+
+        res = list_public_jobs(self.user, page=2, page_size=20)
+
+        self.assertIn(self.job.id, res["jobs"])
+        self.assertEqual(len(res["jobs"]), 1)
+        self.assertEqual(res["total"], 60)
+        self.assertTrue(res["has_next"])  # 20 + 20 < 60 -> page 3 reachable
+
     def test_list_user_jobs_returns_total(self):
         res = list_user_jobs(self.user)
 

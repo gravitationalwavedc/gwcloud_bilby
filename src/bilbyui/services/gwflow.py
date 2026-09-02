@@ -248,12 +248,10 @@ def list_gwflow_jobs(
                 user_id,
                 len(restricted_ids),
             )
-        if stale_ids or restricted_ids:
-            # ES and the authoritative DB disagree, so the global ES count and
-            # continuation state cannot be presented as exact. Show only the
-            # authorised page-local count with no continuation.
-            total = len(jobs)
-            has_next = False
+        # Preserve the global ES total and continuation state. The authoritative
+        # `jobs` mapping already omits stale or restricted rows from rendering,
+        # so index drift must not collapse pagination to a page-local count
+        # (which would make valid later pages unreachable).
 
     return {
         "jobs": jobs,

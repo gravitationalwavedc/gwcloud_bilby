@@ -343,9 +343,10 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertTrue(res["has_next"])
 
     @patch("bilbyui.services.gwflow.get_es_client")
-    def test_list_gwflow_jobs_stale_only_invalidates_exact_total(self, mock_get_es_client):
-        """Stale ES rows (no DB row) must invalidate the exact total and
-        continuation, not just restricted rows."""
+    def test_list_gwflow_jobs_stale_only_preserves_global_total(self, mock_get_es_client):
+        """Stale ES rows (no DB row) are omitted from rendering but the global
+        ES total and continuation state are preserved so later pages stay
+        reachable."""
         mock_client = MagicMock()
         mock_get_es_client.return_value = mock_client
         mock_client.search.return_value = {
@@ -362,13 +363,14 @@ class TestGWFlowServices(BilbyTestCase):
 
         self.assertIn(self.job_public.id, res["jobs"])
         self.assertEqual(len(res["jobs"]), 1)
-        self.assertEqual(res["total"], 1)
+        self.assertEqual(res["total"], 2)
         self.assertFalse(res["has_next"])
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_reconciliation_preserves_authorised_rows(self, mock_get_es_client):
         """A stale/restricted hit must not blank the whole page: authorised rows
-        are preserved and stale vs restricted are logged separately."""
+        are preserved, stale vs restricted are logged separately, and the global
+        total is retained so pagination stays intact."""
         mock_client = MagicMock()
         mock_get_es_client.return_value = mock_client
         pruned = GWFlowJob.objects.create(
@@ -395,13 +397,52 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertIn(self.job_public.id, res["jobs"])
         self.assertNotIn(pruned.id, res["jobs"])
         self.assertEqual(len(res["jobs"]), 1)
-        # Fail closed: the ES total may include restricted records, so it is not
-        # exposed as an exact count.
-        self.assertEqual(res["total"], 1)
+        self.assertEqual(res["total"], 4)
         self.assertFalse(res["has_next"])
         logged = " ".join(str(c.args) for c in mock_warn.call_args_list)
         self.assertIn("stale", logged)
         self.assertIn("restricted", logged)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_multi_page_drift_preserves_pagination(self, mock_get_es_client):
+        """A stale hit on page 2 must not collapse pagination: the global total
+        is preserved so later pages remain reachable."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        job2 = GWFlowJob.objects.create(
+            sname="S200101e",
+            user=self.non_ligo_user,
+            ligo_only=False,
+            is_pruned=False,
+        )
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": job2.id},
+                    {"_id": 999999},  # stale: no DB row
+                ],
+                "total": {"value": 60},
+            }
+        }
+
+        res = list_gwflow_jobs(self.non_ligo_user, page=2, page_size=20)
+
+        self.assertIn(job2.id, res["jobs"])
+        self.assertEqual(len(res["jobs"]), 1)
+        self.assertEqual(res["total"], 60)
+        self.assertTrue(res["has_next"])  # 20 + 20 < 60 -> page 3 reachable
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_advanced_syntax_at_256_char_limit_accepted(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        search = "sname:" + "a" * 250  # 256 chars total
+        res = list_gwflow_jobs(self.non_ligo_user, search=search)
+
+        self.assertEqual(res["state"], "ok")
+        mock_client.search.assert_called_once()
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_maps_library_and_review_status(self, mock_get_es_client):
