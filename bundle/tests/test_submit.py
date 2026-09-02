@@ -475,24 +475,28 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
                 self.assertEqual(args.transfer_files, False)
 
     def test_create_working_directory_creates_directory(self):
+        global working_directory_mock_return
         with TemporaryDirectory() as td:
             target = os.path.join(td, "nested", "job_dir")
+            working_directory_mock_return = target
 
-            from core.submit import create_working_directory
+            with patch("core.misc.working_directory", side_effect=working_directory_mock_fn):
+                from core.submit import create_working_directory
 
-            with patch("core.submit.working_directory", return_value=target):
                 result = create_working_directory({"job_id": 1})
 
             self.assertTrue(os.path.isdir(target))
             self.assertEqual(result, target)
 
     def test_create_working_directory_idempotent(self):
+        global working_directory_mock_return
         with TemporaryDirectory() as td:
             target = os.path.join(td, "nested", "job_dir")
+            working_directory_mock_return = target
 
-            from core.submit import create_working_directory
+            with patch("core.misc.working_directory", side_effect=working_directory_mock_fn):
+                from core.submit import create_working_directory
 
-            with patch("core.submit.working_directory", return_value=target):
                 create_working_directory({"job_id": 1})
                 result = create_working_directory({"job_id": 1})
 
