@@ -94,7 +94,7 @@ def elasticsearch_search_mock(*args, **kwargs):
         jobs.append({"_source": generate_elastic_doc(job, user), "_id": job.id})
 
     page = jobs[from_ : from_ + size]
-    return {"hits": {"hits": page}}
+    return {"hits": {"total": {"value": len(jobs)}, "hits": page}}
 
 
 def elasticsearch_search_mock_no_hits(*args, **kwargs):
@@ -147,8 +147,46 @@ class TestPublicJobsView(BilbyTestCase):
         self.assertContains(response, "Job 24")
         self.assertContains(response, "Job 5")
         self.assertNotContains(response, "Job 4")
-        self.assertContains(response, "Loading more")
+        self.assertContains(response, 'aria-label="Pagination"')
         self.assertContains(response, "page=2")
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_full_page_title_includes_page_number_when_greater_than_one(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
+        for index in range(25):
+            BilbyJob.objects.create(
+                user_id=self.user.id,
+                name=f"Job {index}",
+                description=f"Description {index}",
+                job_controller_id=1600 + index,
+                private=False,
+                ini_string=create_test_ini_string({"detectors": "['H1']", "label": f"Job {index}"}),
+            )
+
+        response = self.client.get(self.url, {"page": 2})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<title>Public Jobs — page 2 — GWCloud</title>")
+
+    @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
+    @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
+    def test_fragment_title_renders_page_number_and_prefix(self, request_job_filter, elasticsearch_search):
+        self.user = self.create_user()
+        for index in range(25):
+            BilbyJob.objects.create(
+                user_id=self.user.id,
+                name=f"Job {index}",
+                description=f"Description {index}",
+                job_controller_id=1700 + index,
+                private=False,
+                ini_string=create_test_ini_string({"detectors": "['H1']", "label": f"Job {index}"}),
+            )
+
+        response = self.client.get(self.url, {"page": 2}, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<title>Public Jobs — page 2 — GWCloud</title>")
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", return_value=("UNKNOWN", "Error getting job filter"))
@@ -370,7 +408,8 @@ class TestPublicJobsView(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "<!doctype html>", status_code=200)
         self.assertContains(response, "Fragment job")
-        self.assertNotContains(response, "Public Jobs")
+        self.assertContains(response, "<title>Public Jobs — GWCloud</title>")
+        self.assertNotContains(response, "<h1")
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)

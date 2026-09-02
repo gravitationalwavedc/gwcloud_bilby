@@ -1,0 +1,55 @@
+{# Popstate / htmx:historyRestore form-state sync + advanced-syntax mirror (issue #51 UX-4). #}
+{# HTMX history only restores the swapped list region, not the search form; this #}
+{# dependency-free script restores the form controls from the URL params so #}
+{# back/forward/refresh keep the settled state. It also mirrors the row-1 search #}
+{# input and the row-2 "Advanced syntax:" input so both present the same ?search= value. #}
+<script>
+(function () {
+  "use strict";
+  function syncSearchFormFromUrl() {
+    var searchInput = document.querySelector("form input[name='search']");
+    if (!searchInput || !searchInput.form) {
+      return;
+    }
+    var form = searchInput.form;
+    var params = new URLSearchParams(window.location.search);
+    // Restore filter controls only — NOT the hidden page control. The hidden
+    // page input keeps its form default of 1 so any subsequent filter change
+    // resets to page 1 (GOV.UK filtering rule); pagination links encode their
+    // requested page independently.
+    ["search", "library", "review", "time_range"].forEach(function (name) {
+      var control = form.elements[name];
+      if (!control) {
+        return;
+      }
+      var value = params.get(name);
+      var defaultValue = name === "time_range" ? "all" : "";
+      control.value = value === null ? defaultValue : value;
+    });
+    var advanced = document.getElementById("advanced-search");
+    if (advanced) {
+      advanced.value = searchInput.value;
+    }
+  }
+
+  function bindAdvancedMirror() {
+    var basic = document.querySelector("form input[name='search']");
+    var advanced = document.getElementById("advanced-search");
+    if (!basic || !advanced) {
+      return;
+    }
+    basic.addEventListener("input", function () {
+      advanced.value = basic.value;
+    });
+    advanced.addEventListener("input", function () {
+      basic.value = advanced.value;
+      basic.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  window.addEventListener("popstate", syncSearchFormFromUrl);
+  document.addEventListener("htmx:historyRestore", syncSearchFormFromUrl);
+  document.addEventListener("htmx:pushedIntoHistory", syncSearchFormFromUrl);
+  bindAdvancedMirror();
+})();
+</script>

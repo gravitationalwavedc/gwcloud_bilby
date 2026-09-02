@@ -1,0 +1,150 @@
+// Search / filter / pagination styling (issue #51 UX-4). Markup contract lives
+// in src/bilbyui/templates/bilbyui/_search_form.html, _active_filters.html,
+// _pagination.html and the job-list fragments; design contract is
+// docs/plans/designs/065-ux4-gwflow-search-filtering-pagination.md §9.
+//
+// Compiled after theme.scss, so every Bootstrap 4.6 variable/mixin referenced
+// here is already defined by the vendor import chain. No shimmer/animation is
+// introduced for these static elements; the global prefers-reduced-motion block
+// in _shell.scss (Frontend Bible rule 10) covers any transition we do use.
+
+// ---------------------------------------------------------------------------
+// Coordinated search form (filter disclosure + advanced-syntax row)
+// ---------------------------------------------------------------------------
+.gwflow-search-form {
+    // On mobile (<md) the labelled filter selects stack full-width behind the
+    // "Filters" disclosure button. Give the collapsed panel a card-like
+    // container so the stacked selects read as one group; on desktop the
+    // selects are always inline (d-md-block) and need no container.
+    #search-filters {
+        @include media-breakpoint-down(sm) {
+            padding: $spacer;
+            margin-bottom: $spacer;
+            background-color: $white;
+            border: $border-width solid $gray-300;
+            border-radius: $border-radius;
+        }
+    }
+
+    // "Advanced syntax:" label above the always-visible input (WCAG 3.3.2).
+    label[for="search"] {
+        font-size: $font-size-sm;
+        font-weight: $font-weight-bold;
+        color: $gray-700;
+    }
+
+    // In-place help panel toggled by the "(?)" button. Bootstrap's card handles
+    // the container; give <code> field names/examples a subtle inline treatment.
+    #search-help {
+        code {
+            padding: 0.125rem 0.25rem;
+            color: $blue-700;
+            background-color: $gray-100;
+            border-radius: $border-radius-sm;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Active-filter chips + Reset all (_active_filters.html)
+// ---------------------------------------------------------------------------
+.active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacer * 0.5;
+    margin-bottom: $spacer;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacer * 0.375;
+    padding: $spacer * 0.25 $spacer * 0.5;
+    font-size: $font-size-sm;
+    line-height: 1.25;
+    color: $gray-800;
+    background-color: $gray-200;
+    border: $border-width solid $gray-300;
+    border-radius: $rounded-pill;
+}
+
+.filter-chip-remove {
+    // >=24px hit target (WCAG 2.5.8); the chip itself supplies the surrounding
+    // padding so the button never shrinks below the minimum.
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0 $spacer * 0.25;
+    font-size: $font-size-base * 1.25;
+    line-height: 1;
+    color: $gray-600;
+    background-color: transparent;
+    border: 0;
+    border-radius: $rounded-pill;
+    cursor: pointer;
+
+    &:hover {
+        color: $gray-900;
+        background-color: $gray-300;
+    }
+
+    // Visible focus ring (WCAG 2.4.7) consistent with _shell.scss.
+    &:focus {
+        outline: 2px solid $blue-500;
+        outline-offset: 2px;
+    }
+}
+
+.filter-reset {
+    font-size: $font-size-sm;
+
+    &:hover {
+        text-decoration: underline;
+    }
+
+    // Visible focus ring (WCAG 2.4.7) consistent with _shell.scss.
+    &:focus {
+        outline: 2px solid $blue-500;
+        outline-offset: 2px;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Numbered pagination (_pagination.html)
+// ---------------------------------------------------------------------------
+.pagination-wrap {
+    margin-top: $spacer;
+}
+
+.pagination {
+    margin-bottom: 0;
+}
+
+.page-link {
+    // Bootstrap 4.6 removes the outline and relies on a box-shadow; keep that
+    // ring and add a high-contrast outline so keyboard focus is unmistakable
+    // (WCAG 2.4.7).
+    &:focus {
+        outline: 2px solid $blue-500;
+        outline-offset: 2px;
+    }
+}
+
+// The active page carries both .active and aria-current="page"; Bootstrap
+// colors it with the brand primary. Keep the default but guarantee the current
+// page link is visually distinct from its neighbours.
+.page-item.active .page-link {
+    font-weight: $font-weight-bold;
+}
+
+// ---------------------------------------------------------------------------
+// Result count line (role="status") in the job-list fragments
+// ---------------------------------------------------------------------------
+.result-count {
+    margin-bottom: $spacer * 0.5;
+    font-size: $font-size-sm;
+    color: $gray-600;
+}

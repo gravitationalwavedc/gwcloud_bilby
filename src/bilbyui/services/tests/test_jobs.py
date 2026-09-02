@@ -129,6 +129,7 @@ class TestJobsService(BilbyTestCase):
                 "has_next": False,
                 "page": 1,
                 "page_size": 20,
+                "total": 0,
                 "state": "down",
             },
         )
@@ -148,6 +149,7 @@ class TestJobsService(BilbyTestCase):
                 "has_next": False,
                 "page": 1,
                 "page_size": 20,
+                "total": 0,
                 "state": "down",
             },
         )
@@ -167,6 +169,7 @@ class TestJobsService(BilbyTestCase):
                 "has_next": False,
                 "page": 1,
                 "page_size": 20,
+                "total": 0,
                 "state": "down",
             },
         )
@@ -186,6 +189,7 @@ class TestJobsService(BilbyTestCase):
                 "has_next": False,
                 "page": 1,
                 "page_size": 20,
+                "total": 0,
                 "state": "ok",
             },
         )

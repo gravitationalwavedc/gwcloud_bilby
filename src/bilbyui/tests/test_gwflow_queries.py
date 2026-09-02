@@ -280,7 +280,7 @@ class TestGWFlowQueries(BilbyTestCase):
         """
 
         self._auth_as(self.normal_user)
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(4):
             res = self.query(query)
         self.assertResponseNoErrors(res)
         self.assertEqual(len(res.data["gwflowJobs"]["edges"]), 3)

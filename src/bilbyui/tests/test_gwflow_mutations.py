@@ -223,6 +223,34 @@ class TestGWFlowMutations(BilbyTestCase):
             self.assertFalse(f_obj.uploaded)
 
     @override_settings(GWFLOW_INGEST_USER=99)
+    @mock.patch("bilbyui.views.transaction.on_commit", side_effect=lambda fn: fn())
+    def test_upsert_gwflow_job_invalidates_library_cache_after_commit(self, mock_on_commit):
+        from types import SimpleNamespace
+
+        from django.core.cache import cache
+
+        from bilbyui.views import upsert_gwflow_job
+
+        self._auth_as(self.ingest_user)
+        cache.set("gwflow_filter_libraries", ["stale-lib"])
+
+        params = SimpleNamespace(
+            sname="S230601zz",
+            ligo_only=False,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            is_pruned=False,
+            current_history_id="h1",
+            current_history_timestamp=None,
+            event_id=None,
+            files=[],
+        )
+        upsert_gwflow_job(self.ingest_user, params)
+
+        mock_on_commit.assert_called_once()
+        self.assertIsNone(cache.get("gwflow_filter_libraries"))
+
+    @override_settings(GWFLOW_INGEST_USER=99)
     def test_upsert_event_link_best_effort(self):
         self._auth_as(self.ingest_user)
 

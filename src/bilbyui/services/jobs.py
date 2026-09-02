@@ -32,11 +32,46 @@ def _time_range_to_timedelta(time_range):
 
 
 def _numeric_es_records(records):
-    return [
-        record
-        for record in records
-        if isinstance(record, dict) and (isinstance(record.get("_id"), int) or str(record.get("_id")).isdigit())
-    ]
+    """Return ES hit records whose ``_id`` is numeric, normalised to an int.
+
+    Elasticsearch serialises document ``_id`` as a string (e.g. ``"42"``),
+    while Django primary keys are integers. Normalising here means downstream
+    reconciliation compares like types (int ES IDs vs int Django PKs) instead of
+    misclassifying every valid hit as stale.
+    """
+    normalized = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        raw_id = record.get("_id")
+        if isinstance(raw_id, int):
+            normalized.append(record)
+        elif isinstance(raw_id, str) and raw_id.isdigit():
+            normalized.append({**record, "_id": int(raw_id)})
+    return normalized
+
+
+def _extract_es_total(results):
+    """Return the total hit count from an ES response, guarding against a
+    missing total block, a string-typed value, or the legacy integer shape.
+
+    A lower-bound total (``relation != "eq"``, e.g. a capped 10000) is returned
+    as its known value rather than converted to zero: a positive lower bound is
+    still useful and must never be presented as an exact zero. Callers that need
+    an exact total issue the search with ``track_total_hits=True``.
+    """
+    try:
+        total = results["hits"]["total"]
+    except (KeyError, TypeError):
+        return 0
+    if isinstance(total, dict):
+        total = total.get("value", 0)
+    if isinstance(total, str):
+        try:
+            return int(total)
+        except (TypeError, ValueError):
+            return 0
+    return total if isinstance(total, int) else 0
 
 
 def _apply_time_range_filter(qs, time_range, field_name="last_updated"):
@@ -67,6 +102,8 @@ def list_user_jobs(user, *, search="", time_range="all", page=1, page_size=20):
     qs = _apply_search_filter(qs, search)
     qs = _apply_time_range_filter(qs, time_range)
 
+    total = qs.count()
+
     offset = (page - 1) * page_size
     jobs_slice = list(qs[offset : offset + page_size + 1])
     has_next = len(jobs_slice) > page_size
@@ -74,6 +111,7 @@ def list_user_jobs(user, *, search="", time_range="all", page=1, page_size=20):
     return {
         "jobs": jobs_slice[:page_size],
         "has_next": has_next,
+        "total": total,
         "page": page,
         "page_size": page_size,
         "state": "ok",
@@ -105,6 +143,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         "records": [],
         "job_controller_jobs": {},
         "has_next": False,
+        "total": 0,
         "page": page,
         "page_size": page_size,
         "state": "ok",
@@ -143,6 +182,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
             size=page_size + 1,
             from_=offset,
             sort="job.lastUpdatedTime:desc",
+            track_total_hits=True,
         )
     except elasticsearch.NotFoundError:
         # Missing index (common in fresh local setups) — show empty list, not 500.
@@ -156,12 +196,22 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         logger.exception("Failed to connect to Elasticsearch")
         empty_result["state"] = "down"
         return empty_result
+    except elasticsearch.exceptions.BadRequestError:
+        logger.exception("Elasticsearch rejected the public jobs list query")
+        empty_result["state"] = "invalid"
+        return empty_result
 
-    if not results or "hits" not in results or not results["hits"]["hits"]:
+    if not results or "hits" not in results:
+        return empty_result
+    total = _extract_es_total(results)
+    if not results["hits"]["hits"]:
+        empty_result["total"] = total
         return empty_result
 
     records = _numeric_es_records(results["hits"]["hits"])
-    has_next = len(records) > page_size
+    # Continuation follows the exact ES total (same population as `total`), not
+    # the numeric-only records, so non-numeric IDs cannot hide the next page.
+    has_next = offset + page_size < total
 
     qs_before = (
         BilbyJob.objects.filter(id__in=[record["_id"] for record in records])
@@ -174,13 +224,34 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
 
     qs_after = qs_after.filter(private=False)
 
-    if qs_before.count() != qs_after.count():
-        user_id = user.id if user.is_authenticated else 0
-        msg = f"User {user_id} query violated embargo or included private job"
-        logger.warning(msg)
-        return empty_result
-
     jobs = {job.id: job for job in qs_after}
+
+    # Reconcile ES hits against the DB: preserve authorised rows and surface
+    # stale (missing DB row) vs restricted (policy-filtered) records separately
+    # instead of blanking the whole page on any single mismatch.
+    authorized_ids = set(jobs)
+    es_ids = {record["_id"] for record in records}
+    if authorized_ids != es_ids:
+        user_id = user.id if user.is_authenticated else 0
+        db_ids = set(qs_before.values_list("id", flat=True))
+        stale_ids = es_ids - db_ids
+        restricted_ids = es_ids - authorized_ids - stale_ids
+        if stale_ids:
+            logger.warning(
+                "Bilby ES index has %d stale record(s) with no DB row (user %s)",
+                len(stale_ids),
+                user_id,
+            )
+        if restricted_ids:
+            logger.warning(
+                "User %s query excluded %d embargoed or private BilbyJob record(s)",
+                user_id,
+                len(restricted_ids),
+            )
+        # Preserve the global ES total and continuation state. The authoritative
+        # `jobs` mapping already omits stale or restricted rows from rendering,
+        # so index drift must not collapse pagination to a page-local count
+        # (which would make valid later pages unreachable).
 
     job_controller_jobs = _fetch_job_controller_jobs(jobs.values(), user.id if user.is_authenticated else 0)
 
@@ -189,6 +260,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         "records": records,
         "job_controller_jobs": job_controller_jobs,
         "has_next": has_next,
+        "total": total,
         "page": page,
         "page_size": page_size,
         "state": "ok",

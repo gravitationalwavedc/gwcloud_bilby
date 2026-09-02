@@ -2,6 +2,7 @@ import functools
 import hashlib
 import json
 import logging
+import math
 import shutil
 import subprocess
 from pathlib import Path
@@ -9,6 +10,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from urllib.parse import quote
 
 import bilby_pipe
+import elasticsearch
 import requests
 from adacs_sso_plugin.models import APISessionToken
 from bilby_pipe.data_generation import DataGenerationInput
@@ -16,6 +18,7 @@ from bilby_pipe.parser import create_parser
 from bilby_pipe.utils import convert_string_to_dict
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import IntegrityError, transaction
@@ -44,7 +47,7 @@ from .models import (
 )
 from .services.api_tokens import create_token, list_tokens, revoke_token, serialize_token
 from .services.event_ids import get_event_id, list_event_ids_for_user
-from .services.gwflow import list_gwflow_jobs
+from .services.gwflow import LIBRARIES_CACHE_KEY, list_gwflow_filter_options, list_gwflow_jobs
 from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
 from .types import GWFlowPendingFile
@@ -1142,11 +1145,95 @@ def _build_user_job_rows(user_jobs_result, user):
     return rows
 
 
+#: Highest page whose ES ``from_ + size`` stays within the default
+#: ``index.max_result_window`` (10,000) for ``page_size=20`` and a sentinel hit.
+#: Applied only at the ES-backed Public Jobs / GWFlow boundaries, never to the
+#: database-backed My Jobs surface.
+ES_MAX_PAGE = 499
+
+
 def _parse_page(request):
+    """Parse a positive page number. Backend-neutral: ES result-window limits
+    are applied at the ES-backed view boundaries, not here."""
     try:
-        return max(int(request.GET.get("page", 1)), 1)
+        page = int(request.GET.get("page", 1))
     except (TypeError, ValueError):
         return 1
+    return max(page, 1)
+
+
+def _resolve_page(result, page, page_size, fetch):
+    """Clamp an out-of-range page to the last valid page and re-fetch it so the
+    rendered rows match the page label (never relabel rows from another offset)."""
+    if result.get("state") == "down":
+        return result, page
+    total_pages = max(1, math.ceil(result.get("total", 0) / page_size)) if page_size and page_size > 0 else 1
+    if page > total_pages:
+        page = total_pages
+        result = fetch(page)
+    return result, page
+
+
+_TIME_RANGE_LABELS = {
+    "1d": "Past 24 hours",
+    "1w": "Past week",
+    "1m": "Past month",
+    "1y": "Past year",
+}
+
+
+def _build_jobs_list_url(jobs_list_url_name, params):
+    query = "&".join(f"{key}={quote(str(value))}" for key, value in params.items())
+    if query:
+        return f"{reverse(jobs_list_url_name)}?{query}"
+    return reverse(jobs_list_url_name)
+
+
+def _build_active_filters(jobs_list_url_name, search, library, review, time_range):
+    """Build removable active-filter chips. Each chip removes exactly one active
+    filter while keeping the remaining params, resetting to page 1. The remove
+    button's accessible name follows the issue contract (e.g. "Remove library
+    filter")."""
+    params = {
+        "search": search,
+        "library": library,
+        "review": review,
+        "time_range": time_range,
+    }
+    filter_defs = (
+        ("search", search, f"Search: {search}", "Remove search filter"),
+        ("library", library, f"Library: {library}", "Remove library filter"),
+        ("review", review, f"Review status: {review}", "Remove review status filter"),
+        (
+            "time_range",
+            time_range,
+            f"Updated: {_TIME_RANGE_LABELS.get(time_range, time_range)}",
+            "Remove time filter",
+        ),
+    )
+
+    active_filters = []
+    for param_name, param_value, label, remove_label in filter_defs:
+        if not param_value:
+            continue
+        if param_name == "time_range" and param_value == "all":
+            continue
+        remaining = {
+            key: value
+            for key, value in params.items()
+            if key != param_name and value and not (key == "time_range" and value == "all")
+        }
+        remaining["page"] = 1
+        active_filters.append(
+            {
+                "label": label,
+                "remove_label": remove_label,
+                "param_name": param_name,
+                "param_value": param_value,
+                "remove_url": _build_jobs_list_url(jobs_list_url_name, remaining),
+            }
+        )
+    return active_filters
 
 
 def _render_job_list(
@@ -1158,12 +1245,34 @@ def _render_job_list(
     fragment_template_name,
     list_target_id=None,
     service_state="ok",
+    total=0,
+    page_size=20,
+    filter_options=None,
+    page_title_prefix="",
+    page=None,
+    max_page=None,
 ):
-    page = _parse_page(request)
+    if page is None:
+        page = _parse_page(request)
     search = request.GET.get("search", "")
+    library = request.GET.get("library", "")
+    review = request.GET.get("review", "")
     time_range = _normalize_time_range(request.GET.get("time_range", "all"))
 
-    retry_url = f"{reverse(jobs_list_url_name)}?page={page}&search={quote(search)}&time_range={time_range}"
+    effective_total_pages = max(1, math.ceil(total / page_size)) if page_size and page_size > 0 else 1
+    total_pages = min(effective_total_pages, max_page) if max_page is not None else effective_total_pages
+    has_next = has_next and page < total_pages
+    pagination_page = min(page, total_pages)
+    page_range = list(range(max(1, pagination_page - 2), min(total_pages, pagination_page + 2) + 1))
+
+    retry_params = {"page": page, "search": search, "time_range": time_range}
+    if library:
+        retry_params["library"] = library
+    if review:
+        retry_params["review"] = review
+    retry_url = _build_jobs_list_url(jobs_list_url_name, retry_params)
+
+    active_filters = _build_active_filters(jobs_list_url_name, search, library, review, time_range)
 
     context = {
         "rows": rows,
@@ -1171,12 +1280,21 @@ def _render_job_list(
         "time_range": time_range,
         "page": page,
         "has_next": has_next,
-        "next_page": page + 1,
         "user": request.user,
         "jobs_list_url_name": jobs_list_url_name,
         "service_state": service_state,
         "retry_url": retry_url,
         "retry_target": f"#{list_target_id}" if list_target_id else "#job-list",
+        "total": total,
+        "library": library,
+        "review": review,
+        "filter_options": filter_options if filter_options is not None else {"libraries": [], "review_statuses": []},
+        "total_pages": total_pages,
+        "pagination_page": pagination_page,
+        "page_range": page_range,
+        "active_filters": active_filters,
+        "reset_url": reverse(jobs_list_url_name),
+        "page_title_prefix": page_title_prefix,
     }
     if list_target_id is not None:
         context["list_target_id"] = list_target_id
@@ -1188,41 +1306,92 @@ def _render_job_list(
 
 
 def public_jobs_view(request):
+    page = min(_parse_page(request), ES_MAX_PAGE)
     public_jobs_result = list_public_jobs(
         request.user,
         search=request.GET.get("search", ""),
         time_range=_normalize_time_range(request.GET.get("time_range", "all")),
-        page=_parse_page(request),
+        page=page,
+    )
+    public_jobs_result, page = _resolve_page(
+        public_jobs_result,
+        page,
+        public_jobs_result.get("page_size", 20),
+        lambda p: list_public_jobs(
+            request.user,
+            search=request.GET.get("search", ""),
+            time_range=_normalize_time_range(request.GET.get("time_range", "all")),
+            page=p,
+        ),
     )
 
     return _render_job_list(
         request,
         rows=_build_public_job_rows(public_jobs_result),
         has_next=public_jobs_result["has_next"],
+        total=public_jobs_result.get("total", 0),
+        page_size=public_jobs_result.get("page_size", 20),
         jobs_list_url_name="bilbyui:public_jobs",
         template_name="bilbyui/public_jobs.html",
         fragment_template_name="bilbyui/_job_list_fragment.html",
         service_state=public_jobs_result.get("state", "ok"),
+        page_title_prefix="Public Jobs",
+        page=page,
+        max_page=ES_MAX_PAGE,
     )
 
 
 def gwflow_jobs_view(request):
+    library = request.GET.get("library", "")
+    review = request.GET.get("review", "")
+    page = min(_parse_page(request), ES_MAX_PAGE)
     result = list_gwflow_jobs(
         request.user,
         search=request.GET.get("search", ""),
+        library=library,
+        review_status=review,
         time_range=_normalize_time_range(request.GET.get("time_range", "all")),
-        page=_parse_page(request),
+        page=page,
     )
+    result, page = _resolve_page(
+        result,
+        page,
+        result.get("page_size", 20),
+        lambda p: list_gwflow_jobs(
+            request.user,
+            search=request.GET.get("search", ""),
+            library=library,
+            review_status=review,
+            time_range=_normalize_time_range(request.GET.get("time_range", "all")),
+            page=p,
+        ),
+    )
+
+    filter_options = {"libraries": [], "review_statuses": []}
+    if request.headers.get("HX-Request") != "true":
+        try:
+            filter_options = list_gwflow_filter_options()
+        except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError):
+            # The service handles expected ES failures internally; this narrow
+            # catch only guards the boundary so an ES transport/api hiccup
+            # degrades to an empty option list rather than a 500.
+            logger.exception("Failed to load GWFlow filter options")
 
     return _render_job_list(
         request,
         rows=_build_gwflow_job_rows(result),
         has_next=result["has_next"],
+        total=result.get("total", 0),
+        page_size=result.get("page_size", 20),
+        filter_options=filter_options,
         jobs_list_url_name="bilbyui:gwflow_jobs",
         template_name="bilbyui/gwflow_jobs.html",
         fragment_template_name="bilbyui/_gwflow_job_list_fragment.html",
         list_target_id="gwflow-job-list",
         service_state=result.get("state", "ok"),
+        page_title_prefix="GWFlow",
+        page=page,
+        max_page=ES_MAX_PAGE,
     )
 
 
@@ -1331,21 +1500,37 @@ def gwflow_job_history_version_partial(request, sname, history_id):
 
 @login_required
 def my_jobs_view(request):
+    page = _parse_page(request)
     user_jobs_result = list_user_jobs(
         request.user,
         search=request.GET.get("search", ""),
         time_range=_normalize_time_range(request.GET.get("time_range", "all")),
-        page=_parse_page(request),
+        page=page,
+    )
+    user_jobs_result, page = _resolve_page(
+        user_jobs_result,
+        page,
+        user_jobs_result.get("page_size", 20),
+        lambda p: list_user_jobs(
+            request.user,
+            search=request.GET.get("search", ""),
+            time_range=_normalize_time_range(request.GET.get("time_range", "all")),
+            page=p,
+        ),
     )
 
     return _render_job_list(
         request,
         rows=_build_user_job_rows(user_jobs_result, request.user),
         has_next=user_jobs_result["has_next"],
+        total=user_jobs_result.get("total", 0),
+        page_size=user_jobs_result.get("page_size", 20),
         jobs_list_url_name="bilbyui:my_jobs",
         template_name="bilbyui/my_jobs.html",
         fragment_template_name="bilbyui/_job_list_fragment.html",
         service_state=user_jobs_result.get("state", "ok"),
+        page_title_prefix="My Jobs",
+        page=page,
     )
 
 
@@ -1918,6 +2103,11 @@ def upsert_gwflow_job(user, params):
                 logger.warning("EventID lookup failed for event_id %s on job %s: %s", event_id_param, sname, e)
 
         job.save()
+
+        # Libraries may have changed — invalidate the cached filter options only
+        # after the transaction commits so a concurrent refill cannot cache old
+        # values and a rollback does not invalidate a cache for uncommitted data.
+        transaction.on_commit(lambda: cache.delete(LIBRARIES_CACHE_KEY))
 
         # Process file manifest
         file_entries = getattr(params, "files", None) or []
