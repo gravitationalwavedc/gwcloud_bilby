@@ -1,7 +1,7 @@
 from django.test import RequestFactory
 
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.views import _normalize_time_range, _parse_page
+from bilbyui.views import _normalize_time_range, _parse_page, _resolve_page
 
 
 class TestParsePage(BilbyTestCase):
@@ -59,3 +59,51 @@ class TestNormalizeTimeRange(BilbyTestCase):
 
     def test_none_falls_back_to_all(self):
         self.assertEqual(_normalize_time_range(None), "all")
+
+
+class TestResolvePage(BilbyTestCase):
+    def test_service_down_passthrough(self):
+        result = {"state": "down"}
+
+        def fetch(page):
+            self.fail("fetch must not be called when service is down")
+
+        resolved, page = _resolve_page(result, 3, 20, fetch)
+        self.assertIs(resolved, result)
+        self.assertEqual(page, 3)
+
+    def test_in_range_page_noop(self):
+        result = {"state": "up", "total": 100}
+
+        def fetch(page):
+            self.fail("fetch must not be called for an in-range page")
+
+        resolved, page = _resolve_page(result, 2, 20, fetch)
+        self.assertIs(resolved, result)
+        self.assertEqual(page, 2)
+
+    def test_out_of_range_page_clamped_and_refetched(self):
+        result = {"state": "up", "total": 41}
+        fetched = []
+
+        def fetch(page):
+            fetched.append(page)
+            return {"state": "up", "total": 41}
+
+        resolved, page = _resolve_page(result, 99, 20, fetch)
+        self.assertEqual(page, 3)
+        self.assertEqual(fetched, [3])
+        self.assertIsNot(resolved, result)
+
+    def test_zero_page_size_defaults_to_one_page(self):
+        result = {"state": "up", "total": 100}
+        fetched = []
+
+        def fetch(page):
+            fetched.append(page)
+            return {"state": "up", "total": 100}
+
+        resolved, page = _resolve_page(result, 5, 0, fetch)
+        self.assertEqual(page, 1)
+        self.assertEqual(fetched, [1])
+        self.assertIsNot(resolved, result)
