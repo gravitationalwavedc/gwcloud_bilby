@@ -1,5 +1,6 @@
 import json
 
+import jwt
 import requests
 import responses
 from django.conf import settings
@@ -32,6 +33,21 @@ class TestMakeJobControllerRequest(BilbyTestCase):
 
         self.assertEqual(result, {"jobs": []})
         self.assertIn("Authorization", self.responses.calls[0].request.headers)
+
+    def test_jwt_header_is_valid_signed_token(self):
+        self.responses.add(
+            responses.GET,
+            f"{BASE_URL}/status/",
+            body=json.dumps({"jobs": []}),
+            status=200,
+        )
+
+        _make_job_controller_request("GET", f"{BASE_URL}/status/", USER_ID)
+
+        token = self.responses.calls[0].request.headers["Authorization"]
+        payload = jwt.decode(token, settings.JOB_CONTROLLER_JWT_SECRET, algorithms=["HS256"])
+        self.assertEqual(payload["userId"], USER_ID)
+        self.assertIn("exp", payload)
 
     def test_post_request_with_data(self):
         self.responses.add(
