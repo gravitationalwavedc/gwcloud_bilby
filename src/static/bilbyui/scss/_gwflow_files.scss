@@ -1,0 +1,330 @@
+// Joined analysis + files blocks (issue #54): coherent labelled regions per
+// #48, filename-first file rows using the #49 tech-value component, contained
+// tables, pending explanations and zero-files styling. Markup contract lives in
+// src/bilbyui/templates/bilbyui/_analysis_block.html and _file_actions.html;
+// design contract is docs/plans/designs/067-ux7-analyses-files-joined-blocks.md.
+//
+// Compiled after theme.scss, so every Bootstrap 4.6 variable/mixin referenced
+// here is already defined by the vendor import chain.
+//
+// Deliberately contains no transition/animation properties: reduced-motion
+// safe by construction (Frontend Bible rule 10).
+
+// ---------------------------------------------------------------------------
+// Joined analysis block — labelled region (#48) that reads as a human
+// analysis identity: name, metadata, linked Bilby job.
+// ---------------------------------------------------------------------------
+.gw-analysis-block {
+    max-width: 100%;
+}
+
+.gw-analysis-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacer * 0.5;
+}
+
+.gw-analysis-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacer * 0.5;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.gw-analysis-name {
+    font-weight: 600;
+}
+
+.gw-analysis-meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacer * 0.25;
+    color: $text-muted;
+    font-size: $font-size-sm;
+}
+
+.gw-analysis-job {
+    color: $text-muted;
+    font-size: $font-size-sm;
+    white-space: nowrap;
+
+    a {
+        font-weight: 600;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Files line: "7 of 7 mirrored" / "0 of 6 pending". Colour is never the
+// only signal (Frontend Bible rule 4) — the ✓ / ⏳ glyphs and wording carry
+// the meaning; the colour is reinforcement.
+// ---------------------------------------------------------------------------
+.gw-files-line {
+    margin-bottom: $spacer * 0.5;
+}
+
+.gw-files-status {
+    font-weight: 600;
+    font-size: $font-size-sm;
+}
+
+.gw-files-status--mirrored {
+    color: darken($success, 10%);
+}
+
+.gw-files-status--pending {
+    // darken($warning, 15%) (#ba8b00) fails WCAG 1.4.3 (3.03:1); use a
+    // darker amber that clears 4.5:1 on the card background.
+    color: #7a5c00;
+}
+
+// Bootstrap's default badge-success (white on #28a745) is 3.07:1 — below
+// the 4.5:1 text floor (Frontend Bible rule 4). Darken the fill so the
+// white label passes within the files table.
+.gw-files-table .badge-success {
+    background-color: #1e7e34;
+}
+
+// ---------------------------------------------------------------------------
+// File table — contained so the wide variant never page-scrolls. The wrap is
+// the labelled, focusable scroll container (Frontend Bible §2); the table
+// itself is constrained to its width.
+// ---------------------------------------------------------------------------
+.gw-files-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.gw-files-table {
+    margin-bottom: 0;
+    min-width: 0;
+}
+
+.gw-file-cell {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.gw-file-size {
+    white-space: nowrap;
+}
+
+.gw-file-actions-cell {
+    white-space: nowrap;
+    min-width: 0;
+}
+
+// ---------------------------------------------------------------------------
+// File actions row: download (>=24px), copy path, path disclosure, pending
+// explanation. Quiet borderless controls reuse the tech-value precedent.
+// ---------------------------------------------------------------------------
+.gw-file-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacer * 0.25;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.gw-file-download {
+    min-width: 24px;
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: $spacer * 0.25;
+
+    .bi {
+        font-size: $font-size-lg;
+    }
+
+    // Bootstrap's btn-outline-primary uses $primary (#059cfa) for text —
+    // only 2.6:1 on the card background. Use a darker blue that clears
+    // 4.5:1 (Frontend Bible rule 4) for both the resting and hover states.
+    color: $blue-800;
+    border-color: $blue-800;
+
+    &:hover,
+    &:focus {
+        color: $white;
+        background-color: $blue-800;
+        border-color: $blue-800;
+    }
+}
+
+// Visually disabled download WITH reason: muted, non-interactive look. The
+// reason is carried by the adjacent "Why can't I download?" disclosure, so
+// the disabled state is never silent.
+.gw-file-download--disabled {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacer * 0.25;
+    padding: $spacer * 0.375 $spacer * 0.75;
+    font-size: $font-size-sm;
+    line-height: 1.5;
+    border-radius: $border-radius;
+    border: $border-width dashed $gray-400;
+    color: $gray-500;
+    background-color: $gray-100;
+    cursor: default;
+    user-select: none;
+
+    .bi {
+        font-size: $font-size-lg;
+    }
+}
+
+.gw-file-why,
+.gw-file-path-toggle,
+.gw-file-copy {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: $spacer * 0.25;
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    color: $text-muted;
+
+    &:hover,
+    &:focus {
+        color: #0592eb;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $primary;
+        outline-offset: 1px;
+    }
+}
+
+.gw-file-why {
+    font-size: $font-size-sm;
+    padding: 0 $spacer * 0.25;
+}
+
+.gw-file-copy {
+    font-size: $font-size-sm;
+    padding: 0 $spacer * 0.25;
+}
+
+.gw-file-copy-status {
+    color: $text-muted;
+    font-size: $font-size-sm;
+}
+
+// Pending explanation body: small, subdued, full-width so it never widens
+// the row. Collapse is handled purely by the hidden attribute.
+.gw-file-why-body {
+    width: 100%;
+    margin-top: $spacer * 0.25;
+    padding: $spacer * 0.5;
+    font-size: $font-size-sm;
+    color: $gray-900;
+    background-color: lighten($warning, 30%);
+    border: $border-width solid darken($warning, 15%);
+    border-radius: $border-radius;
+}
+
+.gw-file-why-body:not([hidden]) {
+    display: block;
+}
+
+// Disclosed full path: code chip presentation, wraps safely, never widens.
+.gw-file-path {
+    width: 100%;
+    margin-top: $spacer * 0.25;
+    padding: $spacer * 0.25 $spacer * 0.5;
+    font-family: $font-family-monospace;
+    font-size: $font-size-sm;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    color: $body-color;
+    background-color: $gray-100;
+    border: $border-width solid $border-color;
+    border-radius: $border-radius;
+}
+
+.gw-file-path:not([hidden]) {
+    display: block;
+}
+
+// ---------------------------------------------------------------------------
+// Responsive ladder (Frontend Bible §2 step 3): below 768px the file table
+// rows transform to stacked per-file blocks. Name + actions are primary;
+// size/status/path are secondary. Self-contained records so stacking is the
+// sanctioned ladder step.
+// ---------------------------------------------------------------------------
+@media (max-width: 767.98px) {
+    .gw-files-table-wrap {
+        overflow: visible;
+    }
+
+    .gw-files-table,
+    .gw-files-table tbody,
+    .gw-files-table tr,
+    .gw-files-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .gw-files-table thead {
+        display: none;
+    }
+
+    .gw-file-row {
+        padding: $spacer * 0.5;
+        margin-bottom: $spacer * 0.5;
+        border: $border-width solid $border-color;
+        border-radius: $border-radius;
+        background-color: $body-bg;
+    }
+
+    .gw-file-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .gw-file-cell {
+        padding: 0;
+        margin-bottom: $spacer * 0.5;
+    }
+
+    .gw-file-size,
+    .gw-file-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 0;
+        margin-right: $spacer;
+        font-size: $font-size-sm;
+        color: $text-muted;
+    }
+
+    .gw-file-size::before {
+        content: "Size";
+        font-weight: 600;
+        margin-right: $spacer * 0.25;
+    }
+
+    .gw-file-status::before {
+        content: "Status";
+        font-weight: 600;
+        margin-right: $spacer * 0.25;
+    }
+
+    .gw-file-actions-cell {
+        padding: 0;
+        margin-top: $spacer * 0.5;
+        white-space: normal;
+    }
+
+    .gw-file-actions {
+        width: 100%;
+    }
+}

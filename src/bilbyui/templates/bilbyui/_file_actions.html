@@ -1,0 +1,41 @@
+{% load frontend_tags %}
+{% with fid=f.id|stringformat:"d" %}
+<div class="gw-file-actions">
+  {% if f.uploaded %}
+    <a class="btn btn-sm btn-outline-primary gw-file-download"
+       href="{% url 'bilbyui:gwflow_file_download' token=f.download_token %}"
+       target="_blank" rel="noopener noreferrer">
+      <i class="bi-download" aria-hidden="true"></i>
+      <span>Download</span>
+    </a>
+  {% else %}
+    <span class="gw-file-download gw-file-download--disabled" aria-disabled="true">
+      <i class="bi-download" aria-hidden="true"></i>
+      <span>Download</span>
+    </span>
+    <button type="button" class="gw-file-why"
+            aria-expanded="false"
+            aria-controls="gw-file-why-{{ fid }}"
+            onclick="var el = document.getElementById('gw-file-why-{{ fid }}'); el.hidden = !el.hidden; this.setAttribute('aria-expanded', el.hidden ? 'false' : 'true');">
+      Why can't I download? <span aria-hidden="true">ⓘ</span>
+    </button>
+    <div id="gw-file-why-{{ fid }}" class="gw-file-why-body" hidden>
+      This file is still being mirrored from the portal. Once mirroring finishes, the download will be available here.
+    </div>
+  {% endif %}
+  <button type="button" class="tech-value-copy gw-file-copy"
+          onclick="var r = this.closest('.gw-file-actions'); var s = r.querySelector('.gw-file-copy-status'); navigator.clipboard.writeText(r.querySelector('.gw-file-path').textContent).then(function () { s.textContent = 'Copied'; }, function () { s.textContent = 'Copy failed'; });">
+    <i class="bi-clipboard" aria-hidden="true"></i>
+    <span>Copy path</span>
+  </button>
+  <span class="gw-file-copy-status" role="status"></span>
+  <button type="button" class="gw-file-path-toggle"
+          aria-expanded="false"
+          aria-controls="gw-file-path-{{ fid }}"
+          onclick="var el = document.getElementById('gw-file-path-{{ fid }}'); el.hidden = !el.hidden; this.setAttribute('aria-expanded', el.hidden ? 'false' : 'true');">
+    <i class="bi-chevron-down" aria-hidden="true"></i>
+    <span class="sr-only">Show full path</span>
+  </button>
+  <span id="gw-file-path-{{ fid }}" class="gw-file-path" hidden>{{ f.path }}</span>
+</div>
+{% endwith %}
