@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -45,6 +46,8 @@ class TestSubmit(TestCase):
     maxDiff = 0
 
     def setUp(self):
+        sys.path.append(str(Path(__file__).parent / "misc"))
+
         self.popen = MockPopen()
         self.r = Replacer()
         self.r.replace("subprocess.Popen", self.popen)
@@ -52,6 +55,9 @@ class TestSubmit(TestCase):
 
         # Wild hack to remove any trailing parameters which can influence bilby/condor job creation
         sys.argv = sys.argv[:1]
+
+    def tearDown(self):
+        sys.path = sys.path[:-1]
 
     @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
@@ -467,6 +473,31 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.accounting, "no.group")
                 self.assertEqual(args.transfer_files, False)
+
+    def test_create_working_directory_creates_directory(self):
+        with TemporaryDirectory() as td:
+            target = os.path.join(td, "nested", "job_dir")
+
+            from core.submit import create_working_directory
+
+            with patch("core.submit.working_directory", return_value=target):
+                result = create_working_directory({"job_id": 1})
+
+            self.assertTrue(os.path.isdir(target))
+            self.assertEqual(result, target)
+
+    def test_create_working_directory_idempotent(self):
+        with TemporaryDirectory() as td:
+            target = os.path.join(td, "nested", "job_dir")
+
+            from core.submit import create_working_directory
+
+            with patch("core.submit.working_directory", return_value=target):
+                create_working_directory({"job_id": 1})
+                result = create_working_directory({"job_id": 1})
+
+            self.assertTrue(os.path.isdir(target))
+            self.assertEqual(result, target)
 
     @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
     @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
