@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from manifest import extract_file_manifest
+from manifest import _build_file_entry, extract_file_manifest
 
 
 class TestManifestExtraction(unittest.TestCase):
@@ -160,6 +160,43 @@ class TestManifestExtraction(unittest.TestCase):
     def test_empty_or_invalid_payload(self):
         self.assertEqual(extract_file_manifest({}), [])
         self.assertEqual(extract_file_manifest(None), [])
+
+
+class TestBuildFileEntry(unittest.TestCase):
+    def test_non_dict_file_obj_returns_none(self):
+        for file_obj in (None, "a string", 42, ["path"]):
+            self.assertIsNone(_build_file_entry("uid", file_obj))
+
+    def test_missing_path_returns_none(self):
+        self.assertIsNone(_build_file_entry("uid", {"file_size": 100}))
+
+    def test_empty_path_returns_none(self):
+        self.assertIsNone(_build_file_entry("uid", {"path": ""}))
+
+    def test_non_string_path_returns_none(self):
+        self.assertIsNone(_build_file_entry("uid", {"path": 123}))
+        self.assertIsNone(_build_file_entry("uid", {"path": ["/data/x"]}))
+
+    def test_happy_path_builds_entry(self):
+        entry = _build_file_entry(
+            "uid-1",
+            {"path": "/data/pe/config.ini", "file_size": 1024, "md5_sum": "hash1"},
+        )
+        self.assertEqual(
+            entry,
+            {
+                "analysis_uid": "uid-1",
+                "path": "/data/pe/config.ini",
+                "file_name": "config.ini",
+                "file_size": 1024,
+                "md5_sum": "hash1",
+            },
+        )
+
+    def test_happy_path_defaults_missing_optional_fields(self):
+        entry = _build_file_entry("uid-2", {"path": "/data/result.hdf5"})
+        self.assertEqual(entry["file_size"], None)
+        self.assertEqual(entry["md5_sum"], "")
 
 
 if __name__ == "__main__":
