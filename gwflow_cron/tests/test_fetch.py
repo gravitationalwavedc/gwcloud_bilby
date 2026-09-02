@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import responses
 
 import settings
-from fetch import MD5Mismatch, fetch_to_staging
+from fetch import MD5Mismatch, _unsafe_component, fetch_to_staging
 from job_controller import FetchError, JobControllerClient
 
 API_URL = "https://jobcontroller.example.com/job/apiv1"
@@ -36,6 +36,18 @@ def _md5(content: bytes) -> str:
 def _staged(base: Path, rec) -> Path:
     remote = rec["path"].removeprefix("CIT:")
     return base / rec["sname"] / rec["analysis_uid"] / remote.lstrip("/")
+
+
+class TestUnsafeComponent(unittest.TestCase):
+    def test_unsafe_inputs(self):
+        for value in (None, 123, ["a"], "a\x00b", "a/b", ".."):
+            with self.subTest(value=value):
+                self.assertTrue(_unsafe_component(value))
+
+    def test_safe_inputs(self):
+        for value in ("S260101a", "a1b2c3d4", "with space", "under_score", "-dash"):
+            with self.subTest(value=value):
+                self.assertFalse(_unsafe_component(value))
 
 
 class TestFetchToStaging(unittest.TestCase):
