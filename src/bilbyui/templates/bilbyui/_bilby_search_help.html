@@ -1,0 +1,24 @@
+{# In-place search help panel for bilby job surfaces (my/public jobs) (issue #51, task-3). #}
+{# Included by _search_form.html via search_help_template and toggled by the #}
+{# "(?)" button (data-target="#search-help"). Same structure/position as the #}
+{# GWFlow help panel (WCAG 3.2.6). #}
+<div class="collapse mt-2" id="search-help">
+  <div class="card card-body">
+    <p class="mb-2">Searchable fields:</p>
+    <ul class="mb-2">
+      <li><code>job.name</code> — job name</li>
+      <li><code>job.description</code> — job description</li>
+      <li><code>labels.name</code> — label</li>
+      <li><code>eventId.eventId</code> — event ID</li>
+      <li><code>eventId.triggerId</code> — trigger ID</li>
+      <li><code>eventId.nickname</code> — event nickname</li>
+      <li><code>params.*</code> — job parameters</li>
+      <li><code>ini.*</code> — INI file settings</li>
+    </ul>
+    <p class="mb-2">Examples:</p>
+    <ul class="mb-0">
+      <li><code>job.name:GW150914*</code></li>
+      <li><code>labels.name:o4a AND eventId.nickname:GW150914</code></li>
+    </ul>
+  </div>
+</div>

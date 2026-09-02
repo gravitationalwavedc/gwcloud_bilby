@@ -2,12 +2,14 @@ from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
+import elasticsearch
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
 from graphql_relay.node.node import to_global_id
 from humps import camelize
 
 from bilbyui.models import BilbyJob, EventID, GWFlowJob, Label
+from bilbyui.services.jobs import list_public_jobs, list_user_jobs
 from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -697,3 +699,158 @@ class TestBilbyJobQueries(BilbyTestCase):
         response = self.query(query)
         self.assertIsNone(response.errors)
         self.assertFalse(request_job_filter_mock.called)
+
+
+class TestJobQueryTotal(BilbyTestCase):
+    """Service contract: list_public_jobs / list_user_jobs return total."""
+
+    def setUp(self):
+        super().setUp()
+        self.user = self.create_user(id=400, name="Total User", primary_email="total@example.com")
+        self.job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Total job",
+            description="total",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Total job"}),
+        )
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_returns_total(self, mock_get_es_client):
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job.id, "_source": {}}],
+                "total": {"value": 7},
+            }
+        }
+
+        res = list_public_jobs(self.user)
+
+        self.assertEqual(res["total"], 7)
+        self.assertIn(self.job.id, res["jobs"])
+        self.assertTrue(mock_client.search.call_args[1].get("track_total_hits"))
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_total_guards_string_value(self, mock_get_es_client):
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job.id, "_source": {}}],
+                "total": {"value": "7"},
+            }
+        }
+
+        res = list_public_jobs(self.user)
+
+        self.assertEqual(res["total"], 7)
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_total_missing_returns_zero(self, mock_get_es_client):
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": self.job.id, "_source": {}}],
+            }
+        }
+
+        res = list_public_jobs(self.user)
+
+        self.assertEqual(res["total"], 0)
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_preserves_total_on_empty_page(self, mock_get_es_client):
+        """An out-of-range page with a positive ES total must not hide the total."""
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [], "total": {"value": 9}}}
+
+        res = list_public_jobs(self.user, page=99)
+
+        self.assertEqual(res["total"], 9)
+        self.assertEqual(res["jobs"], {})
+        self.assertFalse(res["has_next"])
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_bad_request_error_returns_invalid(self, mock_get_es_client):
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.side_effect = elasticsearch.exceptions.BadRequestError(400, "bad request", {})
+
+        res = list_public_jobs(self.user)
+
+        self.assertEqual(res["state"], "invalid")
+        self.assertEqual(res["jobs"], {})
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_reconciliation_with_string_ids(self, mock_get_es_client):
+        """Real ES returns string _id values; reconciliation must normalise them
+        to ints so valid hits are not misclassified as stale."""
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [{"_id": str(self.job.id), "_source": {}}],
+                "total": {"value": 40},
+            }
+        }
+
+        res = list_public_jobs(self.user, page_size=20)
+
+        self.assertIn(self.job.id, res["jobs"])
+        self.assertEqual(res["total"], 40)
+        self.assertTrue(res["has_next"])
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_multi_page_drift_preserves_pagination(self, mock_get_es_client):
+        """A stale hit on page 2 must not collapse pagination: the global total
+        is preserved so later pages remain reachable."""
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {"_id": str(self.job.id), "_source": {}},
+                    {"_id": "999999", "_source": {}},  # stale: no DB row
+                ],
+                "total": {"value": 60},
+            }
+        }
+
+        res = list_public_jobs(self.user, page=2, page_size=20)
+
+        self.assertIn(self.job.id, res["jobs"])
+        self.assertEqual(len(res["jobs"]), 1)
+        self.assertEqual(res["total"], 60)
+        self.assertTrue(res["has_next"])  # 20 + 20 < 60 -> page 3 reachable
+
+    def test_list_user_jobs_returns_total(self):
+        res = list_user_jobs(self.user)
+
+        self.assertEqual(res["total"], 1)
+        self.assertEqual(len(res["jobs"]), 1)
+
+    def test_list_user_jobs_total_respects_filters(self):
+        BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Another job",
+            description="another",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Another job"}),
+        )
+
+        res = list_user_jobs(self.user, search="Another")
+
+        self.assertEqual(res["total"], 1)
+        self.assertEqual(len(res["jobs"]), 1)
+
+    def test_list_user_jobs_total_empty(self):
+        self.job.delete()
+
+        res = list_user_jobs(self.user)
+
+        self.assertEqual(res["total"], 0)
+        self.assertEqual(res["jobs"], [])
