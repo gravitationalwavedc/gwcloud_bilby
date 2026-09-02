@@ -168,8 +168,14 @@ class TestGWFlowJobFilesPartial(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, f"/file_download/?fileId={uploaded.download_token}")
-        self.assertNotContains(response, f"/file_download/?fileId={pending.download_token}")
+        self.assertContains(
+            response,
+            reverse("bilbyui:gwflow_file_download", args=[uploaded.download_token]),
+        )
+        self.assertNotContains(
+            response,
+            reverse("bilbyui:gwflow_file_download", args=[pending.download_token]),
+        )
         self.assertContains(response, "pending")
 
     def test_linked_bilby_jobs_listed(self):
@@ -179,6 +185,13 @@ class TestGWFlowJobFilesPartial(BilbyTestCase):
             gwflow_job=self.job,
             gwflow_analysis_uid="analysis-1",
         )
+        GWFlowFile.objects.create(
+            job=self.job,
+            analysis_uid="analysis-1",
+            path="data/a.txt",
+            file_name="a.txt",
+            uploaded=True,
+        )
 
         response = self.client.get(self.url)
 
@@ -187,11 +200,11 @@ class TestGWFlowJobFilesPartial(BilbyTestCase):
         self.assertContains(response, "bilby-child")
         self.assertContains(response, "analysis-1")
 
-    def test_no_linked_bilby_jobs_note(self):
+    def test_no_linked_job_link_when_absent(self):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No linked bilby jobs.")
+        self.assertNotContains(response, "Linked Bilby job")
 
 
 class TestGWFlowJobMetadataPartial(BilbyTestCase):

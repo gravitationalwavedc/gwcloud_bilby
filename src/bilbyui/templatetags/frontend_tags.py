@@ -52,6 +52,18 @@ def parent_dir(value):
 
 
 @register.filter
+def mirrored_count(files):
+    """Count fully mirrored files in a GWFlow file list (uploaded == True)."""
+    return sum(1 for f in files if getattr(f, "uploaded", False))
+
+
+@register.filter
+def pending_count(files):
+    """Count files still waiting to be mirrored in a GWFlow file list."""
+    return sum(1 for f in files if not getattr(f, "uploaded", False))
+
+
+@register.filter
 def utc_timestamp(value):
     """Format a datetime or ISO-8601 string as "YYYY-MM-DD HH:MM UTC".
 

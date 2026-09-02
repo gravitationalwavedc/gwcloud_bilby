@@ -17,10 +17,11 @@ from __future__ import annotations
 
 from unittest import mock
 
+from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from asgiref.sync import sync_to_async
 from django.urls import reverse
 
-from bilbyui.models import GWFlowJob
+from bilbyui.models import GWFlowFile, GWFlowJob
 from bilbyui.tests.e2e.utils import AsyncE2ETestCase
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -148,3 +149,80 @@ class GWFlowJobsPageBase(AsyncE2ETestCase):
 
     def gwflow_url(self) -> str:
         return f"{self.live_server_url}{reverse(GWFLOW_URL_NAME)}"
+
+
+class GWFlowFilesPageBase(AsyncE2ETestCase):
+    """
+    A logged-in browser page open on the GWFlow job detail files region.
+
+    ``asetUp`` creates a LIGO user (GWFlow jobs default to ``ligo_only``) plus
+    a GWFlowJob with mirrored and pending files, logs in via the cookie
+    helper, opens the job detail page and clicks the "Analyses & Files" tab so
+    the files partial is loaded into the page via HTMX (with the app shell's
+    CSS applied). The metadata pane's HTMX load returns an error state quickly
+    because no CBCFLOW portal is configured in the test environment.
+    """
+
+    user = None
+    page = None
+    sname = "S230601ag"
+
+    async def asetUp(self):
+        self.user = await sync_to_async(self._create_user)()
+        await self.login(self.user)
+        await sync_to_async(self._create_fixtures)()
+        self.page = await self.browser_context.new_page()
+        await self.page.goto(self.detail_url())
+        await self._open_files_region()
+
+    async def aTearDown(self):
+        if self.page is not None:
+            await self.page.close()
+            self.page = None
+
+    async def _open_files_region(self):
+        await self.page.click("#files-tab")
+        await self.page.wait_for_selector(".gw-analysis-block")
+
+    def _create_user(self):
+        return BilbyTestCase.create_user(
+            id=10,
+            name="e2e gwflow files",
+            primary_email="e2e-gwflow-files@example.com",
+            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"],
+        )
+
+    def _create_fixtures(self):
+        job = GWFlowJob.objects.create(
+            sname=self.sname,
+            user=self.user,
+            libraries=["cbc-workflow-o4a"],
+            schema_version="v2",
+        )
+        GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="analysis-1",
+            path="outdir/deep/nested/a.h5",
+            file_name="a.h5",
+            file_size=1024,
+            uploaded=True,
+        )
+        GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="analysis-1",
+            path="outdir/b.h5",
+            file_name="b.h5",
+            file_size=2048,
+            uploaded=False,
+        )
+        GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="",
+            path="outdir/super.h5",
+            file_name="super.h5",
+            file_size=4096,
+            uploaded=True,
+        )
+
+    def detail_url(self) -> str:
+        return f"{self.live_server_url}{reverse('bilbyui:gwflow_job_detail', args=[self.sname])}"

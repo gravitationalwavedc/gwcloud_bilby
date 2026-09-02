@@ -910,6 +910,13 @@ def file_download_supporting_file(request, supporting_file):
     return _file_response(request, file_path, supporting_file.file_name)
 
 
+def gwflow_file_download(request, token):
+    gwflow_file = GWFlowFile.get_by_download_token(token)
+    if gwflow_file is None:
+        raise Http404
+    return file_download_gwflow_file(request, gwflow_file)
+
+
 def file_download_gwflow_file(request, gwflow_file):
     # 404 unless fully mirrored
     if not gwflow_file.uploaded:
@@ -1413,9 +1420,53 @@ def gwflow_job_detail_view(request, sname):
     )
 
 
+def _build_gwflow_analysis_blocks(job):
+    # Sort in Python rather than re-querying with order_by: the caller
+    # prefetches ``files``, and adding .order_by() would defeat the prefetch
+    # cache and issue a redundant query. Sorting in memory keeps the prefetch
+    # effective while preserving the (analysis_uid, path) ordering.
+    files = sorted(job.files.all(), key=lambda f: (f.analysis_uid or "", f.path))
+    bilby_jobs = {bj.gwflow_analysis_uid: bj for bj in job.bilby_jobs.all()}
+
+    blocks_by_uid = {}
+    for f in files:
+        uid = f.analysis_uid or ""
+        block = blocks_by_uid.setdefault(
+            uid,
+            {
+                "analysis_uid": uid,
+                "analysis_uid_short": uid[:8],
+                "is_superevent": uid == "",
+                "metadata": None,
+                "files": [],
+                "bilby_job": None,
+            },
+        )
+        block["files"].append(f)
+
+    blocks = []
+    if "" in blocks_by_uid:
+        super_block = blocks_by_uid.pop("")
+        super_block["bilby_job"] = bilby_jobs.get("")
+        blocks.append(super_block)
+
+    for uid in sorted(blocks_by_uid):
+        block = blocks_by_uid[uid]
+        block["bilby_job"] = bilby_jobs.get(uid)
+        blocks.append(block)
+
+    return blocks
+
+
 def gwflow_job_files_partial(request, sname):
     job = _get_gwflow_job_or_404(request, sname)
-    return TemplateResponse(request, "bilbyui/_gwflow_files.html", {"job": job})
+    job = GWFlowJob.objects.prefetch_related("files", "bilby_jobs").get(pk=job.pk)
+    analysis_blocks = _build_gwflow_analysis_blocks(job)
+    return TemplateResponse(
+        request,
+        "bilbyui/_gwflow_files.html",
+        {"job": job, "analysis_blocks": analysis_blocks},
+    )
 
 
 def gwflow_job_metadata_partial(request, sname):

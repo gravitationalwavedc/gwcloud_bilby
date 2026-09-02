@@ -1,69 +1,8 @@
-{% regroup job.files.all|dictsort:"analysis_uid" by analysis_uid as file_groups %}
-
-{% for group in file_groups %}
-  <div class="card gw-form-card mb-4">
-    <div class="card-header">
-      {% if group.grouper %}
-        {{ group.grouper }}
-      {% else %}
-        Superevent-level
-      {% endif %}
-    </div>
-    <div class="card-body">
-      <table class="table table-sm">
-        <thead>
-          <tr>
-            <th>File name</th>
-            <th>Size</th>
-            <th>Path</th>
-            <th>Status</th>
-            <th>Download</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for f in group.list %}
-            <tr>
-              <td>{{ f.file_name }}</td>
-              <td>
-                {% if f.file_size is None %}
-                  —
-                {% else %}
-                  {{ f.file_size|filesizeformat }}
-                {% endif %}
-              </td>
-              <td>{{ f.path }}</td>
-              <td>
-                {% if f.uploaded %}
-                  <span class="badge badge-success">✓ mirrored</span>
-                {% else %}
-                  <span class="badge badge-warning">pending</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if f.uploaded %}
-                  <a href="/file_download/?fileId={{ f.download_token }}">Download</a>
-                {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-{% endfor %}
-
-<div class="card gw-form-card mb-4">
-  <div class="card-header">Linked Bilby jobs</div>
-  <div class="card-body">
-    {% for child in job.bilby_jobs.all %}
-      <div>
-        <a href="{% url 'bilbyui:view_job' job_id=child.id %}">{{ child.name }}</a>
-        {% if child.gwflow_analysis_uid %}
-          <span class="text-muted">{{ child.gwflow_analysis_uid }}</span>
-        {% endif %}
-      </div>
-    {% empty %}
-      <p class="text-muted mb-0">No linked bilby jobs.</p>
-    {% endfor %}
-  </div>
-</div>
+{% load frontend_tags %}
+{% if analysis_blocks %}
+  {% for block in analysis_blocks %}
+    {% include "bilbyui/_analysis_block.html" with block=block %}
+  {% endfor %}
+{% else %}
+  {% include "bilbyui/_async_state.html" with state="empty" thing="files" region_label="Files" empty_hint="Files will appear here once the superevent's analyses have been mirrored from the portal." %}
+{% endif %}

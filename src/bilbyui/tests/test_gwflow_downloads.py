@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.test import override_settings
+from django.urls import reverse
 
 from bilbyui.models import GWFlowFile, GWFlowJob
 from bilbyui.tests.testcases import BilbyTestCase
@@ -43,6 +44,49 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(b"".join(response.streaming_content), b"binary file content")
             self.assertIn('filename="data.h5"', response.headers.get("Content-Disposition", ""))
+
+    def test_named_gwflow_file_download_route(self):
+        """Test the named gwflow_file_download route serves a fully mirrored file."""
+        with override_settings(GWFLOW_FILE_UPLOAD_DIR=self.temp_dir.name):
+            job = GWFlowJob.objects.create(
+                sname="S230601ag_named",
+                user=self.user,
+                ligo_only=False,
+            )
+            gwflow_file = GWFlowFile.objects.create(
+                job=job,
+                analysis_uid="",
+                path="outdir/data.h5",
+                file_name="data.h5",
+                uploaded=True,
+            )
+            job_file_dir = Path(self.temp_dir.name) / str(job.id)
+            job_file_dir.mkdir(parents=True, exist_ok=True)
+            (job_file_dir / str(gwflow_file.id)).write_bytes(b"named route data")
+
+            url = reverse("bilbyui:gwflow_file_download", args=[gwflow_file.download_token])
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(b"".join(response.streaming_content), b"named route data")
+
+    def test_named_gwflow_file_download_unuploaded_returns_404(self):
+        """Test the named route returns 404 for an unmirrored file."""
+        with override_settings(GWFLOW_FILE_UPLOAD_DIR=self.temp_dir.name):
+            job = GWFlowJob.objects.create(
+                sname="S230601ag_named_pending",
+                user=self.user,
+                ligo_only=False,
+            )
+            gwflow_file = GWFlowFile.objects.create(
+                job=job,
+                analysis_uid="",
+                path="outdir/data.h5",
+                file_name="data.h5",
+                uploaded=False,
+            )
+            url = reverse("bilbyui:gwflow_file_download", args=[gwflow_file.download_token])
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 404)
 
     def test_file_download_gwflow_file_unuploaded_returns_404(self):
         """Test download fails with 404 when uploaded=False."""
