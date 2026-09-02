@@ -8,9 +8,9 @@ class TestNumericEsRecords(SimpleTestCase):
         record = {"_id": 123, "source": "job"}
         self.assertEqual(_numeric_es_records([record]), [record])
 
-    def test_keeps_numeric_string_id(self):
+    def test_normalizes_numeric_string_id(self):
         record = {"_id": "123", "source": "job"}
-        self.assertEqual(_numeric_es_records([record]), [record])
+        self.assertEqual(_numeric_es_records([record]), [{"_id": 123, "source": "job"}])
 
     def test_drops_non_numeric_string_id(self):
         record = {"_id": "corrupt-non-numeric-id"}
@@ -37,4 +37,4 @@ class TestNumericEsRecords(SimpleTestCase):
             {"_id": None},
             "string",
         ]
-        self.assertEqual(_numeric_es_records(records), [kept, {"_id": "8"}])
+        self.assertEqual(_numeric_es_records(records), [kept, {"_id": 8}])
