@@ -59,8 +59,8 @@ class TestSubmit(TestCase):
     def tearDown(self):
         sys.path = sys.path[:-1]
 
-    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
-    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.SLURM)
     def test_submit_real_data_job_slurm(self, *args, **kwargs):
@@ -150,8 +150,8 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.transfer_files, False)
 
-    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
-    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.SLURM)
     def test_submit_simulated_data_job_slurm(self, *args, **kwargs):
@@ -257,8 +257,8 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.transfer_files, False)
 
-    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
-    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.SLURM)
     def test_submit_simulated_data_job_submission_error_slurm(self, *args, **kwargs):
@@ -361,8 +361,8 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.transfer_files, False)
 
-    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
-    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     @patch("core.submit.get_scheduler", return_value=None)
     @patch.object(settings, "scheduler", EScheduler.SLURM)
     def test_submit_unknown_scheduler_returns_none(self, *args, **kwargs):
@@ -403,8 +403,8 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
             # Check that the internal job object was not created
             self.assertEqual(update_job_result, None)
 
-    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
-    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.condor.CondorScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
     def test_submit_real_data_job_condor(self, *args, **kwargs):
@@ -480,7 +480,7 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
             target = os.path.join(td, "nested", "job_dir")
             working_directory_mock_return = target
 
-            with patch("core.misc.working_directory", side_effect=working_directory_mock_fn):
+            with patch("core.submit.working_directory", side_effect=working_directory_mock_fn):
                 from core.submit import create_working_directory
 
                 result = create_working_directory({"job_id": 1})
@@ -494,7 +494,7 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
             target = os.path.join(td, "nested", "job_dir")
             working_directory_mock_return = target
 
-            with patch("core.misc.working_directory", side_effect=working_directory_mock_fn):
+            with patch("core.submit.working_directory", side_effect=working_directory_mock_fn):
                 from core.submit import create_working_directory
 
                 create_working_directory({"job_id": 1})
@@ -503,8 +503,8 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
             self.assertTrue(os.path.isdir(target))
             self.assertEqual(result, target)
 
-    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
-    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     def test_run_data_generation_without_output_flags(self, *args, **kwargs):
         # A data generation command without --output= or --error= flags should run the
         # generation script without attempting to write output/error files
@@ -524,8 +524,8 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
             self.assertFalse(os.path.exists(os.path.join(td, "data_gen.sh.out")))
             self.assertFalse(os.path.exists(os.path.join(td, "data_gen.sh.err")))
 
-    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
-    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     def test_run_data_generation_timeout(self, *args, **kwargs):
         # A hung data generation script should be killed and a clean error raised
         with TemporaryDirectory() as td:
@@ -546,8 +546,8 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
             proc.kill.assert_called_once()
             proc.wait.assert_called()
 
-    @patch("_bundledb.create_or_update_job", side_effect=update_job_mock)
-    @patch("core.misc.working_directory", side_effect=working_directory_mock_fn)
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.condor.CondorScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
     def test_submit_simulated_data_job_condor(self, *args, **kwargs):
