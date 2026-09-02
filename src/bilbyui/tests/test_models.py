@@ -350,6 +350,29 @@ class TestFileDownloadToken(BilbyTestCase):
         result = FileDownloadToken.get_paths(self.job, ["not-a-uuid"])
         self.assertEqual(result, [None])
 
+    def test_create_token_map(self):
+        # Test that create_token_map only creates tokens for valid file entries and skips
+        # non-dict entries, isDir entries, and entries with an empty path
+        files = [
+            {"path": "/result/data.txt"},
+            {"path": "/result/subdir", "isDir": True},
+            {"path": ""},
+            "not-a-dict",
+            None,
+            {"path": "/result/other.txt", "isDir": False},
+        ]
+
+        result = FileDownloadToken.create_token_map(self.job, files)
+
+        self.assertEqual(set(result.keys()), {"/result/data.txt", "/result/other.txt"})
+        for path in result:
+            self.assertTrue(result[path])
+
+        # Only the two valid entries should have been persisted
+        self.assertEqual(FileDownloadToken.objects.filter(job=self.job).count(), 2)
+        for path in result:
+            self.assertTrue(FileDownloadToken.objects.filter(job=self.job, path=path).exists())
+
 
 class TestBilbyJobUploadToken(BilbyTestCase):
     def setUp(self):
