@@ -23,19 +23,5 @@
       This file is still being mirrored from the portal. Once mirroring finishes, the download will be available here.
     </div>
   {% endif %}
-  <button type="button" class="tech-value-copy gw-file-copy"
-          onclick="var r = this.closest('.gw-file-actions'); var s = r.querySelector('.gw-file-copy-status'); navigator.clipboard.writeText(r.querySelector('.gw-file-path').textContent).then(function () { s.textContent = 'Copied'; }, function () { s.textContent = 'Copy failed'; });">
-    <i class="bi-clipboard" aria-hidden="true"></i>
-    <span>Copy path</span>
-  </button>
-  <span class="gw-file-copy-status" role="status"></span>
-  <button type="button" class="gw-file-path-toggle"
-          aria-expanded="false"
-          aria-controls="gw-file-path-{{ fid }}"
-          onclick="var el = document.getElementById('gw-file-path-{{ fid }}'); el.hidden = !el.hidden; this.setAttribute('aria-expanded', el.hidden ? 'false' : 'true');">
-    <i class="bi-chevron-down" aria-hidden="true"></i>
-    <span class="sr-only">Show full path</span>
-  </button>
-  <span id="gw-file-path-{{ fid }}" class="gw-file-path" hidden>{{ f.path }}</span>
 </div>
 {% endwith %}

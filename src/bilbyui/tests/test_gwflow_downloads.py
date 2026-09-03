@@ -231,3 +231,29 @@ class GWFlowDownloadTestCase(BilbyTestCase):
         invalid_token = "invalid-uuid-string"
         response = self.client.get(f"/file_download/?fileId={invalid_token}")
         self.assertEqual(response.status_code, 404)
+
+    def test_named_gwflow_file_download_non_ligo_user_ligo_only_returns_404(self):
+        """Defence-in-depth: a non-LIGO user cannot download a LIGO-only job's file via the named route."""
+        with override_settings(GWFLOW_FILE_UPLOAD_DIR=self.temp_dir.name):
+            job = GWFlowJob.objects.create(
+                sname="S230601ag_ligo_only",
+                user=self.user,
+                ligo_only=True,
+            )
+            gwflow_file = GWFlowFile.objects.create(
+                job=job,
+                analysis_uid="",
+                path="outdir/data.h5",
+                file_name="data.h5",
+                uploaded=True,
+            )
+            job_file_dir = Path(self.temp_dir.name) / str(job.id)
+            job_file_dir.mkdir(parents=True, exist_ok=True)
+            (job_file_dir / str(gwflow_file.id)).write_bytes(b"ligo data")
+
+            non_ligo_user = self.create_user(id=12, authentication_method=AUTHENTICATION_METHODS["GOOGLE"])
+            self.authenticate(user=non_ligo_user)
+
+            url = reverse("bilbyui:gwflow_file_download", args=[gwflow_file.download_token])
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 404)

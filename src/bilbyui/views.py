@@ -54,7 +54,7 @@ from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
 from .utils.embargo import should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
-from .utils.gwflow_es import gwflow_elastic_search_update
+from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
 from .utils.gwflow_es import update_child_job_ids as update_gwflow_child_job_ids
 from .utils.gwflow_portal import get_superevent, get_version, get_versions
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args, prepare_args_for_data_input
@@ -1420,40 +1420,52 @@ def gwflow_job_detail_view(request, sname):
     )
 
 
-def _build_gwflow_analysis_blocks(job):
+def _build_gwflow_analysis_blocks(job, analyses=None):
     # Sort in Python rather than re-querying with order_by: the caller
     # prefetches ``files``, and adding .order_by() would defeat the prefetch
     # cache and issue a redundant query. Sorting in memory keeps the prefetch
     # effective while preserving the (analysis_uid, path) ordering.
     files = sorted(job.files.all(), key=lambda f: (f.analysis_uid or "", f.path))
-    bilby_jobs = {bj.gwflow_analysis_uid: bj for bj in job.bilby_jobs.all()}
+
+    bilby_jobs_by_uid = {}
+    for bj in job.bilby_jobs.all():
+        bilby_jobs_by_uid.setdefault(bj.gwflow_analysis_uid or "", []).append(bj)
+
+    def _new_block(uid):
+        return {
+            "analysis_uid": uid,
+            "analysis_uid_short": uid[:8],
+            "is_superevent": uid == "",
+            "metadata": analyses.get(uid) if analyses else None,
+            "files": [],
+            "bilby_jobs": [],
+        }
 
     blocks_by_uid = {}
     for f in files:
         uid = f.analysis_uid or ""
-        block = blocks_by_uid.setdefault(
-            uid,
-            {
-                "analysis_uid": uid,
-                "analysis_uid_short": uid[:8],
-                "is_superevent": uid == "",
-                "metadata": None,
-                "files": [],
-                "bilby_job": None,
-            },
-        )
+        block = blocks_by_uid.setdefault(uid, _new_block(uid))
         block["files"].append(f)
+
+    # Seed a block for every linked job too, so a job whose analysis UID has
+    # no files still appears.
+    for uid in bilby_jobs_by_uid:
+        blocks_by_uid.setdefault(uid, _new_block(uid))
+
+    for uid, block in blocks_by_uid.items():
+        block["bilby_jobs"] = sorted(bilby_jobs_by_uid.get(uid, []), key=lambda bj: bj.id)
 
     blocks = []
     if "" in blocks_by_uid:
-        super_block = blocks_by_uid.pop("")
-        super_block["bilby_job"] = bilby_jobs.get("")
-        blocks.append(super_block)
+        blocks.append(blocks_by_uid.pop(""))
 
+    if analyses is not None:
+        # Follow PE-results order, then UID sort for any remaining UIDs.
+        for uid in analyses:
+            if uid in blocks_by_uid:
+                blocks.append(blocks_by_uid.pop(uid))
     for uid in sorted(blocks_by_uid):
-        block = blocks_by_uid[uid]
-        block["bilby_job"] = bilby_jobs.get(uid)
-        blocks.append(block)
+        blocks.append(blocks_by_uid.pop(uid))
 
     return blocks
 
@@ -1461,7 +1473,21 @@ def _build_gwflow_analysis_blocks(job):
 def gwflow_job_files_partial(request, sname):
     job = _get_gwflow_job_or_404(request, sname)
     job = GWFlowJob.objects.prefetch_related("files", "bilby_jobs").get(pk=job.pk)
-    analysis_blocks = _build_gwflow_analysis_blocks(job)
+
+    analyses = None
+    data, state = get_superevent(sname)
+    if state in ("live", "stale") and isinstance(data, dict):
+        analyses = {}
+        for a in parse_analyses(data):
+            analyses[a["uid"]] = {
+                "software": a["software"],
+                "waveform": a["waveform"],
+                "run_status": a["runStatus"],
+                "review_status": a["reviewStatus"],
+                "deprecated": a["deprecated"],
+            }
+
+    analysis_blocks = _build_gwflow_analysis_blocks(job, analyses)
     return TemplateResponse(
         request,
         "bilbyui/_gwflow_files.html",

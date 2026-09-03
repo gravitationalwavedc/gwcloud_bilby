@@ -7,7 +7,7 @@
           <span class="gw-analysis-name">Superevent-level files</span>
         {% else %}
           <span class="gw-analysis-name">Analysis</span>
-          {% include "bilbyui/_tech_value.html" with value=block.analysis_uid kind="id" primary=block.analysis_uid_short copy_label="Copy analysis identifier" disclosure_id="gw-analysis-uid-"|add:block.analysis_uid_short %}
+          {% include "bilbyui/_tech_value.html" with value=block.analysis_uid kind="id" primary=block.analysis_uid_short copy_label="Copy analysis identifier" disclosure_id="gw-analysis-uid-"|add:block.analysis_uid %}
         {% endif %}
         {% if block.metadata %}
           <span class="gw-analysis-meta">
@@ -21,15 +21,15 @@
           {% endif %}
         {% endif %}
       </div>
-      {% if block.bilby_job %}
+      {% if block.bilby_jobs %}
         <div class="gw-analysis-job">
-          Linked Bilby job:
-          <a href="{% url 'bilbyui:view_job' job_id=block.bilby_job.id %}">{{ block.bilby_job.name }} (#{{ block.bilby_job.id }})</a> →
+          Linked Bilby job{{ block.bilby_jobs|pluralize }}:
+          {% for bj in block.bilby_jobs %}<a href="{% url 'bilbyui:view_job' job_id=bj.id %}">{{ bj.name }} (#{{ bj.id }})</a>{% if not forloop.last %}, {% endif %}{% endfor %} →
         </div>
       {% endif %}
     </div>
     <div class="card-body">
-      {% with total=block.files|length mirrored=block.files|mirrored_count pending=block.files|pending_count %}
+      {% with total=block.files|length pending=block.files|pending_count %}
       <p class="gw-files-line">
         {% if pending == 0 %}
           <span class="gw-files-status gw-files-status--mirrored">{{ total }} of {{ total }} mirrored ✓</span>
@@ -38,7 +38,7 @@
         {% endif %}
       </p>
       {% endwith %}
-      <div class="gw-files-table-wrap">
+      <div class="gw-files-table-wrap" role="region" tabindex="0" aria-label="Scrollable files table">
         <table class="table table-sm gw-files-table">
           <caption class="sr-only">Files for {% if block.is_superevent %}superevent-level{% else %}analysis {{ block.analysis_uid_short }}{% endif %}</caption>
           <thead>

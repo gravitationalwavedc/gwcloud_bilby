@@ -7,42 +7,11 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-def build_gwflow_es_doc(job, metadata: dict) -> dict:
+def parse_analyses(metadata: dict) -> list:
     """
-    Build the ES document for a GWFlowJob from local fields + portal metadata.
-    Does not raise exceptions on missing metadata keys/sections.
+    Parse analysis sections from gwflow portal metadata into a list of dicts.
+    Defensive: never raises on malformed metadata.
     """
-    if not isinstance(metadata, dict):
-        logger.warning("gwflow ES doc builder received non-dict metadata: %r", type(metadata))
-        metadata = {}
-
-    # User display name
-    user_name = ""
-    if job.user:
-        user_name = getattr(job.user, "name", None) or ""
-        if not user_name:
-            first = getattr(job.user, "first_name", "") or ""
-            last = getattr(job.user, "last_name", "") or ""
-            user_name = f"{first} {last}".strip() or getattr(job.user, "username", "") or ""
-
-    # Event ID dict
-    event_id_doc = None
-    if job.event_id:
-        event_id_doc = {
-            "eventId": getattr(job.event_id, "event_id", ""),
-            "triggerId": getattr(job.event_id, "trigger_id", ""),
-            "nickname": getattr(job.event_id, "nickname", ""),
-            "gpsTime": getattr(job.event_id, "gps_time", 0.0),
-        }
-
-    # Datetime ISO formatting
-    current_history_ts = (
-        job.current_history_timestamp.isoformat() if getattr(job, "current_history_timestamp", None) else None
-    )
-    creation_time_str = job.creation_time.isoformat() if getattr(job, "creation_time", None) else None
-    last_updated_str = job.last_updated.isoformat() if getattr(job, "last_updated", None) else None
-
-    # Defensive analysis parsing
     analyses = []
 
     # Map analysis sections to their ES type name
@@ -105,12 +74,54 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
                         "waveform": str(item.get("waveform_approximant") or item.get("waveform") or ""),
                         "runStatus": str(item.get("run_status") or ""),
                         "reviewStatus": str(item.get("review_status") or ""),
+                        "deprecated": bool(item.get("deprecated", False)),
                         "analysts": analysts,
                         "reviewers": reviewers,
                     },
                 )
     except Exception as e:
-        logger.warning("Error parsing analyses from gwflow metadata for job %s: %s", job.id, e)
+        logger.warning("Error parsing analyses from gwflow metadata: %s", e)
+
+    return analyses
+
+
+def build_gwflow_es_doc(job, metadata: dict) -> dict:
+    """
+    Build the ES document for a GWFlowJob from local fields + portal metadata.
+    Does not raise exceptions on missing metadata keys/sections.
+    """
+    if not isinstance(metadata, dict):
+        logger.warning("gwflow ES doc builder received non-dict metadata: %r", type(metadata))
+        metadata = {}
+
+    # User display name
+    user_name = ""
+    if job.user:
+        user_name = getattr(job.user, "name", None) or ""
+        if not user_name:
+            first = getattr(job.user, "first_name", "") or ""
+            last = getattr(job.user, "last_name", "") or ""
+            user_name = f"{first} {last}".strip() or getattr(job.user, "username", "") or ""
+
+    # Event ID dict
+    event_id_doc = None
+    if job.event_id:
+        event_id_doc = {
+            "eventId": getattr(job.event_id, "event_id", ""),
+            "triggerId": getattr(job.event_id, "trigger_id", ""),
+            "nickname": getattr(job.event_id, "nickname", ""),
+            "gpsTime": getattr(job.event_id, "gps_time", 0.0),
+        }
+
+    # Datetime ISO formatting
+    current_history_ts = (
+        job.current_history_timestamp.isoformat() if getattr(job, "current_history_timestamp", None) else None
+    )
+    creation_time_str = job.creation_time.isoformat() if getattr(job, "creation_time", None) else None
+    last_updated_str = job.last_updated.isoformat() if getattr(job, "last_updated", None) else None
+
+    # Defensive analysis parsing
+    analyses = parse_analyses(metadata)
 
     # GraceDB section
     gracedb_doc = {

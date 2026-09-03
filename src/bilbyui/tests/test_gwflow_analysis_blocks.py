@@ -63,7 +63,7 @@ class TestBuildGWFlowAnalysisBlocks(BilbyTestCase):
         block = blocks[0]
         self.assertEqual(block["analysis_uid"], "long-analysis-uid-123")
         self.assertEqual(block["analysis_uid_short"], "long-ana")
-        self.assertEqual(block["bilby_job"], child)
+        self.assertEqual(block["bilby_jobs"], [child])
         self.assertFalse(block["is_superevent"])
 
     def test_superevent_level_files_grouped_separately(self):
@@ -85,7 +85,7 @@ class TestBuildGWFlowAnalysisBlocks(BilbyTestCase):
         blocks = _build_gwflow_analysis_blocks(self.job)
 
         self.assertEqual(len(blocks), 1)
-        self.assertIsNone(blocks[0]["bilby_job"])
+        self.assertEqual(blocks[0]["bilby_jobs"], [])
         self.assertEqual(len(blocks[0]["files"]), 1)
 
     def test_linked_bilby_job_matched_by_uid(self):
@@ -96,7 +96,7 @@ class TestBuildGWFlowAnalysisBlocks(BilbyTestCase):
             gwflow_job=self.job,
             gwflow_analysis_uid="analysis-1",
         )
-        BilbyJob.objects.create(
+        other_child = BilbyJob.objects.create(
             user=self.user,
             name="other-child",
             gwflow_job=self.job,
@@ -105,8 +105,10 @@ class TestBuildGWFlowAnalysisBlocks(BilbyTestCase):
 
         blocks = _build_gwflow_analysis_blocks(self.job)
 
-        self.assertEqual(len(blocks), 1)
-        self.assertEqual(blocks[0]["bilby_job"], child)
+        self.assertEqual(len(blocks), 2)
+        by_uid = {b["analysis_uid"]: b for b in blocks}
+        self.assertEqual(by_uid["analysis-1"]["bilby_jobs"], [child])
+        self.assertEqual(by_uid["analysis-other"]["bilby_jobs"], [other_child])
 
     def test_blocks_ordered_by_uid(self):
         self._add_file("z-uid", "z.txt")
@@ -116,6 +118,80 @@ class TestBuildGWFlowAnalysisBlocks(BilbyTestCase):
         blocks = _build_gwflow_analysis_blocks(self.job)
 
         self.assertEqual([b["analysis_uid"] for b in blocks], ["a-uid", "m-uid", "z-uid"])
+
+    def test_duplicate_linked_jobs_same_uid_all_preserved(self):
+        self._add_file("analysis-1", "a.txt")
+        child_a = BilbyJob.objects.create(
+            user=self.user,
+            name="child-a",
+            gwflow_job=self.job,
+            gwflow_analysis_uid="analysis-1",
+        )
+        child_b = BilbyJob.objects.create(
+            user=self.user,
+            name="child-b",
+            gwflow_job=self.job,
+            gwflow_analysis_uid="analysis-1",
+        )
+
+        blocks = _build_gwflow_analysis_blocks(self.job)
+
+        self.assertEqual(len(blocks), 1)
+        self.assertEqual(blocks[0]["bilby_jobs"], [child_a, child_b])
+
+    def test_linked_job_without_files_still_produces_block(self):
+        child = BilbyJob.objects.create(
+            user=self.user,
+            name="job-only",
+            gwflow_job=self.job,
+            gwflow_analysis_uid="analysis-only",
+        )
+
+        blocks = _build_gwflow_analysis_blocks(self.job)
+
+        self.assertEqual(len(blocks), 1)
+        block = blocks[0]
+        self.assertEqual(block["analysis_uid"], "analysis-only")
+        self.assertEqual(block["bilby_jobs"], [child])
+        self.assertEqual(block["files"], [])
+
+    def test_analyses_attaches_metadata_to_matching_block(self):
+        self._add_file("pe-uid-1", "a.txt")
+        analyses = {
+            "pe-uid-1": {
+                "software": "bilby",
+                "waveform": "IMRPhenomXPHM",
+                "run_status": "completed",
+                "review_status": "approved",
+                "deprecated": False,
+            }
+        }
+
+        blocks = _build_gwflow_analysis_blocks(self.job, analyses)
+
+        self.assertEqual(len(blocks), 1)
+        self.assertEqual(blocks[0]["metadata"], analyses["pe-uid-1"])
+
+    def test_blocks_follow_pe_results_order_when_analyses_passed(self):
+        self._add_file("z-uid", "z.txt")
+        self._add_file("a-uid", "a.txt")
+        self._add_file("m-uid", "m.txt")
+        analyses = {
+            "m-uid": {"software": "bilby", "waveform": "", "run_status": "", "review_status": "", "deprecated": False},
+            "z-uid": {"software": "pycbc", "waveform": "", "run_status": "", "review_status": "", "deprecated": False},
+        }
+
+        blocks = _build_gwflow_analysis_blocks(self.job, analyses)
+
+        self.assertEqual([b["analysis_uid"] for b in blocks], ["m-uid", "z-uid", "a-uid"])
+
+    def test_blocks_uid_sorted_when_no_analyses(self):
+        self._add_file("z-uid", "z.txt")
+        self._add_file("a-uid", "a.txt")
+
+        blocks = _build_gwflow_analysis_blocks(self.job)
+
+        self.assertEqual([b["analysis_uid"] for b in blocks], ["a-uid", "z-uid"])
 
     def test_query_count_bounded(self):
         self._add_file("", "super.txt")
