@@ -14,6 +14,7 @@ import settings
 import state
 from bilby_children import (
     _set_ini_label,
+    _valid_file_ref,
     find_bilby_pe_analyses,
     make_archive,
     resolve_event_id_for,
@@ -124,6 +125,25 @@ class TestFindBilbyPeAnalyses(unittest.TestCase):
         }
         kept_uids = [a["uid"] for a in find_bilby_pe_analyses(detail)]
         self.assertEqual(kept_uids, ["uid-a", "uid-c"])
+
+
+class TestValidFileRef(unittest.TestCase):
+    def test_none_is_valid(self):
+        self.assertTrue(_valid_file_ref(None))
+
+    def test_non_dict_is_invalid(self):
+        self.assertFalse(_valid_file_ref("not-a-dict"))
+        self.assertFalse(_valid_file_ref(42))
+        self.assertFalse(_valid_file_ref(["list"]))
+
+    def test_dict_with_empty_path_is_invalid(self):
+        self.assertFalse(_valid_file_ref({}))
+        self.assertFalse(_valid_file_ref({"path": ""}))
+        self.assertFalse(_valid_file_ref({"file_size": 10}))
+
+    def test_dict_with_truthy_path_is_valid(self):
+        self.assertTrue(_valid_file_ref({"path": "/data/result.hdf5"}))
+        self.assertTrue(_valid_file_ref({"path": "/data/result.hdf5", "file_size": 10}))
 
 
 class TestSetIniLabel(unittest.TestCase):
