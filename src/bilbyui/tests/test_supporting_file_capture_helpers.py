@@ -3,11 +3,20 @@ import bilby_pipe
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.ini_utils import bilby_ini_string_to_args
-from bilbyui.views import _capture_supporting_files, _strip_supporting_file_args
+from bilbyui.views import _capture_supporting_files, _get_default_prior_files, _strip_supporting_file_args
 
 
 def _args_from_ini(config):
     return bilby_ini_string_to_args(create_test_ini_string(config).encode("utf-8"))
+
+
+class TestGetDefaultPriorFiles(BilbyTestCase):
+    def test_returns_non_empty_frozenset_of_default_prior_files(self):
+        result = _get_default_prior_files()
+
+        self.assertIsInstance(result, frozenset)
+        self.assertTrue(result)
+        self.assertTrue(all(isinstance(path, str) for path in result))
 
 
 class TestCaptureSupportingFiles(BilbyTestCase):
