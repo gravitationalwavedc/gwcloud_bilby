@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.test import override_settings
 from django.utils import timezone
 
@@ -200,6 +201,57 @@ class TestBilbyJobModel(BilbyTestCase):
                 "token": str(supporting_file2.download_token),
             },
         )
+
+
+class TestEventIDUpdate(BilbyTestCase):
+    def setUp(self):
+        self.event = EventID.objects.create(
+            event_id="GW123456_123456",
+            trigger_id="S123456a",
+            nickname="GW123456",
+            is_ligo_event=False,
+            gps_time=1126259462.391,
+        )
+
+    def test_partial_update_only_changes_supplied_fields(self):
+        # Updating only gps_time must leave the other fields unchanged
+        self.event.update(gps_time=87654321.87654321)
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.gps_time, 87654321.87654321)
+        self.assertEqual(self.event.trigger_id, "S123456a")
+        self.assertEqual(self.event.nickname, "GW123456")
+        self.assertFalse(self.event.is_ligo_event)
+
+    def test_update_all_fields(self):
+        self.event.update(
+            gps_time=87654321.87654321,
+            trigger_id="S234567a",
+            nickname="new nickname",
+            is_ligo_event=True,
+        )
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.gps_time, 87654321.87654321)
+        self.assertEqual(self.event.trigger_id, "S234567a")
+        self.assertEqual(self.event.nickname, "new nickname")
+        self.assertTrue(self.event.is_ligo_event)
+
+    def test_update_with_all_none_is_noop(self):
+        # Calling update with no arguments must not change any field
+        self.event.update()
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.gps_time, 1126259462.391)
+        self.assertEqual(self.event.trigger_id, "S123456a")
+        self.assertEqual(self.event.nickname, "GW123456")
+        self.assertFalse(self.event.is_ligo_event)
+
+    def test_update_raises_on_invalid_event_id(self):
+        # clean_fields must raise on an invalid event_id and nothing should be persisted
+        self.event.event_id = "invalid"
+        with self.assertRaises(ValidationError):
+            self.event.update(gps_time=87654321.87654321)
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.gps_time, 1126259462.391)
+        self.assertEqual(self.event.event_id, "GW123456_123456")
 
 
 class TestFileDownloadToken(BilbyTestCase):
