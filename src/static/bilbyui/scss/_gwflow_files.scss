@@ -178,12 +178,10 @@
     }
 }
 
-.gw-file-why,
-.gw-file-path-toggle,
-.gw-file-copy {
+.gw-file-why {
     background: none;
     border: none;
-    padding: 0;
+    padding: 0 $spacer * 0.25;
     margin-left: $spacer * 0.25;
     min-width: 28px;
     min-height: 28px;
@@ -191,6 +189,7 @@
     align-items: center;
     justify-content: center;
     line-height: 1;
+    font-size: $font-size-sm;
     color: $text-muted;
 
     &:hover,
@@ -202,21 +201,6 @@
         outline: 2px solid $primary;
         outline-offset: 1px;
     }
-}
-
-.gw-file-why {
-    font-size: $font-size-sm;
-    padding: 0 $spacer * 0.25;
-}
-
-.gw-file-copy {
-    font-size: $font-size-sm;
-    padding: 0 $spacer * 0.25;
-}
-
-.gw-file-copy-status {
-    color: $text-muted;
-    font-size: $font-size-sm;
 }
 
 // Pending explanation body: small, subdued, full-width so it never widens
@@ -233,26 +217,6 @@
 }
 
 .gw-file-why-body:not([hidden]) {
-    display: block;
-}
-
-// Disclosed full path: code chip presentation, wraps safely, never widens.
-.gw-file-path {
-    width: 100%;
-    margin-top: $spacer * 0.25;
-    padding: $spacer * 0.25 $spacer * 0.5;
-    font-family: $font-family-monospace;
-    font-size: $font-size-sm;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-    color: $body-color;
-    background-color: $gray-100;
-    border: $border-width solid $border-color;
-    border-radius: $border-radius;
-}
-
-.gw-file-path:not([hidden]) {
     display: block;
 }
 

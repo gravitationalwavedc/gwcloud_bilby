@@ -174,3 +174,58 @@ class TestGWFlowFilesTemplateStates(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertLessEqual(len(ctx), 8)
+
+    def test_colliding_uid_prefixes_produce_unique_disclosure_ids(self):
+        """Two distinct UIDs sharing an 8-char prefix must not emit duplicate DOM ids."""
+        _make_file(self.job, "analysis-1-aaaa", "outdir/a.h5", uploaded=True)
+        _make_file(self.job, "analysis-1-bbbb", "outdir/b.h5", uploaded=True)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.content.count(b'id="gw-analysis-uid-analysis-1-aaaa"'),
+            1,
+        )
+        self.assertEqual(
+            response.content.count(b'id="gw-analysis-uid-analysis-1-bbbb"'),
+            1,
+        )
+
+    def test_scrollable_files_region_is_labelled_and_focusable(self):
+        """The desktop scroll wrapper must be an identifiable, keyboard-reachable region."""
+        _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=True)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response, 'class="gw-files-table-wrap" role="region" tabindex="0" aria-label="Scrollable files table"'
+        )
+
+    def test_analysis_metadata_renders_from_portal_payload(self):
+        """Software/waveform/run/review status render from the portal analyses payload when present."""
+        from unittest import mock
+
+        _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=True)
+        payload = {
+            "ParameterEstimation": {
+                "results": [
+                    {
+                        "uid": "analysis-1",
+                        "inference_software": "bilby",
+                        "waveform_approximant": "IMRPhenomXPHM",
+                        "run_status": "completed",
+                        "review_status": "approved",
+                    }
+                ]
+            }
+        }
+        with mock.patch("bilbyui.views.get_superevent", return_value=(payload, "live")):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "bilby")
+        self.assertContains(response, "IMRPhenomXPHM")
+        self.assertContains(response, "completed")
+        self.assertContains(response, "approved")

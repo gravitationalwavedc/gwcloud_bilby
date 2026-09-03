@@ -9907,12 +9907,10 @@ a.text-dark:hover, a.text-dark:focus {
   font-size: 1.25rem;
 }
 
-.gw-file-why,
-.gw-file-path-toggle,
-.gw-file-copy {
+.gw-file-why {
   background: none;
   border: none;
-  padding: 0;
+  padding: 0 0.25rem;
   margin-left: 0.25rem;
   min-width: 28px;
   min-height: 28px;
@@ -9920,35 +9918,15 @@ a.text-dark:hover, a.text-dark:focus {
   align-items: center;
   justify-content: center;
   line-height: 1;
+  font-size: 0.875rem;
   color: #44546a;
 }
-.gw-file-why:hover, .gw-file-why:focus,
-.gw-file-path-toggle:hover,
-.gw-file-path-toggle:focus,
-.gw-file-copy:hover,
-.gw-file-copy:focus {
+.gw-file-why:hover, .gw-file-why:focus {
   color: #0592eb;
 }
-.gw-file-why:focus-visible,
-.gw-file-path-toggle:focus-visible,
-.gw-file-copy:focus-visible {
+.gw-file-why:focus-visible {
   outline: 2px solid #059cfa;
   outline-offset: 1px;
-}
-
-.gw-file-why {
-  font-size: 0.875rem;
-  padding: 0 0.25rem;
-}
-
-.gw-file-copy {
-  font-size: 0.875rem;
-  padding: 0 0.25rem;
-}
-
-.gw-file-copy-status {
-  color: #44546a;
-  font-size: 0.875rem;
 }
 
 .gw-file-why-body {
@@ -9963,25 +9941,6 @@ a.text-dark:hover, a.text-dark:focus {
 }
 
 .gw-file-why-body:not([hidden]) {
-  display: block;
-}
-
-.gw-file-path {
-  width: 100%;
-  margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 0.875rem;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  color: #02244b;
-  background-color: #eff2f6;
-  border: 1px solid #afbacb;
-  border-radius: 0.25rem;
-}
-
-.gw-file-path:not([hidden]) {
   display: block;
 }
 

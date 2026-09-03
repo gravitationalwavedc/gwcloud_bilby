@@ -46,6 +46,93 @@ def _collect_review_statuses(metadata, job, path="", out=None):
     return out
 
 
+def parse_analyses(metadata: dict) -> list:
+    """
+    Parse analysis sections from gwflow portal metadata into a list of dicts.
+    Defensive: never raises on malformed metadata.
+    """
+    analyses = []
+
+    if not isinstance(metadata, dict):
+        return analyses
+
+    # Map analysis sections to their ES type name
+    section_type_map = {
+        "ParameterEstimation": "pe",
+        "parameter_estimation": "pe",
+        "pe": "pe",
+        "TGR": "tgr",
+        "tgr": "tgr",
+        "Lensing": "lensing",
+        "lensing": "lensing",
+        "Matter": "matter",
+        "matter": "matter",
+        "Cosmology": "cosmology",
+        "cosmology": "cosmology",
+        "RNP": "rnp",
+        "rnp": "rnp",
+    }
+
+    # Outer try keeps the "never raises on malformed metadata" guarantee for
+    # section-level failures (e.g. a raising .items()); the inner per-record
+    # try ensures one bad record does not abort parsing of later valid ones.
+    try:
+        for section_key, section_data in metadata.items():
+            if section_key not in section_type_map:
+                continue
+
+            analysis_type = section_type_map[section_key]
+
+            # section_data may be a list of dicts, or a dict of items, or a single dict
+            items = []
+            if isinstance(section_data, list):
+                items = section_data
+            elif isinstance(section_data, dict):
+                # If section_data is a dict containing a 'results' list, use that
+                if "results" in section_data and isinstance(section_data["results"], list):
+                    items = section_data["results"]
+                else:
+                    items = [section_data]
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+
+                try:
+                    # Parse analysts / reviewers as lists of strings
+                    raw_analysts = item.get("analysts") or []
+                    if isinstance(raw_analysts, list):
+                        analysts = [a.get("name") if isinstance(a, dict) else str(a) for a in raw_analysts if a]
+                    else:
+                        analysts = [str(raw_analysts)]
+
+                    raw_reviewers = item.get("reviewers") or []
+                    if isinstance(raw_reviewers, list):
+                        reviewers = [r.get("name") if isinstance(r, dict) else str(r) for r in raw_reviewers if r]
+                    else:
+                        reviewers = [str(raw_reviewers)]
+
+                    analyses.append(
+                        {
+                            "uid": str(item.get("uid") or item.get("id") or ""),
+                            "type": analysis_type,
+                            "software": str(item.get("inference_software") or item.get("software") or ""),
+                            "waveform": str(item.get("waveform_approximant") or item.get("waveform") or ""),
+                            "runStatus": str(item.get("run_status") or ""),
+                            "reviewStatus": str(item.get("review_status") or ""),
+                            "deprecated": bool(item.get("deprecated", False)),
+                            "analysts": analysts,
+                            "reviewers": reviewers,
+                        },
+                    )
+                except Exception as e:
+                    logger.warning("Error parsing analysis record from gwflow metadata: %s", e)
+    except Exception as e:
+        logger.warning("Error parsing analyses from gwflow metadata: %s", e)
+
+    return analyses
+
+
 def build_gwflow_es_doc(job, metadata: dict) -> dict:
     """
     Build the ES document for a GWFlowJob from local fields + raw portal metadata.
