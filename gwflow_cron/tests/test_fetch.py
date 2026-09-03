@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import responses
 
 import settings
-from fetch import MD5Mismatch, fetch_to_staging
+from fetch import MD5Mismatch, _get, fetch_to_staging
 from job_controller import FetchError, JobControllerClient
 
 API_URL = "https://jobcontroller.example.com/job/apiv1"
@@ -36,6 +36,23 @@ def _md5(content: bytes) -> str:
 def _staged(base: Path, rec) -> Path:
     remote = rec["path"].removeprefix("CIT:")
     return base / rec["sname"] / rec["analysis_uid"] / remote.lstrip("/")
+
+
+class TestGetHelper(unittest.TestCase):
+    def test_dict_with_key_returns_value(self):
+        self.assertEqual(_get({"path": "/x"}, "path"), "/x")
+
+    def test_dict_missing_key_returns_none(self):
+        self.assertIsNone(_get({"path": "/x"}, "missing"))
+
+    def test_object_with_attribute_returns_value(self):
+        rec = SimpleNamespace(path="/x")
+        self.assertEqual(_get(rec, "path"), "/x")
+
+    def test_object_without_attribute_raises_attribute_error(self):
+        rec = SimpleNamespace(path="/x")
+        with self.assertRaises(AttributeError):
+            _get(rec, "missing")
 
 
 class TestFetchToStaging(unittest.TestCase):
