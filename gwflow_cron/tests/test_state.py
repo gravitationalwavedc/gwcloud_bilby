@@ -41,6 +41,31 @@ class TestState(GWFlowTestBase):
         self.assertEqual(state.failures_over(cur, cap=1), [])
 
 
+class TestSyncState(GWFlowTestBase):
+    def test_get_missing_key_returns_none(self):
+        cur = self.con.cursor()
+        self.assertIsNone(state.get_sync_state(cur, "missing"))
+
+    def test_insert_and_get_round_trip(self):
+        cur = self.con.cursor()
+        self.assertIsNone(state.get_sync_state(cur, "key1"))
+        state.set_sync_state(self.con, cur, "key1", "value1")
+        self.assertEqual(state.get_sync_state(cur, "key1"), "value1")
+
+    def test_upsert_overwrites_existing_value(self):
+        cur = self.con.cursor()
+        state.set_sync_state(self.con, cur, "key1", "value1")
+        state.set_sync_state(self.con, cur, "key1", "value2")
+        self.assertEqual(state.get_sync_state(cur, "key1"), "value2")
+
+    def test_distinct_keys_do_not_collide(self):
+        cur = self.con.cursor()
+        state.set_sync_state(self.con, cur, "key1", "value1")
+        state.set_sync_state(self.con, cur, "key2", "value2")
+        self.assertEqual(state.get_sync_state(cur, "key1"), "value1")
+        self.assertEqual(state.get_sync_state(cur, "key2"), "value2")
+
+
 class TestFailuresUnder(GWFlowTestBase):
     def test_returns_only_keys_with_count_below_cap(self):
         cur = self.con.cursor()
