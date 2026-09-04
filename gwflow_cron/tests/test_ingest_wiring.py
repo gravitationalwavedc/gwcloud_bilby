@@ -9,6 +9,16 @@ import settings
 from tests.base import GWFlowTestBase
 
 
+class TestParseArgs(unittest.TestCase):
+    def test_default_backfill_false(self):
+        parsed = gwflow_ingest.parse_args([])
+        self.assertFalse(parsed.backfill)
+
+    def test_backfill_flag_true(self):
+        parsed = gwflow_ingest.parse_args(["--backfill"])
+        self.assertTrue(parsed.backfill)
+
+
 class TestIngestWiring(GWFlowTestBase):
     @patch("gwflow_ingest.phase_file_mirror")
     @patch("gwflow_ingest.phase_bilby_children")
