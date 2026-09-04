@@ -24,17 +24,55 @@ class TestBilbyJobFilter(BilbyTestCase):
         )
         self.create_user(id=1)
 
-    def _create_job(self, *, user_id=1, private=False, is_ligo_job=False, name=None):
+    def _create_job(self, *, user_id=1, private=False, is_ligo_job=False, name=None, ini_string=None):
         return BilbyJob.objects.create(
             user_id=user_id,
             name=name or f"job-{user_id}-{private}-{is_ligo_job}",
             private=private,
             is_ligo_job=is_ligo_job,
-            ini_string=self.ini_string,
+            ini_string=ini_string or self.ini_string,
         )
 
     def _filtered_ids(self, user):
         return set(BilbyJob.bilby_job_filter(BilbyJob.objects.all(), user).values_list("id", flat=True))
+
+    def _public_filtered_ids(self, user):
+        return set(BilbyJob.public_bilby_job_filter(BilbyJob.objects.all(), user).values_list("id", flat=True))
+
+    def test_public_bilby_job_filter_excludes_private_jobs(self):
+        public_job = self._create_job(private=False, name="public")
+        self._create_job(private=True, name="private")
+        self.assertEqual(self._public_filtered_ids(self.user), {public_job.id})
+
+    @override_settings(EMBARGO_START_TIME=1.5)
+    def test_public_bilby_job_filter_applies_embargo_for_non_ligo_user(self):
+        self.authenticate()
+        public_real = self._create_job(
+            private=False,
+            name="public-real",
+            ini_string=create_test_ini_string({"trigger-time": 1.0, "n-simulation": 0, "detectors": "['H1']"}),
+        )
+        self._create_job(
+            private=False,
+            name="public-embargoed",
+            ini_string=create_test_ini_string({"trigger-time": 2.0, "n-simulation": 0, "detectors": "['H1']"}),
+        )
+        self.assertEqual(self._public_filtered_ids(self.user), {public_real.id})
+
+    @override_settings(EMBARGO_START_TIME=1.5)
+    def test_public_bilby_job_filter_ligo_user_passthrough(self):
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+        public_real = self._create_job(
+            private=False,
+            name="public-real",
+            ini_string=create_test_ini_string({"trigger-time": 1.0, "n-simulation": 0, "detectors": "['H1']"}),
+        )
+        public_embargoed = self._create_job(
+            private=False,
+            name="public-embargoed",
+            ini_string=create_test_ini_string({"trigger-time": 2.0, "n-simulation": 0, "detectors": "['H1']"}),
+        )
+        self.assertEqual(self._public_filtered_ids(self.user), {public_real.id, public_embargoed.id})
 
     def test_anonymous_user_sees_only_public_non_ligo_jobs(self):
         visible = self._create_job(private=False, is_ligo_job=False, name="public-non-ligo")
