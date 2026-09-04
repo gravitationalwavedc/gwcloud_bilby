@@ -29,12 +29,12 @@
       {% endif %}
     </div>
     <div class="card-body">
-      {% with total=block.files|length pending=block.files|pending_count %}
+      {% with total=block.files|length mirrored=block.files|mirrored_count pending=block.files|pending_count %}
       <p class="gw-files-line">
         {% if pending == 0 %}
           <span class="gw-files-status gw-files-status--mirrored">{{ total }} of {{ total }} mirrored ✓</span>
         {% else %}
-          <span class="gw-files-status gw-files-status--pending">{{ pending }} of {{ total }} pending ⏳ syncing</span>
+          <span class="gw-files-status gw-files-status--pending">{{ mirrored }} of {{ total }} mirrored; {{ pending }} pending ⏳ syncing</span>
         {% endif %}
       </p>
       {% endwith %}

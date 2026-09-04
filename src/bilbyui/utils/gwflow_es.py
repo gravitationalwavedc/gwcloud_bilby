@@ -32,27 +32,33 @@ def parse_analyses(metadata: dict) -> list:
     }
 
     try:
-        for section_key, section_data in metadata.items():
-            if section_key not in section_type_map:
+        metadata_items = metadata.items()
+    except Exception as e:
+        logger.warning("Error iterating gwflow metadata: %s", e)
+        return analyses
+
+    for section_key, section_data in metadata_items:
+        if section_key not in section_type_map:
+            continue
+
+        analysis_type = section_type_map[section_key]
+
+        # section_data may be a list of dicts, or a dict of items, or a single dict
+        items = []
+        if isinstance(section_data, list):
+            items = section_data
+        elif isinstance(section_data, dict):
+            # If section_data is a dict containing a 'results' list, use that
+            if "results" in section_data and isinstance(section_data["results"], list):
+                items = section_data["results"]
+            else:
+                items = [section_data]
+
+        for item in items:
+            if not isinstance(item, dict):
                 continue
 
-            analysis_type = section_type_map[section_key]
-
-            # section_data may be a list of dicts, or a dict of items, or a single dict
-            items = []
-            if isinstance(section_data, list):
-                items = section_data
-            elif isinstance(section_data, dict):
-                # If section_data is a dict containing a 'results' list, use that
-                if "results" in section_data and isinstance(section_data["results"], list):
-                    items = section_data["results"]
-                else:
-                    items = [section_data]
-
-            for item in items:
-                if not isinstance(item, dict):
-                    continue
-
+            try:
                 # Parse analysts / reviewers as lists of strings
                 raw_analysts = item.get("analysts") or []
                 if isinstance(raw_analysts, list):
@@ -79,8 +85,8 @@ def parse_analyses(metadata: dict) -> list:
                         "reviewers": reviewers,
                     },
                 )
-    except Exception as e:
-        logger.warning("Error parsing analyses from gwflow metadata: %s", e)
+            except Exception as e:
+                logger.warning("Error parsing analysis record in section %s: %s", section_key, e)
 
     return analyses
 

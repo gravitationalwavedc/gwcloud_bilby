@@ -58,7 +58,7 @@ class TestGWFlowFilesTemplateStates(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "2 of 2 pending ⏳ syncing")
+        self.assertContains(response, "0 of 2 mirrored; 2 pending ⏳ syncing")
         self.assertContains(response, "pending")
         self.assertContains(response, "Why can't I download?")
         self.assertContains(
@@ -74,7 +74,7 @@ class TestGWFlowFilesTemplateStates(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "2 of 3 pending ⏳ syncing")
+        self.assertContains(response, "1 of 3 mirrored; 2 pending ⏳ syncing")
         self.assertContains(response, "✓ mirrored")
         self.assertContains(response, "Why can't I download?")
 

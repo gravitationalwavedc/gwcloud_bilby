@@ -168,6 +168,22 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         doc = build_gwflow_es_doc(self.job, RaisingItemsDict())
         self.assertEqual(doc["analyses"], [])
 
+    def test_build_gwflow_es_doc_analysis_parse_error_skips_one_record_keeps_rest(self):
+        class RaisingGetDict(dict):
+            def get(self, *args, **kwargs):
+                raise ValueError("boom")
+
+        metadata = {
+            "ParameterEstimation": [
+                RaisingGetDict({"uid": "pe-bad"}),
+                {"uid": "pe-good", "analysts": ["Alice"], "reviewers": ["Bob"]},
+            ]
+        }
+        doc = build_gwflow_es_doc(self.job, metadata)
+        self.assertEqual(len(doc["analyses"]), 1)
+        self.assertEqual(doc["analyses"][0]["uid"], "pe-good")
+        self.assertEqual(doc["analyses"][0]["analysts"], ["Alice"])
+
     def test_build_gwflow_es_doc_gracedb_parse_error_is_swallowed(self):
         class RaisingGetDict(dict):
             def get(self, *args, **kwargs):
