@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import IntegrityError, transaction
 
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
@@ -114,3 +116,34 @@ class GWFlowModelsTestCase(BilbyTestCase):
 
         gwflow_job.refresh_from_db()
         self.assertIsNone(gwflow_job.event_id)
+
+    def test_get_by_download_token_invalid(self):
+        job = GWFlowJob.objects.create(
+            sname="S230601ag",
+            user=self.user,
+        )
+        GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="",
+            path="data/file1.txt",
+            file_name="file1.txt",
+        )
+
+        self.assertIsNone(GWFlowFile.get_by_download_token(str(uuid.uuid4())))
+
+    def test_get_by_download_token(self):
+        job = GWFlowJob.objects.create(
+            sname="S230601ag",
+            user=self.user,
+        )
+        gwflow_file = GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="",
+            path="data/file1.txt",
+            file_name="file1.txt",
+        )
+
+        result = GWFlowFile.get_by_download_token(gwflow_file.download_token)
+
+        self.assertEqual(result.id, gwflow_file.id)
+        self.assertEqual(result.job, job)
