@@ -350,6 +350,44 @@ class TestFileDownloadToken(BilbyTestCase):
         result = FileDownloadToken.get_paths(self.job, ["not-a-uuid"])
         self.assertEqual(result, [None])
 
+    def test_get_by_token(self):
+        before = timezone.now()
+        fd_token = FileDownloadToken.create(self.job, ["/awesome_path1/data.txt"])[0]
+        after = timezone.now()
+
+        token = fd_token.token
+
+        result = FileDownloadToken.get_by_token(token)
+
+        self.assertEqual(result.id, fd_token.id)
+        self.assertEqual(result.path, fd_token.path)
+        self.assertTrue(result.token)
+        self.assertTrue(before < result.created < after)
+
+        # Check that prune works as expected
+        # Check objects just inside the deletion time are not deleted
+        r = FileDownloadToken.objects.get(id=fd_token.id)
+        r.created = after - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY - 1)
+        r.save()
+
+        result = FileDownloadToken.get_by_token(token)
+
+        self.assertEqual(result.id, fd_token.id)
+        self.assertEqual(result.path, fd_token.path)
+        self.assertTrue(result.token)
+
+        # Set the object outside the expiry window
+        r = FileDownloadToken.objects.get(id=fd_token.id)
+        r.created = after - timezone.timedelta(seconds=settings.FILE_DOWNLOAD_TOKEN_EXPIRY + 1)
+        r.save()
+
+        result = FileDownloadToken.get_by_token(token)
+
+        self.assertIsNone(result)
+
+        # No records should exist in the database anymore
+        self.assertFalse(FileDownloadToken.objects.exists())
+
 
 class TestBilbyJobUploadToken(BilbyTestCase):
     def setUp(self):
