@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import requests
 import responses
@@ -284,6 +284,51 @@ class TestPortalClient(unittest.TestCase):
         pages = list(self.client._iter_pages(url))
         self.assertEqual(len(pages), 1)
         self.assertEqual(pages[0], ([{"sname": "S260101a"}, {"sname": "S260102b"}], None))
+
+    @patch("time.sleep", return_value=None)
+    def test_request_with_retry_success_below_500(self, mock_sleep):
+        resp = Mock()
+        resp.status_code = 200
+        self.client.session.request = Mock(return_value=resp)
+
+        result = self.client._request_with_retry("GET", f"{self.base_url}/api")
+
+        self.assertIs(result, resp)
+        self.client.session.request.assert_called_once()
+        mock_sleep.assert_not_called()
+
+    @patch("time.sleep", return_value=None)
+    def test_request_with_retry_5xx_raises_on_max_attempts(self, mock_sleep):
+        resp = Mock()
+        resp.status_code = 500
+        resp.raise_for_status.side_effect = requests.HTTPError("500")
+        self.client.session.request = Mock(return_value=resp)
+
+        with self.assertRaises(requests.HTTPError):
+            self.client._request_with_retry("GET", f"{self.base_url}/api")
+
+        self.assertEqual(self.client.session.request.call_count, 3)
+        self.assertEqual(mock_sleep.call_count, 2)
+
+    @patch("time.sleep", return_value=None)
+    def test_request_with_retry_exception_raises_on_max_attempts(self, mock_sleep):
+        self.client.session.request = Mock(side_effect=requests.ConnectionError("boom"))
+
+        with self.assertRaises(requests.ConnectionError):
+            self.client._request_with_retry("GET", f"{self.base_url}/api")
+
+        self.assertEqual(self.client.session.request.call_count, 3)
+        self.assertEqual(mock_sleep.call_count, 2)
+
+    @patch("time.sleep", return_value=None)
+    def test_request_with_retry_http_error_reraises_immediately(self, mock_sleep):
+        self.client.session.request = Mock(side_effect=requests.HTTPError("bad"))
+
+        with self.assertRaises(requests.HTTPError):
+            self.client._request_with_retry("GET", f"{self.base_url}/api")
+
+        self.client.session.request.assert_called_once()
+        mock_sleep.assert_not_called()
 
 
 if __name__ == "__main__":
