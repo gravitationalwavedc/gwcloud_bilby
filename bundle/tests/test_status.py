@@ -602,3 +602,65 @@ class TestStatus(TestCase):
         )
         self.assertEqual(result["complete"], True)
         self.assertEqual(delete_job_mock.call_count, 3)
+
+    @patch("_bundledb.delete_job")
+    @patch("core.status.get_scheduler")
+    def test_condor_status_no_submit_id(self, get_scheduler_mock, delete_job_mock):
+        from core.status import condor_status
+
+        result = condor_status(
+            {"working_directory": "a/working/directory", "submit_directory": "submit"}
+        )
+
+        self.assertEqual(
+            result["status"],
+            [{"status": 400, "what": "submit", "info": "Job has no submit id"}],
+        )
+        self.assertEqual(result["complete"], True)
+        delete_job_mock.assert_not_called()
+
+    @patch("_bundledb.delete_job")
+    @patch("core.status.get_scheduler")
+    def test_condor_status_incomplete(self, get_scheduler_mock, delete_job_mock):
+        from core.status import condor_status
+
+        sched = Mock()
+        get_scheduler_mock.side_effect = Mock(return_value=sched)
+
+        for status_value in (
+            None,
+            JobStatus.SUBMITTED,
+            JobStatus.QUEUED,
+            JobStatus.RUNNING,
+        ):
+            sched.status.side_effect = Mock(
+                return_value=(status_value, JobStatus.display_name(status_value))
+            )
+
+            result = condor_status({"submit_id": 1234})
+
+            self.assertEqual(result["complete"], False)
+            delete_job_mock.assert_not_called()
+
+    @patch("_bundledb.delete_job")
+    @patch("core.status.get_scheduler")
+    def test_condor_status_completed(self, get_scheduler_mock, delete_job_mock):
+        from core.status import condor_status
+
+        sched = Mock()
+        get_scheduler_mock.side_effect = Mock(return_value=sched)
+        sched.status.side_effect = Mock(
+            return_value=(
+                JobStatus.COMPLETED,
+                JobStatus.display_name(JobStatus.COMPLETED),
+            )
+        )
+
+        result = condor_status({"submit_id": 1234})
+
+        self.assertEqual(
+            result["status"],
+            [{"status": 500, "what": "submit", "info": "Completed"}],
+        )
+        self.assertEqual(result["complete"], True)
+        delete_job_mock.assert_called_once_with({"submit_id": 1234})
