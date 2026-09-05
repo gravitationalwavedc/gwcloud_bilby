@@ -602,3 +602,108 @@ class TestStatus(TestCase):
         )
         self.assertEqual(result["complete"], True)
         self.assertEqual(delete_job_mock.call_count, 3)
+
+
+class TestSlurmStatusDirect(TestCase):
+    def setUp(self):
+        sys.path.append(str(Path(__file__).parent / "misc"))
+
+    def tearDown(self):
+        sys.path = sys.path[:-1]
+
+    @patch("_bundledb.delete_job")
+    def test_slurm_status_missing_submit_directory(self, delete_job_mock):
+        from core.status import slurm_status
+
+        result = slurm_status({"working_directory": "a/working/directory"})
+
+        self.assertEqual(
+            result["status"],
+            [{"status": 400, "what": "submit", "info": "Job has no submit directory"}],
+        )
+        self.assertEqual(result["complete"], True)
+        self.assertEqual(delete_job_mock.call_count, 0)
+
+    @patch("_bundledb.delete_job")
+    def test_slurm_status_missing_working_directory(self, delete_job_mock):
+        from core.status import slurm_status
+
+        result = slurm_status({"submit_directory": "submit"})
+
+        self.assertEqual(
+            result["status"],
+            [{"status": 400, "what": "submit", "info": "Job has no working directory"}],
+        )
+        self.assertEqual(result["complete"], True)
+        self.assertEqual(delete_job_mock.call_count, 0)
+
+    @patch("_bundledb.delete_job")
+    def test_slurm_status_sid_file_not_a_file(self, delete_job_mock):
+        with TemporaryDirectory() as tmpdir:
+            from core.status import slurm_status
+
+            result = slurm_status({"working_directory": str(tmpdir), "submit_directory": "submit"})
+
+            # A missing slurm_ids file should not crash and should keep polling
+            self.assertEqual(
+                result["status"],
+                [{"status": 500, "what": "submit", "info": "Completed"}],
+            )
+            self.assertEqual(result["complete"], False)
+            self.assertEqual(delete_job_mock.call_count, 0)
+
+    @patch("_bundledb.delete_job")
+    @patch("scheduler.slurm.SlurmScheduler.status")
+    @patch.object(settings, "scheduler", EScheduler.SLURM)
+    def test_slurm_status_per_job_error(self, status_mock, delete_job_mock):
+        with TemporaryDirectory() as tmpdir:
+            os.mkdir(os.path.join(tmpdir, "submit"))
+
+            with open(os.path.join(tmpdir, "submit", "slurm_ids"), "w") as f:
+                f.writelines(["jid0 12345\n"])
+                f.flush()
+
+            from core.status import slurm_status
+
+            status_mock.side_effect = Mock(return_value=(JobStatus.ERROR, JobStatus.display_name(JobStatus.ERROR)))
+
+            result = slurm_status({"working_directory": str(tmpdir), "submit_directory": "submit"})
+
+            # A per-job error marks the job as complete and removes it from the database
+            self.assertEqual(
+                result["status"],
+                [
+                    {"status": 500, "what": "submit", "info": "Completed"},
+                    {"status": 400, "what": "jid0", "info": "Error"},
+                ],
+            )
+            self.assertEqual(result["complete"], True)
+            self.assertEqual(delete_job_mock.call_count, 1)
+
+    @patch("_bundledb.delete_job")
+    @patch("scheduler.slurm.SlurmScheduler.status")
+    @patch.object(settings, "scheduler", EScheduler.SLURM)
+    def test_slurm_status_completed(self, status_mock, delete_job_mock):
+        with TemporaryDirectory() as tmpdir:
+            os.mkdir(os.path.join(tmpdir, "submit"))
+
+            with open(os.path.join(tmpdir, "submit", "slurm_ids"), "w") as f:
+                f.writelines(["jid0 12345\n"])
+                f.flush()
+
+            from core.status import slurm_status
+
+            status_mock.side_effect = Mock(return_value=(JobStatus.COMPLETED, JobStatus.display_name(JobStatus.COMPLETED)))
+
+            result = slurm_status({"working_directory": str(tmpdir), "submit_directory": "submit"})
+
+            # A completed job is marked complete and removed from the database
+            self.assertEqual(
+                result["status"],
+                [
+                    {"status": 500, "what": "submit", "info": "Completed"},
+                    {"status": 500, "what": "jid0", "info": "Completed"},
+                ],
+            )
+            self.assertEqual(result["complete"], True)
+            self.assertEqual(delete_job_mock.call_count, 1)
