@@ -1,4 +1,5 @@
 import json
+from unittest import mock
 from unittest.mock import patch
 
 import requests
@@ -102,3 +103,55 @@ class TestSubmitJob(BilbyTestCase):
             submit_job(USER_ID, PARAMS, "default")
 
         self.assertEqual(str(ctx.exception), "Error submitting job: connection refused")
+
+
+@override_settings(ALLOW_HTTP_LEAKS=True, CLUSTERS=["default", "another"])
+class TestSubmitJobWithMockedRequest(BilbyTestCase):
+    def setUp(self):
+        self.create_user(id=1)
+
+    @mock.patch("bilbyui.utils.jobs.submit_job._make_job_controller_request")
+    def test_default_cluster_selection(self, mock_request):
+        mock_request.return_value = {"jobId": 42}
+
+        result = submit_job(USER_ID, PARAMS, None)
+
+        self.assertEqual(result, {"jobId": 42})
+        self.assertEqual(mock_request.call_args.kwargs["data"]["cluster"], settings.CLUSTERS[0])
+
+    @silence_errors
+    @mock.patch("bilbyui.utils.jobs.submit_job._make_job_controller_request")
+    def test_invalid_cluster_raises_value_error(self, mock_request):
+        with self.assertRaises(ValueError) as ctx:
+            submit_job(USER_ID, PARAMS, "not_real")
+
+        self.assertIn("cluster 'not_real' is not one of", str(ctx.exception))
+        mock_request.assert_not_called()
+
+    @silence_errors
+    @mock.patch("bilbyui.utils.jobs.submit_job._make_job_controller_request")
+    def test_request_exception_becomes_runtime_error(self, mock_request):
+        mock_request.side_effect = requests.RequestException("boom")
+
+        with self.assertRaises(RuntimeError) as ctx:
+            submit_job(USER_ID, PARAMS, "default")
+
+        self.assertEqual(str(ctx.exception), "Error submitting job: boom")
+
+    @silence_errors
+    @mock.patch("bilbyui.utils.jobs.submit_job._make_job_controller_request")
+    def test_malformed_non_dict_response_raises_runtime_error(self, mock_request):
+        mock_request.return_value = ["not", "a", "dict"]
+
+        with self.assertRaises(RuntimeError) as ctx:
+            submit_job(USER_ID, PARAMS, "default")
+
+        self.assertIn("malformed response", str(ctx.exception))
+
+    @mock.patch("bilbyui.utils.jobs.submit_job._make_job_controller_request")
+    def test_success_returns_job_id(self, mock_request):
+        mock_request.return_value = {"jobId": 7}
+
+        result = submit_job(USER_ID, PARAMS, "default")
+
+        self.assertEqual(result, {"jobId": 7})
