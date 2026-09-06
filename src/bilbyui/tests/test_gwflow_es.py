@@ -10,6 +10,7 @@ from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_es import (
     build_gwflow_es_doc,
+    get_es_client,
     gwflow_elastic_search_remove,
     gwflow_elastic_search_update,
     update_child_job_ids,
@@ -291,6 +292,22 @@ class TestGWFlowESUpdateRemove(BilbyTestCase):
         job = GWFlowJob.objects.create(sname="S150914c", user=self.user)
         job.delete()
         mock_remove.assert_called_once()
+
+
+class TestGetESClient(BilbyTestCase):
+    @override_settings(
+        ELASTIC_SEARCH_HOST="https://es.example.com:9200",
+        ELASTIC_SEARCH_API_KEY="test_api_key",
+    )
+    @patch("elasticsearch.Elasticsearch")
+    def test_get_es_client_uses_configured_settings(self, mock_es_cls):
+        get_es_client()
+
+        mock_es_cls.assert_called_once_with(
+            hosts=["https://es.example.com:9200"],
+            api_key="test_api_key",
+            verify_certs=False,
+        )
 
 
 class TestESIngestGWFlowCommand(BilbyTestCase):
