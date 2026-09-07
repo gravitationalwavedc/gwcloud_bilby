@@ -1,8 +1,8 @@
 // Joined analysis + files blocks (issue #54): coherent labelled regions per
 // #48, filename-first file rows using the #49 tech-value component, contained
 // tables, pending explanations and zero-files styling. Markup contract lives in
-// src/bilbyui/templates/bilbyui/_analysis_block.html and _file_actions.html;
-// design contract is docs/plans/designs/067-ux7-analyses-files-joined-blocks.md.
+// src/bilbyui/templates/bilbyui/_analysis_block.html; design contract is
+// docs/plans/designs/067-ux7-analyses-files-joined-blocks.md.
 //
 // Compiled after theme.scss, so every Bootstrap 4.6 variable/mixin referenced
 // here is already defined by the vendor import chain.

@@ -29,54 +29,81 @@
       {% endif %}
     </div>
     <div class="card-body">
-      {% with total=block.files|length mirrored=block.files|mirrored_count pending=block.files|pending_count %}
-      <p class="gw-files-line">
-        {% if pending == 0 %}
-          <span class="gw-files-status gw-files-status--mirrored">{{ total }} of {{ total }} mirrored ✓</span>
-        {% elif mirrored == 0 %}
-          <span class="gw-files-status gw-files-status--pending">0 of {{ total }} pending ⏳ syncing</span>
-        {% else %}
-          <span class="gw-files-status gw-files-status--pending">{{ mirrored }} of {{ total }} mirrored; {{ pending }} pending ⏳ syncing</span>
-        {% endif %}
-      </p>
-      {% endwith %}
-      <div class="gw-files-table-wrap" role="region" tabindex="0" aria-label="Scrollable files table">
-        <table class="table table-sm gw-files-table">
-          <caption class="sr-only">Files for {% if block.is_superevent %}superevent-level{% else %}analysis {{ block.analysis_uid_short }}{% endif %}</caption>
-          <thead>
-            <tr>
-              <th scope="col">File</th>
-              <th scope="col">Size</th>
-              <th scope="col">Status</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for f in block.files %}
-            {% with fid=f.id|stringformat:"d" %}
-            <tr class="gw-file-row">
-              <td class="gw-file-cell">
-                {% include "bilbyui/_tech_value.html" with value=f.path kind="path" truncated=True disclosure_id="gw-file-tech-"|add:fid %}
-              </td>
-              <td class="gw-file-size">
-                {% if f.file_size is None %}—{% else %}{{ f.file_size|filesizeformat }}{% endif %}
-              </td>
-              <td class="gw-file-status">
-                {% if f.uploaded %}
-                  <span class="badge badge-success">✓ mirrored</span>
-                {% else %}
-                  <span class="badge badge-warning">pending</span>
-                {% endif %}
-              </td>
-              <td class="gw-file-actions-cell">
-                {% include "bilbyui/_file_actions.html" with f=f %}
-              </td>
-            </tr>
-            {% endwith %}
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+      {% if block.files %}
+        {% with total=block.files|length mirrored=block.files|mirrored_count pending=block.files|pending_count %}
+        <p class="gw-files-line">
+          {% if pending == 0 %}
+            <span class="gw-files-status gw-files-status--mirrored">{{ total }} of {{ total }} mirrored ✓</span>
+          {% elif mirrored == 0 %}
+            <span class="gw-files-status gw-files-status--pending">0 of {{ total }} pending ⏳ syncing</span>
+          {% else %}
+            <span class="gw-files-status gw-files-status--pending">{{ mirrored }} of {{ total }} mirrored; {{ pending }} pending ⏳ syncing</span>
+          {% endif %}
+        </p>
+        {% endwith %}
+        <div class="gw-files-table-wrap" role="region" tabindex="0" aria-label="Scrollable files table">
+          <table class="table table-sm gw-files-table">
+            <caption class="sr-only">Files for {% if block.is_superevent %}superevent-level{% else %}analysis {{ block.analysis_uid_short }}{% endif %}</caption>
+            <thead>
+              <tr>
+                <th scope="col">File</th>
+                <th scope="col">Size</th>
+                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in block.files %}
+              {% with fid=f.id|stringformat:"d" %}
+              <tr class="gw-file-row">
+                <td class="gw-file-cell">
+                  {% include "bilbyui/_tech_value.html" with value=f.path kind="path" truncated=True disclosure_id="gw-file-tech-"|add:fid %}
+                </td>
+                <td class="gw-file-size">
+                  {% if f.file_size is None %}—{% else %}{{ f.file_size|filesizeformat }}{% endif %}
+                </td>
+                <td class="gw-file-status">
+                  {% if f.uploaded %}
+                    <span class="badge badge-success">✓ mirrored</span>
+                  {% else %}
+                    <span class="badge badge-warning">pending</span>
+                  {% endif %}
+                </td>
+                <td class="gw-file-actions-cell">
+                  <div class="gw-file-actions">
+                    {% if f.uploaded %}
+                      <a class="btn btn-sm btn-outline-primary gw-file-download"
+                         href="{% url 'bilbyui:gwflow_file_download' token=f.download_token %}"
+                         target="_blank" rel="noopener noreferrer">
+                        <i class="bi-download" aria-hidden="true"></i>
+                        <span>Download</span>
+                      </a>
+                    {% else %}
+                      <span class="gw-file-download gw-file-download--disabled" aria-disabled="true">
+                        <i class="bi-download" aria-hidden="true"></i>
+                        <span>Download</span>
+                      </span>
+                      <button type="button" class="gw-file-why"
+                              aria-expanded="false"
+                              aria-controls="gw-file-why-{{ fid }}"
+                              onclick="var el = document.getElementById('gw-file-why-{{ fid }}'); el.hidden = !el.hidden; this.setAttribute('aria-expanded', el.hidden ? 'false' : 'true');">
+                        Why can't I download? <span aria-hidden="true">ⓘ</span>
+                      </button>
+                      <div id="gw-file-why-{{ fid }}" class="gw-file-why-body" hidden>
+                        This file is still being mirrored from the portal. Once mirroring finishes, the download will be available here.
+                      </div>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endwith %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {% include "bilbyui/_async_state.html" with state="empty" thing="files" region_label="Analysis files" empty_hint="Files will appear here once this analysis has been mirrored from the portal." %}
+      {% endif %}
     </div>
   </div>
 </section>

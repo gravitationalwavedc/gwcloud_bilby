@@ -127,6 +127,25 @@ class TestGWFlowFilesTemplateStates(BilbyTestCase):
         self.assertContains(response, f"bilby-child (#{child.id})")
         self.assertNotContains(response, "Linked Bilby jobs")
 
+    def test_linked_job_without_files_renders_block_empty_state(self):
+        """A linked job with no files must render its block with empty-state
+        guidance, not a false "0 of 0 mirrored" status or an empty table."""
+        child = BilbyJob.objects.create(
+            user=self.ligo_user,
+            name="job-only",
+            gwflow_job=self.job,
+            gwflow_analysis_uid="analysis-only",
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "gw-analysis-block")
+        self.assertContains(response, f"job-only (#{child.id})")
+        self.assertContains(response, "No files yet.")
+        self.assertNotContains(response, "0 of 0 mirrored")
+        self.assertNotContains(response, "gw-files-table")
+
     def test_full_path_hidden_behind_disclosure(self):
         _make_file(self.job, "analysis-1", "outdir/deep/nested/a.h5", uploaded=True)
 
