@@ -3,7 +3,7 @@ from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
-from bilbyui.models import BilbyJob
+from bilbyui.models import BilbyJob, BilbyPermissionError
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -35,6 +35,20 @@ class TestBilbyJobFilter(BilbyTestCase):
 
     def _filtered_ids(self, user):
         return set(BilbyJob.bilby_job_filter(BilbyJob.objects.all(), user).values_list("id", flat=True))
+
+    def test_user_filter_anonymous_user_raises_permission_error(self):
+        anonymous = ADACSAnonymousUser()
+        with self.assertRaises(BilbyPermissionError):
+            BilbyJob.user_bilby_job_filter(BilbyJob.objects.all(), anonymous)
+
+    def test_user_filter_authenticated_user_sees_only_own_jobs(self):
+        self.authenticate()
+        own = self._create_job(private=True, is_ligo_job=False, name="own-private")
+        self._create_job(user_id=4, private=False, is_ligo_job=False, name="other-public")
+        self._create_job(user_id=4, private=True, is_ligo_job=False, name="other-private")
+
+        filtered = set(BilbyJob.user_bilby_job_filter(BilbyJob.objects.all(), self.user).values_list("id", flat=True))
+        self.assertEqual(filtered, {own.id})
 
     def test_anonymous_user_sees_only_public_non_ligo_jobs(self):
         visible = self._create_job(private=False, is_ligo_job=False, name="public-non-ligo")
