@@ -201,6 +201,23 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         with self.assertRaises(InvalidGWFlowMetadata):
             build_gwflow_es_doc(self.job, {"x": {1, 2, 3}})
 
+    def test_build_gwflow_es_doc_invalid_lossy_tuple(self):
+        with self.assertRaises(InvalidGWFlowMetadata):
+            build_gwflow_es_doc(self.job, {"x": (1, 2, 3)})
+
+    def test_build_gwflow_es_doc_invalid_lossy_non_string_key(self):
+        with self.assertRaises(InvalidGWFlowMetadata):
+            build_gwflow_es_doc(self.job, {1: "one"})
+
+    def test_build_gwflow_es_doc_invalid_deeply_nested(self):
+        metadata = {}
+        node = metadata
+        for _ in range(2000):
+            node["x"] = {}
+            node = node["x"]
+        with self.assertRaises(InvalidGWFlowMetadata):
+            build_gwflow_es_doc(self.job, metadata)
+
     def test_build_gwflow_es_doc_envelope_has_exactly_seven_fields(self):
         doc = build_gwflow_es_doc(self.job, {"ParameterEstimation": {"results": []}})
 

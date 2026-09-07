@@ -61,13 +61,20 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
         raise InvalidGWFlowMetadata("metadata must be a top-level JSON object")
 
     # Strict JSON validation: rejects NaN/Infinity and non-JSON Python values.
+    # RecursionError is translated to InvalidGWFlowMetadata so deeply nested
+    # payloads follow the controlled failure path rather than escaping.
     try:
         serialized = json.dumps(metadata, allow_nan=False)
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, RecursionError) as exc:
         raise InvalidGWFlowMetadata(f"metadata is not strict-JSON serializable: {exc}") from exc
 
     # The validated serialization round-trip is what is indexed.
     validated = json.loads(serialized)
+
+    # Reject lossy round-trips (e.g. tuples -> lists, non-string dict keys ->
+    # strings) so the indexed metadata is deeply equal to the input.
+    if validated != metadata:
+        raise InvalidGWFlowMetadata("metadata must contain only losslessly JSON-serialisable values")
 
     last_updated_time = (
         job.current_history_timestamp.isoformat()
@@ -76,6 +83,11 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
     )
     event_trigger_id = job.event_id.trigger_id if job.event_id else None
 
+    try:
+        review_statuses = _collect_review_statuses(validated, job)
+    except RecursionError as exc:
+        raise InvalidGWFlowMetadata("metadata is too deeply nested") from exc
+
     return {
         "_gwcloud": {
             "sname": job.sname,
@@ -83,7 +95,7 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
             "isPruned": job.is_pruned,
             "ligoOnly": job.ligo_only,
             "lastUpdatedTime": last_updated_time,
-            "reviewStatuses": _collect_review_statuses(validated, job),
+            "reviewStatuses": review_statuses,
             "eventTriggerId": event_trigger_id,
         },
         "metadata": validated,
