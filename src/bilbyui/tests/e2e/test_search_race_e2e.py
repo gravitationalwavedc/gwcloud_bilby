@@ -11,6 +11,7 @@ out-of-order resolution.
 from __future__ import annotations
 
 import time
+from urllib.parse import parse_qs, urlparse
 
 from bilbyui.models import GWFlowJob
 from bilbyui.tests.e2e.base import (
@@ -158,7 +159,13 @@ class TestGWFlowSiblingSourceRace(GWFlowJobsPageBase):
 
 class TestChipRemovalSyncsForm(GWFlowJobsPageBase):
     """Chip removal must sync the persistent form so a removed filter is not
-    silently reintroduced by the next form submission (round-4 finding)."""
+    silently reintroduced by the next form submission (round-4 finding).
+
+    Issue #75 (UX-17) moved this from the generic ``htmx:pushedIntoHistory``
+    write-back to a targeted, action-specific reset: removing a chip resets
+    ONLY the removed control (its ``param_name``), synchronously when the user
+    action starts. It is no longer driven by any history event.
+    """
 
     @async_e2e_test
     async def test_chip_removal_resets_form_control(self):
@@ -177,7 +184,8 @@ class TestChipRemovalSyncsForm(GWFlowJobsPageBase):
             timeout=10000,
         )
 
-        # The persistent form control is reset (htmx:pushedIntoHistory sync).
+        # The persistent form control is reset by the targeted chip-removal
+        # action sync (NOT by htmx:pushedIntoHistory, which is removed).
         self.assertEqual(await page.locator("#library").input_value(), "")
         self.assertNotIn("library=lib1", page.url)
 
@@ -189,3 +197,267 @@ class TestChipRemovalSyncsForm(GWFlowJobsPageBase):
         )
         self.assertNotIn("library=lib1", page.url)
         self.assertIn("review=approved", page.url)
+
+
+class TestGWFlowOriginalRaceRegression(GWFlowJobsPageBase):
+    """The exact original race (issue #75 / UX-17) reproduced as a regression.
+
+    Type ``S23``, let the debounced request A (search=S23) start and be in
+    flight, keep typing to ``S2305`` while request A is still in flight, then
+    assert the live input stays exactly ``S2305`` with focus and caret
+    preserved, and that the final results and final URL both use ``S2305`` —
+    the obsolete ``S23`` completion must not become the final rendered or
+    navigable state.
+
+    Before the fix, request A's completion pushed ``search=S23`` to history
+    and the ``htmx:pushedIntoHistory`` write-back reset the live input to
+    ``S23``, dropping the continued typing. The fix removes that write-back,
+    so the live input is the sole authority during editing.
+    """
+
+    gwflow_jobs_side_effect = staticmethod(_slow_race_side_effect)
+
+    @async_e2e_test
+    async def test_input_stays_s2305_and_final_results_and_url_use_s2305(self):
+        page = self.page
+        search = page.locator("#search")
+        await page.wait_for_selector(".result-count")
+
+        # Type the prefix and let the debounced request A (search=S23) fire.
+        await search.press_sequentially("S23")
+        # 350 ms > the 300 ms debounce: request A is now in flight (slow mock).
+        await page.wait_for_timeout(350)
+
+        # Keep typing to the full query while request A is still in flight.
+        await search.press_sequentially("05")
+
+        # The live input must stay exactly S2305 — request A's completion
+        # (which pushes search=S23 to history) must not clobber it.
+        self.assertEqual(await search.input_value(), "S2305")
+        self.assertEqual(
+            await page.evaluate("document.activeElement ? document.activeElement.id : null"),
+            "search",
+            "focus must remain on the search input",
+        )
+        caret = await search.evaluate("(el) => [el.selectionStart, el.selectionEnd]")
+        self.assertEqual(caret, [5, 5], "caret must be preserved at the end of S2305")
+
+        # Final results and URL both use S2305 (total = len('S2305') = 5).
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('5 superevents match'); }",
+            timeout=10000,
+        )
+        search_param = parse_qs(urlparse(page.url).query).get("search", [""])[0]
+        self.assertEqual(search_param, "S2305", "final URL search must be S2305, not the obsolete S23")
+
+        # The obsolete S23 completion must not become the final rendered state.
+        await page.wait_for_timeout(700)
+        self.assertIn("5 superevents match", await page.locator(".result-count").text_content())
+        self.assertEqual(await search.input_value(), "S2305")
+
+
+class TestPushedIntoHistoryDoesNotWriteForm(GWFlowJobsPageBase):
+    """``htmx:pushedIntoHistory`` must not write any URL value into a form
+    control (issue #75 / UX-17 acceptance criterion).
+
+    URL -> form sync now happens only on ``popstate`` / ``htmx:historyRestore``.
+    Dispatching ``pushedIntoHistory`` with the URL carrying different values
+    must leave every control untouched.
+    """
+
+    @async_e2e_test
+    async def test_pushed_into_history_does_not_alter_any_control(self):
+        page = self.page
+        # Load with URL values that differ from what we set below.
+        await page.goto(f"{self.gwflow_url()}?search=foo&library=lib1&review=approved&time_range=1w")
+        await page.wait_for_selector(".result-count")
+
+        # Set every control to a value that differs from the URL.
+        await page.locator("#search").fill("S2305")
+        await page.locator("#library").select_option("lib2")
+        await page.locator("#review").select_option("reviewed")
+        await page.locator("#time_range").select_option("1d")
+        await page.locator("#advanced-search").fill("S2305")
+
+        # Dispatch the event that must not write into any control.
+        await page.evaluate("document.dispatchEvent(new Event('htmx:pushedIntoHistory'))")
+
+        # No control may have been overwritten by the URL's values.
+        self.assertEqual(await page.locator("#search").input_value(), "S2305")
+        self.assertEqual(await page.locator("#advanced-search").input_value(), "S2305")
+        self.assertEqual(await page.locator("#library").input_value(), "lib2")
+        self.assertEqual(await page.locator("#review").input_value(), "reviewed")
+        self.assertEqual(await page.locator("#time_range").input_value(), "1d")
+
+
+class TestSearchIMEComposition(GWFlowJobsPageBase):
+    """IME composition must not fire requests for incomplete text; only the
+    final composed value is searched, exactly once, after settling."""
+
+    @async_e2e_test
+    async def test_composing_inputs_do_not_trigger_and_compositionend_triggers_once(self):
+        page = self.page
+        await page.wait_for_selector(".result-count")
+
+        list_requests = []
+        page.on(
+            "request",
+            lambda r: list_requests.append(r.url) if r.url.startswith(self.gwflow_url()) else None,
+        )
+
+        # Phase 1: composing input events only -> no request may fire. The
+        # in-progress composition is not yet committed to the input value, so
+        # nothing is submitted (the htmx:beforeRequest guard also cancels any
+        # request that would fire mid-composition).
+        await page.evaluate(
+            """() => {
+              const input = document.querySelector('#search');
+              input.focus();
+              input.dispatchEvent(new CompositionEvent('compositionstart', { data: '' }));
+              input.dispatchEvent(new InputEvent('input', { bubbles: true, data: '\u3042', isComposing: true }));
+              input.dispatchEvent(new InputEvent('input', { bubbles: true, data: '\u3044', isComposing: true }));
+            }"""
+        )
+        # Longer than the 300 ms debounce: no request may have been scheduled.
+        await page.wait_for_timeout(400)
+        self.assertEqual(len(list_requests), 0, "composing inputs must not trigger a request")
+
+        # Phase 2: compositionend commits the final composed value; after
+        # settling, exactly one request for the final composed value.
+        await page.evaluate(
+            """() => {
+              const input = document.querySelector('#search');
+              input.value = '\u3042\u3044';
+              input.dispatchEvent(new CompositionEvent('compositionend', { data: '\u3042\u3044' }));
+            }"""
+        )
+        # total = len('\u3042\u3044') = 2.
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('2 superevents match'); }",
+            timeout=10000,
+        )
+        self.assertEqual(len(list_requests), 1, "compositionend must trigger exactly one request")
+        self.assertIn("search=", list_requests[0])
+
+
+class TestSearchNativeClear(GWFlowJobsPageBase):
+    """The native search-clear control must search for the empty value."""
+
+    @async_e2e_test
+    async def test_native_clear_searches_for_empty_value(self):
+        page = self.page
+        await page.wait_for_selector(".result-count")
+
+        # Type a search so there is something to clear.
+        await page.locator("#search").fill("S2305")
+
+        list_requests = []
+        page.on(
+            "request",
+            lambda r: list_requests.append(r.url) if r.url.startswith(self.gwflow_url()) else None,
+        )
+
+        # Simulate the native search-clear control firing the search event.
+        await page.evaluate(
+            """() => {
+              const input = document.querySelector('#search');
+              input.value = '';
+              input.dispatchEvent(new Event('search', { bubbles: true }));
+            }"""
+        )
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('0 superevents match'); }",
+            timeout=10000,
+        )
+        self.assertGreaterEqual(len(list_requests), 1, "native clear must fire a search request")
+        self.assertTrue(any("search=" in u for u in list_requests), "clear request must carry the search param")
+        self.assertEqual(await page.locator("#search").input_value(), "")
+
+
+class TestBackForwardCoherence(GWFlowJobsPageBase):
+    """Back/forward restore a coherent state (URL, controls, results) with no
+    duplicate request, no extra history entry and no forced focus."""
+
+    @async_e2e_test
+    async def test_back_forward_restores_coherent_state(self):
+        page = self.page
+        await page.wait_for_selector(".result-count")
+
+        # Apply a filter -> one history entry.
+        await page.locator("#library").select_option("lib1")
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('1000 superevents match'); }",
+            timeout=10000,
+        )
+        self.assertIn("library=lib1", page.url)
+
+        list_requests = []
+        page.on(
+            "request",
+            lambda r: list_requests.append(r.url) if r.url.startswith(self.gwflow_url()) else None,
+        )
+        hist_len = await page.evaluate("window.history.length")
+
+        # Back -> initial state restored from the htmx history cache.
+        await page.go_back()
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('0 superevents match'); }",
+            timeout=10000,
+        )
+        self.assertEqual(await page.locator("#library").input_value(), "")
+        self.assertNotIn("library=", page.url)
+
+        # Forward -> filtered state restored again.
+        await page.go_forward()
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('1000 superevents match'); }",
+            timeout=10000,
+        )
+        self.assertEqual(await page.locator("#library").input_value(), "lib1")
+        self.assertIn("library=lib1", page.url)
+
+        # No duplicate request fired during back/forward (htmx history cache).
+        self.assertEqual(len(list_requests), 0, "back/forward must not fire a new list request")
+        # No extra history entry created by back/forward.
+        self.assertEqual(await page.evaluate("window.history.length"), hist_len)
+        # No forced focus onto the search input.
+        self.assertNotEqual(
+            await page.evaluate("document.activeElement ? document.activeElement.id : null"),
+            "search",
+            "back/forward must not force focus onto the search input",
+        )
+
+
+class TestResetAllFollowedByFilterChange(GWFlowJobsPageBase):
+    """Reset all must clear every represented control so a subsequent filter
+    change does not reintroduce removed values (issue #75 / UX-17)."""
+
+    @async_e2e_test
+    async def test_reset_all_then_filter_change_does_not_reintroduce_removed_values(self):
+        page = self.page
+        await page.goto(f"{self.gwflow_url()}?library=lib1&review=approved")
+        await page.wait_for_selector(".filter-chip")
+        await page.wait_for_selector(".result-count")
+
+        self.assertEqual(await page.locator("#library").input_value(), "lib1")
+        self.assertEqual(await page.locator("#review").input_value(), "approved")
+
+        # Reset all -> every represented control returns to its default.
+        await page.locator(".filter-reset").click()
+        await page.wait_for_function(
+            "() => document.querySelector('.filter-chip') === null",
+            timeout=10000,
+        )
+        self.assertEqual(await page.locator("#library").input_value(), "")
+        self.assertEqual(await page.locator("#review").input_value(), "")
+        self.assertEqual(await page.locator("#time_range").input_value(), "all")
+
+        # A subsequent filter change must not reintroduce the removed values.
+        await page.locator("#library").select_option("lib2")
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('2000 superevents match'); }",
+            timeout=10000,
+        )
+        self.assertIn("library=lib2", page.url)
+        self.assertNotIn("review=approved", page.url, "removed review value must not be reintroduced")
+        self.assertEqual(await page.locator("#review").input_value(), "")

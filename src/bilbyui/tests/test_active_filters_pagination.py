@@ -179,6 +179,22 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertContains(response, 'hx-swap="innerHTML"')
         self.assertContains(response, 'hx-push-url="true"')
 
+    def test_active_filters_chips_carry_param_name_metadata(self):
+        """Each removable chip carries machine-readable ``data-filter-param``
+        metadata so chip removal can reset only the corresponding form control
+        via the targeted action sync (issue #75 / UX-17), instead of a
+        generic URL write-back. Reset all carries ``data-filter-reset``."""
+        response = self._render_fragment(
+            {"search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d"},
+            total=10,
+        )
+
+        self.assertContains(response, 'data-filter-param="search"')
+        self.assertContains(response, 'data-filter-param="library"')
+        self.assertContains(response, 'data-filter-param="review"')
+        self.assertContains(response, 'data-filter-param="time_range"')
+        self.assertContains(response, "data-filter-reset")
+
     def test_active_filters_reset_all_link(self):
         response = self._render_fragment({"search": "foo", "time_range": "1d"}, total=10)
 

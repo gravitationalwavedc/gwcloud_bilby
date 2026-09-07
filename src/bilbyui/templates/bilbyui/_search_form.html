@@ -160,3 +160,35 @@
     {% include "bilbyui/_bilby_search_help.html" %}
   {% endif %}
 </form>
+{# Composition-aware search trigger (issue #75 UX-17). The input keeps its 300 ms #}
+{# trailing debounce and hx-sync:#jobs-search-region:replace, but an incomplete IME #}
+{# composition must not start/schedule a request. We track composition state and #}
+{# cancel any request that would fire mid-composition; compositionend makes the #}
+{# completed value eligible for the normal trailing search. The native "search" #}
+{# event (browser clear control) still searches for the empty value. No handler #}
+{# here writes a request value back into the live input. #}
+<script>
+(function () {
+  "use strict";
+  var searchInput = document.getElementById("search");
+  if (!searchInput) {
+    return;
+  }
+  var composing = false;
+  searchInput.addEventListener("compositionstart", function () {
+    composing = true;
+  });
+  searchInput.addEventListener("compositionend", function () {
+    composing = false;
+    // The completed value is now eligible for the normal trailing search.
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  // If a debounced request would fire while an IME composition is still in
+  // progress, cancel it so an incomplete value is never submitted.
+  document.addEventListener("htmx:beforeRequest", function (event) {
+    if (composing && event.detail && event.detail.elt === searchInput) {
+      event.preventDefault();
+    }
+  });
+})();
+</script>
