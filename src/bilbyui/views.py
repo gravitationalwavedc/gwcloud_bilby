@@ -55,7 +55,6 @@ from .utils.derive_job_status import derive_job_status
 from .utils.embargo import should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update
-from .utils.gwflow_es import update_child_job_ids as update_gwflow_child_job_ids
 from .utils.gwflow_portal import get_superevent, get_version, get_versions
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args, prepare_args_for_data_input
 from .utils.job_ref import resolve_job_ref_view
@@ -2238,12 +2237,9 @@ def link_bilby_job_to_gwflow(user, job_id, sname, analysis_uid):
         raise GraphQLError("Invalid job_id") from e
 
     if not sname:
-        old_parent = job.gwflow_job
         job.gwflow_job = None
         job.gwflow_analysis_uid = ""
         job.save()
-        if old_parent:
-            update_gwflow_child_job_ids(old_parent)
         return {"success": True}
 
     try:
@@ -2258,8 +2254,6 @@ def link_bilby_job_to_gwflow(user, job_id, sname, analysis_uid):
     job.gwflow_job = gwflow_job
     job.gwflow_analysis_uid = analysis_uid
     job.save()
-
-    update_gwflow_child_job_ids(gwflow_job)
 
     return {"success": True}
 
