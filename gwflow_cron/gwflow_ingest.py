@@ -10,11 +10,20 @@ from pathlib import Path
 from typing import Any
 
 from gwcloud_python import GWCloud
+from gwdc_python.exceptions import GWDCUnknownException
 
 import manifest
 import settings
 import state
-from bilby_children import find_bilby_pe_analyses, make_archive, resolve_event_id_for, synthesize_job_tree
+from bilby_children import (
+    StageError,
+    find_bilby_pe_analyses,
+    make_archive,
+    resolve_event_id_for,
+    resolve_missing_path,
+    stage_supporting_files,
+    synthesize_job_tree,
+)
 from fetch import _get, fetch_to_staging
 from job_controller import ClusterOffline, JobControllerClient
 from portal import PortalClient
@@ -35,6 +44,10 @@ if not logger.handlers:
 
     logger.addHandler(fh)
     logger.addHandler(sh)
+
+
+class _AnalysisAborted(Exception):
+    """Internal sentinel: the analysis was already recorded as failed; skip upload."""
 
 
 def _with_normalized_uid(rec: Any, analysis_uid: str) -> Any:
@@ -272,11 +285,52 @@ def phase_bilby_children(
                         tree = synthesize_job_tree(workdir, name, ini_text, results)
                         make_archive(tree, archive)
 
-                        job = gwc_client.upload_job_archive(
-                            description=f"gwflow {sname} PE {uid}",
-                            job_archive=archive,
-                            public=True,
-                        )
+                        result_file_path = None
+                        rf = analysis.get("result_file")
+                        if isinstance(rf, dict) and rf.get("path"):
+                            result_file_path = rf["path"]
+
+                        try:
+                            job = gwc_client.upload_job_archive(
+                                description=f"gwflow {sname} PE {uid}",
+                                job_archive=archive,
+                                public=True,
+                            )
+                        except GWDCUnknownException as e:
+                            extensions = getattr(e, "extensions", None) or {}
+                            missing_files = extensions.get("missing_files") or []
+                            if not missing_files:
+                                raise
+                            seen: set[str] = set()
+                            missing: list[str] = []
+                            for p in missing_files:
+                                if p not in seen:
+                                    seen.add(p)
+                                    missing.append(p)
+                            staged_files: dict[str, Path] = {}
+                            for p in missing:
+                                resolved = resolve_missing_path(p, ini_text, result_file_path)
+                                if resolved is None:
+                                    state.record_failure(con, cur, fail_key, f"unresolvable missing path {p!r}")
+                                    raise _AnalysisAborted()
+                                try:
+                                    fetched = fetch_to_staging(jc, rec_for({"path": resolved}, sname, uid))
+                                except Exception as fetch_err:
+                                    state.record_failure(con, cur, fail_key, repr(fetch_err))
+                                    raise _AnalysisAborted() from fetch_err
+                                staged_files[p] = fetched
+                            try:
+                                stage_supporting_files(tree, missing, staged_files)
+                            except StageError as se:
+                                state.record_failure(con, cur, fail_key, repr(se))
+                                raise _AnalysisAborted() from se
+                            make_archive(tree, archive)
+                            job = gwc_client.upload_job_archive(
+                                description=f"gwflow {sname} PE {uid}",
+                                job_archive=archive,
+                                public=True,
+                            )
+
                         state.set_job_ref(con, cur, fail_key, str(job.id))
                         gwc_client.link_bilby_job_to_gwflow(job.id, sname, uid)
 
@@ -295,6 +349,8 @@ def phase_bilby_children(
                     logger.warning("cluster offline - deferring remaining analyses")
                     cluster_offline = True
                     break
+                except _AnalysisAborted:
+                    pass
                 except Exception as e:
                     state.record_failure(con, cur, fail_key, repr(e))
                 finally:

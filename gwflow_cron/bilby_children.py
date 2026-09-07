@@ -1,3 +1,4 @@
+import configparser
 import logging
 import re
 import shutil
@@ -5,6 +6,10 @@ import tarfile
 from pathlib import Path
 
 logger = logging.getLogger("gwflow_ingest.bilby_children")
+
+
+class StageError(Exception):
+    """Raised when a supporting file cannot be safely staged into the job tree."""
 
 
 _TRUTHY_PREFERRED = (True, "true", "True", "yes")
@@ -131,6 +136,87 @@ def make_archive(tree: Path, dest: Path) -> Path:
     with tarfile.open(dest, "w:gz") as tar:
         tar.add(tree, arcname=".")
     return dest
+
+
+def _ini_outdir(ini_text: str) -> str | None:
+    """Return the absolute `outdir` value from the ini, or None.
+
+    Parses with interpolation disabled so `%` characters in values are not
+    treated as configparser interpolation markers.
+    """
+    if not ini_text:
+        return None
+    parser = configparser.ConfigParser(interpolation=None)
+    try:
+        parser.read_string(ini_text)
+    except configparser.Error:
+        return None
+    for section in parser.sections():
+        try:
+            value = parser.get(section, "outdir")
+        except (configparser.NoOptionError, configparser.NoSectionError):
+            continue
+        if value and value.startswith("/"):
+            return value
+    return None
+
+
+def resolve_missing_path(p: str, ini_text: str, result_file: str | None) -> str | None:
+    """Return an absolute CIT path for a raw ini file path `p`, or None when unresolvable.
+
+    Absolute paths are returned as-is. Relative paths are resolved against the
+    ini's `outdir` value (absolute CIT path), falling back to the directory of
+    `result_file`. Returns None when no absolute path can be derived.
+    """
+    if p.startswith("/"):
+        return p
+
+    outdir = _ini_outdir(ini_text)
+    if outdir:
+        return outdir.rstrip("/") + "/" + p
+
+    if result_file:
+        return str(Path(result_file).parent) + "/" + p
+
+    return None
+
+
+def stage_supporting_files(tree: Path, missing: list[str], staged_files: dict[str, Path]) -> None:
+    """Copy each staged supporting file into the job tree at `p.lstrip("/")`.
+
+    `missing` is expected to be deduped by the caller. Raises StageError on
+    unsafe paths (`..` segments, NUL bytes, empty) or on collision with the
+    tree's reserved top-level entries (`data`, `result`, `results_page`) or a
+    `*_config_complete.ini` filename. Never clobbers existing tree content.
+    """
+    tree = Path(tree)
+    tree_root = tree.resolve()
+
+    for p in missing:
+        rel = p.lstrip("/")
+        if not rel:
+            raise StageError(f"empty relative path for {p!r}")
+        if "\x00" in rel:
+            raise StageError(f"NUL byte in path {p!r}")
+        parts = Path(rel).parts
+        if ".." in parts:
+            raise StageError(f"path traversal in {p!r}")
+
+        first = parts[0]
+        if first in ("data", "result", "results_page"):
+            raise StageError(f"collision with reserved tree entry {first!r} for {p!r}")
+        if Path(rel).name.endswith("_config_complete.ini"):
+            raise StageError(f"collision with config_complete.ini for {p!r}")
+
+        src = staged_files.get(p)
+        if src is None:
+            continue
+
+        dest = tree / rel
+        if not dest.resolve().is_relative_to(tree_root):
+            raise StageError(f"destination escapes tree root for {p!r}")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
 
 
 def resolve_event_id_for(sname: str, detail: dict) -> tuple[str, float] | None:
