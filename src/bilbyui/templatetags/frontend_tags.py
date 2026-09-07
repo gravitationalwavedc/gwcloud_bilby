@@ -52,6 +52,12 @@ def parent_dir(value):
 
 
 @register.filter
+def mirrored_count(files):
+    """Count files that have been mirrored in a GWFlow file list."""
+    return sum(1 for f in files if getattr(f, "uploaded", False))
+
+
+@register.filter
 def pending_count(files):
     """Count files still waiting to be mirrored in a GWFlow file list."""
     return sum(1 for f in files if not getattr(f, "uploaded", False))
