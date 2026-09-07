@@ -1,3 +1,4 @@
+import datetime
 from unittest.mock import MagicMock, patch
 
 import elasticsearch
@@ -5,16 +6,25 @@ import requests
 from django.core.management import call_command
 from django.test import override_settings
 
-from bilbyui.models import BilbyJob, EventID, GWFlowJob
-from bilbyui.tests.test_utils import create_test_ini_string
+from bilbyui.models import EventID, GWFlowJob
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_es import (
+    InvalidGWFlowMetadata,
     build_gwflow_es_doc,
     get_es_client,
     gwflow_elastic_search_remove,
     gwflow_elastic_search_update,
-    update_child_job_ids,
 )
+
+_GWCLOUD_FIELDS = {
+    "sname",
+    "libraries",
+    "isPruned",
+    "ligoOnly",
+    "lastUpdatedTime",
+    "reviewStatuses",
+    "eventTriggerId",
+}
 
 
 class TestGWFlowESDocBuilder(BilbyTestCase):
@@ -33,12 +43,15 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
             schema_version="v3",
             libraries=["cbc-workflow-o4a"],
             current_history_id="hist-001",
+            current_history_timestamp=datetime.datetime(
+                2026, 8, 31, 12, 34, 56, tzinfo=datetime.UTC
+            ),
             ligo_only=True,
             is_pruned=False,
             event_id=self.event_id,
         )
 
-    def test_build_gwflow_es_doc_golden_v3(self):
+    def test_build_gwflow_es_doc_golden(self):
         metadata = {
             "ParameterEstimation": {
                 "results": [
@@ -73,109 +86,144 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
 
         doc = build_gwflow_es_doc(self.job, metadata)
 
-        self.assertEqual(doc["user"]["name"], "Jane Doe")
-        self.assertEqual(doc["sname"], "S150914a")
-        self.assertEqual(doc["schemaVersion"], "v3")
-        self.assertEqual(doc["libraries"], ["cbc-workflow-o4a"])
-        self.assertTrue(doc["ligoOnly"])
-        self.assertFalse(doc["isPruned"])
-        self.assertEqual(doc["eventId"]["eventId"], "GW150914")
-        self.assertEqual(doc["eventId"]["gpsTime"], 1126259462.4)
-        self.assertEqual(len(doc["analyses"]), 2)
+        self.assertEqual(set(doc.keys()), {"_gwcloud", "metadata"})
+        self.assertEqual(set(doc["_gwcloud"].keys()), _GWCLOUD_FIELDS)
+        self.assertEqual(doc["metadata"], metadata)
 
-        pe_analysis = doc["analyses"][0]
-        self.assertEqual(pe_analysis["uid"], "pe-uid-1")
-        self.assertEqual(pe_analysis["type"], "pe")
-        self.assertEqual(pe_analysis["software"], "bilby")
-        self.assertEqual(pe_analysis["waveform"], "IMRPhenomXPHM")
-        self.assertEqual(pe_analysis["analysts"], ["Alice", "Bob"])
-        self.assertEqual(pe_analysis["reviewers"], ["Charlie"])
+        envelope = doc["_gwcloud"]
+        self.assertEqual(envelope["sname"], "S150914a")
+        self.assertEqual(envelope["libraries"], ["cbc-workflow-o4a"])
+        self.assertFalse(envelope["isPruned"])
+        self.assertTrue(envelope["ligoOnly"])
+        self.assertEqual(envelope["lastUpdatedTime"], "2026-08-31T12:34:56+00:00")
+        self.assertEqual(envelope["eventTriggerId"], "S150914a")
+        self.assertEqual(envelope["reviewStatuses"], ["approved", "pending"])
 
-        tgr_analysis = doc["analyses"][1]
-        self.assertEqual(tgr_analysis["uid"], "tgr-uid-1")
-        self.assertEqual(tgr_analysis["type"], "tgr")
-        self.assertEqual(tgr_analysis["software"], "pycbc")
+    def test_build_gwflow_es_doc_unknown_future_sections_preserved(self):
+        metadata = {
+            "ParameterEstimation": {"results": [{"uid": "pe-1", "review_status": "approved"}]},
+            "FutureAnalysisType": {"some_new_field": {"deep": [1, 2, 3]}},
+            "AnotherUnknown": ["a", "b"],
+        }
 
-        self.assertEqual(doc["gracedb"]["uids"], ["G197392", "G197393"])
-        self.assertEqual(doc["gracedb"]["instruments"], "H1,L1")
+        doc = build_gwflow_es_doc(self.job, metadata)
 
-    def test_build_gwflow_es_doc_missing_sections(self):
-        doc = build_gwflow_es_doc(self.job, {})
-        self.assertEqual(doc["sname"], "S150914a")
-        self.assertEqual(doc["analyses"], [])
-        self.assertEqual(doc["gracedb"]["uids"], [])
-        self.assertEqual(doc["gracedb"]["gpsTime"], "")
+        self.assertEqual(doc["metadata"], metadata)
+        self.assertEqual(doc["_gwcloud"]["reviewStatuses"], ["approved"])
 
-    def test_build_gwflow_es_doc_non_dict_metadata(self):
-        doc = build_gwflow_es_doc(self.job, None)
-        self.assertEqual(doc["sname"], "S150914a")
-        self.assertEqual(doc["analyses"], [])
-
-    def test_build_gwflow_es_doc_no_event_id(self):
-        self.job.event_id = None
-        self.job.save()
-        doc = build_gwflow_es_doc(self.job, {})
-        self.assertIsNone(doc["eventId"])
-
-    def test_build_gwflow_es_doc_user_name_fallback(self):
-        user = self.job.user
-        user.name = ""
-        user.first_name = "Jane"
-        user.last_name = "Doe"
-        doc = build_gwflow_es_doc(self.job, {})
-        self.assertEqual(doc["user"]["name"], "Jane Doe")
-
-    def test_build_gwflow_es_doc_single_dict_section(self):
+    def test_build_gwflow_es_doc_nested_arrays(self):
         metadata = {
             "ParameterEstimation": {
-                "uid": "pe-uid-2",
-                "inference_software": "bilby",
-                "analysts": ["Alice"],
-            }
+                "results": [
+                    {"uid": "pe-1", "review_status": "approved"},
+                    {"uid": "pe-2", "review_status": "pending"},
+                ]
+            },
+            "TGR": [
+                [
+                    {"uid": "tgr-1", "review_status": "needs_review"},
+                    {"review_status": "withdrawn"},
+                ]
+            ],
         }
-        doc = build_gwflow_es_doc(self.job, metadata)
-        self.assertEqual(len(doc["analyses"]), 1)
-        self.assertEqual(doc["analyses"][0]["uid"], "pe-uid-2")
-        self.assertEqual(doc["analyses"][0]["analysts"], ["Alice"])
 
-    def test_build_gwflow_es_doc_skips_non_dict_section_items(self):
+        doc = build_gwflow_es_doc(self.job, metadata)
+
+        self.assertEqual(doc["metadata"], metadata)
+        self.assertEqual(
+            doc["_gwcloud"]["reviewStatuses"],
+            ["approved", "pending", "needs_review", "withdrawn"],
+        )
+
+    def test_build_gwflow_es_doc_missing_statuses(self):
+        metadata = {"ParameterEstimation": {"results": [{"uid": "pe-1", "run_status": "completed"}]}}
+
+        doc = build_gwflow_es_doc(self.job, metadata)
+
+        self.assertEqual(doc["_gwcloud"]["reviewStatuses"], [])
+
+    def test_build_gwflow_es_doc_duplicates_deduplicated(self):
         metadata = {
-            "ParameterEstimation": [
-                {"uid": "pe-uid-3", "analysts": ["Alice"]},
-                "not-a-dict",
-                None,
-            ]
+            "ParameterEstimation": {"results": [{"review_status": "approved"}]},
+            "TGR": [{"review_status": "approved"}],
+            "Lensing": {"review_status": "approved"},
         }
+
         doc = build_gwflow_es_doc(self.job, metadata)
-        self.assertEqual(len(doc["analyses"]), 1)
-        self.assertEqual(doc["analyses"][0]["uid"], "pe-uid-3")
 
-    def test_build_gwflow_es_doc_non_list_analysts_reviewers(self):
-        metadata = {"ParameterEstimation": [{"uid": "pe-uid-4", "analysts": "Alice", "reviewers": "Bob"}]}
+        self.assertEqual(doc["_gwcloud"]["reviewStatuses"], ["approved"])
+
+    def test_build_gwflow_es_doc_non_scalar_review_status_skipped(self):
+        metadata = {
+            "ParameterEstimation": {"results": [{"review_status": "approved"}]},
+            "TGR": [{"review_status": {"nested": "pending"}}],
+            "Lensing": {"review_status": ["needs_review"]},
+        }
+
+        with self.assertLogs("bilbyui.utils.gwflow_es", level="WARNING") as logs:
+            doc = build_gwflow_es_doc(self.job, metadata)
+
+        self.assertEqual(doc["_gwcloud"]["reviewStatuses"], ["approved"])
+        self.assertEqual(len(logs.records), 2)
+        self.assertTrue(all("Non-scalar review_status" in r.getMessage() for r in logs.records))
+
+    def test_build_gwflow_es_doc_null_current_history_timestamp(self):
+        self.job.current_history_timestamp = None
+        self.job.save()
+
+        doc = build_gwflow_es_doc(self.job, {"ParameterEstimation": {"results": []}})
+
+        self.assertIsNone(doc["_gwcloud"]["lastUpdatedTime"])
+
+    def test_build_gwflow_es_doc_no_event_link(self):
+        self.job.event_id = None
+        self.job.save()
+
+        doc = build_gwflow_es_doc(self.job, {"ParameterEstimation": {"results": []}})
+
+        self.assertIsNone(doc["_gwcloud"]["eventTriggerId"])
+
+    def test_build_gwflow_es_doc_invalid_non_object(self):
+        for bad in (None, [], "not-a-dict", 42):
+            with self.subTest(bad=bad):
+                with self.assertRaises(InvalidGWFlowMetadata):
+                    build_gwflow_es_doc(self.job, bad)
+
+    def test_build_gwflow_es_doc_invalid_nan(self):
+        with self.assertRaises(InvalidGWFlowMetadata):
+            build_gwflow_es_doc(self.job, {"x": float("nan")})
+
+    def test_build_gwflow_es_doc_invalid_infinity(self):
+        with self.assertRaises(InvalidGWFlowMetadata):
+            build_gwflow_es_doc(self.job, {"x": float("inf")})
+
+    def test_build_gwflow_es_doc_invalid_non_json_value(self):
+        with self.assertRaises(InvalidGWFlowMetadata):
+            build_gwflow_es_doc(self.job, {"x": {1, 2, 3}})
+
+    def test_build_gwflow_es_doc_envelope_has_exactly_seven_fields(self):
+        doc = build_gwflow_es_doc(self.job, {"ParameterEstimation": {"results": []}})
+
+        self.assertEqual(set(doc["_gwcloud"].keys()), _GWCLOUD_FIELDS)
+
+    def test_build_gwflow_es_doc_metadata_deep_equal_to_input(self):
+        metadata = {
+            "ParameterEstimation": {
+                "results": [
+                    {
+                        "uid": "pe-1",
+                        "review_status": "approved",
+                        "analysts": [{"name": "Alice"}, "Bob"],
+                        "nested": {"deep": [1, 2, {"three": 3}]},
+                    }
+                ]
+            },
+            "Unknown": {"capitalised": True, "value": 1.5},
+        }
+
         doc = build_gwflow_es_doc(self.job, metadata)
-        self.assertEqual(doc["analyses"][0]["analysts"], ["Alice"])
-        self.assertEqual(doc["analyses"][0]["reviewers"], ["Bob"])
 
-    def test_build_gwflow_es_doc_string_gracedb_events(self):
-        metadata = {"GraceDB": {"Events": ["G197392", "G197393"]}}
-        doc = build_gwflow_es_doc(self.job, metadata)
-        self.assertEqual(doc["gracedb"]["uids"], ["G197392", "G197393"])
-
-    def test_build_gwflow_es_doc_analysis_parse_error_is_swallowed(self):
-        class RaisingItemsDict(dict):
-            def items(self):
-                raise ValueError("boom")
-
-        doc = build_gwflow_es_doc(self.job, RaisingItemsDict())
-        self.assertEqual(doc["analyses"], [])
-
-    def test_build_gwflow_es_doc_gracedb_parse_error_is_swallowed(self):
-        class RaisingGetDict(dict):
-            def get(self, *args, **kwargs):
-                raise ValueError("boom")
-
-        doc = build_gwflow_es_doc(self.job, RaisingGetDict())
-        self.assertEqual(doc["gracedb"]["uids"], [])
+        self.assertEqual(doc["metadata"], metadata)
 
 
 class TestGWFlowESUpdateRemove(BilbyTestCase):
@@ -185,18 +233,6 @@ class TestGWFlowESUpdateRemove(BilbyTestCase):
         self.job = GWFlowJob.objects.create(
             sname="S150914b",
             user=self.user,
-        )
-        self.child_job_1 = BilbyJob.objects.create(
-            user=self.user,
-            name="child_1",
-            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "job_1"}),
-            gwflow_job=self.job,
-        )
-        self.child_job_2 = BilbyJob.objects.create(
-            user=self.user,
-            name="child_2",
-            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "job_2"}),
-            gwflow_job=self.job,
         )
 
     @override_settings(IGNORE_ELASTIC_SEARCH=True)
@@ -243,12 +279,6 @@ class TestGWFlowESUpdateRemove(BilbyTestCase):
         gwflow_elastic_search_remove(self.job)
         mock_client.delete.assert_called_once()
 
-    @override_settings(IGNORE_ELASTIC_SEARCH=True)
-    @patch("elasticsearch.Elasticsearch")
-    def test_update_child_job_ids_ignored(self, mock_es):
-        update_child_job_ids(self.job)
-        mock_es.assert_not_called()
-
     @override_settings(
         IGNORE_ELASTIC_SEARCH=False,
         ELASTIC_SEARCH_HOST="localhost",
@@ -256,35 +286,14 @@ class TestGWFlowESUpdateRemove(BilbyTestCase):
         ELASTIC_SEARCH_GWFLOW_INDEX="gwflow_test_idx",
     )
     @patch("elasticsearch.Elasticsearch")
-    def test_update_child_job_ids_updates_doc(self, mock_es_cls):
+    def test_update_non_object_makes_zero_es_calls_and_leaves_doc_unchanged(self, mock_es_cls):
         mock_client = MagicMock()
         mock_es_cls.return_value = mock_client
 
-        update_child_job_ids(self.job)
+        gwflow_elastic_search_update(self.job, "not-an-object")
 
-        mock_client.update.assert_called_once()
-        call_kwargs = mock_client.update.call_args.kwargs
-        self.assertEqual(call_kwargs["index"], "gwflow_test_idx")
-        self.assertEqual(call_kwargs["id"], self.job.id)
-        self.assertEqual(
-            call_kwargs["doc"]["childJobIds"],
-            list(self.job.bilby_jobs.values_list("id", flat=True)),
-        )
-
-    @override_settings(
-        IGNORE_ELASTIC_SEARCH=False,
-        ELASTIC_SEARCH_HOST="localhost",
-        ELASTIC_SEARCH_API_KEY="test_key",
-        ELASTIC_SEARCH_GWFLOW_INDEX="gwflow_test_idx",
-    )
-    @patch("elasticsearch.Elasticsearch")
-    def test_update_child_job_ids_swallows_not_found(self, mock_es_cls):
-        mock_client = MagicMock()
-        mock_es_cls.return_value = mock_client
-        mock_client.update.side_effect = elasticsearch.NotFoundError(404, "not found", {})
-
-        update_child_job_ids(self.job)
-        mock_client.update.assert_called_once()
+        mock_client.update.assert_not_called()
+        mock_client.index.assert_not_called()
 
     @override_settings(IGNORE_ELASTIC_SEARCH=False)
     @patch("bilbyui.models.gwflow_elastic_search_remove")

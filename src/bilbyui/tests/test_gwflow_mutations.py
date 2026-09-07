@@ -360,47 +360,42 @@ class TestGWFlowMutations(BilbyTestCase):
         job1_id = to_global_id("BilbyJobNode", bilby_job1.id)
         job2_id = to_global_id("BilbyJobNode", bilby_job2.id)
 
-        with mock.patch("bilbyui.views.update_gwflow_child_job_ids") as mock_update_es:
-            # 1. Link bilby_job1 to S230601link with uid "pe_1"
-            input_data1 = {
-                "jobId": job1_id,
-                "sname": "S230601link",
-                "analysisUid": "pe_1",
-            }
-            res1 = self.query(query, input_data=input_data1)
-            self.assertIsNone(res1.errors)
-            self.assertTrue(res1.data["linkBilbyJobToGwflow"]["result"]["success"])
+        # 1. Link bilby_job1 to S230601link with uid "pe_1"
+        input_data1 = {
+            "jobId": job1_id,
+            "sname": "S230601link",
+            "analysisUid": "pe_1",
+        }
+        res1 = self.query(query, input_data=input_data1)
+        self.assertIsNone(res1.errors)
+        self.assertTrue(res1.data["linkBilbyJobToGwflow"]["result"]["success"])
 
-            bilby_job1.refresh_from_db()
-            self.assertEqual(bilby_job1.gwflow_job, gwflow_job)
-            self.assertEqual(bilby_job1.gwflow_analysis_uid, "pe_1")
-            mock_update_es.assert_called_once_with(gwflow_job)
+        bilby_job1.refresh_from_db()
+        self.assertEqual(bilby_job1.gwflow_job, gwflow_job)
+        self.assertEqual(bilby_job1.gwflow_analysis_uid, "pe_1")
 
-        with mock.patch("bilbyui.views.update_gwflow_child_job_ids"):
-            # 2. Try linking bilby_job2 to same sname and duplicate uid "pe_1" -> error
-            input_data2 = {
-                "jobId": job2_id,
-                "sname": "S230601link",
-                "analysisUid": "pe_1",
-            }
-            res2 = self.query(query, input_data=input_data2)
-            self.assertIsNotNone(res2.errors)
-            self.assertIn("already linked to another BilbyJob", res2.errors[0]["message"])
+        # 2. Try linking bilby_job2 to same sname and duplicate uid "pe_1" -> error
+        input_data2 = {
+            "jobId": job2_id,
+            "sname": "S230601link",
+            "analysisUid": "pe_1",
+        }
+        res2 = self.query(query, input_data=input_data2)
+        self.assertIsNotNone(res2.errors)
+        self.assertIn("already linked to another BilbyJob", res2.errors[0]["message"])
 
-        with mock.patch("bilbyui.views.update_gwflow_child_job_ids") as mock_update_es_unlink:
-            # 3. Unlink bilby_job1 (sname="")
-            unlink_input = {
-                "jobId": job1_id,
-                "sname": "",
-                "analysisUid": "",
-            }
-            res_unlink = self.query(query, input_data=unlink_input)
-            self.assertIsNone(res_unlink.errors)
+        # 3. Unlink bilby_job1 (sname="")
+        unlink_input = {
+            "jobId": job1_id,
+            "sname": "",
+            "analysisUid": "",
+        }
+        res_unlink = self.query(query, input_data=unlink_input)
+        self.assertIsNone(res_unlink.errors)
 
-            bilby_job1.refresh_from_db()
-            self.assertIsNone(bilby_job1.gwflow_job)
-            self.assertEqual(bilby_job1.gwflow_analysis_uid, "")
-            mock_update_es_unlink.assert_called_once_with(gwflow_job)
+        bilby_job1.refresh_from_db()
+        self.assertIsNone(bilby_job1.gwflow_job)
+        self.assertEqual(bilby_job1.gwflow_analysis_uid, "")
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_pending_files_query_ordering_and_select_related(self):
