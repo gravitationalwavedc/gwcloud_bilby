@@ -247,8 +247,9 @@ class TestGWFlowMutations(BilbyTestCase):
             event_id=None,
             files=[],
         )
-        with mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")), mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
         ):
             upsert_gwflow_job(self.ingest_user, params)
 
@@ -474,8 +475,9 @@ class TestGWFlowMutations(BilbyTestCase):
                 "currentHistoryId": "hist-001",
             }
         }
-        with mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")), mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
         ):
             res_create = self.query(query, input_data=input_create)
         self.assertIsNone(res_create.errors)
@@ -492,8 +494,9 @@ class TestGWFlowMutations(BilbyTestCase):
                 "libraries": ["updated-lib"],
             }
         }
-        with mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")), mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
         ):
             res_update = self.query(query, input_data=input_update)
         self.assertIsNone(res_update.errors)
@@ -1086,9 +1089,10 @@ class TestExactVersionIngest(BilbyTestCase):
         from bilbyui.views import upsert_gwflow_job
 
         payload = {"superevent": "S230601exact", "version": "sha-001"}
-        with mock.patch("bilbyui.views.get_version", return_value=(payload, "live")) as mock_gv, mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
-        ) as mock_es:
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=(payload, "live")) as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
             upsert_gwflow_job(self.ingest_user, self._params())
 
         mock_gv.assert_called_once_with("S230601exact", "sha-001")
@@ -1112,9 +1116,10 @@ class TestExactVersionIngest(BilbyTestCase):
             job.save(update_fields=["current_history_id", "current_history_timestamp"])
             return {"payload": "stale"}, "live"
 
-        with mock.patch("bilbyui.views.get_version", side_effect=fake_get_version), mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
-        ) as mock_es:
+        with (
+            mock.patch("bilbyui.views.get_version", side_effect=fake_get_version),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
             upsert_gwflow_job(self.ingest_user, self._params())
 
         mock_es.assert_not_called()
@@ -1125,9 +1130,10 @@ class TestExactVersionIngest(BilbyTestCase):
     def test_db_success_es_failure_leaves_db_committed_and_es_untouched(self):
         from bilbyui.views import upsert_gwflow_job
 
-        with mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")), mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update", side_effect=Exception("es down")
-        ) as mock_es:
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update", side_effect=Exception("es down")) as mock_es,
+        ):
             # Must not propagate the ES failure to the caller.
             upsert_gwflow_job(self.ingest_user, self._params())
 
@@ -1148,9 +1154,10 @@ class TestExactVersionIngest(BilbyTestCase):
             job.save(update_fields=["current_history_id"])
             return {"payload": "x"}, "live"
 
-        with mock.patch("bilbyui.views.get_version", side_effect=fake_get_version), mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
-        ) as mock_es:
+        with (
+            mock.patch("bilbyui.views.get_version", side_effect=fake_get_version),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
             upsert_gwflow_job(self.ingest_user, self._params())
 
         mock_es.assert_not_called()
@@ -1161,9 +1168,10 @@ class TestExactVersionIngest(BilbyTestCase):
     def test_exact_version_fetch_failure_persists_db_and_skips_es(self):
         from bilbyui.views import upsert_gwflow_job
 
-        with mock.patch("bilbyui.views.get_version", return_value=(None, "down")), mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
-        ) as mock_es:
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=(None, "down")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
             upsert_gwflow_job(self.ingest_user, self._params())
 
         mock_es.assert_not_called()
@@ -1184,9 +1192,10 @@ class TestExactVersionIngest(BilbyTestCase):
             current_history_timestamp=datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC),
         )
 
-        with mock.patch("bilbyui.views.get_version") as mock_gv, mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
-        ) as mock_es:
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
             upsert_gwflow_job(self.ingest_user, self._params(current_history_timestamp="2026-09-01T12:00:00+00:00"))
 
         mock_gv.assert_not_called()
@@ -1208,9 +1217,10 @@ class TestExactVersionIngest(BilbyTestCase):
             current_history_timestamp=datetime.datetime(2026, 9, 1, 12, 0, 0, tzinfo=datetime.UTC),
         )
 
-        with mock.patch("bilbyui.views.get_version") as mock_gv, mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
-        ) as mock_es:
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
             with self.assertRaises(GraphQLError):
                 upsert_gwflow_job(
                     self.ingest_user,
@@ -1227,9 +1237,10 @@ class TestExactVersionIngest(BilbyTestCase):
     def test_invalid_metadata_raises_before_db_transaction(self):
         from bilbyui.views import upsert_gwflow_job
 
-        with mock.patch("bilbyui.views.get_version") as mock_gv, mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
-        ) as mock_es:
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
             with self.assertRaises(GraphQLError):
                 upsert_gwflow_job(self.ingest_user, self._params(metadata='{"a": 1, "b": NaN}'))
 
@@ -1241,9 +1252,10 @@ class TestExactVersionIngest(BilbyTestCase):
     def test_malformed_timestamp_raises_before_db_transaction(self):
         from bilbyui.views import upsert_gwflow_job
 
-        with mock.patch("bilbyui.views.get_version") as mock_gv, mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
-        ) as mock_es:
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
             with self.assertRaises(GraphQLError):
                 upsert_gwflow_job(self.ingest_user, self._params(current_history_timestamp="not-a-date"))
 
@@ -1255,9 +1267,10 @@ class TestExactVersionIngest(BilbyTestCase):
     def test_blank_current_history_id_raises_before_db_transaction(self):
         from bilbyui.views import upsert_gwflow_job
 
-        with mock.patch("bilbyui.views.get_version") as mock_gv, mock.patch(
-            "bilbyui.views.gwflow_elastic_search_update"
-        ) as mock_es:
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
             with self.assertRaises(GraphQLError):
                 upsert_gwflow_job(self.ingest_user, self._params(current_history_id="   "))
 

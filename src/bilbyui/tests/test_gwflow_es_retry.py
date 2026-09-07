@@ -24,9 +24,7 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
         )
         # Control last_updated (the ingest-update event the retry window is based
         # on). auto_now would overwrite it on save, so use a queryset update.
-        GWFlowJob.objects.filter(pk=job.pk).update(
-            last_updated=timezone.now() - timedelta(hours=age_hours)
-        )
+        GWFlowJob.objects.filter(pk=job.pk).update(last_updated=timezone.now() - timedelta(hours=age_hours))
         job.refresh_from_db()
         return job
 

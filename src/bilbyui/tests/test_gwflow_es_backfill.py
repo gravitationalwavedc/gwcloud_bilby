@@ -56,9 +56,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
             m.side_effect = kwargs.pop("get_versions_side_effect", None)
             m.return_value = kwargs.pop("get_versions_return", (versions(current_version()), "live"))
             try:
-                exit_code = call_command(
-                    "gwflow_es_backfill", *args, stdout=out, stderr=err, **kwargs
-                )
+                exit_code = call_command("gwflow_es_backfill", *args, stdout=out, stderr=err, **kwargs)
             except CommandError as e:
                 exit_code = e.returncode
         return exit_code, out.getvalue(), err.getvalue()
@@ -90,9 +88,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
 
     def test_values_are_trimmed(self):
         job = make_job()
-        self._run(
-            get_versions_return=(versions(current_version(libraries=[" lib "])), "live")
-        )
+        self._run(get_versions_return=(versions(current_version(libraries=[" lib "])), "live"))
         job.refresh_from_db()
         self.assertEqual(job.libraries, ["lib"])
 
@@ -109,9 +105,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
 
     def test_order_preserved(self):
         job = make_job()
-        self._run(
-            get_versions_return=(versions(current_version(libraries=["b", "a", "c"])), "live")
-        )
+        self._run(get_versions_return=(versions(current_version(libraries=["b", "a", "c"])), "live"))
         job.refresh_from_db()
         self.assertEqual(job.libraries, ["b", "a", "c"])
 
@@ -128,9 +122,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
 
     def test_removed_membership_removes_stale_libraries(self):
         job = make_job(libraries=["stale-lib", "kept"])
-        self._run(
-            get_versions_return=(versions(current_version(libraries=["kept"])), "live")
-        )
+        self._run(get_versions_return=(versions(current_version(libraries=["kept"])), "live"))
         job.refresh_from_db()
         self.assertEqual(job.libraries, ["kept"])
 
@@ -179,9 +171,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
 
     def test_pruned_row_keeps_last_known_libraries(self):
         job = make_job(libraries=["last-known"], is_pruned=True)
-        self._run(
-            get_versions_return=(versions(current_version(libraries=["new"])), "live")
-        )
+        self._run(get_versions_return=(versions(current_version(libraries=["new"])), "live"))
         job.refresh_from_db()
         self.assertEqual(job.libraries, ["last-known"])
 

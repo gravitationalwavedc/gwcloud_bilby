@@ -103,9 +103,7 @@ class Command(BaseCommand):
 
         data, state = get_version(job.sname, history_id)
         if state == "down" or data is None:
-            raise ExactVersionFetchError(
-                f"could not fetch exact version {history_id} for {job.sname} (state={state})"
-            )
+            raise ExactVersionFetchError(f"could not fetch exact version {history_id} for {job.sname} (state={state})")
 
         # Re-read the job's version tuple immediately before writing. If it
         # changed while the payload was being fetched, skip so we never index

@@ -82,25 +82,20 @@ class Command(BaseCommand):
 
         if batch_size < 1 or batch_size > MAX_BATCH_SIZE:
             self.stderr.write(
-                self.style.ERROR(
-                    f"--batch-size must be between 1 and {MAX_BATCH_SIZE}, got {batch_size}"
-                )
+                self.style.ERROR(f"--batch-size must be between 1 and {MAX_BATCH_SIZE}, got {batch_size}")
             )
             self._exit_code = EXIT_CONFIG
             return
 
         if max_retries < 0:
-            self.stderr.write(
-                self.style.ERROR(f"--max-retries must be >= 0, got {max_retries}")
-            )
+            self.stderr.write(self.style.ERROR(f"--max-retries must be >= 0, got {max_retries}"))
             self._exit_code = EXIT_CONFIG
             return
 
         if not settings.CBCFLOW_PORTAL_URL or not settings.CBCFLOW_PORTAL_TOKEN:
             self.stderr.write(
                 self.style.ERROR(
-                    "CBCFLOW_PORTAL_URL and CBCFLOW_PORTAL_TOKEN must be configured "
-                    "to run gwflow_es_backfill."
+                    "CBCFLOW_PORTAL_URL and CBCFLOW_PORTAL_TOKEN must be configured to run gwflow_es_backfill."
                 )
             )
             self._exit_code = EXIT_CONFIG
@@ -188,18 +183,12 @@ class Command(BaseCommand):
             if not job.is_pruned:
                 fields["libraries"] = normalise_libraries(current.get("libraries"))
             fields["current_history_id"] = current.get("commit_sha") or ""
-            fields["current_history_timestamp"] = normalise_current_history_timestamp(
-                current.get("commit_timestamp")
-            )
+            fields["current_history_timestamp"] = normalise_current_history_timestamp(current.get("commit_timestamp"))
         return fields
 
     def _backoff(self, attempt):
         return min(2**attempt, 10)
 
     def _record_failure(self, job):
-        logger.error(
-            "gwflow_es_backfill: permanent failure for GWFlowJob %s (%s)", job.id, job.sname
-        )
-        self.stderr.write(
-            self.style.ERROR(f"Permanent failure for GWFlowJob {job.id} ({job.sname})")
-        )
+        logger.error("gwflow_es_backfill: permanent failure for GWFlowJob %s (%s)", job.id, job.sname)
+        self.stderr.write(self.style.ERROR(f"Permanent failure for GWFlowJob {job.id} ({job.sname})"))

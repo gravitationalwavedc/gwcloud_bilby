@@ -2106,9 +2106,7 @@ def upsert_gwflow_job(user, params):
     # --- Validate current_history_id and current_history_timestamp ---
     # The timestamp must be timezone-aware UTC (naive treated as UTC); a
     # malformed value is an ingest error, never silently substituted.
-    current_history_timestamp = normalise_current_history_timestamp(
-        getattr(params, "current_history_timestamp", None)
-    )
+    current_history_timestamp = normalise_current_history_timestamp(getattr(params, "current_history_timestamp", None))
     if getattr(params, "current_history_timestamp", None) is not None and current_history_timestamp is None:
         raise GraphQLError("Invalid current_history_timestamp")
 
