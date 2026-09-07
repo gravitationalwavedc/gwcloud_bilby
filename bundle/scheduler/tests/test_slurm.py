@@ -204,3 +204,46 @@ class TestSlurmScheduler(TestCase):
             status, info = sched.status(12345, {})
         self.assertEqual(status, JobStatus.CANCELLED)
         self.assertEqual(info, "CANCELLED+")
+
+
+class TestSlurmStatusStateBranches(TestCase):
+    def setUp(self):
+        self.maxDiff = None
+        self.sched = SlurmScheduler()
+
+    def _mock_status(self, state):
+        return patch(
+            "scheduler.slurm.subprocess.check_output",
+            return_value=f"12345|{state}\n12345.batch|{state}\n".encode(),
+        )
+
+    def _assert_status(self, state, expected_status, expected_info):
+        with self._mock_status(state):
+            self.assertEqual(
+                self.sched.status(12345, None),
+                (expected_status, expected_info),
+            )
+
+    def test_status_boot_fail_is_error(self):
+        self._assert_status("BOOT_FAIL", JobStatus.ERROR, self.sched.SLURM_STATUS["BOOT_FAIL"])
+
+    def test_status_deadline_is_error(self):
+        self._assert_status("DEADLINE", JobStatus.ERROR, self.sched.SLURM_STATUS["DEADLINE"])
+
+    def test_status_node_fail_is_error(self):
+        self._assert_status("NODE_FAIL", JobStatus.ERROR, self.sched.SLURM_STATUS["NODE_FAIL"])
+
+    def test_status_preempted_is_error(self):
+        self._assert_status("PREEMPTED", JobStatus.ERROR, self.sched.SLURM_STATUS["PREEMPTED"])
+
+    def test_status_revoked_is_error(self):
+        self._assert_status("REVOKED", JobStatus.ERROR, self.sched.SLURM_STATUS["REVOKED"])
+
+    def test_status_requeued_is_queued(self):
+        self._assert_status("REQUEUED", JobStatus.QUEUED, self.sched.SLURM_STATUS["REQUEUED"])
+
+    def test_status_resizing_is_queued(self):
+        self._assert_status("RESIZING", JobStatus.QUEUED, self.sched.SLURM_STATUS["RESIZING"])
+
+    def test_status_suspended_is_running(self):
+        self._assert_status("SUSPENDED", JobStatus.RUNNING, self.sched.SLURM_STATUS["SUSPENDED"])
