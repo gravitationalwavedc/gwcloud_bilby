@@ -144,8 +144,12 @@ class TestSlurm(TestCase):
         with self.assertLogs("scheduler.slurm", level="DEBUG") as cm:
             sched.status(1234, None)
 
-        self.assertTrue(any("Trying to get status of job 1234..." in m for m in cm.output))
-        self.assertTrue(any("Got job status RUNNING for job 1234" in m for m in cm.output))
+        self.assertTrue(
+            any("Trying to get status of job 1234..." in m for m in cm.output)
+        )
+        self.assertTrue(
+            any("Got job status RUNNING for job 1234" in m for m in cm.output)
+        )
         self.assertTrue(all(r.levelno == logging.DEBUG for r in cm.records))
 
     @patch("scheduler.slurm.subprocess.check_output")
@@ -156,7 +160,9 @@ class TestSlurm(TestCase):
         result = sched.cancel(1234, None)
 
         self.assertTrue(result)
-        check_output_mock.assert_called_once_with("scancel 1234", shell=True, timeout=30)
+        check_output_mock.assert_called_once_with(
+            "scancel 1234", shell=True, timeout=30
+        )
 
     @patch(
         "scheduler.slurm.subprocess.check_output",
@@ -167,7 +173,22 @@ class TestSlurm(TestCase):
         result = sched.cancel(1234, None)
 
         self.assertFalse(result)
-        check_output_mock.assert_called_once_with("scancel 1234", shell=True, timeout=30)
+        check_output_mock.assert_called_once_with(
+            "scancel 1234", shell=True, timeout=30
+        )
+
+    @patch(
+        "scheduler.slurm.subprocess.check_output",
+        side_effect=subprocess.TimeoutExpired("scancel 1234", 30),
+    )
+    def test_cancel_timeout_returns_false(self, check_output_mock):
+        sched = SlurmScheduler()
+        result = sched.cancel(1234, None)
+
+        self.assertFalse(result)
+        check_output_mock.assert_called_once_with(
+            "scancel 1234", shell=True, timeout=30
+        )
 
     @patch("scheduler.slurm.subprocess.check_output", return_value=b"")
     def test_submit_empty_output_returns_none(self, _check_output):
