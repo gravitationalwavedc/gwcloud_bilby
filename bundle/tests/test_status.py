@@ -602,3 +602,101 @@ class TestStatus(TestCase):
         )
         self.assertEqual(result["complete"], True)
         self.assertEqual(delete_job_mock.call_count, 3)
+
+
+class TestGetSubmitStatus(TestCase):
+    def setUp(self):
+        sys.path.append(str(Path(__file__).parent / "misc"))
+
+    def tearDown(self):
+        sys.path = sys.path[:-1]
+
+    @patch("_bundledb.create_or_update_job")
+    @patch("_bundledb.delete_job")
+    @patch("core.status.get_scheduler")
+    def test_get_submit_status_no_submit_id(self, get_scheduler_mock, delete_job_mock, update_job_mock):
+        sched_mock = Mock()
+        get_scheduler_mock.return_value = sched_mock
+
+        from core.status import get_submit_status
+
+        result, error = get_submit_status({"working_directory": "a/working/directory"})
+
+        self.assertEqual(result, {"what": "submit", "status": JobStatus.COMPLETED, "info": "Completed"})
+        self.assertFalse(error)
+        sched_mock.status.assert_not_called()
+        delete_job_mock.assert_not_called()
+        update_job_mock.assert_not_called()
+
+    @patch("_bundledb.create_or_update_job")
+    @patch("_bundledb.delete_job")
+    @patch("core.status.get_scheduler")
+    def test_get_submit_status_running(self, get_scheduler_mock, delete_job_mock, update_job_mock):
+        sched_mock = Mock()
+        sched_mock.status.return_value = (JobStatus.RUNNING, JobStatus.display_name(JobStatus.RUNNING))
+        get_scheduler_mock.return_value = sched_mock
+
+        from core.status import get_submit_status
+
+        result, error = get_submit_status({"submit_id": 1234, "working_directory": "a/working/directory"})
+
+        self.assertEqual(result, {"what": "submit", "status": JobStatus.RUNNING, "info": "Running"})
+        self.assertFalse(error)
+        delete_job_mock.assert_not_called()
+        update_job_mock.assert_not_called()
+
+    @patch("_bundledb.create_or_update_job")
+    @patch("_bundledb.delete_job")
+    @patch("core.status.get_scheduler")
+    def test_get_submit_status_none(self, get_scheduler_mock, delete_job_mock, update_job_mock):
+        sched_mock = Mock()
+        sched_mock.status.return_value = (None, None)
+        get_scheduler_mock.return_value = sched_mock
+
+        from core.status import get_submit_status
+
+        result, error = get_submit_status({"submit_id": 1234, "working_directory": "a/working/directory"})
+
+        self.assertEqual(result, {"what": "submit", "status": None, "info": None})
+        self.assertFalse(error)
+        delete_job_mock.assert_not_called()
+        update_job_mock.assert_not_called()
+
+    @patch("_bundledb.create_or_update_job")
+    @patch("_bundledb.delete_job")
+    @patch("core.status.get_scheduler")
+    def test_get_submit_status_error(self, get_scheduler_mock, delete_job_mock, update_job_mock):
+        sched_mock = Mock()
+        sched_mock.status.return_value = (JobStatus.ERROR, JobStatus.display_name(JobStatus.ERROR))
+        get_scheduler_mock.return_value = sched_mock
+
+        from core.status import get_submit_status
+
+        job = {"submit_id": 1234, "working_directory": "a/working/directory"}
+
+        result, error = get_submit_status(job)
+
+        self.assertEqual(result, {"what": "submit", "status": JobStatus.ERROR, "info": "Error"})
+        self.assertTrue(error)
+        delete_job_mock.assert_called_once_with(job)
+        update_job_mock.assert_not_called()
+
+    @patch("_bundledb.create_or_update_job")
+    @patch("_bundledb.delete_job")
+    @patch("core.status.get_scheduler")
+    def test_get_submit_status_completed(self, get_scheduler_mock, delete_job_mock, update_job_mock):
+        sched_mock = Mock()
+        sched_mock.status.return_value = (JobStatus.COMPLETED, JobStatus.display_name(JobStatus.COMPLETED))
+        get_scheduler_mock.return_value = sched_mock
+
+        from core.status import get_submit_status
+
+        job = {"submit_id": 1234, "working_directory": "a/working/directory"}
+
+        result, error = get_submit_status(job)
+
+        self.assertEqual(result, {"what": "submit", "status": JobStatus.COMPLETED, "info": "Completed"})
+        self.assertFalse(error)
+        self.assertNotIn("submit_id", job)
+        delete_job_mock.assert_not_called()
+        update_job_mock.assert_called_once_with({"working_directory": "a/working/directory"})
