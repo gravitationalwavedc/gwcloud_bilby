@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import caches
 
 from bilbyui.models import GWFlowJob
-from bilbyui.services.gwflow import list_gwflow_filter_options, list_gwflow_jobs
+from bilbyui.services.gwflow import _collect_library_options, list_gwflow_filter_options, list_gwflow_jobs
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
@@ -805,3 +805,51 @@ class TestGWFlowFilterOptions(BilbyTestCase):
         list_gwflow_filter_options()
 
         mock_client.search.assert_not_called()
+
+
+class TestCollectLibraryOptions(BilbyTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = self.create_user(id=300, name="Collect User", primary_email="collect@example.com")
+        self._counter = 0
+
+    def _create(self, libraries, **kwargs):
+        self._counter += 1
+        return GWFlowJob.objects.create(
+            sname=f"S2003{self._counter}a",
+            user=self.user,
+            ligo_only=False,
+            libraries=libraries,
+            **kwargs,
+        )
+
+    def test_str_branch(self):
+        self._create(libraries="single-lib")
+
+        self.assertEqual(_collect_library_options(), ["single-lib"])
+
+    def test_list_branch(self):
+        self._create(libraries=["b-lib", "a-lib"])
+
+        self.assertEqual(_collect_library_options(), ["a-lib", "b-lib"])
+
+    def test_tuple_branch(self):
+        self._create(libraries=("b-lib", "a-lib"))
+
+        self.assertEqual(_collect_library_options(), ["a-lib", "b-lib"])
+
+    def test_list_branch_skips_falsy_elements(self):
+        self._create(libraries=["real-lib", "", None])
+
+        self.assertEqual(_collect_library_options(), ["real-lib"])
+
+    def test_other_type_branch(self):
+        self._create(libraries=123)
+
+        self.assertEqual(_collect_library_options(), ["123"])
+
+    def test_empty_value_skipped(self):
+        self._create(libraries="")
+        self._create(libraries=[])
+
+        self.assertEqual(_collect_library_options(), [])
