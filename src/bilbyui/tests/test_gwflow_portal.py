@@ -157,3 +157,72 @@ class TestGWFlowPortalClient(TestCase):
         self.assertIn("gwflow:se:S230601ag", caches["default"])
         self.assertIn("gwflow:versions:S230601ag", caches["default"])
         self.assertIn("gwflow:version:S230601ag:abc123", caches["default"])
+
+
+@override_settings(CBCFLOW_PORTAL_URL=PORTAL_URL, CBCFLOW_PORTAL_TOKEN=PORTAL_TOKEN)
+class TestPortalGetDirect(TestCase):
+    PATH = "/api/v1/superevents/S230601ag/"
+    CACHE_KEY = "gwflow:direct:test"
+
+    def setUp(self):
+        caches["default"].clear()
+
+    @responses.activate
+    def test_not_configured_returns_down(self):
+        with override_settings(CBCFLOW_PORTAL_URL=None, CBCFLOW_PORTAL_TOKEN=None):
+            with self.assertLogs("bilbyui.utils.gwflow_portal", level="WARNING") as cm:
+                data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
+
+        self.assertEqual(state, "down")
+        self.assertIsNone(data)
+        self.assertIn("not configured", cm.output[0])
+
+    @responses.activate
+    def test_cached_returns_stale_without_http_call(self):
+        payload = {"sname": "S230601ag"}
+        responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", json=payload, status=200)
+        gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
+
+        data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
+
+        self.assertEqual(state, "stale")
+        self.assertEqual(data, payload)
+        self.assertEqual(len(responses.calls), 1)
+
+    @responses.activate
+    def test_200_returns_live_and_caches(self):
+        payload = {"sname": "S230601ag", "foo": "bar"}
+        responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", json=payload, status=200)
+
+        data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
+
+        self.assertEqual(state, "live")
+        self.assertEqual(data, payload)
+        self.assertEqual(caches["default"].get(self.CACHE_KEY), payload)
+
+    @responses.activate
+    def test_non_200_without_cache_returns_down(self):
+        responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", status=500)
+
+        data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
+
+        self.assertEqual(state, "down")
+        self.assertIsNone(data)
+
+    @responses.activate
+    def test_requests_exception_without_cache_returns_down(self):
+        responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", body=requests.ConnectionError("boom"))
+
+        data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
+
+        self.assertEqual(state, "down")
+        self.assertIsNone(data)
+
+    @responses.activate
+    def test_value_error_without_cache_returns_down(self):
+        responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", body="<html>proxy error</html>", status=200)
+
+        data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
+
+        self.assertEqual(state, "down")
+        self.assertIsNone(data)
