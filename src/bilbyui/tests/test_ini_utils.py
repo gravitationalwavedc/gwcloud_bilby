@@ -51,3 +51,18 @@ class TestPrepareArgsForDataInput(BilbyTestCase):
 
         self.assertIsNone(args.idx)
         self.assertIsNone(args.ini)
+
+    def test_sets_idx_to_zero_when_generation_seed_set_without_idx(self):
+        args = SimpleNamespace(generation_seed=42)
+
+        prepare_args_for_data_input(args)
+
+        self.assertEqual(args.idx, 0)
+        self.assertEqual(args.generation_seed, 42)
+
+    def test_leaves_existing_idx_unchanged_when_generation_seed_set(self):
+        args = SimpleNamespace(generation_seed=42, idx=3)
+
+        prepare_args_for_data_input(args)
+
+        self.assertEqual(args.idx, 3)
