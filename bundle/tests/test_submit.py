@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -591,3 +592,67 @@ Parent test-simulated_data0_87654321-0_analysis_H1V1_arg_0 Child test-simulated_
                 self.assertEqual(args.scheduler_env, settings.scheduler_env)
                 self.assertEqual(args.accounting, "no.group")
                 self.assertEqual(args.transfer_files, False)
+
+
+class TestWriteSubmissionScripts(TestCase):
+    def test_write_submission_scripts_slurm(self):
+        # The SLURM branch should return the path to the slurm master bash script
+        with TemporaryDirectory() as td:
+            from core.submit import write_submission_scripts
+
+            dag = MagicMock()
+            slurm = MagicMock()
+            slurm.slurm_master_bash = "slurm_test_master.sh"
+
+            with (
+                patch("core.submit.generate_dag") as mock_generate_dag,
+                patch("core.submit.Dag", return_value=dag) as mock_dag,
+                patch("core.submit.SubmitSLURM", return_value=slurm) as mock_slurm,
+                patch.object(settings, "scheduler", EScheduler.SLURM),
+            ):
+                result = write_submission_scripts(MagicMock(), td)
+
+            mock_generate_dag.assert_called_once()
+            mock_dag.assert_called_once()
+            mock_slurm.assert_called_once_with(dag)
+            self.assertEqual(result, str(Path(td) / "slurm_test_master.sh"))
+
+    def test_write_submission_scripts_condor(self):
+        # The CONDOR branch should return the path to the dag .submit script
+        with TemporaryDirectory() as td:
+            from core.submit import write_submission_scripts
+
+            dag = MagicMock()
+            dag.submit_directory = "submit"
+            dag.dag_name = "dag_test"
+
+            with (
+                patch("core.submit.generate_dag") as mock_generate_dag,
+                patch("core.submit.Dag", return_value=dag) as mock_dag,
+                patch("core.submit.SubmitSLURM") as mock_slurm,
+                patch.object(settings, "scheduler", EScheduler.CONDOR),
+            ):
+                result = write_submission_scripts(MagicMock(), td)
+
+            mock_generate_dag.assert_called_once()
+            mock_dag.assert_called_once()
+            mock_slurm.assert_not_called()
+            self.assertEqual(result, str(Path(td) / "submit" / "dag_test.submit"))
+
+    def test_write_submission_scripts_unknown_scheduler(self):
+        # An unknown scheduler should return None
+        with TemporaryDirectory() as td:
+            from core.submit import write_submission_scripts
+
+            with (
+                patch("core.submit.generate_dag") as mock_generate_dag,
+                patch("core.submit.Dag") as mock_dag,
+                patch("core.submit.SubmitSLURM") as mock_slurm,
+                patch.object(settings, "scheduler", "unknown"),
+            ):
+                result = write_submission_scripts(MagicMock(), td)
+
+            mock_generate_dag.assert_called_once()
+            mock_dag.assert_called_once()
+            mock_slurm.assert_not_called()
+            self.assertIsNone(result)
