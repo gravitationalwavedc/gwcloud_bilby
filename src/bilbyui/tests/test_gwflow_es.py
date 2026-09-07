@@ -43,9 +43,7 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
             schema_version="v3",
             libraries=["cbc-workflow-o4a"],
             current_history_id="hist-001",
-            current_history_timestamp=datetime.datetime(
-                2026, 8, 31, 12, 34, 56, tzinfo=datetime.UTC
-            ),
+            current_history_timestamp=datetime.datetime(2026, 8, 31, 12, 34, 56, tzinfo=datetime.UTC),
             ligo_only=True,
             is_pruned=False,
             event_id=self.event_id,

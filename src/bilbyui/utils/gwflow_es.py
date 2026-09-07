@@ -77,9 +77,7 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
         raise InvalidGWFlowMetadata("metadata must contain only losslessly JSON-serialisable values")
 
     last_updated_time = (
-        job.current_history_timestamp.isoformat()
-        if getattr(job, "current_history_timestamp", None)
-        else None
+        job.current_history_timestamp.isoformat() if getattr(job, "current_history_timestamp", None) else None
     )
     event_trigger_id = job.event_id.trigger_id if job.event_id else None
 
