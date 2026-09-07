@@ -454,11 +454,13 @@ def _get_default_prior_files():
     return frozenset(bilby_pipe.main.Input([], []).default_prior_files)
 
 
-def _strip_supporting_file_args(args):
+def _strip_supporting_file_args(args, default_prior_files=None):
     # Strip the prior, gps, timeslide, and injection file
     # as DataGenerationInput has trouble without the actual file existing
     # Don't change the prior file if it's one of the defaults
-    if args.prior_file not in _get_default_prior_files():
+    if default_prior_files is None:
+        default_prior_files = _get_default_prior_files()
+    if args.prior_file not in default_prior_files:
         args.prior_file = None
 
     args.gps_file = None
@@ -467,11 +469,13 @@ def _strip_supporting_file_args(args):
     args.psd_dict = None
 
 
-def _capture_supporting_files(args):
+def _capture_supporting_files(args, default_prior_files=None):
     # Get the files for any supporting files if they exist
     # Don't change the prior file if it's one of the defaults
+    if default_prior_files is None:
+        default_prior_files = _get_default_prior_files()
     prior_file = None
-    if args.prior_file not in _get_default_prior_files():
+    if args.prior_file not in default_prior_files:
         prior_file = args.prior_file
 
     gps_file = args.gps_file
@@ -482,8 +486,8 @@ def _capture_supporting_files(args):
     return prior_file, gps_file, timeslide_file, injection_file, psd_dict
 
 
-def bilby_ini_args_to_data_input(args):
-    _strip_supporting_file_args(args)
+def bilby_ini_args_to_data_input(args, default_prior_files=None):
+    _strip_supporting_file_args(args, default_prior_files)
 
     prepare_args_for_data_input(args)
 
@@ -513,9 +517,12 @@ def create_bilby_job_from_ini_string(user, params):
         args.outdir = "./"
 
     # Get the files for any supporting files if they exist
-    prior_file, gps_file, timeslide_file, injection_file, psd_dict = _capture_supporting_files(args)
+    default_prior_files = _get_default_prior_files()
+    prior_file, gps_file, timeslide_file, injection_file, psd_dict = _capture_supporting_files(
+        args, default_prior_files
+    )
 
-    parser = bilby_ini_args_to_data_input(args)
+    parser = bilby_ini_args_to_data_input(args, default_prior_files)
 
     # Parse any supporting files
     supporting_files = parse_supporting_files(
