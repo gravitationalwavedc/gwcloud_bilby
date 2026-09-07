@@ -212,6 +212,79 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(len(responses.calls), 1)
         mock_sleep.assert_not_called()
 
+    @responses.activate
+    def test_iter_pages_dict_pagination(self):
+        url1 = f"{self.base_url}/api/v1/superevents/"
+        url2 = f"{self.base_url}/api/v1/superevents/?page=2"
+
+        responses.add(
+            responses.GET,
+            url1,
+            json={"results": [{"sname": "S260101a"}], "next": url2},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            url2,
+            json={"results": [{"sname": "S260102b"}], "next": None},
+            status=200,
+        )
+
+        pages = list(self.client._iter_pages(url1))
+        self.assertEqual(len(pages), 2)
+        self.assertEqual(pages[0], ([{"sname": "S260101a"}], url2))
+        self.assertEqual(pages[1], ([{"sname": "S260102b"}], None))
+
+    @responses.activate
+    def test_iter_pages_skips_non_list_results_and_continues(self):
+        url1 = f"{self.base_url}/api/v1/superevents/"
+        url2 = f"{self.base_url}/api/v1/superevents/?page=2"
+
+        responses.add(
+            responses.GET,
+            url1,
+            json={"results": None, "next": url2},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            url2,
+            json={"results": [{"sname": "S260101a"}], "next": None},
+            status=200,
+        )
+
+        pages = list(self.client._iter_pages(url1))
+        self.assertEqual(len(pages), 1)
+        self.assertEqual(pages[0], ([{"sname": "S260101a"}], None))
+
+    @responses.activate
+    def test_iter_pages_breaks_on_non_json_body(self):
+        url = f"{self.base_url}/api/v1/superevents/"
+        responses.add(
+            responses.GET,
+            url,
+            body="<html><body>proxy error</body></html>",
+            status=200,
+            content_type="text/html",
+        )
+
+        pages = list(self.client._iter_pages(url))
+        self.assertEqual(pages, [])
+
+    @responses.activate
+    def test_iter_pages_list_format_direct_yield(self):
+        url = f"{self.base_url}/api/v1/superevents/"
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"sname": "S260101a"}, {"sname": "S260102b"}],
+            status=200,
+        )
+
+        pages = list(self.client._iter_pages(url))
+        self.assertEqual(len(pages), 1)
+        self.assertEqual(pages[0], ([{"sname": "S260101a"}, {"sname": "S260102b"}], None))
+
 
 if __name__ == "__main__":
     unittest.main()
