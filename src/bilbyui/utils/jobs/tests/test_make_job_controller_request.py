@@ -1,10 +1,12 @@
 import json
+from datetime import timedelta
 
 import jwt
 import requests
 import responses
 from django.conf import settings
 from django.test import override_settings
+from django.utils import timezone
 
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.jobs.submit_job import _make_job_controller_request
@@ -47,7 +49,8 @@ class TestMakeJobControllerRequest(BilbyTestCase):
         token = self.responses.calls[0].request.headers["Authorization"]
         payload = jwt.decode(token, settings.JOB_CONTROLLER_JWT_SECRET, algorithms=["HS256"])
         self.assertEqual(payload["userId"], USER_ID)
-        self.assertIn("exp", payload)
+        expected_exp = timezone.now() + timedelta(days=30)
+        self.assertAlmostEqual(payload["exp"], expected_exp.timestamp(), delta=10)
 
     def test_post_request_with_data(self):
         self.responses.add(
