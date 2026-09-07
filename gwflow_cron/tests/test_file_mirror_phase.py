@@ -12,7 +12,7 @@ except ImportError:
 import settings
 import state
 from fetch import MD5Mismatch
-from gwflow_ingest import phase_file_mirror
+from gwflow_ingest import _with_normalized_uid, phase_file_mirror
 from job_controller import ClusterOffline, FetchError
 
 
@@ -215,6 +215,32 @@ class TestFileMirrorPhase(GWFlowTestBase):
                 phase_file_mirror(jc=jc, gwc_client=gwc, con=None)
 
         gwc.upload_gwflow_file.assert_called_once_with("f1", staged)
+
+
+class TestWithNormalizedUid(GWFlowTestBase):
+    def test_dict_input_sets_analysis_uid(self):
+        rec = make_rec(analysis_uid="old")
+        out = _with_normalized_uid(rec, "new-uid")
+        self.assertEqual(out["analysis_uid"], "new-uid")
+
+    def test_object_input_sets_analysis_uid(self):
+        rec = SimpleNamespace(**make_rec(analysis_uid="old"))
+        out = _with_normalized_uid(rec, "new-uid")
+        self.assertEqual(out.analysis_uid, "new-uid")
+
+    def test_returns_shallow_copy_without_mutating_original(self):
+        rec = make_rec(analysis_uid="old")
+        out = _with_normalized_uid(rec, "new-uid")
+        self.assertIsNot(out, rec)
+        self.assertEqual(rec["analysis_uid"], "old")
+        self.assertEqual(out["analysis_uid"], "new-uid")
+
+    def test_object_input_does_not_mutate_original(self):
+        rec = SimpleNamespace(**make_rec(analysis_uid="old"))
+        out = _with_normalized_uid(rec, "new-uid")
+        self.assertIsNot(out, rec)
+        self.assertEqual(rec.analysis_uid, "old")
+        self.assertEqual(out.analysis_uid, "new-uid")
 
 
 if __name__ == "__main__":
