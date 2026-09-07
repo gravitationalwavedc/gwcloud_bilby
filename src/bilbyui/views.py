@@ -1453,6 +1453,12 @@ def _build_gwflow_analysis_blocks(job, analyses=None):
         block = blocks_by_uid.setdefault(uid, _new_block(uid))
         block["files"].append(f)
 
+    # Seed a block for every portal analysis so an analysis with no mirrored
+    # files or linked Bilby job still renders its zero-files state.
+    if analyses is not None:
+        for uid in analyses:
+            blocks_by_uid.setdefault(uid, _new_block(uid))
+
     # Seed a block for every linked job too, so a job whose analysis UID has
     # no files still appears.
     for uid in bilby_jobs_by_uid:

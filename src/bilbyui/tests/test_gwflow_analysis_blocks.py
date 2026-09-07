@@ -172,6 +172,25 @@ class TestBuildGWFlowAnalysisBlocks(BilbyTestCase):
         self.assertEqual(len(blocks), 1)
         self.assertEqual(blocks[0]["metadata"], analyses["pe-uid-1"])
 
+    def test_analysis_without_files_or_linked_job_still_produces_block(self):
+        analyses = {
+            "analysis-only": {
+                "software": "bilby",
+                "waveform": "IMRPhenomXPHM",
+                "run_status": "pending",
+                "review_status": "",
+                "deprecated": False,
+            }
+        }
+
+        blocks = _build_gwflow_analysis_blocks(self.job, analyses)
+
+        self.assertEqual(len(blocks), 1)
+        self.assertEqual(blocks[0]["analysis_uid"], "analysis-only")
+        self.assertEqual(blocks[0]["metadata"], analyses["analysis-only"])
+        self.assertEqual(blocks[0]["files"], [])
+        self.assertEqual(blocks[0]["bilby_jobs"], [])
+
     def test_blocks_follow_pe_results_order_when_analyses_passed(self):
         self._add_file("z-uid", "z.txt")
         self._add_file("a-uid", "a.txt")
