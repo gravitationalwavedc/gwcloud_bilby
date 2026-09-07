@@ -668,21 +668,21 @@ class TestSupportingFile(BilbyTestCase):
         tokens = [t["token"] for t in SupportingFile.save_from_parsed(self.job, self.parsed)]
 
         for t in tokens:
-            self.assertIsNotNone(SupportingFile.get_by_upload_token(t))
+            self.assertIsNotNone(SupportingFile.get_by_upload_tokens([t])[0])
 
         # Check objects just inside the deletion time are not deleted
         self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
         self.job.save()
 
         for t in tokens:
-            self.assertIsNotNone(SupportingFile.get_by_upload_token(t))
+            self.assertIsNotNone(SupportingFile.get_by_upload_tokens([t])[0])
 
         # Check objects just outside the deletion time are deleted
         self.job.creation_time = self.after - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY + 1)
         self.job.save()
 
         for t in tokens:
-            self.assertIsNone(SupportingFile.get_by_upload_token(t))
+            self.assertIsNone(SupportingFile.get_by_upload_tokens([t])[0])
 
         self.assertFalse(BilbyJob.objects.filter(id=self.job.id).exists())
 
@@ -700,7 +700,7 @@ class TestSupportingFile(BilbyTestCase):
             sf.save()
 
         for t in tokens:
-            self.assertIsNone(SupportingFile.get_by_upload_token(t))
+            self.assertIsNone(SupportingFile.get_by_upload_tokens([t])[0])
 
         self.assertTrue(BilbyJob.objects.filter(id=self.job.id).exists())
 
@@ -709,7 +709,7 @@ class TestSupportingFile(BilbyTestCase):
         self.job.save()
 
         for t in tokens:
-            self.assertIsNone(SupportingFile.get_by_upload_token(t))
+            self.assertIsNone(SupportingFile.get_by_upload_tokens([t])[0])
 
         self.assertTrue(BilbyJob.objects.filter(id=self.job.id).exists())
 
@@ -718,19 +718,9 @@ class TestSupportingFile(BilbyTestCase):
         self.job.save()
 
         for t in tokens:
-            self.assertIsNone(SupportingFile.get_by_upload_token(t))
+            self.assertIsNone(SupportingFile.get_by_upload_tokens([t])[0])
 
         self.assertTrue(BilbyJob.objects.filter(id=self.job.id).exists())
-
-    def test_get_by_upload_token_invalid(self):
-        # Test that a supporting file can't be fetched by an invalid token
-        SupportingFile.save_from_parsed(self.job, self.parsed)
-        self.assertIsNone(SupportingFile.get_by_upload_token(str(uuid.uuid4())))
-
-    def test_get_by_upload_token_malformed(self):
-        # Test that get_by_upload_token returns None for malformed (non-UUID) tokens rather than raising
-        SupportingFile.save_from_parsed(self.job, self.parsed)
-        self.assertIsNone(SupportingFile.get_by_upload_token("not-a-uuid"))
 
     def test_get_by_upload_tokens(self):
         # Test that get_by_upload_tokens returns files in input order, with None for missing tokens
