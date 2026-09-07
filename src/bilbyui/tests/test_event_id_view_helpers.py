@@ -2,7 +2,29 @@ from django.test import override_settings
 
 from bilbyui.models import EventID
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.views import _event_id_display_values, _filter_event_ids_for_query
+from bilbyui.views import (
+    _event_id_display_values,
+    _event_id_field_values,
+    _filter_event_ids_for_query,
+)
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class TestEventIdFieldValues(BilbyTestCase):
+    def test_returns_event_id_trigger_id_nickname_tuple(self):
+        event = EventID(
+            event_id="GW123456_123456",
+            trigger_id="S123456a",
+            nickname="GW123456",
+        )
+        self.assertEqual(
+            _event_id_field_values(event),
+            ("GW123456_123456", "S123456a", "GW123456"),
+        )
+
+    def test_returns_none_for_missing_optional_fields(self):
+        event = EventID(event_id="GW123456_123456", trigger_id=None, nickname=None)
+        self.assertEqual(_event_id_field_values(event), ("GW123456_123456", None, None))
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
