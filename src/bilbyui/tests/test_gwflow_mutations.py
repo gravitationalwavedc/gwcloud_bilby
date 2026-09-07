@@ -243,11 +243,15 @@ class TestGWFlowMutations(BilbyTestCase):
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
             current_history_id="h1",
-            current_history_timestamp=None,
+            current_history_timestamp="2026-09-01T12:00:00+00:00",
             event_id=None,
             files=[],
         )
-        upsert_gwflow_job(self.ingest_user, params)
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+        ):
+            upsert_gwflow_job(self.ingest_user, params)
 
         mock_on_commit.assert_called_once()
         self.assertIsNone(cache.get("gwflow_filter_libraries"))
@@ -471,7 +475,11 @@ class TestGWFlowMutations(BilbyTestCase):
                 "currentHistoryId": "hist-001",
             }
         }
-        res_create = self.query(query, input_data=input_create)
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+        ):
+            res_create = self.query(query, input_data=input_create)
         self.assertIsNone(res_create.errors)
         self.assertTrue(res_create.data["upsertGwflowJob"]["result"]["created"])
 
@@ -486,7 +494,11 @@ class TestGWFlowMutations(BilbyTestCase):
                 "libraries": ["updated-lib"],
             }
         }
-        res_update = self.query(query, input_data=input_update)
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+        ):
+            res_update = self.query(query, input_data=input_update)
         self.assertIsNone(res_update.errors)
         self.assertFalse(res_update.data["upsertGwflowJob"]["result"]["created"])
 
@@ -1041,6 +1053,230 @@ class TestGWFlowMutations(BilbyTestCase):
                 self.assertFalse(GWFlowFile.objects.filter(id=a_file.id).exists())
                 self.assertEqual(len(result["removedFiles"]), 1)
                 self.assertFalse(disk.exists())
+
+
+class TestExactVersionIngest(BilbyTestCase):
+    """Exact-version ingest behaviour in upsert_gwflow_job (task-4, issue #74)."""
+
+    def setUp(self):
+        super().setUp()
+        self.ingest_user = self.create_user(id=99, name="ingest user", primary_email="ingest@gwflow.org")
+        self._auth_as(self.ingest_user)
+
+    def _auth_as(self, user):
+        self.authenticate(user=user)
+
+    def _params(self, **overrides):
+        from types import SimpleNamespace
+
+        base = {
+            "sname": "S230601exact",
+            "ligo_only": False,
+            "schema_version": "v1",
+            "libraries": ["cbc-workflow-o4a"],
+            "is_pruned": False,
+            "current_history_id": "sha-001",
+            "current_history_timestamp": "2026-09-01T12:00:00+00:00",
+            "event_id": None,
+            "files": [],
+            "metadata": None,
+        }
+        base.update(overrides)
+        return SimpleNamespace(**base)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_exact_version_ingest_builds_doc_from_fetched_payload(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        payload = {"superevent": "S230601exact", "version": "sha-001"}
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=(payload, "live")) as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
+            upsert_gwflow_job(self.ingest_user, self._params())
+
+        mock_gv.assert_called_once_with("S230601exact", "sha-001")
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        mock_es.assert_called_once_with(job, payload)
+        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertEqual(job.current_history_timestamp.year, 2026)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_version_change_during_ingest_skips_es_write(self):
+        import datetime
+
+        from bilbyui.views import upsert_gwflow_job
+
+        def fake_get_version(sname, sha):
+            # Simulate a concurrent ingest that bumps the version after our commit
+            # but before the ES write.
+            job = GWFlowJob.objects.get(sname=sname)
+            job.current_history_id = "sha-newer"
+            job.current_history_timestamp = datetime.datetime(2026, 9, 2, tzinfo=datetime.UTC)
+            job.save(update_fields=["current_history_id", "current_history_timestamp"])
+            return {"payload": "stale"}, "live"
+
+        with (
+            mock.patch("bilbyui.views.get_version", side_effect=fake_get_version),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
+            upsert_gwflow_job(self.ingest_user, self._params())
+
+        mock_es.assert_not_called()
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        self.assertEqual(job.current_history_id, "sha-newer")
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_db_success_es_failure_leaves_db_committed_and_es_untouched(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update", side_effect=Exception("es down")) as mock_es,
+        ):
+            # Must not propagate the ES failure to the caller.
+            upsert_gwflow_job(self.ingest_user, self._params())
+
+        mock_es.assert_called_once()
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertIsNotNone(job.current_history_timestamp)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_equal_timestamp_different_id_is_conflict_and_skips_es_write(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        def fake_get_version(sname, sha):
+            # A concurrent ingest replaces the history id but keeps the same
+            # timestamp — an equal-timestamp conflict (no guess).
+            job = GWFlowJob.objects.get(sname=sname)
+            job.current_history_id = "sha-other"
+            job.save(update_fields=["current_history_id"])
+            return {"payload": "x"}, "live"
+
+        with (
+            mock.patch("bilbyui.views.get_version", side_effect=fake_get_version),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
+            upsert_gwflow_job(self.ingest_user, self._params())
+
+        mock_es.assert_not_called()
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        self.assertEqual(job.current_history_id, "sha-other")
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_exact_version_fetch_failure_persists_db_and_skips_es(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=(None, "down")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
+            upsert_gwflow_job(self.ingest_user, self._params())
+
+        mock_es.assert_not_called()
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertIsNotNone(job.current_history_timestamp)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_older_delivery_keeps_newer_version_and_leaves_es_untouched(self):
+        import datetime
+
+        from bilbyui.views import upsert_gwflow_job
+
+        GWFlowJob.objects.create(
+            sname="S230601exact",
+            user=self.ingest_user,
+            current_history_id="sha-newer",
+            current_history_timestamp=datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC),
+        )
+
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
+            upsert_gwflow_job(self.ingest_user, self._params(current_history_timestamp="2026-09-01T12:00:00+00:00"))
+
+        mock_gv.assert_not_called()
+        mock_es.assert_not_called()
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        self.assertEqual(job.current_history_id, "sha-newer")
+        self.assertEqual(job.current_history_timestamp, datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC))
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_equal_timestamp_different_id_conflict_leaves_db_and_es_untouched(self):
+        import datetime
+
+        from bilbyui.views import upsert_gwflow_job
+
+        GWFlowJob.objects.create(
+            sname="S230601exact",
+            user=self.ingest_user,
+            current_history_id="sha-001",
+            current_history_timestamp=datetime.datetime(2026, 9, 1, 12, 0, 0, tzinfo=datetime.UTC),
+        )
+
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
+            with self.assertRaises(GraphQLError):
+                upsert_gwflow_job(
+                    self.ingest_user,
+                    self._params(current_history_id="sha-other", current_history_timestamp="2026-09-01T12:00:00+00:00"),
+                )
+
+        mock_gv.assert_not_called()
+        mock_es.assert_not_called()
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertEqual(job.current_history_timestamp, datetime.datetime(2026, 9, 1, 12, 0, 0, tzinfo=datetime.UTC))
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_invalid_metadata_raises_before_db_transaction(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
+            with self.assertRaises(GraphQLError):
+                upsert_gwflow_job(self.ingest_user, self._params(metadata='{"a": 1, "b": NaN}'))
+
+        mock_gv.assert_not_called()
+        mock_es.assert_not_called()
+        self.assertFalse(GWFlowJob.objects.filter(sname="S230601exact").exists())
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_malformed_timestamp_raises_before_db_transaction(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
+            with self.assertRaises(GraphQLError):
+                upsert_gwflow_job(self.ingest_user, self._params(current_history_timestamp="not-a-date"))
+
+        mock_gv.assert_not_called()
+        mock_es.assert_not_called()
+        self.assertFalse(GWFlowJob.objects.filter(sname="S230601exact").exists())
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_blank_current_history_id_raises_before_db_transaction(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
+            with self.assertRaises(GraphQLError):
+                upsert_gwflow_job(self.ingest_user, self._params(current_history_id="   "))
+
+        mock_gv.assert_not_called()
+        mock_es.assert_not_called()
+        self.assertFalse(GWFlowJob.objects.filter(sname="S230601exact").exists())
 
 
 class TestCheckGwflowIngestUser(BilbyTestCase):

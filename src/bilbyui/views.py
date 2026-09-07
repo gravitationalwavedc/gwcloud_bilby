@@ -56,6 +56,7 @@ from .utils.embargo import should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
 from .utils.gwflow_portal import get_superevent, get_version, get_versions
+from .utils.gwflow_version import normalise_current_history_timestamp, version_tuple
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args, prepare_args_for_data_input
 from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
@@ -2185,21 +2186,82 @@ def upsert_gwflow_job(user, params):
 
     sname = params.sname
 
+    # --- Validate GraphQL-supplied metadata before opening the DB transaction ---
+    # Per #70's InvalidGWFlowMetadata rules: metadata must be a strict-JSON
+    # top-level object (rejects NaN/Infinity and lossy round-trips).
+    metadata_param = getattr(params, "metadata", None)
+    metadata_dict = None
+    if metadata_param:
+        try:
+            metadata_dict = json.loads(metadata_param)
+        except Exception as e:
+            raise GraphQLError("Invalid metadata JSON") from e
+        if not isinstance(metadata_dict, dict):
+            raise GraphQLError("Invalid metadata: must be a top-level JSON object")
+        try:
+            serialized = json.dumps(metadata_dict, allow_nan=False)
+            roundtrip = json.loads(serialized)
+        except (TypeError, ValueError, RecursionError) as exc:
+            raise GraphQLError(f"Invalid metadata: {exc}") from exc
+        if roundtrip != metadata_dict:
+            raise GraphQLError("Invalid metadata: not losslessly JSON-serialisable")
+
+    # --- Validate current_history_id and current_history_timestamp ---
+    # The timestamp must be timezone-aware UTC (naive treated as UTC); a
+    # malformed value is an ingest error, never silently substituted.
+    current_history_timestamp = normalise_current_history_timestamp(getattr(params, "current_history_timestamp", None))
+    if getattr(params, "current_history_timestamp", None) is not None and current_history_timestamp is None:
+        raise GraphQLError("Invalid current_history_timestamp")
+
+    # current_history_id must be a non-blank string when provided; a blank or
+    # non-string value is an ingest error, never silently persisted.
+    current_history_id = getattr(params, "current_history_id", None)
+    if current_history_id is not None and (not isinstance(current_history_id, str) or not current_history_id.strip()):
+        raise GraphQLError("Invalid current_history_id")
+
     with transaction.atomic():
         job, created = GWFlowJob.objects.get_or_create(sname=sname, defaults={"user": user})
 
+        # --- Version-ordering guard (issue #74) ---
+        # The authoritative version is (current_history_timestamp, current_history_id):
+        # a later timestamp wins; equal timestamps with differing IDs is an
+        # observable conflict. Do not let an older delivery replace newer
+        # persisted state, and report an equal-timestamp/different-ID conflict
+        # without mutating DB or ES state.
+        incoming_id = current_history_id
+        incoming_ts = current_history_timestamp
+        stored_ts, stored_id = version_tuple(job)
+        delivery_older = False
+        if incoming_ts is not None and stored_ts is not None:
+            if incoming_ts < stored_ts:
+                # Older delivery: keep the newer persisted version pointer and
+                # leave the existing ES document untouched.
+                logger.warning(
+                    "GWFlow older delivery for job %s (%s): incoming %s < stored %s; keeping newer version",
+                    job.id,
+                    sname,
+                    incoming_ts.isoformat(),
+                    stored_ts.isoformat(),
+                )
+                delivery_older = True
+                incoming_id = None
+                incoming_ts = None
+            elif incoming_ts == stored_ts and incoming_id != stored_id:
+                raise GraphQLError(
+                    f"current_history version conflict for {sname}: equal timestamp "
+                    f"{incoming_ts.isoformat()} with differing IDs {stored_id!r} vs {incoming_id!r}"
+                )
+
         # Update current-state fields if provided
-        for attr in (
-            "ligo_only",
-            "schema_version",
-            "libraries",
-            "is_pruned",
-            "current_history_id",
-            "current_history_timestamp",
-        ):
+        for attr in ("ligo_only", "schema_version", "libraries", "is_pruned"):
             param = getattr(params, attr, None)
             if param is not None:
                 setattr(job, attr, param)
+
+        if incoming_id is not None:
+            job.current_history_id = incoming_id
+        if incoming_ts is not None:
+            job.current_history_timestamp = incoming_ts
 
         # Best-effort event link
         event_id_param = getattr(params, "event_id", None)
@@ -2260,13 +2322,53 @@ def upsert_gwflow_job(user, params):
 
     # ES update runs outside the transaction so a connection error does not
     # roll back the DB write.
-    metadata_param = getattr(params, "metadata", None)
-    if metadata_param:
+    #
+    # Exact-version ingest: when the job carries a current history version,
+    # fetch the exact-version payload via the portal and index it (with
+    # _gwcloud.lastUpdatedTime = job.current_history_timestamp). The write is
+    # idempotent by _id = job.id and only proceeds while the record's version
+    # still equals the authoritative version captured at commit; otherwise the
+    # version changed during ingest (or an equal-timestamp conflict arose) and
+    # we leave the previous ES document untouched, relying on gwflow_es_retry.
+    target_id = job.current_history_id
+    target_ts = job.current_history_timestamp
+    if delivery_older:
+        # Older delivery: keep the newer persisted version and leave the
+        # existing ES document untouched.
+        pass
+    elif target_id:
+        data, state = get_version(job.sname, target_id)
+        if data is None:
+            logger.warning(
+                "GWFlow exact-version fetch failed for job %s (history %s): state=%s",
+                job.id,
+                target_id,
+                state,
+            )
+        else:
+            job.refresh_from_db()
+            if version_tuple(job) != (target_ts, target_id):
+                logger.warning(
+                    "GWFlow version changed during ingest for job %s: expected %s, found %s",
+                    job.id,
+                    (target_ts, target_id),
+                    version_tuple(job),
+                )
+            else:
+                try:
+                    gwflow_elastic_search_update(job, data)
+                except Exception as e:
+                    logger.warning(
+                        "GWFlow ES ingest failed for job %s (history %s): %s",
+                        job.id,
+                        target_id,
+                        e,
+                    )
+    elif metadata_dict is not None:
         try:
-            metadata_dict = json.loads(metadata_param)
+            gwflow_elastic_search_update(job, metadata_dict)
         except Exception as e:
-            raise GraphQLError("Invalid metadata JSON") from e
-        gwflow_elastic_search_update(job, metadata_dict)
+            logger.warning("GWFlow ES ingest failed for job %s: %s", job.id, e)
 
     pending_qs = job.files.filter(uploaded=False).select_related("job").order_by("job__sname", "analysis_uid", "path")
     files_pending = [_gwflow_pending_file(f) for f in pending_qs]
