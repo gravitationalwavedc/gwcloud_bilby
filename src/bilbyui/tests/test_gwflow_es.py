@@ -10,6 +10,7 @@ from bilbyui.models import EventID, GWFlowJob
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_es import (
     InvalidGWFlowMetadata,
+    _collect_review_statuses,
     build_gwflow_es_doc,
     get_es_client,
     gwflow_elastic_search_remove,
@@ -265,6 +266,72 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
     def test_parse_analyses_non_dict_returns_empty(self):
         self.assertEqual(parse_analyses(None), [])
         self.assertEqual(parse_analyses("not-a-dict"), [])
+
+
+class TestCollectReviewStatuses(BilbyTestCase):
+    def setUp(self):
+        super().setUp()
+        self.job = MagicMock(id=99, current_history_id="hist-001")
+
+    def test_collect_nested_and_array_review_statuses(self):
+        metadata = {
+            "ParameterEstimation": {
+                "results": [
+                    {"uid": "pe-1", "review_status": "approved"},
+                    {"uid": "pe-2", "review_status": "pending"},
+                ]
+            },
+            "TGR": [
+                [
+                    {"uid": "tgr-1", "review_status": "needs_review"},
+                    {"review_status": "withdrawn"},
+                ]
+            ],
+        }
+
+        result = _collect_review_statuses(metadata, self.job)
+
+        self.assertEqual(result, ["approved", "pending", "needs_review", "withdrawn"])
+
+    def test_collect_deduplicates_preserving_first_occurrence(self):
+        metadata = {
+            "ParameterEstimation": {"results": [{"review_status": "approved"}]},
+            "TGR": [{"review_status": "approved"}],
+            "Lensing": {"review_status": "approved"},
+        }
+
+        result = _collect_review_statuses(metadata, self.job)
+
+        self.assertEqual(result, ["approved"])
+
+    def test_collect_non_scalar_review_status_skipped_with_warning(self):
+        metadata = {
+            "ParameterEstimation": {"results": [{"review_status": "approved"}]},
+            "TGR": [{"review_status": {"nested": "pending"}}],
+            "Lensing": {"review_status": ["needs_review"]},
+        }
+
+        with self.assertLogs("bilbyui.utils.gwflow_es", level="WARNING") as logs:
+            result = _collect_review_statuses(metadata, self.job)
+
+        self.assertEqual(result, ["approved"])
+        self.assertEqual(len(logs.records), 2)
+        self.assertTrue(all("Non-scalar review_status" in r.getMessage() for r in logs.records))
+
+    def test_collect_empty_metadata(self):
+        for empty in ({}, [], None, "scalar", 42):
+            with self.subTest(empty=empty):
+                self.assertEqual(_collect_review_statuses(empty, self.job), [])
+
+    def test_collect_scalar_leaf_values_ignored(self):
+        metadata = {
+            "ParameterEstimation": {"results": [{"uid": "pe-1", "run_status": "completed"}]},
+            "GraceDB": {"Events": [{"uid": "G197392"}]},
+        }
+
+        result = _collect_review_statuses(metadata, self.job)
+
+        self.assertEqual(result, [])
 
 
 class TestGWFlowESUpdateRemove(BilbyTestCase):
