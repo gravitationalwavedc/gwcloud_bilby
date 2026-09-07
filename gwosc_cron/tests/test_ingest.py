@@ -61,6 +61,30 @@ class TestIsLatestVersion(unittest.TestCase):
         self.assertTrue(gwosc_ingest._is_latest_version("GW150914-v1", all_events, "GW150914"))
 
 
+class TestJobNameSanitizers(unittest.TestCase):
+    """Unit tests for fix_job_name and build_bilbyjob_name."""
+
+    def test_fix_job_name_replaces_spaces_and_special_chars(self):
+        self.assertEqual(gwosc_ingest.fix_job_name("GW150914 event"), "GW150914-event")
+        self.assertEqual(gwosc_ingest.fix_job_name("IMRPhenom:Test~3"), "IMRPhenom-Test-3")
+        self.assertEqual(gwosc_ingest.fix_job_name("GW000001.123456"), "GW000001-123456")
+
+    def test_fix_job_name_keeps_already_safe_name(self):
+        self.assertEqual(gwosc_ingest.fix_job_name("GW150914_123456-v2"), "GW150914_123456-v2")
+
+    def test_build_bilbyjob_name_joins_with_separator(self):
+        self.assertEqual(
+            gwosc_ingest.build_bilbyjob_name("GW150914", "IMRPhenom"),
+            "GW150914--IMRPhenom",
+        )
+
+    def test_build_bilbyjob_name_sanitises_joined_parts(self):
+        self.assertEqual(
+            gwosc_ingest.build_bilbyjob_name("GW150914 event", "IMRPhenom:Test"),
+            "GW150914-event--IMRPhenom-Test",
+        )
+
+
 @unittest.mock.patch("gwosc_ingest.GWCloud", autospec=True)
 class TestGWOSCCron(GWOSCTestBase):
     @responses.activate
