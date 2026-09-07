@@ -1663,6 +1663,253 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         for supporting_file in job.supportingfile_set.all():
             self.assertTrue((job_dir / str(supporting_file.id)).is_file())
 
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
+    @silence_errors
+    def test_job_upload_supporting_file_missing_all_reported_in_extensions(self):
+        # (a) Integration: an archive built from the replica fixture that is missing 3 supporting files
+        # (2 calibration txt at absolute paths + 1 relative DML table) must report ALL of them in
+        # extensions.missing_files with the contract message format, and roll back the transaction.
+        missing_calibration = ["/calib/L1-calib.txt", "/calib/H1-calib.txt"]
+        missing_dml = "./supporting_files/dml/dml.npz"
+        expected_missing = missing_calibration + [missing_dml]
+
+        test_ini_string = REPLICA_UPLOAD_INI + (
+            "\nspline-calibration-envelope-dict={ L1:/calib/L1-calib.txt, H1:/calib/H1-calib.txt, }\n"
+            "distance-marginalization-lookup-table=./supporting_files/dml/dml.npz\n"
+        )
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, "replica_missing_supporting"),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": self.token,
+            "details": {"description": self.test_description, "private": self.test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertIsNotNone(response.errors)
+        self.assertEqual(response.data, {"uploadBilbyJob": None})
+
+        error = response.errors[0]
+        self.assertEqual(error["path"], ["uploadBilbyJob"])
+        self.assertEqual(error["extensions"]["missing_files"], expected_missing)
+        self.assertEqual(error["message"], "Missing supporting files: " + ", ".join(expected_missing))
+
+        # The transaction should have rolled back — no BilbyJob or SupportingFile row persists
+        self.assertEqual(BilbyJob.objects.count(), 0)
+        self.assertEqual(SupportingFile.objects.count(), 0)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_absolute_path_resolves_under_staging(self):
+        # (b) An absolute ini path (leading '/') must be resolved relative to the staging directory
+        # after lstrip('/'), so the archived file is found and the upload succeeds.
+        test_ini_string = create_test_ini_string(
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "spline-calibration-envelope-dict": "{L1:/supporting_files/calib/L1-calib.dat}",
+            },
+            True,
+        )
+
+        supporting_files = ["supporting_files/calib/L1-calib.dat"]
+
+        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["spline_calibration_envelope_dict"])
+
+        self.assertEqual(
+            job.supportingfile_set.filter(upload_token__isnull=True).count(),
+            len(supporting_files),
+        )
+
+        job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue((job_dir / str(supporting_file.id)).is_file())
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
+    @silence_errors
+    def test_job_upload_supporting_file_traversal_excluded_from_missing(self):
+        # (c) A traversal path (../../etc/passwd) must be rejected by the containment check and
+        # excluded from missing_files; only genuinely missing files are reported.
+        test_ini_string = create_test_ini_string(
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "psd-dict": "{V1:../../etc/passwd, H1:./supporting_files/psd/H1-psd.dat}",
+            },
+            True,
+        )
+
+        supporting_files = ["supporting_files/psd/V1-psd.dat"]
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, self.test_name, supporting_files=supporting_files),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": self.token,
+            "details": {"description": self.test_description, "private": self.test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertIsNotNone(response.errors)
+        self.assertEqual(response.data, {"uploadBilbyJob": None})
+
+        error = response.errors[0]
+        self.assertEqual(error["extensions"]["missing_files"], ["./supporting_files/psd/H1-psd.dat"])
+        self.assertEqual(error["message"], "Missing supporting files: ./supporting_files/psd/H1-psd.dat")
+
+        self.assertEqual(BilbyJob.objects.count(), 0)
+        self.assertEqual(SupportingFile.objects.count(), 0)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_traversal_not_copied(self):
+        # A traversal-only supporting file must not cause an error (it is excluded from missing) and
+        # must not be copied into the supporting file directory.
+        test_ini_string = create_test_ini_string(
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "psd-dict": "{V1:../../etc/passwd}",
+            },
+            True,
+        )
+
+        job, job_dir = self.perform_upload([], test_ini_string, ["psd_dict"])
+
+        # The traversal file must not have been copied into the supporting file directory
+        job_supporting_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        self.assertTrue(job_supporting_dir.is_dir())
+        self.assertEqual(list(job_supporting_dir.iterdir()), [])
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
+    @silence_errors
+    def test_job_upload_supporting_file_nul_byte_rejected(self):
+        # (d) A NUL-byte path cannot be resolved and must be treated as invalid and excluded from
+        # missing_files.
+        test_ini_string = create_test_ini_string(
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "gps-file": "./supporting_files/gps/gps\x00.dat",
+                "psd-dict": "{H1:./supporting_files/psd/H1-psd.dat}",
+            },
+            True,
+        )
+
+        supporting_files = ["supporting_files/psd/V1-psd.dat"]
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, self.test_name, supporting_files=supporting_files),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": self.token,
+            "details": {"description": self.test_description, "private": self.test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertIsNotNone(response.errors)
+        self.assertEqual(response.data, {"uploadBilbyJob": None})
+
+        error = response.errors[0]
+        self.assertEqual(error["extensions"]["missing_files"], ["./supporting_files/psd/H1-psd.dat"])
+        self.assertEqual(error["message"], "Missing supporting files: ./supporting_files/psd/H1-psd.dat")
+
+        self.assertEqual(BilbyJob.objects.count(), 0)
+        self.assertEqual(SupportingFile.objects.count(), 0)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_rolls_back_bilbyjob(self):
+        # (e) A failed upload due to missing supporting files must roll back the transaction — no
+        # BilbyJob row may persist.
+        test_ini_string = create_test_ini_string(
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "psd-dict": "{V1:./supporting_files/psd/V1-psd.dat}",
+            },
+            True,
+        )
+
+        supporting_files = ["supporting_files/psd/V1-psd.dat1"]
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, self.test_name, supporting_files=supporting_files),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": self.token,
+            "details": {"description": self.test_description, "private": self.test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertIsNotNone(response.errors)
+        self.assertEqual(response.data, {"uploadBilbyJob": None})
+        self.assertEqual(BilbyJob.objects.count(), 0)
+        self.assertEqual(SupportingFile.objects.count(), 0)
+
+    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_job_upload_supporting_file_success_with_all_files(self):
+        # (f) Integration: an archive including all 3 supporting files at resolved relative paths
+        # uploads successfully and returns a jobId with no errors.
+        test_ini_string = REPLICA_UPLOAD_INI + (
+            "\nspline-calibration-envelope-dict={ L1:./supporting_files/calib/L1-calib.txt, "
+            "H1:./supporting_files/calib/H1-calib.txt, }\n"
+            "distance-marginalization-lookup-table=./supporting_files/dml/dml.npz\n"
+        )
+
+        supporting_files = [
+            "./supporting_files/calib/L1-calib.txt",
+            "./supporting_files/calib/H1-calib.txt",
+            "./supporting_files/dml/dml.npz",
+        ]
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, "replica_all_supporting", supporting_files=supporting_files),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": self.token,
+            "details": {"description": self.test_description, "private": self.test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertIsNone(response.errors)
+        self.assertEqual(response.data, {"uploadBilbyJob": {"result": {"jobId": "QmlsYnlKb2JOb2RlOjE="}}})
+
+        job = BilbyJob.objects.all().last()
+        self.assertEqual(job.supportingfile_set.filter(upload_token__isnull=True).count(), len(supporting_files))
+
+        job_supporting_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
+        for supporting_file in job.supportingfile_set.all():
+            self.assertTrue((job_supporting_dir / str(supporting_file.id)).is_file())
+
 
 class TestJobUploadNameValidation(BilbyTestCase):
     def setUp(self):
