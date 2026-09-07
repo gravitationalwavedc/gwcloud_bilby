@@ -382,3 +382,27 @@ class TestElasticSearch(BilbyTestCase):
 
         # The job should no longer exist in the database
         self.assertFalse(BilbyJob.objects.filter(id=job_id).exists())
+
+    @mock.patch("elasticsearch.Elasticsearch.delete")
+    @mock.patch("elasticsearch.Elasticsearch.update")
+    @mock.patch("bilbyui.models.BilbyJob.elastic_search_remove")
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_bilby_job_delete_signal(
+        self, mock_lookup_users, mock_remove, elastic_search_update, elastic_search_delete
+    ):
+        """
+        Test that deleting a bilby job triggers the bilby_job_delete_signal pre_delete handler,
+        which removes the job's elastic search record
+        """
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Test1",
+            description="first job",
+            job_controller_id=2,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+        job.delete()
+
+        mock_remove.assert_called_once()
