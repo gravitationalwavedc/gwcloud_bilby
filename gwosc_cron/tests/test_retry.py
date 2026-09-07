@@ -1,4 +1,5 @@
 import logging
+import sqlite3
 import unittest
 
 import responses
@@ -375,3 +376,63 @@ class TestRetryLogic(GWOSCTestBase):
         second_errors = [r for r in error_rows if r["job_id"] == "GW000002_654321"]
         self.assertEqual(len(second_errors), 1)
         self.assertEqual(second_errors[0]["failure_count"], 1)
+
+
+class TestJobFailureHelpers(GWOSCTestBase):
+    """Direct unit tests for record_job_failure and get_job_failure_count."""
+
+    def setUp(self):
+        super().setUp()
+        self.con.row_factory = sqlite3.Row
+        self.cur = self.con.cursor()
+        with self.con_patch:
+            gwosc_ingest.create_job_errors_table(self.cur)
+
+    def test_record_job_failure_first_insert_sets_count_to_one(self):
+        """First record for an unknown job → failure_count=1 and error stored."""
+        with self.con_patch:
+            gwosc_ingest.record_job_failure(self.con, self.cur, "GW000001_123456", "boom")
+
+        rows = self.get_job_errors()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["job_id"], "GW000001_123456")
+        self.assertEqual(rows[0]["failure_count"], 1)
+        self.assertEqual(rows[0]["last_error"], "boom")
+
+    def test_record_job_failure_increments_on_conflict(self):
+        """Recording the same job again → failure_count incremented, not duplicated."""
+        with self.con_patch:
+            gwosc_ingest.record_job_failure(self.con, self.cur, "GW000001_123456", "first")
+            gwosc_ingest.record_job_failure(self.con, self.cur, "GW000001_123456", "second")
+
+        rows = self.get_job_errors()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["failure_count"], 2)
+        self.assertEqual(rows[0]["last_error"], "second")
+
+    def test_record_job_failure_commits(self):
+        """record_job_failure commits so the row is durable and visible to a fresh connection."""
+        with self.con_patch:
+            gwosc_ingest.record_job_failure(self.con, self.cur, "GW000001_123456", "boom")
+
+        fresh = sqlite3.connect(":memory:")
+        fresh.row_factory = sqlite3.Row
+        try:
+            self.con.backup(fresh)
+            fresh_count = fresh.execute(
+                "SELECT failure_count FROM job_errors WHERE job_id = ?", ("GW000001_123456",)
+            ).fetchone()
+        finally:
+            fresh.close()
+        self.assertEqual(fresh_count["failure_count"], 1)
+
+    def test_get_job_failure_count_missing_job_returns_zero(self):
+        """No row for a job → get_job_failure_count returns 0."""
+        with self.con_patch:
+            self.assertEqual(gwosc_ingest.get_job_failure_count(self.cur, "GW000001_123456"), 0)
+
+    def test_get_job_failure_count_returns_stored_count(self):
+        """Existing row → get_job_failure_count returns the stored count."""
+        self.seed_job_error("GW000001_123456", 5, "seeded")
+        with self.con_patch:
+            self.assertEqual(gwosc_ingest.get_job_failure_count(self.cur, "GW000001_123456"), 5)
