@@ -10,6 +10,8 @@ out-of-order resolution.
 
 from __future__ import annotations
 
+import asyncio
+import threading
 import time
 from urllib.parse import parse_qs, urlparse
 
@@ -25,6 +27,64 @@ from bilbyui.tests.e2e.utils import async_e2e_test
 #: Simulated ES latency so concurrent requests genuinely overlap and the
 #: hx-sync coordination is exercised rather than trivially serialised.
 SLOW_ES_DELAY_SECONDS = 0.4
+
+
+class _SlowRequestGate:
+    """Deterministic control of server-side request completion.
+
+    The server-side side effect signals when a request for a given search
+    value is in flight (``started``) and then blocks until the test releases
+    it (``release``). This lets the test complete request A inside a debounce
+    window deterministically, instead of relying on a fixed sleep, so it can
+    prove whether an obsolete completion promotes stale history.
+    """
+
+    def __init__(self):
+        self._started = {}
+        self._release = {}
+        self._lock = threading.Lock()
+
+    def _events(self, key):
+        with self._lock:
+            if key not in self._started:
+                self._started[key] = threading.Event()
+                self._release[key] = threading.Event()
+            return self._started[key], self._release[key]
+
+    def started(self, key):
+        self._events(key)[0].set()
+
+    def wait_started(self, key, timeout=10):
+        return self._events(key)[0].wait(timeout)
+
+    def release(self, key):
+        self._events(key)[1].set()
+
+    def wait_release(self, key, timeout=10):
+        return self._events(key)[1].wait(timeout)
+
+    def reset(self):
+        with self._lock:
+            self._started.clear()
+            self._release.clear()
+
+
+GATE = _SlowRequestGate()
+
+
+def _gated_race_side_effect(
+    user, *, search="", library="", review_status="", time_range="all", page=1, page_size=20, **kwargs
+):
+    """Server-side side effect that blocks until the test releases the request.
+
+    The ``total`` still encodes the request params so the DOM reveals which
+    request state is rendered. The test gates completion via :data:`GATE`.
+    """
+    GATE.started(search)
+    GATE.wait_release(search)
+    jobs = list(GWFlowJob.objects.order_by("id"))
+    total = len(search) + LIBRARY_TOTALS.get(library, 0) + REVIEW_STATUS_TOTALS.get(review_status, 0)
+    return _build_gwflow_result(jobs, total=total)
 
 
 def _slow_race_side_effect(
@@ -209,30 +269,51 @@ class TestGWFlowOriginalRaceRegression(GWFlowJobsPageBase):
     the obsolete ``S23`` completion must not become the final rendered or
     navigable state.
 
+    The request is gated deterministically (``_gated_race_side_effect``) so
+    request A is released to complete *inside* request B's trailing debounce
+    window, before B starts. This proves the acceptance contract that a
+    superseded completion cannot create an authoritative history entry: the
+    obsolete ``S23`` must neither swap nor push a URL, and exactly one
+    history entry (the accepted ``S2305`` intent) may be added.
+
     Before the fix, request A's completion pushed ``search=S23`` to history
     and the ``htmx:pushedIntoHistory`` write-back reset the live input to
-    ``S23``, dropping the continued typing. The fix removes that write-back,
-    so the live input is the sole authority during editing.
+    ``S23``, dropping the continued typing. The fix removes that write-back
+    and adds a stale-history guard (``search_stale_guard.js``) so an
+    obsolete completion is neither swapped nor promoted to history.
     """
 
-    gwflow_jobs_side_effect = staticmethod(_slow_race_side_effect)
+    gwflow_jobs_side_effect = staticmethod(_gated_race_side_effect)
+
+    def setUp(self):
+        super().setUp()
+        GATE.reset()
 
     @async_e2e_test
-    async def test_input_stays_s2305_and_final_results_and_url_use_s2305(self):
+    async def test_obsolete_completion_cannot_promote_stale_history(self):
         page = self.page
         search = page.locator("#search")
         await page.wait_for_selector(".result-count")
 
-        # Type the prefix and let the debounced request A (search=S23) fire.
+        # Type the prefix and wait until request A (search=S23) is confirmed
+        # in flight (deterministic gate, not a fixed sleep).
         await search.press_sequentially("S23")
-        # 350 ms > the 300 ms debounce: request A is now in flight (slow mock).
-        await page.wait_for_timeout(350)
+        self.assertTrue(
+            await asyncio.to_thread(GATE.wait_started, "S23"),
+            "request A (search=S23) must be in flight",
+        )
 
-        # Keep typing to the full query while request A is still in flight.
+        history_length = await page.evaluate("window.history.length")
+
+        # Keep typing to the full query; request B (S2305) is scheduled but
+        # still inside its 300 ms trailing debounce (not yet started).
         await search.press_sequentially("05")
 
-        # The live input must stay exactly S2305 — request A's completion
-        # (which pushes search=S23 to history) must not clobber it.
+        # Complete request A now — inside B's debounce window, before B fires.
+        await asyncio.to_thread(GATE.release, "S23")
+
+        # The live input stays S2305, and the obsolete S23 completion must
+        # not promote stale history (no new entry, URL not reverted to S23).
         self.assertEqual(await search.input_value(), "S2305")
         self.assertEqual(
             await page.evaluate("document.activeElement ? document.activeElement.id : null"),
@@ -241,18 +322,34 @@ class TestGWFlowOriginalRaceRegression(GWFlowJobsPageBase):
         )
         caret = await search.evaluate("(el) => [el.selectionStart, el.selectionEnd]")
         self.assertEqual(caret, [5, 5], "caret must be preserved at the end of S2305")
+        await page.wait_for_timeout(100)
+        self.assertEqual(
+            await page.evaluate("window.history.length"),
+            history_length,
+            "the obsolete S23 completion must not add a history entry",
+        )
+        self.assertNotEqual(
+            parse_qs(urlparse(page.url).query).get("search", [""])[0],
+            "S23",
+            "the obsolete S23 completion must not promote a stale URL",
+        )
 
-        # Final results and URL both use S2305 (total = len('S2305') = 5).
+        # Request B settles on S2305: exactly one authoritative history entry.
+        await asyncio.to_thread(GATE.release, "S2305")
         await page.wait_for_function(
             "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('5 superevents match'); }",
             timeout=10000,
         )
-        search_param = parse_qs(urlparse(page.url).query).get("search", [""])[0]
-        self.assertEqual(search_param, "S2305", "final URL search must be S2305, not the obsolete S23")
-
-        # The obsolete S23 completion must not become the final rendered state.
-        await page.wait_for_timeout(700)
-        self.assertIn("5 superevents match", await page.locator(".result-count").text_content())
+        self.assertEqual(
+            parse_qs(urlparse(page.url).query).get("search", [""])[0],
+            "S2305",
+            "final URL search must be S2305, not the obsolete S23",
+        )
+        self.assertEqual(
+            await page.evaluate("window.history.length"),
+            history_length + 1,
+            "only the accepted S2305 intent may add a history entry",
+        )
         self.assertEqual(await search.input_value(), "S2305")
 
 
@@ -425,6 +522,74 @@ class TestBackForwardCoherence(GWFlowJobsPageBase):
             await page.evaluate("document.activeElement ? document.activeElement.id : null"),
             "search",
             "back/forward must not force focus onto the search input",
+        )
+
+
+class TestRefreshCoherence(GWFlowJobsPageBase):
+    """A genuine browser refresh restores a coherent state: URL, search/filter
+    controls, active-filter chips, results and count all agree, with no
+    duplicate request and no extra history entry (issue #75 / UX-17 AC5)."""
+
+    @async_e2e_test
+    async def test_refresh_restores_coherent_state(self):
+        page = self.page
+        await page.wait_for_selector(".result-count")
+
+        # Apply a filter -> one history entry.
+        await page.locator("#library").select_option("lib1")
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('1000 superevents match'); }",
+            timeout=10000,
+        )
+        self.assertIn("library=lib1", page.url)
+        hist_before = await page.evaluate("window.history.length")
+
+        # Genuine browser refresh (server re-renders from request params).
+        await page.reload()
+        await page.wait_for_selector(".result-count")
+
+        # URL, controls, chips, results and count all agree after refresh.
+        self.assertIn("library=lib1", page.url)
+        self.assertEqual(await page.locator("#library").input_value(), "lib1")
+        self.assertGreaterEqual(
+            await page.locator(".filter-chip", has_text="Library: lib1").count(),
+            1,
+            "Library: lib1 chip must be present after refresh",
+        )
+        self.assertIn("1000 superevents match", await page.locator(".result-count").text_content())
+
+        # No extra history entry from the refresh.
+        self.assertEqual(
+            await page.evaluate("window.history.length"),
+            hist_before,
+            "a refresh must not add a history entry",
+        )
+
+
+class TestNoUnexpectedScroll(GWFlowJobsPageBase):
+    """An input-triggered update must not cause unexpected page scroll
+    (issue #75 / UX-17 AC6)."""
+
+    gwflow_jobs_side_effect = staticmethod(_slow_race_side_effect)
+
+    @async_e2e_test
+    async def test_input_triggered_update_does_not_scroll(self):
+        page = self.page
+        search = page.locator("#search")
+        await page.wait_for_selector(".result-count")
+
+        # Type a query and let the debounced request settle.
+        await search.press_sequentially("abc")
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('3 superevents match'); }",
+            timeout=10000,
+        )
+
+        # The list swap below the input must not scroll the page.
+        self.assertEqual(
+            await page.evaluate("window.scrollY"),
+            0,
+            "input-triggered update must not scroll the page",
         )
 
 

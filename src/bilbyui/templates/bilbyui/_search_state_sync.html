@@ -9,6 +9,12 @@
 {# listened to (issue #75 UX-17 — it clobbered continued typing, the S23 -> S2305 #}
 {# race). URL->form sync happens only on popstate / htmx:historyRestore, and the #}
 {# hidden page control is never restored (stays at its form default of 1). #}
+{# #}
+{# The stale-history guard (search_stale_guard.js, issue #75) suppresses an #}
+{# obsolete response from swapping or promoting its URL when a newer user edit #}
+{# happened while it was in flight. #}
+{% load static %}
+<script src="{% static 'bilbyui/js/search_stale_guard.js' %}"></script>
 <script>
 (function () {
   "use strict";
