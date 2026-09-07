@@ -676,21 +676,41 @@ def upload_bilby_job(user, upload_token, details, job_file):
             )
             supporting_file_instances = {f.download_token: f for f in supporting_file_instances}
 
-            # Make sure the source supporting file exists
+            # Make sure the source supporting files exist. Paths that cannot be resolved (eg NUL-byte
+            # paths or symlink loops) or that resolve outside the staging directory (traversal) are
+            # rejected fail-closed: the whole upload aborts and the transaction rolls back.
+            staging_dir = Path(job_staging_dir).resolve()
+            resolved_paths = {}
+            missing = []
             for supporting_file in supporting_file_details:
-                source_file = Path(job_staging_dir) / supporting_file["file_path"]
+                candidate = Path(job_staging_dir) / supporting_file["file_path"].lstrip("/")
+                try:
+                    resolved = candidate.resolve()
+                except (ValueError, RuntimeError, OSError):
+                    msg = f"Supporting file {supporting_file['file_path']} contains an invalid or unresolvable path."
+                    raise ValueError(msg) from None
 
                 # Verify that the file really sits under the job staging directory
-                if not source_file.resolve().is_relative_to(Path(job_staging_dir).resolve()):
+                if not resolved.is_relative_to(staging_dir):
                     msg = f"Supporting file {supporting_file['file_path']} is outside the job staging directory."
                     raise ValueError(msg)
 
-                if not source_file.is_file():
-                    msg = f"Supporting file {supporting_file['file_path']} does not exist."
-                    raise FileNotFoundError(msg)
+                if not candidate.is_file():
+                    missing.append(supporting_file["file_path"])
+                else:
+                    resolved_paths[supporting_file["download_token"]] = resolved
 
+            if missing:
+                missing = list(dict.fromkeys(missing))
+                msg = "Missing supporting files: " + ", ".join(missing)
+                raise GraphQLError(msg, extensions={"missing_files": missing})
+
+            for supporting_file in supporting_file_details:
+                resolved = resolved_paths.get(supporting_file["download_token"])
+                if resolved is None:
+                    continue
                 supporting_file_instance = supporting_file_instances[supporting_file["download_token"]]
-                shutil.copyfile(source_file, supporting_file_dir / str(supporting_file_instance.id))
+                shutil.copyfile(resolved, supporting_file_dir / str(supporting_file_instance.id))
 
             # Now we have the bilby job id, we can move the staging directory to the actual job directory
             job_dir = bilby_job.get_upload_directory()
