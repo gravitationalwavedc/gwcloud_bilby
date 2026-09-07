@@ -734,3 +734,24 @@ class TestBilbyJobHasSupportingFiles(BilbyTestCase):
         # Once a supporting file record exists for the job, has_supporting_files must be True
         SupportingFile.objects.create(job=self.job, file_type=SupportingFile.PSD, file_name="H1_psd.txt")
         self.assertTrue(self.job.has_supporting_files())
+
+
+class TestLabelFilterByName(BilbyTestCase):
+    def setUp(self):
+        self.public_label = Label.objects.create(name="TestPublic", protected=False)
+        self.protected_label = Label.objects.create(name="TestProtected", protected=True)
+
+    def test_matches_labels_by_name(self):
+        # filter_by_name must return labels whose name matches the provided names
+        qs = Label.filter_by_name(["TestPublic"])
+        self.assertQuerySetEqual(qs, [self.public_label], ordered=False)
+
+    def test_excludes_protected_by_default(self):
+        # Protected labels must be excluded when include_protected is False (the default)
+        qs = Label.filter_by_name(["TestPublic", "TestProtected"])
+        self.assertQuerySetEqual(qs, [self.public_label], ordered=False)
+
+    def test_includes_protected_when_requested(self):
+        # Protected labels must be included when include_protected is True
+        qs = Label.filter_by_name(["TestPublic", "TestProtected"], include_protected=True)
+        self.assertQuerySetEqual(qs, [self.public_label, self.protected_label], ordered=False)
