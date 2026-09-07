@@ -1172,6 +1172,58 @@ class TestExactVersionIngest(BilbyTestCase):
         self.assertIsNotNone(job.current_history_timestamp)
 
     @override_settings(GWFLOW_INGEST_USER=99)
+    def test_older_delivery_keeps_newer_version_and_leaves_es_untouched(self):
+        import datetime
+
+        from bilbyui.views import upsert_gwflow_job
+
+        GWFlowJob.objects.create(
+            sname="S230601exact",
+            user=self.ingest_user,
+            current_history_id="sha-newer",
+            current_history_timestamp=datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC),
+        )
+
+        with mock.patch("bilbyui.views.get_version") as mock_gv, mock.patch(
+            "bilbyui.views.gwflow_elastic_search_update"
+        ) as mock_es:
+            upsert_gwflow_job(self.ingest_user, self._params(current_history_timestamp="2026-09-01T12:00:00+00:00"))
+
+        mock_gv.assert_not_called()
+        mock_es.assert_not_called()
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        self.assertEqual(job.current_history_id, "sha-newer")
+        self.assertEqual(job.current_history_timestamp, datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC))
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_equal_timestamp_different_id_conflict_leaves_db_and_es_untouched(self):
+        import datetime
+
+        from bilbyui.views import upsert_gwflow_job
+
+        GWFlowJob.objects.create(
+            sname="S230601exact",
+            user=self.ingest_user,
+            current_history_id="sha-001",
+            current_history_timestamp=datetime.datetime(2026, 9, 1, 12, 0, 0, tzinfo=datetime.UTC),
+        )
+
+        with mock.patch("bilbyui.views.get_version") as mock_gv, mock.patch(
+            "bilbyui.views.gwflow_elastic_search_update"
+        ) as mock_es:
+            with self.assertRaises(GraphQLError):
+                upsert_gwflow_job(
+                    self.ingest_user,
+                    self._params(current_history_id="sha-other", current_history_timestamp="2026-09-01T12:00:00+00:00"),
+                )
+
+        mock_gv.assert_not_called()
+        mock_es.assert_not_called()
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertEqual(job.current_history_timestamp, datetime.datetime(2026, 9, 1, 12, 0, 0, tzinfo=datetime.UTC))
+
+    @override_settings(GWFLOW_INGEST_USER=99)
     def test_invalid_metadata_raises_before_db_transaction(self):
         from bilbyui.views import upsert_gwflow_job
 

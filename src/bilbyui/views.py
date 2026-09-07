@@ -2121,20 +2121,46 @@ def upsert_gwflow_job(user, params):
     with transaction.atomic():
         job, created = GWFlowJob.objects.get_or_create(sname=sname, defaults={"user": user})
 
+        # --- Version-ordering guard (issue #74) ---
+        # The authoritative version is (current_history_timestamp, current_history_id):
+        # a later timestamp wins; equal timestamps with differing IDs is an
+        # observable conflict. Do not let an older delivery replace newer
+        # persisted state, and report an equal-timestamp/different-ID conflict
+        # without mutating DB or ES state.
+        incoming_id = current_history_id
+        incoming_ts = current_history_timestamp
+        stored_ts, stored_id = version_tuple(job)
+        delivery_older = False
+        if incoming_ts is not None and stored_ts is not None:
+            if incoming_ts < stored_ts:
+                # Older delivery: keep the newer persisted version pointer and
+                # leave the existing ES document untouched.
+                logger.warning(
+                    "GWFlow older delivery for job %s (%s): incoming %s < stored %s; keeping newer version",
+                    job.id,
+                    sname,
+                    incoming_ts.isoformat(),
+                    stored_ts.isoformat(),
+                )
+                delivery_older = True
+                incoming_id = None
+                incoming_ts = None
+            elif incoming_ts == stored_ts and incoming_id != stored_id:
+                raise GraphQLError(
+                    f"current_history version conflict for {sname}: equal timestamp "
+                    f"{incoming_ts.isoformat()} with differing IDs {stored_id!r} vs {incoming_id!r}"
+                )
+
         # Update current-state fields if provided
-        for attr in (
-            "ligo_only",
-            "schema_version",
-            "libraries",
-            "is_pruned",
-            "current_history_id",
-        ):
+        for attr in ("ligo_only", "schema_version", "libraries", "is_pruned"):
             param = getattr(params, attr, None)
             if param is not None:
                 setattr(job, attr, param)
 
-        if current_history_timestamp is not None:
-            job.current_history_timestamp = current_history_timestamp
+        if incoming_id is not None:
+            job.current_history_id = incoming_id
+        if incoming_ts is not None:
+            job.current_history_timestamp = incoming_ts
 
         # Best-effort event link
         event_id_param = getattr(params, "event_id", None)
@@ -2205,7 +2231,11 @@ def upsert_gwflow_job(user, params):
     # we leave the previous ES document untouched, relying on gwflow_es_retry.
     target_id = job.current_history_id
     target_ts = job.current_history_timestamp
-    if target_id:
+    if delivery_older:
+        # Older delivery: keep the newer persisted version and leave the
+        # existing ES document untouched.
+        pass
+    elif target_id:
         data, state = get_version(job.sname, target_id)
         if data is None:
             logger.warning(
