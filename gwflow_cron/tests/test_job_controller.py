@@ -35,6 +35,13 @@ class TestJobControllerClient(unittest.TestCase):
     def _auth_token(self, call):
         return call.request.headers["Authorization"].split(" ", 1)[1]
 
+    def test_mint_jwt_encodes_user_id_and_signs_with_hs256(self):
+        token = self.client._mint_jwt()
+
+        claims = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        self.assertEqual(claims["userId"], USER_ID)
+        self.assertEqual(jwt.get_unverified_header(token)["alg"], "HS256")
+
     @responses.activate
     def test_create_file_downloads_posts_body_with_jwt_and_returns_file_ids_in_order(self):
         paths = ["/data/pe1/config.ini", "/data/pe1/result.hdf5"]
