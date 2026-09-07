@@ -1,0 +1,109 @@
+{% load frontend_tags %}
+<section class="gw-analysis-block" role="region" aria-label="{% if block.is_superevent %}Superevent-level files{% else %}Analysis {{ block.analysis_uid_short }}{% endif %}">
+  <div class="card gw-form-card mb-4">
+    <div class="card-header gw-analysis-header">
+      <div class="gw-analysis-title">
+        {% if block.is_superevent %}
+          <span class="gw-analysis-name">Superevent-level files</span>
+        {% else %}
+          <span class="gw-analysis-name">Analysis</span>
+          {% include "bilbyui/_tech_value.html" with value=block.analysis_uid kind="id" primary=block.analysis_uid_short copy_label="Copy analysis identifier" disclosure_id="gw-analysis-uid-"|add:block.analysis_uid %}
+        {% endif %}
+        {% if block.metadata %}
+          <span class="gw-analysis-meta">
+            {% if block.metadata.software %}<span>{{ block.metadata.software }}</span>{% endif %}
+            {% if block.metadata.waveform %}<span aria-hidden="true">·</span><span>{{ block.metadata.waveform }}</span>{% endif %}
+            {% if block.metadata.run_status %}<span aria-hidden="true">·</span><span>{{ block.metadata.run_status }}</span>{% endif %}
+            {% if block.metadata.review_status %}<span aria-hidden="true">·</span><span>{{ block.metadata.review_status }}</span>{% endif %}
+          </span>
+          {% if block.metadata.deprecated %}
+            <span class="badge badge-dark">deprecated</span>
+          {% endif %}
+        {% endif %}
+      </div>
+      {% if block.bilby_jobs %}
+        <div class="gw-analysis-job">
+          Linked Bilby job{{ block.bilby_jobs|pluralize }}:
+          {% for bj in block.bilby_jobs %}<a href="{% url 'bilbyui:view_job' job_id=bj.id %}">{{ bj.name }} (#{{ bj.id }})</a>{% if not forloop.last %}, {% endif %}{% endfor %} →
+        </div>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      {% if block.files %}
+        {% with total=block.files|length mirrored=block.files|mirrored_count pending=block.files|pending_count %}
+        <p class="gw-files-line">
+          {% if pending == 0 %}
+            <span class="gw-files-status gw-files-status--mirrored">{{ total }} of {{ total }} mirrored ✓</span>
+          {% elif mirrored == 0 %}
+            <span class="gw-files-status gw-files-status--pending">0 of {{ total }} pending ⏳ syncing</span>
+          {% else %}
+            <span class="gw-files-status gw-files-status--pending">{{ mirrored }} of {{ total }} mirrored; {{ pending }} pending ⏳ syncing</span>
+          {% endif %}
+        </p>
+        {% endwith %}
+        <div class="gw-files-table-wrap" role="region" tabindex="0" aria-label="Scrollable files table">
+          <table class="table table-sm gw-files-table">
+            <caption class="sr-only">Files for {% if block.is_superevent %}superevent-level{% else %}analysis {{ block.analysis_uid_short }}{% endif %}</caption>
+            <thead>
+              <tr>
+                <th scope="col">File</th>
+                <th scope="col">Size</th>
+                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in block.files %}
+              {% with fid=f.id|stringformat:"d" %}
+              <tr class="gw-file-row">
+                <td class="gw-file-cell">
+                  {% include "bilbyui/_tech_value.html" with value=f.path kind="path" truncated=True disclosure_id="gw-file-tech-"|add:fid %}
+                </td>
+                <td class="gw-file-size">
+                  {% if f.file_size is None %}—{% else %}{{ f.file_size|filesizeformat }}{% endif %}
+                </td>
+                <td class="gw-file-status">
+                  {% if f.uploaded %}
+                    <span class="badge badge-success">✓ mirrored</span>
+                  {% else %}
+                    <span class="badge badge-warning">pending</span>
+                  {% endif %}
+                </td>
+                <td class="gw-file-actions-cell">
+                  <div class="gw-file-actions">
+                    {% if f.uploaded %}
+                      <a class="btn btn-sm btn-outline-primary gw-file-download"
+                         href="{% url 'bilbyui:gwflow_file_download' token=f.download_token %}"
+                         target="_blank" rel="noopener noreferrer">
+                        <i class="bi-download" aria-hidden="true"></i>
+                        <span>Download</span>
+                      </a>
+                    {% else %}
+                      <span class="gw-file-download gw-file-download--disabled" aria-disabled="true">
+                        <i class="bi-download" aria-hidden="true"></i>
+                        <span>Download</span>
+                      </span>
+                      <button type="button" class="gw-file-why"
+                              aria-expanded="false"
+                              aria-controls="gw-file-why-{{ fid }}"
+                              onclick="var el = document.getElementById('gw-file-why-{{ fid }}'); el.hidden = !el.hidden; this.setAttribute('aria-expanded', el.hidden ? 'false' : 'true');">
+                        Why can't I download? <span aria-hidden="true">ⓘ</span>
+                      </button>
+                      <div id="gw-file-why-{{ fid }}" class="gw-file-why-body" hidden>
+                        This file is still being mirrored from the portal. Once mirroring finishes, the download will be available here.
+                      </div>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endwith %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {% include "bilbyui/_async_state.html" with state="empty" thing="files" region_label="Analysis files" empty_hint="Files will appear here once this analysis has been mirrored from the portal." %}
+      {% endif %}
+    </div>
+  </div>
+</section>

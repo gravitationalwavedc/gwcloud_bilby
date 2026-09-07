@@ -14,6 +14,7 @@ from bilbyui.utils.gwflow_es import (
     get_es_client,
     gwflow_elastic_search_remove,
     gwflow_elastic_search_update,
+    parse_analyses,
 )
 
 _GWCLOUD_FIELDS = {
@@ -239,6 +240,31 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         doc = build_gwflow_es_doc(self.job, metadata)
 
         self.assertEqual(doc["metadata"], metadata)
+
+    def test_parse_analyses_malformed_first_record_does_not_abort_later_records(self):
+        """A single malformed record must not discard later valid analyses."""
+
+        class RaisingGetDict(dict):
+            def get(self, *args, **kwargs):
+                raise ValueError("boom")
+
+        metadata = {
+            "ParameterEstimation": {
+                "results": [
+                    RaisingGetDict({"uid": "bad-1"}),
+                    {"uid": "good-1", "inference_software": "bilby", "run_status": "completed"},
+                ]
+            }
+        }
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual([a["uid"] for a in analyses], ["good-1"])
+        self.assertEqual(analyses[0]["software"], "bilby")
+
+    def test_parse_analyses_non_dict_returns_empty(self):
+        self.assertEqual(parse_analyses(None), [])
+        self.assertEqual(parse_analyses("not-a-dict"), [])
 
 
 class TestGWFlowESUpdateRemove(BilbyTestCase):
