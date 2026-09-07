@@ -1720,7 +1720,7 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
         supporting_files = ["supporting_files/calib/L1-calib.dat"]
 
-        job, job_dir = self.perform_upload(supporting_files, test_ini_string, ["spline_calibration_envelope_dict"])
+        job, _ = self.perform_upload(supporting_files, test_ini_string, ["spline_calibration_envelope_dict"])
 
         self.assertEqual(
             job.supportingfile_set.filter(upload_token__isnull=True).count(),
@@ -1733,9 +1733,10 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
-    def test_job_upload_supporting_file_traversal_excluded_from_missing(self):
-        # (c) A traversal path (../../etc/passwd) must be rejected by the containment check and
-        # excluded from missing_files; only genuinely missing files are reported.
+    def test_job_upload_supporting_file_traversal_rejected_fail_closed(self):
+        # (c) A traversal path (../../etc/passwd) must be rejected by the containment check
+        # (fail-closed): the upload aborts, the transaction rolls back, and no host file is read or
+        # copied. The traversal path is never added to missing_files.
         test_ini_string = create_test_ini_string(
             {
                 "label": self.test_name,
@@ -1765,17 +1766,14 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         self.assertIsNotNone(response.errors)
         self.assertEqual(response.data, {"uploadBilbyJob": None})
 
-        error = response.errors[0]
-        self.assertEqual(error["extensions"]["missing_files"], ["./supporting_files/psd/H1-psd.dat"])
-        self.assertEqual(error["message"], "Missing supporting files: ./supporting_files/psd/H1-psd.dat")
-
         self.assertEqual(BilbyJob.objects.count(), 0)
         self.assertEqual(SupportingFile.objects.count(), 0)
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
+    @silence_errors
     def test_job_upload_supporting_file_traversal_not_copied(self):
-        # A traversal-only supporting file must not cause an error (it is excluded from missing) and
-        # must not be copied into the supporting file directory.
+        # A traversal-only supporting file must be rejected fail-closed: the upload aborts, no file is
+        # copied into the supporting file directory, and no BilbyJob row persists.
         test_ini_string = create_test_ini_string(
             {
                 "label": self.test_name,
@@ -1785,24 +1783,36 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
             True,
         )
 
-        job, job_dir = self.perform_upload([], test_ini_string, ["psd_dict"])
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, self.test_name, supporting_files=[]),
+            content_type="application/gzip",
+        )
 
-        # The traversal file must not have been copied into the supporting file directory
-        job_supporting_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(job.id)
-        self.assertTrue(job_supporting_dir.is_dir())
-        self.assertEqual(list(job_supporting_dir.iterdir()), [])
+        test_input = {
+            "uploadToken": self.token,
+            "details": {"description": self.test_description, "private": self.test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertIsNotNone(response.errors)
+        self.assertEqual(response.data, {"uploadBilbyJob": None})
+        self.assertEqual(BilbyJob.objects.count(), 0)
+        self.assertEqual(SupportingFile.objects.count(), 0)
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_upload_supporting_file_nul_byte_rejected(self):
-        # (d) A NUL-byte path cannot be resolved and must be treated as invalid and excluded from
-        # missing_files.
+        # (d) A NUL-byte path cannot be resolved and must be rejected fail-closed: the upload aborts
+        # and the transaction rolls back.
         test_ini_string = create_test_ini_string(
             {
                 "label": self.test_name,
                 "outdir": "./",
                 "gps-file": "./supporting_files/gps/gps\x00.dat",
-                "psd-dict": "{H1:./supporting_files/psd/H1-psd.dat}",
             },
             True,
         )
@@ -1826,11 +1836,6 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
         self.assertIsNotNone(response.errors)
         self.assertEqual(response.data, {"uploadBilbyJob": None})
-
-        error = response.errors[0]
-        self.assertEqual(error["extensions"]["missing_files"], ["./supporting_files/psd/H1-psd.dat"])
-        self.assertEqual(error["message"], "Missing supporting files: ./supporting_files/psd/H1-psd.dat")
-
         self.assertEqual(BilbyJob.objects.count(), 0)
         self.assertEqual(SupportingFile.objects.count(), 0)
 

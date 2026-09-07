@@ -677,9 +677,9 @@ def upload_bilby_job(user, upload_token, details, job_file):
             )
             supporting_file_instances = {f.download_token: f for f in supporting_file_instances}
 
-            # Make sure the source supporting files exist. Invalid paths (those that resolve outside the
-            # staging directory, or that cannot be resolved at all, eg NUL-byte paths) are excluded from
-            # the missing list and are never copied.
+            # Make sure the source supporting files exist. Paths that cannot be resolved (eg NUL-byte
+            # paths or symlink loops) or that resolve outside the staging directory (traversal) are
+            # rejected fail-closed: the whole upload aborts and the transaction rolls back.
             staging_dir = Path(job_staging_dir).resolve()
             resolved_paths = {}
             missing = []
@@ -687,18 +687,19 @@ def upload_bilby_job(user, upload_token, details, job_file):
                 candidate = Path(job_staging_dir) / supporting_file["file_path"].lstrip("/")
                 try:
                     resolved = candidate.resolve()
-                except ValueError:
-                    # NUL-byte or otherwise unresolvable path — treat as invalid and exclude
-                    continue
+                except (ValueError, RuntimeError, OSError):
+                    msg = f"Supporting file {supporting_file['file_path']} contains an invalid or unresolvable path."
+                    raise ValueError(msg) from None
 
                 # Verify that the file really sits under the job staging directory
                 if not resolved.is_relative_to(staging_dir):
-                    continue
-
-                resolved_paths[supporting_file["download_token"]] = resolved
+                    msg = f"Supporting file {supporting_file['file_path']} is outside the job staging directory."
+                    raise ValueError(msg)
 
                 if not candidate.is_file():
                     missing.append(supporting_file["file_path"])
+                else:
+                    resolved_paths[supporting_file["download_token"]] = resolved
 
             if missing:
                 missing = list(dict.fromkeys(missing))
