@@ -22,8 +22,12 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
             current_history_id=history_id,
             current_history_timestamp=datetime(2026, 8, 31, 12, 0, 0, tzinfo=UTC),
         )
-        job.creation_time = timezone.now() - timedelta(hours=age_hours)
-        job.save(update_fields=["creation_time"])
+        # Control last_updated (the ingest-update event the retry window is based
+        # on). auto_now would overwrite it on save, so use a queryset update.
+        GWFlowJob.objects.filter(pk=job.pk).update(
+            last_updated=timezone.now() - timedelta(hours=age_hours)
+        )
+        job.refresh_from_db()
         return job
 
     def _run(self, *args, **kwargs):
@@ -122,6 +126,24 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
 
         self.assertEqual(mock_get_version.call_count, 1)
         mock_get_version.assert_called_once_with(recent.sname, recent.current_history_id)
+        self.assertIn("1 re-indexed", output)
+
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.get_version")
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.gwflow_elastic_search_update")
+    def test_hours_includes_recently_updated_existing_job(self, mock_update, mock_get_version):
+        """An old row whose ingest-update (last_updated) is recent is a candidate.
+
+        Regression: candidate selection must be based on the ingest-update event
+        (last_updated), not immutable row creation time (creation_time).
+        """
+        job = self._make_job(age_hours=100)
+        GWFlowJob.objects.filter(pk=job.pk).update(last_updated=timezone.now())
+        mock_get_version.return_value = ({"ParameterEstimation": {"results": []}}, "live")
+
+        output = self._run("--hours", "24")
+
+        mock_get_version.assert_called_once_with(job.sname, job.current_history_id)
+        mock_update.assert_called_once()
         self.assertIn("1 re-indexed", output)
 
     @mock.patch("bilbyui.management.commands.gwflow_es_retry.get_version")

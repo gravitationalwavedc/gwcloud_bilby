@@ -209,6 +209,12 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         self.assertEqual(job.current_history_id, "")
         self.assertIsNone(job.current_history_timestamp)
 
+    def test_dry_run_does_not_print_resume_checkpoint(self):
+        """Dry-run commits no batch, so no resume checkpoint is printed."""
+        make_job(sname="S230601ag")
+        _, out, _ = self._run("--dry-run")
+        self.assertNotIn("Last completed job ID:", out)
+
     def test_resume_from_skips_lower_ids(self):
         job1 = make_job(sname="S230601ag")
         job2 = make_job(sname="S230602ag")

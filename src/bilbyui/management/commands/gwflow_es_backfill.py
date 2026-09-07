@@ -156,8 +156,9 @@ class Command(BaseCommand):
             if failures:
                 any_failure = True
 
-            last_id = batch[-1].id
-            self.stdout.write(f"Last completed job ID: {last_id}")
+            if not dry_run:
+                last_id = batch[-1].id
+                self.stdout.write(f"Last completed job ID: {last_id}")
 
         if not dry_run and not any_failure:
             cache.delete(LIBRARIES_CACHE_KEY)

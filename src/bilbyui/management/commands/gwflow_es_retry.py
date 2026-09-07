@@ -49,7 +49,10 @@ class Command(BaseCommand):
         include_no_doc = options["no_doc"]
 
         since = timezone.now() - timedelta(hours=hours)
-        candidates = list(GWFlowJob.objects.filter(creation_time__gte=since).order_by("id"))
+        # Select by last_updated (the ingest-update event whose ES write is being
+        # recovered), not creation_time (immutable row creation). An existing row
+        # updated within the window must be eligible for re-index.
+        candidates = list(GWFlowJob.objects.filter(last_updated__gte=since).order_by("id"))
 
         if include_no_doc:
             candidates = self._add_no_doc_candidates(candidates)
