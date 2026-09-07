@@ -93,3 +93,58 @@ class TestModelStrAndIniGuards(BilbyTestCase):
         doc = update_mock.call_args.kwargs["doc"]
         self.assertIn("corrupt", doc["ini"])
         self.assertIsNone(doc["ini"]["corrupt"])
+
+
+class TestLabelAndEventIdReindexSignals(BilbyTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = cls.create_user()
+        cls.label = Label.objects.create(name="Signal Label")
+        cls.event_id = EventID.objects.create(
+            event_id="GW123456_123456",
+            trigger_id="S123456a",
+            nickname="GW123456",
+            is_ligo_event=False,
+            gps_time=1126259462.391,
+        )
+
+    def _create_job(self, name, event_id=None):
+        return BilbyJob.objects.create(
+            user_id=self.user.id,
+            name=name,
+            description="Job description",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            event_id=event_id,
+        )
+
+    def test_label_save_reindexes_related_jobs(self):
+        job = self._create_job("Label_Related_Job")
+        job.labels.add(self.label)
+        with mock.patch.object(BilbyJob, "elastic_search_update") as es_update:
+            self.label.save()
+        self.assertEqual(es_update.call_count, 1)
+
+    def test_label_save_noop_without_jobs(self):
+        orphan_label = Label.objects.create(name="Orphan Label")
+        with mock.patch.object(BilbyJob, "elastic_search_update") as es_update:
+            orphan_label.save()
+        es_update.assert_not_called()
+
+    def test_event_id_save_reindexes_related_jobs(self):
+        self._create_job("Event_Related_Job", event_id=self.event_id)
+        with mock.patch.object(BilbyJob, "elastic_search_update") as es_update:
+            self.event_id.save()
+        self.assertEqual(es_update.call_count, 1)
+
+    def test_event_id_save_noop_without_jobs(self):
+        orphan_event = EventID.objects.create(
+            event_id="GW654321_654321",
+            trigger_id="S654321a",
+            nickname="GW654321",
+            is_ligo_event=False,
+            gps_time=1126259462.391,
+        )
+        with mock.patch.object(BilbyJob, "elastic_search_update") as es_update:
+            orphan_event.save()
+        es_update.assert_not_called()
