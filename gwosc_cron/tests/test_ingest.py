@@ -40,6 +40,39 @@ class TestComputeIsLatestVersion(unittest.TestCase):
         self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914_alt", names))
 
 
+class TestCreateJobErrorsTable(unittest.TestCase):
+    """Unit tests for create_job_errors_table."""
+
+    def test_creates_table_with_expected_schema(self):
+        con = sqlite3.connect(":memory:")
+        cur = con.cursor()
+        gwosc_ingest.create_job_errors_table(cur)
+
+        rows = cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='job_errors'").fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][0], "job_errors")
+
+        columns = {row[1]: row[2] for row in cur.execute("PRAGMA table_info(job_errors)").fetchall()}
+        self.assertEqual(
+            columns,
+            {
+                "job_id": "TEXT",
+                "failure_count": "INTEGER",
+                "last_failure": "TIMESTAMP",
+                "last_error": "TEXT",
+            },
+        )
+
+    def test_recreation_is_idempotent(self):
+        con = sqlite3.connect(":memory:")
+        cur = con.cursor()
+        gwosc_ingest.create_job_errors_table(cur)
+        gwosc_ingest.create_job_errors_table(cur)
+
+        rows = cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='job_errors'").fetchall()
+        self.assertEqual(len(rows), 1)
+
+
 class TestIsLatestVersion(unittest.TestCase):
     """Unit tests for _is_latest_version."""
 
