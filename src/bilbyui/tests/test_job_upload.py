@@ -1892,7 +1892,9 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
 
         test_file = SimpleUploadedFile(
             name="test.tar.gz",
-            content=create_test_upload_data(test_ini_string, "replica_all_supporting", supporting_files=supporting_files),
+            content=create_test_upload_data(
+                test_ini_string, "replica_all_supporting", supporting_files=supporting_files
+            ),
             content_type="application/gzip",
         )
 
