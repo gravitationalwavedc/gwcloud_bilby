@@ -215,6 +215,15 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertContains(response, "Search: foo")
         self.assertNotContains(response, "Updated:")
 
+    def test_active_filters_comment_is_not_rendered_verbatim(self):
+        """The template's documentation comments must not leak into the
+        rendered output. Regression: a malformed ``{# ... #)`` comment on
+        the active-filters partial was emitted verbatim as visible text."""
+        response = self._render_fragment({"search": "foo"}, total=10)
+
+        self.assertNotContains(response, "corresponding form control is reset to its default")
+        self.assertNotContains(response, "targeted action-specific")
+
     # ------------------------------------------------------------------
     # Pagination
     # ------------------------------------------------------------------
