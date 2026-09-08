@@ -3,12 +3,31 @@ from unittest.mock import MagicMock, patch
 import elasticsearch
 from django.contrib.auth import get_user_model
 from django.core.cache import caches
+from django.utils import timezone
 
 from bilbyui.models import GWFlowJob
-from bilbyui.services.gwflow import _collect_library_options, list_gwflow_filter_options, list_gwflow_jobs
+from bilbyui.services.gwflow import (
+    _collect_library_options,
+    _collect_review_status_options,
+    list_gwflow_filter_options,
+    list_gwflow_jobs,
+)
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
+
+LIBRARIES_CACHE_KEY = "gwflow_filter_libraries"
+REVIEW_STATUSES_CACHE_KEY = "gwflow_filter_review_statuses"
+
+
+def _agg_response(agg_name, keys):
+    return {
+        "aggregations": {
+            agg_name: {
+                "buckets": [{"key": key, "doc_count": 1} for key in keys],
+            }
+        }
+    }
 
 
 class TestGWFlowServices(BilbyTestCase):
@@ -86,6 +105,14 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertFalse(res["has_next"])
         mock_client.search.assert_called_once()
 
+    def _filter_terms(self, mock_client):
+        query = mock_client.search.call_args[1]["query"]
+        filter_terms = {}
+        for f in query["bool"]["filter"]:
+            for _clause_type, clause in f.items():
+                filter_terms.update(clause)
+        return filter_terms
+
     @patch("elasticsearch.Elasticsearch")
     def test_list_gwflow_jobs_non_ligo_user_query(self, mock_es_cls):
         mock_client = MagicMock()
@@ -101,14 +128,10 @@ class TestGWFlowServices(BilbyTestCase):
         res = list_gwflow_jobs(self.non_ligo_user, search="GW150914", time_range="1d")
 
         mock_client.search.assert_called_once()
-        query = mock_client.search.call_args[1]["query"]
-        filter_terms = {}
-        for f in query["bool"]["filter"]:
-            for _clause_type, clause in f.items():
-                filter_terms.update(clause)
-        self.assertIn("ligoOnly", filter_terms)
-        self.assertIn("isPruned", filter_terms)
-        self.assertIn("lastUpdatedTime", filter_terms)
+        filter_terms = self._filter_terms(mock_client)
+        self.assertIn("_gwcloud.ligoOnly", filter_terms)
+        self.assertIn("_gwcloud.isPruned", filter_terms)
+        self.assertIn("_gwcloud.lastUpdatedTime", filter_terms)
 
         self.assertIn(self.job_public.id, res["jobs"])
 
@@ -126,13 +149,9 @@ class TestGWFlowServices(BilbyTestCase):
 
         res = list_gwflow_jobs(self.ligo_user, include_pruned=True)
 
-        query = mock_client.search.call_args[1]["query"]
-        filter_terms = {}
-        for f in query["bool"]["filter"]:
-            for _clause_type, clause in f.items():
-                filter_terms.update(clause)
-        self.assertNotIn("ligoOnly", filter_terms)
-        self.assertNotIn("isPruned", filter_terms)
+        filter_terms = self._filter_terms(mock_client)
+        self.assertNotIn("_gwcloud.ligoOnly", filter_terms)
+        self.assertNotIn("_gwcloud.isPruned", filter_terms)
 
         self.assertIn(self.job_ligo.id, res["jobs"])
 
@@ -462,15 +481,11 @@ class TestGWFlowServices(BilbyTestCase):
             review_status="approved",
         )
 
-        query = mock_client.search.call_args[1]["query"]
-        filter_terms = {}
-        for f in query["bool"]["filter"]:
-            for _clause_type, clause in f.items():
-                filter_terms.update(clause)
-        self.assertEqual(filter_terms["libraries.keyword"], 'cbc-workflow "o4a"')
-        self.assertEqual(filter_terms["analyses.reviewStatus.keyword"], "approved")
-        self.assertIn("ligoOnly", filter_terms)
-        self.assertIn("isPruned", filter_terms)
+        filter_terms = self._filter_terms(mock_client)
+        self.assertEqual(filter_terms["_gwcloud.libraries"], 'cbc-workflow "o4a"')
+        self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "approved")
+        self.assertIn("_gwcloud.ligoOnly", filter_terms)
+        self.assertIn("_gwcloud.isPruned", filter_terms)
         self.assertIn(self.job_public.id, res["jobs"])
 
     @patch("bilbyui.services.gwflow.get_es_client")
@@ -486,12 +501,8 @@ class TestGWFlowServices(BilbyTestCase):
 
         list_gwflow_jobs(self.non_ligo_user, review_status="a:b*c")
 
-        query = mock_client.search.call_args[1]["query"]
-        filter_terms = {}
-        for f in query["bool"]["filter"]:
-            for _clause_type, clause in f.items():
-                filter_terms.update(clause)
-        self.assertEqual(filter_terms["analyses.reviewStatus.keyword"], "a:b*c")
+        filter_terms = self._filter_terms(mock_client)
+        self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "a:b*c")
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_groups_free_form_query_before_structured_filters(self, mock_get_es_client):
@@ -510,12 +521,9 @@ class TestGWFlowServices(BilbyTestCase):
 
         query = mock_client.search.call_args[1]["query"]
         self.assertEqual(query["bool"]["must"][0]["query_string"]["query"], "sname:S1 OR sname:S2")
-        filter_terms = {}
-        for f in query["bool"]["filter"]:
-            for _clause_type, clause in f.items():
-                filter_terms.update(clause)
-        self.assertEqual(filter_terms["libraries.keyword"], "lib-a")
-        self.assertEqual(filter_terms["analyses.reviewStatus.keyword"], "reviewed")
+        filter_terms = self._filter_terms(mock_client)
+        self.assertEqual(filter_terms["_gwcloud.libraries"], "lib-a")
+        self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "reviewed")
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_structured_filters_never_reach_query_string(self, mock_get_es_client):
@@ -534,12 +542,9 @@ class TestGWFlowServices(BilbyTestCase):
 
         query = mock_client.search.call_args[1]["query"]
         self.assertEqual(query["bool"]["must"][0]["query_string"]["query"], "sname:S1")
-        filter_terms = {}
-        for f in query["bool"]["filter"]:
-            for _clause_type, clause in f.items():
-                filter_terms.update(clause)
-        self.assertEqual(filter_terms["libraries.keyword"], 'x" OR ligoOnly:true OR libraries:"y')
-        self.assertEqual(filter_terms["analyses.reviewStatus.keyword"], "a && b || !c")
+        filter_terms = self._filter_terms(mock_client)
+        self.assertEqual(filter_terms["_gwcloud.libraries"], 'x" OR ligoOnly:true OR libraries:"y')
+        self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "a && b || !c")
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_passes_advanced_syntax_through_unchanged(self, mock_get_es_client):
@@ -660,6 +665,84 @@ class TestGWFlowServices(BilbyTestCase):
 
         self.assertEqual(res["total"], 0)
 
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_unfielded_search_relies_on_bounded_default_field(self, mock_get_es_client):
+        """An unfielded search must not set default_field to metadata.*: it
+        relies on index.query.default_field (the bounded _gwcloud.* set)."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        list_gwflow_jobs(self.non_ligo_user, search="GW150914")
+
+        query = mock_client.search.call_args[1]["query"]
+        qs = query["bool"]["must"][0]["query_string"]
+        self.assertNotIn("default_field", qs)
+        self.assertEqual(qs["query"], "GW150914")
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_fielded_expert_query_to_metadata_still_works(self, mock_get_es_client):
+        """Fielded expert queries to arbitrary known metadata.* paths remain
+        available and are passed through unchanged."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        expert = "metadata.ParameterEstimation.results.inference_software:bilby"
+        list_gwflow_jobs(self.non_ligo_user, search=expert)
+
+        query = mock_client.search.call_args[1]["query"]
+        qs = query["bool"]["must"][0]["query_string"]
+        self.assertEqual(qs["query"], expert)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_sort_uses_gwcloud_last_updated_desc_missing_last(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        list_gwflow_jobs(self.non_ligo_user)
+
+        sort = mock_client.search.call_args[1]["sort"]
+        self.assertEqual(
+            sort,
+            [{"_gwcloud.lastUpdatedTime": {"order": "desc", "missing": "_last"}}],
+        )
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_all_filters_target_gwcloud_fields(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        list_gwflow_jobs(
+            self.non_ligo_user,
+            search="sname:S1",
+            library="lib-a",
+            review_status="approved",
+            time_range="1w",
+        )
+
+        filter_terms = self._filter_terms(mock_client)
+        self.assertEqual(filter_terms["_gwcloud.libraries"], "lib-a")
+        self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "approved")
+        self.assertIn("_gwcloud.lastUpdatedTime", filter_terms)
+        self.assertEqual(filter_terms["_gwcloud.ligoOnly"], False)
+        self.assertEqual(filter_terms["_gwcloud.isPruned"], False)
+        self.assertNotIn("libraries.keyword", filter_terms)
+        self.assertNotIn("analyses.reviewStatus.keyword", filter_terms)
+        self.assertNotIn("lastUpdatedTime", filter_terms)
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_request_timeout(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        list_gwflow_jobs(self.non_ligo_user)
+
+        self.assertEqual(mock_client.search.call_args[1]["request_timeout"], 10)
+
 
 class TestGWFlowFilterOptions(BilbyTestCase):
     def setUp(self):
@@ -667,189 +750,321 @@ class TestGWFlowFilterOptions(BilbyTestCase):
         caches["default"].clear()
         self.user = self.create_user(id=200, name="Filter User", primary_email="filter@example.com")
 
-    @patch("bilbyui.services.gwflow.get_es_client", side_effect=elasticsearch.exceptions.ConnectionError("down"))
-    def test_libraries_from_db_sorted_deduped(self, mock_get_es_client):
-        GWFlowJob.objects.create(
-            sname="S200201a", user=self.user, ligo_only=False, libraries=["b-library", "a-library"]
-        )
-        GWFlowJob.objects.create(
-            sname="S200201b", user=self.user, ligo_only=False, libraries=["a-library", "c-library"]
-        )
-
-        options = list_gwflow_filter_options()
-
-        self.assertEqual(options["libraries"], ["a-library", "b-library", "c-library"])
-        self.assertEqual(
-            caches["default"].get("gwflow_filter_libraries"),
-            ["a-library", "b-library", "c-library"],
-        )
-
-    @patch("bilbyui.services.gwflow.get_es_client", side_effect=elasticsearch.exceptions.ConnectionError("down"))
-    def test_libraries_from_db_case_insensitive_sort(self, mock_get_es_client):
-        GWFlowJob.objects.create(sname="S200201c", user=self.user, ligo_only=False, libraries=["Zeta", "alpha"])
-
-        options = list_gwflow_filter_options()
-
-        self.assertEqual(options["libraries"], ["alpha", "Zeta"])
-
-    @patch("bilbyui.services.gwflow.get_es_client", side_effect=elasticsearch.exceptions.ConnectionError("down"))
-    def test_libraries_cached(self, mock_get_es_client):
-        GWFlowJob.objects.create(sname="S200201d", user=self.user, ligo_only=False, libraries=["a-library"])
-        list_gwflow_filter_options()
-
-        GWFlowJob.objects.create(sname="S200201e", user=self.user, ligo_only=False, libraries=["b-library"])
-
-        options = list_gwflow_filter_options()
-
-        self.assertEqual(options["libraries"], ["a-library"])
-
-    @patch("bilbyui.services.gwflow.get_es_client", side_effect=elasticsearch.exceptions.ConnectionError("down"))
-    def test_libraries_exclude_ligo_only_jobs(self, mock_get_es_client):
-        GWFlowJob.objects.create(sname="S200201f", user=self.user, ligo_only=False, libraries=["public-lib"])
-        GWFlowJob.objects.create(sname="S200201g", user=self.user, ligo_only=True, libraries=["ligo-secret-lib"])
-
-        options = list_gwflow_filter_options()
-
-        self.assertEqual(options["libraries"], ["public-lib"])
-        self.assertNotIn("ligo-secret-lib", options["libraries"])
-
-    @patch("bilbyui.services.gwflow.get_es_client")
-    def test_libraries_exclude_pruned_only_values(self, mock_get_es_client):
-        GWFlowJob.objects.create(
-            sname="S200201h",
-            user=self.user,
-            ligo_only=False,
-            is_pruned=True,
-            libraries=["pruned-only-lib"],
-        )
-        GWFlowJob.objects.create(
-            sname="S200201i",
-            user=self.user,
-            ligo_only=False,
-            is_pruned=False,
-            libraries=["visible-lib"],
-        )
-
-        options = list_gwflow_filter_options()
-
-        self.assertIn("visible-lib", options["libraries"])
-        self.assertNotIn("pruned-only-lib", options["libraries"])
-
-    @patch("bilbyui.services.gwflow.get_es_client")
-    def test_review_statuses_from_es_aggregation(self, mock_get_es_client):
+    def _mock_es(self, libraries=None, review_statuses=None, side_effect=None):
         mock_client = MagicMock()
-        mock_get_es_client.return_value = mock_client
-        mock_client.search.return_value = {
-            "aggregations": {
-                "review_statuses": {
-                    "buckets": [
-                        {"key": "approved", "doc_count": 10},
-                        {"key": "pending", "doc_count": 5},
-                    ]
-                }
-            }
-        }
+        if side_effect is not None:
+            mock_client.search.side_effect = side_effect
+        else:
+            responses = {}
+            if libraries is not None:
+                responses["libraries"] = _agg_response("libraries", libraries)
+            if review_statuses is not None:
+                responses["review_statuses"] = _agg_response("review_statuses", review_statuses)
+            mock_client.search.side_effect = lambda **kw: responses.get(
+                list(kw.get("aggs", {}).keys())[0], {"aggregations": {}}
+            )
+        return mock_client
 
-        options = list_gwflow_filter_options()
+    def _agg_call(self, mock_client, agg_name):
+        for call in mock_client.search.call_args_list:
+            aggs = call.kwargs.get("aggs", {})
+            if agg_name in aggs:
+                return call
+        return None
 
-        self.assertEqual(options["review_statuses"], ["approved", "pending"])
-        self.assertEqual(
-            caches["default"].get("gwflow_filter_review_statuses"),
-            ["approved", "pending"],
-        )
-        call_kwargs = mock_client.search.call_args[1]
-        self.assertEqual(call_kwargs["q"], "isPruned:false AND ligoOnly:false")
-        self.assertEqual(call_kwargs["size"], 0)
+    def test_libraries_from_es_aggregation(self):
+        mock_client = self._mock_es(libraries=["b-library", "a-library"])
+        with patch("bilbyui.services.gwflow.get_es_client", return_value=mock_client):
+            options = list_gwflow_filter_options()
 
-    @patch("bilbyui.services.gwflow.get_es_client", side_effect=elasticsearch.exceptions.ConnectionError("down"))
-    def test_review_statuses_fallback_on_connection_error(self, mock_get_es_client):
-        options = list_gwflow_filter_options()
+        self.assertEqual(options["libraries"], {"values": ["b-library", "a-library"], "state": "ok"})
+        record = caches["default"].get(LIBRARIES_CACHE_KEY)
+        self.assertEqual(record["values"], ["b-library", "a-library"])
+        self.assertIn("fetched_at", record)
 
-        self.assertEqual(options["review_statuses"], ["reviewed", "unreviewed", "pending", "approved"])
-        self.assertIsNone(caches["default"].get("gwflow_filter_review_statuses"))
+        call = self._agg_call(mock_client, "libraries")
+        self.assertEqual(call.kwargs["aggs"]["libraries"]["terms"]["field"], "_gwcloud.libraries")
+        self.assertEqual(call.kwargs["size"], 0)
+        filters = call.kwargs["query"]["bool"]["filter"]
+        self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
+        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
 
-    @patch("bilbyui.services.gwflow.get_es_client")
-    def test_review_statuses_fallback_on_not_found(self, mock_get_es_client):
-        mock_client = MagicMock()
-        mock_get_es_client.return_value = mock_client
-        mock_client.search.side_effect = elasticsearch.NotFoundError(404, "index not found", {})
+    def test_libraries_cached_fresh(self):
+        mock_client = self._mock_es(libraries=["a-library"])
+        with patch("bilbyui.services.gwflow.get_es_client", return_value=mock_client):
+            list_gwflow_filter_options()
+            mock_client.search.reset_mock()
+            options = list_gwflow_filter_options()
 
-        options = list_gwflow_filter_options()
-
-        self.assertEqual(options["review_statuses"], ["reviewed", "unreviewed", "pending", "approved"])
-
-    @patch("bilbyui.services.gwflow.get_es_client")
-    def test_review_statuses_fallback_on_empty_buckets(self, mock_get_es_client):
-        mock_client = MagicMock()
-        mock_get_es_client.return_value = mock_client
-        mock_client.search.return_value = {"aggregations": {"review_statuses": {"buckets": []}}}
-
-        options = list_gwflow_filter_options()
-
-        self.assertEqual(options["review_statuses"], ["reviewed", "unreviewed", "pending", "approved"])
-
-    @patch("bilbyui.services.gwflow.get_es_client")
-    def test_review_statuses_cached(self, mock_get_es_client):
-        mock_client = MagicMock()
-        mock_get_es_client.return_value = mock_client
-        mock_client.search.return_value = {
-            "aggregations": {
-                "review_statuses": {
-                    "buckets": [{"key": "approved", "doc_count": 1}],
-                }
-            }
-        }
-
-        list_gwflow_filter_options()
-        mock_client.search.reset_mock()
-        list_gwflow_filter_options()
-
+        self.assertEqual(options["libraries"], {"values": ["a-library"], "state": "ok"})
         mock_client.search.assert_not_called()
 
+    def test_review_statuses_from_es_aggregation(self):
+        mock_client = self._mock_es(review_statuses=["approved", "pending"])
+        with patch("bilbyui.services.gwflow.get_es_client", return_value=mock_client):
+            options = list_gwflow_filter_options()
 
-class TestCollectLibraryOptions(BilbyTestCase):
+        self.assertEqual(
+            options["review_statuses"],
+            {"values": ["approved", "pending"], "state": "ok"},
+        )
+        record = caches["default"].get(REVIEW_STATUSES_CACHE_KEY)
+        self.assertEqual(record["values"], ["approved", "pending"])
+
+        call = self._agg_call(mock_client, "review_statuses")
+        self.assertEqual(call.kwargs["aggs"]["review_statuses"]["terms"]["field"], "_gwcloud.reviewStatuses")
+        self.assertEqual(call.kwargs["aggs"]["review_statuses"]["terms"]["size"], 50)
+        self.assertEqual(call.kwargs["size"], 0)
+        filters = call.kwargs["query"]["bool"]["filter"]
+        self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
+        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
+
+    def test_review_statuses_cached_fresh(self):
+        mock_client = self._mock_es(review_statuses=["approved"])
+        with patch("bilbyui.services.gwflow.get_es_client", return_value=mock_client):
+            list_gwflow_filter_options()
+            mock_client.search.reset_mock()
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["review_statuses"], {"values": ["approved"], "state": "ok"})
+        mock_client.search.assert_not_called()
+
+    def test_successful_empty_is_ok_and_stored(self):
+        mock_client = self._mock_es(libraries=[], review_statuses=[])
+        with patch("bilbyui.services.gwflow.get_es_client", return_value=mock_client):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": [], "state": "ok"})
+        self.assertEqual(options["review_statuses"], {"values": [], "state": "ok"})
+        self.assertEqual(caches["default"].get(LIBRARIES_CACHE_KEY)["values"], [])
+        self.assertEqual(caches["default"].get(REVIEW_STATUSES_CACHE_KEY)["values"], [])
+
+    def test_failure_without_cache_is_unavailable(self):
+        with patch(
+            "bilbyui.services.gwflow.get_es_client",
+            side_effect=elasticsearch.exceptions.ConnectionError("down"),
+        ):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": [], "state": "unavailable"})
+        self.assertEqual(options["review_statuses"], {"values": [], "state": "unavailable"})
+        self.assertIsNone(caches["default"].get(LIBRARIES_CACHE_KEY))
+        self.assertIsNone(caches["default"].get(REVIEW_STATUSES_CACHE_KEY))
+
+    def test_failure_with_stale_cache_is_stale(self):
+        caches["default"].set(
+            LIBRARIES_CACHE_KEY,
+            {"values": ["stale-lib"], "fetched_at": timezone.now() - __import__("datetime").timedelta(hours=2)},
+        )
+        caches["default"].set(
+            REVIEW_STATUSES_CACHE_KEY,
+            {
+                "values": ["stale-status"],
+                "fetched_at": timezone.now() - __import__("datetime").timedelta(hours=2),
+            },
+        )
+        with patch(
+            "bilbyui.services.gwflow.get_es_client",
+            side_effect=elasticsearch.exceptions.ConnectionError("down"),
+        ):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": ["stale-lib"], "state": "stale"})
+        self.assertEqual(options["review_statuses"], {"values": ["stale-status"], "state": "stale"})
+
+    def test_mixed_per_facet_outcomes(self):
+        # Libraries: no cache + ES failure -> unavailable
+        # Review statuses: stale cache + ES failure -> stale
+        caches["default"].set(
+            REVIEW_STATUSES_CACHE_KEY,
+            {
+                "values": ["stale-status"],
+                "fetched_at": timezone.now() - __import__("datetime").timedelta(hours=3),
+            },
+        )
+        with patch(
+            "bilbyui.services.gwflow.get_es_client",
+            side_effect=elasticsearch.exceptions.ConnectionError("down"),
+        ):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": [], "state": "unavailable"})
+        self.assertEqual(options["review_statuses"], {"values": ["stale-status"], "state": "stale"})
+
+    def test_fresh_hit_ok(self):
+        caches["default"].set(
+            LIBRARIES_CACHE_KEY,
+            {"values": ["fresh-lib"], "fetched_at": timezone.now()},
+        )
+        caches["default"].set(
+            REVIEW_STATUSES_CACHE_KEY,
+            {"values": ["fresh-status"], "fetched_at": timezone.now()},
+        )
+        with patch("bilbyui.services.gwflow.get_es_client") as mock_get_es_client:
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": ["fresh-lib"], "state": "ok"})
+        self.assertEqual(options["review_statuses"], {"values": ["fresh-status"], "state": "ok"})
+        mock_get_es_client.assert_not_called()
+
+    def test_stale_hit_returns_stale_on_failure(self):
+        caches["default"].set(
+            LIBRARIES_CACHE_KEY,
+            {"values": ["old-lib"], "fetched_at": timezone.now() - __import__("datetime").timedelta(hours=5)},
+        )
+        with patch(
+            "bilbyui.services.gwflow.get_es_client",
+            side_effect=elasticsearch.exceptions.ConnectionError("down"),
+        ):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": ["old-lib"], "state": "stale"})
+
+    def test_total_miss_unavailable(self):
+        with patch(
+            "bilbyui.services.gwflow.get_es_client",
+            side_effect=elasticsearch.exceptions.ConnectionError("down"),
+        ):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": [], "state": "unavailable"})
+
+    def test_invalidation_of_both_keys_refetches(self):
+        mock_client = self._mock_es(libraries=["a"], review_statuses=["b"])
+        with patch("bilbyui.services.gwflow.get_es_client", return_value=mock_client):
+            list_gwflow_filter_options()
+            caches["default"].delete(LIBRARIES_CACHE_KEY)
+            caches["default"].delete(REVIEW_STATUSES_CACHE_KEY)
+            mock_client.search.reset_mock()
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": ["a"], "state": "ok"})
+        self.assertEqual(options["review_statuses"], {"values": ["b"], "state": "ok"})
+        self.assertEqual(mock_client.search.call_count, 2)
+
+    def test_legacy_plain_list_cache_refreshes_through_collector(self):
+        # Old format: a plain list of values with no {values, fetched_at}
+        # record. It carries no trustworthy timestamp, so it must NOT be
+        # returned as a fresh ok result; instead it refreshes through the
+        # normal collector and the cache is rewritten to the new format.
+        caches["default"].set(LIBRARIES_CACHE_KEY, ["legacy-lib-a", "legacy-lib-b"])
+        mock_client = self._mock_es(libraries=["fresh-lib"])
+        with patch("bilbyui.services.gwflow.get_es_client", return_value=mock_client):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": ["fresh-lib"], "state": "ok"})
+        record = caches["default"].get(LIBRARIES_CACHE_KEY)
+        self.assertEqual(record["values"], ["fresh-lib"])
+        self.assertIn("fetched_at", record)
+        self.assertEqual(self._agg_call(mock_client, "libraries") is not None, True)
+
+    def test_legacy_plain_list_cache_unavailable_on_collector_failure(self):
+        # A legacy plain-list record is treated as absent: on collector
+        # failure it yields unavailable, never stale (no trustworthy data).
+        caches["default"].set(LIBRARIES_CACHE_KEY, ["legacy-lib-a", "legacy-lib-b"])
+        with patch(
+            "bilbyui.services.gwflow.get_es_client",
+            side_effect=elasticsearch.exceptions.ConnectionError("down"),
+        ):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": [], "state": "unavailable"})
+
+    def test_malformed_cache_record_treated_as_absent(self):
+        # A dict without "values" and a non-list non-dict record are both
+        # malformed and must be treated as absent (refresh through collector).
+        caches["default"].set(LIBRARIES_CACHE_KEY, {"fetched_at": timezone.now()})
+        caches["default"].set(REVIEW_STATUSES_CACHE_KEY, "not-a-record")
+        mock_client = self._mock_es(libraries=["fresh-lib"], review_statuses=["fresh-status"])
+        with patch("bilbyui.services.gwflow.get_es_client", return_value=mock_client):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": ["fresh-lib"], "state": "ok"})
+        self.assertEqual(options["review_statuses"], {"values": ["fresh-status"], "state": "ok"})
+
+    def test_malformed_cache_record_unavailable_on_collector_failure(self):
+        # Malformed records are absent, so a collector failure yields
+        # unavailable (not stale) for both facets.
+        caches["default"].set(LIBRARIES_CACHE_KEY, {"fetched_at": timezone.now()})
+        caches["default"].set(REVIEW_STATUSES_CACHE_KEY, "not-a-record")
+        with patch(
+            "bilbyui.services.gwflow.get_es_client",
+            side_effect=elasticsearch.exceptions.ConnectionError("down"),
+        ):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": [], "state": "unavailable"})
+        self.assertEqual(options["review_statuses"], {"values": [], "state": "unavailable"})
+
+    def test_valid_fresh_record_ok_without_recollect(self):
+        # Guard against over-correcting: a valid {values, fetched_at} record
+        # with a fresh timestamp must be returned as ok without re-collecting.
+        caches["default"].set(
+            LIBRARIES_CACHE_KEY,
+            {"values": ["fresh-lib"], "fetched_at": timezone.now()},
+        )
+        caches["default"].set(
+            REVIEW_STATUSES_CACHE_KEY,
+            {"values": ["fresh-status"], "fetched_at": timezone.now()},
+        )
+        with patch("bilbyui.services.gwflow.get_es_client") as mock_get_es_client:
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": ["fresh-lib"], "state": "ok"})
+        self.assertEqual(options["review_statuses"], {"values": ["fresh-status"], "state": "ok"})
+        mock_get_es_client.assert_not_called()
+
+    def test_failure_and_unavailable_never_written_to_cache(self):
+        with patch(
+            "bilbyui.services.gwflow.get_es_client",
+            side_effect=elasticsearch.exceptions.ConnectionError("down"),
+        ):
+            list_gwflow_filter_options()
+
+        self.assertIsNone(caches["default"].get(LIBRARIES_CACHE_KEY))
+        self.assertIsNone(caches["default"].get(REVIEW_STATUSES_CACHE_KEY))
+
+
+class TestCollectOptions(BilbyTestCase):
     def setUp(self):
         super().setUp()
         self.user = self.create_user(id=300, name="Collect User", primary_email="collect@example.com")
-        self._counter = 0
 
-    def _create(self, libraries, **kwargs):
-        self._counter += 1
-        return GWFlowJob.objects.create(
-            sname=f"S2003{self._counter}a",
-            user=self.user,
-            ligo_only=False,
-            libraries=libraries,
-            **kwargs,
-        )
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_collect_library_options_uses_gwcloud_field_and_visibility(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = _agg_response("libraries", ["a-lib", "b-lib"])
 
-    def test_str_branch(self):
-        self._create(libraries="single-lib")
+        result = _collect_library_options()
 
-        self.assertEqual(_collect_library_options(), ["single-lib"])
+        self.assertEqual(result, ["a-lib", "b-lib"])
+        call = mock_client.search.call_args
+        self.assertEqual(call.kwargs["aggs"]["libraries"]["terms"]["field"], "_gwcloud.libraries")
+        filters = call.kwargs["query"]["bool"]["filter"]
+        self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
+        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
 
-    def test_list_branch(self):
-        self._create(libraries=["b-lib", "a-lib"])
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_collect_review_status_options_uses_gwcloud_field_and_visibility(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = _agg_response("review_statuses", ["approved"])
 
-        self.assertEqual(_collect_library_options(), ["a-lib", "b-lib"])
+        result = _collect_review_status_options()
 
-    def test_tuple_branch(self):
-        self._create(libraries=("b-lib", "a-lib"))
+        self.assertEqual(result, ["approved"])
+        call = mock_client.search.call_args
+        self.assertEqual(call.kwargs["aggs"]["review_statuses"]["terms"]["field"], "_gwcloud.reviewStatuses")
+        self.assertEqual(call.kwargs["aggs"]["review_statuses"]["terms"]["size"], 50)
+        filters = call.kwargs["query"]["bool"]["filter"]
+        self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
+        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
 
-        self.assertEqual(_collect_library_options(), ["a-lib", "b-lib"])
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_collect_review_status_options_empty_buckets_returns_empty_list(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = _agg_response("review_statuses", [])
 
-    def test_list_branch_skips_falsy_elements(self):
-        self._create(libraries=["real-lib", "", None])
-
-        self.assertEqual(_collect_library_options(), ["real-lib"])
-
-    def test_other_type_branch(self):
-        self._create(libraries=123)
-
-        self.assertEqual(_collect_library_options(), ["123"])
-
-    def test_empty_value_skipped(self):
-        self._create(libraries="")
-        self._create(libraries=[])
-
-        self.assertEqual(_collect_library_options(), [])
+        self.assertEqual(_collect_review_status_options(), [])
