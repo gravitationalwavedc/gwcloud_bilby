@@ -625,7 +625,7 @@ class FakeGWFlowES:
             return self._query_string_matches(doc, clause["query_string"]["query"])
         if "bool" in clause:
             return self._matches_bool(doc, clause["bool"])
-        return True
+        raise NotImplementedError(f"Unsupported query clause in FakeGWFlowES: {clause!r}")
 
     def _matches_bool(self, doc, bool_q):
         for key in ("must", "filter"):

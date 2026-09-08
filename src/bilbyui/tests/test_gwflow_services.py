@@ -942,21 +942,77 @@ class TestGWFlowFilterOptions(BilbyTestCase):
         self.assertEqual(options["review_statuses"], {"values": ["b"], "state": "ok"})
         self.assertEqual(mock_client.search.call_count, 2)
 
-    def test_legacy_plain_list_cache_tolerated(self):
-        # Old format: a plain list of values with no {values, fetched_at} record.
+    def test_legacy_plain_list_cache_refreshes_through_collector(self):
+        # Old format: a plain list of values with no {values, fetched_at}
+        # record. It carries no trustworthy timestamp, so it must NOT be
+        # returned as a fresh ok result; instead it refreshes through the
+        # normal collector and the cache is rewritten to the new format.
         caches["default"].set(LIBRARIES_CACHE_KEY, ["legacy-lib-a", "legacy-lib-b"])
-        caches["default"].set(REVIEW_STATUSES_CACHE_KEY, ["legacy-status"])
+        mock_client = self._mock_es(libraries=["fresh-lib"])
+        with patch("bilbyui.services.gwflow.get_es_client", return_value=mock_client):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": ["fresh-lib"], "state": "ok"})
+        record = caches["default"].get(LIBRARIES_CACHE_KEY)
+        self.assertEqual(record["values"], ["fresh-lib"])
+        self.assertIn("fetched_at", record)
+        self.assertEqual(self._agg_call(mock_client, "libraries") is not None, True)
+
+    def test_legacy_plain_list_cache_unavailable_on_collector_failure(self):
+        # A legacy plain-list record is treated as absent: on collector
+        # failure it yields unavailable, never stale (no trustworthy data).
+        caches["default"].set(LIBRARIES_CACHE_KEY, ["legacy-lib-a", "legacy-lib-b"])
         with patch(
             "bilbyui.services.gwflow.get_es_client",
             side_effect=elasticsearch.exceptions.ConnectionError("down"),
         ):
             options = list_gwflow_filter_options()
 
-        self.assertEqual(
-            options["libraries"],
-            {"values": ["legacy-lib-a", "legacy-lib-b"], "state": "ok"},
+        self.assertEqual(options["libraries"], {"values": [], "state": "unavailable"})
+
+    def test_malformed_cache_record_treated_as_absent(self):
+        # A dict without "values" and a non-list non-dict record are both
+        # malformed and must be treated as absent (refresh through collector).
+        caches["default"].set(LIBRARIES_CACHE_KEY, {"fetched_at": timezone.now()})
+        caches["default"].set(REVIEW_STATUSES_CACHE_KEY, "not-a-record")
+        mock_client = self._mock_es(libraries=["fresh-lib"], review_statuses=["fresh-status"])
+        with patch("bilbyui.services.gwflow.get_es_client", return_value=mock_client):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": ["fresh-lib"], "state": "ok"})
+        self.assertEqual(options["review_statuses"], {"values": ["fresh-status"], "state": "ok"})
+
+    def test_malformed_cache_record_unavailable_on_collector_failure(self):
+        # Malformed records are absent, so a collector failure yields
+        # unavailable (not stale) for both facets.
+        caches["default"].set(LIBRARIES_CACHE_KEY, {"fetched_at": timezone.now()})
+        caches["default"].set(REVIEW_STATUSES_CACHE_KEY, "not-a-record")
+        with patch(
+            "bilbyui.services.gwflow.get_es_client",
+            side_effect=elasticsearch.exceptions.ConnectionError("down"),
+        ):
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": [], "state": "unavailable"})
+        self.assertEqual(options["review_statuses"], {"values": [], "state": "unavailable"})
+
+    def test_valid_fresh_record_ok_without_recollect(self):
+        # Guard against over-correcting: a valid {values, fetched_at} record
+        # with a fresh timestamp must be returned as ok without re-collecting.
+        caches["default"].set(
+            LIBRARIES_CACHE_KEY,
+            {"values": ["fresh-lib"], "fetched_at": timezone.now()},
         )
-        self.assertEqual(options["review_statuses"], {"values": ["legacy-status"], "state": "ok"})
+        caches["default"].set(
+            REVIEW_STATUSES_CACHE_KEY,
+            {"values": ["fresh-status"], "fetched_at": timezone.now()},
+        )
+        with patch("bilbyui.services.gwflow.get_es_client") as mock_get_es_client:
+            options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"], {"values": ["fresh-lib"], "state": "ok"})
+        self.assertEqual(options["review_statuses"], {"values": ["fresh-status"], "state": "ok"})
+        mock_get_es_client.assert_not_called()
 
     def test_failure_and_unavailable_never_written_to_cache(self):
         with patch(

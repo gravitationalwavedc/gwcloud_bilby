@@ -66,13 +66,11 @@ def _collect_review_status_options():
 def _parse_cache_record(record):
     """Normalise a cached filter-option record to (values, fetched_at).
 
-    Tolerates legacy plain-list records (the old format) by treating them as a
-    fresh result. Returns (None, None) when the record is absent or malformed.
+    Returns (None, None) when the record is absent, malformed, or lacks a
+    trustworthy fetch timestamp.
     """
     if record is None:
         return None, None
-    if isinstance(record, list):
-        return record, timezone.now()
     if isinstance(record, dict) and "values" in record:
         return record.get("values"), record.get("fetched_at")
     return None, None
