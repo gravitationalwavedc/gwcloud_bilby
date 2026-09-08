@@ -464,7 +464,7 @@ class TestListUserJobsStateFlag(BilbyTestCase):
 # task-5: view failure-branch tests (issue #50)
 # ============================================================================
 class TestGWFlowMetadataFailureBranch(BilbyTestCase):
-    """gwflow_job_metadata_partial 'down' branch renders the error state partial
+    """gwflow_job_metadata 'down' branch renders the error state partial
     IN PLACE with the correct retry_url/retry_target and a single announcement."""
 
     def setUp(self):
@@ -478,7 +478,7 @@ class TestGWFlowMetadataFailureBranch(BilbyTestCase):
 
     @patch("bilbyui.views.get_superevent", return_value=(None, "down"))
     def test_down_renders_error_state_with_retry(self, mock_get_superevent):
-        response = self.client.get(self.url)
+        response = self.client.get(self.url, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
         mock_get_superevent.assert_called_once_with(self.job.sname)
@@ -493,14 +493,14 @@ class TestGWFlowMetadataFailureBranch(BilbyTestCase):
             response,
             f'hx-get="{reverse("bilbyui:gwflow_job_metadata", args=[self.job.sname])}"',
         )
-        self.assertContains(response, 'hx-target="#metadata-pane"')
+        self.assertContains(response, 'hx-target="#detail-pane"')
         self.assertContains(response, "Retry")
         self.assertEqual(_live_region_count(response.content.decode()), 1)
 
 
 class TestGWFlowHistoryFailureBranch(BilbyTestCase):
-    """gwflow_job_history_partial 'down' branch renders the error state partial
-    with retry re-requesting the history URL into #history-pane."""
+    """gwflow_job_history 'down' branch renders the error state partial
+    with retry re-requesting the history URL into #detail-pane."""
 
     def setUp(self):
         self.ligo_user = self.create_user(
@@ -513,7 +513,7 @@ class TestGWFlowHistoryFailureBranch(BilbyTestCase):
 
     @patch("bilbyui.views.get_versions", return_value=(None, "down"))
     def test_down_renders_error_state_with_history_retry(self, mock_get_versions):
-        response = self.client.get(self.url)
+        response = self.client.get(self.url, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
         mock_get_versions.assert_called_once_with(self.job.sname)
@@ -528,7 +528,7 @@ class TestGWFlowHistoryFailureBranch(BilbyTestCase):
             response,
             f'hx-get="{reverse("bilbyui:gwflow_job_history", args=[self.job.sname])}"',
         )
-        self.assertContains(response, 'hx-target="#history-pane"')
+        self.assertContains(response, 'hx-target="#detail-pane"')
         self.assertContains(response, "Retry")
         self.assertEqual(_live_region_count(response.content.decode()), 1)
 

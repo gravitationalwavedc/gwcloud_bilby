@@ -29,22 +29,28 @@ class TestGWFlowDetailZeroHistoryRequests(BilbyTestCase):
 
     @mock.patch("bilbyui.views.get_versions")
     @mock.patch("bilbyui.views.get_version")
+    @mock.patch("bilbyui.views.get_superevent", return_value=({}, "live"))
     def test_detail_page_makes_zero_history_portal_requests(
         self,
+        mock_get_superevent,
         mock_get_version,
         mock_get_versions,
     ):
-        response = self.client.get(reverse("bilbyui:gwflow_job_detail", args=[self.job.sname]))
+        # The base URL redirects to the metadata section; the metadata pane must
+        # not trigger any history portal requests.
+        response = self.client.get(
+            reverse("bilbyui:gwflow_job_detail", args=[self.job.sname]),
+            follow=True,
+        )
 
         self.assertEqual(response.status_code, 200)
         mock_get_versions.assert_not_called()
         mock_get_version.assert_not_called()
         self.assertContains(
             response,
-            f'hx-get="{reverse("bilbyui:gwflow_job_history", args=[self.job.sname])}"',
+            f'href="{reverse("bilbyui:gwflow_job_history", args=[self.job.sname])}"',
         )
-        self.assertContains(response, 'hx-trigger="click once from:#history-tab"')
-        self.assertContains(response, 'id="history-pane"')
+        self.assertNotContains(response, 'id="history-pane"')
 
 
 class TestGWFlowJobHistoryPartial(BilbyTestCase):
@@ -81,7 +87,7 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         ),
     )
     def test_timeline_rendering_live_versions_with_current_marker(self, mock_get_versions):
-        response = self.client.get(self.url)
+        response = self.client.get(self.url, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
         mock_get_versions.assert_called_once_with(self.job.sname)
@@ -128,7 +134,7 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         job = _create_job(self.ligo_user, sname="S230602ag", current_history_id="")
         url = reverse("bilbyui:gwflow_job_history", args=[job.sname])
 
-        response = self.client.get(url)
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<span class="badge badge-primary">current</span>')
@@ -145,15 +151,17 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
             "stale",
         ),
     )
-    def test_stale_timeline_shows_cached_notice(self, mock_get_versions):
+    def test_stale_timeline_shows_context_strip_notice(self, mock_get_versions):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Showing cached copy.")
+        self.assertContains(response, "The cached copy of the current version is shown.")
+        self.assertContains(response, "Refresh")
+        self.assertContains(response, 'class="async-notice"')
 
     @mock.patch("bilbyui.views.get_versions", return_value=(None, "down"))
     def test_down_renders_error_state_with_history_retry(self, mock_get_versions):
-        response = self.client.get(self.url)
+        response = self.client.get(self.url, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "async-error")
@@ -167,14 +175,14 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
             response,
             f'hx-get="{reverse("bilbyui:gwflow_job_history", args=[self.job.sname])}"',
         )
-        self.assertContains(response, 'hx-target="#history-pane"')
+        self.assertContains(response, 'hx-target="#detail-pane"')
         self.assertContains(response, "Retry")
         self.assertNotContains(response, "<!doctype html>")
         self.assertEqual(response.content.decode().count('role="alert"'), 1)
 
     @mock.patch("bilbyui.views.get_versions", return_value=([], "live"))
     def test_empty_versions_list(self, mock_get_versions):
-        response = self.client.get(self.url)
+        response = self.client.get(self.url, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No history available.")
@@ -227,11 +235,16 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
             "stale",
         ),
     )
-    def test_stale_version_shows_cached_notice(self, mock_get_version):
+    def test_stale_version_renders_payload_without_cached_notice(self, mock_get_version):
+        # The stale notice now lives in the full-page context strip; the version
+        # fragment renders the payload without a duplicate cached-copy note.
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Showing cached copy.")
+        self.assertContains(response, "E99")
+        self.assertContains(response, "pycbc")
+        self.assertNotContains(response, "Showing cached copy")
+        self.assertNotContains(response, "<!doctype html>")
 
     @mock.patch("bilbyui.views.get_version", return_value=(None, "down"))
     def test_down_renders_error_state_with_version_retry(self, mock_get_version):

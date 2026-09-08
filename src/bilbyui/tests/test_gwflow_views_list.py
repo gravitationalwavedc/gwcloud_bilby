@@ -881,6 +881,20 @@ class TestGWFlowResultsSemantics(BilbyTestCase):
 
     def setUp(self):
         self.authenticate()
+        # Deterministic filter options: in a no-Elasticsearch test env the real
+        # service reports degraded (unavailable) facets, which renders the
+        # degraded-facet role=alert as a second visible live region and makes
+        # the one-per-branch budget environment/order-dependent. Mock healthy
+        # options so the live-region assertions are stable (FRONTEND-BIBLE §5).
+        filter_options_patcher = mock.patch(
+            "bilbyui.views.list_gwflow_filter_options",
+            return_value={
+                "libraries": {"values": ["lib1", "lib2"], "state": "ok"},
+                "review_statuses": {"values": ["approved", "reviewed"], "state": "ok"},
+            },
+        )
+        self.addCleanup(filter_options_patcher.stop)
+        filter_options_patcher.start()
 
     def _render_disclosure(self, node):
         return get_template("bilbyui/_event_id_disclosure.html").render({"node": node})

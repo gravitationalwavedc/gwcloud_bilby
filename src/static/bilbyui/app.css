@@ -10148,6 +10148,125 @@ a.text-dark:hover, a.text-dark:focus {
     margin-bottom: 0.25rem;
   }
 }
+.section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.section-nav-item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.section-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  padding: 0.5rem 1rem;
+  border: 1px solid #afbacb;
+  border-radius: 50rem;
+  color: #02244b;
+  font-weight: 500;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.section-nav-link:hover, .section-nav-link:focus {
+  text-decoration: none;
+  color: #043967;
+  background-color: #eff2f6;
+  border-color: #6c819d;
+}
+.section-nav-link:focus-visible {
+  outline: 2px solid #059cfa;
+  outline-offset: 2px;
+}
+.section-nav-link[aria-current=page] {
+  font-weight: 700;
+  border-width: 2px;
+  border-color: #035996;
+  color: #043967;
+  background-color: #e6f5fe;
+}
+
+.context-breadcrumb {
+  margin-bottom: 1rem;
+}
+.context-breadcrumb .breadcrumb {
+  background-color: transparent;
+  padding: 0;
+  margin-bottom: 0;
+}
+.context-breadcrumb .breadcrumb-item {
+  font-size: 0.875rem;
+}
+.context-breadcrumb .breadcrumb-item a {
+  color: rgb(30.5070145213%, 17.3024858479%, 5.7674952826%);
+}
+.context-breadcrumb .breadcrumb-item a:hover, .context-breadcrumb .breadcrumb-item a:focus {
+  color: rgb(22.0969726803%, 12.5326113709%, 4.1775371236%);
+  text-decoration: underline;
+}
+.context-breadcrumb .breadcrumb-item.active {
+  font-weight: 600;
+  color: #44546a;
+}
+
+.context-strip {
+  margin-bottom: 1rem;
+}
+
+.context-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.context-identity h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  overflow-wrap: anywhere;
+}
+
+.context-identity-item {
+  overflow-wrap: anywhere;
+}
+
+.context-provenance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  color: #44546a;
+  font-size: 0.875rem;
+}
+
+.context-provenance-item + .context-provenance-item::before {
+  content: "·";
+  margin: 0 0.5rem;
+  color: #6c819d;
+}
+
+.prose {
+  max-width: 65ch;
+}
+
+.detail-shell {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.detail-shell .card {
+  max-width: 100%;
+  min-width: 0;
+}
+
 .edit-button {
   background: none;
   border: none;
