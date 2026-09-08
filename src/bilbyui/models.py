@@ -1,4 +1,3 @@
-import contextlib
 import datetime
 import json
 import logging
@@ -467,10 +466,14 @@ class BilbyJob(models.Model):
         def _remove_after_commit():
             es = get_es_client()
 
-            # Swallow NotFoundError so deleting a job whose ES document is missing
-            # (e.g. a legacy job that was never indexed) doesn't abort the DB delete
-            with contextlib.suppress(elasticsearch.NotFoundError):
+            try:
                 es.delete(index=settings.ELASTIC_SEARCH_INDEX, id=job_id)
+            except elasticsearch.NotFoundError:
+                # Swallow NotFoundError so deleting a job whose ES document is missing
+                # (e.g. a legacy job that was never indexed) doesn't abort the DB delete
+                pass
+            except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError):
+                logger.exception("Failed to remove Elasticsearch document for bilby job %s", job_id)
 
         transaction.on_commit(_remove_after_commit, using=db_alias)
 

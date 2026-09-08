@@ -632,6 +632,69 @@ class TestElasticSearch(BilbyTestCase):
         # The request still succeeds (no exception was raised)
         self.assertIsNotNone(job.id)
 
+    @mock.patch(
+        "elasticsearch.Elasticsearch.delete",
+        side_effect=elasticsearch.TransportError("boom"),
+    )
+    @mock.patch("elasticsearch.Elasticsearch.update")
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    @mock.patch("bilbyui.models.logger.exception")
+    def test_delete_es_transport_failure_is_logged_and_suppressed(
+        self, logger_exception_mock, lookup_users_mock, elasticsearch_update_mock, elasticsearch_delete_mock
+    ):
+        """
+        Test that a post-commit elastic search delete transport failure is logged and suppressed,
+        so the request still succeeds and the database deletion is preserved
+        """
+        with self.captureOnCommitCallbacks(execute=True):
+            job = BilbyJob.objects.create(
+                user_id=self.user.id,
+                name="Test1",
+                description="first job",
+                job_controller_id=2,
+                private=False,
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+
+        job_id = job.id
+        elasticsearch_delete_mock.reset_mock()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            job.delete()
+
+        # The job should no longer exist in the database
+        self.assertFalse(BilbyJob.objects.filter(id=job_id).exists())
+
+        # The delete should have been attempted once and the transport failure logged and suppressed
+        elasticsearch_delete_mock.assert_called_once()
+        logger_exception_mock.assert_called_once()
+
+    @mock.patch("elasticsearch.Elasticsearch.index")
+    @mock.patch("elasticsearch.Elasticsearch.delete")
+    @mock.patch("elasticsearch.Elasticsearch.update")
+    def test_save_then_delete_preserves_callback_order(self, update_mock, delete_mock, index_mock):
+        """
+        Test that a save followed by a delete in the same transaction executes the delete callback
+        and skips the stale update (the row is gone at commit time)
+        """
+        with self.captureOnCommitCallbacks(execute=True):
+            job = BilbyJob.objects.create(
+                user_id=self.user.id,
+                name="Test1",
+                description="first job",
+                job_controller_id=2,
+                private=False,
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+            job.delete()
+
+        # The stale update callback must skip (row gone at commit) - no update or index write
+        update_mock.assert_not_called()
+        index_mock.assert_not_called()
+
+        # The delete callback must run exactly once
+        delete_mock.assert_called_once()
+
 
 @override_settings(IGNORE_ELASTIC_SEARCH=False)
 class TestNonAtomicSaveSynchronous(TransactionTestCase):
