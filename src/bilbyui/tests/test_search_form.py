@@ -227,24 +227,27 @@ class TestSearchHelpPartials(BilbyTestCase):
         self.assertIn('id="search-help"', html)
         self.assertIn('class="collapse mt-2"', html)
         for field in (
-            "sname",
-            "libraries",
-            "schemaVersion",
-            "analyses.uid",
-            "analyses.software",
-            "analyses.waveform",
-            "analyses.analysts",
-            "analyses.reviewers",
-            "analyses.runStatus",
-            "analyses.reviewStatus",
-            "gracedb.uids",
-            "gracedb.instruments",
-            "eventId.triggerId",
+            "_gwcloud.sname",
+            "_gwcloud.libraries",
+            "_gwcloud.reviewStatuses",
+            "_gwcloud.eventTriggerId",
+            "metadata.ParameterEstimation.results.inference_software",
+            "metadata.ParameterEstimation.results.waveform_approximant",
+            "metadata.GraceDB.Events.uid",
+            "metadata.GraceDB.instruments",
         ):
             self.assertIn(f"<code>{field}</code>", html)
-        self.assertIn("sname:S2306*", html)
-        for abbreviation in ("UID", "PE", "TGR", "GraceDB", "CBC"):
+        self.assertIn("<code>_gwcloud.sname:S2306*</code>", html)
+        for abbreviation in ("UID", "GraceDB", "CBC"):
             self.assertIn(f"<code>{abbreviation}</code>", html)
+        for alias in (
+            "analyses.software",
+            "analyses.waveform",
+            "gracedb.uids",
+            "eventId.triggerId",
+            "schemaVersion",
+        ):
+            self.assertNotIn(alias, html)
 
     def test_sync_script_defaults_time_range_to_all(self):
         html = get_template("bilbyui/_search_state_sync.html").render({})
@@ -306,7 +309,7 @@ class TestHelpOnAllSurfaces(BilbyTestCase):
         response = self.client.get(reverse("bilbyui:gwflow_jobs"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="search-help"')
-        self.assertContains(response, "<code>analyses.waveform</code>")
+        self.assertContains(response, "<code>_gwcloud.sname</code>")
         self.assertContains(response, 'hx-sync="#jobs-search-region:replace"')
 
     @mock.patch("bilbyui.views.list_user_jobs", return_value=_user_jobs_ok_result())
