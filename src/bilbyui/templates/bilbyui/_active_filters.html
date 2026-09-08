@@ -1,7 +1,7 @@
 {# Removable active-filter chips + Reset all (issue #51 UX-4). Rendered only when >=1 filter is active; lives inside the swapped list region so it stays consistent with the list. Contract: active_filters (list of {label, remove_label, remove_url, param_name}), reset_url, list_target_id. All requests sync through #jobs-search-region (shared with the form and pagination) so only one list request is in flight at a time. #}
 {# #}
 {# Each chip carries machine-readable param_name metadata. On chip activation the #}
-{# corresponding form control is reset to its default (targeted action-specific #)
+{# corresponding form control is reset to its default (targeted action-specific #}
 {# reset, issue #75 UX-17) so a subsequent filter change does not reintroduce a #}
 {# removed value. Reset all resets every represented control. The reset is a #}
 {# synchronous user-action update (delegated, because chips live inside the #}
