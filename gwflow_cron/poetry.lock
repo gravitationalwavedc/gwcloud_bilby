@@ -455,13 +455,13 @@ docs = ["Sphinx (>=5.1.1,<6.0.0)", "sphinx-rtd-theme (>=1.0.0,<2.0.0)"]
 
 [[package]]
 name = "gwdc-python"
-version = "1.0.0"
+version = "1.0.1"
 description = "API for GWDC modules"
 optional = false
 python-versions = "<4.0,>=3.7"
 files = [
-    {file = "gwdc_python-1.0.0-py3-none-any.whl", hash = "sha256:bbbed37225676db18959f74d937e60fb3c14f55ca5bbef3aa167559bb23ca5ea"},
-    {file = "gwdc_python-1.0.0.tar.gz", hash = "sha256:bb236b207923cad1895a7e1f33455c998825790160ab39de7365810fc30a6f28"},
+    {file = "gwdc_python-1.0.1-py3-none-any.whl", hash = "sha256:ff0e28d5f81dd9e1f988f1c8f30d94f6659c5dd026180eb2e8a3f0d2533d6575"},
+    {file = "gwdc_python-1.0.1.tar.gz", hash = "sha256:09d3dff74d69bdd57ea0e31829c04f2fa22639b139e27a632c27812309c5f7f1"},
 ]
 
 [package.dependencies]
