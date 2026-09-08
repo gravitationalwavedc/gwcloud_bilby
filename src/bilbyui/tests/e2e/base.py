@@ -229,3 +229,87 @@ class GWFlowFilesPageBase(AsyncE2ETestCase):
 
     def detail_url(self) -> str:
         return f"{self.live_server_url}{reverse('bilbyui:gwflow_job_detail', args=[self.sname])}"
+
+
+class GWFlowDetailShellBase(AsyncE2ETestCase):
+    """
+    A logged-in browser page open on the GWFlow detail Metadata section with
+    deterministic pane content.
+
+    ``get_superevent`` / ``get_versions`` are patched at the view layer (the
+    patch is visible to the live-server thread because
+    ``StaticLiveServerTestCase`` runs it in a thread of the same process) so
+    the metadata, files and history panes render distinct, stable content that
+    history-restoration and axe flows can assert on.
+    """
+
+    user = None
+    page = None
+    sname = "S230601ag"
+    _patchers = ()
+
+    def _metadata_payload(self):
+        return ({"sname": self.sname}, "live")
+
+    def _versions(self):
+        return (
+            [
+                {
+                    "commit_sha": "1111222233334444555566667777888899990000",
+                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "schema_version": "3",
+                    "is_current": True,
+                }
+            ],
+            "live",
+        )
+
+    async def asetUp(self):
+        self.user = await sync_to_async(self._create_user)()
+        await self.login(self.user)
+        self._patchers = (
+            mock.patch("bilbyui.views.get_superevent", side_effect=lambda sname: self._metadata_payload()),
+            mock.patch("bilbyui.views.get_versions", side_effect=lambda sname: self._versions()),
+        )
+        for patcher in self._patchers:
+            patcher.start()
+        self.addCleanup(self._stop_patchers)
+        await sync_to_async(self._create_fixtures)()
+        self.page = await self.browser_context.new_page()
+        await self.page.goto(self.metadata_url())
+
+    async def aTearDown(self):
+        if self.page is not None:
+            await self.page.close()
+            self.page = None
+
+    def _stop_patchers(self):
+        for patcher in self._patchers:
+            patcher.stop()
+
+    def _create_user(self):
+        return BilbyTestCase.create_user(
+            id=10,
+            name="e2e gwflow shell",
+            primary_email="e2e-gwflow-shell@example.com",
+            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"],
+        )
+
+    def _create_fixtures(self):
+        job = GWFlowJob.objects.create(
+            sname=self.sname,
+            user=self.user,
+            libraries=["cbc-workflow-o4a"],
+            schema_version="v2",
+        )
+        GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="analysis-1",
+            path="outdir/a.h5",
+            file_name="a.h5",
+            file_size=1024,
+            uploaded=True,
+        )
+
+    def metadata_url(self) -> str:
+        return f"{self.live_server_url}{reverse('bilbyui:gwflow_job_metadata', args=[self.sname])}"

@@ -14,8 +14,8 @@ Enter navigation moves focus to the heading after a settled swap.
 
 from django.urls import reverse
 
-from bilbyui.tests.e2e.base import GWFlowFilesPageBase
-from bilbyui.tests.e2e.utils import async_e2e_test
+from bilbyui.tests.e2e.base import GWFlowDetailShellBase, GWFlowFilesPageBase
+from bilbyui.tests.e2e.utils import async_e2e_test, load_axe, run_axe
 
 META = 'document.getElementById("detail-heading")'
 ACTIVE = "document.activeElement"
@@ -86,3 +86,112 @@ class TestGWFlowDetailShellSwapPersistence(GWFlowFilesPageBase):
         self.assertEqual(await page.title(), _title("Files"))
         self.assertEqual(await self._heading_text(), "Files")
         self.assertTrue(await self._skeleton_present())
+
+
+class TestGWFlowDetailShellHistoryRestore(GWFlowDetailShellBase):
+    """Browser back/forward/refresh restoration of the active section (issue
+    #53 test plan: popstate Playwright flow; review finding T-2).
+
+    Exercises the production ``popstate`` / ``htmx:historyRestore`` path: URL,
+    active ``aria-current``, persistent heading and pane content must all
+    restore together, and history restoration must never move focus (focus
+    rule D).
+    """
+
+    async def _wait_heading(self, section: str) -> None:
+        await self.page.wait_for_function(
+            "document.getElementById('detail-heading') && "
+            f"document.getElementById('detail-heading').textContent.trim() === '{section}'"
+        )
+
+    @async_e2e_test
+    async def test_back_forward_refresh_restores_section(self):
+        page = self.page
+        meta_link = page.locator('a[data-gwflow-section][href*="/metadata/"]')
+        files_link = page.locator('a[data-gwflow-section][href*="/files/"]')
+        hist_link = page.locator('a[data-gwflow-section][href*="/history/"]')
+
+        # Landing: server deep link on /metadata/.
+        await self._wait_heading("Metadata")
+        self.assertTrue(page.url.endswith("/metadata/"))
+        self.assertEqual(await meta_link.get_attribute("aria-current"), "page")
+        self.assertEqual(await page.title(), _title("Metadata"))
+
+        # Metadata -> Files (push), then Files -> History (push).
+        await files_link.click()
+        await self._wait_heading("Files")
+        self.assertTrue(page.url.endswith("/files/"))
+        self.assertEqual(await files_link.get_attribute("aria-current"), "page")
+        self.assertIsNone(await meta_link.get_attribute("aria-current"))
+        await page.wait_for_selector(".gw-analysis-block")
+
+        await hist_link.click()
+        await self._wait_heading("History")
+        self.assertTrue(page.url.endswith("/history/"))
+        self.assertEqual(await hist_link.get_attribute("aria-current"), "page")
+        self.assertEqual(await page.title(), _title("History"))
+
+        # Back -> Files restored (URL, heading, aria-current, pane content).
+        await page.go_back()
+        await self._wait_heading("Files")
+        self.assertTrue(page.url.endswith("/files/"))
+        self.assertEqual(await files_link.get_attribute("aria-current"), "page")
+        self.assertIsNone(await hist_link.get_attribute("aria-current"))
+        await page.wait_for_selector(".gw-analysis-block")
+        # No automatic focus move during history restoration (focus rule D).
+        self.assertFalse(
+            await page.evaluate("document.activeElement && document.activeElement.id === 'detail-heading'"),
+            "history restoration must not move focus to the heading",
+        )
+
+        # Forward -> History restored.
+        await page.go_forward()
+        await self._wait_heading("History")
+        self.assertTrue(page.url.endswith("/history/"))
+        self.assertEqual(await hist_link.get_attribute("aria-current"), "page")
+        self.assertFalse(
+            await page.evaluate("document.activeElement && document.activeElement.id === 'detail-heading'"),
+            "history restoration must not move focus to the heading",
+        )
+
+        # Refresh lands on the current section (server-side deep link).
+        await page.reload()
+        await self._wait_heading("History")
+        self.assertTrue(page.url.endswith("/history/"))
+        self.assertEqual(await hist_link.get_attribute("aria-current"), "page")
+
+
+class TestGWFlowDetailShellAxe(GWFlowDetailShellBase):
+    """axe scan of the changed detail-shell region (review finding AC-3).
+
+    The scan is scoped to the shell (breadcrumb, context strip, section nav,
+    pane) rather than the whole document: app-shell/theme contrast debt is
+    tracked outside component suites.
+    """
+
+    AXE_SCOPE_SELECTOR = ".detail-shell"
+
+    async def _wait_heading(self, section: str) -> None:
+        await self.page.wait_for_function(
+            "document.getElementById('detail-heading') && "
+            f"document.getElementById('detail-heading').textContent.trim() === '{section}'"
+        )
+
+    @async_e2e_test
+    async def test_detail_shell_zero_serious_critical_axe(self):
+        page = self.page
+        await self._wait_heading("Metadata")
+        await load_axe(page)
+        violations = await run_axe(page, self.AXE_SCOPE_SELECTOR)
+        blocking = [v for v in violations if v.get("impact") in ("serious", "critical")]
+        detail = "\n".join(
+            f"- {v['id']} ({v.get('impact')}): "
+            + "; ".join(" > ".join(str(part) for part in node["target"]) for node in v["nodes"])
+            for v in blocking
+        )
+        self.assertEqual(
+            [],
+            blocking,
+            f"Expected zero serious/critical axe violations within "
+            f"'{self.AXE_SCOPE_SELECTOR}', found {len(blocking)}:\n{detail}",
+        )

@@ -364,12 +364,27 @@ class TestGWFlowSectionRoutes(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        # Current version short SHA appears exactly once (context strip only).
-        self.assertEqual(content.count("abcdef12"), 1)
-        # Current recorded timestamp appears exactly once (context strip only).
-        self.assertEqual(content.count("2026-08-10 12:34 UTC"), 1)
-        # Current schema version appears exactly once (context strip only).
-        self.assertEqual(content.count("v2"), 1)
+
+        # Design rule G: identify the current-context component (the context
+        # strip's provenance line) and assert exactly one triple inside it,
+        # rather than counting strings across the whole page.
+        strip_start = content.index('class="context-strip')
+        region_end = content.index('id="detail-region"')
+        strip_region = content[strip_start:region_end]
+        provenance_start = strip_region.index('class="context-provenance"')
+        provenance_region = strip_region[provenance_start:]
+
+        # Exactly one current-provenance triple (short SHA, recorded timestamp,
+        # schema version) inside the current-context component.
+        self.assertEqual(provenance_region.count("abcdef12"), 1)
+        self.assertEqual(provenance_region.count("2026-08-10 12:34 UTC"), 1)
+        self.assertEqual(provenance_region.count("v2"), 1)
+
+        # The pane (metadata cards) omits the current provenance entirely.
+        pane_region = content[content.index('id="detail-pane"') :]
+        self.assertNotIn("abcdef12", pane_region)
+        self.assertNotIn("2026-08-10 12:34 UTC", pane_region)
+        self.assertNotIn("v2", pane_region)
 
 
 class TestGWFlowJobVisibility(BilbyTestCase):

@@ -10207,10 +10207,11 @@ a.text-dark:hover, a.text-dark:focus {
   font-size: 0.875rem;
 }
 .context-breadcrumb .breadcrumb-item a {
-  color: #d98236;
+  color: rgb(30.5070145213%, 17.3024858479%, 5.7674952826%);
 }
 .context-breadcrumb .breadcrumb-item a:hover, .context-breadcrumb .breadcrumb-item a:focus {
-  color: rgb(72.5572237263%, 41.1518582328%, 13.7172860776%);
+  color: rgb(22.0969726803%, 12.5326113709%, 4.1775371236%);
+  text-decoration: underline;
 }
 .context-breadcrumb .breadcrumb-item.active {
   font-weight: 600;
