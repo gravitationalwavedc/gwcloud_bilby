@@ -66,3 +66,10 @@ class TestPrepareArgsForDataInput(BilbyTestCase):
         prepare_args_for_data_input(args)
 
         self.assertEqual(args.idx, 3)
+
+    def test_leaves_existing_idx_unchanged_when_generation_seed_absent(self):
+        args = SimpleNamespace(idx=5)
+
+        prepare_args_for_data_input(args)
+
+        self.assertEqual(args.idx, 5)
