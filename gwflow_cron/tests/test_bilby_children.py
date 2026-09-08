@@ -13,7 +13,9 @@ except ImportError:
 import settings
 import state
 from bilby_children import (
+    StageError,
     _set_ini_label,
+    _tree_relative_target,
     _valid_file_ref,
     find_bilby_pe_analyses,
     make_archive,
@@ -1114,6 +1116,49 @@ class TestRecForHelper(unittest.TestCase):
         file_ref = {"path": "/data/x.h5", "md5_sum": None}
         result = rec_for(file_ref, "S1", "uid1")
         self.assertEqual(result["md5_sum"], "")
+
+
+class TestTreeRelativeTarget(unittest.TestCase):
+    def test_absolute_path_stripped_to_relative(self):
+        self.assertEqual(_tree_relative_target("/pe/config.ini"), "pe/config.ini")
+
+    def test_relative_path_returned_as_is(self):
+        self.assertEqual(_tree_relative_target("pe/config.ini"), "pe/config.ini")
+
+    def test_empty_path_raises(self):
+        with self.assertRaises(StageError):
+            _tree_relative_target("")
+        with self.assertRaises(StageError):
+            _tree_relative_target("/")
+
+    def test_nul_byte_raises(self):
+        with self.assertRaises(StageError):
+            _tree_relative_target("pe/config\x00.ini")
+
+    def test_parent_traversal_raises(self):
+        with self.assertRaises(StageError):
+            _tree_relative_target("../escape.ini")
+        with self.assertRaises(StageError):
+            _tree_relative_target("pe/../../escape.ini")
+
+    def test_reserved_top_level_data_raises(self):
+        with self.assertRaises(StageError):
+            _tree_relative_target("data/x.h5")
+
+    def test_reserved_top_level_result_raises(self):
+        with self.assertRaises(StageError):
+            _tree_relative_target("result/result.hdf5")
+
+    def test_reserved_top_level_results_page_raises(self):
+        with self.assertRaises(StageError):
+            _tree_relative_target("results_page/index.html")
+
+    def test_config_complete_ini_collision_raises(self):
+        with self.assertRaises(StageError):
+            _tree_relative_target("S1_config_complete.ini")
+
+    def test_valid_nested_path_returned(self):
+        self.assertEqual(_tree_relative_target("pe/extra/support.txt"), "pe/extra/support.txt")
 
 
 if __name__ == "__main__":
