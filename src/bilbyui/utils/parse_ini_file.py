@@ -107,16 +107,18 @@ def _degrade(value):
     """
     Build an explicit, non-round-trippable degradation envelope for an
     unknown exotic value rather than silently stringifying it.
+
+    The value is always the fixed placeholder: calling arbitrary
+    ``str(value)`` could persist sensitive internal state (credentials,
+    paths, private fields) into the database and search index, and default
+    object representations embed process-specific memory addresses that make
+    the persisted bytes non-deterministic across parses.
     """
-    try:
-        value_str = str(value)
-    except Exception:
-        value_str = _STRING_FALLBACK_PLACEHOLDER
     return {
         "__gwcloud_type__": "python.string_fallback",
         "__gwcloud_schema__": _GWCLOUD_SCHEMA,
         "python_type": _type_name(value),
-        "value": value_str,
+        "value": _STRING_FALLBACK_PLACEHOLDER,
         "round_trip": False,
     }
 

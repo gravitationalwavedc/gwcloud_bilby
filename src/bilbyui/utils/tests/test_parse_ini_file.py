@@ -233,11 +233,17 @@ class TestSafeJsonDumps(BilbyTestCase):
         self.assertEqual(reconstructed.m_nu.unit, cosmology.m_nu.unit)
 
     def test_unknown_exotic_top_level_degrades(self):
-        envelope = json.loads(safe_json_dumps(object()))
+        serialised = safe_json_dumps(object())
+        envelope = json.loads(serialised)
         self.assertEqual(envelope["__gwcloud_type__"], "python.string_fallback")
         self.assertEqual(envelope["__gwcloud_schema__"], 1)
         self.assertEqual(envelope["python_type"], "builtins.object")
+        self.assertEqual(envelope["value"], "<unserializable object>")
         self.assertFalse(envelope["round_trip"])
+        # Degradation must be deterministic: two independently allocated
+        # unsupported objects produce byte-identical persisted JSON (no
+        # process-specific memory addresses in the stored value).
+        self.assertEqual(serialised, safe_json_dumps(object()))
 
     def test_nested_meta_degradation_propagates(self):
         cosmology = FlatLambdaCDM(
