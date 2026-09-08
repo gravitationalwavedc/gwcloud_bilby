@@ -119,7 +119,10 @@ class GWFlowJobsPageBase(AsyncE2ETestCase):
             mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=self.gwflow_jobs_side_effect),
             mock.patch(
                 "bilbyui.views.list_gwflow_filter_options",
-                return_value={"libraries": ["lib1", "lib2"], "review_statuses": ["approved", "reviewed"]},
+                return_value={
+                    "libraries": {"values": ["lib1", "lib2"], "state": "ok"},
+                    "review_statuses": {"values": ["approved", "reviewed"], "state": "ok"},
+                },
             ),
         )
         for patcher in self._patchers:

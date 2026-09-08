@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta
 
 import elasticsearch
 from django.conf import settings
@@ -14,84 +15,110 @@ logger = logging.getLogger(__name__)
 
 LIBRARIES_CACHE_KEY = "gwflow_filter_libraries"
 REVIEW_STATUSES_CACHE_KEY = "gwflow_filter_review_statuses"
-FILTER_OPTIONS_TTL = 3600
-REVIEW_STATUS_FALLBACK = ["reviewed", "unreviewed", "pending", "approved"]
+FILTER_OPTIONS_TTL = 24 * 60 * 60
+FRESH_OPTIONS_TTL = 60 * 60
+
+_ES_ERRORS = (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError)
+
+# Centralised visibility/pruning clauses shared by result retrieval and both
+# facet aggregations so the field names cannot drift.
+_GWCLOUD_LIGO_ONLY_FILTER = {"term": {"_gwcloud.ligoOnly": False}}
+_GWCLOUD_PRUNED_FILTER = {"term": {"_gwcloud.isPruned": False}}
+
+
+def _public_visibility_filters():
+    """Public, non-pruned visibility clauses used by both facet aggregations."""
+    return [_GWCLOUD_PRUNED_FILTER, _GWCLOUD_LIGO_ONLY_FILTER]
 
 
 def _collect_library_options():
-    libraries = set()
-    for item in (
-        GWFlowJob.objects.filter(ligo_only=False, is_pruned=False)
-        .values_list("libraries", flat=True)
-        .iterator(chunk_size=2000)
-    ):
-        if not item:
-            continue
-        if isinstance(item, str):
-            libraries.add(item)
-        elif isinstance(item, (list, tuple)):
-            for lib in item:
-                if lib:
-                    libraries.add(str(lib))
-        else:
-            libraries.add(str(item))
-    return sorted(libraries, key=str.casefold)
+    es = get_es_client()
+    results = es.search(
+        index=settings.ELASTIC_SEARCH_GWFLOW_INDEX,
+        query={"bool": {"filter": _public_visibility_filters()}},
+        size=0,
+        aggs={
+            "libraries": {
+                "terms": {"field": "_gwcloud.libraries", "size": 50},
+            }
+        },
+    )
+    buckets = results.get("aggregations", {}).get("libraries", {}).get("buckets", [])
+    return [bucket.get("key") for bucket in buckets if isinstance(bucket, dict) and bucket.get("key")]
 
 
 def _collect_review_status_options():
-    es_errors = (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError)
-    try:
-        es = get_es_client()
-    except es_errors:
-        logger.exception("Failed to connect to Elasticsearch for review status aggregation")
-        return None
-
-    try:
-        results = es.search(
-            index=settings.ELASTIC_SEARCH_GWFLOW_INDEX,
-            q="isPruned:false AND ligoOnly:false",
-            size=0,
-            aggs={
-                "review_statuses": {
-                    "terms": {"field": "analyses.reviewStatus.keyword", "size": 50},
-                }
-            },
-        )
-    except es_errors:
-        logger.exception("Failed to aggregate review statuses from Elasticsearch")
-        return None
-
+    es = get_es_client()
+    results = es.search(
+        index=settings.ELASTIC_SEARCH_GWFLOW_INDEX,
+        query={"bool": {"filter": _public_visibility_filters()}},
+        size=0,
+        aggs={
+            "review_statuses": {
+                "terms": {"field": "_gwcloud.reviewStatuses", "size": 50},
+            }
+        },
+    )
     buckets = results.get("aggregations", {}).get("review_statuses", {}).get("buckets", [])
-    statuses = [bucket.get("key") for bucket in buckets if isinstance(bucket, dict) and bucket.get("key")]
-    if not statuses:
-        return None
-    return statuses
+    return [bucket.get("key") for bucket in buckets if isinstance(bucket, dict) and bucket.get("key")]
+
+
+def _parse_cache_record(record):
+    """Normalise a cached filter-option record to (values, fetched_at).
+
+    Tolerates legacy plain-list records (the old format) by treating them as a
+    fresh result. Returns (None, None) when the record is absent or malformed.
+    """
+    if record is None:
+        return None, None
+    if isinstance(record, list):
+        return record, timezone.now()
+    if isinstance(record, dict) and "values" in record:
+        return record.get("values"), record.get("fetched_at")
+    return None, None
+
+
+def _is_fresh(fetched_at):
+    if not isinstance(fetched_at, datetime):
+        return False
+    if fetched_at.tzinfo is None:
+        fetched_at = timezone.make_aware(fetched_at)
+    return timezone.now() - fetched_at <= timedelta(seconds=FRESH_OPTIONS_TTL)
+
+
+def _facet_options(cache_key, collect):
+    """Shared freshness/cache evaluator for one filter-option facet.
+
+    Returns {"values": [...], "state": "ok"|"stale"|"unavailable"}.
+    """
+    record = cache.get(cache_key)
+    cached_values, fetched_at = _parse_cache_record(record)
+
+    if cached_values is not None and _is_fresh(fetched_at):
+        return {"values": cached_values, "state": "ok"}
+
+    try:
+        values = collect()
+    except _ES_ERRORS:
+        logger.exception("Failed to refresh %s filter options from Elasticsearch", cache_key)
+        if cached_values is not None:
+            return {"values": cached_values, "state": "stale"}
+        return {"values": [], "state": "unavailable"}
+
+    cache.set(cache_key, {"values": values, "fetched_at": timezone.now()}, FILTER_OPTIONS_TTL)
+    return {"values": values, "state": "ok"}
 
 
 def list_gwflow_filter_options():
-    """Return the filter options for the GWFlow job list surface:
-    DB-driven libraries and ES-aggregated review statuses, both cached.
+    """Return per-facet filter options for the GWFlow job list surface.
 
-    The options reflect publicly-visible data only (ligo_only=False jobs and
-    ligoOnly:false documents) because the cache is global and shared by all
-    users. LIGO users can still reach any value via the advanced-syntax input.
+    Each facet is evaluated independently with its own ok/stale/unavailable
+    state, backed by a per-facet cache record ({values, fetched_at}, 24h TTL).
     """
-    libraries = cache.get(LIBRARIES_CACHE_KEY)
-    if libraries is None:
-        libraries = _collect_library_options()
-        cache.set(LIBRARIES_CACHE_KEY, libraries, FILTER_OPTIONS_TTL)
-
-    review_statuses = cache.get(REVIEW_STATUSES_CACHE_KEY)
-    if review_statuses is None:
-        review_statuses = _collect_review_status_options()
-        if review_statuses is None:
-            # ES unavailable or no buckets — hardcoded fallback, not cached so
-            # the next call retries ES once it is back.
-            review_statuses = REVIEW_STATUS_FALLBACK
-        else:
-            cache.set(REVIEW_STATUSES_CACHE_KEY, review_statuses, FILTER_OPTIONS_TTL)
-
-    return {"libraries": libraries, "review_statuses": review_statuses}
+    return {
+        "libraries": _facet_options(LIBRARIES_CACHE_KEY, _collect_library_options),
+        "review_statuses": _facet_options(REVIEW_STATUSES_CACHE_KEY, _collect_review_status_options),
+    }
 
 
 def list_gwflow_jobs(
@@ -146,6 +173,10 @@ def list_gwflow_jobs(
     # Full Lucene query_string syntax (fielded, Boolean, fuzzy, regex) is an
     # intentional Issue #51 feature; residual parser cost is bounded by the
     # above controls and by Elasticsearch request timeouts / monitoring.
+    # Unfielded queries rely on index.query.default_field (the bounded
+    # _gwcloud.* set) rather than expanding across the dynamic metadata.*
+    # tree; fielded expert queries to arbitrary known metadata.* paths remain
+    # available.
     must = (
         [
             {
@@ -161,17 +192,17 @@ def list_gwflow_jobs(
     )
     filters = []
     if library:
-        filters.append({"term": {"libraries.keyword": library}})
+        filters.append({"term": {"_gwcloud.libraries": library}})
     if review_status:
-        filters.append({"term": {"analyses.reviewStatus.keyword": review_status}})
+        filters.append({"term": {"_gwcloud.reviewStatuses": review_status}})
     if time_range != "all":
         now = timezone.now()
         then = now - _time_range_to_timedelta(time_range)
-        filters.append({"range": {"lastUpdatedTime": {"gte": then.isoformat(), "lte": now.isoformat()}}})
+        filters.append({"range": {"_gwcloud.lastUpdatedTime": {"gte": then.isoformat(), "lte": now.isoformat()}}})
     if not is_ligo_user(user):
-        filters.append({"term": {"ligoOnly": False}})
+        filters.append(_GWCLOUD_LIGO_ONLY_FILTER)
     if not include_pruned:
-        filters.append({"term": {"isPruned": False}})
+        filters.append(_GWCLOUD_PRUNED_FILTER)
 
     query = {"bool": {"must": must, "filter": filters}}
 
@@ -181,7 +212,7 @@ def list_gwflow_jobs(
             query=query,
             size=page_size + 1,
             from_=offset,
-            sort="lastUpdatedTime:desc",
+            sort=[{"_gwcloud.lastUpdatedTime": {"order": "desc", "missing": "_last"}}],
             track_total_hits=True,
             request_timeout=10,
         )

@@ -387,7 +387,10 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
             ) as mock_list,
             mock.patch(
                 "bilbyui.views.list_gwflow_filter_options",
-                return_value={"libraries": ["lib-a", "lib-b"], "review_statuses": ["reviewed", "pending"]},
+                return_value={
+                    "libraries": {"values": ["lib-a", "lib-b"], "state": "ok"},
+                    "review_statuses": {"values": ["reviewed", "pending"], "state": "ok"},
+                },
             ) as mock_options,
         ):
             response = self.client.get(self.url, params or {})
@@ -431,7 +434,11 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         self.assertEqual(context["page"], 3)
         self.assertEqual(context["total"], 57)
         self.assertEqual(
-            context["filter_options"], {"libraries": ["lib-a", "lib-b"], "review_statuses": ["reviewed", "pending"]}
+            context["filter_options"],
+            {
+                "libraries": {"values": ["lib-a", "lib-b"], "state": "ok"},
+                "review_statuses": {"values": ["reviewed", "pending"], "state": "ok"},
+            },
         )
         mock_list.assert_called_once_with(
             self.user,
@@ -474,7 +481,10 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
             ) as mock_list,
             mock.patch(
                 "bilbyui.views.list_gwflow_filter_options",
-                return_value={"libraries": ["lib-a"], "review_statuses": ["reviewed"]},
+                return_value={
+                    "libraries": {"values": ["lib-a"], "state": "ok"},
+                    "review_statuses": {"values": ["reviewed"], "state": "ok"},
+                },
             ),
         ):
             response = self.client.get(
@@ -640,10 +650,33 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
             f"{reverse('bilbyui:gwflow_jobs')}?page=2&search=foo&time_range=all",
         )
 
+    def test_filter_options_passes_per_facet_values_and_states(self):
+        """The per-facet {values, state} structure from the service is passed
+        through to the template context unchanged, including independent
+        ok/stale/unavailable states per facet."""
+        per_facet = {
+            "libraries": {"values": ["lib-a", "lib-b"], "state": "ok"},
+            "review_statuses": {"values": ["reviewed"], "state": "stale"},
+        }
+        with (
+            mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect(total=5)),
+            mock.patch("bilbyui.views.list_gwflow_filter_options", return_value=per_facet),
+        ):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["filter_options"], per_facet)
+
     def test_filter_options_default_when_none(self):
         context = self._render_context({}, total=10, filter_options=None)
 
-        self.assertEqual(context["filter_options"], {"libraries": [], "review_statuses": []})
+        self.assertEqual(
+            context["filter_options"],
+            {
+                "libraries": {"values": [], "state": "unavailable"},
+                "review_statuses": {"values": [], "state": "unavailable"},
+            },
+        )
 
     def test_filter_options_fallback_when_service_raises(self):
         with (
@@ -659,7 +692,13 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["filter_options"], {"libraries": [], "review_statuses": []})
+        self.assertEqual(
+            response.context["filter_options"],
+            {
+                "libraries": {"values": [], "state": "unavailable"},
+                "review_statuses": {"values": [], "state": "unavailable"},
+            },
+        )
 
     def test_gwflow_jobs_view_passes_library_and_review_status(self):
         with (
@@ -669,7 +708,10 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
             ) as mock_list,
             mock.patch(
                 "bilbyui.views.list_gwflow_filter_options",
-                return_value={"libraries": [], "review_statuses": []},
+                return_value={
+                    "libraries": {"values": [], "state": "ok"},
+                    "review_statuses": {"values": [], "state": "ok"},
+                },
             ),
         ):
             response = self.client.get(self.url, {"library": "cbc-workflow-o4a", "review": "reviewed"})

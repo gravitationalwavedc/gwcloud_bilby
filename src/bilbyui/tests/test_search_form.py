@@ -29,8 +29,14 @@ def _render_search_form(**overrides):
         "list_target_id": "gwflow-job-list",
         "search_help_template": "bilbyui/_gwflow_search_help.html",
         "filter_options": {
-            "libraries": ["cbc-workflow-o4a", "cbc-workflow-o4c"],
-            "review_statuses": ["reviewed", "unreviewed", "pending", "approved"],
+            "libraries": {
+                "values": ["cbc-workflow-o4a", "cbc-workflow-o4c"],
+                "state": "ok",
+            },
+            "review_statuses": {
+                "values": ["reviewed", "unreviewed", "pending", "approved"],
+                "state": "ok",
+            },
         },
         "search": "",
         "library": "",
@@ -219,6 +225,170 @@ class TestSearchFormStructure(BilbyTestCase):
         self.assertIn('value="1w" selected', html)
 
 
+class TestSearchFormPerFacetStates(BilbyTestCase):
+    """Per-facet filter-option rendering (issue #72 / ES-3, task-3).
+
+    Each facet (Library, Review status) renders independently per its
+    ``ok`` / ``stale`` / ``unavailable`` state:
+
+    * ``ok``: enabled select; empty option set shows neutral "No options
+      available" so successful emptiness is distinct from failure.
+    * ``stale``: enabled select with cached values + adjacent "Options may be
+      out of date", announced once via a shared ``role="alert"`` region.
+    * ``unavailable``: disabled select + "Options are temporarily
+      unavailable" associated via ``aria-describedby`` (a service problem,
+      not a validation error).
+
+    Degraded facets share ONE ``role="alert"`` region so at most one
+    assertive announcement is made per settled interaction (Frontend Bible §5).
+    """
+
+    def _library_select(self, html):
+        match = re.search(r"<select\b[^>]*name=\"library\"[^>]*>", html)
+        return match.group(0) if match else ""
+
+    def _review_select(self, html):
+        match = re.search(r"<select\b[^>]*name=\"review\"[^>]*>", html)
+        return match.group(0) if match else ""
+
+    def test_ok_state_renders_enabled_select_with_values(self):
+        html = _render_search_form()
+        self.assertNotIn("disabled", self._library_select(html))
+        self.assertNotIn("disabled", self._review_select(html))
+        self.assertIn("cbc-workflow-o4a", html)
+        self.assertIn("reviewed", html)
+        self.assertNotIn("No options available", html)
+        self.assertNotIn("Options may be out of date", html)
+        self.assertNotIn("Options are temporarily unavailable", html)
+        self.assertNotIn('role="alert"', html)
+
+    def test_ok_state_empty_set_shows_neutral_copy(self):
+        html = _render_search_form(
+            filter_options={
+                "libraries": {"values": [], "state": "ok"},
+                "review_statuses": {"values": [], "state": "ok"},
+            }
+        )
+        self.assertNotIn("disabled", self._library_select(html))
+        self.assertNotIn("disabled", self._review_select(html))
+        self.assertEqual(html.count("No options available"), 2)
+        self.assertNotIn("Options are temporarily unavailable", html)
+        self.assertNotIn('role="alert"', html)
+
+    def test_stale_state_renders_enabled_select_with_cached_values_and_alert(self):
+        html = _render_search_form(
+            filter_options={
+                "libraries": {"values": ["cbc-workflow-o4a"], "state": "stale"},
+                "review_statuses": {"values": ["reviewed"], "state": "ok"},
+            }
+        )
+        self.assertNotIn("disabled", self._library_select(html))
+        self.assertIn("cbc-workflow-o4a", html)
+        self.assertIn("Options may be out of date", html)
+        self.assertIn('role="alert"', html)
+        self.assertEqual(html.count('role="alert"'), 1, "exactly one assertive announcement")
+
+    def test_unavailable_state_renders_disabled_select_with_aria_describedby(self):
+        html = _render_search_form(
+            filter_options={
+                "libraries": {"values": [], "state": "unavailable"},
+                "review_statuses": {"values": ["reviewed"], "state": "ok"},
+            }
+        )
+        self.assertIn("disabled", self._library_select(html))
+        self.assertNotIn("disabled", self._review_select(html))
+        self.assertIn("Options are temporarily unavailable", html)
+        self.assertIn('aria-describedby="library-options-status"', html)
+        self.assertIn('id="library-options-status"', html)
+        self.assertIn('role="alert"', html)
+        self.assertEqual(html.count('role="alert"'), 1, "exactly one assertive announcement")
+        self.assertNotIn("Error:", html)
+        self.assertNotIn("is-invalid", html)
+
+    def test_select_disabled_only_for_unavailable(self):
+        for state in ("ok", "stale"):
+            html = _render_search_form(
+                filter_options={
+                    "libraries": {"values": ["cbc-workflow-o4a"], "state": state},
+                    "review_statuses": {"values": ["reviewed"], "state": "ok"},
+                }
+            )
+            self.assertNotIn("disabled", self._library_select(html), f"library must be enabled when {state}")
+        html = _render_search_form(
+            filter_options={
+                "libraries": {"values": [], "state": "unavailable"},
+                "review_statuses": {"values": ["reviewed"], "state": "ok"},
+            }
+        )
+        self.assertIn("disabled", self._library_select(html))
+
+    def test_both_facets_unavailable_consolidate_to_single_alert(self):
+        html = _render_search_form(
+            filter_options={
+                "libraries": {"values": [], "state": "unavailable"},
+                "review_statuses": {"values": [], "state": "unavailable"},
+            }
+        )
+        self.assertEqual(html.count('role="alert"'), 1, "one consolidated announcement")
+        self.assertIn("Library options are temporarily unavailable.", html)
+        self.assertIn("Review status options are temporarily unavailable.", html)
+        self.assertIn("disabled", self._library_select(html))
+        self.assertIn("disabled", self._review_select(html))
+
+    def test_both_facets_stale_consolidate_to_single_alert(self):
+        html = _render_search_form(
+            filter_options={
+                "libraries": {"values": ["cbc-workflow-o4a"], "state": "stale"},
+                "review_statuses": {"values": ["reviewed"], "state": "stale"},
+            }
+        )
+        self.assertEqual(html.count('role="alert"'), 1, "one consolidated announcement")
+        self.assertIn("Library options may be out of date.", html)
+        self.assertIn("Review status options may be out of date.", html)
+        self.assertNotIn("disabled", self._library_select(html))
+        self.assertNotIn("disabled", self._review_select(html))
+
+    def test_mixed_degraded_facets_consolidate_to_single_alert(self):
+        html = _render_search_form(
+            filter_options={
+                "libraries": {"values": [], "state": "unavailable"},
+                "review_statuses": {"values": ["reviewed"], "state": "stale"},
+            }
+        )
+        self.assertEqual(html.count('role="alert"'), 1, "one consolidated announcement")
+        self.assertIn("Library options are temporarily unavailable.", html)
+        self.assertIn("Review status options may be out of date.", html)
+        self.assertIn("disabled", self._library_select(html))
+        self.assertNotIn("disabled", self._review_select(html))
+
+    def test_exact_copy_per_state(self):
+        ok_html = _render_search_form(
+            filter_options={
+                "libraries": {"values": [], "state": "ok"},
+                "review_statuses": {"values": ["reviewed"], "state": "ok"},
+            }
+        )
+        self.assertIn("No options available", ok_html)
+        stale_html = _render_search_form(
+            filter_options={
+                "libraries": {"values": ["cbc-workflow-o4a"], "state": "stale"},
+                "review_statuses": {"values": ["reviewed"], "state": "ok"},
+            }
+        )
+        self.assertIn("Options may be out of date", stale_html)
+        unavailable_html = _render_search_form(
+            filter_options={
+                "libraries": {"values": [], "state": "unavailable"},
+                "review_statuses": {"values": ["reviewed"], "state": "ok"},
+            }
+        )
+        self.assertIn("Options are temporarily unavailable", unavailable_html)
+
+    def test_no_alert_when_both_facets_ok(self):
+        html = _render_search_form()
+        self.assertNotIn('role="alert"', html)
+
+
 class TestSearchHelpPartials(BilbyTestCase):
     """The help partials render as in-place collapsible panels."""
 
@@ -300,7 +470,13 @@ class TestHelpOnAllSurfaces(BilbyTestCase):
     def setUp(self):
         self.authenticate()
 
-    @mock.patch("bilbyui.views.list_gwflow_filter_options", return_value={"libraries": [], "review_statuses": []})
+    @mock.patch(
+        "bilbyui.views.list_gwflow_filter_options",
+        return_value={
+            "libraries": {"values": [], "state": "ok"},
+            "review_statuses": {"values": [], "state": "ok"},
+        },
+    )
     @mock.patch("bilbyui.views.list_gwflow_jobs", return_value=_gwflow_ok_result())
     def test_gwflow_surface_renders_gwflow_help(self, mock_jobs, mock_options):
         response = self.client.get(reverse("bilbyui:gwflow_jobs"))
@@ -325,7 +501,13 @@ class TestHelpOnAllSurfaces(BilbyTestCase):
         self.assertContains(response, "<code>job.name</code>")
         self.assertContains(response, 'hx-sync="#jobs-search-region:replace"')
 
-    @mock.patch("bilbyui.views.list_gwflow_filter_options", return_value={"libraries": [], "review_statuses": []})
+    @mock.patch(
+        "bilbyui.views.list_gwflow_filter_options",
+        return_value={
+            "libraries": {"values": [], "state": "ok"},
+            "review_statuses": {"values": [], "state": "ok"},
+        },
+    )
     @mock.patch("bilbyui.views.list_gwflow_jobs", return_value=_gwflow_ok_result())
     def test_gwflow_surface_shows_gwflow_selects(self, mock_jobs, mock_options):
         response = self.client.get(reverse("bilbyui:gwflow_jobs"))

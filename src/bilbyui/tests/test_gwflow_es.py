@@ -3,10 +3,17 @@ from unittest.mock import MagicMock, patch
 
 import elasticsearch
 import requests
+from django.core.cache import caches
 from django.core.management import call_command
 from django.test import override_settings
 
 from bilbyui.models import EventID, GWFlowJob
+from bilbyui.services.gwflow import list_gwflow_filter_options, list_gwflow_jobs
+from bilbyui.tests.gwflow_es_fixtures import (
+    QUERY_ASSERTIONS,
+    QUERY_REFERENCE_DATE,
+    build_canonical_fixtures,
+)
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_es import (
     InvalidGWFlowMetadata,
@@ -509,3 +516,272 @@ class TestESIngestGWFlowCommand(BilbyTestCase):
 
         call_command("es_ingest", "--gwflow")
         self.assertEqual(mock_get.call_count, 3)
+
+
+class FakeGWFlowES:
+    """Minimal in-memory Elasticsearch for deterministic integration tests.
+
+    Indexes the canonical fixture documents and evaluates the exact query DSL
+    produced by ``list_gwflow_jobs`` and the filter-option collectors against
+    them, so the issue #72 query assertion table is verified against real query
+    construction with no reliance on a live ES server.
+
+    Supported query constructs (the subset the service emits):
+    - ``bool`` with ``must`` and ``filter`` lists
+    - ``match_all``
+    - ``term`` (exact match, including membership in a keyword array)
+    - ``range`` on ``_gwcloud.lastUpdatedTime`` (ISO-8601 bounds)
+    - ``query_string`` with ``field:*`` (exists) and ``field:value`` (term)
+    - ``terms`` aggregation with per-bucket doc counts
+    - sort by ``_gwcloud.lastUpdatedTime`` desc with missing values last
+    """
+
+    def __init__(self, docs_by_id):
+        self.docs = {int(doc_id): entry["doc"] for doc_id, entry in docs_by_id.items()}
+        self.search_calls = []
+        self._agg_buckets = {}
+
+    def _field_values(self, doc, field):
+        """All values reachable at ``field``, flattening arrays of objects.
+
+        Mirrors how ES indexes array-of-object paths (e.g.
+        ``metadata.ParameterEstimation.results.inference_software``) as a set
+        of leaf values, so a term query matches if any element matches.
+        """
+        parts = field.split(".")
+        values = []
+
+        def walk(node, idx):
+            if idx == len(parts):
+                values.append(node)
+                return
+            if isinstance(node, dict):
+                if parts[idx] in node:
+                    walk(node[parts[idx]], idx + 1)
+            elif isinstance(node, list):
+                for item in node:
+                    walk(item, idx)
+
+        walk(doc, 0)
+        return values
+
+    def _exists(self, doc, field):
+        for value in self._field_values(doc, field):
+            if value is None:
+                continue
+            if isinstance(value, list):
+                if value:
+                    return True
+                continue
+            if value != "":
+                return True
+        return False
+
+    def _term_matches(self, doc, field, value):
+        for actual in self._field_values(doc, field):
+            if isinstance(actual, list):
+                if value in actual:
+                    return True
+            elif actual == value:
+                return True
+        return False
+
+    def _range_matches(self, doc, ranges):
+        for field, bounds in ranges.items():
+            actual = self._field_values(doc, field)
+            actual = next((v for v in actual if v is not None), None)
+            if actual is None:
+                return False
+            actual_dt = datetime.datetime.fromisoformat(actual)
+            for op, bound in bounds.items():
+                bound_dt = datetime.datetime.fromisoformat(bound)
+                if op == "gte" and actual_dt < bound_dt:
+                    return False
+                if op == "lte" and actual_dt > bound_dt:
+                    return False
+        return True
+
+    def _query_string_matches(self, doc, qs):
+        query = qs.strip()
+        if not query or query == "*":
+            return True
+        if ":" in query:
+            field, _, value = query.partition(":")
+            value = value.strip()
+            if value == "*":
+                return self._exists(doc, field)
+            return self._term_matches(doc, field, value)
+        return False
+
+    def _matches_clause(self, doc, clause):
+        if "match_all" in clause:
+            return True
+        if "term" in clause:
+            field, value = next(iter(clause["term"].items()))
+            return self._term_matches(doc, field, value)
+        if "range" in clause:
+            return self._range_matches(doc, clause["range"])
+        if "query_string" in clause:
+            return self._query_string_matches(doc, clause["query_string"]["query"])
+        if "bool" in clause:
+            return self._matches_bool(doc, clause["bool"])
+        return True
+
+    def _matches_bool(self, doc, bool_q):
+        for key in ("must", "filter"):
+            for clause in bool_q.get(key, []):
+                if not self._matches_clause(doc, clause):
+                    return False
+        return True
+
+    def _sort_key(self, doc, sort):
+        values = self._field_values(doc, "_gwcloud.lastUpdatedTime")
+        ts = next((v for v in values if v is not None), None)
+        if ts is None:
+            return (1, 0)
+        return (0, -datetime.datetime.fromisoformat(ts).timestamp())
+
+    def _aggregations(self, matching_ids, aggs):
+        result = {}
+        for name, agg in aggs.items():
+            if "terms" not in agg:
+                continue
+            field = agg["terms"]["field"]
+            counts = {}
+            for doc_id in matching_ids:
+                for value in self._field_values(self.docs[doc_id], field):
+                    if isinstance(value, list):
+                        for item in value:
+                            counts[item] = counts.get(item, 0) + 1
+                    elif value is not None:
+                        counts[value] = counts.get(value, 0) + 1
+            buckets = [
+                {"key": key, "doc_count": count}
+                for key, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+            ]
+            result[name] = {"buckets": buckets}
+            self._agg_buckets[name] = buckets
+        return result
+
+    def agg_buckets(self, name):
+        return self._agg_buckets.get(name, [])
+
+    def search(
+        self,
+        index,
+        query=None,
+        size=None,
+        from_=0,
+        sort=None,
+        track_total_hits=None,
+        request_timeout=None,
+        aggs=None,
+        **kwargs,
+    ):
+        self.search_calls.append(
+            {"index": index, "query": query, "size": size, "from_": from_, "sort": sort, "aggs": aggs}
+        )
+        matching = [doc_id for doc_id, doc in self.docs.items() if self._matches_clause(doc, query)]
+        matching.sort(key=lambda doc_id: self._sort_key(self.docs[doc_id], sort))
+        total = len(matching)
+        hits = [{"_id": str(doc_id), "_source": self.docs[doc_id]} for doc_id in matching]
+        if size is not None:
+            hits = hits[from_ : from_ + size]
+        response = {"hits": {"total": {"value": total, "relation": "eq"}, "hits": hits}}
+        if aggs:
+            response["aggregations"] = self._aggregations(matching, aggs)
+        return response
+
+
+class TestGWFlowESIntegration(BilbyTestCase):
+    """Deterministic integration test of the list query construction and
+    filter-option aggregations against the #71 mapping using the canonical
+    fixture matrix, with no reliance on a live ES server."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.fixtures = build_canonical_fixtures(cls)
+        cls.non_ligo_user = cls.create_user(
+            id=700, name="Public User", primary_email="public700@example.com", authentication_method="password"
+        )
+
+    def setUp(self):
+        super().setUp()
+        self.fake_es = FakeGWFlowES(self.fixtures)
+        self._es_patcher = patch("bilbyui.services.gwflow.get_es_client", return_value=self.fake_es)
+        self._es_patcher.start()
+        self.addCleanup(self._es_patcher.stop)
+        caches["default"].clear()
+
+    def _ids(self, res):
+        return [record["_id"] for record in res["records"]]
+
+    def test_query_assertion_table(self):
+        """Every entry in the issue #72 query assertion table returns exactly
+        the expected ordered document ids for a public, non-pruned query."""
+        for label, kwargs, expected in QUERY_ASSERTIONS:
+            with self.subTest(label=label):
+                if label == "updated past 30 days":
+                    with patch(
+                        "bilbyui.services.gwflow.timezone.now",
+                        return_value=QUERY_REFERENCE_DATE,
+                    ):
+                        res = list_gwflow_jobs(self.non_ligo_user, **kwargs)
+                else:
+                    res = list_gwflow_jobs(self.non_ligo_user, **kwargs)
+                self.assertEqual(res["state"], "ok")
+                self.assertEqual(self._ids(res), expected)
+
+    def test_library_and_review_filters_are_terms_on_gwcloud_fields(self):
+        """The library and review-status filters are term clauses on the
+        _gwcloud.* keyword fields (not .keyword, not the old paths)."""
+        list_gwflow_jobs(self.non_ligo_user, library="cbc-workflow-o4a", review_status="approved")
+        query = self.fake_es.search_calls[-1]["query"]
+        filter_terms = {}
+        for clause in query["bool"]["filter"]:
+            for clause_type, body in clause.items():
+                if clause_type == "term":
+                    filter_terms.update(body)
+        self.assertEqual(filter_terms["_gwcloud.libraries"], "cbc-workflow-o4a")
+        self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "approved")
+        self.assertNotIn("libraries.keyword", filter_terms)
+        self.assertNotIn("analyses.reviewStatus.keyword", filter_terms)
+
+    def test_ligo_user_sees_ligo_only_and_pruned(self):
+        """A LIGO user (include_pruned) sees fixtures 3 and 4, which the
+        public query excludes."""
+        ligo_user = self.create_user(
+            id=701, name="LIGO User", primary_email="ligo701@example.com", authentication_method="ligo_shibboleth"
+        )
+        # match_all: a LIGO user with include_pruned sees all five fixtures
+        # (sorted by _gwcloud.lastUpdatedTime desc, missing last).
+        res = list_gwflow_jobs(ligo_user, include_pruned=True)
+        self.assertEqual(self._ids(res), [1, 2, 3, 4, 5])
+
+    def test_non_ligo_option_aggregation_excludes_ligo_only_and_pruned(self):
+        """The public option aggregation excludes fixture 3 (LIGO-only) and
+        fixture 4 (pruned), proven by per-bucket doc counts."""
+        options = list_gwflow_filter_options()
+
+        self.assertEqual(options["libraries"]["state"], "ok")
+        self.assertEqual(
+            set(options["libraries"]["values"]),
+            {"cbc-workflow-o4a", "cbc-workflow-o4c"},
+        )
+        lib_counts = {b["key"]: b["doc_count"] for b in self.fake_es.agg_buckets("libraries")}
+        # o4a appears on docs 1 and 5 only; doc 4 (pruned) is excluded.
+        self.assertEqual(lib_counts["cbc-workflow-o4a"], 2)
+        self.assertEqual(lib_counts["cbc-workflow-o4c"], 2)
+
+        self.assertEqual(options["review_statuses"]["state"], "ok")
+        self.assertEqual(
+            set(options["review_statuses"]["values"]),
+            {"approved", "pending", "reviewed", "Approved"},
+        )
+        rev_counts = {b["key"]: b["doc_count"] for b in self.fake_es.agg_buckets("review_statuses")}
+        # approved appears on doc 1 only; doc 3 (LIGO-only) is excluded.
+        self.assertEqual(rev_counts["approved"], 1)
+        self.assertEqual(rev_counts["pending"], 1)
+        self.assertEqual(rev_counts["reviewed"], 1)
+        self.assertEqual(rev_counts["Approved"], 1)
