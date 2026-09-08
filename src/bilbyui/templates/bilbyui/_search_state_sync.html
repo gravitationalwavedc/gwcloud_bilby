@@ -3,6 +3,18 @@
 {# dependency-free script restores the form controls from the URL params so #}
 {# back/forward/refresh keep the settled state. It also mirrors the row-1 search #}
 {# input and the row-2 "Advanced syntax:" input so both present the same ?search= value. #}
+{# #}
+{# The live search input is the sole authority during editing. No history event #}
+{# writes a request value back into the live input: htmx:pushedIntoHistory is NOT #}
+{# listened to (issue #75 UX-17 — it clobbered continued typing, the S23 -> S2305 #}
+{# race). URL->form sync happens only on popstate / htmx:historyRestore, and the #}
+{# hidden page control is never restored (stays at its form default of 1). #}
+{# #}
+{# The stale-history guard (search_stale_guard.js, issue #75) suppresses an #}
+{# obsolete response from swapping or promoting its URL when a newer user edit #}
+{# happened while it was in flight. #}
+{% load static %}
+<script src="{% static 'bilbyui/js/search_stale_guard.js' %}"></script>
 <script>
 (function () {
   "use strict";
@@ -30,6 +42,8 @@
     if (advanced) {
       advanced.value = searchInput.value;
     }
+    // History restoration assigns both mirrored fields directly and dispatches NO
+    // synthetic input/change events, so it never triggers a request.
   }
 
   function bindAdvancedMirror() {
@@ -38,10 +52,24 @@
     if (!basic || !advanced) {
       return;
     }
+    // Editing the basic input mirrors into the advanced field. The basic input's
+    // own hx-trigger handles the request; no synthetic event is needed here.
     basic.addEventListener("input", function () {
       advanced.value = basic.value;
     });
-    advanced.addEventListener("input", function () {
+    // Editing the advanced field mirrors into the basic field and forwards a
+    // synthetic input so the shared ?search= value is searched. In-progress IME
+    // composition (event.isComposing) mirrors the value but must not be treated
+    // as a completed edit that triggers a request; compositionend makes the
+    // completed value eligible for the normal trailing search.
+    advanced.addEventListener("input", function (event) {
+      basic.value = advanced.value;
+      if (event.isComposing) {
+        return;
+      }
+      basic.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    advanced.addEventListener("compositionend", function () {
       basic.value = advanced.value;
       basic.dispatchEvent(new Event("input", { bubbles: true }));
     });
@@ -49,7 +77,6 @@
 
   window.addEventListener("popstate", syncSearchFormFromUrl);
   document.addEventListener("htmx:historyRestore", syncSearchFormFromUrl);
-  document.addEventListener("htmx:pushedIntoHistory", syncSearchFormFromUrl);
   bindAdvancedMirror();
 })();
 </script>

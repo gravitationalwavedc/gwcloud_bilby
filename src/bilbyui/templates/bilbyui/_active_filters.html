@@ -1,4 +1,12 @@
-{# Removable active-filter chips + Reset all (issue #51 UX-4). Rendered only when >=1 filter is active; lives inside the swapped list region so it stays consistent with the list. Contract: active_filters (list of {label, remove_label, remove_url}), reset_url, list_target_id. All requests sync through #jobs-search-region (shared with the form and pagination) so only one list request is in flight at a time. #}
+{# Removable active-filter chips + Reset all (issue #51 UX-4). Rendered only when >=1 filter is active; lives inside the swapped list region so it stays consistent with the list. Contract: active_filters (list of {label, remove_label, remove_url, param_name}), reset_url, list_target_id. All requests sync through #jobs-search-region (shared with the form and pagination) so only one list request is in flight at a time. #}
+{# #}
+{# Each chip carries machine-readable param_name metadata. On chip activation the #}
+{# corresponding form control is reset to its default (targeted action-specific #)
+{# reset, issue #75 UX-17) so a subsequent filter change does not reintroduce a #}
+{# removed value. Reset all resets every represented control. The reset is a #}
+{# synchronous user-action update (delegated, because chips live inside the #}
+{# swapped region), not a URL writeback, so it never clobbers the live search #}
+{# input. #}
 {% if active_filters %}
 <div class="active-filters" aria-label="Active filters">
   {% for f in active_filters %}
@@ -8,6 +16,7 @@
       href="{{ f.remove_url }}"
       class="filter-chip-remove"
       aria-label="{{ f.remove_label }}"
+      data-filter-param="{{ f.param_name }}"
       hx-get="{{ f.remove_url }}"
       hx-target="#{{ list_target_id|default:'job-list' }}"
       hx-swap="innerHTML"
@@ -20,6 +29,7 @@
   <a
     class="filter-reset"
     href="{{ reset_url }}"
+    data-filter-reset
     hx-get="{{ reset_url }}"
     hx-target="#{{ list_target_id|default:'job-list' }}"
     hx-swap="innerHTML"
@@ -27,4 +37,55 @@
     hx-push-url="true"
   >Reset all</a>
 </div>
+<script>
+(function () {
+  "use strict";
+  var container = document.querySelector(".active-filters");
+  if (!container) {
+    return;
+  }
+  function findSearchForm() {
+    var searchInput = document.querySelector("form input[name='search']");
+    return searchInput && searchInput.form ? searchInput.form : null;
+  }
+  function resetControl(form, paramName) {
+    if (!form) {
+      return;
+    }
+    if (paramName === "search") {
+      // Clear both mirrored search fields without dispatching another request.
+      var search = form.elements["search"];
+      var advanced = document.getElementById("advanced-search");
+      if (search) {
+        search.value = "";
+      }
+      if (advanced) {
+        advanced.value = "";
+      }
+      return;
+    }
+    var control = form.elements[paramName];
+    if (!control) {
+      return;
+    }
+    control.value = paramName === "time_range" ? "all" : "";
+  }
+  function resetAll(form) {
+    ["search", "library", "review", "time_range"].forEach(function (name) {
+      resetControl(form, name);
+    });
+  }
+  container.addEventListener("click", function (event) {
+    var remove = event.target.closest(".filter-chip-remove");
+    if (remove) {
+      resetControl(findSearchForm(), remove.getAttribute("data-filter-param"));
+      return;
+    }
+    var reset = event.target.closest(".filter-reset");
+    if (reset) {
+      resetAll(findSearchForm());
+    }
+  });
+})();
+</script>
 {% endif %}
