@@ -11,14 +11,14 @@
 <div class="container-fluid">
   <div class="app-container mb-5 pt-5">
     <div class="detail-shell">
-      {% include "bilbyui/_gwflow_detail_header.html" with section=section %}
-
       <nav aria-label="Breadcrumb" class="context-breadcrumb">
         <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="{% url 'bilbyui:gwflow_jobs' %}">GWFlow</a></li>
           <li class="breadcrumb-item active" aria-current="location">{{ job.sname }}</li>
         </ol>
       </nav>
+
+      {% include "bilbyui/_gwflow_detail_header.html" with section=section %}
 
       <div id="detail-region" data-sname="{{ job.sname }}">
         <nav aria-label="Superevent sections">
@@ -68,8 +68,8 @@
           </ul>
         </nav>
 
-        <div id="detail-pane" role="region" aria-label="{{ section|capfirst }}">
-          <h2 class="h4 mb-3" tabindex="-1">{{ section|capfirst }}</h2>
+        <h2 id="detail-heading" class="h4 mb-3" tabindex="-1">{{ section|capfirst }}</h2>
+        <div id="detail-pane" role="region" aria-labelledby="detail-heading">
           <div id="detail-skeleton" class="htmx-indicator" aria-hidden="true">
             <div class="async-skeleton">
               <div class="async-skeleton-row"></div>
@@ -107,28 +107,41 @@
 
   function syncActive() {
     var path = window.location.pathname;
+    var activeLink = null;
     links.forEach(function (link) {
       if (new URL(link.href).pathname === path) {
         link.setAttribute('aria-current', 'page');
         link.setAttribute('hx-push-url', 'false');
         link.removeAttribute('hx-indicator');
+        activeLink = link;
       } else {
         link.removeAttribute('aria-current');
         link.setAttribute('hx-push-url', 'true');
         link.setAttribute('hx-indicator', '#detail-skeleton');
       }
     });
+    // The pane's accessible name is bound to the heading via aria-labelledby,
+    // so keep the persistent heading text in step with the active section.
+    var heading = document.getElementById('detail-heading');
+    if (heading && activeLink) {
+      heading.textContent = activeLink.textContent.trim();
+    }
+    return activeLink;
   }
+
+  // Back/forward and htmx history restoration re-sync the active link and
+  // heading (focus rule D: restoration never moves focus).
+  window.addEventListener('popstate', syncActive);
+  document.body.addEventListener('htmx:historyRestore', syncActive);
 
   document.body.addEventListener('htmx:afterSwap', function (e) {
     var target = e.detail && e.detail.target;
     if (!target || target.id !== 'detail-pane') return;
-    syncActive();
-    var heading = target.querySelector('h2');
+    var activeLink = syncActive();
+    var heading = document.getElementById('detail-heading');
     // Focus moves only after a successful settled swap (focus rule D); failed
     // requests and back/forward restoration never move focus.
-    if (heading && e.detail.successful !== false && keyboardNav) {
-      heading.setAttribute('tabindex', '-1');
+    if (heading && activeLink && e.detail.successful !== false && keyboardNav) {
       heading.focus();
     }
     keyboardNav = false;
@@ -137,13 +150,13 @@
     }
     // The skeleton lives inside the swap target, so re-insert it after each
     // swap so it remains available for the next section navigation.
-    if (heading && !target.querySelector('#detail-skeleton')) {
+    if (!target.querySelector('#detail-skeleton')) {
       var sk = document.createElement('div');
       sk.id = 'detail-skeleton';
       sk.className = 'htmx-indicator';
       sk.setAttribute('aria-hidden', 'true');
       sk.innerHTML = '<div class="async-skeleton"><div class="async-skeleton-row"></div><div class="async-skeleton-row"></div><div class="async-skeleton-row"></div></div>';
-      heading.insertAdjacentElement('afterend', sk);
+      target.insertAdjacentElement('afterbegin', sk);
     }
   });
 })();
