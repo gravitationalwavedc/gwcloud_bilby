@@ -181,6 +181,32 @@ def resolve_missing_path(p: str, ini_text: str, result_file: str | None) -> str 
     return None
 
 
+def _tree_relative_target(p: str) -> str:
+    """Return the tree-relative target for a missing path, or raise StageError.
+
+    Validates the raw missing path before any fetch or copy: rejects empty
+    paths, NUL bytes, `..` traversal, and collisions with the tree's
+    reserved top-level entries (`data`, `result`, `results_page`) or a
+    `*_config_complete.ini` filename. Callers use this to validate a
+    destination *before* mutating the tree.
+    """
+    rel = p.lstrip("/")
+    if not rel:
+        raise StageError(f"empty relative path for {p!r}")
+    if "\x00" in rel:
+        raise StageError(f"NUL byte in path {p!r}")
+    parts = Path(rel).parts
+    if ".." in parts:
+        raise StageError(f"path traversal in {p!r}")
+
+    first = parts[0]
+    if first in ("data", "result", "results_page"):
+        raise StageError(f"collision with reserved tree entry {first!r} for {p!r}")
+    if Path(rel).name.endswith("_config_complete.ini"):
+        raise StageError(f"collision with config_complete.ini for {p!r}")
+    return rel
+
+
 def stage_supporting_files(tree: Path, missing: list[str], staged_files: dict[str, Path]) -> None:
     """Copy each staged supporting file into the job tree at `p.lstrip("/")`.
 
@@ -193,20 +219,7 @@ def stage_supporting_files(tree: Path, missing: list[str], staged_files: dict[st
     tree_root = tree.resolve()
 
     for p in missing:
-        rel = p.lstrip("/")
-        if not rel:
-            raise StageError(f"empty relative path for {p!r}")
-        if "\x00" in rel:
-            raise StageError(f"NUL byte in path {p!r}")
-        parts = Path(rel).parts
-        if ".." in parts:
-            raise StageError(f"path traversal in {p!r}")
-
-        first = parts[0]
-        if first in ("data", "result", "results_page"):
-            raise StageError(f"collision with reserved tree entry {first!r} for {p!r}")
-        if Path(rel).name.endswith("_config_complete.ini"):
-            raise StageError(f"collision with config_complete.ini for {p!r}")
+        rel = _tree_relative_target(p)
 
         src = staged_files.get(p)
         if src is None:
@@ -215,8 +228,13 @@ def stage_supporting_files(tree: Path, missing: list[str], staged_files: dict[st
         dest = tree / rel
         if not dest.resolve().is_relative_to(tree_root):
             raise StageError(f"destination escapes tree root for {p!r}")
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest)
+        # fetch_to_staging already staged absolute supporting files at their final
+        # tree path (STAGING_DIR/<sname>/<uid>/<path>), so src and dest may be
+        # the same file. Skip the copy in that case rather than raising
+        # SameFileError.
+        if Path(src).resolve() != dest.resolve():
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
 
 
 def resolve_event_id_for(sname: str, detail: dict) -> tuple[str, float] | None:

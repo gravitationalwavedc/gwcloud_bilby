@@ -17,6 +17,7 @@ import settings
 import state
 from bilby_children import (
     StageError,
+    _tree_relative_target,
     find_bilby_pe_analyses,
     make_archive,
     resolve_event_id_for,
@@ -309,6 +310,14 @@ def phase_bilby_children(
                                     missing.append(p)
                             staged_files: dict[str, Path] = {}
                             for p in missing:
+                                # Validate the tree-relative destination before
+                                # any fetch so a reserved or unsafe path is
+                                # rejected without mutating the tree.
+                                try:
+                                    _tree_relative_target(p)
+                                except StageError as target_err:
+                                    state.record_failure(con, cur, fail_key, repr(target_err))
+                                    raise _AnalysisAborted() from target_err
                                 resolved = resolve_missing_path(p, ini_text, result_file_path)
                                 if resolved is None:
                                     state.record_failure(con, cur, fail_key, f"unresolvable missing path {p!r}")

@@ -75,6 +75,17 @@ class TestStageSupportingFiles(unittest.TestCase):
             self.assertTrue(dest.is_file())
             self.assertEqual(dest.read_text(), "content")
 
+    def test_same_source_and_dest_skips_copy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tree = self._make_tree(tmp)
+            # Source already at the tree destination (production fetch topology).
+            src = tree / "calib" / "cal1.txt"
+            src.parent.mkdir(parents=True, exist_ok=True)
+            src.write_text("content")
+            # Must not raise SameFileError.
+            stage_supporting_files(tree, ["/calib/cal1.txt"], {"/calib/cal1.txt": src})
+            self.assertEqual(src.read_text(), "content")
+
     def test_rejects_parent_traversal(self):
         with tempfile.TemporaryDirectory() as tmp:
             tree = self._make_tree(tmp)
@@ -164,19 +175,26 @@ class TestPhaseBilbyChildrenMissingFiles(GWFlowTestBase):
 
         gwc.upload_job_archive.side_effect = upload
 
-        with tempfile.TemporaryDirectory() as staging:
-            with tempfile.TemporaryDirectory() as fetch_dir:
-                ini = _write_fetch_files(fetch_dir, [("config.ini", ini_text)])[0]
-                result = _write_fetch_files(fetch_dir, [("result.h5", b"x")])[0]
-                cal1 = _write_fetch_files(fetch_dir, [("cal1.txt", "c1")])[0]
-                cal2 = _write_fetch_files(fetch_dir, [("cal2.txt", "c2")])[0]
-                dml = _write_fetch_files(fetch_dir, [("marginal.h5", b"d")])[0]
+        def prod_fetch(jc_arg, rec):
+            # Reproduce production fetch_to_staging: stage under
+            # STAGING_DIR/<sname>/<uid>/<path.lstrip('/')>. For absolute
+            # supporting files this makes the fetched source identical to the
+            # tree destination, exercising the self-copy guard.
+            base = Path(settings.STAGING_DIR)
+            dest = base / rec["sname"] / rec["analysis_uid"] / rec["path"].lstrip("/")
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            if rec["path"] == analysis["config_file"]["path"]:
+                dest.write_text(ini_text)
+            else:
+                dest.write_text(f"content-{Path(rec['path']).name}")
+            return dest
 
-                with (
-                    patch("gwflow_ingest.fetch_to_staging", side_effect=[ini, result, cal1, cal2, dml]) as mock_fetch,
-                    patch.object(settings, "STAGING_DIR", staging),
-                ):
-                    phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
+        with tempfile.TemporaryDirectory() as staging:
+            with (
+                patch("gwflow_ingest.fetch_to_staging", side_effect=prod_fetch) as mock_fetch,
+                patch.object(settings, "STAGING_DIR", staging),
+            ):
+                phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
 
         self.assertEqual(mock_fetch.call_count, 5)
         self.assertEqual(gwc.upload_job_archive.call_count, 2)
