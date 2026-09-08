@@ -2213,9 +2213,7 @@ class TestHdf5JobUpload(BilbyTestCase):
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("elasticsearch.Elasticsearch.index")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
-    def test_hdf5_job_upload_tar_failure_performs_no_es_write(
-        self, lookup_users_mock, es_index_mock, es_update_mock
-    ):
+    def test_hdf5_job_upload_tar_failure_performs_no_es_write(self, lookup_users_mock, es_index_mock, es_update_mock):
         """Test that a rolled-back HDF5 upload (tar failure) performs no elastic search write."""
         token = self.get_upload_token()
 

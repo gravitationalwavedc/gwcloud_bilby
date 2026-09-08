@@ -611,9 +611,7 @@ class TestElasticSearch(BilbyTestCase):
         side_effect=elasticsearch.TransportError("boom"),
     )
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
-    def test_post_commit_es_transport_failure_logged_and_suppressed(
-        self, lookup_users_mock, elasticsearch_update_mock
-    ):
+    def test_post_commit_es_transport_failure_logged_and_suppressed(self, lookup_users_mock, elasticsearch_update_mock):
         """
         Test that a post-commit elastic search transport failure is logged and suppressed, so the
         request still succeeds
