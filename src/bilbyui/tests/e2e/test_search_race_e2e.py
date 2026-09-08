@@ -445,29 +445,35 @@ class TestSearchNativeClear(GWFlowJobsPageBase):
         page = self.page
         await page.wait_for_selector(".result-count")
 
-        # Type a search so there is something to clear.
+        # Type a search and wait for it to take effect. Without this, the
+        # later wait for "0 superevents match" would match the unchanged
+        # initial page state (also 0) before any request fires, making the
+        # request-count assertion racy.
         await page.locator("#search").fill("S2305")
-
-        list_requests = []
-        page.on(
-            "request",
-            lambda r: list_requests.append(r.url) if r.url.startswith(self.gwflow_url()) else None,
+        await page.wait_for_function(
+            "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('5 superevents match'); }",
+            timeout=10000,
         )
 
-        # Simulate the native search-clear control firing the search event.
-        await page.evaluate(
-            """() => {
-              const input = document.querySelector('#search');
-              input.value = '';
-              input.dispatchEvent(new Event('search', { bubbles: true }));
-            }"""
-        )
+        # Simulate the native search-clear control firing the search event, and
+        # deterministically wait for the resulting list request.
+        async with page.expect_request(
+            lambda r: r.url.startswith(self.gwflow_url()) and "search=" in r.url
+        ) as req_info:
+            await page.evaluate(
+                """() => {
+                  const input = document.querySelector('#search');
+                  input.value = '';
+                  input.dispatchEvent(new Event('search', { bubbles: true }));
+                }"""
+            )
+        req = await req_info.value
+
         await page.wait_for_function(
             "() => { const el = document.querySelector('.result-count'); return el && el.textContent.includes('0 superevents match'); }",
             timeout=10000,
         )
-        self.assertGreaterEqual(len(list_requests), 1, "native clear must fire a search request")
-        self.assertTrue(any("search=" in u for u in list_requests), "clear request must carry the search param")
+        self.assertIn("search=", req.url, "clear request must carry the search param")
         self.assertEqual(await page.locator("#search").input_value(), "")
 
 
