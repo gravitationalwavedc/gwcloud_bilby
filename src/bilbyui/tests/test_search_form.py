@@ -136,6 +136,16 @@ class TestSearchFormStructure(BilbyTestCase):
         self.assertIn('name="search"', html)
         self.assertIn('hx-trigger="input changed delay:300ms, search"', html)
 
+    def test_search_trigger_is_composition_aware(self):
+        """The search trigger must be composition-aware (issue #75 / UX-17):
+        incomplete IME composition must not submit, and compositionend makes
+        the final composed value eligible for the trailing search."""
+        html = _render_search_form()
+        self.assertTrue(
+            "isComposing" in html or "compositionend" in html or "compositionstart" in html,
+            "search trigger must be composition-aware",
+        )
+
     def test_advanced_syntax_input_always_visible_and_single(self):
         html = _render_search_form()
         self.assertEqual(html.count('name="search"'), 1)
@@ -247,6 +257,19 @@ class TestSearchHelpPartials(BilbyTestCase):
         # change after history restoration resets to page 1 (GOV.UK rule).
         self.assertNotIn('"search", "library", "review", "time_range", "page"', html)
         self.assertIn('["search", "library", "review", "time_range"]', html)
+
+    def test_sync_script_no_longer_listens_to_pushed_into_history(self):
+        """Issue #75 / UX-17: the ``htmx:pushedIntoHistory`` write-back is
+        removed so a settled history push can never clobber the live input."""
+        html = get_template("bilbyui/_search_state_sync.html").render({})
+        self.assertNotIn("pushedIntoHistory", html)
+
+    def test_sync_script_still_listens_to_popstate_and_history_restore(self):
+        """URL -> form sync is retained only for genuine back/forward and
+        htmx history restoration."""
+        html = get_template("bilbyui/_search_state_sync.html").render({})
+        self.assertIn("popstate", html)
+        self.assertIn("htmx:historyRestore", html)
 
     def test_bilby_help_lists_all_searchable_fields(self):
         html = get_template("bilbyui/_bilby_search_help.html").render({})
