@@ -112,7 +112,7 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
             },
         )
         template = mappings["dynamic_templates"][0]
-        self.assertEqual(template["metadata_strings"]["match"], "metadata.*")
+        self.assertEqual(template["metadata_strings"]["path_match"], "metadata.*")
         self.assertEqual(template["metadata_strings"]["match_mapping_type"], "string")
         self.assertEqual(
             template["metadata_strings"]["mapping"]["fields"]["keyword"],

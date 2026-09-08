@@ -14,7 +14,6 @@ logger = logging.getLogger("bilbyui.gwflow_es")
 
 EXIT_OK = 0
 EXIT_FAILURES = 1
-EXIT_CONFIG = 2
 
 _GWCLOUD_STRICT_FIELDS = {
     "sname": {"type": "keyword"},
@@ -48,7 +47,7 @@ def build_gwflow_es_mapping():
             "dynamic_templates": [
                 {
                     "metadata_strings": {
-                        "match": "metadata.*",
+                        "path_match": "metadata.*",
                         "match_mapping_type": "string",
                         "mapping": {
                             "type": "text",
@@ -145,7 +144,7 @@ class Command(BaseCommand):
         index = settings.ELASTIC_SEARCH_GWFLOW_INDEX
         es = get_es_client()
 
-        jobs = list(GWFlowJob.objects.order_by("id"))
+        jobs = list(GWFlowJob.objects.select_related("event_id").order_by("id"))
         docs = []
         failures = []
 
