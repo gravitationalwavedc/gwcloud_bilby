@@ -197,7 +197,7 @@ class TestJobUpload(BilbyTestCase):
         archive = Path(job.get_upload_directory()) / "archive.tar.gz"
         self.assertTrue(archive.is_file())
 
-        with tarfile.open(archive, "r:gz") as tar:
+        with tarfile.open(archive, "r:") as tar:
             names = tar.getnames()
 
         self.assertNotIn("./archive.tar.gz", names)
