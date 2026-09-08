@@ -4,35 +4,41 @@
 {# surface (WCAG 3.2.6). #}
 <div class="collapse mt-2" id="search-help">
   <div class="card card-body">
-    <p class="mb-2">Searchable fields:</p>
+    <p class="mb-2">Search stable GWCloud operational fields or detailed metadata returned by cbcflow-portal.</p>
+    <p class="mb-1"><strong>Operational fields (<code>_gwcloud</code>)</strong></p>
+    <p class="mb-1">Stable fields maintained by GWCloud:</p>
     <ul class="mb-2">
-      <li><code>sname</code> — superevent name</li>
-      <li><code>libraries</code> — workflow library</li>
-      <li><code>schemaVersion</code> — schema version</li>
-      <li><code>analyses.uid</code> — analysis UID (unique identifier)</li>
-      <li><code>analyses.software</code> — software package</li>
-      <li><code>analyses.waveform</code> — waveform model</li>
-      <li><code>analyses.analysts</code> — analyst</li>
-      <li><code>analyses.reviewers</code> — reviewer</li>
-      <li><code>analyses.runStatus</code> — run status</li>
-      <li><code>analyses.reviewStatus</code> — review status</li>
-      <li><code>gracedb.uids</code> — GraceDB UID (Gravitational-Wave Candidate Event Database)</li>
-      <li><code>gracedb.instruments</code> — instruments</li>
-      <li><code>eventId.triggerId</code> — event trigger ID</li>
+      <li><code>_gwcloud.sname</code> — superevent name</li>
+      <li><code>_gwcloud.libraries</code> — workflow libraries</li>
+      <li><code>_gwcloud.reviewStatuses</code> — collected review statuses</li>
+      <li><code>_gwcloud.eventTriggerId</code> — event trigger identifier</li>
     </ul>
-    <p class="mb-2">Abbreviations:</p>
+    <p class="mb-1"><strong>Portal metadata (<code>metadata</code>)</strong></p>
+    <p class="mb-1 text-muted">Detailed portal data is available under <code>metadata</code>. Its field names and paths follow the cbcflow-portal response and may change as that response evolves.</p>
+    <p class="mb-1">Common current paths:</p>
     <ul class="mb-2">
+      <li><code>metadata.ParameterEstimation.results.inference_software</code></li>
+      <li><code>metadata.ParameterEstimation.results.waveform_approximant</code></li>
+      <li><code>metadata.GraceDB.Events.uid</code></li>
+      <li><code>metadata.GraceDB.instruments</code></li>
+      <li>not an exhaustive schema</li>
+    </ul>
+    <p class="mb-1">Examples:</p>
+    <ul class="mb-2">
+      <li><code>_gwcloud.libraries:*</code></li>
+      <li><code>_gwcloud.eventTriggerId:*</code></li>
+      <li><code>_gwcloud.sname:S2306*</code></li>
+      <li><code>metadata.ParameterEstimation.results.inference_software:bilby</code></li>
+      <li><code>metadata.ParameterEstimation.results.waveform_approximant:IMRPhenomXPHM</code></li>
+      <li><code>metadata.GraceDB.Events.uid:*</code></li>
+      <li><code>metadata.GraceDB.instruments:*</code></li>
+    </ul>
+    <p class="mb-2 text-muted">When combining conditions on different fields inside metadata arrays, matches are not guaranteed to come from the same array item.</p>
+    <p class="mb-1">Terms:</p>
+    <ul class="mb-0">
       <li><code>UID</code> — unique identifier</li>
-      <li><code>PE</code> — parameter estimation (an <code>analyses.*</code> type)</li>
-      <li><code>TGR</code> — tidal gravitational radiation analysis (an <code>analyses.*</code> type)</li>
       <li><code>GraceDB</code> — Gravitational-Wave Candidate Event Database</li>
       <li><code>CBC</code> — compact binary coalescence</li>
-    </ul>
-    <p class="mb-2">Examples:</p>
-    <ul class="mb-0">
-      <li><code>sname:S2306*</code></li>
-      <li><code>analyses.software:bilby AND analyses.waveform:IMRPhenomXPHM</code></li>
-      <li><code>libraries:cbc-workflow-o4c AND analyses.reviewStatus:reviewed</code></li>
     </ul>
   </div>
 </div>

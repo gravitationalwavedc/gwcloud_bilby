@@ -100,7 +100,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Search help")
-        self.assertContains(response, "analyses.software")
+        self.assertContains(response, "_gwcloud.sname")
         self.assertContains(response, "sname:S2306*")
 
     def test_pagination_renders_when_has_next(self):
