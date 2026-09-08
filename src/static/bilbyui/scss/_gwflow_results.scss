@@ -86,6 +86,21 @@
     }
 }
 
+// Bootstrap's btn-outline-primary uses $primary (#059cfa) for text — only
+// ~2.8:1 on the white background. Use a darker blue that clears 4.5:1
+// (Frontend Bible rule 4) for both the resting and hover states.
+.gwflow-view-btn {
+    color: $blue-800;
+    border-color: $blue-800;
+
+    &:hover,
+    &:focus {
+        color: $white;
+        background-color: $blue-800;
+        border-color: $blue-800;
+    }
+}
+
 .event-id-toggle {
     background: none;
     border: none;

@@ -10060,6 +10060,16 @@ a.text-dark:hover, a.text-dark:focus {
   outline-offset: 1px;
 }
 
+.gwflow-view-btn {
+  color: #035996;
+  border-color: #035996;
+}
+.gwflow-view-btn:hover, .gwflow-view-btn:focus {
+  color: #fafdff;
+  background-color: #035996;
+  border-color: #035996;
+}
+
 .event-id-toggle {
   background: none;
   border: none;

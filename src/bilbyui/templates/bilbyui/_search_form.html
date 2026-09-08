@@ -28,7 +28,7 @@
   hx-swap="innerHTML"
   hx-sync="#jobs-search-region:replace"
   hx-push-url="true"
-  hx-indicator="#gwflow-job-list-loading"
+  {% if list_target_id == 'gwflow-job-list' %}hx-indicator="#gwflow-job-list-loading"{% endif %}
 >
   <input type="hidden" name="page" value="1">
 

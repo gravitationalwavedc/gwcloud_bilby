@@ -134,7 +134,7 @@ class GWFlowResultsPageBase(GWFlowJobsPageBase):
     #: filter-reset link (project accent colours on the light card). These are
     #: owned outside this suite (see test_gwflow_axe_scan_e2e.py); the axe
     #: gate here asserts zero serious/critical beyond this known debt.
-    KNOWN_CONTRAST_DEBT = ("gwflow-view-btn", "filter-reset")
+    KNOWN_CONTRAST_DEBT = ("filter-reset",)
 
     async def _assert_zero_serious_critical(self, scope):
         await load_axe(self.page)

@@ -42,6 +42,10 @@
 <script>
 (function () {
   "use strict";
+  if (window._activeFiltersListenerBound) {
+    return;
+  }
+  window._activeFiltersListenerBound = true;
   function findSearchForm() {
     var searchInput = document.querySelector("form input[name='search']");
     return searchInput && searchInput.form ? searchInput.form : null;
