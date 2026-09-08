@@ -70,7 +70,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertContains(response, "cbc-workflow-o4a")
         self.assertContains(response, "v3")
         self.assertContains(response, "<span>3</span>")
-        self.assertContains(response, "analyses")
+        self.assertContains(response, "Analyses")
         self.assertContains(response, "1 of 2 files uploaded, 1 pending")
         self.assertContains(response, f'href="{reverse("bilbyui:gwflow_jobs")}"')
 
