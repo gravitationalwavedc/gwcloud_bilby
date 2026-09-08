@@ -1,0 +1,182 @@
+// Superevent detail shell (issue #53): URL-backed section nav, breadcrumb,
+// persistent current-context strip, prose-only reading constraint and 320 px
+// reflow guards. Markup contract lives in
+// src/bilbyui/templates/bilbyui/gwflow_detail.html and
+// src/bilbyui/templates/bilbyui/_gwflow_detail_header.html; design contract is
+// docs/plans/designs/077-ux6-superevent-detail-shell.md.
+//
+// Compiled after theme.scss, so every Bootstrap 4.6 variable/mixin referenced
+// here is already defined by the vendor import chain.
+//
+// Deliberately contains no transition/animation properties: reduced-motion
+// safe by construction (Frontend Bible rule 10). Skeleton shimmer lives in
+// _async.scss and is already static under prefers-reduced-motion.
+
+// ---------------------------------------------------------------------------
+// Pill section nav — real links with aria-current="page" (no role=tab, no
+// href="#"). Active state is NEVER carried by colour alone (Frontend Bible
+// rule 4): the active link also gains a persistent heavier border, bolder
+// weight and a filled shape, so the current section is identifiable without
+// colour. Links meet the 24x24 px pointer target; a visible focus ring is
+// provided via :focus-visible.
+// ---------------------------------------------------------------------------
+.section-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacer * 0.5;
+    margin-bottom: $spacer;
+    padding: 0;
+    list-style: none;
+}
+
+.section-nav-item {
+    // Equal-width 3-across on mobile (and at all widths): each item shares
+    // the row equally so the three sections sit side by side even at 320 px.
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.section-nav-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 24px;
+    padding: $spacer * 0.5 $spacer;
+    border: $border-width solid $border-color;
+    border-radius: 50rem; // pill shape
+    color: $body-color;
+    font-weight: 500;
+    text-align: center;
+    overflow-wrap: anywhere;
+
+    &:hover,
+    &:focus {
+        text-decoration: none;
+        color: $blue-900;
+        background-color: $gray-100;
+        border-color: $gray-400;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $primary;
+        outline-offset: 2px;
+    }
+
+    // Active: non-colour distinction — heavier border + bold weight + filled
+    // shape, not colour alone (WCAG 1.4.1).
+    &[aria-current='page'] {
+        font-weight: 700;
+        border-width: 2px;
+        border-color: $blue-800;
+        color: $blue-900;
+        background-color: $blue-100;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Breadcrumb — labelled nav with an ordered list. Bootstrap's .breadcrumb
+// provides the base; this scopes it to the detail shell and keeps the
+// current item non-colour-distinguished (bold). Separators are hidden from
+// assistive technology in markup (aria-hidden); Bootstrap renders them via
+// ::before content.
+// ---------------------------------------------------------------------------
+.context-breadcrumb {
+    margin-bottom: $spacer;
+
+    .breadcrumb {
+        background-color: transparent;
+        padding: 0;
+        margin-bottom: 0;
+    }
+
+    .breadcrumb-item {
+        font-size: $font-size-sm;
+
+        a {
+            color: $link-color;
+
+            &:hover,
+            &:focus {
+                color: darken($link-color, 10%);
+            }
+        }
+
+        &.active {
+            font-weight: 600;
+            color: $text-muted;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Persistent current-context strip — identity line + provenance line. Both
+// lines are semantic groups that wrap naturally at 320 px and under text
+// zoom. Provenance separators are attached to their following item via
+// ::before so they wrap WITH the item and are never orphaned at the start of
+// a line.
+// ---------------------------------------------------------------------------
+.context-strip {
+    margin-bottom: $spacer;
+}
+
+.context-identity {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: $spacer * 0.5;
+    margin-bottom: $spacer * 0.25;
+
+    h1 {
+        margin: 0;
+        font-size: $h1-font-size;
+        overflow-wrap: anywhere; // max-length sname must wrap, never widen the page
+    }
+}
+
+.context-identity-item {
+    // Event refs, instruments, etc. Wraps naturally with the group.
+    overflow-wrap: anywhere;
+}
+
+.context-provenance {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    color: $text-muted;
+    font-size: $font-size-sm;
+}
+
+// Separator attached to the FOLLOWING item (not trailing): when the line
+// wraps, the separator travels with its item and can never be stranded at
+// the start of a new line (no orphaned separators).
+.context-provenance-item + .context-provenance-item::before {
+    content: "·";
+    margin: 0 $spacer * 0.5;
+    color: $gray-400;
+}
+
+// ---------------------------------------------------------------------------
+// Prose-only reading constraint. Applied to prose blocks INSIDE cards only —
+// dense data, file lists and tables must NOT inherit this narrow width, so
+// the class is opt-in on the prose element itself, never on the card.
+// ---------------------------------------------------------------------------
+.prose {
+    max-width: 65ch;
+}
+
+// ---------------------------------------------------------------------------
+// 320 px reflow guards (Frontend Bible rule 1): the shell must not overflow
+// horizontally at 320-1440 px. Cards and their children clamp to the fluid
+// container; long identifiers wrap rather than widen the page.
+// ---------------------------------------------------------------------------
+.detail-shell {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.detail-shell .card {
+    max-width: 100%;
+    min-width: 0;
+}

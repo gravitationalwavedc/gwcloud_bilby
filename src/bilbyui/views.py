@@ -24,7 +24,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -1457,15 +1457,34 @@ def _get_gwflow_job_or_404(request, sname):
     return job
 
 
-def gwflow_job_detail_view(request, sname):
+def gwflow_job_detail_view(request, sname, section=None):
     job = _get_gwflow_job_or_404(request, sname)
+    if section is None:
+        return redirect(reverse("bilbyui:gwflow_job_metadata", args=[sname]))
+    section_content, stale = _render_gwflow_section(request, sname, section)
+    if request.headers.get("HX-Request") == "true":
+        return section_content
+    section_content.render()
     return TemplateResponse(
         request,
         "bilbyui/gwflow_detail.html",
         {
             "job": job,
+            "section": section,
+            "section_content": section_content.rendered_content,
+            "stale": stale,
         },
     )
+
+
+def _render_gwflow_section(request, sname, section):
+    if section == "metadata":
+        return _render_gwflow_metadata_section(request, sname)
+    if section == "files":
+        return _render_gwflow_files_section(request, sname)
+    if section == "history":
+        return _render_gwflow_history_section(request, sname)
+    raise Http404("Unknown superevent detail section")
 
 
 def _build_gwflow_analysis_blocks(job, analyses=None):
@@ -1524,12 +1543,13 @@ def _build_gwflow_analysis_blocks(job, analyses=None):
     return blocks
 
 
-def gwflow_job_files_partial(request, sname):
+def _render_gwflow_files_section(request, sname):
     job = _get_gwflow_job_or_404(request, sname)
     job = GWFlowJob.objects.prefetch_related("files", "bilby_jobs").get(pk=job.pk)
 
     analyses = None
     data, state = get_superevent(sname)
+    stale = state == "stale"
     if state in ("live", "stale") and isinstance(data, dict):
         analyses = {}
         for a in parse_analyses(data):
@@ -1542,61 +1562,78 @@ def gwflow_job_files_partial(request, sname):
             }
 
     analysis_blocks = _build_gwflow_analysis_blocks(job, analyses)
-    return TemplateResponse(
-        request,
-        "bilbyui/_gwflow_files.html",
-        {"job": job, "analysis_blocks": analysis_blocks},
-    )
-
-
-def gwflow_job_metadata_partial(request, sname):
-    job = _get_gwflow_job_or_404(request, sname)  # noqa: F841 - visibility check only
-    data, state = get_superevent(sname)
-    if state == "down":
-        return TemplateResponse(
+    return (
+        TemplateResponse(
             request,
-            "bilbyui/_async_state.html",
-            {
-                "state": "error",
-                "thing": "the metadata",
-                "region_label": "Metadata",
-                "retry_url": reverse("bilbyui:gwflow_job_metadata", args=[sname]),
-                "retry_target": "#metadata-pane",
-            },
-        )
-    return TemplateResponse(
-        request,
-        "bilbyui/_gwflow_metadata.html",
-        {
-            "payload": data,
-            "stale": state == "stale",
-        },
+            "bilbyui/_gwflow_files.html",
+            {"job": job, "analysis_blocks": analysis_blocks},
+        ),
+        stale,
     )
 
 
-def gwflow_job_history_partial(request, sname):
+def _render_gwflow_metadata_section(request, sname):
+    _get_gwflow_job_or_404(request, sname)  # noqa: F841 - visibility check only
+    data, state = get_superevent(sname)
+    stale = state == "stale"
+    if state == "down":
+        return (
+            TemplateResponse(
+                request,
+                "bilbyui/_async_state.html",
+                {
+                    "state": "error",
+                    "thing": "the metadata",
+                    "region_label": "Metadata",
+                    "retry_url": reverse("bilbyui:gwflow_job_metadata", args=[sname]),
+                    "retry_target": "#detail-pane",
+                },
+            ),
+            stale,
+        )
+    return (
+        TemplateResponse(
+            request,
+            "bilbyui/_gwflow_metadata.html",
+            {
+                "payload": data,
+                "stale": stale,
+            },
+        ),
+        stale,
+    )
+
+
+def _render_gwflow_history_section(request, sname):
     job = _get_gwflow_job_or_404(request, sname)
     versions, state = get_versions(sname)
+    stale = state == "stale"
     if state == "down" or versions is None:
-        return TemplateResponse(
-            request,
-            "bilbyui/_async_state.html",
-            {
-                "state": "error",
-                "thing": "the history",
-                "region_label": "History",
-                "retry_url": reverse("bilbyui:gwflow_job_history", args=[sname]),
-                "retry_target": "#history-pane",
-            },
+        return (
+            TemplateResponse(
+                request,
+                "bilbyui/_async_state.html",
+                {
+                    "state": "error",
+                    "thing": "the history",
+                    "region_label": "History",
+                    "retry_url": reverse("bilbyui:gwflow_job_history", args=[sname]),
+                    "retry_target": "#detail-pane",
+                },
+            ),
+            stale,
         )
-    return TemplateResponse(
-        request,
-        "bilbyui/_gwflow_history.html",
-        {
-            "job": job,
-            "versions": versions,
-            "stale": state == "stale",
-        },
+    return (
+        TemplateResponse(
+            request,
+            "bilbyui/_gwflow_history.html",
+            {
+                "job": job,
+                "versions": versions,
+                "stale": stale,
+            },
+        ),
+        stale,
     )
 
 

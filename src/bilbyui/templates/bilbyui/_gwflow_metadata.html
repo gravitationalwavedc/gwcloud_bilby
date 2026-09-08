@@ -1,18 +1,3 @@
-<div class="mb-4">
-  {% if payload.schema_version %}
-    <span class="badge badge-secondary mr-1">v{{ payload.schema_version }}</span>
-  {% endif %}
-  {% if payload.commit_sha %}
-    <span class="badge badge-secondary mr-1">{{ payload.commit_sha|slice:":8" }}</span>
-  {% endif %}
-  {% if payload.commit_timestamp %}
-    <span class="text-muted">{{ payload.commit_timestamp }}</span>
-  {% endif %}
-  {% if stale %}
-    <span class="text-muted small">Showing cached copy.</span>
-  {% endif %}
-</div>
-
 {% if payload %}
   {% if payload.info %}
     {% with info=payload.info %}

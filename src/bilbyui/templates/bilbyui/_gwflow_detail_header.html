@@ -1,29 +1,44 @@
-<div class="mb-4">
-  <h1 class="mb-3">{{ job.sname }}</h1>
-
-  {% if job.event_id %}
-    <div class="mb-2">
-      <span class="mr-2">Event ID: {{ job.event_id.event_id }}</span>
-      {% if job.event_id.trigger_id %}<span class="mr-2">Trigger ID: {{ job.event_id.trigger_id }}</span>{% endif %}
-      {% if job.event_id.nickname %}<span class="mr-2">Nickname: {{ job.event_id.nickname }}</span>{% endif %}
-    </div>
-  {% endif %}
-
-  <div class="mb-2">
+{% load frontend_tags %}
+{# Persistent current-context strip (issue #53 UX-6): identity line + current-version provenance line. The provenance triple (schema_version + short commit_sha + commit_timestamp) appears ONLY here — never in pane content. Design contract: docs/plans/designs/077-ux6-superevent-detail-shell.md. #}
+{# Context: job. Optional: stale (renders an inline stale notice + Refresh). #}
+<div class="context-strip mb-4">
+  <div class="context-identity">
+    <h1 class="mb-0">
+      {% include "bilbyui/_tech_value.html" with value=job.sname kind="id" copy_label="Copy superevent ID" %}
+    </h1>
+    {% if job.event_id %}
+      <span class="context-identity-item">Event ID: {{ job.event_id.event_id }}</span>
+      {% if job.event_id.trigger_id %}<span class="context-identity-item">Trigger ID: {{ job.event_id.trigger_id }}</span>{% endif %}
+      {% if job.event_id.nickname %}<span class="context-identity-item">Nickname: {{ job.event_id.nickname }}</span>{% endif %}
+    {% endif %}
     {% for lib in job.libraries %}
-      <span class="badge badge-secondary mr-1">{{ lib }}</span>
+      <span class="badge badge-secondary context-identity-item">{{ lib }}</span>
     {% endfor %}
-    {% if job.schema_version %}
-      <span class="badge badge-secondary mr-1">v{{ job.schema_version }}</span>
-    {% endif %}
-    {% if job.current_history_id %}
-      <span class="badge badge-secondary mr-1">{{ job.current_history_id|slice:":8" }}</span>
-      {% if job.current_history_timestamp %}
-        <span class="text-muted">{{ job.current_history_timestamp|date:"Y-m-d H:i:s" }} UTC</span>
-      {% endif %}
-    {% endif %}
     {% if job.is_pruned %}
-      <span class="badge badge-dark mr-1">pruned</span>
+      <span class="badge badge-dark context-identity-item">pruned</span>
     {% endif %}
   </div>
+
+  <div class="context-provenance">
+    {% if job.current_history_id %}
+      <span class="context-provenance-item">Current version: <span class="font-monospace">{{ job.current_history_id|slice:":8" }}</span></span>
+    {% endif %}
+    {% if job.current_history_timestamp %}
+      <span class="context-provenance-item">recorded {{ job.current_history_timestamp|utc_timestamp }}</span>
+    {% endif %}
+    {% if job.schema_version %}
+      <span class="context-provenance-item">{{ job.schema_version }}</span>
+    {% endif %}
+  </div>
+
+  {% if stale %}
+    <div class="async-notice" role="alert">
+      <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+      <span class="async-notice-text">The cached copy of the current version is shown.</span>
+      <a
+        class="btn btn-primary btn-sm"
+        href="{% if section == 'metadata' %}{% url 'bilbyui:gwflow_job_metadata' sname=job.sname %}{% elif section == 'files' %}{% url 'bilbyui:gwflow_job_files' sname=job.sname %}{% elif section == 'history' %}{% url 'bilbyui:gwflow_job_history' sname=job.sname %}{% else %}{% url 'bilbyui:gwflow_job_detail' sname=job.sname %}{% endif %}"
+      >Refresh</a>
+    </div>
+  {% endif %}
 </div>

@@ -1,5 +1,13 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h5>Version: <span class="badge badge-secondary">{{ history_id|slice:":8" }}</span></h5>
+  <h5>
+    Version: <span class="badge badge-secondary">{{ history_id|slice:":8" }}</span>
+    {% if payload.schema_version %}
+      <span class="badge badge-secondary mr-1">v{{ payload.schema_version }}</span>
+    {% endif %}
+  </h5>
+  {% if payload.commit_timestamp %}
+    <span class="text-muted">{{ payload.commit_timestamp }}</span>
+  {% endif %}
 </div>
 
-{% include "bilbyui/_gwflow_metadata.html" with payload=payload stale=stale %}
+{% include "bilbyui/_gwflow_metadata.html" with payload=payload %}

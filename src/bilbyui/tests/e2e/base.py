@@ -184,7 +184,7 @@ class GWFlowFilesPageBase(AsyncE2ETestCase):
             self.page = None
 
     async def _open_files_region(self):
-        await self.page.click("#files-tab")
+        await self.page.click('a[data-gwflow-section][href*="/files/"]')
         await self.page.wait_for_selector(".gw-analysis-block")
 
     def _create_user(self):

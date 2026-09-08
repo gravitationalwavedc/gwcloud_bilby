@@ -1,80 +1,151 @@
 {% extends "bilbyui/base.html" %}
+{% load frontend_tags %}
 
-{% block title %}{{ job.sname }} — GWCloud{% endblock %}
+{# Superevent detail shell (issue #53 UX-6): URL-backed section links enhanced by HTMX, breadcrumb, and a persistent current-context strip. Design contract: docs/plans/designs/077-ux6-superevent-detail-shell.md. #}
+{# Context: job, section ("metadata"|"files"|"history"), section_content (pre-rendered pane HTML). #}
+{# The section nav and #detail-pane live in ONE region (#detail-region) so the active link stays in sync with the URL and pane. Section links are boosted (hx-boost) so modifier-key/middle/context-menu clicks fall through to native navigation (htmx 2.0 safe-by-default). #}
+
+{% block title %}{{ section|capfirst }} — {{ job.sname }} — GWCloud{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
   <div class="app-container mb-5 pt-5">
-    {% include "bilbyui/_gwflow_detail_header.html" %}
+    <div class="detail-shell">
+      {% include "bilbyui/_gwflow_detail_header.html" with section=section %}
 
-    <div x-data="{ tab: 'metadata' }" class="row">
-      <div class="col-md-2">
-        <ul class="nav nav-pills flex-column" role="tablist">
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              id="metadata-tab"
-              :class="{ active: tab === 'metadata' }"
-              href="#"
-              role="tab"
-              @click.prevent="tab = 'metadata'"
-            >
-              Metadata
-            </a>
-          </li>
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              id="files-tab"
-              :class="{ active: tab === 'files' }"
-              href="#"
-              role="tab"
-              @click.prevent="tab = 'files'"
-            >
-              Analyses &amp; Files
-            </a>
-          </li>
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              id="history-tab"
-              :class="{ active: tab === 'history' }"
-              href="#"
-              role="tab"
-              @click.prevent="tab = 'history'"
-            >
-              History
-            </a>
-          </li>
-        </ul>
-      </div>
+      <nav aria-label="Breadcrumb" class="context-breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'bilbyui:gwflow_jobs' %}">GWFlow</a></li>
+          <li class="breadcrumb-item active" aria-current="location">{{ job.sname }}</li>
+        </ol>
+      </nav>
 
-      <div class="col-md-8">
-        <div
-          x-show="tab === 'metadata'"
-          id="metadata-pane"
-          hx-get="{% url 'bilbyui:gwflow_job_metadata' sname=job.sname %}"
-          hx-trigger="load once"
-          hx-swap="innerHTML"
-        >
-          Loading…
+      <div id="detail-region" data-sname="{{ job.sname }}">
+        <nav aria-label="Superevent sections">
+          <ul class="section-nav">
+            <li class="section-nav-item">
+              <a
+                class="section-nav-link"
+                href="{% url 'bilbyui:gwflow_job_metadata' sname=job.sname %}"
+                hx-boost="true"
+                hx-target="#detail-pane"
+                hx-swap="innerHTML"
+                hx-push-url="{% if section == 'metadata' %}false{% else %}true{% endif %}"
+                hx-sync="#detail-region:replace"
+                {% if section != 'metadata' %}hx-indicator="#detail-skeleton"{% endif %}
+                {% if section == 'metadata' %}aria-current="page"{% endif %}
+                data-gwflow-section
+              >Metadata</a>
+            </li>
+            <li class="section-nav-item">
+              <a
+                class="section-nav-link"
+                href="{% url 'bilbyui:gwflow_job_files' sname=job.sname %}"
+                hx-boost="true"
+                hx-target="#detail-pane"
+                hx-swap="innerHTML"
+                hx-push-url="{% if section == 'files' %}false{% else %}true{% endif %}"
+                hx-sync="#detail-region:replace"
+                {% if section != 'files' %}hx-indicator="#detail-skeleton"{% endif %}
+                {% if section == 'files' %}aria-current="page"{% endif %}
+                data-gwflow-section
+              >Files</a>
+            </li>
+            <li class="section-nav-item">
+              <a
+                class="section-nav-link"
+                href="{% url 'bilbyui:gwflow_job_history' sname=job.sname %}"
+                hx-boost="true"
+                hx-target="#detail-pane"
+                hx-swap="innerHTML"
+                hx-push-url="{% if section == 'history' %}false{% else %}true{% endif %}"
+                hx-sync="#detail-region:replace"
+                {% if section != 'history' %}hx-indicator="#detail-skeleton"{% endif %}
+                {% if section == 'history' %}aria-current="page"{% endif %}
+                data-gwflow-section
+              >History</a>
+            </li>
+          </ul>
+        </nav>
+
+        <div id="detail-pane" role="region" aria-label="{{ section|capfirst }}">
+          <h2 class="h4 mb-3" tabindex="-1">{{ section|capfirst }}</h2>
+          <div id="detail-skeleton" class="htmx-indicator" aria-hidden="true">
+            <div class="async-skeleton">
+              <div class="async-skeleton-row"></div>
+              <div class="async-skeleton-row"></div>
+              <div class="async-skeleton-row"></div>
+            </div>
+          </div>
+          {{ section_content|safe }}
         </div>
-        <div
-          x-show="tab === 'files'"
-          id="files-pane"
-          hx-get="{% url 'bilbyui:gwflow_job_files' sname=job.sname %}"
-          hx-trigger="click once from:#files-tab"
-          hx-swap="innerHTML"
-        ></div>
-        <div
-          x-show="tab === 'history'"
-          id="history-pane"
-          hx-get="{% url 'bilbyui:gwflow_job_history' sname=job.sname %}"
-          hx-trigger="click once from:#history-tab"
-          hx-swap="innerHTML"
-        ></div>
       </div>
     </div>
   </div>
 </div>
+
+{# Page-scoped focus + active-link sync (issue #53 focus rule D). Not a generic framework. #}
+<script>
+(function () {
+  var region = document.getElementById('detail-region');
+  if (!region) return;
+  var sname = region.getAttribute('data-sname') || '';
+  var links = Array.prototype.slice.call(region.querySelectorAll('a[data-gwflow-section]'));
+  var keyboardNav = false;
+
+  links.forEach(function (link) {
+    link.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        keyboardNav = new URL(link.href).pathname !== window.location.pathname;
+      }
+    });
+    // Reset on genuine pointer activation only. Enter activation fires a
+    // click but not a pointerdown, so keyboard-initiated navigation keeps
+    // keyboardNav set until the settled swap moves focus (focus rule D).
+    link.addEventListener('pointerdown', function () { keyboardNav = false; });
+  });
+
+  function syncActive() {
+    var path = window.location.pathname;
+    links.forEach(function (link) {
+      if (new URL(link.href).pathname === path) {
+        link.setAttribute('aria-current', 'page');
+        link.setAttribute('hx-push-url', 'false');
+        link.removeAttribute('hx-indicator');
+      } else {
+        link.removeAttribute('aria-current');
+        link.setAttribute('hx-push-url', 'true');
+        link.setAttribute('hx-indicator', '#detail-skeleton');
+      }
+    });
+  }
+
+  document.body.addEventListener('htmx:afterSwap', function (e) {
+    var target = e.detail && e.detail.target;
+    if (!target || target.id !== 'detail-pane') return;
+    syncActive();
+    var heading = target.querySelector('h2');
+    // Focus moves only after a successful settled swap (focus rule D); failed
+    // requests and back/forward restoration never move focus.
+    if (heading && e.detail.successful !== false && keyboardNav) {
+      heading.setAttribute('tabindex', '-1');
+      heading.focus();
+    }
+    keyboardNav = false;
+    if (heading && sname) {
+      document.title = heading.textContent.trim() + ' — ' + sname + ' — GWCloud';
+    }
+    // The skeleton lives inside the swap target, so re-insert it after each
+    // swap so it remains available for the next section navigation.
+    if (heading && !target.querySelector('#detail-skeleton')) {
+      var sk = document.createElement('div');
+      sk.id = 'detail-skeleton';
+      sk.className = 'htmx-indicator';
+      sk.setAttribute('aria-hidden', 'true');
+      sk.innerHTML = '<div class="async-skeleton"><div class="async-skeleton-row"></div><div class="async-skeleton-row"></div><div class="async-skeleton-row"></div></div>';
+      heading.insertAdjacentElement('afterend', sk);
+    }
+  });
+})();
+</script>
 {% endblock %}
