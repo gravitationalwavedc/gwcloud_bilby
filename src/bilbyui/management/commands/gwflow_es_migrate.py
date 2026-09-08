@@ -32,16 +32,19 @@ _DEFAULT_FIELD = [
     "_gwcloud.eventTriggerId",
 ]
 
+_DEPTH_LIMIT = 100
+
 
 def build_gwflow_es_mapping():
     """Return the strict mapping body used to (re)create the GWFlow index."""
     return {
         "settings": {
             "index.mapping.total_fields.limit": 10000,
-            "index.mapping.depth.limit": 100,
+            "index.mapping.depth.limit": _DEPTH_LIMIT,
             "index.query.default_field": list(_DEFAULT_FIELD),
         },
         "mappings": {
+            "dynamic": "strict",
             "date_detection": False,
             "numeric_detection": False,
             "dynamic_templates": [
@@ -175,6 +178,11 @@ class Command(BaseCommand):
                 field_count,
                 max_depth,
             )
+            if max_depth > _DEPTH_LIMIT:
+                reason = f"max depth {max_depth} exceeds configured depth limit {_DEPTH_LIMIT}"
+                failures.append((job, reason))
+                logger.warning("gwflow_es_migrate: %s for job %s (%s)", reason, job.id, job.sname)
+                self.stderr.write(self.style.ERROR(f"✗ Job {job.id} ({job.sname}): {reason}"))
 
         if failures:
             self.stdout.write(

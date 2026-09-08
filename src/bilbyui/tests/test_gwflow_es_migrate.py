@@ -94,6 +94,7 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
 
         body = m_es.return_value.indices.create.call_args.kwargs["body"]
         mappings = body["mappings"]
+        self.assertEqual(mappings["dynamic"], "strict")
         self.assertEqual(mappings["date_detection"], False)
         self.assertEqual(mappings["numeric_detection"], False)
         self.assertEqual(mappings["properties"]["_gwcloud"]["dynamic"], "strict")
@@ -130,6 +131,32 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
     def test_build_gwflow_es_mapping_no_nested_fields(self):
         body = build_gwflow_es_mapping()
         self.assertNotIn("index.mapping.nested_fields.limit", body["settings"])
+
+    def test_measure_doc_counts_fields_and_depth(self):
+        from bilbyui.management.commands.gwflow_es_migrate import measure_doc
+
+        doc = {
+            "_gwcloud": {"sname": "S230601ag", "libraries": ["a", "b"]},
+            "metadata": {"nested": {"results": [{"score": 1.0}]}},
+        }
+        fields, depth = measure_doc(doc)
+        self.assertEqual(fields, 7)
+        self.assertEqual(depth, 5)
+
+    def test_refusal_when_doc_exceeds_depth_limit(self):
+        make_job()
+        es = mock.MagicMock()
+        es.count.return_value = {"count": 1}
+
+        with mock.patch(
+            "bilbyui.management.commands.gwflow_es_migrate.measure_doc",
+            return_value=(0, 101),
+        ):
+            exit_code, _, err, m_es, _, _, _ = self._run(es=es)
+
+        self.assertEqual(exit_code, 1)
+        m_es.return_value.indices.delete.assert_not_called()
+        self.assertIn("exceeds configured depth limit", err)
 
     def test_refusal_on_portal_failure(self):
         make_job()
