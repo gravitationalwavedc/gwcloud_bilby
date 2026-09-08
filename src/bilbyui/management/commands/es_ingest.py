@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from bilbyui.models import BilbyJob, GWFlowJob
-from bilbyui.utils.gwflow_es import gwflow_elastic_search_update
+from bilbyui.utils.gwflow_es import get_es_client, gwflow_elastic_search_update
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,15 @@ class Command(BaseCommand):
         total_jobs = BilbyJob.objects.count()
         success_count = 0
         error_count = 0
+
+        # Rebuild the bilby index from the DB so stale documents (jobs deleted
+        # from the DB but still present in ES) are removed. The per-job
+        # elastic_search_update() path only upserts, so without dropping the
+        # index first a re-ingest would leave orphaned docs behind and the
+        # public job list would keep surfacing empty pages.
+        if not getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
+            es = get_es_client()
+            es.indices.delete(index=settings.ELASTIC_SEARCH_INDEX, ignore_unavailable=True)
 
         self.stdout.write(f"Starting Elasticsearch ingestion for {total_jobs} bilby jobs...")
 

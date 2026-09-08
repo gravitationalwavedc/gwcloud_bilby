@@ -33,6 +33,29 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertIn("Ingestion complete: 3 succeeded, 0 failed", output)
         self.assertIn("✓ Job", output)
 
+    def test_es_ingest_drops_bilby_index_before_ingesting(self):
+        out = StringIO()
+        with mock.patch("bilbyui.management.commands.es_ingest.get_es_client") as mock_get_es:
+            mock_es = mock_get_es.return_value
+            with override_settings(IGNORE_ELASTIC_SEARCH=False):
+                with mock.patch.object(BilbyJob, "save", autospec=True):
+                    call_command("es_ingest", stdout=out)
+
+        mock_es.indices.delete.assert_called_once_with(
+            index="gwcloud-bilbyjob",
+            ignore_unavailable=True,
+        )
+        self.assertIn("Ingestion complete: 3 succeeded, 0 failed", out.getvalue())
+
+    def test_es_ingest_skips_index_drop_when_es_ignored(self):
+        out = StringIO()
+        with mock.patch("bilbyui.management.commands.es_ingest.get_es_client") as mock_get_es:
+            with mock.patch.object(BilbyJob, "save", autospec=True):
+                call_command("es_ingest", stdout=out)
+
+        mock_get_es.assert_not_called()
+        self.assertIn("Ingestion complete: 3 succeeded, 0 failed", out.getvalue())
+
     def test_es_ingest_error(self):
         out = StringIO()
         with mock.patch.object(BilbyJob, "save", autospec=True, side_effect=DatabaseError("boom")):
