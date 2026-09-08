@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 from django.urls import reverse_lazy
@@ -200,7 +201,7 @@ SUPPORTING_FILE_UPLOAD_DIR = EXTERNAL_STORAGE_PATH / "supporting_files"
 
 # How long (in seconds) a tar subprocess may run while unpacking/repacking an uploaded archive
 # before it is killed. Deployments handling very large archives may need to raise this.
-TAR_PROCESS_TIMEOUT = 30
+TAR_PROCESS_TIMEOUT = int(os.getenv("TAR_PROCESS_TIMEOUT", "120"))
 
 # Where mirrored gwflow files are permanently stored
 GWFLOW_FILE_UPLOAD_DIR = EXTERNAL_STORAGE_PATH / "gwflow"
