@@ -53,7 +53,10 @@ class TestActiveFiltersPagination(BilbyTestCase):
             ),
             mock.patch(
                 "bilbyui.views.list_gwflow_filter_options",
-                return_value={"libraries": ["lib-a", "lib-b"], "review_statuses": ["reviewed", "pending"]},
+                return_value={
+                    "libraries": {"values": ["lib-a", "lib-b"], "state": "ok"},
+                    "review_statuses": {"values": ["reviewed", "pending"], "state": "ok"},
+                },
             ),
         ):
             return self.client.get(self.url, params or {})

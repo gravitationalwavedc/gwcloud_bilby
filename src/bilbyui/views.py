@@ -1335,7 +1335,12 @@ def _render_job_list(
         "total": total,
         "library": library,
         "review": review,
-        "filter_options": filter_options if filter_options is not None else {"libraries": [], "review_statuses": []},
+        "filter_options": filter_options
+        if filter_options is not None
+        else {
+            "libraries": {"values": [], "state": "unavailable"},
+            "review_statuses": {"values": [], "state": "unavailable"},
+        },
         "total_pages": total_pages,
         "pagination_page": pagination_page,
         "page_range": page_range,
@@ -1414,7 +1419,10 @@ def gwflow_jobs_view(request):
         ),
     )
 
-    filter_options = {"libraries": [], "review_statuses": []}
+    filter_options = {
+        "libraries": {"values": [], "state": "unavailable"},
+        "review_statuses": {"values": [], "state": "unavailable"},
+    }
     if request.headers.get("HX-Request") != "true":
         try:
             filter_options = list_gwflow_filter_options()

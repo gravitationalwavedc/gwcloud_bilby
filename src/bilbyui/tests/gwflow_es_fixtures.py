@@ -236,3 +236,30 @@ def assert_defect_queries_assertable(testcase, docs_by_id):
     for fx_id in (1, 2, 4, 5):
         testcase.assertFalse(docs_by_id[fx_id]["doc"]["_gwcloud"]["ligoOnly"])
     testcase.assertTrue(d3["_gwcloud"]["ligoOnly"])
+
+
+# Expected list-query results for the canonical fixture matrix (issue #72 query
+# assertion table). Each entry is (label, list_gwflow_jobs kwargs, expected
+# ordered document ids) for a public, non-pruned query (the default for a
+# non-LIGO user). ``time_range`` assertions are evaluated against the fixed
+# reference date 2026-09-08 (see the integration test, which pins
+# timezone.now). Shared so migration and service integration tests assert the
+# same expected behaviour without duplicating the table.
+QUERY_ASSERTIONS = [
+    ("library cbc-workflow-o4a", {"library": "cbc-workflow-o4a"}, [1, 5]),
+    ("review-status approved", {"review_status": "approved"}, [1]),
+    ("review-status Approved", {"review_status": "Approved"}, [5]),
+    ("_gwcloud.libraries:*", {"search": "_gwcloud.libraries:*"}, [1, 2, 5]),
+    (
+        "metadata.ParameterEstimation.results.inference_software:bilby",
+        {"search": "metadata.ParameterEstimation.results.inference_software:bilby"},
+        [1, 5],
+    ),
+    ("_gwcloud.eventTriggerId:*", {"search": "_gwcloud.eventTriggerId:*"}, [1, 2, 5]),
+    ("updated past 30 days", {"time_range": "1m"}, [1]),
+]
+
+# Reference date used to make the "updated past 30 days" assertion
+# deterministic (fixture 1 is within 31 days; fixtures 2-4 are older;
+# fixture 5 has no timestamp).
+QUERY_REFERENCE_DATE = datetime(2026, 9, 8, tzinfo=UTC)

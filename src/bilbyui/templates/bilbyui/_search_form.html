@@ -12,7 +12,17 @@
 {#                           (default derived from jobs_list_url_name) #}
 {#   show_gwflow_filters   - bool; render GWFlow-only Library/Review status selects #}
 {#                           (default: True for the gwflow list, else False) #}
-{#   filter_options        - {"libraries": [...], "review_statuses": [...]} #}
+{#   filter_options        - per-facet {values, state}: #}
+{#                           {"libraries":     {"values": [...], "state": ok|stale|unavailable}, #}
+{#                            "review_statuses": {"values": [...], "state": ok|stale|unavailable}} #}
+{#                           Each facet renders independently: ok = enabled select #}
+{#                           (with neutral "No options available" when empty), #}
+{#                           stale = enabled cached values + "Options may be out of #}
+{#                           date", unavailable = disabled select + #}
+{#                           "Options are temporarily unavailable" via #}
+{#                           aria-describedby. Degraded facets share ONE role=alert #}
+{#                           region so at most one assertive announcement is made #}
+{#                           per settled interaction (Frontend Bible §5). #}
 {#   search / library / review / time_range - current values #}
 {# #}
 {# Row 1 = labelled common-search input + filter selects (Library, Review status, #}
@@ -106,12 +116,21 @@
               hx-get="{% url jobs_list_url_name %}"
               hx-include="closest form"
               hx-trigger="change"
+              {% if filter_options.libraries.state == "unavailable" %}disabled{% endif %}
+              {% if filter_options.libraries.state == "unavailable" %}aria-describedby="library-options-status"{% endif %}
             >
               <option value="">All libraries</option>
-              {% for option in filter_options.libraries %}
+              {% for option in filter_options.libraries.values %}
               <option value="{{ option }}"{% if library == option %} selected{% endif %}>{{ option }}</option>
               {% endfor %}
             </select>
+            {% if filter_options.libraries.state == "ok" and not filter_options.libraries.values %}
+            <small class="form-text text-muted" id="library-options-status">No options available</small>
+            {% elif filter_options.libraries.state == "stale" %}
+            <small class="form-text text-muted" id="library-options-status">Options may be out of date</small>
+            {% elif filter_options.libraries.state == "unavailable" %}
+            <small class="form-text text-muted" id="library-options-status">Options are temporarily unavailable</small>
+            {% endif %}
           </div>
           <div class="col-12 col-md-4">
             <label for="review">Review status</label>
@@ -122,12 +141,21 @@
               hx-get="{% url jobs_list_url_name %}"
               hx-include="closest form"
               hx-trigger="change"
+              {% if filter_options.review_statuses.state == "unavailable" %}disabled{% endif %}
+              {% if filter_options.review_statuses.state == "unavailable" %}aria-describedby="review-options-status"{% endif %}
             >
               <option value="">All review statuses</option>
-              {% for option in filter_options.review_statuses %}
+              {% for option in filter_options.review_statuses.values %}
               <option value="{{ option }}"{% if review == option %} selected{% endif %}>{{ option }}</option>
               {% endfor %}
             </select>
+            {% if filter_options.review_statuses.state == "ok" and not filter_options.review_statuses.values %}
+            <small class="form-text text-muted" id="review-options-status">No options available</small>
+            {% elif filter_options.review_statuses.state == "stale" %}
+            <small class="form-text text-muted" id="review-options-status">Options may be out of date</small>
+            {% elif filter_options.review_statuses.state == "unavailable" %}
+            <small class="form-text text-muted" id="review-options-status">Options are temporarily unavailable</small>
+            {% endif %}
           </div>
           {% endif %}
           <div class="col-12 col-md-4">
@@ -148,6 +176,21 @@
             </select>
           </div>
         </div>
+        {% if show_gwflow_filters or jobs_list_url_name == "bilbyui:gwflow_jobs" %}
+        {% if service_state != "down" and service_state != "invalid" %}
+        {% if filter_options.libraries.state == "stale" or filter_options.libraries.state == "unavailable" or filter_options.review_statuses.state == "stale" or filter_options.review_statuses.state == "unavailable" %}
+        {# Single consolidated assertive announcement for degraded facets. One #}
+        {# role=alert region regardless of how many facets degrade, so at most #}
+        {# one announcement per settled interaction (Frontend Bible §5). #}
+        <div role="alert" class="alert alert-warning mt-2 mb-0" id="filter-options-alert">
+          {% if filter_options.libraries.state == "stale" %}Library options may be out of date.{% endif %}
+          {% if filter_options.libraries.state == "unavailable" %}Library options are temporarily unavailable.{% endif %}
+          {% if filter_options.review_statuses.state == "stale" %}Review status options may be out of date.{% endif %}
+          {% if filter_options.review_statuses.state == "unavailable" %}Review status options are temporarily unavailable.{% endif %}
+        </div>
+        {% endif %}
+        {% endif %}
+        {% endif %}
       </div>
     </div>
   </div>
