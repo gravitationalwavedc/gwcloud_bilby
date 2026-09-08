@@ -1,6 +1,6 @@
-import contextlib
 import datetime
 import json
+import logging
 import uuid
 from pathlib import Path
 
@@ -8,7 +8,7 @@ import elasticsearch
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from django.db.models.signals import m2m_changed, post_save, pre_delete
 from django.dispatch import receiver
@@ -18,6 +18,8 @@ from bilbyui.utils.gwflow_es import get_es_client
 from bilbyui.utils.jobs.request_file_list import request_file_list
 
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_json_loads(value):
@@ -394,10 +396,26 @@ class BilbyJob(models.Model):
         if not (self.ini_string and self.ini_string.strip()):
             return
 
+        job_id = self.id
+        db_alias = self._state.db
+
+        def _update_after_commit():
+            try:
+                job = BilbyJob.objects.using(db_alias).get(pk=job_id)
+            except BilbyJob.DoesNotExist:
+                return
+            try:
+                self._write_elastic_search_document(job)
+            except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError):
+                logger.exception("Failed to update Elasticsearch document for bilby job %s", job_id)
+
+        transaction.on_commit(_update_after_commit, using=db_alias)
+
+    def _write_elastic_search_document(self, job):
         es = get_es_client()
 
         # Get the user details for this job
-        success, users = request_lookup_users([self.user.id])
+        success, users = request_lookup_users([job.user_id])
         if not success or not users:
             return
         user = users[0]
@@ -408,46 +426,56 @@ class BilbyJob(models.Model):
         doc = {
             "user": {"name": user["name"]},
             "job": {
-                "name": self.name,
-                "description": self.description,
-                "creationTime": self.creation_time,
-                "lastUpdatedTime": self.last_updated,
+                "name": job.name,
+                "description": job.description,
+                "creationTime": job.creation_time,
+                "lastUpdatedTime": job.last_updated,
             },
-            "labels": [{"name": label.name, "description": label.description} for label in self.labels.all()],
+            "labels": [{"name": label.name, "description": label.description} for label in job.labels.all()],
             "eventId": None,
-            "ini": {kv.key: _safe_json_loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=False)},
-            "params": {kv.key: _safe_json_loads(kv.value) for kv in self.inikeyvalue_set.filter(processed=True)},
-            "_private_info_": {"userId": self.user.id, "private": self.private},
+            "ini": {kv.key: _safe_json_loads(kv.value) for kv in job.inikeyvalue_set.filter(processed=False)},
+            "params": {kv.key: _safe_json_loads(kv.value) for kv in job.inikeyvalue_set.filter(processed=True)},
+            "_private_info_": {"userId": job.user_id, "private": job.private},
         }
 
         # Set the event id if one is set on the job
-        if self.event_id:
+        if job.event_id:
             doc["eventId"] = {
-                "eventId": self.event_id.event_id,
-                "triggerId": self.event_id.trigger_id,
-                "nickname": self.event_id.nickname,
-                "gpsTime": self.event_id.gps_time,
+                "eventId": job.event_id.event_id,
+                "triggerId": job.event_id.trigger_id,
+                "nickname": job.event_id.nickname,
+                "gpsTime": job.event_id.gps_time,
             }
 
         # First try to update the document in elastic search if it exists, otherwise insert the new document
         try:
-            es.update(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, doc=doc)
+            es.update(index=settings.ELASTIC_SEARCH_INDEX, id=job.id, doc=doc)
         except elasticsearch.NotFoundError:
-            es.index(index=settings.ELASTIC_SEARCH_INDEX, id=self.id, document=doc)
+            es.index(index=settings.ELASTIC_SEARCH_INDEX, id=job.id, document=doc)
 
-    def elastic_search_remove(self):
+    def elastic_search_remove(self, using=None):
         """
         Deletes the elastic search record for this job
         """
         if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
             return
 
-        es = get_es_client()
+        job_id = self.id
+        db_alias = using or self._state.db
 
-        # Swallow NotFoundError so deleting a job whose ES document is missing
-        # (e.g. a legacy job that was never indexed) doesn't abort the DB delete
-        with contextlib.suppress(elasticsearch.NotFoundError):
-            es.delete(index=settings.ELASTIC_SEARCH_INDEX, id=self.id)
+        def _remove_after_commit():
+            es = get_es_client()
+
+            try:
+                es.delete(index=settings.ELASTIC_SEARCH_INDEX, id=job_id)
+            except elasticsearch.NotFoundError:
+                # Swallow NotFoundError so deleting a job whose ES document is missing
+                # (e.g. a legacy job that was never indexed) doesn't abort the DB delete
+                pass
+            except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError):
+                logger.exception("Failed to remove Elasticsearch document for bilby job %s", job_id)
+
+        transaction.on_commit(_remove_after_commit, using=db_alias)
 
 
 def on_bilby_job_label_add_rem(sender, instance, action, pk_set, **kwargs):
@@ -460,7 +488,7 @@ m2m_changed.connect(on_bilby_job_label_add_rem, sender=BilbyJob.labels.through)
 
 @receiver(pre_delete, sender=BilbyJob, dispatch_uid="bilby_job_delete_signal")
 def bilby_job_delete_signal(sender, instance, using, **kwargs):
-    instance.elastic_search_remove()
+    instance.elastic_search_remove(using=using)
 
 
 class ExternalBilbyJob(models.Model):

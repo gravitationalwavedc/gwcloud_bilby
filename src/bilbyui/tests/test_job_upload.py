@@ -38,6 +38,13 @@ REPLICA_JOB_NAME = "E2309xyz--bilby-IMRPhenomXPHM-SpinTaylor-7"
 User = get_user_model()
 
 
+def request_lookup_users_mock(*args, **kwargs):
+    user = User.objects.first()
+    if user:
+        return True, [{"id": user.id, "name": "buffy summers"}]
+    return False, []
+
+
 class TestJobUpload(BilbyTestCase):
     def setUp(self):
         self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
@@ -1874,6 +1881,54 @@ class TestJobUploadSupportingFiles(BilbyTestCase):
         self.assertEqual(BilbyJob.objects.count(), 0)
         self.assertEqual(SupportingFile.objects.count(), 0)
 
+    @silence_errors
+    @override_settings(
+        IGNORE_ELASTIC_SEARCH=False,
+        JOB_UPLOAD_DIR=TemporaryDirectory().name,
+        SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name,
+    )
+    @mock.patch("elasticsearch.Elasticsearch.update")
+    @mock.patch("elasticsearch.Elasticsearch.index")
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_rolled_back_upload_performs_no_es_write(self, lookup_users_mock, es_index_mock, es_update_mock):
+        """
+        Test that a rolled-back upload_bilby_job (missing supporting file) performs no elastic
+        search write for the rolled-back job
+        """
+        test_ini_string = create_test_ini_string(
+            {
+                "label": self.test_name,
+                "outdir": "./",
+                "psd-dict": "{V1:./supporting_files/psd/V1-psd.dat}",
+            },
+            True,
+        )
+
+        supporting_files = ["supporting_files/psd/V1-psd.dat1"]
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, self.test_name, supporting_files=supporting_files),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": self.token,
+            "details": {"description": self.test_description, "private": self.test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertIsNotNone(response.errors)
+        self.assertEqual(response.data, {"uploadBilbyJob": None})
+        self.assertEqual(BilbyJob.objects.count(), 0)
+
+        # The rolled-back job must have produced no elastic search write
+        es_update_mock.assert_not_called()
+        es_index_mock.assert_not_called()
+
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, SUPPORTING_FILE_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_supporting_file_success_with_all_files(self):
         # (f) Integration: an archive including all 3 supporting files at resolved relative paths
@@ -2149,6 +2204,53 @@ class TestHdf5JobUpload(BilbyTestCase):
         self.assertEqual("Timed out repacking the uploaded HDF5 job", response.errors[0]["message"])
         repack_process.kill.assert_called_once()
         self.assertFalse(BilbyJob.objects.all().exists())
+
+    @silence_errors
+    @override_settings(
+        IGNORE_ELASTIC_SEARCH=False,
+        JOB_UPLOAD_DIR=TemporaryDirectory().name,
+    )
+    @mock.patch("elasticsearch.Elasticsearch.update")
+    @mock.patch("elasticsearch.Elasticsearch.index")
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_hdf5_job_upload_tar_failure_performs_no_es_write(self, lookup_users_mock, es_index_mock, es_update_mock):
+        """Test that a rolled-back HDF5 upload (tar failure) performs no elastic search write."""
+        token = self.get_upload_token()
+
+        test_name = "hdf5_job"
+        test_description = "Test HDF5 Job"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+        hdf5_file = self.create_test_hdf5_file()
+        ini_file = self.create_test_ini_file(test_ini_string)
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"name": test_name, "description": test_description, "private": test_private},
+            "hdf5File": None,
+            "iniFile": None,
+        }
+        test_files = {
+            "input.hdf5File": hdf5_file,
+            "input.iniFile": ini_file,
+        }
+
+        repack_process = mock.MagicMock()
+        repack_process.communicate.side_effect = [
+            subprocess.TimeoutExpired(cmd="tar", timeout=30),
+            (b"", b""),
+        ]
+
+        with mock.patch("bilbyui.views.subprocess.Popen", return_value=repack_process):
+            response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertEqual("Timed out repacking the uploaded HDF5 job", response.errors[0]["message"])
+        self.assertFalse(BilbyJob.objects.all().exists())
+
+        # The rolled-back job must have produced no elastic search write
+        es_update_mock.assert_not_called()
+        es_index_mock.assert_not_called()
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_hdf5_job_upload_strips_conda_env_from_stored_ini(self):
