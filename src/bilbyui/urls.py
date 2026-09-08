@@ -65,10 +65,25 @@ urlpatterns = [
     ),
     path("gwflow/", views.gwflow_jobs_view, name="gwflow_jobs"),
     path("gwflow/<str:sname>/", views.gwflow_job_detail_view, name="gwflow_job_detail"),
-    path("gwflow/<str:sname>/files/", views.gwflow_job_files_partial, name="gwflow_job_files"),
+    path(
+        "gwflow/<str:sname>/files/",
+        views.gwflow_job_detail_view,
+        {"section": "files"},
+        name="gwflow_job_files",
+    ),
     path("gwflow/files/<uuid:token>/download/", views.gwflow_file_download, name="gwflow_file_download"),
-    path("gwflow/<str:sname>/metadata/", views.gwflow_job_metadata_partial, name="gwflow_job_metadata"),
-    path("gwflow/<str:sname>/history/", views.gwflow_job_history_partial, name="gwflow_job_history"),
+    path(
+        "gwflow/<str:sname>/metadata/",
+        views.gwflow_job_detail_view,
+        {"section": "metadata"},
+        name="gwflow_job_metadata",
+    ),
+    path(
+        "gwflow/<str:sname>/history/",
+        views.gwflow_job_detail_view,
+        {"section": "history"},
+        name="gwflow_job_history",
+    ),
     path(
         "gwflow/<str:sname>/history/<str:history_id>/",
         views.gwflow_job_history_version_partial,

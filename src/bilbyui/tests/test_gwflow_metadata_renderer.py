@@ -306,12 +306,16 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         self.assertIn("E1", historical)
         self.assertIn("gstlal", historical)
 
-    def test_stale_note_only_rendered_when_stale(self):
+    def test_stale_flag_does_not_render_note_in_metadata_pane(self):
+        # The stale notice now lives in the full-page context strip (issue #53);
+        # the metadata pane itself renders content without a cached-copy note.
         stale_output = self._render({"gracedb": {"notes": "x"}}, stale=True)
         live_output = self._render({"gracedb": {"notes": "x"}}, stale=False)
 
-        self.assertIn("Showing cached copy.", stale_output)
+        self.assertNotIn("Showing cached copy.", stale_output)
         self.assertNotIn("Showing cached copy.", live_output)
+        self.assertIn("x", stale_output)
+        self.assertIn("x", live_output)
 
     def test_tgr_list_keys_rendered_in_alphabetical_order(self):
         output = self._render(
@@ -343,7 +347,10 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
             output.index("tiger_analyses"),
         )
 
-    def test_header_strip_renders_schema_commit_sha_and_timestamp(self):
+    def test_metadata_pane_does_not_render_provenance_triple(self):
+        # The provenance triple (schema_version + short commit_sha +
+        # commit_timestamp) now appears only in the context strip (issue #53),
+        # never in the metadata pane.
         output = self._render(
             {
                 "schema_version": "3",
@@ -352,10 +359,9 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
             }
         )
 
-        self.assertIn("v3", output)
-        self.assertIn("abcdefgh", output)
-        self.assertNotIn("12345678", output)
-        self.assertIn("2024-01-02T03:04:05Z", output)
+        self.assertNotIn("v3", output)
+        self.assertNotIn("abcdefgh", output)
+        self.assertNotIn("2024-01-02T03:04:05Z", output)
 
 
 class TestGWFlowTagsFilters(SimpleTestCase):
