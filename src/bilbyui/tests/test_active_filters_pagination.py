@@ -103,15 +103,15 @@ class TestActiveFiltersPagination(BilbyTestCase):
     def test_gwflow_result_count_zero_keeps_empty_copy(self):
         response = self._get_gwflow(total=0)
 
-        self.assertContains(response, "0 superevents match")
-        self.assertContains(response, "No GWFlow jobs found.")
+        self.assertContains(response, "No superevents yet.")
+        self.assertNotContains(response, "0 superevents match")
 
     def test_gwflow_empty_page_with_positive_total_shows_recovery_copy(self):
         response = self._get_gwflow(total=40)
 
-        self.assertContains(response, "40 superevents match")
         self.assertContains(response, "This page has no GWFlow jobs. Choose another page below.")
-        self.assertNotContains(response, "No GWFlow jobs found.")
+        self.assertNotContains(response, "40 superevents match")
+        self.assertNotContains(response, "No superevents yet.")
 
     def test_job_fragment_result_count(self):
         response = self._render_fragment(

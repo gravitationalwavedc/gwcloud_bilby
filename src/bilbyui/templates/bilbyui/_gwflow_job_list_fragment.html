@@ -2,20 +2,43 @@
 {% if service_state == "down" %}
   {% include "bilbyui/_async_state.html" with state="error" thing="the GWFlow jobs" region_label="GWFlow job list" retry_url=retry_url retry_target=retry_target %}
 {% elif service_state == "invalid" %}
-  <div class="alert alert-warning" role="alert">
-    The search expression is invalid. Check the advanced syntax and try again.
-  </div>
+  <div class="alert alert-warning" role="alert">The search expression is invalid. Check the advanced syntax and try again.</div>
 {% else %}
-  <p class="result-count" role="status">{{ total }} superevent{{ total|pluralize }} match</p>
   {% include "bilbyui/_active_filters.html" %}
-  {% for node in rows %}
-    {% include "bilbyui/_gwflow_job_row.html" %}
-  {% empty %}
-    {% if total %}
-      <p class="text-muted">This page has no GWFlow jobs. Choose another page below.</p>
-    {% else %}
-      <p class="text-muted">No GWFlow jobs found.</p>
-    {% endif %}
-  {% endfor %}
+  {% if rows %}
+    <p class="result-count" role="status">{{ total }} superevent{{ total|pluralize }} match</p>
+    <table class="gwflow-results-table">
+      <caption class="sr-only">GWFlow superevents</caption>
+      <thead class="sr-only">
+        <tr>
+          <th scope="col">Event ID(s)</th>
+          <th scope="col">Superevent &amp; sources</th>
+          <th scope="col">Analyses</th>
+          <th scope="col">Files</th>
+          <th scope="col">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for node in rows %}
+          {% include "bilbyui/_gwflow_job_row.html" %}
+        {% endfor %}
+      </tbody>
+    </table>
+  {% elif total %}
+    <p class="text-muted">This page has no GWFlow jobs. Choose another page below.</p>
+  {% else %}
+    {% include "bilbyui/_async_state.html" with state="empty" thing="superevents" empty_hint="Try clearing your filters or resetting the search." %}
+    <a
+      class="filter-reset"
+      href="{{ reset_url }}"
+      data-filter-reset
+      hx-get="{{ reset_url }}"
+      hx-target="#gwflow-job-list"
+      hx-swap="innerHTML"
+      hx-sync="#jobs-search-region:replace"
+      hx-push-url="true"
+      hx-indicator="#gwflow-job-list-loading"
+    >Reset search</a>
+  {% endif %}
   {% include "bilbyui/_pagination.html" %}
 {% endif %}
