@@ -1,0 +1,18 @@
+{% if node.event_id_all %}
+  {% for value in node.event_id_display %}
+    <span class="event-id">{{ value }}</span>{% if not forloop.last %}, {% endif %}
+  {% endfor %}
+  {% if node.event_id_extra %}
+    <button type="button" class="event-id-toggle"
+            aria-expanded="false"
+            aria-controls="event-ids-{{ node.id }}"
+            onclick="var t=this;var e=document.getElementById(t.getAttribute('aria-controls'));e.hidden=!e.hidden;t.setAttribute('aria-expanded',e.hidden?'false':'true');">
+      +{{ node.event_id_extra|length }} more
+    </button>
+    <span id="event-ids-{{ node.id }}" class="event-id-extra" hidden>
+      {% for value in node.event_id_extra %}<span class="event-id">{{ value }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}
+    </span>
+  {% endif %}
+{% else %}
+  <span>No event IDs</span>
+{% endif %}

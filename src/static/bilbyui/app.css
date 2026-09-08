@@ -10000,6 +10000,144 @@ a.text-dark:hover, a.text-dark:focus {
     width: 100%;
   }
 }
+.gwflow-results-table {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  table-layout: fixed;
+}
+.gwflow-results-table th,
+.gwflow-results-table td {
+  padding: 0.5rem;
+  vertical-align: top;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.gwflow-results-table tbody tr {
+  border-top: 1px solid #afbacb;
+  border-bottom: 1px solid #afbacb;
+}
+
+.gwflow-job-row {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.event-id {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.event-id-extra {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.gwflow-job-sname {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.gwflow-job-row .badge {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.gwflow-view-btn,
+.event-id-toggle {
+  min-width: 24px;
+  min-height: 24px;
+}
+.gwflow-view-btn:focus-visible,
+.event-id-toggle:focus-visible {
+  outline: 2px solid #059cfa;
+  outline-offset: 1px;
+}
+
+.event-id-toggle {
+  background: none;
+  border: none;
+  padding: 0 0.25rem;
+  margin-left: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 0.875rem;
+  color: #035996;
+  cursor: pointer;
+}
+.event-id-toggle:hover, .event-id-toggle:focus {
+  color: #043967;
+}
+
+.gwflow-loading {
+  display: none;
+}
+
+.gwflow-loading.htmx-request {
+  display: block !important;
+}
+
+.cell-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 767.98px) {
+  .gwflow-results-table,
+  .gwflow-results-table tbody,
+  .gwflow-results-table tr,
+  .gwflow-results-table td {
+    display: block;
+    width: 100%;
+  }
+  .gwflow-results-table thead {
+    display: none;
+  }
+  .gwflow-job-row {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid #afbacb;
+    border-radius: 0.25rem;
+    background-color: #eff2f6;
+  }
+  .gwflow-job-row:last-child {
+    margin-bottom: 0;
+  }
+  .gwflow-results-table td {
+    padding: 0.5rem 0;
+    border: 0;
+  }
+  .cell-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #44546a;
+    margin-bottom: 0.25rem;
+  }
+}
 .edit-button {
   background: none;
   border: none;

@@ -1,4 +1,5 @@
 import re
+from html.parser import HTMLParser
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -21,9 +22,36 @@ def render_state(**kwargs):
     return get_template("bilbyui/_async_state.html").render(kwargs)
 
 
+class _LiveRegionCounter(HTMLParser):
+    """Count live regions (role=status + role=alert) that are not hidden.
+
+    The GWFlow list page carries a persistent loading-indicator sibling
+    (``#gwflow-job-list-loading``) that is ``hidden`` unless a request is in
+    flight. A hidden live region is not an active announcement, so it must
+    not count towards the "exactly one live region per branch" budget.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._stack = []
+        self.count = 0
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        self._stack.append("hidden" in attrs)
+        if not any(self._stack) and attrs.get("role") in ("status", "alert"):
+            self.count += 1
+
+    def handle_endtag(self, tag):
+        if self._stack:
+            self._stack.pop()
+
+
 def _live_region_count(html):
-    """Count live regions (role=status + role=alert) in rendered HTML."""
-    return html.count('role="status"') + html.count('role="alert"')
+    """Count visible live regions (role=status + role=alert) in rendered HTML."""
+    parser = _LiveRegionCounter()
+    parser.feed(html)
+    return parser.count
 
 
 def _gwflow_jobs_down_result():

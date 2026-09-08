@@ -1,12 +1,15 @@
+import re
+from html.parser import HTMLParser
 from unittest import mock
 
 import elasticsearch
+from django.template.loader import get_template
 from django.test import RequestFactory
 from django.urls import reverse
 
 from bilbyui.models import EventID, GWFlowFile, GWFlowJob
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.views import _build_gwflow_job_rows, _render_job_list
+from bilbyui.views import _build_gwflow_job_rows, _files_text, _render_job_list
 
 
 def _build_gwflow_result(jobs, analyses=None, has_next=False, page=1, page_size=20, total=0):
@@ -68,7 +71,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertContains(response, "v3")
         self.assertContains(response, "<span>3</span>")
         self.assertContains(response, "analyses")
-        self.assertContains(response, "1/2")
+        self.assertContains(response, "1 of 2 files uploaded, 1 pending")
         self.assertContains(response, f'href="{reverse("bilbyui:gwflow_jobs")}"')
 
     def test_search_form_hx_target_matches_job_list_container(self):
@@ -133,8 +136,8 @@ class TestGWFlowJobsListView(BilbyTestCase):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "0/0")
-        self.assertContains(response, "badge-warning")
+        self.assertContains(response, "No files")
+        self.assertNotContains(response, "badge-warning")
 
     def test_search_time_range_page_passed_through(self):
         with mock.patch(
@@ -292,7 +295,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No GWFlow jobs found.")
+        self.assertContains(response, "No superevents yet.")
 
     def test_renders_event_id_values(self):
         event_id = EventID.objects.create(
@@ -312,7 +315,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertContains(response, "GW123456_123456")
         self.assertContains(response, "S123456a")
         self.assertContains(response, "GW123456")
-        self.assertContains(response, "No event ids")
+        self.assertContains(response, "No event IDs")
 
     def test_pruned_badge(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user, is_pruned=True)
@@ -345,8 +348,8 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "badge-success")
         self.assertContains(response, "badge-warning")
-        self.assertContains(response, "2/2")
-        self.assertContains(response, "1/2")
+        self.assertContains(response, "2 of 2 files uploaded")
+        self.assertContains(response, "1 of 2 files uploaded, 1 pending")
 
     def test_invalid_page_and_time_range_default(self):
         with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()) as mock_list:
@@ -719,3 +722,290 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "<title>GWFlow — GWCloud</title>")
         self.assertNotContains(response, "<title>GWFlow — page 1 — GWCloud</title>")
+
+
+class TestGWFlowPresentationFields(BilbyTestCase):
+    """UX-5 presentation fields on _build_gwflow_job_rows rows."""
+
+    def setUp(self):
+        self.authenticate()
+
+    def test_files_text_states(self):
+        self.assertEqual(_files_text(0, 0, 0), "No files")
+        self.assertEqual(_files_text(0, 6, 6), "0 of 6 files uploaded, 6 pending")
+        self.assertEqual(_files_text(4, 6, 2), "4 of 6 files uploaded, 2 pending")
+        self.assertEqual(_files_text(6, 6, 0), "6 of 6 files uploaded")
+
+    def test_row_contains_presentation_fields(self):
+        event_id = EventID.objects.create(
+            event_id="GW123456_123456",
+            trigger_id="S123456a",
+            nickname="GW123456",
+            is_ligo_event=False,
+            gps_time=12345678.1234,
+        )
+        job = GWFlowJob.objects.create(sname="S230601ag", user=self.user, event_id=event_id)
+        for i in range(3):
+            GWFlowFile.objects.create(
+                job=job, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=(i < 2)
+            )
+
+        jobs = list(GWFlowJob.objects.select_related("event_id").order_by("id"))
+        rows = _build_gwflow_job_rows(_build_gwflow_result(jobs))
+
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        for field in ("event_id_all", "event_id_display", "event_id_extra", "files_text"):
+            self.assertIn(field, row)
+
+        event_ids = ["GW123456_123456", "S123456a", "GW123456"]
+        self.assertEqual(row["event_id_all"], event_ids)
+        self.assertEqual(row["event_id_display"], event_ids[:2])
+        self.assertEqual(row["event_id_extra"], event_ids[2:])
+        self.assertEqual(row["files_text"], "2 of 3 files uploaded, 1 pending")
+
+    def test_event_id_extra_no_overlap_with_display(self):
+        event_id = EventID.objects.create(
+            event_id="GW1",
+            trigger_id="S2",
+            nickname="N3",
+            is_ligo_event=False,
+            gps_time=12345678.1234,
+        )
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user, event_id=event_id)
+
+        jobs = list(GWFlowJob.objects.select_related("event_id").order_by("id"))
+        rows = _build_gwflow_job_rows(_build_gwflow_result(jobs))
+
+        row = rows[0]
+        self.assertEqual(row["event_id_extra"], ["N3"])
+        self.assertNotIn("N3", row["event_id_display"])
+        self.assertEqual(set(row["event_id_display"]) & set(row["event_id_extra"]), set())
+
+    def test_query_count_constant_across_row_counts(self):
+        for count in (1, 20, 100):
+            GWFlowJob.objects.all().delete()
+            for i in range(count):
+                job = GWFlowJob.objects.create(sname=f"S{i:08d}", user=self.user)
+                GWFlowFile.objects.create(
+                    job=job, analysis_uid="a", path="p", file_name="f", uploaded=True
+                )
+
+            jobs = list(GWFlowJob.objects.order_by("id"))
+            result = _build_gwflow_result(jobs, page_size=count)
+
+            with self.assertNumQueries(1):
+                rows = _build_gwflow_job_rows(result)
+
+            self.assertEqual(len(rows), count)
+
+
+class _VisibleLiveRegionCounter(HTMLParser):
+    """Count visible live regions (role=status + role=alert) in rendered HTML.
+
+    The GWFlow list page carries a persistent loading-indicator sibling that is
+    ``hidden`` unless a request is in flight; a hidden live region is not an
+    active announcement, so it must not count towards the one-per-branch
+    budget.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._stack = []
+        self.count = 0
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        self._stack.append("hidden" in attrs)
+        if not any(self._stack) and attrs.get("role") in ("status", "alert"):
+            self.count += 1
+
+    def handle_endtag(self, tag):
+        if self._stack:
+            self._stack.pop()
+
+
+def _visible_live_region_count(html):
+    parser = _VisibleLiveRegionCounter()
+    parser.feed(html)
+    return parser.count
+
+
+class TestGWFlowResultsSemantics(BilbyTestCase):
+    """UX-5 semantic table + event-id disclosure render contract (issue #52).
+
+    Renders the list page (services mocked as in TestGWFlowJobsListView) and
+    the data-agnostic _event_id_disclosure.html partial directly so the
+    100-event criterion can be exercised at the component level.
+    """
+
+    url = "/gwflow/"
+
+    def setUp(self):
+        self.authenticate()
+
+    def _render_disclosure(self, node):
+        return get_template("bilbyui/_event_id_disclosure.html").render({"node": node})
+
+    def _render_fragment(self, service_state="ok", rows=None, total=0, **kwargs):
+        request = RequestFactory().get(self.url, HTTP_HX_REQUEST="true")
+        request.user = self.user
+        return _render_job_list(
+            request,
+            rows=rows or [],
+            has_next=False,
+            total=total,
+            page_size=20,
+            jobs_list_url_name="bilbyui:gwflow_jobs",
+            template_name="bilbyui/gwflow_jobs.html",
+            fragment_template_name="bilbyui/_gwflow_job_list_fragment.html",
+            list_target_id="gwflow-job-list",
+            service_state=service_state,
+            **kwargs,
+        ).render().content.decode()
+
+    def _state_result(self, state, total=0):
+        return {
+            "jobs": {},
+            "records": [],
+            "has_next": False,
+            "page": 1,
+            "page_size": 20,
+            "total": total,
+            "state": state,
+        }
+
+    def test_semantic_table_structure(self):
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<table")
+        self.assertContains(response, "<thead")
+        self.assertContains(response, 'scope="col"')
+        self.assertContains(response, "<tbody")
+        self.assertContains(response, '<tr class="gwflow-job-row">')
+        self.assertContains(response, '<th scope="col">Event ID(s)</th>')
+        self.assertContains(response, '<th scope="col">Action</th>')
+
+    def test_event_ids_zero(self):
+        html = self._render_disclosure({"id": 1, "event_id_all": [], "event_id_display": [], "event_id_extra": []})
+        self.assertIn("No event IDs", html)
+        self.assertNotIn("event-id-toggle", html)
+
+    def test_event_ids_one(self):
+        html = self._render_disclosure({"id": 1, "event_id_all": ["A"], "event_id_display": ["A"], "event_id_extra": []})
+        self.assertIn("A", html)
+        self.assertNotIn("event-id-toggle", html)
+
+    def test_event_ids_two(self):
+        html = self._render_disclosure({"id": 1, "event_id_all": ["A", "B"], "event_id_display": ["A", "B"], "event_id_extra": []})
+        self.assertIn("A", html)
+        self.assertIn("B", html)
+        self.assertNotIn("event-id-toggle", html)
+
+    def test_event_ids_three_collapsed_shows_first_two(self):
+        html = self._render_disclosure(
+            {"id": 1, "event_id_all": ["A", "B", "C"], "event_id_display": ["A", "B"], "event_id_extra": ["C"]}
+        )
+        self.assertIn("A", html)
+        self.assertIn("B", html)
+        self.assertIn("+1 more", html)
+        self.assertIn('aria-controls="event-ids-1"', html)
+        self.assertIn('id="event-ids-1"', html)
+        self.assertIn('<span id="event-ids-1" class="event-id-extra" hidden>', html)
+
+    def test_event_ids_100_collapsed_expanded_no_duplicates(self):
+        ids = [f"ID{i}" for i in range(100)]
+        node = {"id": 7, "event_id_all": ids, "event_id_display": ids[:2], "event_id_extra": ids[2:]}
+        html = self._render_disclosure(node)
+
+        self.assertIn("ID0", html)
+        self.assertIn("ID1", html)
+        self.assertIn("+98 more", html)
+        self.assertIn('aria-controls="event-ids-7"', html)
+
+        start = html.index('id="event-ids-7"')
+        extra_region = html[start:]
+        hidden_ids = re.findall(r'<span class="event-id">(ID\d+)</span>', extra_region)
+        self.assertEqual(len(hidden_ids), 98, "expanded block must hold exactly IDs 3..N")
+        self.assertEqual(len(set(hidden_ids)), 98, "expanded block must not duplicate IDs")
+        self.assertEqual(set(hidden_ids), {f"ID{i}" for i in range(2, 100)})
+        self.assertNotIn("ID0", hidden_ids)
+        self.assertNotIn("ID1", hidden_ids)
+
+    def test_disclosure_aria_controls_unique_and_resolve(self):
+        for i in range(3):
+            event_id = EventID.objects.create(
+                event_id=f"GW{i}_a",
+                trigger_id=f"S{i}b",
+                nickname=f"N{i}c",
+                is_ligo_event=False,
+                gps_time=12345678.1234,
+            )
+            GWFlowJob.objects.create(sname=f"S2306{i:02d}ag", user=self.user, event_id=event_id)
+
+        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()):
+            response = self.client.get(self.url)
+
+        html = response.content.decode()
+        controls = re.findall(r'aria-controls="(event-ids-\d+)"', html)
+        self.assertEqual(len(controls), 3, "one disclosure per row")
+        self.assertEqual(len(set(controls)), 3, "aria-controls must be unique across rows")
+        for control in controls:
+            self.assertEqual(
+                len(re.findall(rf'id="{re.escape(control)}"', html)),
+                1,
+                f"{control} must resolve to exactly one element",
+            )
+
+    def test_renders_file_state_texts(self):
+        GWFlowJob.objects.create(sname="S000000ag", user=self.user)
+        job06 = GWFlowJob.objects.create(sname="S000001ag", user=self.user)
+        for i in range(6):
+            GWFlowFile.objects.create(job=job06, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=False)
+        job46 = GWFlowJob.objects.create(sname="S000002ag", user=self.user)
+        for i in range(6):
+            GWFlowFile.objects.create(job=job46, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=(i < 4))
+        job66 = GWFlowJob.objects.create(sname="S000003ag", user=self.user)
+        for i in range(6):
+            GWFlowFile.objects.create(job=job66, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=True)
+
+        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No files")
+        self.assertContains(response, "0 of 6 files uploaded, 6 pending")
+        self.assertContains(response, "4 of 6 files uploaded, 2 pending")
+        self.assertContains(response, "6 of 6 files uploaded")
+
+    def test_content_branch_single_live_region(self):
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()):
+            response = self.client.get(self.url)
+        self.assertEqual(_visible_live_region_count(response.content.decode()), 1)
+
+    def test_empty_branch_single_live_region(self):
+        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()):
+            response = self.client.get(self.url)
+        self.assertEqual(_visible_live_region_count(response.content.decode()), 1)
+
+    def test_error_branch_single_live_region(self):
+        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=lambda user, **kw: self._state_result("down")):
+            response = self.client.get(self.url)
+        self.assertEqual(_visible_live_region_count(response.content.decode()), 1)
+
+    def test_invalid_branch_single_live_region(self):
+        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=lambda user, **kw: self._state_result("invalid")):
+            response = self.client.get(self.url)
+        self.assertEqual(_visible_live_region_count(response.content.decode()), 1)
+
+    def test_loading_branch_single_live_region(self):
+        with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()):
+            response = self.client.get(self.url)
+        html = response.content.decode()
+        loading = re.search(r'<div id="gwflow-job-list-loading".*?</div>\s*</div>', html, re.S)
+        self.assertIsNotNone(loading, "persistent loading sibling must be present")
+        self.assertEqual(loading.group(0).count('role="status"'), 1)

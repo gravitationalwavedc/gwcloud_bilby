@@ -1,0 +1,183 @@
+// GWFlow results table (issue #52): semantic result rows that survive any
+// viewport — real table structure, capped event-ID disclosure, textual
+// completeness, colour-independent status. Markup contract lives in
+// src/bilbyui/templates/bilbyui/_gwflow_job_row.html and
+// _event_id_disclosure.html; design contract is
+// docs/plans/designs/073-ux5-gwflow-results-presentation.md.
+//
+// Compiled after theme.scss, so every Bootstrap 4.6 variable/mixin
+// referenced here is already defined by the vendor import chain.
+
+// ---------------------------------------------------------------------------
+// Results table — full width, fixed layout so long unbroken identifiers wrap
+// inside their column instead of widening the page (reflow 320px).
+// ---------------------------------------------------------------------------
+.gwflow-results-table {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    table-layout: fixed;
+
+    th,
+    td {
+        padding: $spacer * 0.5;
+        vertical-align: top;
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    tbody tr {
+        border-top: $border-width solid $border-color;
+        border-bottom: $border-width solid $border-color;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Overflow containment (320px reflow): cards, event IDs, badge groups and
+// the action link all get min-width:0 / max-width:100% and wrap long
+// unbroken tokens rather than widening the page.
+// ---------------------------------------------------------------------------
+.gwflow-job-row {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.event-id {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.event-id-extra {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.gwflow-job-sname {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+// Badge group — the library / schema / pruned badges sit inline with the
+// sname; constrain them so a long label wraps instead of overflowing.
+// white-space: normal overrides Bootstrap's .badge { white-space: nowrap }.
+.gwflow-job-row .badge {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+// ---------------------------------------------------------------------------
+// Action + disclosure buttons — 24px minimum target size, visible
+// :focus-visible outline with sufficient contrast (Frontend Bible 2.5.8).
+// ---------------------------------------------------------------------------
+.gwflow-view-btn,
+.event-id-toggle {
+    min-width: 24px;
+    min-height: 24px;
+
+    &:focus-visible {
+        outline: 2px solid $primary;
+        outline-offset: 1px;
+    }
+}
+
+.event-id-toggle {
+    background: none;
+    border: none;
+    padding: 0 $spacer * 0.25;
+    margin-left: $spacer * 0.25;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-size: $font-size-sm;
+    color: $blue-800;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+        color: $blue-900;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Loading indicator — shown only while an HTMX request is in flight. The
+// compiled stylesheet carries an author `[hidden] { display: none !important }`
+// rule, so the show rule needs `!important` (plus higher specificity) to
+// outrank it; `hidden` remains the no-CSS fallback.
+// ---------------------------------------------------------------------------
+.gwflow-loading {
+    display: none;
+}
+
+.gwflow-loading.htmx-request {
+    display: block !important;
+}
+
+// ---------------------------------------------------------------------------
+// Cell labels — the single label mechanism. Visually hidden on desktop
+// (the column header provides the label) via the Bootstrap sr-only mixin;
+// shown on the mobile card stack below 768px.
+// ---------------------------------------------------------------------------
+.cell-label {
+    @include sr-only();
+}
+
+// ---------------------------------------------------------------------------
+// Responsive ladder (Frontend Bible §2 step 3): below 768px the table
+// rows transform to stacked label:value cards. thead is hidden; each td
+// becomes a block where the visible .cell-label provides the label and
+// the following content is the value. No td::before pseudo-label, so
+// there is no label duplication.
+// ---------------------------------------------------------------------------
+@media (max-width: 767.98px) {
+    .gwflow-results-table,
+    .gwflow-results-table tbody,
+    .gwflow-results-table tr,
+    .gwflow-results-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .gwflow-results-table thead {
+        display: none;
+    }
+
+    .gwflow-job-row {
+        padding: $spacer * 0.5;
+        margin-bottom: $spacer * 0.5;
+        border: $border-width solid $border-color;
+        border-radius: $border-radius;
+        background-color: $body-bg;
+    }
+
+    .gwflow-job-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .gwflow-results-table td {
+        padding: $spacer * 0.5 0;
+        border: 0;
+    }
+
+    .cell-label {
+        position: static;
+        width: auto;
+        height: auto;
+        margin: 0;
+        padding: 0;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+        display: block;
+        font-size: $font-size-sm;
+        font-weight: 600;
+        color: $text-muted;
+        margin-bottom: $spacer * 0.25;
+    }
+}

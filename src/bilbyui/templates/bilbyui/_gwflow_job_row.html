@@ -1,36 +1,30 @@
-<div class="row mb-4 align-items-center">
-  <div class="col-md-2">
-    {% if node.event_id_values %}
-      {% for value in node.event_id_values %}
-        <span>{{ value }}</span><br>
-      {% endfor %}
-    {% else %}
-      <span>No event ids</span>
-    {% endif %}
-  </div>
-  <div class="col-md-5">
-    <div><span class="font-weight-bold">{{ node.sname }}</span></div>
-    {% for lib in node.libraries %}
-      <span class="badge badge-secondary mr-1">{{ lib }}</span>
-    {% endfor %}
-    {% if node.schema_version %}
-      <span class="badge badge-secondary mr-1">v{{ node.schema_version }}</span>
-    {% endif %}
-    {% if node.is_pruned %}
-      <span class="badge badge-dark mr-1">pruned</span>
-    {% endif %}
-  </div>
-  <div class="col-md-2 text-center">
-    <span>{{ node.analysis_count }}</span> <span class="text-muted">analyses</span>
-  </div>
-  <div class="col-md-2 text-center">
+<tr class="gwflow-job-row">
+  <td>
+    <span class="cell-label">Event ID(s)</span>
+    {% include "bilbyui/_event_id_disclosure.html" with node=node %}
+  </td>
+  <td>
+    <span class="cell-label">Superevent &amp; sources</span>
+    <span class="gwflow-job-sname font-weight-bold">{{ node.sname }}</span>
+    {% for lib in node.libraries %}<span class="badge badge-secondary mr-1">{{ lib }}</span>{% endfor %}
+    {% if node.schema_version %}<span class="badge badge-secondary mr-1">v{{ node.schema_version }}</span>{% endif %}
+    {% if node.is_pruned %}<span class="badge badge-dark mr-1">pruned</span>{% endif %}
+  </td>
+  <td>
+    <span class="cell-label">Analyses</span>
+    <span>{{ node.analysis_count }}</span>
+  </td>
+  <td>
+    <span class="cell-label">Files</span>
+    <span>{{ node.files_text }}</span>
     {% if node.files_total and node.files_uploaded == node.files_total %}
-      <span class="badge badge-success">{{ node.files_uploaded }}/{{ node.files_total }}</span>
-    {% else %}
-      <span class="badge badge-warning">{{ node.files_uploaded }}/{{ node.files_total }}</span>
+      <span class="badge badge-success ml-1">complete</span>
+    {% elif node.files_total %}
+      <span class="badge badge-warning ml-1">incomplete</span>
     {% endif %}
-  </div>
-  <div class="col-md-1 text-center">
-    <a class="btn btn-sm btn-outline-primary" href="{% url 'bilbyui:gwflow_job_detail' sname=node.sname %}">View</a>
-  </div>
-</div>
+  </td>
+  <td>
+    <span class="cell-label">Action</span>
+    <a class="btn btn-sm btn-outline-primary gwflow-view-btn" href="{% url 'bilbyui:gwflow_job_detail' sname=node.sname %}">View {{ node.sname }}</a>
+  </td>
+</tr>

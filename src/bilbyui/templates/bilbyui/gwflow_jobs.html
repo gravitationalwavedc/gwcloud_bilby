@@ -14,8 +14,11 @@
         <div id="jobs-search-region">
           {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_gwflow_search_help.html" show_gwflow_filters=True filter_options=filter_options list_target_id="gwflow-job-list" %}
           {% include "bilbyui/_search_state_sync.html" %}
-          <div id="gwflow-job-list" class="mt-4">
+          <div id="gwflow-job-list" class="mt-4" role="region" aria-label="GWFlow job list">
             {% include "bilbyui/_gwflow_job_list_fragment.html" %}
+          </div>
+          <div id="gwflow-job-list-loading" class="gwflow-loading" hidden>
+            {% include "bilbyui/_async_state.html" with state="loading" thing="GWFlow jobs" region_label="GWFlow job list" %}
           </div>
         </div>
       </div>
