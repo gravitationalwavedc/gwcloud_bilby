@@ -746,9 +746,7 @@ class TestGWFlowPresentationFields(BilbyTestCase):
         )
         job = GWFlowJob.objects.create(sname="S230601ag", user=self.user, event_id=event_id)
         for i in range(3):
-            GWFlowFile.objects.create(
-                job=job, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=(i < 2)
-            )
+            GWFlowFile.objects.create(job=job, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=(i < 2))
 
         jobs = list(GWFlowJob.objects.select_related("event_id").order_by("id"))
         rows = _build_gwflow_job_rows(_build_gwflow_result(jobs))
@@ -787,9 +785,7 @@ class TestGWFlowPresentationFields(BilbyTestCase):
             GWFlowJob.objects.all().delete()
             for i in range(count):
                 job = GWFlowJob.objects.create(sname=f"S{i:08d}", user=self.user)
-                GWFlowFile.objects.create(
-                    job=job, analysis_uid="a", path="p", file_name="f", uploaded=True
-                )
+                GWFlowFile.objects.create(job=job, analysis_uid="a", path="p", file_name="f", uploaded=True)
 
             jobs = list(GWFlowJob.objects.order_by("id"))
             result = _build_gwflow_result(jobs, page_size=count)
@@ -850,19 +846,23 @@ class TestGWFlowResultsSemantics(BilbyTestCase):
     def _render_fragment(self, service_state="ok", rows=None, total=0, **kwargs):
         request = RequestFactory().get(self.url, HTTP_HX_REQUEST="true")
         request.user = self.user
-        return _render_job_list(
-            request,
-            rows=rows or [],
-            has_next=False,
-            total=total,
-            page_size=20,
-            jobs_list_url_name="bilbyui:gwflow_jobs",
-            template_name="bilbyui/gwflow_jobs.html",
-            fragment_template_name="bilbyui/_gwflow_job_list_fragment.html",
-            list_target_id="gwflow-job-list",
-            service_state=service_state,
-            **kwargs,
-        ).render().content.decode()
+        return (
+            _render_job_list(
+                request,
+                rows=rows or [],
+                has_next=False,
+                total=total,
+                page_size=20,
+                jobs_list_url_name="bilbyui:gwflow_jobs",
+                template_name="bilbyui/gwflow_jobs.html",
+                fragment_template_name="bilbyui/_gwflow_job_list_fragment.html",
+                list_target_id="gwflow-job-list",
+                service_state=service_state,
+                **kwargs,
+            )
+            .render()
+            .content.decode()
+        )
 
     def _state_result(self, state, total=0):
         return {
@@ -895,12 +895,16 @@ class TestGWFlowResultsSemantics(BilbyTestCase):
         self.assertNotIn("event-id-toggle", html)
 
     def test_event_ids_one(self):
-        html = self._render_disclosure({"id": 1, "event_id_all": ["A"], "event_id_display": ["A"], "event_id_extra": []})
+        html = self._render_disclosure(
+            {"id": 1, "event_id_all": ["A"], "event_id_display": ["A"], "event_id_extra": []}
+        )
         self.assertIn("A", html)
         self.assertNotIn("event-id-toggle", html)
 
     def test_event_ids_two(self):
-        html = self._render_disclosure({"id": 1, "event_id_all": ["A", "B"], "event_id_display": ["A", "B"], "event_id_extra": []})
+        html = self._render_disclosure(
+            {"id": 1, "event_id_all": ["A", "B"], "event_id_display": ["A", "B"], "event_id_extra": []}
+        )
         self.assertIn("A", html)
         self.assertIn("B", html)
         self.assertNotIn("event-id-toggle", html)
@@ -967,7 +971,9 @@ class TestGWFlowResultsSemantics(BilbyTestCase):
             GWFlowFile.objects.create(job=job06, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=False)
         job46 = GWFlowJob.objects.create(sname="S000002ag", user=self.user)
         for i in range(6):
-            GWFlowFile.objects.create(job=job46, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=(i < 4))
+            GWFlowFile.objects.create(
+                job=job46, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=(i < 4)
+            )
         job66 = GWFlowJob.objects.create(sname="S000003ag", user=self.user)
         for i in range(6):
             GWFlowFile.objects.create(job=job66, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=True)

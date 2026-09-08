@@ -49,7 +49,13 @@ def _empty_side_effect(
             "state": "ok",
         }
     return _rich_side_effect(
-        user, search=search, library=library, review_status=review_status, time_range=time_range, page=page, page_size=page_size
+        user,
+        search=search,
+        library=library,
+        review_status=review_status,
+        time_range=time_range,
+        page=page,
+        page_size=page_size,
     )
 
 
@@ -88,7 +94,13 @@ def _gated_side_effect(
     GATE.started()
     GATE.wait_release()
     return _rich_side_effect(
-        user, search=search, library=library, review_status=review_status, time_range=time_range, page=page, page_size=page_size
+        user,
+        search=search,
+        library=library,
+        review_status=review_status,
+        time_range=time_range,
+        page=page,
+        page_size=page_size,
     )
 
 
@@ -113,9 +125,7 @@ class GWFlowResultsPageBase(GWFlowJobsPageBase):
             event_id=event_id,
         )
         for i in range(6):
-            GWFlowFile.objects.create(
-                job=job, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=(i < 4)
-            )
+            GWFlowFile.objects.create(job=job, analysis_uid=f"a{i}", path=f"p{i}", file_name=f"f{i}", uploaded=(i < 4))
         long_event_id = EventID.objects.create(
             event_id="GW" + "1" * 70,
             trigger_id="S" + "2" * 70,
