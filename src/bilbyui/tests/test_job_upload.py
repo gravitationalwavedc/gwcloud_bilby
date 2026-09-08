@@ -166,6 +166,50 @@ class TestJobUpload(BilbyTestCase):
 
         self.assertTrue((Path(job_dir) / "archive.tar.gz").is_file())
 
+    def test_job_upload_archive_does_not_contain_itself(self):
+        """The repacked archive must not contain its own archive.tar.gz entry.
+
+        Regression for the self-archiving race where `tar -cvf archive.tar.gz .`
+        reads its own growing output ("file changed as we read it"), causing
+        intermittent exit code 1 and "Unable to repack the uploaded job".
+        """
+        import tarfile
+
+        token = self.get_upload_token()
+
+        test_name = "selfarch"
+        test_description = "Test Description"
+        test_private = False
+
+        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+
+        test_file = SimpleUploadedFile(
+            name="test.tar.gz",
+            content=create_test_upload_data(test_ini_string, test_name),
+            content_type="application/gzip",
+        )
+
+        test_input = {
+            "uploadToken": token,
+            "details": {"description": test_description, "private": test_private},
+            "jobFile": None,
+        }
+        test_files = {"input.jobFile": test_file}
+
+        response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+        self.assertIsNone(response.errors, f"Upload should succeed: {response.errors}")
+
+        job = BilbyJob.objects.all().last()
+        archive = Path(job.get_upload_directory()) / "archive.tar.gz"
+        self.assertTrue(archive.is_file())
+
+        with tarfile.open(archive, "r:") as tar:
+            names = tar.getnames()
+
+        self.assertNotIn("./archive.tar.gz", names)
+        self.assertNotIn("archive.tar.gz", names)
+
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_job_upload_with_conda_env_does_not_invoke_conda_subprocess(self):
         token = self.get_upload_token()

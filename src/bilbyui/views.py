@@ -718,8 +718,10 @@ def upload_bilby_job(user, upload_token, details, job_file):
             shutil.move(job_staging_dir, job_dir)
 
             # Finally generate the archive.tar.gz file
+            # Exclude the archive itself so tar does not try to read its own growing
+            # output ("file changed as we read it") when the job dir is large.
             p = subprocess.Popen(
-                ["tar", "-cvf", "archive.tar.gz", "."],
+                ["tar", "-cvf", "archive.tar.gz", "--exclude=archive.tar.gz", "."],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 cwd=job_dir,
@@ -867,8 +869,10 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
             shutil.move(job_staging_dir, job_dir)
 
             # Generate the archive.tar.gz file
+            # Exclude the archive itself so tar does not try to read its own growing
+            # output ("file changed as we read it") when the job dir is large.
             p = subprocess.Popen(
-                ["tar", "-cvf", "archive.tar.gz", "."],
+                ["tar", "-cvf", "archive.tar.gz", "--exclude=archive.tar.gz", "."],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 cwd=job_dir,
