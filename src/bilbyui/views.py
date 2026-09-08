@@ -1125,6 +1125,14 @@ def _build_public_job_rows(public_jobs_result):
     return rows
 
 
+def _files_text(uploaded, total, pending):
+    if not total:
+        return "No files"
+    if pending:
+        return f"{uploaded} of {total} files uploaded, {pending} pending"
+    return f"{uploaded} of {total} files uploaded"
+
+
 def _build_gwflow_job_rows(gwflow_jobs_result):
     records = gwflow_jobs_result["records"]
     page_size = gwflow_jobs_result["page_size"]
@@ -1145,6 +1153,8 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
         analysis_count = len(analyses) if isinstance(analyses, list) else 0
 
         files_total, files_uploaded = file_counts.get(job.id, (0, 0))
+        files_pending = max(0, files_total - files_uploaded)
+        event_ids = _event_id_display_values(job.event_id)
 
         rows.append(
             {
@@ -1152,10 +1162,13 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
                 "sname": job.sname,
                 "schema_version": job.schema_version,
                 "libraries": job.libraries or [],
-                "event_id_values": _event_id_display_values(job.event_id),
+                "event_id_all": event_ids,
+                "event_id_display": event_ids[:2],
+                "event_id_extra": event_ids[2:],
                 "analysis_count": analysis_count,
                 "files_uploaded": files_uploaded,
                 "files_total": files_total,
+                "files_text": _files_text(files_uploaded, files_total, files_pending),
                 "last_updated": job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC") if job.last_updated else "",
                 "is_pruned": job.is_pruned,
             }

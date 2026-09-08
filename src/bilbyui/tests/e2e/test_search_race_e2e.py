@@ -143,8 +143,12 @@ class TestGWFlowSearchRace(GWFlowJobsPageBase):
         )
 
         # Exactly one live status region per settled fragment (announced once).
-        status_count = await page.evaluate("document.querySelectorAll('[role=\"status\"]').length")
-        self.assertEqual(status_count, 1, "exactly one role=status region per settled fragment")
+        # The persistent loading indicator sibling is hidden when idle, so only
+        # visible live regions count towards the announcement budget.
+        status_count = await page.evaluate(
+            "Array.from(document.querySelectorAll('[role=\"status\"]')).filter((el) => !el.closest('[hidden]')).length"
+        )
+        self.assertEqual(status_count, 1, "exactly one visible role=status region per settled fragment")
 
         # The settled state is encoded in the URL and the active-filter chip.
         self.assertIn("search=abc", page.url)

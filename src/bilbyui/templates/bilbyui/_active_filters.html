@@ -22,6 +22,7 @@
       hx-swap="innerHTML"
       hx-sync="#jobs-search-region:replace"
       hx-push-url="true"
+      hx-indicator="#gwflow-job-list-loading"
       hx-on::after-swap="document.querySelector('.active-filters .filter-chip-remove, .filter-reset, form input[name=&quot;search&quot;]')?.focus()"
     >&times;</a>
   </span>
@@ -35,15 +36,16 @@
     hx-swap="innerHTML"
     hx-sync="#jobs-search-region:replace"
     hx-push-url="true"
+    hx-indicator="#gwflow-job-list-loading"
   >Reset all</a>
 </div>
 <script>
 (function () {
   "use strict";
-  var container = document.querySelector(".active-filters");
-  if (!container) {
+  if (window._activeFiltersListenerBound) {
     return;
   }
+  window._activeFiltersListenerBound = true;
   function findSearchForm() {
     var searchInput = document.querySelector("form input[name='search']");
     return searchInput && searchInput.form ? searchInput.form : null;
@@ -75,7 +77,7 @@
       resetControl(form, name);
     });
   }
-  container.addEventListener("click", function (event) {
+  document.addEventListener("click", function (event) {
     var remove = event.target.closest(".filter-chip-remove");
     if (remove) {
       resetControl(findSearchForm(), remove.getAttribute("data-filter-param"));
