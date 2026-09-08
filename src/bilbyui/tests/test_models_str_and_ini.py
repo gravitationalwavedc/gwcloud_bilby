@@ -87,7 +87,8 @@ class TestModelStrAndIniGuards(BilbyTestCase):
                 mock.patch("elasticsearch.Elasticsearch.update") as update_mock,
                 mock.patch("elasticsearch.Elasticsearch.index"),
             ):
-                self.job.elastic_search_update()
+                with self.captureOnCommitCallbacks(execute=True):
+                    self.job.elastic_search_update()
 
         self.assertEqual(update_mock.call_count, 1)
         doc = update_mock.call_args.kwargs["doc"]
