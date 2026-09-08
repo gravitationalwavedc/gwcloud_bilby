@@ -71,9 +71,7 @@ FIXTURE_MATRIX = [
         "review_statuses": ["approved"],
         "metadata": {
             "GraceDB": {"Events": [{"uid": "G197392"}]},
-            "ParameterEstimation": {
-                "results": [{"uid": "pe-3", "review_status": "approved"}]
-            },
+            "ParameterEstimation": {"results": [{"uid": "pe-3", "review_status": "approved"}]},
         },
     },
     {
@@ -121,9 +119,7 @@ def build_canonical_fixtures(testcase_cls):
     ``{"id", "job", "doc", "spec"}`` where ``doc`` is the real output of
     build_gwflow_es_doc for that job.
     """
-    user = testcase_cls.create_user(
-        id=900, name="Fixture User", primary_email="fixture@example.com"
-    )
+    user = testcase_cls.create_user(id=900, name="Fixture User", primary_email="fixture@example.com")
     fixtures = {}
     for spec in FIXTURE_MATRIX:
         event = None
@@ -153,7 +149,10 @@ def build_canonical_fixtures(testcase_cls):
 def assert_doc_matches_spec(testcase, doc, spec):
     """Assert a built ES document matches its canonical fixture spec."""
     envelope = doc["_gwcloud"]
-    testcase.assertEqual(set(envelope.keys()), {"sname", "libraries", "isPruned", "ligoOnly", "lastUpdatedTime", "reviewStatuses", "eventTriggerId"})
+    testcase.assertEqual(
+        set(envelope.keys()),
+        {"sname", "libraries", "isPruned", "ligoOnly", "lastUpdatedTime", "reviewStatuses", "eventTriggerId"},
+    )
     testcase.assertEqual(envelope["sname"], spec["sname"])
     testcase.assertEqual(envelope["libraries"], spec["libraries"])
     testcase.assertEqual(envelope["isPruned"], spec["is_pruned"])
@@ -208,12 +207,8 @@ def assert_defect_queries_assertable(testcase, docs_by_id):
     # metadata.* fielded query: inference_software "bilby" on docs 1 and 5;
     # TGR software "pycbc" on doc 2; GraceDB uid on doc 3; UnknownSection on
     # doc 4.
-    testcase.assertEqual(
-        d1["metadata"]["ParameterEstimation"]["results"][0]["inference_software"], "bilby"
-    )
-    testcase.assertEqual(
-        d5["metadata"]["ParameterEstimation"]["results"][0]["inference_software"], "bilby"
-    )
+    testcase.assertEqual(d1["metadata"]["ParameterEstimation"]["results"][0]["inference_software"], "bilby")
+    testcase.assertEqual(d5["metadata"]["ParameterEstimation"]["results"][0]["inference_software"], "bilby")
     testcase.assertEqual(d2["metadata"]["TGR"][0]["software"], "pycbc")
     testcase.assertEqual(d3["metadata"]["GraceDB"]["Events"][0]["uid"], "G197392")
     testcase.assertEqual(d4["metadata"]["UnknownSection"]["x"], 1)

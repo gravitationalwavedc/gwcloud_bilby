@@ -54,9 +54,7 @@ def build_gwflow_es_mapping():
                         "match_mapping_type": "string",
                         "mapping": {
                             "type": "text",
-                            "fields": {
-                                "keyword": {"type": "keyword", "ignore_above": 1024}
-                            },
+                            "fields": {"keyword": {"type": "keyword", "ignore_above": 1024}},
                         },
                     }
                 }
@@ -194,9 +192,7 @@ class Command(BaseCommand):
             return
 
         if dry_run:
-            self.stdout.write(
-                f"Dry run: would delete, recreate, and reimport {len(docs)} document(s) into {index}."
-            )
+            self.stdout.write(f"Dry run: would delete, recreate, and reimport {len(docs)} document(s) into {index}.")
             self._exit_code = EXIT_OK
             return
 
@@ -206,10 +202,7 @@ class Command(BaseCommand):
         es.indices.delete(index=index, ignore_unavailable=True)
         es.indices.create(index=index, body=build_gwflow_es_mapping())
 
-        actions = [
-            {"_op_type": "index", "_index": index, "_id": job.id, "_source": doc}
-            for job, doc in docs
-        ]
+        actions = [{"_op_type": "index", "_index": index, "_id": job.id, "_source": doc} for job, doc in docs]
         _, errors = helpers.bulk(es, actions, stats_only=False, raise_on_error=False, refresh=True)
 
         item_failures = extract_item_failures(errors)

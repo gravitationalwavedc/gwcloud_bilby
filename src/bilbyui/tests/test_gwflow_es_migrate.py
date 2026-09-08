@@ -74,7 +74,9 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
         with (
             mock.patch("bilbyui.management.commands.gwflow_es_migrate.get_es_client", return_value=es),
             mock.patch("bilbyui.management.commands.gwflow_es_migrate.get_version", return_value=(PAYLOAD, "live")),
-            mock.patch("bilbyui.management.commands.gwflow_es_migrate.build_gwflow_es_doc", return_value={"metadata": PAYLOAD}),
+            mock.patch(
+                "bilbyui.management.commands.gwflow_es_migrate.build_gwflow_es_doc", return_value={"metadata": PAYLOAD}
+            ),
             mock.patch(
                 "bilbyui.management.commands.gwflow_es_migrate.helpers.bulk",
                 side_effect=lambda *a, **k: calls.append("bulk") or (1, []),
@@ -173,9 +175,7 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
         make_job()
         es = mock.MagicMock()
 
-        exit_code, out, _, m_es, _, _, _ = self._run(
-            es=es, build_side_effect=InvalidGWFlowMetadata("bad metadata")
-        )
+        exit_code, out, _, m_es, _, _, _ = self._run(es=es, build_side_effect=InvalidGWFlowMetadata("bad metadata"))
 
         self.assertEqual(exit_code, 1)
         self.assertIn("Refusing to proceed", out)
@@ -186,9 +186,7 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
         make_job()
         es = mock.MagicMock()
 
-        exit_code, out, _, m_es, _, _, _ = self._run(
-            es=es, build_side_effect=RuntimeError("boom")
-        )
+        exit_code, out, _, m_es, _, _, _ = self._run(es=es, build_side_effect=RuntimeError("boom"))
 
         self.assertEqual(exit_code, 1)
         self.assertIn("Refusing to proceed", out)
@@ -293,9 +291,7 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
         out = StringIO()
         with (
             mock.patch("bilbyui.management.commands.gwflow_es_migrate.get_es_client", return_value=es),
-            mock.patch(
-                "bilbyui.management.commands.gwflow_es_migrate.get_version", side_effect=fake_get_version
-            ),
+            mock.patch("bilbyui.management.commands.gwflow_es_migrate.get_version", side_effect=fake_get_version),
             mock.patch("bilbyui.management.commands.gwflow_es_migrate.helpers.bulk", side_effect=fake_bulk),
         ):
             exit_code = call_command("gwflow_es_migrate", stdout=out)
