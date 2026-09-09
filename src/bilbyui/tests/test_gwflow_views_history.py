@@ -73,13 +73,13 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
                     "commit_timestamp": "2026-08-10 12:00:00 UTC",
-                    "schema_version": "3",
+                    "schema_version": "v3",
                     "is_current": True,
                 },
                 {
                     "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
                     "commit_timestamp": "2026-08-09 10:00:00 UTC",
-                    "schema_version": "2",
+                    "schema_version": "v2",
                     "is_current": False,
                 },
             ],
@@ -100,6 +100,7 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         # Schema version badges
         self.assertContains(response, "v3")
         self.assertContains(response, "v2")
+        self.assertNotContains(response, "vv3")
         # Current badge
         self.assertContains(response, '<span class="badge badge-primary">current</span>')
         # Version inspection HTMX attributes
@@ -204,7 +205,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         "bilbyui.views.get_version",
         return_value=(
             {
-                "schema_version": "3",
+                "schema_version": "v3",
                 "commit_sha": "1111222233334444555566667777888899990000",
                 "commit_timestamp": "2026-08-10 12:00:00 UTC",
                 "gracedb": {"events": [{"uid": "E99", "pipeline": "pycbc"}]},
@@ -221,6 +222,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.assertContains(response, "v3")
         self.assertContains(response, "E99")
         self.assertContains(response, "pycbc")
+        self.assertNotContains(response, "vv3")
         self.assertNotContains(response, "Showing cached copy")
         self.assertNotContains(response, "<!doctype html>")
 
@@ -228,7 +230,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         "bilbyui.views.get_version",
         return_value=(
             {
-                "schema_version": "3",
+                "schema_version": "v3",
                 "commit_sha": "1111222233334444555566667777888899990000",
                 "gracedb": {"events": [{"uid": "E99", "pipeline": "pycbc"}]},
             },

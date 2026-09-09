@@ -7,7 +7,7 @@
     <span class="cell-label">Superevent &amp; sources</span>
     <span class="gwflow-job-sname font-weight-bold">{{ node.sname }}</span>
     {% for lib in node.libraries %}<span class="badge badge-secondary mr-1">{{ lib }}</span>{% endfor %}
-    {% if node.schema_version %}<span class="badge badge-secondary mr-1">v{{ node.schema_version }}</span>{% endif %}
+    {% if node.schema_version %}<span class="badge badge-secondary mr-1">{{ node.schema_version }}</span>{% endif %}
     {% if node.is_pruned %}<span class="badge badge-dark mr-1">pruned</span>{% endif %}
   </td>
   <td>

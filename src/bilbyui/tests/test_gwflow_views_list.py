@@ -52,7 +52,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
         job = GWFlowJob.objects.create(
             sname="S230601ag",
             user=self.user,
-            schema_version="3",
+            schema_version="v3",
             libraries=["cbc-workflow-o4a", "other-lib"],
             event_id=event_id,
         )
@@ -69,6 +69,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertContains(response, "S230601ag")
         self.assertContains(response, "cbc-workflow-o4a")
         self.assertContains(response, "v3")
+        self.assertNotContains(response, "vv3")
         self.assertContains(response, "<span>3</span>")
         self.assertContains(response, "Analyses")
         self.assertContains(response, "1 of 2 files uploaded, 1 pending")
