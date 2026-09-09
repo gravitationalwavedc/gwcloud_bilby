@@ -1,5 +1,8 @@
+import json
+import unittest
 from unittest import mock
 
+import astropy.cosmology
 import astropy.units as u
 import numpy as np
 from django.test import override_settings
@@ -9,8 +12,13 @@ from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.parse_ini_file import (
     _STRING_FALLBACK_PLACEHOLDER,
+    _degrade,
     _normalise,
+    _safe_serialise,
+    _serialise_cosmology,
+    _type_name,
     parse_ini_file,
+    safe_json_dumps,
 )
 
 
@@ -124,3 +132,75 @@ class TestNormalise(BilbyTestCase):
         normalised, ok = _normalise(float("nan") * u.s)
         self.assertFalse(ok)
         self.assertEqual(normalised["value"], str(float("nan")))
+
+
+class TestSafeJsonDumps(unittest.TestCase):
+    def test_json_native_passthrough(self):
+        # JSON-native values must round-trip byte-identical to json.dumps
+        value = {"a": [1, 2.5, "x", True, None]}
+        self.assertEqual(safe_json_dumps(value), json.dumps(value))
+
+    def test_cosmology_envelope(self):
+        # A Cosmology must be serialised into the structured envelope
+        cosmo = astropy.cosmology.FlatLambdaCDM(H0=70, Om0=0.3)
+        result = json.loads(safe_json_dumps(cosmo))
+        self.assertEqual(result["__gwcloud_type__"], "astropy.cosmology")
+        self.assertEqual(result["astropy_class"], "FlatLambdaCDM")
+        self.assertTrue(result["round_trip"])
+
+    def test_unknown_value_degrade_envelope(self):
+        # An exotic value must be persisted through the degradation envelope
+        class Exotic:
+            pass
+
+        result = json.loads(safe_json_dumps(Exotic()))
+        self.assertEqual(result["__gwcloud_type__"], "python.string_fallback")
+        self.assertFalse(result["round_trip"])
+
+
+class TestSerialiseCosmology(unittest.TestCase):
+    def test_returns_versioned_envelope(self):
+        cosmo = astropy.cosmology.FlatLambdaCDM(H0=70, Om0=0.3)
+        result = _serialise_cosmology(cosmo)
+        self.assertEqual(result["__gwcloud_type__"], "astropy.cosmology")
+        self.assertEqual(result["__gwcloud_schema__"], 1)
+        self.assertEqual(result["astropy_class"], "FlatLambdaCDM")
+        self.assertTrue(result["round_trip"])
+
+
+class TestDegrade(unittest.TestCase):
+    def test_returns_placeholder_envelope(self):
+        class Exotic:
+            pass
+
+        result = _degrade(Exotic())
+        self.assertEqual(result["__gwcloud_type__"], "python.string_fallback")
+        self.assertEqual(result["value"], "<unserializable object>")
+        self.assertFalse(result["round_trip"])
+        self.assertEqual(result["python_type"], _type_name(Exotic()))
+
+
+class TestTypeName(unittest.TestCase):
+    def test_returns_fully_qualified_name(self):
+        self.assertEqual(_type_name(1), "builtins.int")
+        self.assertEqual(_type_name("x"), "builtins.str")
+        self.assertEqual(_type_name(5 * u.km), "astropy.units.quantity.Quantity")
+
+
+class TestSafeSerialise(unittest.TestCase):
+    def test_serialises_json_native_value(self):
+        self.assertEqual(_safe_serialise("key", {"a": 1}), json.dumps({"a": 1}))
+
+    def test_fallback_on_serialisation_failure(self):
+        # If safe_json_dumps itself raises, the argument still gets a fallback row
+        class Exploding:
+            def __repr__(self):
+                raise RuntimeError("boom")
+
+        with mock.patch(
+            "bilbyui.utils.parse_ini_file.safe_json_dumps",
+            side_effect=RuntimeError("boom"),
+        ):
+            result = json.loads(_safe_serialise("key", Exploding()))
+        self.assertEqual(result["__gwcloud_type__"], "python.string_fallback")
+        self.assertFalse(result["round_trip"])
