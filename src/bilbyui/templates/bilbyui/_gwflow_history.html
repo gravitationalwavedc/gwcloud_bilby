@@ -19,7 +19,7 @@
             <div>
               <span class="badge badge-secondary mr-1">{{ v.commit_sha|slice:":8" }}</span>
               {% if v.schema_version %}
-                <span class="badge badge-secondary mr-1">v{{ v.schema_version }}</span>
+                <span class="badge badge-secondary mr-1">{{ v.schema_version }}</span>
               {% endif %}
               {% if job.current_history_id == v.commit_sha %}
                 <span class="badge badge-primary">current</span>

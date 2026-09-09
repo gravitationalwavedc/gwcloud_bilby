@@ -246,7 +246,7 @@ class TestGWFlowJobMetadataPartial(BilbyTestCase):
         return_value=(
             {
                 "sname": "S230601ag",
-                "schema_version": "3",
+                "schema_version": "v3",
                 "gracedb": {"events": [{"uid": "E1", "pipeline": "gstlal"}]},
             },
             "live",
@@ -354,7 +354,7 @@ class TestGWFlowSectionRoutes(BilbyTestCase):
             return_value=(
                 {
                     "sname": "S230603ag",
-                    "schema_version": "3",
+                    "schema_version": "v3",
                     "gracedb": {"events": [{"uid": "E1", "pipeline": "gstlal"}]},
                 },
                 "live",
