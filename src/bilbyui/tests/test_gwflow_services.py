@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import elasticsearch
@@ -9,6 +10,7 @@ from bilbyui.models import GWFlowJob
 from bilbyui.services.gwflow import (
     _collect_library_options,
     _collect_review_status_options,
+    _facet_options,
     _is_fresh,
     _parse_cache_record,
     list_gwflow_filter_options,
@@ -1105,3 +1107,60 @@ class TestIsFresh(BilbyTestCase):
     def test_stale_datetime_is_not_fresh(self):
         stale = timezone.now() - __import__("datetime").timedelta(hours=2)
         self.assertFalse(_is_fresh(stale))
+
+
+class TestFacetOptions(BilbyTestCase):
+    def setUp(self):
+        super().setUp()
+        self.cache_key = "gwflow_filter_test"
+
+    def _fresh_record(self, values):
+        return {"values": values, "fetched_at": timezone.now()}
+
+    @patch("bilbyui.services.gwflow.cache")
+    def test_fresh_cache_returns_ok_without_collect(self, mock_cache):
+        mock_cache.get.return_value = self._fresh_record(["cached"])
+        collect = MagicMock()
+
+        result = _facet_options(self.cache_key, collect)
+
+        self.assertEqual(result, {"values": ["cached"], "state": "ok"})
+        collect.assert_not_called()
+        mock_cache.set.assert_not_called()
+
+    @patch("bilbyui.services.gwflow.cache")
+    def test_es_error_with_stale_cache_returns_stale(self, mock_cache):
+        mock_cache.get.return_value = {"values": ["stale"], "fetched_at": timezone.now() - timedelta(hours=2)}
+        collect = MagicMock(side_effect=elasticsearch.exceptions.ConnectionError("down"))
+
+        result = _facet_options(self.cache_key, collect)
+
+        self.assertEqual(result, {"values": ["stale"], "state": "stale"})
+        mock_cache.set.assert_not_called()
+
+    @patch("bilbyui.services.gwflow.cache")
+    def test_es_error_without_cache_returns_unavailable(self, mock_cache):
+        mock_cache.get.return_value = None
+        collect = MagicMock(side_effect=elasticsearch.exceptions.ConnectionError("down"))
+
+        result = _facet_options(self.cache_key, collect)
+
+        self.assertEqual(result, {"values": [], "state": "unavailable"})
+        mock_cache.set.assert_not_called()
+
+    @patch("bilbyui.services.gwflow.timezone")
+    @patch("bilbyui.services.gwflow.cache")
+    def test_collect_success_returns_ok_and_caches(self, mock_cache, mock_timezone):
+        mock_cache.get.return_value = None
+        mock_timezone.now.return_value = timezone.now()
+        collect = MagicMock(return_value=["a", "b"])
+
+        result = _facet_options(self.cache_key, collect)
+
+        self.assertEqual(result, {"values": ["a", "b"], "state": "ok"})
+        collect.assert_called_once()
+        mock_cache.set.assert_called_once()
+        args, kwargs = mock_cache.set.call_args
+        self.assertEqual(args[0], self.cache_key)
+        self.assertEqual(args[1]["values"], ["a", "b"])
+        self.assertIn("fetched_at", args[1])
