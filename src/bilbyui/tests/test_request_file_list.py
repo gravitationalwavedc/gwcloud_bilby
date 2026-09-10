@@ -1,3 +1,4 @@
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
@@ -8,7 +9,37 @@ from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.jobs.request_file_list import request_file_list
+from bilbyui.utils.jobs.request_file_list import _make_file_entry, request_file_list
+
+
+class TestMakeFileEntry(BilbyTestCase):
+    def test_success_path(self):
+        with TemporaryDirectory() as tmp:
+            job_dir = Path(tmp)
+            (job_dir / "a.txt").write_text("hi")
+
+            entry = _make_file_entry(job_dir / "a.txt", False, str(job_dir))
+            self.assertEqual(entry, {"path": "/a.txt", "isDir": False, "fileSize": 2})
+
+    def test_permission_error_is_suppressed(self):
+        with TemporaryDirectory() as tmp:
+            job_dir = Path(tmp)
+            path = job_dir / "a.txt"
+            path.write_text("hi")
+
+            with mock.patch.object(Path, "stat", side_effect=PermissionError):
+                self.assertIsNone(_make_file_entry(path, False, str(job_dir)))
+
+    def test_value_error_is_suppressed(self):
+        with TemporaryDirectory() as tmp:
+            job_dir = Path(tmp) / "data"
+            job_dir.mkdir()
+            (job_dir / "a.txt").write_text("hi")
+            # A path that escapes the job directory makes relative_to raise ValueError
+            outside = Path(tmp) / "outside.txt"
+            outside.write_text("hi")
+
+            self.assertIsNone(_make_file_entry(outside, False, str(job_dir)))
 
 
 class TestRequestFileListUploaded(BilbyTestCase):
