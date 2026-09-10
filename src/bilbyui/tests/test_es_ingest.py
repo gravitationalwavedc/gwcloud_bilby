@@ -128,3 +128,15 @@ class TestEsIngestCommand(BilbyTestCase):
         output = out.getvalue()
         self.assertIn("invalid JSON", output)
         self.assertNotIn("Error during gwflow ingestion loop", output)
+
+    def test_es_ingest_gwflow_missing_settings_returns_cleanly(self):
+        out = StringIO()
+        with mock.patch("bilbyui.management.commands.es_ingest.requests.get") as mock_get:
+            with override_settings(CBCFLOW_PORTAL_URL=None, CBCFLOW_PORTAL_TOKEN=None):
+                call_command("es_ingest", "--gwflow", stdout=out, stderr=out)
+
+        mock_get.assert_not_called()
+        output = out.getvalue()
+        self.assertIn("CBCFLOW_PORTAL_URL and CBCFLOW_PORTAL_TOKEN must be set", output)
+        self.assertNotIn("GWFlow ingestion complete", output)
+        self.assertNotIn("Error during gwflow ingestion loop", output)
