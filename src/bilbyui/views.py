@@ -654,95 +654,107 @@ def upload_bilby_job(user, upload_token, details, job_file):
         # Convert the modified arguments back to an ini string
         ini_string = bilby_args_to_ini_string(args)
 
-        with transaction.atomic():
-            # This is in an atomic block in case:-
-            # * The ini file somehow ends up broken
-            # * The final move of the staging directory to the job directory raises an exception (Disk full etc)
-            # * The generation of the archive.tar.gz file fails (Disk full etc)
+        job_dir = None
+        try:
+            with transaction.atomic():
+                # This is in an atomic block in case:-
+                # * The ini file somehow ends up broken
+                # * The generation of the archive.tar.gz file fails (Disk full etc)
+                # * The final move of the staging directory to the job directory raises an exception (Disk full etc)
 
-            # Create the bilby job record
-            bilby_job = _create_bilby_job_record(upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string)
+                # Create the bilby job record
+                bilby_job = _create_bilby_job_record(
+                    upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string
+                )
 
-            # Save any supporting file records
-            supporting_file_details = SupportingFile.save_from_parsed(bilby_job, supporting_files, uploaded=True)
+                # Save any supporting file records
+                supporting_file_details = SupportingFile.save_from_parsed(bilby_job, supporting_files, uploaded=True)
 
-            # Check that the job directory exists for this supporting file
-            supporting_file_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(bilby_job.id)
-            supporting_file_dir.mkdir(exist_ok=True, parents=True)
+                # Check that the job directory exists for this supporting file
+                supporting_file_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(bilby_job.id)
+                supporting_file_dir.mkdir(exist_ok=True, parents=True)
 
-            # Because we're in a transaction here, the bulk_create in `SupportingFile.save_from_parsed` isn't saved
-            # so we need to fetch the instances again from the database to get the inserted IDs
-            supporting_file_instances = SupportingFile.objects.filter(
-                download_token__in=[f["download_token"] for f in supporting_file_details]
-            )
-            supporting_file_instances = {f.download_token: f for f in supporting_file_instances}
+                # Because we're in a transaction here, the bulk_create in `SupportingFile.save_from_parsed` isn't saved
+                # so we need to fetch the instances again from the database to get the inserted IDs
+                supporting_file_instances = SupportingFile.objects.filter(
+                    download_token__in=[f["download_token"] for f in supporting_file_details]
+                )
+                supporting_file_instances = {f.download_token: f for f in supporting_file_instances}
 
-            # Make sure the source supporting files exist. Paths that cannot be resolved (eg NUL-byte
-            # paths or symlink loops) or that resolve outside the staging directory (traversal) are
-            # rejected fail-closed: the whole upload aborts and the transaction rolls back.
-            staging_dir = Path(job_staging_dir).resolve()
-            resolved_paths = {}
-            missing = []
-            for supporting_file in supporting_file_details:
-                candidate = Path(job_staging_dir) / supporting_file["file_path"].lstrip("/")
+                # Make sure the source supporting files exist. Paths that cannot be resolved (eg NUL-byte
+                # paths or symlink loops) or that resolve outside the staging directory (traversal) are
+                # rejected fail-closed: the whole upload aborts and the transaction rolls back.
+                staging_dir = Path(job_staging_dir).resolve()
+                resolved_paths = {}
+                missing = []
+                for supporting_file in supporting_file_details:
+                    candidate = Path(job_staging_dir) / supporting_file["file_path"].lstrip("/")
+                    try:
+                        resolved = candidate.resolve()
+                    except (ValueError, RuntimeError, OSError):
+                        msg = (
+                            f"Supporting file {supporting_file['file_path']} contains an invalid or unresolvable path."
+                        )
+                        raise ValueError(msg) from None
+
+                    # Verify that the file really sits under the job staging directory
+                    if not resolved.is_relative_to(staging_dir):
+                        msg = f"Supporting file {supporting_file['file_path']} is outside the job staging directory."
+                        raise ValueError(msg)
+
+                    if not candidate.is_file():
+                        missing.append(supporting_file["file_path"])
+                    else:
+                        resolved_paths[supporting_file["download_token"]] = resolved
+
+                if missing:
+                    missing = list(dict.fromkeys(missing))
+                    msg = "Missing supporting files: " + ", ".join(missing)
+                    raise GraphQLError(msg, extensions={"missing_files": missing})
+
+                for supporting_file in supporting_file_details:
+                    resolved = resolved_paths.get(supporting_file["download_token"])
+                    if resolved is None:
+                        continue
+                    supporting_file_instance = supporting_file_instances[supporting_file["download_token"]]
+                    shutil.copyfile(resolved, supporting_file_dir / str(supporting_file_instance.id))
+
+                # Generate the archive.tar.gz file inside the staging directory before moving
+                # Exclude the archive itself so tar does not try to read its own growing
+                # output ("file changed as we read it") when the job dir is large.
+                p = subprocess.Popen(
+                    ["tar", "-cvf", "archive.tar.gz", "--exclude=archive.tar.gz", "."],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=job_staging_dir,
+                )
                 try:
-                    resolved = candidate.resolve()
-                except (ValueError, RuntimeError, OSError):
-                    msg = f"Supporting file {supporting_file['file_path']} contains an invalid or unresolvable path."
-                    raise ValueError(msg) from None
+                    out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                    out, err = p.communicate()
+                    logger.error("Timed out repacking uploaded job for user %s", upload_token.user.id)
+                    msg = "Timed out repacking the uploaded job"
+                    raise RuntimeError(msg) from None
 
-                # Verify that the file really sits under the job staging directory
-                if not resolved.is_relative_to(staging_dir):
-                    msg = f"Supporting file {supporting_file['file_path']} is outside the job staging directory."
-                    raise ValueError(msg)
+                logger.info("Packing uploaded job archive for %s had return code %s", job_file.name, p.returncode)
+                logger.debug("stdout: %s", out)
+                logger.debug("stderr: %s", err)
 
-                if not candidate.is_file():
-                    missing.append(supporting_file["file_path"])
-                else:
-                    resolved_paths[supporting_file["download_token"]] = resolved
+                if p.returncode != 0:
+                    logger.error("Failed to repack uploaded job for user %s", upload_token.user.id)
+                    msg = "Unable to repack the uploaded job"
+                    raise RuntimeError(msg)
 
-            if missing:
-                missing = list(dict.fromkeys(missing))
-                msg = "Missing supporting files: " + ", ".join(missing)
-                raise GraphQLError(msg, extensions={"missing_files": missing})
-
-            for supporting_file in supporting_file_details:
-                resolved = resolved_paths.get(supporting_file["download_token"])
-                if resolved is None:
-                    continue
-                supporting_file_instance = supporting_file_instances[supporting_file["download_token"]]
-                shutil.copyfile(resolved, supporting_file_dir / str(supporting_file_instance.id))
-
-            # Now we have the bilby job id, we can move the staging directory to the actual job directory
-            job_dir = bilby_job.get_upload_directory()
-            shutil.move(job_staging_dir, job_dir)
-
-            # Finally generate the archive.tar.gz file
-            # Exclude the archive itself so tar does not try to read its own growing
-            # output ("file changed as we read it") when the job dir is large.
-            p = subprocess.Popen(
-                ["tar", "-cvf", "archive.tar.gz", "--exclude=archive.tar.gz", "."],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=job_dir,
-            )
-            try:
-                out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
-            except subprocess.TimeoutExpired:
-                p.kill()
-                out, err = p.communicate()
-                logger.error("Timed out repacking uploaded job for user %s", upload_token.user.id)
-                msg = "Timed out repacking the uploaded job"
-                raise RuntimeError(msg) from None
-
-            logger.info("Packing uploaded job archive for %s had return code %s", job_file.name, p.returncode)
-            logger.debug("stdout: %s", out)
-            logger.debug("stderr: %s", err)
-
-            if p.returncode != 0:
-                logger.error("Failed to repack uploaded job for user %s", upload_token.user.id)
-                msg = "Unable to repack the uploaded job"
-                raise RuntimeError(msg)
+                # Now we have the bilby job id and repack has succeeded, move the staging directory
+                # to the actual job directory as the final step in the transaction
+                job_dir = bilby_job.get_upload_directory()
+                shutil.move(job_staging_dir, job_dir)
+        except Exception:
+            if job_dir and Path(job_dir).exists():
+                logger.warning("Cleaning up incomplete job directory %s after upload error", job_dir)
+                shutil.rmtree(job_dir, ignore_errors=True)
+            raise
 
         # Job is validated and uploaded, return the job
         logger.info("Successfully uploaded and created job %s for user %s", bilby_job.id, upload_token.user.id)
@@ -860,39 +872,48 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         # Convert the modified arguments back to an ini string
         ini_string = bilby_args_to_ini_string(args)
 
-        with transaction.atomic():
-            # Create the bilby job record
-            bilby_job = _create_bilby_job_record(upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string)
+        job_dir = None
+        try:
+            with transaction.atomic():
+                # Create the bilby job record
+                bilby_job = _create_bilby_job_record(
+                    upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string
+                )
 
-            # Move the staging directory to the actual job directory
-            job_dir = bilby_job.get_upload_directory()
-            shutil.move(job_staging_dir, job_dir)
+                # Generate the archive.tar.gz file inside the staging directory before moving
+                # Exclude the archive itself so tar does not try to read its own growing
+                # output ("file changed as we read it") when the job dir is large.
+                p = subprocess.Popen(
+                    ["tar", "-cvf", "archive.tar.gz", "--exclude=archive.tar.gz", "."],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=job_staging_dir,
+                )
+                try:
+                    out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                    out, err = p.communicate()
+                    logger.error("Timed out repacking uploaded HDF5 job archive for %s", job_name)
+                    msg = "Timed out repacking the uploaded HDF5 job"
+                    raise RuntimeError(msg) from None
 
-            # Generate the archive.tar.gz file
-            # Exclude the archive itself so tar does not try to read its own growing
-            # output ("file changed as we read it") when the job dir is large.
-            p = subprocess.Popen(
-                ["tar", "-cvf", "archive.tar.gz", "--exclude=archive.tar.gz", "."],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=job_dir,
-            )
-            try:
-                out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
-            except subprocess.TimeoutExpired:
-                p.kill()
-                out, err = p.communicate()
-                logger.error("Timed out repacking uploaded HDF5 job archive for %s", job_name)
-                msg = "Timed out repacking the uploaded HDF5 job"
-                raise RuntimeError(msg) from None
+                logger.info("Packing uploaded HDF5 job archive for %s had return code %s", job_name, p.returncode)
+                logger.debug("stdout: %s", out)
+                logger.debug("stderr: %s", err)
 
-            logger.info("Packing uploaded HDF5 job archive for %s had return code %s", job_name, p.returncode)
-            logger.debug("stdout: %s", out)
-            logger.debug("stderr: %s", err)
+                if p.returncode != 0:
+                    msg = "Unable to repack the uploaded HDF5 job"
+                    raise RuntimeError(msg)
 
-            if p.returncode != 0:
-                msg = "Unable to repack the uploaded HDF5 job"
-                raise RuntimeError(msg)
+                # Move the staging directory to the actual job directory as the final step in the transaction
+                job_dir = bilby_job.get_upload_directory()
+                shutil.move(job_staging_dir, job_dir)
+        except Exception:
+            if job_dir and Path(job_dir).exists():
+                logger.warning("Cleaning up incomplete job directory %s after upload error", job_dir)
+                shutil.rmtree(job_dir, ignore_errors=True)
+            raise
 
         # Job is validated and uploaded, return the job
         return bilby_job
