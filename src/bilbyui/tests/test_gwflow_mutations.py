@@ -1399,9 +1399,7 @@ class TestGWFlowLigoOnlyDerivation(BilbyTestCase):
         with mock.patch("bilbyui.services.gwflow.get_es_client") as mock_get_es_client:
             mock_client = mock.MagicMock()
             mock_get_es_client.return_value = mock_client
-            mock_client.search.return_value = {
-                "hits": {"hits": [{"_id": job.id}], "total": {"value": 1}}
-            }
+            mock_client.search.return_value = {"hits": {"hits": [{"_id": job.id}], "total": {"value": 1}}}
             res = list_gwflow_jobs(self.non_ligo_user, search="GW150914", time_range="1d")
 
         self.assertIn(job.id, res["jobs"])
