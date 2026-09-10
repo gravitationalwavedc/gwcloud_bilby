@@ -548,6 +548,29 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
 
     @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
     @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
+    def test_run_data_generation_with_output_flags(self, *args, **kwargs):
+        # A data generation command with --output= and --error= flags should write the
+        # captured stdout and stderr to the corresponding output files
+        with TemporaryDirectory() as td:
+            script = os.path.join(td, "data_gen.sh")
+            with open(script, "w") as f:
+                f.write("#!/bin/bash\necho test\n")
+
+            popen_command = f"/bin/bash {script}"
+            self.popen.set_command(popen_command, stdout=b"stdout test", stderr=b"stderr test")
+
+            from core.submit import run_data_generation
+
+            run_data_generation("sbatch --output=out.log --error=err.log ./data_gen.sh", td)
+
+            # The captured stdout and stderr should be written to the output and error files
+            with open(os.path.join(td, "out.log"), "rb") as f:
+                self.assertEqual(f.read(), b"stdout test")
+            with open(os.path.join(td, "err.log"), "rb") as f:
+                self.assertEqual(f.read(), b"stderr test")
+
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.condor.CondorScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
     def test_submit_simulated_data_job_condor(self, *args, **kwargs):
