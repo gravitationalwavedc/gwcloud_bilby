@@ -725,9 +725,7 @@ def upload_bilby_job(user, upload_token, details, job_file):
                 # eliminating intermittent exit code 1 ("file changed as we read it").
                 # IMPORTANT: temp archive MUST be allocated inside settings.JOB_UPLOAD_STAGING_DIR (not /tmp),
                 # as archives can be several gigabytes.
-                temp_archive = NamedTemporaryFile(
-                    dir=settings.JOB_UPLOAD_STAGING_DIR, delete=False, suffix=".tar.gz"
-                )
+                temp_archive = NamedTemporaryFile(dir=settings.JOB_UPLOAD_STAGING_DIR, delete=False, suffix=".tar.gz")
                 temp_archive.close()
                 temp_archive_path = Path(temp_archive.name)
                 try:
@@ -910,9 +908,7 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
                 # eliminating intermittent exit code 1 ("file changed as we read it").
                 # IMPORTANT: temp archive MUST be allocated inside settings.JOB_UPLOAD_STAGING_DIR (not /tmp),
                 # as archives can be several gigabytes.
-                temp_archive = NamedTemporaryFile(
-                    dir=settings.JOB_UPLOAD_STAGING_DIR, delete=False, suffix=".tar.gz"
-                )
+                temp_archive = NamedTemporaryFile(dir=settings.JOB_UPLOAD_STAGING_DIR, delete=False, suffix=".tar.gz")
                 temp_archive.close()
                 temp_archive_path = Path(temp_archive.name)
                 try:
