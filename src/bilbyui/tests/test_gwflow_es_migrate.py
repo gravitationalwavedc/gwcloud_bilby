@@ -7,7 +7,7 @@ from django.core.cache import cache
 from django.core.management import CommandError, call_command
 from django.test import override_settings
 
-from bilbyui.management.commands.gwflow_es_migrate import build_gwflow_es_mapping
+from bilbyui.management.commands.gwflow_es_migrate import build_gwflow_es_mapping, extract_item_failures
 from bilbyui.models import GWFlowJob
 from bilbyui.services.gwflow import LIBRARIES_CACHE_KEY, REVIEW_STATUSES_CACHE_KEY
 from bilbyui.tests.gwflow_es_fixtures import (
@@ -222,6 +222,30 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
         self.assertNotIn("Invalidated filter-option cache keys", out)
         self.assertEqual(cache.get(LIBRARIES_CACHE_KEY), "x")
         self.assertEqual(cache.get(REVIEW_STATUSES_CACHE_KEY), "y")
+
+    def test_extract_item_failures_none_and_empty(self):
+        self.assertEqual(extract_item_failures(None), [])
+        self.assertEqual(extract_item_failures([]), [])
+
+    def test_extract_item_failures_index_key_with_status_over_300(self):
+        errors = [{"index": {"status": 400, "error": {"reason": "boom"}, "_id": 1}}]
+        self.assertEqual(extract_item_failures(errors), [errors[0]["index"]])
+
+    def test_extract_item_failures_create_key_with_status_over_300(self):
+        errors = [{"create": {"status": 409, "error": {"reason": "conflict"}, "_id": 2}}]
+        self.assertEqual(extract_item_failures(errors), [errors[0]["create"]])
+
+    def test_extract_item_failures_falls_back_to_item(self):
+        errors = [{"status": 503, "error": {"reason": "unavailable"}}]
+        self.assertEqual(extract_item_failures(errors), [errors[0]])
+
+    def test_extract_item_failures_excludes_sub_300_statuses(self):
+        errors = [
+            {"index": {"status": 200, "_id": 1}},
+            {"create": {"status": 299, "_id": 2}},
+            {"index": {"status": 300, "_id": 3}},
+        ]
+        self.assertEqual(extract_item_failures(errors), [errors[2]["index"]])
 
     def test_item_bulk_failure_reported(self):
         make_job()
