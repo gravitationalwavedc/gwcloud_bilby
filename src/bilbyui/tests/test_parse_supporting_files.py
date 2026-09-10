@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 
 from bilbyui.models import SupportingFile
@@ -72,6 +73,41 @@ class TestParseSupportingFiles(BilbyTestCase):
         result = self._call(parser=parser, args=args)
 
         self.assertNotIn(SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE, result)
+
+    def test_custom_distance_marginalization_table_captured(self):
+        parser = SimpleNamespace(
+            distance_marginalization_lookup_table="/tmp/custom_distance_marginalization_lookup.npz"
+        )
+        args = SimpleNamespace(distance_marginalization_lookup_table="/tmp/custom_distance_marginalization_lookup.npz")
+
+        result = self._call(parser=parser, args=args)
+
+        self.assertEqual(
+            result[SupportingFile.DISTANCE_MARGINALIZATION_LOOKUP_TABLE],
+            "/tmp/custom_distance_marginalization_lookup.npz",
+        )
+        self.assertIsNone(parser.distance_marginalization_lookup_table)
+        self.assertIsNone(args.distance_marginalization_lookup_table)
+
+    def test_numerical_relativity_file_captured(self):
+        parser = SimpleNamespace(numerical_relativity_file="/tmp/nr_metadata.json")
+        args = SimpleNamespace(numerical_relativity_file="/tmp/nr_metadata.json")
+
+        result = self._call(parser=parser, args=args)
+
+        self.assertEqual(result[SupportingFile.NUMERICAL_RELATIVITY], "/tmp/nr_metadata.json")
+        self.assertIsNone(parser.numerical_relativity_file)
+        self.assertIsNone(args.numerical_relativity_file)
+
+    def test_unknown_config_type_logs_error(self):
+        parser = SimpleNamespace(data_dict=12345)
+        args = SimpleNamespace(data_dict=12345)
+
+        with self.assertLogs("bilbyui.views", level=logging.ERROR) as logs:
+            result = self._call(parser=parser, args=args)
+
+        self.assertEqual(result, {})
+        self.assertTrue(any("Got unknown supporting file type for data_dict" in log for log in logs.output))
 
     def test_none_configs_skipped(self):
         result = self._call()
