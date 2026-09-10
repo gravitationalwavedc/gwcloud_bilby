@@ -12,6 +12,7 @@ from graphql_relay.node.node import to_global_id
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.gwflow_es import build_gwflow_es_doc
 from bilbyui.views import _check_gwflow_ingest_user
 
 User = get_user_model()
@@ -217,7 +218,10 @@ class TestGWFlowMutations(BilbyTestCase):
 
             job.refresh_from_db()
             self.assertEqual(job.schema_version, "v2")
-            self.assertTrue(job.ligo_only)  # Kept prior value
+            # Metadata is provided on this re-upsert, so ligo_only is derived
+            # from it. With EMBARGO_START_TIME unset (None), the derived
+            # value is False (all public).
+            self.assertFalse(job.ligo_only)
             mock_es_update.assert_called_once_with(job, {"test": "json"})
 
             f_obj = GWFlowFile.objects.get(job=job, path="outdir/data.h5")
@@ -1307,3 +1311,98 @@ class TestCheckGwflowIngestUser(BilbyTestCase):
     def test_matching_user_id_passes(self):
         with override_settings(GWFLOW_INGEST_USER=99):
             _check_gwflow_ingest_user(self.ingest_user)
+
+
+class TestGWFlowLigoOnlyDerivation(BilbyTestCase):
+    """Integration tests for ligo_only derivation in upsert_gwflow_job (issue #83)."""
+
+    def setUp(self):
+        super().setUp()
+        self.ingest_user = self.create_user(id=99, name="ingest user", primary_email="ingest@gwflow.org")
+        self.non_ligo_user = self.create_user(
+            id=101,
+            name="Public User",
+            primary_email="public@example.com",
+            authentication_method="password",
+        )
+
+    def _params(self, sname, metadata):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            sname=sname,
+            ligo_only=None,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            is_pruned=False,
+            current_history_id=None,
+            current_history_timestamp=None,
+            event_id=None,
+            files=[],
+            metadata=metadata,
+        )
+
+    @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
+    def test_upsert_trigger_after_embargo_sets_ligo_only_true(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        metadata = '{"GraceDB": {"Events": [{"GPSTime": 2000.0}]}}'
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es:
+            upsert_gwflow_job(self.ingest_user, self._params("S230801after", metadata))
+
+        job = GWFlowJob.objects.get(sname="S230801after")
+        self.assertTrue(job.ligo_only)
+        doc = build_gwflow_es_doc(job, {"GraceDB": {"Events": [{"GPSTime": 2000.0}]}})
+        self.assertTrue(doc["_gwcloud"]["ligoOnly"])
+        mock_es.assert_called_once()
+
+    @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
+    def test_upsert_trigger_before_embargo_sets_ligo_only_false(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        metadata = '{"GraceDB": {"Events": [{"GPSTime": 1000.0}]}}'
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es:
+            upsert_gwflow_job(self.ingest_user, self._params("S230801before", metadata))
+
+        job = GWFlowJob.objects.get(sname="S230801before")
+        self.assertFalse(job.ligo_only)
+        doc = build_gwflow_es_doc(job, {"GraceDB": {"Events": [{"GPSTime": 1000.0}]}})
+        self.assertFalse(doc["_gwcloud"]["ligoOnly"])
+        mock_es.assert_called_once()
+
+    @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
+    def test_upsert_missing_trigger_fail_open_public(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        metadata = '{"GraceDB": {"Events": [{"GPSTime": "bad"}]}}'
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es:
+            upsert_gwflow_job(self.ingest_user, self._params("S230801missing", metadata))
+
+        job = GWFlowJob.objects.get(sname="S230801missing")
+        self.assertFalse(job.ligo_only)
+        doc = build_gwflow_es_doc(job, {"GraceDB": {"Events": [{"GPSTime": "bad"}]}})
+        self.assertFalse(doc["_gwcloud"]["ligoOnly"])
+        mock_es.assert_called_once()
+
+    @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
+    def test_public_filter_returns_derived_public_job(self):
+        from bilbyui.services.gwflow import list_gwflow_jobs
+        from bilbyui.views import upsert_gwflow_job
+
+        metadata = '{"GraceDB": {"Events": [{"GPSTime": 1000.0}]}}'
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+            upsert_gwflow_job(self.ingest_user, self._params("S230801pub", metadata))
+
+        job = GWFlowJob.objects.get(sname="S230801pub")
+        self.assertFalse(job.ligo_only)
+
+        with mock.patch("bilbyui.services.gwflow.get_es_client") as mock_get_es_client:
+            mock_client = mock.MagicMock()
+            mock_get_es_client.return_value = mock_client
+            mock_client.search.return_value = {"hits": {"hits": [{"_id": job.id}], "total": {"value": 1}}}
+            res = list_gwflow_jobs(self.non_ligo_user, search="GW150914", time_range="1d")
+
+        self.assertIn(job.id, res["jobs"])
+        filter_terms = mock_client.search.call_args[1]["query"]["bool"]["filter"]
+        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filter_terms)
+        self.assertIn({"term": {"_gwcloud.isPruned": False}}, filter_terms)
