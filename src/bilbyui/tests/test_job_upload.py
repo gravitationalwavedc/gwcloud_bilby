@@ -645,97 +645,124 @@ class TestJobUpload(BilbyTestCase):
     @silence_errors
     def test_job_upload_tar_repack_timeout(self):
         """Test that a hung tar repack process is killed and a clean error is raised,
-        leaving no job directory on disk and no BilbyJob record."""
-        with TemporaryDirectory() as upload_dir:
-            with self.settings(JOB_UPLOAD_DIR=upload_dir):
-                token = self.get_upload_token()
+        leaving no job directory on disk, no BilbyJob record, and no temp files in staging."""
+        with (
+            TemporaryDirectory() as upload_dir,
+            TemporaryDirectory() as staging_dir,
+            self.settings(JOB_UPLOAD_DIR=upload_dir, JOB_UPLOAD_STAGING_DIR=staging_dir),
+        ):
+            token = self.get_upload_token()
 
-                test_name = "myjob"
-                test_description = "Test Description"
-                test_private = False
+            test_name = "myjob"
+            test_description = "Test Description"
+            test_private = False
 
-                test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+            test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
 
-                test_file = SimpleUploadedFile(
-                    name="test.tar.gz",
-                    content=create_test_upload_data(test_ini_string, test_name),
-                    content_type="application/gzip",
-                )
+            test_file = SimpleUploadedFile(
+                name="test.tar.gz",
+                content=create_test_upload_data(test_ini_string, test_name),
+                content_type="application/gzip",
+            )
 
-                test_input = {
-                    "uploadToken": token,
-                    "details": {"description": test_description, "private": test_private},
-                    "jobFile": None,
-                }
-                test_files = {"input.jobFile": test_file}
+            test_input = {
+                "uploadToken": token,
+                "details": {"description": test_description, "private": test_private},
+                "jobFile": None,
+            }
+            test_files = {"input.jobFile": test_file}
 
-                real_popen = subprocess.Popen
-                repack_process = mock.MagicMock()
-                repack_process.communicate.side_effect = [
-                    subprocess.TimeoutExpired(cmd="tar", timeout=30),
-                    (b"", b""),
-                ]
-                popen_calls = {"count": 0}
+            real_popen = subprocess.Popen
+            repack_process = mock.MagicMock()
+            repack_process.communicate.side_effect = [
+                subprocess.TimeoutExpired(cmd="tar", timeout=30),
+                (b"", b"repack timeout error"),
+            ]
+            popen_calls = {"count": 0}
 
-                def fake_popen(*args, **kwargs):
-                    popen_calls["count"] += 1
-                    if popen_calls["count"] == 1:
-                        return real_popen(*args, **kwargs)
-                    return repack_process
+            def fake_popen(*args, **kwargs):
+                popen_calls["count"] += 1
+                if popen_calls["count"] == 1:
+                    return real_popen(*args, **kwargs)
+                return repack_process
 
-                with mock.patch("bilbyui.views.subprocess.Popen", side_effect=fake_popen):
-                    response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+            with (
+                mock.patch("bilbyui.views.subprocess.Popen", side_effect=fake_popen),
+                mock.patch("bilbyui.views.logger.error") as mock_logger_error,
+            ):
+                response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
-                self.assertEqual("Timed out repacking the uploaded job", response.errors[0]["message"])
-                repack_process.kill.assert_called_once()
-                self.assertEqual(BilbyJob.objects.count(), 0)
-                self.assertEqual(list(Path(upload_dir).iterdir()), [])
+            self.assertEqual("Timed out repacking the uploaded job", response.errors[0]["message"])
+            repack_process.kill.assert_called_once()
+            mock_logger_error.assert_called_once()
+            self.assertEqual(BilbyJob.objects.count(), 0)
+            self.assertEqual(list(Path(upload_dir).iterdir()), [])
+            self.assertEqual(list(Path(settings.JOB_UPLOAD_STAGING_DIR).iterdir()), [])
 
     @silence_errors
     def test_job_upload_tar_repack_nonzero_exit(self):
         """Test that a non-zero exit code during tar repack raises a clean error,
-        leaving no job directory on disk and no BilbyJob record."""
-        with TemporaryDirectory() as upload_dir:
-            with self.settings(JOB_UPLOAD_DIR=upload_dir):
-                token = self.get_upload_token()
+        leaving no job directory on disk, no BilbyJob record, and no temp files in staging."""
+        with (
+            TemporaryDirectory() as upload_dir,
+            TemporaryDirectory() as staging_dir,
+            self.settings(JOB_UPLOAD_DIR=upload_dir, JOB_UPLOAD_STAGING_DIR=staging_dir),
+        ):
+            token = self.get_upload_token()
 
-                test_name = "myjob_repack_fail"
-                test_description = "Test Description"
-                test_private = False
+            test_name = "myjob_repack_fail"
+            test_description = "Test Description"
+            test_private = False
 
-                test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+            test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
 
-                test_file = SimpleUploadedFile(
-                    name="test.tar.gz",
-                    content=create_test_upload_data(test_ini_string, test_name),
-                    content_type="application/gzip",
-                )
+            test_file = SimpleUploadedFile(
+                name="test.tar.gz",
+                content=create_test_upload_data(test_ini_string, test_name),
+                content_type="application/gzip",
+            )
 
-                test_input = {
-                    "uploadToken": token,
-                    "details": {"description": test_description, "private": test_private},
-                    "jobFile": None,
-                }
-                test_files = {"input.jobFile": test_file}
+            test_input = {
+                "uploadToken": token,
+                "details": {"description": test_description, "private": test_private},
+                "jobFile": None,
+            }
+            test_files = {"input.jobFile": test_file}
 
-                real_popen = subprocess.Popen
-                repack_process = mock.MagicMock()
-                repack_process.returncode = 1
-                repack_process.communicate.return_value = (b"", b"tar error simulation")
-                popen_calls = {"count": 0}
+            real_popen = subprocess.Popen
+            repack_process = mock.MagicMock()
+            repack_process.returncode = 1
+            repack_process.communicate.return_value = (b"", b"tar error simulation")
+            popen_calls = []
 
-                def fake_popen(*args, **kwargs):
-                    popen_calls["count"] += 1
-                    if popen_calls["count"] == 1:
-                        return real_popen(*args, **kwargs)
-                    return repack_process
+            def fake_popen(*args, **kwargs):
+                popen_calls.append((args, kwargs))
+                if len(popen_calls) == 1:
+                    return real_popen(*args, **kwargs)
+                return repack_process
 
-                with mock.patch("bilbyui.views.subprocess.Popen", side_effect=fake_popen):
-                    response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+            with (
+                mock.patch("bilbyui.views.subprocess.Popen", side_effect=fake_popen),
+                mock.patch("bilbyui.views.logger.error") as mock_logger_error,
+            ):
+                response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
-                self.assertEqual("Unable to repack the uploaded job", response.errors[0]["message"])
-                self.assertEqual(BilbyJob.objects.count(), 0)
-                self.assertEqual(list(Path(upload_dir).iterdir()), [])
+            self.assertEqual("Unable to repack the uploaded job", response.errors[0]["message"])
+            self.assertEqual(BilbyJob.objects.count(), 0)
+            self.assertEqual(list(Path(upload_dir).iterdir()), [])
+            self.assertEqual(list(Path(settings.JOB_UPLOAD_STAGING_DIR).iterdir()), [])
+            mock_logger_error.assert_called_once()
+            self.assertIn("tar error simulation", mock_logger_error.call_args[0][2])
+
+            # Verify repack tar command was invoked with outside-write archive destination
+            repack_call = popen_calls[1]
+            tar_cmd = repack_call[0][0]
+            self.assertEqual(tar_cmd[0], "tar")
+            self.assertEqual(tar_cmd[1], "-cvf")
+            self.assertTrue(Path(tar_cmd[2]).is_relative_to(Path(settings.JOB_UPLOAD_STAGING_DIR)))
+            self.assertFalse(Path(tar_cmd[2]).is_relative_to(Path(repack_call[1]["cwd"])))
+            self.assertEqual(tar_cmd[3], "--exclude=archive.tar.gz")
+            self.assertEqual(tar_cmd[4], ".")
 
     @silence_errors
     def test_job_upload_post_move_failure_cleans_job_dir(self):
@@ -2311,81 +2338,108 @@ class TestHdf5JobUpload(BilbyTestCase):
     @silence_errors
     def test_hdf5_job_upload_tar_repack_timeout(self):
         """Test that a hung tar repack process is killed and a clean error is raised for HDF5 uploads,
-        leaving no job directory on disk and no BilbyJob record."""
-        with TemporaryDirectory() as upload_dir:
-            with self.settings(JOB_UPLOAD_DIR=upload_dir):
-                token = self.get_upload_token()
+        leaving no job directory on disk, no BilbyJob record, and no temp files in staging."""
+        with (
+            TemporaryDirectory() as upload_dir,
+            TemporaryDirectory() as staging_dir,
+            self.settings(JOB_UPLOAD_DIR=upload_dir, JOB_UPLOAD_STAGING_DIR=staging_dir),
+        ):
+            token = self.get_upload_token()
 
-                test_name = "hdf5_job"
-                test_description = "Test HDF5 Job"
-                test_private = False
+            test_name = "hdf5_job"
+            test_description = "Test HDF5 Job"
+            test_private = False
 
-                test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
-                hdf5_file = self.create_test_hdf5_file()
-                ini_file = self.create_test_ini_file(test_ini_string)
+            test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+            hdf5_file = self.create_test_hdf5_file()
+            ini_file = self.create_test_ini_file(test_ini_string)
 
-                test_input = {
-                    "uploadToken": token,
-                    "details": {"name": test_name, "description": test_description, "private": test_private},
-                    "hdf5File": None,
-                    "iniFile": None,
-                }
-                test_files = {
-                    "input.hdf5File": hdf5_file,
-                    "input.iniFile": ini_file,
-                }
+            test_input = {
+                "uploadToken": token,
+                "details": {"name": test_name, "description": test_description, "private": test_private},
+                "hdf5File": None,
+                "iniFile": None,
+            }
+            test_files = {
+                "input.hdf5File": hdf5_file,
+                "input.iniFile": ini_file,
+            }
 
-                repack_process = mock.MagicMock()
-                repack_process.communicate.side_effect = [
-                    subprocess.TimeoutExpired(cmd="tar", timeout=30),
-                    (b"", b""),
-                ]
+            repack_process = mock.MagicMock()
+            repack_process.communicate.side_effect = [
+                subprocess.TimeoutExpired(cmd="tar", timeout=30),
+                (b"", b"tar hdf5 timeout error"),
+            ]
 
-                with mock.patch("bilbyui.views.subprocess.Popen", return_value=repack_process):
-                    response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+            with (
+                mock.patch("bilbyui.views.subprocess.Popen", return_value=repack_process),
+                mock.patch("bilbyui.views.logger.error") as mock_logger_error,
+            ):
+                response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
-                self.assertEqual("Timed out repacking the uploaded HDF5 job", response.errors[0]["message"])
-                repack_process.kill.assert_called_once()
-                self.assertEqual(BilbyJob.objects.count(), 0)
-                self.assertEqual(list(Path(upload_dir).iterdir()), [])
+            self.assertEqual("Timed out repacking the uploaded HDF5 job", response.errors[0]["message"])
+            repack_process.kill.assert_called_once()
+            mock_logger_error.assert_called_once()
+            self.assertEqual(BilbyJob.objects.count(), 0)
+            self.assertEqual(list(Path(upload_dir).iterdir()), [])
+            self.assertEqual(list(Path(settings.JOB_UPLOAD_STAGING_DIR).iterdir()), [])
 
     @silence_errors
     def test_hdf5_job_upload_tar_repack_nonzero_exit(self):
         """Test that a non-zero exit code during tar repack raises a clean error for HDF5 uploads,
-        leaving no job directory on disk and no BilbyJob record."""
-        with TemporaryDirectory() as upload_dir:
-            with self.settings(JOB_UPLOAD_DIR=upload_dir):
-                token = self.get_upload_token()
+        leaving no job directory on disk, no BilbyJob record, and no temp files in staging."""
+        with (
+            TemporaryDirectory() as upload_dir,
+            TemporaryDirectory() as staging_dir,
+            self.settings(JOB_UPLOAD_DIR=upload_dir, JOB_UPLOAD_STAGING_DIR=staging_dir),
+        ):
+            token = self.get_upload_token()
 
-                test_name = "hdf5_job_repack_fail"
-                test_description = "Test HDF5 Job"
-                test_private = False
+            test_name = "hdf5_job_repack_fail"
+            test_description = "Test HDF5 Job"
+            test_private = False
 
-                test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
-                hdf5_file = self.create_test_hdf5_file()
-                ini_file = self.create_test_ini_file(test_ini_string)
+            test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+            hdf5_file = self.create_test_hdf5_file()
+            ini_file = self.create_test_ini_file(test_ini_string)
 
-                test_input = {
-                    "uploadToken": token,
-                    "details": {"name": test_name, "description": test_description, "private": test_private},
-                    "hdf5File": None,
-                    "iniFile": None,
-                }
-                test_files = {
-                    "input.hdf5File": hdf5_file,
-                    "input.iniFile": ini_file,
-                }
+            test_input = {
+                "uploadToken": token,
+                "details": {"name": test_name, "description": test_description, "private": test_private},
+                "hdf5File": None,
+                "iniFile": None,
+            }
+            test_files = {
+                "input.hdf5File": hdf5_file,
+                "input.iniFile": ini_file,
+            }
 
-                repack_process = mock.MagicMock()
-                repack_process.returncode = 1
-                repack_process.communicate.return_value = (b"", b"tar hdf5 error simulation")
+            repack_process = mock.MagicMock()
+            repack_process.returncode = 1
+            repack_process.communicate.return_value = (b"", b"tar hdf5 error simulation")
 
-                with mock.patch("bilbyui.views.subprocess.Popen", return_value=repack_process):
-                    response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+            with (
+                mock.patch("bilbyui.views.subprocess.Popen", return_value=repack_process) as mock_popen,
+                mock.patch("bilbyui.views.logger.error") as mock_logger_error,
+            ):
+                response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
-                self.assertEqual("Unable to repack the uploaded HDF5 job", response.errors[0]["message"])
-                self.assertEqual(BilbyJob.objects.count(), 0)
-                self.assertEqual(list(Path(upload_dir).iterdir()), [])
+            self.assertEqual("Unable to repack the uploaded HDF5 job", response.errors[0]["message"])
+            self.assertEqual(BilbyJob.objects.count(), 0)
+            self.assertEqual(list(Path(upload_dir).iterdir()), [])
+            self.assertEqual(list(Path(settings.JOB_UPLOAD_STAGING_DIR).iterdir()), [])
+            mock_logger_error.assert_called_once()
+            self.assertIn("tar hdf5 error simulation", mock_logger_error.call_args[0][3])
+
+            # Verify repack tar command was invoked with outside-write archive destination
+            call_args = mock_popen.call_args
+            tar_cmd = call_args[0][0]
+            self.assertEqual(tar_cmd[0], "tar")
+            self.assertEqual(tar_cmd[1], "-cvf")
+            self.assertTrue(Path(tar_cmd[2]).is_relative_to(Path(settings.JOB_UPLOAD_STAGING_DIR)))
+            self.assertFalse(Path(tar_cmd[2]).is_relative_to(Path(call_args[1]["cwd"])))
+            self.assertEqual(tar_cmd[3], "--exclude=archive.tar.gz")
+            self.assertEqual(tar_cmd[4], ".")
 
     @silence_errors
     def test_hdf5_job_upload_post_move_failure_cleans_job_dir(self):
