@@ -48,17 +48,13 @@ class Command(BaseCommand):
     def _find_orphaned_dirs(self, upload_dir: Path) -> tuple[int, list[Path]]:
         """Scan upload_dir for numeric subdirectories and return candidate count and orphan paths."""
         candidate_map: dict[int, Path] = {
-            int(entry.name): entry
-            for entry in upload_dir.iterdir()
-            if entry.is_dir() and entry.name.isdigit()
+            int(entry.name): entry for entry in upload_dir.iterdir() if entry.is_dir() and entry.name.isdigit()
         }
 
         if not candidate_map:
             return 0, []
 
-        existing_ids = set(
-            BilbyJob.objects.filter(id__in=list(candidate_map.keys())).values_list("id", flat=True)
-        )
+        existing_ids = set(BilbyJob.objects.filter(id__in=list(candidate_map.keys())).values_list("id", flat=True))
         orphan_ids = sorted([cid for cid in candidate_map if cid not in existing_ids])
         orphan_dirs = [candidate_map[cid] for cid in orphan_ids]
         return len(candidate_map), orphan_dirs
@@ -67,9 +63,7 @@ class Command(BaseCommand):
         """Output candidate list and summary in dry-run mode without modifying filesystem."""
         count = len(orphan_dirs)
         plural = "y" if count == 1 else "ies"
-        self.stdout.write(
-            f"Found {count} orphaned job director{plural} ({candidate_count} checked):"
-        )
+        self.stdout.write(f"Found {count} orphaned job director{plural} ({candidate_count} checked):")
         for path in orphan_dirs:
             logger.info("Found orphaned job directory: %s", path)
             self.stdout.write(f"  - {path}")
@@ -86,9 +80,7 @@ class Command(BaseCommand):
         """Purge confirmed orphaned directories from filesystem and report results."""
         count = len(orphan_dirs)
         plural = "y" if count == 1 else "ies"
-        self.stdout.write(
-            f"Deleting {count} orphaned job director{plural} ({candidate_count} checked)..."
-        )
+        self.stdout.write(f"Deleting {count} orphaned job director{plural} ({candidate_count} checked)...")
         deleted_count = 0
         for path in orphan_dirs:
             shutil.rmtree(path, ignore_errors=True)
@@ -99,9 +91,7 @@ class Command(BaseCommand):
         deleted_plural = "y" if deleted_count == 1 else "ies"
         logger.info("Cleanup complete: %d orphaned directories removed.", deleted_count)
         self.stdout.write(
-            self.style.SUCCESS(
-                f"\nCleanup complete: {deleted_count} orphaned director{deleted_plural} removed."
-            )
+            self.style.SUCCESS(f"\nCleanup complete: {deleted_count} orphaned director{deleted_plural} removed.")
         )
 
     def handle(self, *_args, **options):

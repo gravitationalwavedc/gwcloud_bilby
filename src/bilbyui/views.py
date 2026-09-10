@@ -663,7 +663,9 @@ def upload_bilby_job(user, upload_token, details, job_file):
                 # * The final move of the staging directory to the job directory raises an exception (Disk full etc)
 
                 # Create the bilby job record
-                bilby_job = _create_bilby_job_record(upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string)
+                bilby_job = _create_bilby_job_record(
+                    upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string
+                )
 
                 # Save any supporting file records
                 supporting_file_details = SupportingFile.save_from_parsed(bilby_job, supporting_files, uploaded=True)
@@ -690,7 +692,9 @@ def upload_bilby_job(user, upload_token, details, job_file):
                     try:
                         resolved = candidate.resolve()
                     except (ValueError, RuntimeError, OSError):
-                        msg = f"Supporting file {supporting_file['file_path']} contains an invalid or unresolvable path."
+                        msg = (
+                            f"Supporting file {supporting_file['file_path']} contains an invalid or unresolvable path."
+                        )
                         raise ValueError(msg) from None
 
                     # Verify that the file really sits under the job staging directory
@@ -872,7 +876,9 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
         try:
             with transaction.atomic():
                 # Create the bilby job record
-                bilby_job = _create_bilby_job_record(upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string)
+                bilby_job = _create_bilby_job_record(
+                    upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string
+                )
 
                 # Generate the archive.tar.gz file inside the staging directory before moving
                 # Exclude the archive itself so tar does not try to read its own growing
