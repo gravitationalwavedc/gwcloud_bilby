@@ -713,3 +713,37 @@ class TestWriteSubmissionScripts(TestCase):
             mock_dag.assert_called_once()
             mock_slurm.assert_not_called()
             self.assertIsNone(result)
+
+
+class TestSetDirectory(TestCase):
+    def setUp(self):
+        sys.path.append(str(Path(__file__).parent / "misc"))
+
+    def tearDown(self):
+        sys.path = sys.path[:-1]
+
+    def test_set_directory_changes_and_restores_cwd(self):
+        # The cwd should change to the target inside the context and be restored on exit
+        with TemporaryDirectory() as td:
+            origin = os.getcwd()
+
+            from core.submit import set_directory
+
+            with set_directory(Path(td)):
+                self.assertEqual(os.getcwd(), td)
+
+            self.assertEqual(os.getcwd(), origin)
+
+    def test_set_directory_restores_cwd_on_exception(self):
+        # The cwd should be restored even when the body raises an exception
+        with TemporaryDirectory() as td:
+            origin = os.getcwd()
+
+            from core.submit import set_directory
+
+            with self.assertRaises(RuntimeError):
+                with set_directory(Path(td)):
+                    self.assertEqual(os.getcwd(), td)
+                    raise RuntimeError("boom")
+
+            self.assertEqual(os.getcwd(), origin)
