@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import math
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -719,32 +720,56 @@ def upload_bilby_job(user, upload_token, details, job_file):
                     supporting_file_instance = supporting_file_instances[supporting_file["download_token"]]
                     shutil.copyfile(resolved, supporting_file_dir / str(supporting_file_instance.id))
 
-                # Generate the archive.tar.gz file inside the staging directory before moving
-                # Exclude the archive itself so tar does not try to read its own growing
-                # output ("file changed as we read it") when the job dir is large.
-                p = subprocess.Popen(
-                    ["tar", "-cvf", "archive.tar.gz", "--exclude=archive.tar.gz", "."],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    cwd=job_staging_dir,
+                # Generate the archive.tar.gz file outside the staging directory before atomically moving it in.
+                # Writing the archive outside job_staging_dir avoids modifying the directory while tar traverses it,
+                # eliminating intermittent exit code 1 ("file changed as we read it").
+                # IMPORTANT: temp archive MUST be allocated inside settings.JOB_UPLOAD_STAGING_DIR (not /tmp),
+                # as archives can be several gigabytes.
+                temp_archive = NamedTemporaryFile(
+                    dir=settings.JOB_UPLOAD_STAGING_DIR, delete=False, suffix=".tar.gz"
                 )
+                temp_archive.close()
+                temp_archive_path = Path(temp_archive.name)
                 try:
-                    out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
-                except subprocess.TimeoutExpired:
-                    p.kill()
-                    out, err = p.communicate()
-                    logger.error("Timed out repacking uploaded job for user %s", upload_token.user.id)
-                    msg = "Timed out repacking the uploaded job"
-                    raise RuntimeError(msg) from None
+                    p = subprocess.Popen(
+                        ["tar", "-cvf", str(temp_archive_path), "--exclude=archive.tar.gz", "."],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        cwd=job_staging_dir,
+                    )
+                    try:
+                        out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
+                    except subprocess.TimeoutExpired:
+                        p.kill()
+                        out, err = p.communicate()
+                        err_msg = err.decode("utf-8", errors="replace") if isinstance(err, bytes) else str(err)
+                        logger.error(
+                            "Timed out repacking uploaded job for user %s: %s",
+                            upload_token.user.id,
+                            err_msg,
+                        )
+                        msg = "Timed out repacking the uploaded job"
+                        raise RuntimeError(msg) from None
 
-                logger.info("Packing uploaded job archive for %s had return code %s", job_file.name, p.returncode)
-                logger.debug("stdout: %s", out)
-                logger.debug("stderr: %s", err)
+                    logger.info("Packing uploaded job archive for %s had return code %s", job_file.name, p.returncode)
+                    logger.debug("stdout: %s", out)
+                    logger.debug("stderr: %s", err)
 
-                if p.returncode != 0:
-                    logger.error("Failed to repack uploaded job for user %s", upload_token.user.id)
-                    msg = "Unable to repack the uploaded job"
-                    raise RuntimeError(msg)
+                    if p.returncode != 0:
+                        err_msg = err.decode("utf-8", errors="replace") if isinstance(err, bytes) else str(err)
+                        logger.error(
+                            "Failed to repack uploaded job for user %s: %s",
+                            upload_token.user.id,
+                            err_msg,
+                        )
+                        msg = "Unable to repack the uploaded job"
+                        raise RuntimeError(msg)
+
+                    # Atomically move the completed archive into job_staging_dir
+                    os.replace(temp_archive_path, Path(job_staging_dir) / "archive.tar.gz")
+                finally:
+                    if temp_archive_path.exists():
+                        temp_archive_path.unlink(missing_ok=True)
 
                 # Now we have the bilby job id and repack has succeeded, move the staging directory
                 # to the actual job directory as the final step in the transaction
@@ -880,31 +905,58 @@ def upload_hdf5_bilby_job(user, upload_token, details, hdf5_file, ini_file):
                     upload_token.user, details, args, BilbyJobType.UPLOADED, ini_string
                 )
 
-                # Generate the archive.tar.gz file inside the staging directory before moving
-                # Exclude the archive itself so tar does not try to read its own growing
-                # output ("file changed as we read it") when the job dir is large.
-                p = subprocess.Popen(
-                    ["tar", "-cvf", "archive.tar.gz", "--exclude=archive.tar.gz", "."],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    cwd=job_staging_dir,
+                # Generate the archive.tar.gz file outside the staging directory before atomically moving it in.
+                # Writing the archive outside job_staging_dir avoids modifying the directory while tar traverses it,
+                # eliminating intermittent exit code 1 ("file changed as we read it").
+                # IMPORTANT: temp archive MUST be allocated inside settings.JOB_UPLOAD_STAGING_DIR (not /tmp),
+                # as archives can be several gigabytes.
+                temp_archive = NamedTemporaryFile(
+                    dir=settings.JOB_UPLOAD_STAGING_DIR, delete=False, suffix=".tar.gz"
                 )
+                temp_archive.close()
+                temp_archive_path = Path(temp_archive.name)
                 try:
-                    out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
-                except subprocess.TimeoutExpired:
-                    p.kill()
-                    out, err = p.communicate()
-                    logger.error("Timed out repacking uploaded HDF5 job archive for %s", job_name)
-                    msg = "Timed out repacking the uploaded HDF5 job"
-                    raise RuntimeError(msg) from None
+                    p = subprocess.Popen(
+                        ["tar", "-cvf", str(temp_archive_path), "--exclude=archive.tar.gz", "."],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        cwd=job_staging_dir,
+                    )
+                    try:
+                        out, err = p.communicate(timeout=TAR_PROCESS_TIMEOUT)
+                    except subprocess.TimeoutExpired:
+                        p.kill()
+                        out, err = p.communicate()
+                        err_msg = err.decode("utf-8", errors="replace") if isinstance(err, bytes) else str(err)
+                        logger.error(
+                            "Timed out repacking uploaded HDF5 job for %s (user %s): %s",
+                            job_name,
+                            upload_token.user.id,
+                            err_msg,
+                        )
+                        msg = "Timed out repacking the uploaded HDF5 job"
+                        raise RuntimeError(msg) from None
 
-                logger.info("Packing uploaded HDF5 job archive for %s had return code %s", job_name, p.returncode)
-                logger.debug("stdout: %s", out)
-                logger.debug("stderr: %s", err)
+                    logger.info("Packing uploaded HDF5 job archive for %s had return code %s", job_name, p.returncode)
+                    logger.debug("stdout: %s", out)
+                    logger.debug("stderr: %s", err)
 
-                if p.returncode != 0:
-                    msg = "Unable to repack the uploaded HDF5 job"
-                    raise RuntimeError(msg)
+                    if p.returncode != 0:
+                        err_msg = err.decode("utf-8", errors="replace") if isinstance(err, bytes) else str(err)
+                        logger.error(
+                            "Failed to repack uploaded HDF5 job for %s (user %s): %s",
+                            job_name,
+                            upload_token.user.id,
+                            err_msg,
+                        )
+                        msg = "Unable to repack the uploaded HDF5 job"
+                        raise RuntimeError(msg)
+
+                    # Atomically move the completed archive into job_staging_dir
+                    os.replace(temp_archive_path, Path(job_staging_dir) / "archive.tar.gz")
+                finally:
+                    if temp_archive_path.exists():
+                        temp_archive_path.unlink(missing_ok=True)
 
                 # Move the staging directory to the actual job directory as the final step in the transaction
                 job_dir = bilby_job.get_upload_directory()
