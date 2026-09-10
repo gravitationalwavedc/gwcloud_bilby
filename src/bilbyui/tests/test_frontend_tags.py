@@ -1,11 +1,18 @@
 from datetime import UTC, datetime, timedelta
 from datetime import timezone as dt_timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 from django.template import Context, Template
 from django.utils import timezone
 
-from bilbyui.templatetags.frontend_tags import basename, parent_dir, utc_timestamp
+from bilbyui.templatetags.frontend_tags import (
+    basename,
+    mirrored_count,
+    parent_dir,
+    pending_count,
+    utc_timestamp,
+)
 from bilbyui.tests.testcases import BilbyTestCase
 
 
@@ -96,3 +103,40 @@ class TestParentDirFilter(BilbyTestCase):
         template = Template("{% load frontend_tags %}{{ value|parent_dir }}")
         rendered = template.render(Context({"value": "/x/y/data.h5"}))
         self.assertEqual(rendered, "/x/y")
+
+
+class TestMirroredAndPendingCountFilters(BilbyTestCase):
+    def _file(self, uploaded):
+        return SimpleNamespace(uploaded=uploaded)
+
+    def test_mirrored_count_counts_only_uploaded_files(self):
+        files = [self._file(True), self._file(False), self._file(True)]
+        self.assertEqual(mirrored_count(files), 2)
+
+    def test_mirrored_count_empty_list(self):
+        self.assertEqual(mirrored_count([]), 0)
+
+    def test_mirrored_count_ignores_non_file_inputs(self):
+        files = [self._file(True), "not-a-file", None, 42]
+        self.assertEqual(mirrored_count(files), 1)
+
+    def test_pending_count_counts_only_not_uploaded_files(self):
+        files = [self._file(True), self._file(False), self._file(False)]
+        self.assertEqual(pending_count(files), 2)
+
+    def test_pending_count_empty_list(self):
+        self.assertEqual(pending_count([]), 0)
+
+    def test_pending_count_counts_non_file_inputs_as_pending(self):
+        files = [self._file(True), "not-a-file", None, 42]
+        self.assertEqual(pending_count(files), 3)
+
+    def test_mirrored_and_pending_are_complementary(self):
+        files = [self._file(True), self._file(False), self._file(True), self._file(False)]
+        self.assertEqual(mirrored_count(files) + pending_count(files), len(files))
+
+    def test_filters_registered_in_template_engine(self):
+        template = Template("{% load frontend_tags %}{{ files|mirrored_count }}|{{ files|pending_count }}")
+        files = [self._file(True), self._file(False)]
+        rendered = template.render(Context({"files": files}))
+        self.assertEqual(rendered, "1|1")
