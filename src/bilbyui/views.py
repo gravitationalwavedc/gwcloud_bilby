@@ -53,7 +53,7 @@ from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs
 from .status import JobStatus
 from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
-from .utils.embargo import should_embargo_job
+from .utils.embargo import gwflow_ligo_only_from_metadata, should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
 from .utils.gwflow_portal import get_superevent, get_version, get_versions
@@ -2403,6 +2403,13 @@ def upsert_gwflow_job(user, params):
                     job.event_id = event
             except Exception as e:
                 logger.warning("EventID lookup failed for event_id %s on job %s: %s", event_id_param, sname, e)
+
+        # Derive ligo_only from the portal metadata when provided (issue #83).
+        # The embargo start time and the superevent's trigger GPS time
+        # determine public visibility; this overrides any value supplied via
+        # the generic update loop above.
+        if metadata_dict is not None:
+            job.ligo_only = gwflow_ligo_only_from_metadata(metadata_dict)
 
         job.save()
 
