@@ -1,4 +1,5 @@
 import json
+import shutil
 import subprocess
 import uuid
 from pathlib import Path
@@ -641,51 +642,147 @@ class TestJobUpload(BilbyTestCase):
         mock_process.kill.assert_called_once()
         self.assertFalse(BilbyJob.objects.all().exists())
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_job_upload_tar_repack_timeout(self):
-        """Test that a hung tar repack process is killed and a clean error is raised."""
-        token = self.get_upload_token()
+        """Test that a hung tar repack process is killed and a clean error is raised,
+        leaving no job directory on disk and no BilbyJob record."""
+        with TemporaryDirectory() as upload_dir:
+            with self.settings(JOB_UPLOAD_DIR=upload_dir):
+                token = self.get_upload_token()
 
-        test_name = "myjob"
-        test_description = "Test Description"
-        test_private = False
+                test_name = "myjob"
+                test_description = "Test Description"
+                test_private = False
 
-        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+                test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
 
-        test_file = SimpleUploadedFile(
-            name="test.tar.gz",
-            content=create_test_upload_data(test_ini_string, test_name),
-            content_type="application/gzip",
-        )
+                test_file = SimpleUploadedFile(
+                    name="test.tar.gz",
+                    content=create_test_upload_data(test_ini_string, test_name),
+                    content_type="application/gzip",
+                )
 
-        test_input = {
-            "uploadToken": token,
-            "details": {"description": test_description, "private": test_private},
-            "jobFile": None,
-        }
-        test_files = {"input.jobFile": test_file}
+                test_input = {
+                    "uploadToken": token,
+                    "details": {"description": test_description, "private": test_private},
+                    "jobFile": None,
+                }
+                test_files = {"input.jobFile": test_file}
 
-        real_popen = subprocess.Popen
-        repack_process = mock.MagicMock()
-        repack_process.communicate.side_effect = [
-            subprocess.TimeoutExpired(cmd="tar", timeout=30),
-            (b"", b""),
-        ]
-        popen_calls = {"count": 0}
+                real_popen = subprocess.Popen
+                repack_process = mock.MagicMock()
+                repack_process.communicate.side_effect = [
+                    subprocess.TimeoutExpired(cmd="tar", timeout=30),
+                    (b"", b""),
+                ]
+                popen_calls = {"count": 0}
 
-        def fake_popen(*args, **kwargs):
-            popen_calls["count"] += 1
-            if popen_calls["count"] == 1:
-                return real_popen(*args, **kwargs)
-            return repack_process
+                def fake_popen(*args, **kwargs):
+                    popen_calls["count"] += 1
+                    if popen_calls["count"] == 1:
+                        return real_popen(*args, **kwargs)
+                    return repack_process
 
-        with mock.patch("bilbyui.views.subprocess.Popen", side_effect=fake_popen):
-            response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+                with mock.patch("bilbyui.views.subprocess.Popen", side_effect=fake_popen):
+                    response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
-        self.assertEqual("Timed out repacking the uploaded job", response.errors[0]["message"])
-        repack_process.kill.assert_called_once()
-        self.assertFalse(BilbyJob.objects.all().exists())
+                self.assertEqual("Timed out repacking the uploaded job", response.errors[0]["message"])
+                repack_process.kill.assert_called_once()
+                self.assertEqual(BilbyJob.objects.count(), 0)
+                self.assertEqual(list(Path(upload_dir).iterdir()), [])
+
+    @silence_errors
+    def test_job_upload_tar_repack_nonzero_exit(self):
+        """Test that a non-zero exit code during tar repack raises a clean error,
+        leaving no job directory on disk and no BilbyJob record."""
+        with TemporaryDirectory() as upload_dir:
+            with self.settings(JOB_UPLOAD_DIR=upload_dir):
+                token = self.get_upload_token()
+
+                test_name = "myjob_repack_fail"
+                test_description = "Test Description"
+                test_private = False
+
+                test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+
+                test_file = SimpleUploadedFile(
+                    name="test.tar.gz",
+                    content=create_test_upload_data(test_ini_string, test_name),
+                    content_type="application/gzip",
+                )
+
+                test_input = {
+                    "uploadToken": token,
+                    "details": {"description": test_description, "private": test_private},
+                    "jobFile": None,
+                }
+                test_files = {"input.jobFile": test_file}
+
+                real_popen = subprocess.Popen
+                repack_process = mock.MagicMock()
+                repack_process.returncode = 1
+                repack_process.communicate.return_value = (b"", b"tar error simulation")
+                popen_calls = {"count": 0}
+
+                def fake_popen(*args, **kwargs):
+                    popen_calls["count"] += 1
+                    if popen_calls["count"] == 1:
+                        return real_popen(*args, **kwargs)
+                    return repack_process
+
+                with mock.patch("bilbyui.views.subprocess.Popen", side_effect=fake_popen):
+                    response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+                self.assertEqual("Unable to repack the uploaded job", response.errors[0]["message"])
+                self.assertEqual(BilbyJob.objects.count(), 0)
+                self.assertEqual(list(Path(upload_dir).iterdir()), [])
+
+    @silence_errors
+    def test_job_upload_post_move_failure_cleans_job_dir(self):
+        """Test that if a failure occurs after the staging directory is moved to job_dir,
+        the post-move failure guard removes job_dir so it does not persist on disk."""
+        with TemporaryDirectory() as upload_dir:
+            with self.settings(JOB_UPLOAD_DIR=upload_dir):
+                token = self.get_upload_token()
+
+                test_name = "post_move_fail_job"
+                test_description = "Test Description"
+                test_private = False
+
+                test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+
+                test_file = SimpleUploadedFile(
+                    name="test.tar.gz",
+                    content=create_test_upload_data(test_ini_string, test_name),
+                    content_type="application/gzip",
+                )
+
+                test_input = {
+                    "uploadToken": token,
+                    "details": {"description": test_description, "private": test_private},
+                    "jobFile": None,
+                }
+                test_files = {"input.jobFile": test_file}
+
+                real_move = shutil.move
+                moved_dirs = []
+
+                def failing_move(src, dst):
+                    real_move(src, dst)
+                    moved_dirs.append(dst)
+                    assert Path(dst).exists(), "Target directory must exist after move"
+                    raise RuntimeError("Simulated failure after moving staging directory to job_dir")
+
+                with mock.patch("bilbyui.views.shutil.move", side_effect=failing_move):
+                    response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+                self.assertIn("Simulated failure after moving", response.errors[0]["message"])
+                self.assertEqual(len(moved_dirs), 1)
+                target_job_dir = Path(moved_dirs[0])
+                # Ensure the incomplete directory was safely removed and does NOT persist
+                self.assertFalse(target_job_dir.exists())
+                self.assertEqual(BilbyJob.objects.count(), 0)
+                self.assertEqual(list(Path(upload_dir).iterdir()), [])
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
     def test_job_upload_embargoed_ligo_job(self):
@@ -2211,43 +2308,130 @@ class TestHdf5JobUpload(BilbyTestCase):
         self.assertTrue((Path(job_dir) / f"{test_name}_config_complete.ini").is_file())
         self.assertTrue((Path(job_dir) / "archive.tar.gz").is_file())
 
-    @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_hdf5_job_upload_tar_repack_timeout(self):
-        """Test that a hung tar repack process is killed and a clean error is raised for HDF5 uploads."""
-        token = self.get_upload_token()
+        """Test that a hung tar repack process is killed and a clean error is raised for HDF5 uploads,
+        leaving no job directory on disk and no BilbyJob record."""
+        with TemporaryDirectory() as upload_dir:
+            with self.settings(JOB_UPLOAD_DIR=upload_dir):
+                token = self.get_upload_token()
 
-        test_name = "hdf5_job"
-        test_description = "Test HDF5 Job"
-        test_private = False
+                test_name = "hdf5_job"
+                test_description = "Test HDF5 Job"
+                test_private = False
 
-        test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
-        hdf5_file = self.create_test_hdf5_file()
-        ini_file = self.create_test_ini_file(test_ini_string)
+                test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+                hdf5_file = self.create_test_hdf5_file()
+                ini_file = self.create_test_ini_file(test_ini_string)
 
-        test_input = {
-            "uploadToken": token,
-            "details": {"name": test_name, "description": test_description, "private": test_private},
-            "hdf5File": None,
-            "iniFile": None,
-        }
-        test_files = {
-            "input.hdf5File": hdf5_file,
-            "input.iniFile": ini_file,
-        }
+                test_input = {
+                    "uploadToken": token,
+                    "details": {"name": test_name, "description": test_description, "private": test_private},
+                    "hdf5File": None,
+                    "iniFile": None,
+                }
+                test_files = {
+                    "input.hdf5File": hdf5_file,
+                    "input.iniFile": ini_file,
+                }
 
-        repack_process = mock.MagicMock()
-        repack_process.communicate.side_effect = [
-            subprocess.TimeoutExpired(cmd="tar", timeout=30),
-            (b"", b""),
-        ]
+                repack_process = mock.MagicMock()
+                repack_process.communicate.side_effect = [
+                    subprocess.TimeoutExpired(cmd="tar", timeout=30),
+                    (b"", b""),
+                ]
 
-        with mock.patch("bilbyui.views.subprocess.Popen", return_value=repack_process):
-            response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+                with mock.patch("bilbyui.views.subprocess.Popen", return_value=repack_process):
+                    response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
 
-        self.assertEqual("Timed out repacking the uploaded HDF5 job", response.errors[0]["message"])
-        repack_process.kill.assert_called_once()
-        self.assertFalse(BilbyJob.objects.all().exists())
+                self.assertEqual("Timed out repacking the uploaded HDF5 job", response.errors[0]["message"])
+                repack_process.kill.assert_called_once()
+                self.assertEqual(BilbyJob.objects.count(), 0)
+                self.assertEqual(list(Path(upload_dir).iterdir()), [])
+
+    @silence_errors
+    def test_hdf5_job_upload_tar_repack_nonzero_exit(self):
+        """Test that a non-zero exit code during tar repack raises a clean error for HDF5 uploads,
+        leaving no job directory on disk and no BilbyJob record."""
+        with TemporaryDirectory() as upload_dir:
+            with self.settings(JOB_UPLOAD_DIR=upload_dir):
+                token = self.get_upload_token()
+
+                test_name = "hdf5_job_repack_fail"
+                test_description = "Test HDF5 Job"
+                test_private = False
+
+                test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+                hdf5_file = self.create_test_hdf5_file()
+                ini_file = self.create_test_ini_file(test_ini_string)
+
+                test_input = {
+                    "uploadToken": token,
+                    "details": {"name": test_name, "description": test_description, "private": test_private},
+                    "hdf5File": None,
+                    "iniFile": None,
+                }
+                test_files = {
+                    "input.hdf5File": hdf5_file,
+                    "input.iniFile": ini_file,
+                }
+
+                repack_process = mock.MagicMock()
+                repack_process.returncode = 1
+                repack_process.communicate.return_value = (b"", b"tar hdf5 error simulation")
+
+                with mock.patch("bilbyui.views.subprocess.Popen", return_value=repack_process):
+                    response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+                self.assertEqual("Unable to repack the uploaded HDF5 job", response.errors[0]["message"])
+                self.assertEqual(BilbyJob.objects.count(), 0)
+                self.assertEqual(list(Path(upload_dir).iterdir()), [])
+
+    @silence_errors
+    def test_hdf5_job_upload_post_move_failure_cleans_job_dir(self):
+        """Test that if a failure occurs after the staging directory is moved to job_dir in HDF5 uploads,
+        the post-move failure guard removes job_dir so it does not persist on disk."""
+        with TemporaryDirectory() as upload_dir:
+            with self.settings(JOB_UPLOAD_DIR=upload_dir):
+                token = self.get_upload_token()
+
+                test_name = "hdf5_post_move_fail_job"
+                test_description = "Test HDF5 Job"
+                test_private = False
+
+                test_ini_string = create_test_ini_string({"label": test_name, "outdir": "./"}, True)
+                hdf5_file = self.create_test_hdf5_file()
+                ini_file = self.create_test_ini_file(test_ini_string)
+
+                test_input = {
+                    "uploadToken": token,
+                    "details": {"name": test_name, "description": test_description, "private": test_private},
+                    "hdf5File": None,
+                    "iniFile": None,
+                }
+                test_files = {
+                    "input.hdf5File": hdf5_file,
+                    "input.iniFile": ini_file,
+                }
+
+                real_move = shutil.move
+                moved_dirs = []
+
+                def failing_move(src, dst):
+                    real_move(src, dst)
+                    moved_dirs.append(dst)
+                    assert Path(dst).exists(), "Target directory must exist after move"
+                    raise RuntimeError("Simulated failure after moving HDF5 staging directory to job_dir")
+
+                with mock.patch("bilbyui.views.shutil.move", side_effect=failing_move):
+                    response = self.file_query(self.mutation_string, input_data=test_input, files=test_files)
+
+                self.assertIn("Simulated failure after moving", response.errors[0]["message"])
+                self.assertEqual(len(moved_dirs), 1)
+                target_job_dir = Path(moved_dirs[0])
+                self.assertFalse(target_job_dir.exists())
+                self.assertEqual(BilbyJob.objects.count(), 0)
+                self.assertEqual(list(Path(upload_dir).iterdir()), [])
 
     @silence_errors
     @override_settings(
