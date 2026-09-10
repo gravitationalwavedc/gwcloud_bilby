@@ -9,6 +9,7 @@ from django.test import override_settings
 
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.embargo import user_subject_to_embargo
 from bilbyui.utils.ini_utils import bilby_ini_string_to_args
 from bilbyui.views import check_job_embargo_status
 
@@ -110,3 +111,28 @@ class TestCheckJobEmbargoStatus(BilbyTestCase):
     def test_no_embargo_always_false(self):
         args = _args(trigger_time="2.0", n_simulation="0")
         self.assertFalse(check_job_embargo_status(None, args))
+
+
+class TestUserSubjectToEmbargo(BilbyTestCase):
+    def test_returns_false_when_embargo_start_time_is_none(self):
+        # With no embargo start time configured, no user is subject to embargo
+        with override_settings(EMBARGO_START_TIME=None):
+            user = self.create_user(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+            self.assertFalse(user_subject_to_embargo(user))
+
+    def test_returns_false_for_ligo_user(self):
+        # A LIGO user is not subject to embargo once an embargo start time is set
+        with override_settings(EMBARGO_START_TIME=123):
+            user = self.create_user(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+            self.assertFalse(user_subject_to_embargo(user))
+
+    def test_returns_true_for_non_ligo_user(self):
+        # A non-LIGO user is subject to embargo once an embargo start time is set
+        with override_settings(EMBARGO_START_TIME=123):
+            user = self.create_user(authentication_method="password")
+            self.assertTrue(user_subject_to_embargo(user))
+
+    def test_returns_true_for_anonymous_user(self):
+        # An anonymous user is not a LIGO user and is therefore subject to embargo
+        with override_settings(EMBARGO_START_TIME=123):
+            self.assertTrue(user_subject_to_embargo(ADACSAnonymousUser()))
