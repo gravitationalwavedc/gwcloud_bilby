@@ -9,6 +9,8 @@ from bilbyui.models import GWFlowJob
 from bilbyui.services.gwflow import (
     _collect_library_options,
     _collect_review_status_options,
+    _is_fresh,
+    _parse_cache_record,
     list_gwflow_filter_options,
     list_gwflow_jobs,
 )
@@ -1068,3 +1070,38 @@ class TestCollectOptions(BilbyTestCase):
         mock_client.search.return_value = _agg_response("review_statuses", [])
 
         self.assertEqual(_collect_review_status_options(), [])
+
+
+class TestParseCacheRecord(BilbyTestCase):
+    def test_none_record_returns_none_none(self):
+        self.assertEqual(_parse_cache_record(None), (None, None))
+
+    def test_non_dict_record_returns_none_none(self):
+        self.assertEqual(_parse_cache_record("not-a-record"), (None, None))
+        self.assertEqual(_parse_cache_record(["legacy-list"]), (None, None))
+
+    def test_dict_missing_values_returns_none_none(self):
+        self.assertEqual(_parse_cache_record({"fetched_at": timezone.now()}), (None, None))
+
+    def test_valid_record_returns_values_and_fetched_at(self):
+        fetched_at = timezone.now()
+        self.assertEqual(
+            _parse_cache_record({"values": ["a"], "fetched_at": fetched_at}),
+            (["a"], fetched_at),
+        )
+
+
+class TestIsFresh(BilbyTestCase):
+    def test_non_datetime_is_not_fresh(self):
+        self.assertFalse(_is_fresh("not-a-datetime"))
+        self.assertFalse(_is_fresh(None))
+
+    def test_naive_datetime_now_is_fresh(self):
+        self.assertTrue(_is_fresh(timezone.now().replace(tzinfo=None)))
+
+    def test_fresh_aware_datetime_is_fresh(self):
+        self.assertTrue(_is_fresh(timezone.now()))
+
+    def test_stale_datetime_is_not_fresh(self):
+        stale = timezone.now() - __import__("datetime").timedelta(hours=2)
+        self.assertFalse(_is_fresh(stale))
