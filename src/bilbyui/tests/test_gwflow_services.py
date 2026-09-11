@@ -11,6 +11,7 @@ from bilbyui.services.gwflow import (
     _collect_review_status_options,
     _is_fresh,
     _parse_cache_record,
+    _public_visibility_filters,
     list_gwflow_filter_options,
     list_gwflow_jobs,
 )
@@ -1070,6 +1071,25 @@ class TestCollectOptions(BilbyTestCase):
         mock_client.search.return_value = _agg_response("review_statuses", [])
 
         self.assertEqual(_collect_review_status_options(), [])
+
+
+class TestPublicVisibilityFilters(BilbyTestCase):
+    def test_returns_pruned_and_ligo_only_clauses(self):
+        filters = _public_visibility_filters()
+
+        self.assertEqual(
+            filters,
+            [
+                {"term": {"_gwcloud.isPruned": False}},
+                {"term": {"_gwcloud.ligoOnly": False}},
+            ],
+        )
+
+    def test_clauses_are_shared_by_both_facet_aggregations(self):
+        filters = _public_visibility_filters()
+
+        self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
+        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
 
 
 class TestParseCacheRecord(BilbyTestCase):
