@@ -248,3 +248,20 @@ class TestGWFlowFilesTemplateStates(BilbyTestCase):
         self.assertContains(response, "IMRPhenomXPHM")
         self.assertContains(response, "completed")
         self.assertContains(response, "approved")
+
+    def test_down_state_renders_blocks_without_metadata(self):
+        """When get_superevent returns (None, "down"), analyses stays None and
+        the files template still renders analysis blocks built from files alone,
+        without portal metadata."""
+        from unittest import mock
+
+        _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=True)
+
+        with mock.patch("bilbyui.views.get_superevent", return_value=(None, "down")):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "gw-analysis-block")
+        self.assertContains(response, "analysis-1")
+        self.assertNotContains(response, "IMRPhenomXPHM")
+        self.assertNotContains(response, "run_status")
