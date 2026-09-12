@@ -35,6 +35,7 @@ class TestGWFlowFilesMobileTransform(GWFlowFilesPageBase):
             await page.locator(".gw-files-table thead").first.is_visible(),
             "table header must be hidden at 375px (stacked per-file blocks)",
         )
+        await page.wait_for_selector(".gw-file-row")
         row_display = await page.locator(".gw-file-row").first.evaluate("el => getComputedStyle(el).display")
         self.assertEqual(
             "block",
