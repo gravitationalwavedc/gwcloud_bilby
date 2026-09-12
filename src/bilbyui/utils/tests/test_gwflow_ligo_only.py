@@ -1,11 +1,64 @@
 from django.test import override_settings
 
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.embargo import gwflow_ligo_only_from_metadata
+from bilbyui.utils.embargo import _gwflow_trigger_time_from_metadata, gwflow_ligo_only_from_metadata
 
 
 def _metadata_with_events(events):
     return {"GraceDB": {"Events": events}}
+
+
+class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
+    def test_missing_metadata(self):
+        # Missing GraceDB or Events -> None (never raises).
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(None))
+        self.assertIsNone(_gwflow_trigger_time_from_metadata({}))
+        self.assertIsNone(_gwflow_trigger_time_from_metadata({"GraceDB": {}}))
+
+    def test_events_not_a_list(self):
+        self.assertIsNone(_gwflow_trigger_time_from_metadata({"GraceDB": {"Events": "not-a-list"}}))
+
+    def test_no_usable_events(self):
+        # Empty list and all-malformed entries -> None.
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(_metadata_with_events([])))
+        self.assertIsNone(
+            _gwflow_trigger_time_from_metadata(
+                _metadata_with_events([{"GPSTime": "bad"}, {"GPSTime": None}, "not-a-dict"])
+            )
+        )
+
+    def test_preferred_event_selected(self):
+        # Preferred event is used even when it is not first.
+        metadata = _metadata_with_events(
+            [
+                {"GPSTime": 1000.0},
+                {"GPSTime": 2000.0, "State": "preferred"},
+            ]
+        )
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
+    def test_no_preferred_uses_first_usable(self):
+        # No preferred event -> first usable numeric GPSTime is used.
+        metadata = _metadata_with_events(
+            [
+                {"GPSTime": 1000.0},
+                {"GPSTime": 2000.0},
+            ]
+        )
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 1000.0)
+
+    def test_malformed_entries_skipped(self):
+        # Malformed entries (missing/non-numeric GPSTime, non-dict) are
+        # skipped before selection; the first usable one is used.
+        metadata = _metadata_with_events(
+            [
+                {"GPSTime": "bad"},
+                {"GPSTime": None},
+                "not-a-dict",
+                {"GPSTime": 2000.0},
+            ]
+        )
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
 
 
 class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
