@@ -1105,3 +1105,46 @@ class TestIsFresh(BilbyTestCase):
     def test_stale_datetime_is_not_fresh(self):
         stale = timezone.now() - __import__("datetime").timedelta(hours=2)
         self.assertFalse(_is_fresh(stale))
+
+
+class TestCollectReviewStatusOptions(BilbyTestCase):
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_raises_on_es_connection_error(self, mock_get_es_client):
+        mock_get_es_client.side_effect = elasticsearch.exceptions.ConnectionError("down")
+
+        with self.assertRaises(elasticsearch.exceptions.ConnectionError):
+            _collect_review_status_options()
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_raises_on_search_error(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.side_effect = elasticsearch.exceptions.NotFoundError(404, "index not found", {})
+
+        with self.assertRaises(elasticsearch.exceptions.NotFoundError):
+            _collect_review_status_options()
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_returns_empty_list_on_empty_buckets(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"aggregations": {"review_statuses": {"buckets": []}}}
+
+        self.assertEqual(_collect_review_status_options(), [])
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_returns_valid_buckets(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {
+            "aggregations": {
+                "review_statuses": {
+                    "buckets": [
+                        {"key": "approved", "doc_count": 10},
+                        {"key": "pending", "doc_count": 5},
+                    ]
+                }
+            }
+        }
+
+        self.assertEqual(_collect_review_status_options(), ["approved", "pending"])
