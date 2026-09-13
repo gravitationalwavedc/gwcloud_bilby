@@ -1,6 +1,7 @@
 from io import StringIO
 from unittest import mock
 
+import requests
 from django.core.management import call_command
 from django.db import DatabaseError
 from django.test import override_settings
@@ -8,6 +9,17 @@ from django.test import override_settings
 from bilbyui.models import BilbyJob, GWFlowJob
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
+
+
+class _MockResponse:
+    def __init__(self, payload, status_code):
+        self._payload = payload
+        self.status_code = status_code
+
+    def json(self):
+        if isinstance(self._payload, Exception):
+            raise self._payload
+        return self._payload
 
 
 class TestEsIngestCommand(BilbyTestCase):
@@ -140,3 +152,97 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertIn("CBCFLOW_PORTAL_URL and CBCFLOW_PORTAL_TOKEN must be set", output)
         self.assertNotIn("GWFlow ingestion complete", output)
         self.assertNotIn("Error during gwflow ingestion loop", output)
+
+    def _run_gwflow(self, fake_get):
+        out = StringIO()
+        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
+            with override_settings(
+                CBCFLOW_PORTAL_URL="https://portal.example.com",
+                CBCFLOW_PORTAL_TOKEN="token",
+            ):
+                call_command("es_ingest", "--gwflow", stdout=out, stderr=out)
+        return out.getvalue()
+
+    def _list_page(self, results, next_url=None):
+        return _MockResponse({"results": results, "next": next_url}, 200)
+
+    def test_es_ingest_gwflow_paginates_across_multiple_pages(self):
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+        GWFlowJob.objects.create(sname="S230601ah", user=self.user)
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page(
+                    [{"sname": "S230601ag"}], "https://portal.example.com/api/v1/superevents/?page=2"
+                )
+            if url.endswith("/api/v1/superevents/?page=2"):
+                return self._list_page([{"sname": "S230601ah"}])
+            if url.endswith("/api/v1/superevents/S230601ag/") or url.endswith("/api/v1/superevents/S230601ah/"):
+                return _MockResponse({}, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("GWFlow ingestion complete: 2 succeeded", output)
+        self.assertNotIn("Error during gwflow ingestion loop", output)
+
+    def test_es_ingest_gwflow_non_200_list_response_stops(self):
+        def fake_get(url, headers=None, timeout=None):
+            return _MockResponse({}, 500)
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("Failed to fetch superevents list from portal: HTTP 500", output)
+        self.assertNotIn("Error during gwflow ingestion loop", output)
+
+    def test_es_ingest_gwflow_detail_request_exception_skips(self):
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S230601ag"}])
+            if url.endswith("/api/v1/superevents/S230601ag/"):
+                raise requests.RequestException("connection refused")
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("portal detail request failed", output)
+        self.assertIn("GWFlow ingestion complete: 0 succeeded, 0 skipped, 1 failed", output)
+
+    def test_es_ingest_gwflow_detail_non_200_skips(self):
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S230601ag"}])
+            if url.endswith("/api/v1/superevents/S230601ag/"):
+                return _MockResponse({}, 404)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("portal detail returned HTTP 404", output)
+        self.assertIn("GWFlow ingestion complete: 0 succeeded, 0 skipped, 1 failed", output)
+
+    def test_es_ingest_gwflow_detail_invalid_json_skips(self):
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S230601ag"}])
+            if url.endswith("/api/v1/superevents/S230601ag/"):
+                return _MockResponse(ValueError("No JSON object could be decoded"), 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("portal detail returned invalid JSON", output)
+        self.assertIn("GWFlow ingestion complete: 0 succeeded, 0 skipped, 1 failed", output)
+
+    def test_es_ingest_gwflow_no_matching_local_job_skips(self):
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S230601ag"}])
+            if url.endswith("/api/v1/superevents/S230601ag/"):
+                return _MockResponse({}, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("no matching local GWFlowJob record found", output)
+        self.assertIn("GWFlow ingestion complete: 0 succeeded, 1 skipped, 0 failed", output)
