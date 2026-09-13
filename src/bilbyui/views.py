@@ -1222,8 +1222,7 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
     rows = []
     for record, job in _iter_es_job_records(records, jobs, page_size):
         es_source = record.get("_source")
-        analyses = es_source.get("analyses") or []
-        analysis_count = len(analyses) if isinstance(analyses, list) else 0
+        analysis_count = len(parse_analyses(es_source.get("metadata")))
 
         files_total, files_uploaded = file_counts.get(job.id, (0, 0))
         files_pending = max(0, files_total - files_uploaded)
