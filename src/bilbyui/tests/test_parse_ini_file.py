@@ -124,3 +124,36 @@ class TestNormalise(BilbyTestCase):
         normalised, ok = _normalise(float("nan") * u.s)
         self.assertFalse(ok)
         self.assertEqual(normalised["value"], str(float("nan")))
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class TestParseIniFileHappyPath(BilbyTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = cls.create_user()
+        cls.job = BilbyJob.objects.create(
+            user_id=cls.user.id,
+            name="test job",
+            description="test job",
+            ini_string=create_test_ini_string({"detectors": "['H1']"}, complete=True),
+        )
+
+    def test_creates_unprocessed_key_value_records(self):
+        parse_ini_file(self.job)
+
+        unprocessed = IniKeyValue.objects.filter(job=self.job, processed=False)
+        self.assertTrue(unprocessed.exists())
+
+        # Every parsed ini key should be stored with its raw value
+        self.assertTrue(unprocessed.filter(key="label").exists())
+        self.assertTrue(unprocessed.filter(key="detectors").exists())
+
+    def test_creates_processed_key_value_records(self):
+        parse_ini_file(self.job)
+
+        processed = IniKeyValue.objects.filter(job=self.job, processed=True)
+        self.assertTrue(processed.exists())
+
+        # Processed records cover the postprocessed data-input keys
+        self.assertTrue(processed.filter(key="label").exists())
+        self.assertTrue(processed.filter(key="detectors").exists())
