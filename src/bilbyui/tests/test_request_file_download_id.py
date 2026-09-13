@@ -51,6 +51,26 @@ class TestRequestFileDownloadIds(BilbyTestCase):
 
     @override_settings(ALLOW_HTTP_LEAKS=True)
     @mock.patch("bilbyui.utils.jobs.request_file_download_id._make_job_controller_request")
+    def test_no_file_ids_returned(self, make_request):
+        make_request.return_value = {}
+
+        job = self._make_job(8)
+        success, result = request_file_download_ids(job, ["/a", "/b"])
+        self.assertFalse(success)
+        self.assertEqual(result, "No file download IDs returned")
+
+    @override_settings(ALLOW_HTTP_LEAKS=True)
+    @mock.patch("bilbyui.utils.jobs.request_file_download_id._make_job_controller_request")
+    def test_file_id_count_mismatch(self, make_request):
+        make_request.return_value = {"fileIds": ["id1"]}
+
+        job = self._make_job(10)
+        success, result = request_file_download_ids(job, ["/a", "/b"])
+        self.assertFalse(success)
+        self.assertEqual(result, "File download ID count mismatch")
+
+    @override_settings(ALLOW_HTTP_LEAKS=True)
+    @mock.patch("bilbyui.utils.jobs.request_file_download_id._make_job_controller_request")
     def test_exception_path(self, make_request):
         make_request.side_effect = Exception("boom")
 
