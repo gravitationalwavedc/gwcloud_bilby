@@ -13,9 +13,9 @@ from bilbyui.utils.gwflow_es import parse_analyses
 from bilbyui.views import _build_gwflow_job_rows, _files_text, _render_job_list
 
 
-def _build_gwflow_result(jobs, analyses=None, has_next=False, page=1, page_size=20, total=0):
-    analyses = analyses or {}
-    records = [{"_id": str(job.id), "_source": {"metadata": analyses.get(job.id, {})}} for job in jobs]
+def _build_gwflow_result(jobs, metadata=None, has_next=False, page=1, page_size=20, total=0):
+    metadata = metadata or {}
+    records = [{"_id": str(job.id), "_source": {"metadata": metadata.get(job.id, {})}} for job in jobs]
     return {
         "jobs": {job.id: job for job in jobs},
         "records": records,
@@ -26,11 +26,11 @@ def _build_gwflow_result(jobs, analyses=None, has_next=False, page=1, page_size=
     }
 
 
-def _gwflow_jobs_side_effect(analyses=None, has_next=False, total=0):
+def _gwflow_jobs_side_effect(metadata=None, has_next=False, total=0):
     def _side_effect(user, *, search="", time_range="all", page=1, page_size=20, **kwargs):
         jobs = list(GWFlowJob.objects.order_by("id"))
         return _build_gwflow_result(
-            jobs, analyses=analyses, has_next=has_next, page=page, page_size=page_size, total=total
+            jobs, metadata=metadata, has_next=has_next, page=page, page_size=page_size, total=total
         )
 
     return _side_effect
@@ -245,7 +245,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
         job = GWFlowJob.objects.create(sname="S230601ag", user=self.user)
 
         for malformed in ({"pe": ["a"]}, "not-a-list", 42, None):
-            result = _build_gwflow_result([job], analyses={job.id: malformed})
+            result = _build_gwflow_result([job], metadata={job.id: malformed})
             rows = _build_gwflow_job_rows(result)
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0]["analysis_count"], 0)
@@ -307,7 +307,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
                 ]
             }
         }
-        result = _build_gwflow_result([job], analyses={job.id: metadata})
+        result = _build_gwflow_result([job], metadata={job.id: metadata})
 
         rows = _build_gwflow_job_rows(result)
 
@@ -348,7 +348,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
             {},
         ]
         for metadata in malformed_metadata:
-            result = _build_gwflow_result([job], analyses={job.id: metadata})
+            result = _build_gwflow_result([job], metadata={job.id: metadata})
             rows = _build_gwflow_job_rows(result)
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0]["analysis_count"], len(parse_analyses(metadata)))
@@ -357,7 +357,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
         job = GWFlowJob.objects.create(sname="S230601ag", user=self.user)
 
         metadata = {"pe": {"results": "not-a-list"}}
-        result = _build_gwflow_result([job], analyses={job.id: metadata})
+        result = _build_gwflow_result([job], metadata={job.id: metadata})
 
         rows = _build_gwflow_job_rows(result)
 
