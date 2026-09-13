@@ -14,6 +14,7 @@ import settings
 import state
 from bilby_children import (
     StageError,
+    _ini_outdir,
     _set_ini_label,
     _tree_relative_target,
     _valid_file_ref,
@@ -189,6 +190,35 @@ class TestSetIniLabel(unittest.TestCase):
         out = _set_ini_label(text, "new")
         self.assertIn("label = new\n", out)
         self.assertNotIn("label = old", out)
+
+
+class TestIniOutdir(unittest.TestCase):
+    def test_empty_ini_returns_none(self):
+        self.assertIsNone(_ini_outdir(""))
+        self.assertIsNone(_ini_outdir(None))
+
+    def test_malformed_ini_returns_none(self):
+        self.assertIsNone(_ini_outdir("[unclosed\noutdir = /data"))
+
+    def test_no_outdir_option_returns_none(self):
+        ini = "[default]\nlabel = job\nfoo = bar\n"
+        self.assertIsNone(_ini_outdir(ini))
+
+    def test_relative_outdir_returns_none(self):
+        ini = "[default]\noutdir = relative/path\n"
+        self.assertIsNone(_ini_outdir(ini))
+
+    def test_absolute_outdir_returned(self):
+        ini = "[default]\noutdir = /data/out\n"
+        self.assertEqual(_ini_outdir(ini), "/data/out")
+
+    def test_absolute_outdir_in_later_section_returned(self):
+        ini = "[default]\nfoo = bar\n[pe]\noutdir = /data/pe\n"
+        self.assertEqual(_ini_outdir(ini), "/data/pe")
+
+    def test_percent_in_value_not_treated_as_interpolation(self):
+        ini = "[default]\noutdir = /data/%s/out\n"
+        self.assertEqual(_ini_outdir(ini), "/data/%s/out")
 
 
 class TestSynthesizeJobTree(unittest.TestCase):
