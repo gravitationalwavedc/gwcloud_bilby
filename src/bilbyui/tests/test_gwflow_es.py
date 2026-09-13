@@ -329,6 +329,42 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         self.assertEqual(analyses[0]["analysts"], ["Alice", "Bob"])
         self.assertEqual(analyses[0]["reviewers"], ["Carol", "Dave"])
 
+    def test_parse_analyses_section_dict_without_results_list(self):
+        """A section dict without a 'results' list is treated as a single record."""
+        metadata = {
+            "ParameterEstimation": {
+                "uid": "pe-1",
+                "inference_software": "bilby",
+                "run_status": "completed",
+            }
+        }
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual(len(analyses), 1)
+        self.assertEqual(analyses[0]["uid"], "pe-1")
+        self.assertEqual(analyses[0]["software"], "bilby")
+        self.assertEqual(analyses[0]["runStatus"], "completed")
+
+    def test_parse_analyses_scalar_analysts_and_reviewers(self):
+        """Non-list analysts/reviewers are wrapped into a single-element list."""
+        metadata = {
+            "ParameterEstimation": {
+                "results": [
+                    {
+                        "uid": "pe-1",
+                        "analysts": "Alice",
+                        "reviewers": "Bob",
+                    }
+                ]
+            }
+        }
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual(analyses[0]["analysts"], ["Alice"])
+        self.assertEqual(analyses[0]["reviewers"], ["Bob"])
+
 
 class TestCollectReviewStatuses(BilbyTestCase):
     def setUp(self):
