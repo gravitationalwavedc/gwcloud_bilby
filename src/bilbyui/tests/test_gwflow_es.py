@@ -365,6 +365,67 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         self.assertEqual(analyses[0]["analysts"], ["Alice"])
         self.assertEqual(analyses[0]["reviewers"], ["Bob"])
 
+    def test_parse_analyses_unknown_section_key_skipped(self):
+        """A top-level section key not in section_type_map is skipped."""
+        metadata = {
+            "UnknownSection": {"results": [{"uid": "unknown-1"}]},
+            "ParameterEstimation": {"results": [{"uid": "pe-1"}]},
+        }
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual([a["uid"] for a in analyses], ["pe-1"])
+
+    def test_parse_analyses_top_level_list_section(self):
+        """A section whose value is a top-level list is parsed as records."""
+        metadata = {
+            "TGR": [
+                {"uid": "tgr-1", "software": "pycbc"},
+                {"uid": "tgr-2"},
+            ]
+        }
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual([a["uid"] for a in analyses], ["tgr-1", "tgr-2"])
+        self.assertEqual(analyses[0]["software"], "pycbc")
+
+    def test_parse_analyses_non_list_non_dict_section_value(self):
+        """A section value that is neither a list nor a dict yields no analyses."""
+        metadata = {"ParameterEstimation": "just-a-string"}
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual(analyses, [])
+
+    def test_parse_analyses_non_dict_list_item_skipped(self):
+        """A list item that is not a dict is skipped without aborting."""
+        metadata = {
+            "ParameterEstimation": {
+                "results": [
+                    "not-a-dict",
+                    {"uid": "pe-1"},
+                ]
+            }
+        }
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual([a["uid"] for a in analyses], ["pe-1"])
+
+    def test_parse_analyses_never_raises_on_malformed_metadata(self):
+        """The outer guard returns [] without raising when metadata is malformed."""
+
+        class RaisingItemsDict(dict):
+            def items(self):
+                raise ValueError("boom")
+
+        with self.assertLogs("bilbyui.utils.gwflow_es", level="WARNING") as logs:
+            analyses = parse_analyses(RaisingItemsDict({"ParameterEstimation": {"results": []}}))
+
+        self.assertEqual(analyses, [])
+        self.assertTrue(any("Error parsing analyses" in r.getMessage() for r in logs.records))
+
 
 class TestCollectReviewStatuses(BilbyTestCase):
     def setUp(self):
