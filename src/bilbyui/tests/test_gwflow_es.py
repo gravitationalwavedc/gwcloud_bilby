@@ -274,6 +274,61 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         self.assertEqual(parse_analyses(None), [])
         self.assertEqual(parse_analyses("not-a-dict"), [])
 
+    def test_parse_analyses_scalar_analysts_reviewers_wrapped_in_list(self):
+        """A non-list scalar analysts/reviewers value is wrapped as a single string."""
+        metadata = {
+            "ParameterEstimation": {
+                "results": [
+                    {
+                        "uid": "pe-1",
+                        "analysts": "Alice",
+                        "reviewers": "Bob",
+                    }
+                ]
+            }
+        }
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual(analyses[0]["analysts"], ["Alice"])
+        self.assertEqual(analyses[0]["reviewers"], ["Bob"])
+
+    def test_parse_analyses_missing_analysts_reviewers_default_to_empty(self):
+        """Missing analysts/reviewers fields default to empty lists."""
+        metadata = {
+            "ParameterEstimation": {
+                "results": [
+                    {
+                        "uid": "pe-1",
+                    }
+                ]
+            }
+        }
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual(analyses[0]["analysts"], [])
+        self.assertEqual(analyses[0]["reviewers"], [])
+
+    def test_parse_analyses_mixed_dict_and_string_list_entries(self):
+        """List entries that are dicts use their 'name'; plain strings are kept as-is."""
+        metadata = {
+            "ParameterEstimation": {
+                "results": [
+                    {
+                        "uid": "pe-1",
+                        "analysts": [{"name": "Alice"}, "Bob", None],
+                        "reviewers": [{"name": "Carol"}, "Dave"],
+                    }
+                ]
+            }
+        }
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual(analyses[0]["analysts"], ["Alice", "Bob"])
+        self.assertEqual(analyses[0]["reviewers"], ["Carol", "Dave"])
+
 
 class TestCollectReviewStatuses(BilbyTestCase):
     def setUp(self):
