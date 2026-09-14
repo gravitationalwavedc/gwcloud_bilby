@@ -284,7 +284,7 @@ class TestMetadataPhase(GWFlowTestBase):
         phase_metadata(portal_client=mock_portal, gwc_client=MagicMock(), con=self.con)
         self.assertEqual(state.get_failure_count(cur, "S_CAP"), settings.MAX_RETRY_ATTEMPTS)
 
-    def test_iter_current_snames_exception(self):
+    def test_iter_current_snames_initial_failure_no_prune(self):
         mock_portal = MagicMock()
         mock_portal.iter_changed.return_value = []
         mock_portal.iter_current_snames.side_effect = Exception("Prune API Error")
@@ -296,25 +296,13 @@ class TestMetadataPhase(GWFlowTestBase):
             SimpleNamespace(sname="S_DELETED"),
         ]
 
-        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+        with self.assertLogs("gwflow_ingest", level="ERROR") as logs:
+            phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
 
-        # Enumeration failed -> prune reconciliation skipped, nothing pruned
-        mock_gwc.upsert_gwflow_job.assert_not_called()
-
-    def test_iter_current_snames_initial_failure_no_prune(self):
-        mock_portal = MagicMock()
-        mock_portal.iter_changed.return_value = []
-        mock_portal.iter_current_snames.side_effect = Exception("Prune API Error")
-
-        mock_gwc = MagicMock()
-        mock_gwc.get_gwflow_job_list.return_value = [
-            {"sname": "S_KEEP"},
-            SimpleNamespace(sname="S_DELETED"),
-        ]
-
-        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
-
-        # No prune upserts and no exception propagates
+        # Failure must be logged (acceptance criterion)
+        self.assertIn("Failed to fetch current snames from portal for prune diff", " ".join(logs.output))
+        # Reconciliation must be skipped entirely: known-unpruned query is never made, nothing pruned
+        mock_gwc.get_gwflow_job_list.assert_not_called()
         mock_gwc.upsert_gwflow_job.assert_not_called()
 
     def test_iter_current_snames_mid_pagination_failure_no_prune(self):
@@ -335,7 +323,8 @@ class TestMetadataPhase(GWFlowTestBase):
 
         phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
 
-        # No prune upserts and no exception propagates
+        # Reconciliation must be skipped entirely: known-unpruned query is never made, nothing pruned
+        mock_gwc.get_gwflow_job_list.assert_not_called()
         mock_gwc.upsert_gwflow_job.assert_not_called()
 
 
