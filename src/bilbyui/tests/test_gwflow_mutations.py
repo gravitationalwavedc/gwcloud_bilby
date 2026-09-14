@@ -239,6 +239,7 @@ class TestGWFlowMutations(BilbyTestCase):
 
         self._auth_as(self.ingest_user)
         cache.set("gwflow_filter_libraries", ["stale-lib"])
+        cache.set("gwflow_filter_review_statuses", ["stale-status"])
 
         params = SimpleNamespace(
             sname="S230601zz",
@@ -257,8 +258,43 @@ class TestGWFlowMutations(BilbyTestCase):
         ):
             upsert_gwflow_job(self.ingest_user, params)
 
-        mock_on_commit.assert_called_once()
+        mock_on_commit.assert_called()
         self.assertIsNone(cache.get("gwflow_filter_libraries"))
+        self.assertIsNone(cache.get("gwflow_filter_review_statuses"))
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    @mock.patch("bilbyui.views.transaction.on_commit", side_effect=lambda fn: None)
+    def test_upsert_gwflow_job_rollback_keeps_facet_caches(self, mock_on_commit):
+        from types import SimpleNamespace
+
+        from django.core.cache import cache
+
+        from bilbyui.views import upsert_gwflow_job
+
+        self._auth_as(self.ingest_user)
+        cache.set("gwflow_filter_libraries", ["stale-lib"])
+        cache.set("gwflow_filter_review_statuses", ["stale-status"])
+
+        params = SimpleNamespace(
+            sname="S230601zz",
+            ligo_only=False,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            is_pruned=False,
+            current_history_id="h1",
+            current_history_timestamp="2026-09-01T12:00:00+00:00",
+            event_id=None,
+            files=[],
+        )
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+        ):
+            upsert_gwflow_job(self.ingest_user, params)
+
+        mock_on_commit.assert_called()
+        self.assertEqual(cache.get("gwflow_filter_libraries"), ["stale-lib"])
+        self.assertEqual(cache.get("gwflow_filter_review_statuses"), ["stale-status"])
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_upsert_event_link_best_effort(self):
