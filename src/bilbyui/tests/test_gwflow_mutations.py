@@ -1209,6 +1209,195 @@ class TestExactVersionIngest(BilbyTestCase):
         self.assertEqual(job.current_history_timestamp, datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC))
 
     @override_settings(GWFLOW_INGEST_USER=99)
+    def test_older_delivery_does_not_mutate_current_state(self):
+        import datetime
+        from types import SimpleNamespace
+
+        from bilbyui.views import upsert_gwflow_job
+
+        event = EventID.create(
+            event_id="GW230601_123456",
+            gps_time=123456789.0,
+            trigger_id="S230601a",
+            is_ligo_event=True,
+        )
+        EventID.create(
+            event_id="GW230601_999999",
+            gps_time=123456999.0,
+            trigger_id="S230601b",
+            is_ligo_event=True,
+        )
+        job = GWFlowJob.objects.create(
+            sname="S230601exact",
+            user=self.ingest_user,
+            ligo_only=True,
+            schema_version="v2",
+            libraries=["cbc-workflow-o4a"],
+            is_pruned=False,
+            current_history_id="sha-newer",
+            current_history_timestamp=datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC),
+            event_id=event,
+        )
+        GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="pe_1",
+            path="outdir/a.h5",
+            file_name="a.h5",
+            file_size=100,
+            md5_sum="aaa",
+            uploaded=True,
+        )
+
+        params = self._params(
+            ligo_only=False,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4b"],
+            is_pruned=True,
+            current_history_timestamp="2026-09-01T12:00:00+00:00",
+            event_id="GW230601_999999",
+            files=[
+                SimpleNamespace(
+                    analysis_uid="pe_2",
+                    path="outdir/b.h5",
+                    file_name="b.h5",
+                    file_size=200,
+                    md5_sum="bbb",
+                )
+            ],
+        )
+
+        with TemporaryDirectory() as tmpdir, override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
+            with (
+                mock.patch("bilbyui.views.get_version") as mock_gv,
+                mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+            ):
+                upsert_gwflow_job(self.ingest_user, params)
+
+        mock_gv.assert_not_called()
+        mock_es.assert_not_called()
+        job.refresh_from_db()
+        self.assertTrue(job.ligo_only)
+        self.assertEqual(job.schema_version, "v2")
+        self.assertEqual(job.libraries, ["cbc-workflow-o4a"])
+        self.assertFalse(job.is_pruned)
+        self.assertEqual(job.current_history_id, "sha-newer")
+        self.assertEqual(job.event_id, event)
+        self.assertFalse(GWFlowFile.objects.filter(job=job, analysis_uid="pe_2").exists())
+        self.assertTrue(GWFlowFile.objects.filter(job=job, path="outdir/a.h5").exists())
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_newer_delivery_updates_current_state(self):
+        import datetime
+        from types import SimpleNamespace
+
+        from bilbyui.views import upsert_gwflow_job
+
+        event = EventID.create(
+            event_id="GW230601_123456",
+            gps_time=123456789.0,
+            trigger_id="S230601a",
+            is_ligo_event=True,
+        )
+        other_event = EventID.create(
+            event_id="GW230601_999999",
+            gps_time=123456999.0,
+            trigger_id="S230601b",
+            is_ligo_event=True,
+        )
+        job = GWFlowJob.objects.create(
+            sname="S230601exact",
+            user=self.ingest_user,
+            ligo_only=True,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            is_pruned=False,
+            current_history_id="sha-old",
+            current_history_timestamp=datetime.datetime(2026, 9, 1, 12, 0, 0, tzinfo=datetime.UTC),
+            event_id=event,
+        )
+        GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="pe_1",
+            path="outdir/a.h5",
+            file_name="a.h5",
+            file_size=100,
+            md5_sum="aaa",
+            uploaded=True,
+        )
+
+        payload = {"superevent": "S230601exact", "version": "sha-001"}
+        params = self._params(
+            ligo_only=False,
+            schema_version="v2",
+            libraries=["cbc-workflow-o4b"],
+            is_pruned=True,
+            current_history_id="sha-001",
+            current_history_timestamp="2026-09-03T12:00:00+00:00",
+            event_id="GW230601_999999",
+            files=[
+                SimpleNamespace(
+                    analysis_uid="pe_2",
+                    path="outdir/b.h5",
+                    file_name="b.h5",
+                    file_size=200,
+                    md5_sum="bbb",
+                )
+            ],
+        )
+
+        with TemporaryDirectory() as tmpdir, override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
+            with (
+                mock.patch("bilbyui.views.get_version", return_value=(payload, "live")) as mock_gv,
+                mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+            ):
+                upsert_gwflow_job(self.ingest_user, params)
+
+        mock_gv.assert_called_once_with("S230601exact", "sha-001")
+        mock_es.assert_called_once()
+        job.refresh_from_db()
+        self.assertFalse(job.ligo_only)
+        self.assertEqual(job.schema_version, "v2")
+        self.assertEqual(job.libraries, ["cbc-workflow-o4b"])
+        self.assertTrue(job.is_pruned)
+        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertEqual(job.event_id, other_event)
+        self.assertTrue(GWFlowFile.objects.filter(job=job, analysis_uid="pe_2").exists())
+        self.assertFalse(GWFlowFile.objects.filter(job=job, path="outdir/a.h5").exists())
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_prune_only_without_version_info_still_works(self):
+        from bilbyui.views import upsert_gwflow_job
+
+        GWFlowJob.objects.create(
+            sname="S230601exact",
+            user=self.ingest_user,
+            ligo_only=True,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            is_pruned=False,
+        )
+
+        params = self._params(
+            ligo_only=False,
+            is_pruned=True,
+            current_history_id=None,
+            current_history_timestamp=None,
+            files=None,
+        )
+
+        with (
+            mock.patch("bilbyui.views.get_version") as mock_gv,
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
+        ):
+            upsert_gwflow_job(self.ingest_user, params)
+
+        mock_gv.assert_not_called()
+        mock_es.assert_not_called()
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        self.assertTrue(job.is_pruned)
+        self.assertFalse(job.ligo_only)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
     def test_equal_timestamp_different_id_conflict_leaves_db_and_es_untouched(self):
         import datetime
 
