@@ -48,6 +48,7 @@ class TestMetadataPhase(GWFlowTestBase):
         self.assertEqual(mock_gwc.upsert_gwflow_job.call_count, 2)
         mock_gwc.upsert_gwflow_job.assert_any_call(
             sname="S260101a",
+            event_id="S260101a",
             schema_version="1.0",
             metadata={"sname": "S260101a"},
             libraries=["bilby"],
@@ -87,6 +88,7 @@ class TestMetadataPhase(GWFlowTestBase):
 
         mock_gwc.upsert_gwflow_job.assert_called_once_with(
             sname="S_LIBS",
+            event_id="S_LIBS",
             schema_version="1.0",
             metadata={"sname": "S_LIBS"},
             libraries=["bilby", "gwpy"],
@@ -261,6 +263,7 @@ class TestMetadataPhase(GWFlowTestBase):
 
         mock_gwc.upsert_gwflow_job.assert_called_once_with(
             sname="S_RAW",
+            event_id="S_RAW",
             schema_version="1.0",
             metadata={},
             libraries=[],
