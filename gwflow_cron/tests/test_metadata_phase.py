@@ -34,8 +34,8 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.get_superevent.side_effect = lambda sname: {
             "sname": sname,
             "raw_payload": {"sname": sname},
-            "libraries": [{"name": "bilby"}],
         }
+        mock_portal.get_versions.return_value = [{"is_current": True, "libraries": ["bilby"]}]
         mock_portal.iter_current_snames.return_value = ["S260101a", "S260102b"]
 
         mock_gwc = MagicMock()
@@ -74,8 +74,10 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.get_superevent.return_value = {
             "sname": "S_LIBS",
             "raw_payload": {"sname": "S_LIBS"},
-            "libraries": ["not-a-dict", {"name": "bilby"}, None, {"name": "gwpy"}, {"foo": "bar"}],
         }
+        mock_portal.get_versions.return_value = [
+            {"is_current": True, "libraries": [None, "  ", "bilby", {"foo": "bar"}, "gwpy", 123]}
+        ]
         mock_portal.iter_current_snames.return_value = ["S_LIBS"]
 
         mock_gwc = MagicMock()
@@ -248,8 +250,8 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.get_superevent.return_value = {
             "sname": "S_RAW",
             "raw_payload": "not-a-dict",
-            "libraries": [],
         }
+        mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
         mock_portal.iter_current_snames.return_value = ["S_RAW"]
 
         mock_gwc = MagicMock()
@@ -326,6 +328,109 @@ class TestMetadataPhase(GWFlowTestBase):
         # Reconciliation must be skipped entirely: known-unpruned query is never made, nothing pruned
         mock_gwc.get_gwflow_job_list.assert_not_called()
         mock_gwc.upsert_gwflow_job.assert_not_called()
+
+    def _changed_row(self, sname="S_LIB"):
+        return {
+            "sname": sname,
+            "commit_timestamp": "2026-01-01T10:00:00Z",
+            "schema_version": "1.0",
+            "commit_sha": "sha1",
+        }
+
+    def _run_phase(self, mock_portal, sname="S_LIB"):
+        mock_portal.iter_changed.return_value = [self._changed_row(sname)]
+        mock_portal.get_superevent.return_value = {"sname": sname, "raw_payload": {}}
+        mock_portal.iter_current_snames.return_value = [sname]
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = []
+        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+        return mock_gwc
+
+    def test_detail_has_no_libraries_but_current_version_does(self):
+        mock_portal = MagicMock()
+        mock_portal.get_versions.return_value = [{"is_current": True, "libraries": ["bilby", "gwpy"]}]
+        mock_gwc = self._run_phase(mock_portal)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+        self.assertEqual(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"], ["bilby", "gwpy"])
+
+    def test_get_versions_failure_preserves_libraries(self):
+        mock_portal = MagicMock()
+        mock_portal.get_versions.side_effect = Exception("versions down")
+        mock_gwc = self._run_phase(mock_portal)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+        self.assertIsNone(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"])
+
+    def test_non_list_versions_preserves_libraries(self):
+        mock_portal = MagicMock()
+        mock_portal.get_versions.return_value = "malformed"
+        mock_gwc = self._run_phase(mock_portal)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+        self.assertIsNone(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"])
+
+    def test_malformed_current_version_libraries_member_preserves(self):
+        # A current version whose libraries member is not a list is malformed:
+        # it must preserve existing libraries (pass None), never normalise a
+        # generic iterable into a corrupt or empty authoritative value.
+        malformed_shapes = [
+            "bilby",  # string would otherwise become individual characters
+            {"name": "bilby"},  # mapping would otherwise become its keys
+            123,  # scalar would otherwise raise TypeError and fail the row
+            None,  # null is malformed, not an explicit empty list
+        ]
+        for idx, shape in enumerate(malformed_shapes):
+            with self.subTest(shape=shape):
+                mock_portal = MagicMock()
+                mock_portal.get_versions.return_value = [{"is_current": True, "libraries": shape}]
+                mock_gwc = self._run_phase(mock_portal, sname=f"S_MAL{idx}")
+
+                mock_gwc.upsert_gwflow_job.assert_called_once()
+                self.assertIsNone(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"])
+
+    def test_missing_current_version_libraries_member_preserves(self):
+        mock_portal = MagicMock()
+        mock_portal.get_versions.return_value = [{"is_current": True}]
+        mock_gwc = self._run_phase(mock_portal)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+        self.assertIsNone(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"])
+
+    def test_explicit_empty_current_version_libraries_clears(self):
+        mock_portal = MagicMock()
+        mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
+        mock_gwc = self._run_phase(mock_portal)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+        self.assertEqual(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"], [])
+
+    def test_no_current_version_clears_for_non_pruned(self):
+        mock_portal = MagicMock()
+        mock_portal.get_versions.return_value = [{"is_current": False, "libraries": ["bilby"]}]
+        mock_gwc = self._run_phase(mock_portal)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+        self.assertEqual(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"], [])
+
+    def test_multiple_current_records_uses_first_and_warns(self):
+        mock_portal = MagicMock()
+        mock_portal.get_versions.return_value = [
+            {"is_current": True, "libraries": ["first"]},
+            {"is_current": True, "libraries": ["second"]},
+        ]
+        mock_portal.iter_changed.return_value = [self._changed_row()]
+        mock_portal.get_superevent.return_value = {"sname": "S_LIB", "raw_payload": {}}
+        mock_portal.iter_current_snames.return_value = ["S_LIB"]
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = []
+
+        with self.assertLogs("gwflow_ingest", level="WARNING") as logs:
+            phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+        self.assertEqual(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"], ["first"])
+        self.assertIn("Multiple current versions", " ".join(logs.output))
 
 
 if __name__ == "__main__":
