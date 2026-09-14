@@ -355,12 +355,13 @@ class TestGWFlowMutations(BilbyTestCase):
         )
         with (
             mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
-            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es_update,
         ):
             upsert_gwflow_job(self.ingest_user, params)
 
         job = GWFlowJob.objects.get(sname="S230601ag")
         self.assertEqual(job.event_id, event)
+        mock_es_update.assert_called_once_with(job, {"payload": "x"})
 
         doc = build_gwflow_es_doc(job, {"ParameterEstimation": {"results": []}})
         self.assertEqual(doc["_gwcloud"]["eventTriggerId"], "S230601ag")
