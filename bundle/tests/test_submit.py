@@ -406,6 +406,58 @@ echo "jid3 ${jid3[-1]}" >> ./submit/slurm_ids
 
     @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
     @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
+    @patch("scheduler.slurm.SlurmScheduler.submit", side_effect=submit_mock_fn)
+    @patch.object(settings, "scheduler", EScheduler.SLURM)
+    @patch("core.submit.refactor_slurm_data_generation_step", return_value=None)
+    @patch("core.submit.run_data_generation")
+    def test_submit_real_data_job_slurm_no_data_generation_step(self, mock_run_data_generation, *args, **kwargs):
+        # A slurm job whose master script has no data generation step should reach the
+        # scheduler submit without calling run_data_generation (which would crash on None)
+        ini = args_to_bilby_ini(
+            {
+                "label": "test-real-no-gen",
+                "detectors": ["H1"],
+                "trigger-time": "12345678",
+                "injection-numbers": [],
+                "channel-dict": {"H1": "GWOSC"},
+            }
+        ).decode("utf-8")
+
+        details = {"job_id": 1}
+
+        with TemporaryDirectory() as td:
+            global working_directory_mock_return, submit_mock_return, update_job_result
+
+            update_job_result = 4321
+
+            working_directory_mock_return = td
+
+            # Some bilby_pipe versions probe the CPU architecture via `uname -p` during dag generation
+            self.popen.set_command("uname -p", stdout=b"x86_64")
+
+            # Local imports so that the mocks work as expected
+            from core.submit import submit
+
+            submit_mock_return = 1234
+
+            params = {"name": "test-real-no-gen", "description": "Some description", "ini_string": ini}
+
+            result = submit(details, json.dumps(params))
+
+            # Check that the return value (The internal bundle submission id) is correct
+            self.assertEqual(result, 4321)
+
+            # Check that the internal job object was correctly created
+            self.assertEqual(update_job_result["job_id"], 4321)
+            self.assertEqual(update_job_result["submit_id"], submit_mock_return)
+            self.assertEqual(update_job_result["working_directory"], td)
+            self.assertEqual(update_job_result["submit_directory"], "./submit")
+
+            # Check that the data generation step was not run
+            mock_run_data_generation.assert_not_called()
+
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     @patch("scheduler.condor.CondorScheduler.submit", side_effect=submit_mock_fn)
     @patch.object(settings, "scheduler", EScheduler.CONDOR)
     def test_submit_real_data_job_condor(self, *args, **kwargs):
