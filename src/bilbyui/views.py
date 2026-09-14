@@ -2382,80 +2382,83 @@ def upsert_gwflow_job(user, params):
                     f"{incoming_ts.isoformat()} with differing IDs {stored_id!r} vs {incoming_id!r}"
                 )
 
-        # Update current-state fields if provided
-        for attr in ("ligo_only", "schema_version", "libraries", "is_pruned"):
-            param = getattr(params, attr, None)
-            if param is not None:
-                setattr(job, attr, param)
+        if not delivery_older:
+            # Update current-state fields if provided
+            for attr in ("ligo_only", "schema_version", "libraries", "is_pruned"):
+                param = getattr(params, attr, None)
+                if param is not None:
+                    setattr(job, attr, param)
 
-        if incoming_id is not None:
-            job.current_history_id = incoming_id
-        if incoming_ts is not None:
-            job.current_history_timestamp = incoming_ts
+            if incoming_id is not None:
+                job.current_history_id = incoming_id
+            if incoming_ts is not None:
+                job.current_history_timestamp = incoming_ts
 
-        # Best-effort event link
-        event_id_param = getattr(params, "event_id", None)
-        if event_id_param:
-            try:
-                event = EventID.objects.filter(Q(trigger_id=event_id_param) | Q(event_id=event_id_param)).first()
-                if event:
-                    job.event_id = event
-            except Exception as e:
-                logger.warning("EventID lookup failed for event_id %s on job %s: %s", event_id_param, sname, e)
+            # Best-effort event link
+            event_id_param = getattr(params, "event_id", None)
+            if event_id_param:
+                try:
+                    event = EventID.objects.filter(Q(trigger_id=event_id_param) | Q(event_id=event_id_param)).first()
+                    if event:
+                        job.event_id = event
+                except Exception as e:
+                    logger.warning("EventID lookup failed for event_id %s on job %s: %s", event_id_param, sname, e)
 
-        # Derive ligo_only from the portal metadata when provided (issue #83).
-        # The embargo start time and the superevent's trigger GPS time
-        # determine public visibility; this overrides any value supplied via
-        # the generic update loop above.
-        if metadata_dict is not None:
-            job.ligo_only = gwflow_ligo_only_from_metadata(metadata_dict)
+            # Derive ligo_only from the portal metadata when provided (issue #83).
+            # The embargo start time and the superevent's trigger GPS time
+            # determine public visibility; this overrides any value supplied via
+            # the generic update loop above.
+            if metadata_dict is not None:
+                job.ligo_only = gwflow_ligo_only_from_metadata(metadata_dict)
 
-        job.save()
+            job.save()
 
-        # Libraries may have changed — invalidate the cached filter options only
-        # after the transaction commits so a concurrent refill cannot cache old
-        # values and a rollback does not invalidate a cache for uncommitted data.
-        transaction.on_commit(lambda: cache.delete(LIBRARIES_CACHE_KEY))
+            # Libraries may have changed — invalidate the cached filter options only
+            # after the transaction commits so a concurrent refill cannot cache old
+            # values and a rollback does not invalidate a cache for uncommitted data.
+            transaction.on_commit(lambda: cache.delete(LIBRARIES_CACHE_KEY))
 
-        # Process file manifest
-        file_entries = getattr(params, "files", None) or []
-        for entry in file_entries:
-            analysis_uid = getattr(entry, "analysis_uid", "") or ""
-            path = entry.path
-            file_name = entry.file_name
-            file_size = getattr(entry, "file_size", None)
-            md5_sum = getattr(entry, "md5_sum", "") or ""
+            # Process file manifest
+            file_entries = getattr(params, "files", None) or []
+            for entry in file_entries:
+                analysis_uid = getattr(entry, "analysis_uid", "") or ""
+                path = entry.path
+                file_name = entry.file_name
+                file_size = getattr(entry, "file_size", None)
+                md5_sum = getattr(entry, "md5_sum", "") or ""
 
-            f_obj, f_created = GWFlowFile.objects.get_or_create(
-                job=job,
-                analysis_uid=analysis_uid,
-                path=path,
-                defaults={
-                    "file_name": file_name,
-                    "file_size": file_size,
-                    "md5_sum": md5_sum,
-                },
-            )
-            if not f_created:
-                if md5_sum and f_obj.md5_sum != md5_sum:
-                    f_obj.md5_sum = md5_sum
-                    f_obj.file_name = file_name
-                    f_obj.file_size = file_size
-                    f_obj.uploaded = False
-                    f_obj.save()
-                else:
-                    changed = False
-                    if f_obj.file_name != file_name:
+                f_obj, f_created = GWFlowFile.objects.get_or_create(
+                    job=job,
+                    analysis_uid=analysis_uid,
+                    path=path,
+                    defaults={
+                        "file_name": file_name,
+                        "file_size": file_size,
+                        "md5_sum": md5_sum,
+                    },
+                )
+                if not f_created:
+                    if md5_sum and f_obj.md5_sum != md5_sum:
+                        f_obj.md5_sum = md5_sum
                         f_obj.file_name = file_name
-                        changed = True
-                    if file_size is not None and f_obj.file_size != file_size:
                         f_obj.file_size = file_size
-                        changed = True
-                    if changed:
+                        f_obj.uploaded = False
                         f_obj.save()
+                    else:
+                        changed = False
+                        if f_obj.file_name != file_name:
+                            f_obj.file_name = file_name
+                            changed = True
+                        if file_size is not None and f_obj.file_size != file_size:
+                            f_obj.file_size = file_size
+                            changed = True
+                        if changed:
+                            f_obj.save()
 
-        # Reconcile GWFlowFile rows against the current manifest.
-        removed = _reconcile_gwflow_files(job, getattr(params, "files", None))
+            # Reconcile GWFlowFile rows against the current manifest.
+            removed = _reconcile_gwflow_files(job, getattr(params, "files", None))
+        else:
+            removed = []
 
     # ES update runs outside the transaction so a connection error does not
     # roll back the DB write.
