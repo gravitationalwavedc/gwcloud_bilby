@@ -239,6 +239,7 @@ class TestGWFlowMutations(BilbyTestCase):
 
         self._auth_as(self.ingest_user)
         cache.set("gwflow_filter_libraries", ["stale-lib"])
+        cache.set("gwflow_filter_review_statuses", ["stale-status"])
 
         params = SimpleNamespace(
             sname="S230601zz",
@@ -257,8 +258,47 @@ class TestGWFlowMutations(BilbyTestCase):
         ):
             upsert_gwflow_job(self.ingest_user, params)
 
-        mock_on_commit.assert_called_once()
+        self.assertEqual(mock_on_commit.call_count, 2)
         self.assertIsNone(cache.get("gwflow_filter_libraries"))
+        self.assertIsNone(cache.get("gwflow_filter_review_statuses"))
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_gwflow_job_rollback_keeps_facet_caches(self):
+        from types import SimpleNamespace
+
+        from django.core.cache import cache
+
+        from bilbyui.views import upsert_gwflow_job
+
+        self._auth_as(self.ingest_user)
+        cache.set("gwflow_filter_libraries", ["stale-lib"])
+        cache.set("gwflow_filter_review_statuses", ["stale-status"])
+
+        params = SimpleNamespace(
+            sname="S230601zz",
+            ligo_only=False,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            is_pruned=False,
+            current_history_id="h1",
+            current_history_timestamp="2026-09-01T12:00:00+00:00",
+            event_id=None,
+            files=[],
+        )
+        # Force a genuine rollback: _reconcile_gwflow_files runs inside the
+        # atomic block, after the on_commit callbacks are registered. Raising
+        # there rolls the transaction back, so Django discards the registered
+        # callbacks and both facet caches must retain their stale values.
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+            mock.patch("bilbyui.views._reconcile_gwflow_files", side_effect=RuntimeError("boom")),
+            self.assertRaises(RuntimeError),
+        ):
+            upsert_gwflow_job(self.ingest_user, params)
+
+        self.assertEqual(cache.get("gwflow_filter_libraries"), ["stale-lib"])
+        self.assertEqual(cache.get("gwflow_filter_review_statuses"), ["stale-status"])
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_upsert_event_link_best_effort(self):

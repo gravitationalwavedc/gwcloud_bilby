@@ -48,7 +48,12 @@ from .models import (
 )
 from .services.api_tokens import create_token, list_tokens, revoke_token, serialize_token
 from .services.event_ids import get_event_id, list_event_ids_for_user
-from .services.gwflow import LIBRARIES_CACHE_KEY, list_gwflow_filter_options, list_gwflow_jobs
+from .services.gwflow import (
+    LIBRARIES_CACHE_KEY,
+    REVIEW_STATUSES_CACHE_KEY,
+    list_gwflow_filter_options,
+    list_gwflow_jobs,
+)
 from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
 from .types import GWFlowPendingFile
@@ -2413,10 +2418,13 @@ def upsert_gwflow_job(user, params):
 
             job.save()
 
-            # Libraries may have changed — invalidate the cached filter options only
-            # after the transaction commits so a concurrent refill cannot cache old
-            # values and a rollback does not invalidate a cache for uncommitted data.
+            # Facet-relevant fields (libraries, ligo_only, is_pruned, review
+            # statuses) may have changed — invalidate the cached filter options
+            # only after the transaction commits so a concurrent refill cannot
+            # cache old values and a rollback does not invalidate a cache for
+            # uncommitted data.
             transaction.on_commit(lambda: cache.delete(LIBRARIES_CACHE_KEY))
+            transaction.on_commit(lambda: cache.delete(REVIEW_STATUSES_CACHE_KEY))
 
             # Process file manifest
             file_entries = getattr(params, "files", None) or []
