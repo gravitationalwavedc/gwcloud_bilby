@@ -140,6 +140,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                     if gwc_client is not None:
                         gwc_client.upsert_gwflow_job(
                             sname=row_sname,
+                            event_id=row_sname,
                             schema_version=row_schema_ver,
                             metadata=metadata,
                             libraries=libraries,
