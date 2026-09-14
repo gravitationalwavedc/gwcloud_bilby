@@ -246,3 +246,31 @@ class TestEsIngestCommand(BilbyTestCase):
         output = self._run_gwflow(fake_get)
         self.assertIn("no matching local GWFlowJob record found", output)
         self.assertIn("GWFlow ingestion complete: 0 succeeded, 1 skipped, 0 failed", output)
+
+    def test_es_ingest_gwflow_non_list_results_stops(self):
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return _MockResponse({"foo": "bar"}, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("Unexpected portal response shape", output)
+        self.assertNotIn("Error during gwflow ingestion loop", output)
+
+    def test_es_ingest_gwflow_item_without_sname_skipped(self):
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"foo": "bar"}])
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("GWFlow ingestion complete: 0 succeeded, 0 skipped, 0 failed", output)
+        self.assertNotIn("Error during gwflow ingestion loop", output)
+
+    def test_es_ingest_gwflow_unexpected_exception_stops(self):
+        def fake_get(url, headers=None, timeout=None):
+            raise ValueError("boom")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("Error during gwflow ingestion loop", output)
+        self.assertIn("boom", output)
