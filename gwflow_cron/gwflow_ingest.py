@@ -172,9 +172,9 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
             current_snames = set(portal_client.iter_current_snames())
         except Exception as e:
             logger.exception("Failed to fetch current snames from portal for prune diff: %s", e)
-            current_snames = set()
+            current_snames = None
 
-        if gwc_client is not None:
+        if gwc_client is not None and current_snames is not None:
             known_unpruned = gwc_known_unpruned_snames(gwc_client)
             pruned_snames = known_unpruned - current_snames
 
