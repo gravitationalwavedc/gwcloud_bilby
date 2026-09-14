@@ -122,6 +122,69 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(detail["raw_payload"]["test"], 123)
 
     @responses.activate
+    def test_get_versions(self):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/versions/"
+        responses.add(
+            responses.GET,
+            url,
+            json=[
+                {"version": "abc123", "commit_timestamp": "2026-01-01T10:00:00Z"},
+                {"version": "def456", "commit_timestamp": "2026-01-02T10:00:00Z"},
+            ],
+            status=200,
+        )
+
+        versions = self.client.get_versions(sname)
+        self.assertEqual(len(versions), 2)
+        self.assertEqual(versions[0]["version"], "abc123")
+        self.assertEqual(versions[1]["version"], "def456")
+
+    @responses.activate
+    def test_get_versions_uses_correct_request_url(self):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/versions/"
+        responses.add(
+            responses.GET,
+            url,
+            json=[],
+            status=200,
+        )
+
+        self.client.get_versions(sname)
+        self.assertEqual(len(responses.calls), 1)
+        self.assertEqual(responses.calls[0].request.url, url)
+
+    @responses.activate
+    @patch("time.sleep", return_value=None)
+    def test_get_versions_retries_on_5xx(self, mock_sleep):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/versions/"
+        responses.add(responses.GET, url, status=500)
+        responses.add(
+            responses.GET,
+            url,
+            json=[{"version": "abc123"}],
+            status=200,
+        )
+
+        versions = self.client.get_versions(sname)
+        self.assertEqual(len(versions), 1)
+        self.assertEqual(len(responses.calls), 2)
+
+    @responses.activate
+    @patch("time.sleep", return_value=None)
+    def test_get_versions_4xx_raises_without_retry(self, mock_sleep):
+        sname = "S_GONE"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/versions/"
+        responses.add(responses.GET, url, status=404)
+
+        with self.assertRaises(requests.HTTPError):
+            self.client.get_versions(sname)
+        self.assertEqual(len(responses.calls), 1)
+        mock_sleep.assert_not_called()
+
+    @responses.activate
     def test_iter_current_snames(self):
         url = f"{self.base_url}/api/v1/superevents/"
         responses.add(

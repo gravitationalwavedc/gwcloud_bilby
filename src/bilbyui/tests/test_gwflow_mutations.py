@@ -1410,6 +1410,36 @@ class TestExactVersionIngest(BilbyTestCase):
         self.assertFalse(GWFlowFile.objects.filter(job=job, path="outdir/a.h5").exists())
 
     @override_settings(GWFLOW_INGEST_USER=99)
+    def test_ingest_persists_libraries_to_db_and_es_doc(self):
+        # B-1 acceptance: after an ingest, libraries must be persisted on the
+        # GWFlowJob AND reflected in the ES document (_gwcloud.libraries).
+        # This runs the real upsert path (not a mocked client boundary) and
+        # asserts both representations.
+        from bilbyui.views import upsert_gwflow_job
+
+        captured = {}
+
+        def fake_es_update(job, metadata):
+            captured["job"] = job
+            captured["metadata"] = metadata
+
+        params = self._params(
+            libraries=["cbc-workflow-o4a", "gwpy"],
+            current_history_id=None,
+            current_history_timestamp=None,
+            metadata='{"ParameterEstimation": {"results": []}}',
+        )
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update", side_effect=fake_es_update):
+            upsert_gwflow_job(self.ingest_user, params)
+
+        job = GWFlowJob.objects.get(sname="S230601exact")
+        self.assertEqual(job.libraries, ["cbc-workflow-o4a", "gwpy"])
+
+        # The ES document the upsert would emit reflects the persisted libraries.
+        doc = build_gwflow_es_doc(captured["job"], captured["metadata"])
+        self.assertEqual(doc["_gwcloud"]["libraries"], ["cbc-workflow-o4a", "gwpy"])
+
+    @override_settings(GWFLOW_INGEST_USER=99)
     def test_prune_only_without_version_info_still_works(self):
         from bilbyui.views import upsert_gwflow_job
 
