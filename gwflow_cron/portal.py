@@ -87,6 +87,19 @@ class PortalClient:
         resp = self._request_with_retry("GET", url)
         return resp.json()
 
+    def get_versions(self, sname: str) -> list:
+        """Return the list of version dicts for a superevent.
+
+        GETs {base_url}/api/v1/superevents/{sname}/versions/ as a single,
+        non-paginated request via _request_with_retry and returns the parsed
+        JSON body. _request_with_retry retries transport errors and 5xx
+        responses (with backoff), but re-raises requests.HTTPError for 4xx
+        responses without retrying.
+        """
+        url = urljoin(self.base_url, f"api/v1/superevents/{sname}/versions/")
+        resp = self._request_with_retry("GET", url)
+        return resp.json()
+
     def iter_current_snames(self):
         url = urljoin(self.base_url, "api/v1/superevents/")
         for results, _ in self._iter_pages(url):

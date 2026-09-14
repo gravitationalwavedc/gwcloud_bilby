@@ -134,8 +134,8 @@ class TestIngestWiring(GWFlowTestBase):
         mock_portal.get_superevent.return_value = {
             "sname": "S260101a",
             "raw_payload": {"sname": "S260101a", "event": "GW260101"},
-            "libraries": [{"name": "bilby"}],
         }
+        mock_portal.get_versions.return_value = [{"is_current": True, "libraries": ["bilby"]}]
         mock_portal.iter_current_snames.return_value = ["S260101a"]
         mock_gwc.get_gwflow_job_list.return_value = []
 

@@ -27,6 +27,7 @@ from bilby_children import (
 )
 from fetch import _get, fetch_to_staging
 from job_controller import ClusterOffline, JobControllerClient
+from libraries import normalise_libraries
 from portal import PortalClient
 
 logger = logging.getLogger("gwflow_ingest")
@@ -70,6 +71,36 @@ def rec_for(file_ref: dict, sname: str, uid: str) -> dict:
         "file_name": Path(file_ref["path"]).name,
         "md5_sum": file_ref.get("md5_sum") or "",
     }
+
+
+def resolve_libraries(portal_client: Any, sname: str) -> list | None:
+    """Resolve library names for a superevent from the portal /versions/ endpoint.
+
+    Returns:
+      - a list of normalised library names to set,
+      - [] to clear libraries (no current version, or explicit empty),
+      - None to leave libraries unchanged (endpoint failure / malformed data).
+    """
+    try:
+        versions = portal_client.get_versions(sname)
+    except Exception as e:
+        logger.warning("Failed to fetch versions for %s: %s", sname, e)
+        return None
+
+    if not isinstance(versions, list):
+        logger.warning("Non-list versions payload for %s", sname)
+        return None
+
+    current = [v for v in versions if isinstance(v, dict) and v.get("is_current")]
+    if len(current) > 1:
+        logger.warning("Multiple current versions for %s; using first", sname)
+
+    if not current:
+        # No current version: clear libraries for non-pruned jobs (the metadata
+        # phase only processes non-pruned changed rows).
+        return []
+
+    return normalise_libraries(current[0].get("libraries"))
 
 
 def gwc_known_unpruned_snames(gwc_client: Any) -> set[str]:
@@ -128,11 +159,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                         logger.warning("Skipping %s: non-dict superevent detail", row_sname)
                         continue
                     files = manifest.extract_file_manifest(detail)
-                    libraries = (
-                        [lib["name"] for lib in detail.get("libraries", []) if isinstance(lib, dict) and "name" in lib]
-                        if isinstance(detail.get("libraries"), list)
-                        else []
-                    )
+                    libraries = resolve_libraries(portal_client, row_sname)
                     metadata = detail.get("raw_payload", {})
                     if not isinstance(metadata, dict):
                         metadata = {}
