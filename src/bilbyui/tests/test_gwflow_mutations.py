@@ -1271,16 +1271,21 @@ class TestExactVersionIngest(BilbyTestCase):
                 mock.patch("bilbyui.views.get_version") as mock_gv,
                 mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
             ):
-                upsert_gwflow_job(self.ingest_user, params)
+                result = upsert_gwflow_job(self.ingest_user, params)
 
         mock_gv.assert_not_called()
         mock_es.assert_not_called()
+        self.assertEqual(result["removed_files"], [])
         job.refresh_from_db()
         self.assertTrue(job.ligo_only)
         self.assertEqual(job.schema_version, "v2")
         self.assertEqual(job.libraries, ["cbc-workflow-o4a"])
         self.assertFalse(job.is_pruned)
         self.assertEqual(job.current_history_id, "sha-newer")
+        self.assertEqual(
+            job.current_history_timestamp,
+            datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC),
+        )
         self.assertEqual(job.event_id, event)
         self.assertFalse(GWFlowFile.objects.filter(job=job, analysis_uid="pe_2").exists())
         self.assertTrue(GWFlowFile.objects.filter(job=job, path="outdir/a.h5").exists())
