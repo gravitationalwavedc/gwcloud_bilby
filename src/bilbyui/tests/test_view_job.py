@@ -220,6 +220,18 @@ class TestViewJobFieldPartial(BilbyTestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_owner_editing_returns_200(self):
+        response = self.client.get(f"/job-results/{self.job.id}/field/name/?editing=1")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "field-name")
+
+    def test_non_editing_render_returns_200(self):
+        response = self.client.get(f"/job-results/{self.job.id}/field/name/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Field job")
+
 
 class TestRenderJobFieldPrivacy(BilbyTestCase):
     def setUp(self):
