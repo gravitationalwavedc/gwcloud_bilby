@@ -301,10 +301,10 @@ class TestMetadataPhase(GWFlowTestBase):
             "commit_sha": "sha1",
         }
 
-    def _run_phase(self, mock_portal):
-        mock_portal.iter_changed.return_value = [self._changed_row()]
-        mock_portal.get_superevent.return_value = {"sname": "S_LIB", "raw_payload": {}}
-        mock_portal.iter_current_snames.return_value = ["S_LIB"]
+    def _run_phase(self, mock_portal, sname="S_LIB"):
+        mock_portal.iter_changed.return_value = [self._changed_row(sname)]
+        mock_portal.get_superevent.return_value = {"sname": sname, "raw_payload": {}}
+        mock_portal.iter_current_snames.return_value = [sname]
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
         phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
@@ -329,6 +329,33 @@ class TestMetadataPhase(GWFlowTestBase):
     def test_non_list_versions_preserves_libraries(self):
         mock_portal = MagicMock()
         mock_portal.get_versions.return_value = "malformed"
+        mock_gwc = self._run_phase(mock_portal)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+        self.assertIsNone(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"])
+
+    def test_malformed_current_version_libraries_member_preserves(self):
+        # A current version whose libraries member is not a list is malformed:
+        # it must preserve existing libraries (pass None), never normalise a
+        # generic iterable into a corrupt or empty authoritative value.
+        malformed_shapes = [
+            "bilby",  # string would otherwise become individual characters
+            {"name": "bilby"},  # mapping would otherwise become its keys
+            123,  # scalar would otherwise raise TypeError and fail the row
+            None,  # null is malformed, not an explicit empty list
+        ]
+        for idx, shape in enumerate(malformed_shapes):
+            with self.subTest(shape=shape):
+                mock_portal = MagicMock()
+                mock_portal.get_versions.return_value = [{"is_current": True, "libraries": shape}]
+                mock_gwc = self._run_phase(mock_portal, sname=f"S_MAL{idx}")
+
+                mock_gwc.upsert_gwflow_job.assert_called_once()
+                self.assertIsNone(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"])
+
+    def test_missing_current_version_libraries_member_preserves(self):
+        mock_portal = MagicMock()
+        mock_portal.get_versions.return_value = [{"is_current": True}]
         mock_gwc = self._run_phase(mock_portal)
 
         mock_gwc.upsert_gwflow_job.assert_called_once()

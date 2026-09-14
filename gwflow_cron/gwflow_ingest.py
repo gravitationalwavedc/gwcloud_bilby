@@ -100,7 +100,15 @@ def resolve_libraries(portal_client: Any, sname: str) -> list | None:
         # phase only processes non-pruned changed rows).
         return []
 
-    return normalise_libraries(current[0].get("libraries"))
+    # The current version's libraries member must be a list. Any other shape
+    # (string, mapping, scalar, missing, or null) is malformed: preserve the
+    # existing stored libraries (return None) rather than normalising a
+    # generic iterable into a corrupt or empty authoritative value.
+    raw_libraries = current[0].get("libraries")
+    if not isinstance(raw_libraries, list):
+        logger.warning("Malformed libraries payload for %s", sname)
+        return None
+    return normalise_libraries(raw_libraries)
 
 
 def gwc_known_unpruned_snames(gwc_client: Any) -> set[str]:
