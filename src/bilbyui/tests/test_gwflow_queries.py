@@ -131,6 +131,21 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertIsNotNone(res_ligo.data["gwflowJobBySname"])
         self.assertEqual(res_ligo.data["gwflowJobBySname"]["sname"], "S230601ah")
 
+    def test_gwflow_job_by_sname_missing_returns_none(self):
+        query = """
+            query GetBySname($sname: String!) {
+                gwflowJobBySname(sname: $sname) {
+                    id
+                    sname
+                }
+            }
+        """
+
+        self._auth_as(self.normal_user)
+        res = self.query(query, variables={"sname": "S230601zz"})
+        self.assertResponseNoErrors(res)
+        self.assertIsNone(res.data["gwflowJobBySname"])
+
     def test_gwflow_job_node_query_visibility(self):
         query = """
             query GetNode($id: ID!) {
