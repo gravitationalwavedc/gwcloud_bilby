@@ -1,6 +1,8 @@
+from decimal import Decimal
+
 from graphql_relay.node.node import to_global_id
 
-from bilbyui.schema import _pad_result_for_cursor, _parse_after_cursor
+from bilbyui.schema import _pad_result_for_cursor, _parse_after_cursor, _parse_file_size
 from bilbyui.tests.testcases import BilbyTestCase
 
 
@@ -45,3 +47,27 @@ class TestPadResultForCursor(BilbyTestCase):
 
     def test_positive_offset_pads_offset_plus_one(self):
         self.assertEqual(_pad_result_for_cursor(2, ["a", "b"]), [None, None, None, "a", "b"])
+
+
+class TestParseFileSize(BilbyTestCase):
+    def test_parse_file_size_numeric_string_returns_decimal(self):
+        self.assertEqual(_parse_file_size("123"), Decimal("123"))
+
+    def test_parse_file_size_int_returns_decimal(self):
+        self.assertEqual(_parse_file_size(123), Decimal("123"))
+
+    def test_parse_file_size_decimal_returns_decimal(self):
+        self.assertEqual(_parse_file_size(Decimal("123.45")), Decimal("123.45"))
+
+    def test_parse_file_size_non_numeric_string_returns_none(self):
+        self.assertIsNone(_parse_file_size("not-a-size"))
+
+    def test_parse_file_size_none_returns_none(self):
+        self.assertIsNone(_parse_file_size(None))
+
+    def test_parse_file_size_object_raising_type_error_returns_none(self):
+        class RaisingObject:
+            def __str__(self):
+                raise TypeError("boom")
+
+        self.assertIsNone(_parse_file_size(RaisingObject()))
