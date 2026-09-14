@@ -326,6 +326,119 @@ class TestGWFlowMutations(BilbyTestCase):
         self.assertIsNone(job.event_id)
 
     @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_event_link_s_format_row_sname(self):
+        from types import SimpleNamespace
+
+        from bilbyui.views import upsert_gwflow_job
+
+        self._auth_as(self.ingest_user)
+
+        event = EventID.objects.create(
+            event_id="GW230601_123456",
+            trigger_id="S230601ag",
+            nickname="The First",
+            gps_time=123456789.0,
+            is_ligo_event=True,
+        )
+
+        params = SimpleNamespace(
+            sname="S230601ag",
+            event_id="S230601ag",
+            ligo_only=False,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            is_pruned=False,
+            current_history_id="h1",
+            current_history_timestamp="2026-09-01T12:00:00+00:00",
+            metadata=None,
+            files=[],
+        )
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+        ):
+            upsert_gwflow_job(self.ingest_user, params)
+
+        job = GWFlowJob.objects.get(sname="S230601ag")
+        self.assertEqual(job.event_id, event)
+
+        doc = build_gwflow_es_doc(job, {"ParameterEstimation": {"results": []}})
+        self.assertEqual(doc["_gwcloud"]["eventTriggerId"], "S230601ag")
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_event_link_non_matching_identifier_no_link_no_crash(self):
+        from types import SimpleNamespace
+
+        from bilbyui.views import upsert_gwflow_job
+
+        self._auth_as(self.ingest_user)
+
+        EventID.objects.create(
+            event_id="GW230601_123456",
+            trigger_id="S230601ag",
+            gps_time=123456789.0,
+            is_ligo_event=True,
+        )
+
+        params = SimpleNamespace(
+            sname="S230601ag",
+            event_id="G409107",
+            ligo_only=False,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            is_pruned=False,
+            current_history_id="h1",
+            current_history_timestamp="2026-09-01T12:00:00+00:00",
+            metadata=None,
+            files=[],
+        )
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+        ):
+            upsert_gwflow_job(self.ingest_user, params)
+
+        job = GWFlowJob.objects.get(sname="S230601ag")
+        self.assertIsNone(job.event_id)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_event_link_missing_target_preserves_existing_link(self):
+        from types import SimpleNamespace
+
+        from bilbyui.views import upsert_gwflow_job
+
+        self._auth_as(self.ingest_user)
+
+        existing = EventID.objects.create(
+            event_id="GW230601_123456",
+            trigger_id="S230601ag",
+            gps_time=123456789.0,
+            is_ligo_event=True,
+        )
+        job = GWFlowJob.objects.create(sname="S230601ag", user=self.ingest_user, event_id=existing)
+
+        params = SimpleNamespace(
+            sname="S230601ag",
+            event_id="S999999zz",
+            ligo_only=False,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            is_pruned=False,
+            current_history_id="h1",
+            current_history_timestamp="2026-09-01T12:00:00+00:00",
+            metadata=None,
+            files=[],
+        )
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+        ):
+            upsert_gwflow_job(self.ingest_user, params)
+
+        job.refresh_from_db()
+        self.assertEqual(job.event_id, existing)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
     def test_upload_gwflow_file(self):
         self._auth_as(self.ingest_user)
 

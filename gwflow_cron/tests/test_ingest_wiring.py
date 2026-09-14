@@ -184,6 +184,7 @@ class TestIngestWiring(GWFlowTestBase):
         # Verify metadata upsert
         mock_gwc.upsert_gwflow_job.assert_called_once_with(
             sname="S260101a",
+            event_id="S260101a",
             schema_version="1.0",
             metadata={"sname": "S260101a", "event": "GW260101"},
             libraries=["bilby"],
