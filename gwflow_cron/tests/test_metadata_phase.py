@@ -289,7 +289,54 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.iter_changed.return_value = []
         mock_portal.iter_current_snames.side_effect = Exception("Prune API Error")
 
-        phase_metadata(portal_client=mock_portal, gwc_client=MagicMock(), con=self.con)
+        mock_gwc = MagicMock()
+        # GWCloud currently has S_KEEP and S_DELETED; upstream enumeration failed
+        mock_gwc.get_gwflow_job_list.return_value = [
+            {"sname": "S_KEEP"},
+            SimpleNamespace(sname="S_DELETED"),
+        ]
+
+        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        # Enumeration failed -> prune reconciliation skipped, nothing pruned
+        mock_gwc.upsert_gwflow_job.assert_not_called()
+
+    def test_iter_current_snames_initial_failure_no_prune(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = []
+        mock_portal.iter_current_snames.side_effect = Exception("Prune API Error")
+
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = [
+            {"sname": "S_KEEP"},
+            SimpleNamespace(sname="S_DELETED"),
+        ]
+
+        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        # No prune upserts and no exception propagates
+        mock_gwc.upsert_gwflow_job.assert_not_called()
+
+    def test_iter_current_snames_mid_pagination_failure_no_prune(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = []
+
+        def iter_current_snames_side_effect():
+            yield "S_KEEP"
+            raise Exception("Prune API Error mid-pagination")
+
+        mock_portal.iter_current_snames.side_effect = iter_current_snames_side_effect
+
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = [
+            {"sname": "S_KEEP"},
+            SimpleNamespace(sname="S_DELETED"),
+        ]
+
+        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        # No prune upserts and no exception propagates
+        mock_gwc.upsert_gwflow_job.assert_not_called()
 
 
 if __name__ == "__main__":
