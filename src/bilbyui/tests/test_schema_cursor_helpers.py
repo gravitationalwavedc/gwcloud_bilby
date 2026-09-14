@@ -65,6 +65,9 @@ class TestParseFileSize(BilbyTestCase):
     def test_parse_file_size_none_returns_none(self):
         self.assertIsNone(_parse_file_size(None))
 
+    def test_parse_file_size_list_returns_none(self):
+        self.assertIsNone(_parse_file_size(["42"]))
+
     def test_parse_file_size_object_raising_type_error_returns_none(self):
         class RaisingObject:
             def __str__(self):
