@@ -480,8 +480,9 @@ def submit(details, job_parameters):
         # Process the slurm scripts to remove the data generation step
         data_gen_command = refactor_slurm_data_generation_step(submission_script)
 
-        # Run the data generation step now
-        run_data_generation(data_gen_command, wk_dir)
+        # Run the data generation step now, if there is one to run
+        if data_gen_command:
+            run_data_generation(data_gen_command, wk_dir)
 
     # Actually submit the job
     sched = get_scheduler()
