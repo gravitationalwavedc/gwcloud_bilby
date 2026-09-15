@@ -130,6 +130,7 @@ class Command(BaseCommand):
         batch_count = 0
         any_failure = False
         repaired = {"libraries": 0, "ligo_only": 0, "event_id": 0}
+        before_counts = self._state_counts(qs)
 
         for start in range(0, total, batch_size):
             batch = list(qs[start : start + batch_size])
@@ -182,12 +183,27 @@ class Command(BaseCommand):
             self.stdout.write("Invalidated filter-option cache keys after successful backfill")
 
         label = "Would repair" if dry_run else "Repaired"
+        after_counts = self._state_counts(qs)
         self.stdout.write(
             f"Backfill complete: {total} processed, {total_failures} failure(s). "
             f"{label}: {repaired['libraries']} libraries, {repaired['ligo_only']} ligo_only, "
             f"{repaired['event_id']} event links."
         )
+        self.stdout.write(
+            f"State before: {before_counts['ligo_only']} ligo_only, "
+            f"{before_counts['event_linked']} event links, {before_counts['with_libraries']} with libraries. "
+            f"State after: {after_counts['ligo_only']} ligo_only, "
+            f"{after_counts['event_linked']} event links, {after_counts['with_libraries']} with libraries."
+        )
         self._exit_code = EXIT_FAILURES if any_failure else EXIT_OK
+
+    def _state_counts(self, qs):
+        """Return comparable state totals for the repaired fields over a queryset."""
+        return {
+            "ligo_only": qs.filter(ligo_only=True).count(),
+            "event_linked": qs.exclude(event_id=None).count(),
+            "with_libraries": qs.exclude(libraries=[]).count(),
+        }
 
     def _resolve_job(self, job):
         """Return the field updates for a single job, or raise PortalUnavailable."""

@@ -348,3 +348,17 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
             call_command("gwflow_es_backfill", "--pacing", "-1", stdout=out, stderr=err)
         self.assertEqual(ctx.exception.returncode, 2)
         self.assertIn("--pacing must be >= 0", err.getvalue())
+
+    def test_dry_run_does_not_persist_new_fields(self):
+        stale = EventID.objects.create(event_id="GW999999_999999", trigger_id="S999999zz")
+        job = make_job(sname="S230601ag", ligo_only=True, event_id=stale)
+        self._run("--dry-run", get_superevent_return=(superevent(gps_time=100.0), "live"))
+        job.refresh_from_db()
+        self.assertTrue(job.ligo_only)
+        self.assertEqual(job.event_id, stale)
+
+    def test_reports_before_after_state_counts(self):
+        make_job(sname="S230601ag")
+        _, out, _ = self._run()
+        self.assertIn("State before:", out)
+        self.assertIn("State after:", out)
