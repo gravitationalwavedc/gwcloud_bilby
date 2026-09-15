@@ -71,6 +71,7 @@
   );
   var keyboardNavigation = false;
   var successfulSwap = false;
+  var sectionCache = {};
 
   function skeletonMarkup() {
     return '<div class="async-skeleton">' +
@@ -88,6 +89,15 @@
     skeleton.setAttribute('aria-hidden', 'true');
     skeleton.innerHTML = skeletonMarkup();
     pane.insertAdjacentElement('afterbegin', skeleton);
+  }
+
+  function paneContentWithoutSkeleton(pane) {
+    var clone = pane.cloneNode(true);
+    var skeleton = clone.querySelector('#job-section-skeleton');
+    if (skeleton && skeleton.parentNode) {
+      skeleton.parentNode.removeChild(skeleton);
+    }
+    return clone.innerHTML;
   }
 
   function syncActiveSection() {
@@ -159,6 +169,11 @@
     if (!target || target.id !== 'job-section-pane') return;
 
     var activeLink = syncActiveSection();
+
+    if (successfulSwap && activeLink) {
+      sectionCache[new URL(activeLink.href).pathname] =
+        paneContentWithoutSkeleton(target);
+    }
     var heading = document.getElementById('job-section-heading');
 
     if (successfulSwap && heading && activeLink) {
@@ -175,22 +190,80 @@
     ensureSkeleton(target);
   });
 
+  document.body.addEventListener('htmx:beforeRequest', function (event) {
+    var elt = event.detail && event.detail.elt;
+    if (!elt || !elt.matches || !elt.matches('a[data-job-section]')) return;
+
+    var key = new URL(elt.href).pathname;
+    if (!Object.prototype.hasOwnProperty.call(sectionCache, key)) return;
+
+    // Load-once: this section was fetched before, so restore it from the
+    // page-local cache instead of issuing another request.
+    event.preventDefault();
+
+    var pane = document.getElementById('job-section-pane');
+    if (!pane) return;
+
+    pane.innerHTML = sectionCache[key];
+    ensureSkeleton(pane);
+
+    if (elt.getAttribute('hx-push-url') !== 'false') {
+      history.pushState({}, '', elt.href);
+    }
+
+    var activeLink = syncActiveSection();
+    var heading = document.getElementById('job-section-heading');
+    if (heading && activeLink) {
+      document.title =
+        heading.textContent.trim() + ' — {{ job.name|escapejs }} — GWCloud';
+      if (keyboardNavigation) {
+        heading.focus();
+      }
+    }
+    keyboardNavigation = false;
+  });
+
   document.body.addEventListener('htmx:responseError', function (event) {
     var target = event.detail && event.detail.target;
     if (!target || target.id !== 'job-section-pane') return;
 
+    var retryUrl = window.location.href;
     var requestPath =
       event.detail.pathInfo && event.detail.pathInfo.requestPath;
-    var retryUrl = requestPath || window.location.href;
-    target.innerHTML =
-      '<div class="alert alert-danger" role="alert">' +
-      '<p>Unable to load this job section.</p>' +
-      '<a href="' + retryUrl + '">Try again</a>' +
-      '</div>';
+    if (requestPath) {
+      try {
+        var candidate = new URL(requestPath, window.location.origin);
+        if (candidate.origin === window.location.origin) {
+          retryUrl = candidate.href;
+        }
+      } catch (e) {
+        // Keep the current location as the retry target.
+      }
+    }
+
+    var alertBox = document.createElement('div');
+    alertBox.className = 'alert alert-danger';
+    alertBox.setAttribute('role', 'alert');
+    var message = document.createElement('p');
+    message.textContent = 'Unable to load this job section.';
+    var retryLink = document.createElement('a');
+    retryLink.href = retryUrl;
+    retryLink.textContent = 'Try again';
+    alertBox.appendChild(message);
+    alertBox.appendChild(retryLink);
+
+    target.textContent = '';
+    target.appendChild(alertBox);
     ensureSkeleton(target);
     keyboardNavigation = false;
     successfulSwap = false;
   });
+
+  var initialPane = document.getElementById('job-section-pane');
+  if (initialPane) {
+    sectionCache[window.location.pathname] =
+      paneContentWithoutSkeleton(initialPane);
+  }
 
   syncActiveSection();
 })();

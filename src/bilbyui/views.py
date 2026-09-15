@@ -8,7 +8,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import bilby_pipe
 import elasticsearch
@@ -1829,6 +1829,21 @@ def _get_job_status_context(job, user):
     }
 
 
+def _safe_external_url(url):
+    """Return *url* only when it is a plain http(s) URL, otherwise "".
+
+    Result links are rendered as anchors, so a stored value using a scheme
+    such as ``javascript:`` must never become a clickable href.
+    """
+    try:
+        parsed = urlparse(url or "")
+    except ValueError:
+        return ""
+    if parsed.scheme in ("http", "https") and parsed.netloc:
+        return url
+    return ""
+
+
 def _build_result_file_entries(job):
     if job.job_type == BilbyJobType.EXTERNAL:
         external_job = ExternalBilbyJob.objects.filter(job=job).first()
@@ -1840,6 +1855,7 @@ def _build_result_file_entries(job):
                 "is_dir": False,
                 "file_size": None,
                 "download_token": None,
+                "link_url": _safe_external_url(external_job.url),
             }
         ]
 

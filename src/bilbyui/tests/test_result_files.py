@@ -509,6 +509,7 @@ class TestResultFileTemplates(BilbyTestCase):
                     "is_dir": False,
                     "file_size": None,
                     "download_token": None,
+                    "link_url": url,
                 }
             ],
             job=external_job,
@@ -519,6 +520,22 @@ class TestResultFileTemplates(BilbyTestCase):
         self.assertIn("https://example.com/results/", html)
         self.assertEqual(html.count('class="tech-value-copy"'), 1)
         self.assertEqual(html.count('class="tech-value-toggle"'), 1)
+
+        unsafe_url = "javascript:alert(1)"
+        unsafe_html = self.render_results(
+            [
+                {
+                    "path": unsafe_url,
+                    "is_dir": False,
+                    "file_size": None,
+                    "download_token": None,
+                    "link_url": "",
+                }
+            ],
+            job=external_job,
+        )
+        self.assertNotIn('href="javascript:', unsafe_html)
+        self.assertIn(unsafe_url, unsafe_html)
 
     def test_hostile_path_is_escaped_and_never_used_for_disclosure_id(self):
         hostile_path = '/results/<script>alert("x")</script>/"><img src=x onerror=alert(1)>.json'

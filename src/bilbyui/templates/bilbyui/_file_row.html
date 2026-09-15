@@ -5,7 +5,7 @@
       {% if file.is_dir %}
         {% include "bilbyui/_tech_value.html" with value=file.path kind="path" primary=file.path|basename copy_label="Copy path" disclosure_id=disclosure_id %}
       {% elif job.job_type == 2 %}
-        {% include "bilbyui/_tech_value.html" with value=file.path kind="path" primary=file.path|basename primary_url=file.path primary_external=True copy_label="Copy path" disclosure_id=disclosure_id %}
+        {% include "bilbyui/_tech_value.html" with value=file.path kind="path" primary=file.path|basename primary_url=file.link_url primary_external=True copy_label="Copy path" disclosure_id=disclosure_id %}
       {% elif file.download_token %}
         {% url 'bilbyui:file_download' job_id=job.id token=file.download_token as download_url %}
         {% include "bilbyui/_tech_value.html" with value=file.path kind="path" primary=file.path|basename primary_url=download_url primary_external=True copy_label="Copy path" disclosure_id=disclosure_id %}

@@ -7,7 +7,7 @@ from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
 from bilbyui.constants import BilbyJobType
-from bilbyui.models import BilbyJob, FileDownloadToken, Label
+from bilbyui.models import BilbyJob, ExternalBilbyJob, FileDownloadToken, Label
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import _render_job_field_labels, _render_job_field_privacy
@@ -292,6 +292,52 @@ class TestViewJobSections(BilbyTestCase):
             with self.subTest(section=section):
                 response = self.client.get(f"/jobs/{ligo_job.id}/{section}/")
                 self.assertEqual(response.status_code, 404)
+
+
+
+class TestExternalJobResultURLSafety(BilbyTestCase):
+    def setUp(self):
+        self.authenticate()
+        self.request_job_filter_patcher = mock.patch(
+            "bilbyui.views.request_job_filter",
+            side_effect=request_job_filter_mock,
+        )
+        self.request_job_filter_patcher.start()
+        self.addCleanup(self.request_job_filter_patcher.stop)
+        self.job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="External result job",
+            description="An external job with a result URL",
+            job_type=BilbyJobType.EXTERNAL,
+            private=False,
+            ini_string=create_test_ini_string(
+                {"detectors": "['H1']", "label": "External result job"}
+            ),
+        )
+
+    def test_javascript_result_url_is_text_not_link(self):
+        ExternalBilbyJob.objects.create(job=self.job, url="javascript:alert(1)")
+
+        response = self.client.get(f"/jobs/{self.job.id}/results/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'href="javascript:')
+        self.assertContains(response, "javascript:alert(1)")
+
+    def test_https_result_url_is_link(self):
+        ExternalBilbyJob.objects.create(
+            job=self.job,
+            url="https://example.org/results/x.h5",
+        )
+
+        response = self.client.get(f"/jobs/{self.job.id}/results/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'href="https://example.org/results/x.h5"',
+        )
+
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
