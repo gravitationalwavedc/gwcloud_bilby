@@ -4,9 +4,10 @@ from unittest import mock
 
 from django.conf import settings
 from django.test import RequestFactory, override_settings
+from django.urls import reverse
 
 from bilbyui.constants import BilbyJobType
-from bilbyui.models import BilbyJob, FileDownloadToken, Label
+from bilbyui.models import BilbyJob, ExternalBilbyJob, FileDownloadToken, Label
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import _render_job_field_labels, _render_job_field_privacy
@@ -82,7 +83,7 @@ class TestViewJob(BilbyTestCase):
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_renders_known_job(self, request_job_filter):
-        response = self.client.get(self.base_url)
+        response = self.client.get(f"/jobs/{self.job.id}/parameters/")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Viewable job")
@@ -95,7 +96,7 @@ class TestViewJob(BilbyTestCase):
         return_value=("OK", [{"history": [{"state": 500}]}]),
     )
     def test_history_with_missing_timestamp_renders_unknown(self, request_job_filter):
-        response = self.client.get(self.base_url)
+        response = self.client.get(f"/jobs/{self.job.id}/parameters/")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Viewable job")
@@ -184,6 +185,155 @@ class TestViewJob(BilbyTestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], f"/file_download/?fileId={token.token}")
+
+
+class TestViewJobSections(BilbyTestCase):
+    def setUp(self):
+        self.authenticate()
+        self.request_job_filter_patcher = mock.patch(
+            "bilbyui.views.request_job_filter",
+            side_effect=request_job_filter_mock,
+        )
+        self.request_job_filter_patcher.start()
+        self.addCleanup(self.request_job_filter_patcher.stop)
+        self.job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="Section job",
+            description="A job with canonical sections",
+            job_controller_id=10004,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Section job"}),
+        )
+
+    def test_job_root_redirects_to_parameters(self):
+        response = self.client.get(f"/jobs/{self.job.id}/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response["Location"],
+            reverse("bilbyui:view_job_parameters_section", kwargs={"job_id": self.job.id}),
+        )
+
+    def test_parameters_section_renders_full_page(self):
+        response = self.client.get(f"/jobs/{self.job.id}/parameters/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Parameters")
+        self.assertContains(response, "Results")
+
+    def test_results_section_renders_full_page(self):
+        with mock.patch.object(BilbyJob, "get_file_list", return_value=(True, [])):
+            response = self.client.get(f"/jobs/{self.job.id}/results/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_parameters_section_htmx_returns_fragment(self):
+        response = self.client.get(
+            f"/jobs/{self.job.id}/parameters/",
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "<!doctype html>")
+        self.assertContains(response, "Data")
+
+    def test_results_section_htmx_returns_fragment(self):
+        with mock.patch.object(BilbyJob, "get_file_list", return_value=(True, [])):
+            response = self.client.get(
+                f"/jobs/{self.job.id}/results/",
+                HTTP_HX_REQUEST="true",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "<!doctype html>")
+
+    def test_unknown_section_returns_404(self):
+        response = self.client.get(f"/jobs/{self.job.id}/nonexistent/")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_unauthenticated_section_redirects_to_login(self):
+        url = f"/jobs/{self.job.id}/parameters/"
+        self.deauthenticate()
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"{settings.LOGIN_URL}?next={url}")
+
+    def test_other_users_private_job_sections_return_404(self):
+        other_user = self.create_user(id=2, name="other", primary_email="other@gmail.com")
+        other_job = BilbyJob.objects.create(
+            user_id=other_user.id,
+            name="Private section job",
+            description="hidden",
+            job_controller_id=10005,
+            private=True,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Private section job"}),
+        )
+
+        for section in ("parameters", "results"):
+            with self.subTest(section=section):
+                response = self.client.get(f"/jobs/{other_job.id}/{section}/")
+                self.assertEqual(response.status_code, 404)
+
+    def test_embargoed_job_sections_return_404_for_non_ligo_user(self):
+        ligo_job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="LIGO section job",
+            description="ligo only",
+            job_controller_id=10006,
+            private=False,
+            is_ligo_job=True,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "LIGO section job"}),
+        )
+
+        for section in ("parameters", "results"):
+            with self.subTest(section=section):
+                response = self.client.get(f"/jobs/{ligo_job.id}/{section}/")
+                self.assertEqual(response.status_code, 404)
+
+
+class TestExternalJobResultURLSafety(BilbyTestCase):
+    def setUp(self):
+        self.authenticate()
+        self.request_job_filter_patcher = mock.patch(
+            "bilbyui.views.request_job_filter",
+            side_effect=request_job_filter_mock,
+        )
+        self.request_job_filter_patcher.start()
+        self.addCleanup(self.request_job_filter_patcher.stop)
+        self.job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="External result job",
+            description="An external job with a result URL",
+            job_type=BilbyJobType.EXTERNAL,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "External result job"}),
+        )
+
+    def test_javascript_result_url_is_text_not_link(self):
+        ExternalBilbyJob.objects.create(job=self.job, url="javascript:alert(1)")
+
+        response = self.client.get(f"/jobs/{self.job.id}/results/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'href="javascript:')
+        self.assertContains(response, "javascript:alert(1)")
+
+    def test_https_result_url_is_link(self):
+        ExternalBilbyJob.objects.create(
+            job=self.job,
+            url="https://example.org/results/x.h5",
+        )
+
+        response = self.client.get(f"/jobs/{self.job.id}/results/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'href="https://example.org/results/x.h5"',
+        )
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
