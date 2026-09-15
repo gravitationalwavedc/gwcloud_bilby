@@ -26,8 +26,7 @@
     {# CSS confirm — works on OOB rows without Alpine.initTree (React CheckButton parity) #}
     <div class="token-revoke" data-confirming="false">
       <button type="button"
-              class="btn btn-outline-danger token-revoke-start"
-              onclick="this.closest('.token-revoke').dataset.confirming='true'">
+              class="btn btn-outline-danger token-revoke-start">
         Revoke
       </button>
       <form hx-post="{% url 'bilbyui:api_token_revoke' token_id=token.id %}"
@@ -37,8 +36,7 @@
         <span class="text-danger mr-2">Are you sure?</span>
         <button type="submit" class="btn btn-danger btn-sm">Yes, revoke</button>
         <button type="button"
-                class="btn btn-secondary btn-sm"
-                onclick="this.closest('.token-revoke').dataset.confirming='false'">
+                class="btn btn-secondary btn-sm token-revoke-cancel">
           Cancel
         </button>
       </form>

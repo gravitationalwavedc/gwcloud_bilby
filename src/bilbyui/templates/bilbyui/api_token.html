@@ -19,6 +19,8 @@
     </div>
     <p id="no-tokens-message"{% if tokens %} style="display: none;"{% endif %}>You do not have any API tokens associated with your account.</p>
 
+    <p id="token-revoke-status" role="status" class="sr-only"></p>
+
     {# Create flow matches React: idle button → form → on success replace this whole region with the one-time secret #}
     {% include "bilbyui/_token_actions.html" %}
 
@@ -28,8 +30,81 @@
     </template>
 
     <script>
+      function updateTokenStatus(status, message) {
+        if (!status) {
+          return;
+        }
+        status.textContent = "";
+        window.setTimeout(function () {
+          status.textContent = message;
+        }, 0);
+      }
+
+      function closeRevokeConfirmation(container) {
+        if (!container) {
+          return;
+        }
+        container.dataset.confirming = "false";
+        var trigger = container.querySelector(".token-revoke-start");
+        if (trigger) {
+          trigger.focus();
+        }
+      }
+
+      document.body.addEventListener("click", function (evt) {
+        var copyButton = evt.target.closest(".token-copy");
+        if (copyButton) {
+          var warning = copyButton.closest("[data-new-token-id]");
+          var secret = warning && warning.querySelector("#new-token-value");
+          var copyStatus = warning && warning.querySelector(".token-copy-status");
+          if (secret && navigator.clipboard) {
+            navigator.clipboard.writeText(secret.textContent).then(function () {
+              updateTokenStatus(copyStatus, "Copied!");
+            });
+          }
+          return;
+        }
+
+        var revokeStart = evt.target.closest(".token-revoke-start");
+        if (revokeStart) {
+          var container = revokeStart.closest(".token-revoke");
+          if (!container) {
+            return;
+          }
+          container.dataset.confirming = "true";
+          var cancel = container.querySelector(".token-revoke-cancel");
+          if (cancel) {
+            cancel.focus();
+          }
+          return;
+        }
+
+        var revokeCancel = evt.target.closest(".token-revoke-cancel");
+        if (revokeCancel) {
+          closeRevokeConfirmation(revokeCancel.closest(".token-revoke"));
+        }
+      });
+
+      document.body.addEventListener("keydown", function (evt) {
+        if (evt.key !== "Escape") {
+          return;
+        }
+        var container = evt.target.closest(
+          '.token-revoke[data-confirming="true"]'
+        );
+        if (!container) {
+          return;
+        }
+        evt.preventDefault();
+        closeRevokeConfirmation(container);
+      });
+
       document.body.addEventListener("token-revoked", function (evt) {
         var row = evt.detail.elt.closest("[data-token-id]");
+        updateTokenStatus(
+          document.getElementById("token-revoke-status"),
+          "Token revoked"
+        );
         var tokenId = row.getAttribute("data-token-id");
         var parent = row.parentNode;
         row.remove();

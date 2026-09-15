@@ -67,6 +67,54 @@ class TestApiTokenViews(BilbyTestCase):
             r'<p id="no-tokens-message"(?! style="display: none;")>',
         )
 
+    def test_token_accessibility_markup(self):
+        self.authenticate()
+        create_token(self.user, "accessible-token")
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'id="token-revoke-status" role="status"')
+        self.assertContains(response, 'class="token-revoke" data-confirming="false"')
+        self.assertContains(response, "token-revoke-start")
+        self.assertContains(response, "token-revoke-confirm")
+        self.assertContains(response, "token-revoke-cancel")
+        self.assertContains(response, 'hx-swap="none"')
+        self.assertContains(response, "csrfmiddlewaretoken")
+        self.assertContains(response, 'document.body.addEventListener("click"')
+        self.assertContains(response, 'document.body.addEventListener("keydown"')
+        self.assertContains(response, 'evt.key !== "Escape"')
+        self.assertContains(response, 'token-revoke[data-confirming="true"]')
+        self.assertContains(response, '"Token revoked"')
+        self.assertContains(response, "row.remove()")
+        self.assertContains(response, "actions.replaceWith")
+        self.assertContains(response, "htmx.process(restored)")
+        self.assertContains(response, "Alpine.initTree(restored)")
+        self.assertNotContains(response, "onclick=")
+
+    def test_create_success_accessibility_markup(self):
+        self.authenticate()
+
+        response = self.client.post(self.create_url, {"name": "accessible-token"})
+
+        self.assertContains(response, "Copy API token")
+        self.assertContains(response, "token-copy")
+        self.assertContains(
+            response,
+            'class="token-copy-status sr-only" role="status"',
+        )
+        self.assertContains(response, 'hx-swap-oob="afterbegin:#token-list"')
+        self.assertContains(response, 'id="no-tokens-message"')
+        self.assertContains(response, 'hx-swap-oob="true"')
+        self.assertContains(response, "data-new-token-id=")
+        self.assertContains(response, 'class="token-revoke" data-confirming="false"')
+        self.assertContains(response, "token-revoke-start")
+        self.assertContains(response, "token-revoke-confirm")
+        self.assertContains(response, "token-revoke-cancel")
+        self.assertContains(response, 'hx-swap="none"')
+        self.assertContains(response, "csrfmiddlewaretoken")
+        self.assertNotContains(response, "this.textContent='Copied!'")
+        self.assertNotContains(response, "onclick=")
+
     def test_create_with_empty_name_returns_400(self):
         self.authenticate()
 
