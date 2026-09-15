@@ -1889,25 +1889,58 @@ def _render_job_field_labels(request, job, error="", status=200, modifiable=None
     )
 
 
+def _build_view_job_context(job, user):
+    status = _get_job_status_context(job, user)
+    modifiable = user.id == job.user_id
+    return {
+        "job": job,
+        "status_name": status["status_name"],
+        "status_badge_class": status["status_badge_class"],
+        "status_date": status["status_date"],
+        "modifiable": modifiable,
+        "available_labels": _available_labels_for_job(job) if modifiable else [],
+    }
+
+
 @login_required
 @resolve_job_ref_view
-def view_job_view(request, job_id):
-    job = _get_view_job_or_404(job_id, request.user)
-    status = _get_job_status_context(job, request.user)
-    modifiable = request.user.id == job.user_id
+def view_job_section(request, job_id, section):
+    if section not in ("parameters", "results"):
+        raise Http404
 
-    return TemplateResponse(
-        request,
-        "bilbyui/view_job.html",
-        {
-            "job": job,
-            "status_name": status["status_name"],
-            "status_badge_class": status["status_badge_class"],
-            "status_date": status["status_date"],
-            "modifiable": modifiable,
-            "available_labels": _available_labels_for_job(job) if modifiable else [],
-        },
-    )
+    job = _get_view_job_or_404(job_id, request.user)
+    context = _build_view_job_context(job, request.user)
+    context["section"] = section
+
+    if section == "parameters":
+        try:
+            params = generate_parameter_output(job)
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
+            logger.warning(
+                "Failed to generate parameter output for job %s: %s",
+                job.id,
+                type(e).__name__,
+            )
+            params = None
+        section_template = "bilbyui/_parameters.html"
+        section_context = {"job": job, "params": params}
+    else:
+        section_template = "bilbyui/_results.html"
+        section_context = {"job": job, "files": _build_result_files(job)}
+
+    if request.headers.get("HX-Request") == "true":
+        return TemplateResponse(request, section_template, section_context)
+
+    context.update(section_context)
+    context["section_template"] = section_template
+    return TemplateResponse(request, "bilbyui/view_job.html", context)
+
+
+@login_required
+@resolve_job_ref_view
+def view_job_root_redirect(request, job_id):
+    job = _get_view_job_or_404(job_id, request.user)
+    return redirect("bilbyui:view_job_parameters_section", job_id=job.id)
 
 
 @login_required

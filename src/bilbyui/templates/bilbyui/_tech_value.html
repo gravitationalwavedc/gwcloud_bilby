@@ -1,10 +1,10 @@
 {# Reusable technical-value primitive (issue #49): compact primary label, secondary parent-directory, copy button and full-value disclosure for long paths/identifiers. Contract: docs/plans/designs/005-ux2-technical-value-component.md. #}
-{# Params: value (required), primary, kind ("path"|"id", default "path"), copy_label, truncated, disclosure_id (optional). All output is autoescaped — never pass pre-escaped/safe values. #}
+{# Params: value (required), primary, kind ("path"|"id", default "path"), copy_label, truncated, disclosure_id, primary_url, primary_external (optional). All output is autoescaped — never pass pre-escaped/safe values. #}
 {# Inline handlers only (token-page precedent); handlers read .tech-value-full textContent so values never sit inside attributes. No element ids are emitted unless disclosure_id is provided, in which case it is used for the full-value span id and the toggle's aria-controls. #}
 {# Default primary label: explicit primary wins, id-kind shows the raw value, otherwise the path basename via the frontend_tags basename filter. kind="path" renders a secondary parent-directory via the parent_dir filter; kind="id" renders no secondary. #}
 {% load frontend_tags %}
 <span class="tech-value{% if kind == "id" %} tech-value--id{% endif %}{% if truncated %} tech-value--truncated{% endif %}">
-    <span class="tech-value-label">{% if primary %}{{ primary }}{% elif kind == "id" %}{{ value }}{% else %}{{ value|basename }}{% endif %}</span>
+    <span class="tech-value-label">{% if primary_url %}<a href="{{ primary_url }}"{% if primary_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{% if primary %}{{ primary }}{% elif kind == "id" %}{{ value }}{% else %}{{ value|basename }}{% endif %}</a>{% elif primary %}{{ primary }}{% elif kind == "id" %}{{ value }}{% else %}{{ value|basename }}{% endif %}</span>
     {% if kind != "id" %}<span class="tech-value-secondary">{% if truncated %}<span class="tech-value-ellipsis" aria-hidden="true">…</span>{% endif %}{{ value|parent_dir }}</span>{% endif %}
     <button type="button"
             class="tech-value-copy"

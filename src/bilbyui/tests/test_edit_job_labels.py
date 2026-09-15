@@ -48,6 +48,7 @@ class TestEditJobLabels(BilbyTestCase):
         )
         self.job.labels.add(self.other_label)
         self.base_url = f"/job-results/{self.job.id}/"
+        self.page_url = f"/jobs/{self.job.id}/parameters/"
 
     def test_add_label(self):
         response = self.client.post(
@@ -117,7 +118,7 @@ class TestEditJobLabels(BilbyTestCase):
         self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
         self.job.labels.add(self.pe_label)
 
-        response = self.client.get(self.base_url)
+        response = self.client.get(self.page_url)
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, f'name="add" value="{self.pe_label.name}"')
@@ -134,7 +135,7 @@ class TestEditJobLabels(BilbyTestCase):
         self.authenticate()
 
         response = self.client.get(
-            self.base_url,
+            self.page_url,
             HTTP_X_FORWARDED_PROTO="https",
         )
         csrf_cookie = response.cookies["csrftoken"].value

@@ -23,6 +23,7 @@ class TestEditJobPrivacy(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "viewable_job"}),
         )
         self.base_url = f"/job-results/{self.job.id}/"
+        self.page_url = f"/jobs/{self.job.id}/parameters/"
 
     def test_toggling_to_public(self):
         response = self.client.post(
@@ -62,14 +63,14 @@ class TestEditJobPrivacy(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "ligo_job"}),
         )
 
-        response = self.client.get(f"/job-results/{ligo_job.id}/")
+        response = self.client.get(f"/jobs/{ligo_job.id}/parameters/")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Share with LVK collaborators")
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_label_text_for_non_ligo_job(self, request_job_filter):
-        response = self.client.get(self.base_url)
+        response = self.client.get(self.page_url)
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Share publicly")
@@ -111,7 +112,7 @@ class TestEditJobPrivacy(BilbyTestCase):
         self.client = self.client_class(enforce_csrf_checks=True)
         self.authenticate()
 
-        response = self.client.get(self.base_url)
+        response = self.client.get(self.page_url)
         self.assertEqual(response.status_code, 200)
 
         csrf_token = re.search(
@@ -143,7 +144,7 @@ class TestEditJobPrivacy(BilbyTestCase):
         self.authenticate()
 
         response = self.client.get(
-            self.base_url,
+            self.page_url,
             HTTP_X_FORWARDED_PROTO="https",
         )
         csrf_cookie = response.cookies["csrftoken"].value
@@ -162,7 +163,7 @@ class TestEditJobPrivacy(BilbyTestCase):
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
     def test_privacy_form_submits_via_form_element(self, request_job_filter):
-        response = self.client.get(self.base_url)
+        response = self.client.get(self.page_url)
 
         self.assertEqual(response.status_code, 200)
         self.assertRegex(

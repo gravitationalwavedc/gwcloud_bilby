@@ -1,6 +1,6 @@
 {% extends "bilbyui/base.html" %}
 
-{% block title %}{{ job.name }} — GWCloud{% endblock %}
+{% block title %}{{ section|capfirst }} — {{ job.name }} — GWCloud{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -8,54 +8,191 @@
     {% include "bilbyui/_view_job_header.html" %}
     {% include "bilbyui/_save_toast.html" %}
 
-    <div x-data="{ tab: 'parameters' }" class="row">
+    <div id="job-section-region" class="row">
       <div class="col-md-2">
-        <ul class="nav nav-pills flex-column" role="tablist">
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              :class="{ active: tab === 'parameters' }"
-              href="#"
-              role="tab"
-              @click.prevent="tab = 'parameters'"
-            >
-              Parameters
-            </a>
-          </li>
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              id="results-tab"
-              :class="{ active: tab === 'results' }"
-              href="#"
-              role="tab"
-              @click.prevent="tab = 'results'"
-            >
-              Results
-            </a>
-          </li>
-        </ul>
+        <nav aria-label="Job sections">
+          <ul class="nav nav-pills flex-column">
+            <li class="nav-item">
+              <a
+                class="nav-link{% if section == 'parameters' %} active{% endif %}"
+                href="{% url 'bilbyui:view_job_parameters_section' job_id=job.id %}"
+                hx-boost="true"
+                hx-target="#job-section-pane"
+                hx-swap="innerHTML"
+                hx-push-url="{% if section == 'parameters' %}false{% else %}true{% endif %}"
+                hx-sync="#job-section-region:replace"
+                {% if section != 'parameters' %}hx-indicator="#job-section-skeleton"{% endif %}
+                {% if section == 'parameters' %}aria-current="page"{% endif %}
+                data-job-section
+              >Parameters</a>
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link{% if section == 'results' %} active{% endif %}"
+                href="{% url 'bilbyui:view_job_results_section' job_id=job.id %}"
+                hx-boost="true"
+                hx-target="#job-section-pane"
+                hx-swap="innerHTML"
+                hx-push-url="{% if section == 'results' %}false{% else %}true{% endif %}"
+                hx-sync="#job-section-region:replace"
+                {% if section != 'results' %}hx-indicator="#job-section-skeleton"{% endif %}
+                {% if section == 'results' %}aria-current="page"{% endif %}
+                data-job-section
+              >Results</a>
+            </li>
+          </ul>
+        </nav>
       </div>
 
       <div class="col-md-8">
-        <div
-          x-show="tab === 'parameters'"
-          id="parameters-pane"
-          hx-get="{% url 'bilbyui:view_job_parameters' job_id=job.id %}"
-          hx-trigger="load once"
-          hx-swap="innerHTML"
-        >
-          Loading…
+        <h2 id="job-section-heading" class="h4 mb-3" tabindex="-1">{{ section|capfirst }}</h2>
+        <div id="job-section-pane" role="region" aria-label="Job section">
+          <div id="job-section-skeleton" class="htmx-indicator" aria-hidden="true">
+            <div class="async-skeleton">
+              <div class="async-skeleton-row"></div>
+              <div class="async-skeleton-row"></div>
+              <div class="async-skeleton-row"></div>
+            </div>
+          </div>
+          {% include section_template %}
         </div>
-        <div
-          x-show="tab === 'results'"
-          id="results-pane"
-          hx-get="{% url 'bilbyui:view_job_results' job_id=job.id %}"
-          hx-trigger="click once from:#results-tab"
-          hx-swap="innerHTML"
-        ></div>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  var region = document.getElementById('job-section-region');
+  if (!region) return;
+
+  var links = Array.prototype.slice.call(
+    region.querySelectorAll('a[data-job-section]')
+  );
+  var keyboardNavigation = false;
+  var successfulSwap = false;
+
+  function skeletonMarkup() {
+    return '<div class="async-skeleton">' +
+      '<div class="async-skeleton-row"></div>' +
+      '<div class="async-skeleton-row"></div>' +
+      '<div class="async-skeleton-row"></div>' +
+      '</div>';
+  }
+
+  function ensureSkeleton(pane) {
+    if (!pane || pane.querySelector('#job-section-skeleton')) return;
+    var skeleton = document.createElement('div');
+    skeleton.id = 'job-section-skeleton';
+    skeleton.className = 'htmx-indicator';
+    skeleton.setAttribute('aria-hidden', 'true');
+    skeleton.innerHTML = skeletonMarkup();
+    pane.insertAdjacentElement('afterbegin', skeleton);
+  }
+
+  function syncActiveSection() {
+    var path = window.location.pathname;
+    var activeLink = null;
+
+    links.forEach(function (link) {
+      var isActive = new URL(link.href).pathname === path;
+      link.classList.toggle('active', isActive);
+
+      if (isActive) {
+        link.setAttribute('aria-current', 'page');
+        link.setAttribute('hx-push-url', 'false');
+        link.removeAttribute('hx-indicator');
+        activeLink = link;
+      } else {
+        link.removeAttribute('aria-current');
+        link.setAttribute('hx-push-url', 'true');
+        link.setAttribute('hx-indicator', '#job-section-skeleton');
+      }
+    });
+
+    var heading = document.getElementById('job-section-heading');
+    if (heading && activeLink) {
+      heading.textContent = activeLink.textContent.trim();
+    }
+
+    return activeLink;
+  }
+
+  links.forEach(function (link) {
+    link.addEventListener('keydown', function (event) {
+      if (
+        event.key === 'Enter' &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.shiftKey &&
+        !event.altKey
+      ) {
+        keyboardNavigation =
+          new URL(link.href).pathname !== window.location.pathname;
+      }
+    });
+
+    link.addEventListener('pointerdown', function () {
+      keyboardNavigation = false;
+    });
+  });
+
+  window.addEventListener('popstate', function () {
+    keyboardNavigation = false;
+    syncActiveSection();
+  });
+
+  document.body.addEventListener('htmx:historyRestore', function () {
+    keyboardNavigation = false;
+    syncActiveSection();
+  });
+
+  document.body.addEventListener('htmx:afterSwap', function (event) {
+    var target = event.detail && event.detail.target;
+    if (!target || target.id !== 'job-section-pane') return;
+    successfulSwap = event.detail.successful !== false;
+    ensureSkeleton(target);
+  });
+
+  document.body.addEventListener('htmx:afterSettle', function (event) {
+    var target = event.detail && event.detail.target;
+    if (!target || target.id !== 'job-section-pane') return;
+
+    var activeLink = syncActiveSection();
+    var heading = document.getElementById('job-section-heading');
+
+    if (successfulSwap && heading && activeLink) {
+      document.title =
+        heading.textContent.trim() + ' — {{ job.name|escapejs }} — GWCloud';
+
+      if (keyboardNavigation) {
+        heading.focus();
+      }
+    }
+
+    keyboardNavigation = false;
+    successfulSwap = false;
+    ensureSkeleton(target);
+  });
+
+  document.body.addEventListener('htmx:responseError', function (event) {
+    var target = event.detail && event.detail.target;
+    if (!target || target.id !== 'job-section-pane') return;
+
+    var requestPath =
+      event.detail.pathInfo && event.detail.pathInfo.requestPath;
+    var retryUrl = requestPath || window.location.href;
+    target.innerHTML =
+      '<div class="alert alert-danger" role="alert">' +
+      '<p>Unable to load this job section.</p>' +
+      '<a href="' + retryUrl + '">Try again</a>' +
+      '</div>';
+    ensureSkeleton(target);
+    keyboardNavigation = false;
+    successfulSwap = false;
+  });
+
+  syncActiveSection();
+})();
+</script>
 {% endblock %}

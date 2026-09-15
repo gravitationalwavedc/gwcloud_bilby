@@ -1,16 +1,18 @@
+{% load frontend_tags %}
 <tr>
   <td>
-    {% if file.is_dir %}
-      {{ file.path }}
-    {% elif job.job_type == 2 %}
-      <a href="{{ file.path }}" target="_blank" rel="noopener noreferrer">{{ file.path }}</a>
-    {% elif file.download_token %}
-      <a href="{% url 'bilbyui:file_download' job_id=job.id token=file.download_token %}" target="_blank">
-        {{ file.path }}
-      </a>
-    {% else %}
-      {{ file.path }}
-    {% endif %}
+    {% with disclosure_id="result-file-path-"|add:row_id %}
+      {% if file.is_dir %}
+        {% include "bilbyui/_tech_value.html" with value=file.path kind="path" primary=file.path|basename copy_label="Copy path" disclosure_id=disclosure_id %}
+      {% elif job.job_type == 2 %}
+        {% include "bilbyui/_tech_value.html" with value=file.path kind="path" primary=file.path|basename primary_url=file.path primary_external=True copy_label="Copy path" disclosure_id=disclosure_id %}
+      {% elif file.download_token %}
+        {% url 'bilbyui:file_download' job_id=job.id token=file.download_token as download_url %}
+        {% include "bilbyui/_tech_value.html" with value=file.path kind="path" primary=file.path|basename primary_url=download_url primary_external=True copy_label="Copy path" disclosure_id=disclosure_id %}
+      {% else %}
+        {% include "bilbyui/_tech_value.html" with value=file.path kind="path" primary=file.path|basename copy_label="Copy path" disclosure_id=disclosure_id %}
+      {% endif %}
+    {% endwith %}
   </td>
   <td>{% if file.is_dir %}Directory{% else %}File{% endif %}</td>
   <td>
@@ -21,4 +23,3 @@
     {% endif %}
   </td>
 </tr>
-

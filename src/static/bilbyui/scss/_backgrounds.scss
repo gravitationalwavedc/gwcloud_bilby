@@ -5,3 +5,24 @@
 .bg-blue-400 {
     background-color: $blue-400;
 }
+
+/* Bilby job inline controls: minimum pointer target and visible keyboard focus. */
+.job-control-target {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0.25rem;
+}
+
+.job-control-target:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.job-control-target:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.job-control-target:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

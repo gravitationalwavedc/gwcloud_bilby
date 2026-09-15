@@ -49,33 +49,36 @@ class TestUrlSwap(BilbyTestCase):
         self.authenticate()
         job = self._create_viewable_job()
 
-        response = self.client.get(f"/job-results/{job.id}/")
+        response = self.client.get(f"/jobs/{job.id}/parameters/")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "URL swap job")
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
-    def test_view_job_numeric_path_no_redirect(self, request_job_filter):
+    def test_view_job_numeric_path_redirects_to_parameters(self, request_job_filter):
         self.authenticate()
         job = self._create_viewable_job()
 
         response = self.client.get(f"/job-results/{job.id}/")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn("Location", response)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response["Location"],
+            reverse("bilbyui:view_job_parameters_section", kwargs={"job_id": job.id}),
+        )
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
-    def test_view_job_relay_id_redirects_to_numeric_pk(self, request_job_filter):
+    def test_view_job_relay_id_redirects_to_numeric_parameters(self, request_job_filter):
         self.authenticate()
         job = self._create_viewable_job()
         relay_id = to_global_id("BilbyJobNode", job.id)
 
-        response = self.client.get(f"/job-results/{relay_id}/")
+        response = self.client.get(f"/job-results/{relay_id}/", follow=True)
 
-        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response.redirect_chain[-1][1], 302)
         self.assertEqual(
-            response["Location"],
-            reverse("bilbyui:view_job", kwargs={"job_id": job.id}),
+            response.redirect_chain[-1][0],
+            reverse("bilbyui:view_job_parameters_section", kwargs={"job_id": job.id}),
         )
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
@@ -93,17 +96,17 @@ class TestUrlSwap(BilbyTestCase):
         )
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
-    def test_relay_id_redirect_preserves_query_string(self, request_job_filter):
+    def test_relay_id_obsolete_tab_redirects_to_parameters(self, request_job_filter):
         self.authenticate()
         job = self._create_viewable_job()
         relay_id = to_global_id("BilbyJobNode", job.id)
 
-        response = self.client.get(f"/job-results/{relay_id}/?tab=results")
+        response = self.client.get(f"/job-results/{relay_id}/?tab=results", follow=True)
 
-        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response.redirect_chain[-1][1], 302)
         self.assertEqual(
-            response["Location"],
-            f"{reverse('bilbyui:view_job', kwargs={'job_id': job.id})}?tab=results",
+            response.redirect_chain[-1][0],
+            reverse("bilbyui:view_job_parameters_section", kwargs={"job_id": job.id}),
         )
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
