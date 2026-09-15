@@ -5,10 +5,10 @@
     <h5>{{ name }}</h5>
     <code id="new-token-value" class="mr-2">{{ full_token }}</code>
     <button type="button"
-            class="btn btn-outline-secondary btn-sm"
-            onclick="navigator.clipboard.writeText(document.getElementById('new-token-value').textContent); this.textContent='Copied!';">
-      Copy
+            class="btn btn-outline-secondary btn-sm token-copy">
+      Copy API token
     </button>
+    <span class="token-copy-status sr-only" role="status"></span>
   </div>
 </div>
 
