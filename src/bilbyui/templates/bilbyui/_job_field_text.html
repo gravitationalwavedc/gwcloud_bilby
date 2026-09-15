@@ -1,52 +1,92 @@
 <div data-field="{{ field }}" id="field-{{ field }}-{{ job_id }}">
   {% if editing %}
     <form
+      class="job-inline-field"
       hx-post="{% if field == 'name' %}{% url 'bilbyui:edit_job_name' job_id=job_id %}{% else %}{% url 'bilbyui:edit_job_description' job_id=job_id %}{% endif %}"
       hx-target="#field-{{ field }}-{{ job_id }}"
       hx-swap="outerHTML"
     >
       {% csrf_token %}
+      <label class="sr-only" for="job-{{ field }}-input">
+        {% if field == "name" %}Name{% else %}Description{% endif %}
+      </label>
+
       {% if field == "name" %}
         <input
+          id="job-name-input"
+          class="form-control{% if error %} is-invalid{% endif %}"
           type="text"
           name="name"
           value="{{ value }}"
           maxlength="30"
-          class="form-control"
+          {% if error %}aria-invalid="true" aria-describedby="job-name-error"{% endif %}
           autofocus
         >
       {% else %}
-        <textarea name="description" class="form-control" rows="3">{{ value }}</textarea>
+        <textarea
+          id="job-description-input"
+          class="form-control{% if error %} is-invalid{% endif %}"
+          name="description"
+          {% if error %}aria-invalid="true" aria-describedby="job-description-error"{% endif %}
+          autofocus
+        >{{ value }}</textarea>
       {% endif %}
+
       {% if error %}
-        <p class="text-danger small">{{ error }}</p>
+        <div
+          id="job-{{ field }}-error"
+          class="invalid-feedback d-block"
+          role="alert"
+        >{{ error }}</div>
       {% endif %}
-      <button type="submit" class="save-button btn btn-sm btn-primary"><i class="bi bi-check"></i></button>
-      <button
-        type="button"
-        class="cancel-button btn btn-sm btn-link"
-        hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field=field %}"
-        hx-target="#field-{{ field }}-{{ job_id }}"
-        hx-swap="outerHTML"
-      ><i class="bi bi-x"></i></button>
+
+      <div class="job-inline-field__actions">
+        <button
+          type="submit"
+          class="save-button btn btn-sm btn-primary job-control-target"
+          aria-label="Save {% if field == 'name' %}name{% else %}description{% endif %}"
+        >
+          <i class="bi bi-check" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          class="cancel-button btn btn-sm btn-link job-control-target"
+          aria-label="Cancel {% if field == 'name' %}name{% else %}description{% endif %}"
+          hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field=field %}"
+          hx-target="#field-{{ field }}-{{ job_id }}"
+          hx-swap="outerHTML"
+        >
+          <i class="bi bi-x" aria-hidden="true"></i>
+        </button>
+      </div>
     </form>
   {% else %}
-    {% if field == "name" %}
-      <h1{% if modifiable %}
-        hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field='name' %}?editing=1"
-        hx-target="#field-name-{{ job_id }}"
-        hx-trigger="click"
-        hx-swap="outerHTML"
-        style="cursor: pointer;"
-      {% endif %}>{{ value }}{% if modifiable %}<button class="edit-button text-muted ml-2" aria-label="Edit field"><i class="bi bi-pencil"></i> edit</button>{% endif %}</h1>
-    {% else %}
-      <p{% if modifiable %}
-        hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field='description' %}?editing=1"
-        hx-target="#field-description-{{ job_id }}"
-        hx-trigger="click"
-        hx-swap="outerHTML"
-        style="cursor: pointer;"
-      {% endif %}>{{ value }}{% if modifiable %}<button class="edit-button text-muted ml-2" aria-label="Edit field"><i class="bi bi-pencil"></i> edit</button>{% endif %}</p>
-    {% endif %}
+    <div class="job-inline-field job-inline-field--readonly">
+      {% if field == "name" %}
+        <h1 class="job-inline-field__value">{{ value }}</h1>
+        <button
+          type="button"
+          class="edit-button text-muted ml-2 job-control-target"
+          aria-label="Edit name"
+          hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field='name' %}?editing=1"
+          hx-target="#field-{{ field }}-{{ job_id }}"
+          hx-swap="outerHTML"
+        >
+          <i class="bi bi-pencil" aria-hidden="true"></i>
+        </button>
+      {% else %}
+        <p class="job-inline-field__value">{{ value }}</p>
+        <button
+          type="button"
+          class="edit-button text-muted ml-2 job-control-target"
+          aria-label="Edit description"
+          hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field='description' %}?editing=1"
+          hx-target="#field-{{ field }}-{{ job_id }}"
+          hx-swap="outerHTML"
+        >
+          <i class="bi bi-pencil" aria-hidden="true"></i>
+        </button>
+      {% endif %}
+    </div>
   {% endif %}
 </div>

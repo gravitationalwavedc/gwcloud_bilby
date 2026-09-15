@@ -421,3 +421,167 @@ class TestGenerateFileDownloadIdsMalformedJobId(BilbyTestCase):
 
         self.assertIsNone(response.data["generateFileDownloadIds"])
         self.assertEqual(response.errors[0]["message"], "Invalid job_id")
+
+
+class TestResultFileTemplates(BilbyTestCase):
+    def setUp(self):
+        self.authenticate()
+        self.job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="result-template-job",
+            description="result template coverage",
+            job_controller_id=2,
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+    def render_results(self, files, job=None):
+        from django.template.loader import render_to_string
+
+        return render_to_string(
+            "bilbyui/_results.html",
+            {"files": files, "job": job or self.job},
+        )
+
+    def test_result_table_and_file_rows_are_accessible(self):
+        files = [
+            {
+                "path": "/very/long/result/directory/posterior.hdf5",
+                "is_dir": False,
+                "file_size": 1024,
+                "download_token": "first-token",
+            },
+            {
+                "path": "/very/long/result/directory/samples.json",
+                "is_dir": False,
+                "file_size": None,
+                "download_token": "second-token",
+            },
+            {
+                "path": "/very/long/result/directory/subdirectory",
+                "is_dir": True,
+                "file_size": 0,
+                "download_token": None,
+            },
+        ]
+
+        html = self.render_results(files)
+
+        self.assertIn('class="results-table-wrap"', html)
+        self.assertIn('role="region"', html)
+        self.assertIn('tabindex="0"', html)
+        self.assertIn('aria-label="Result files table"', html)
+        self.assertIn("<caption", html)
+        self.assertIn("Result files for this Bilby job", html)
+        self.assertIn('<th scope="col">File</th>', html)
+        self.assertIn('<th scope="col">Type</th>', html)
+        self.assertIn('<th scope="col">File size</th>', html)
+        self.assertIn(">posterior.hdf5</a>", html)
+        self.assertIn(">samples.json</a>", html)
+        self.assertIn(">subdirectory</span>", html)
+        self.assertEqual(html.count('class="tech-value-copy"'), 3)
+        self.assertEqual(html.count('class="tech-value-toggle"'), 3)
+        self.assertEqual(html.count('aria-expanded="false"'), 3)
+        self.assertEqual(html.count('aria-controls="result-file-path-'), 3)
+        self.assertIn('aria-controls="result-file-path-1"', html)
+        self.assertIn('aria-controls="result-file-path-2"', html)
+        self.assertIn('aria-controls="result-file-path-3"', html)
+        self.assertEqual(html.count('rel="noopener noreferrer"'), 2)
+        self.assertIn("Copy path", html)
+        self.assertIn("Directory", html)
+        self.assertIn("—", html)
+
+    def test_external_file_uses_basename_link_and_secure_external_attributes(self):
+        external_job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="external-result-template-job",
+            description="external result template coverage",
+            private=False,
+            job_type=BilbyJobType.EXTERNAL,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        url = "https://example.com/results/final-result.json?download=1&amp;source=test"
+
+        html = self.render_results(
+            [
+                {
+                    "path": url,
+                    "is_dir": False,
+                    "file_size": None,
+                    "download_token": None,
+                    "link_url": url,
+                }
+            ],
+            job=external_job,
+        )
+
+        self.assertIn(">final-result.json?download=1&amp;amp;source=test</a>", html)
+        self.assertIn('target="_blank" rel="noopener noreferrer"', html)
+        self.assertIn("https://example.com/results/", html)
+        self.assertEqual(html.count('class="tech-value-copy"'), 1)
+        self.assertEqual(html.count('class="tech-value-toggle"'), 1)
+
+        unsafe_url = "javascript:alert(1)"
+        unsafe_html = self.render_results(
+            [
+                {
+                    "path": unsafe_url,
+                    "is_dir": False,
+                    "file_size": None,
+                    "download_token": None,
+                    "link_url": "",
+                }
+            ],
+            job=external_job,
+        )
+        self.assertNotIn('href="javascript:', unsafe_html)
+        self.assertIn(unsafe_url, unsafe_html)
+
+    def test_hostile_path_is_escaped_and_never_used_for_disclosure_id(self):
+        hostile_path = '/results/<script>alert("x")</script>/"><img src=x onerror=alert(1)>.json'
+
+        html = self.render_results(
+            [
+                {
+                    "path": hostile_path,
+                    "is_dir": True,
+                    "file_size": None,
+                    "download_token": None,
+                }
+            ]
+        )
+
+        self.assertNotIn("<script>", html)
+        self.assertNotIn("<img", html)
+        self.assertIn("&lt;script&gt;", html)
+        self.assertIn("&lt;img", html)
+        self.assertIn('aria-controls="result-file-path-1"', html)
+        self.assertNotIn('aria-controls="/results/', html)
+        self.assertNotIn('id="/results/', html)
+
+    def test_non_downloadable_file_and_directory_are_not_links(self):
+        html = self.render_results(
+            [
+                {
+                    "path": "/results/unavailable.dat",
+                    "is_dir": False,
+                    "file_size": None,
+                    "download_token": None,
+                },
+                {
+                    "path": "/results/archive",
+                    "is_dir": True,
+                    "file_size": 0,
+                    "download_token": None,
+                },
+            ]
+        )
+
+        self.assertIn('<span class="tech-value-label">unavailable.dat</span>', html)
+        self.assertIn('<span class="tech-value-label">archive</span>', html)
+        self.assertNotIn("<a ", html)
+
+    def test_empty_results_have_stable_message(self):
+        html = self.render_results([])
+
+        self.assertIn('<td colspan="3" class="text-muted">No result files found.</td>', html)

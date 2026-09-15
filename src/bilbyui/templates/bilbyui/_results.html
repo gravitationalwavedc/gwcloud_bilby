@@ -1,18 +1,26 @@
-<table class="table">
-  <thead>
-    <tr>
-      <th>File Path</th>
-      <th>Type</th>
-      <th>File Size</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for file in files %}
-      {% include "bilbyui/_file_row.html" with file=file job=job %}
-    {% empty %}
+<div class="results-table-wrap"
+     role="region"
+     tabindex="0"
+     aria-label="Result files table">
+  <table class="table">
+    <caption class="sr-only">Result files for this Bilby job</caption>
+    <thead>
       <tr>
-        <td colspan="3" class="text-muted">No result files found.</td>
+        <th scope="col">File</th>
+        <th scope="col">Type</th>
+        <th scope="col">File size</th>
       </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      {% for file in files %}
+        {% with row_id=forloop.counter|stringformat:"d" %}
+          {% include "bilbyui/_file_row.html" with file=file job=job row_id=row_id %}
+        {% endwith %}
+      {% empty %}
+        <tr>
+          <td colspan="3" class="text-muted">No result files found.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

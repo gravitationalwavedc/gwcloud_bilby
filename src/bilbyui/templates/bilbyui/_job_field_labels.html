@@ -9,11 +9,7 @@
         <span class="badge badge-{{ label.badge_type }} mr-1">
           {{ label.name }}
           {% if not label.protected %}
-            <button type="submit"
-                    class="btn btn-link btn-sm text-light p-0 ml-1"
-                    name="remove"
-                    value="{{ label.name }}"
-                    aria-label="Remove {{ label.name }}">&times;</button>
+            <button class="btn btn-link btn-sm text-light ml-1 job-control-target" aria-label="Remove label {{ label.name }}" type="submit" name="remove" value="{{ label.name }}"><span aria-hidden="true">&times;</span></button>
           {% endif %}
         </span>
         <input type="hidden" name="labels" value="{{ label.name }}" />

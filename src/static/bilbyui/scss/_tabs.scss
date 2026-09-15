@@ -1,5 +1,5 @@
 // Tabs
-.nav-link[role='tab'] {
+.nav-link[data-job-section] {
     color: $gray-300;
     margin: 1rem 0;
 
@@ -17,6 +17,26 @@
     }
 
     &:focus {
-        outline: none;
+
+      outline: 2px solid $blue-600;
+
+      outline-offset: 2px;
+
+    }
+
+
+    &:focus:not(:focus-visible) {
+
+      outline: 0;
+
+    }
+
+
+    &:focus-visible {
+
+      outline: 2px solid $blue-600;
+
+      outline-offset: 2px;
+
     }
 }

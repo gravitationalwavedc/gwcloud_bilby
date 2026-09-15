@@ -17,6 +17,27 @@
   background-color: #91d3fd;
 }
 
+/* Bilby job inline controls: minimum pointer target and visible keyboard focus. */
+.job-control-target {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0.25rem;
+}
+
+.job-control-target:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.job-control-target:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.job-control-target:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 p.text-danger.small {
   margin-bottom: 0;
 }
@@ -74,22 +95,30 @@ img.navbar-nav-icon {
   object-fit: contain;
 }
 
-.nav-link[role=tab] {
+.nav-link[data-job-section] {
   color: #afbacb;
   margin: 1rem 0;
 }
-.nav-link[role=tab] p {
+.nav-link[data-job-section] p {
   margin: 0;
 }
-.nav-link[role=tab].active {
+.nav-link[data-job-section].active {
   border-left: 4px solid #059cfa;
   color: #059cfa;
 }
-.nav-link[role=tab]:hover:not(.active) {
+.nav-link[data-job-section]:hover:not(.active) {
   color: #91d3fd;
 }
-.nav-link[role=tab]:focus {
-  outline: none;
+.nav-link[data-job-section]:focus {
+  outline: 2px solid #059cfa;
+  outline-offset: 2px;
+}
+.nav-link[data-job-section]:focus:not(:focus-visible) {
+  outline: 0;
+}
+.nav-link[data-job-section]:focus-visible {
+  outline: 2px solid #059cfa;
+  outline-offset: 2px;
 }
 
 .grecaptcha-badge {
