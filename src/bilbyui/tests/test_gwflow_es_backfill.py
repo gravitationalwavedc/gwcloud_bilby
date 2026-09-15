@@ -64,6 +64,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
     def _run(self, *args, **kwargs):
         out = StringIO()
         err = StringIO()
+        kwargs.setdefault("pacing", 0)
         with mock.patch("bilbyui.management.commands.gwflow_es_backfill.get_versions") as m:
             m.side_effect = kwargs.pop("get_versions_side_effect", None)
             m.return_value = kwargs.pop("get_versions_return", (versions(current_version()), "live"))
@@ -320,3 +321,30 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         job.refresh_from_db()
         self.assertEqual(exit_code, 1)
         self.assertIn("Permanent failure", err)
+
+    def test_stale_event_link_cleared_on_no_match(self):
+        stale = EventID.objects.create(event_id="GW999999_999999", trigger_id="S999999zz")
+        job = make_job(sname="S230601ag", event_id=stale)
+        self._run()
+        job.refresh_from_db()
+        self.assertIsNone(job.event_id)
+
+    def test_pacing_sleeps_between_rows(self):
+        make_job(sname="S230601ag")
+        with mock.patch("bilbyui.management.commands.gwflow_es_backfill.time.sleep") as m:
+            self._run(pacing=0.1)
+        self.assertTrue(any(call.args == (0.1,) for call in m.call_args_list))
+
+    def test_event_lookup_failure_propagates(self):
+        make_job(sname="S230601ag")
+        with mock.patch("bilbyui.models.EventID.objects.filter", side_effect=Exception("boom")):
+            with self.assertRaisesRegex(Exception, "boom"):
+                self._run()
+
+    def test_negative_pacing_returns_2(self):
+        out = StringIO()
+        err = StringIO()
+        with self.assertRaises(CommandError) as ctx:
+            call_command("gwflow_es_backfill", "--pacing", "-1", stdout=out, stderr=err)
+        self.assertEqual(ctx.exception.returncode, 2)
+        self.assertIn("--pacing must be >= 0", err.getvalue())
