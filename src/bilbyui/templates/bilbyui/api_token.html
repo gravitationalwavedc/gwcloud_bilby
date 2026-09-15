@@ -58,9 +58,16 @@
           var secret = warning && warning.querySelector("#new-token-value");
           var copyStatus = warning && warning.querySelector(".token-copy-status");
           if (secret && navigator.clipboard) {
-            navigator.clipboard.writeText(secret.textContent).then(function () {
-              updateTokenStatus(copyStatus, "Copied!");
-            });
+            navigator.clipboard.writeText(secret.textContent).then(
+              function () {
+                updateTokenStatus(copyStatus, "Copied!");
+              },
+              function () {
+                updateTokenStatus(copyStatus, "Copy failed");
+              }
+            );
+          } else {
+            updateTokenStatus(copyStatus, "Copy failed");
           }
           return;
         }
