@@ -29,9 +29,7 @@ class JobSectionShellBase(AsyncE2ETestCase):
             description="e2e",
             private=False,
             job_controller_id=10001,
-            ini_string=create_test_ini_string(
-                {"detectors": "['H1']", "label": "e2e section job"}
-            ),
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "e2e section job"}),
         )
         await self.login(self.user)
 
@@ -101,9 +99,7 @@ class TestJobSectionShellLifecycle(JobSectionShellBase):
         await page.goto(self.parameters_url)
 
         heading = page.locator("#job-section-heading")
-        parameters_link = page.locator(
-            'a[data-job-section][href*="/parameters/"]'
-        )
+        parameters_link = page.locator('a[data-job-section][href*="/parameters/"]')
         results_link = page.locator('a[data-job-section][href*="/results/"]')
 
         self.assertEqual((await heading.text_content()).strip(), "Parameters")
@@ -147,14 +143,9 @@ class TestJobSectionKeyboardFocus(JobSectionShellBase):
         await results_link.focus()
         await page.keyboard.press("Enter")
         await page.wait_for_url("**/results/")
-        await page.wait_for_function(
-            "document.activeElement && document.activeElement.id === "
-            "'job-section-heading'"
-        )
+        await page.wait_for_function("document.activeElement && document.activeElement.id === 'job-section-heading'")
 
         self.assertEqual(
             await page.evaluate("document.activeElement.id"),
             "job-section-heading",
         )
-
-

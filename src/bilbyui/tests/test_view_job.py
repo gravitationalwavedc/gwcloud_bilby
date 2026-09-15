@@ -294,7 +294,6 @@ class TestViewJobSections(BilbyTestCase):
                 self.assertEqual(response.status_code, 404)
 
 
-
 class TestExternalJobResultURLSafety(BilbyTestCase):
     def setUp(self):
         self.authenticate()
@@ -310,9 +309,7 @@ class TestExternalJobResultURLSafety(BilbyTestCase):
             description="An external job with a result URL",
             job_type=BilbyJobType.EXTERNAL,
             private=False,
-            ini_string=create_test_ini_string(
-                {"detectors": "['H1']", "label": "External result job"}
-            ),
+            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "External result job"}),
         )
 
     def test_javascript_result_url_is_text_not_link(self):
@@ -337,7 +334,6 @@ class TestExternalJobResultURLSafety(BilbyTestCase):
             response,
             'href="https://example.org/results/x.h5"',
         )
-
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
