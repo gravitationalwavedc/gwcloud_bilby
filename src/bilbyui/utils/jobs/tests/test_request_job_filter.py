@@ -1,6 +1,7 @@
 import json
 import logging
 
+import requests
 import responses
 from django.conf import settings
 from django.test import SimpleTestCase, override_settings
@@ -86,3 +87,29 @@ class TestRequestJobFilter(SimpleTestCase):
         status, result = request_job_filter(123, ids=[10, 20])
         self.assertEqual(status, "OK")
         self.assertEqual(result, jobs)
+
+    def test_ids_none_omits_job_ids(self):
+        self.responses.add(responses.GET, f"{self.base_url}?", body=json.dumps([]), status=200)
+
+        status, result = request_job_filter(123)
+
+        self.assertEqual(status, "OK")
+        self.assertEqual(result, [])
+        self.assertNotIn("jobIds=", self.responses.calls[0].request.url)
+
+    def test_request_exception_fallback(self):
+        try:
+            logging.disable(logging.CRITICAL)
+
+            self.responses.add(
+                responses.GET,
+                f"{self.base_url}?",
+                body=requests.ConnectionError("boom"),
+            )
+
+            status, result = request_job_filter(123)
+
+            self.assertEqual(status, "UNKNOWN")
+            self.assertEqual(result, [])
+        finally:
+            logging.disable(logging.NOTSET)
