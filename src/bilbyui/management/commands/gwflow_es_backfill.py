@@ -5,10 +5,12 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.db.models import Q
 
-from bilbyui.models import GWFlowJob
+from bilbyui.models import EventID, GWFlowJob
 from bilbyui.services.gwflow import LIBRARIES_CACHE_KEY, REVIEW_STATUSES_CACHE_KEY
-from bilbyui.utils.gwflow_portal import get_versions
+from bilbyui.utils.embargo import gwflow_ligo_only_from_metadata
+from bilbyui.utils.gwflow_portal import get_superevent, get_versions
 from bilbyui.utils.gwflow_version import (
     normalise_current_history_timestamp,
     normalise_libraries,
@@ -23,6 +25,7 @@ EXIT_CONFIG = 2
 DEFAULT_BATCH_SIZE = 500
 MAX_BATCH_SIZE = 2000
 DEFAULT_MAX_RETRIES = 3
+DEFAULT_PACING = 0.05
 
 
 class PortalUnavailable(Exception):
@@ -31,8 +34,8 @@ class PortalUnavailable(Exception):
 
 class Command(BaseCommand):
     help = (
-        "Backfill GWFlowJob libraries and current_history_timestamp from the "
-        "cbcflow portal's authoritative current version."
+        "Backfill GWFlowJob libraries, current_history_timestamp, ligo_only, and "
+        "event links from the cbcflow portal's authoritative current state."
     )
 
     def add_arguments(self, parser):
@@ -60,6 +63,12 @@ class Command(BaseCommand):
             default=DEFAULT_MAX_RETRIES,
             help=f"Retries per batch with backoff (default {DEFAULT_MAX_RETRIES}).",
         )
+        parser.add_argument(
+            "--pacing",
+            type=float,
+            default=DEFAULT_PACING,
+            help=(f"Seconds to sleep between portal requests during normal processing (default {DEFAULT_PACING})."),
+        )
 
     def execute(self, *args, **options):
         # Return the exit code from execute() without Django writing it to stdout.
@@ -79,6 +88,7 @@ class Command(BaseCommand):
         resume_from = options["resume_from"]
         batch_size = options["batch_size"]
         max_retries = options["max_retries"]
+        pacing = options["pacing"]
 
         if batch_size < 1 or batch_size > MAX_BATCH_SIZE:
             self.stderr.write(
@@ -89,6 +99,11 @@ class Command(BaseCommand):
 
         if max_retries < 0:
             self.stderr.write(self.style.ERROR(f"--max-retries must be >= 0, got {max_retries}"))
+            self._exit_code = EXIT_CONFIG
+            return
+
+        if pacing < 0:
+            self.stderr.write(self.style.ERROR(f"--pacing must be >= 0, got {pacing}"))
             self._exit_code = EXIT_CONFIG
             return
 
@@ -108,12 +123,14 @@ class Command(BaseCommand):
         total = qs.count()
         self.stdout.write(
             f"Backfilling {total} GWFlowJob record(s) (dry_run={dry_run}, "
-            f"batch_size={batch_size}, max_retries={max_retries}, resume_from={resume_from})"
+            f"batch_size={batch_size}, max_retries={max_retries}, resume_from={resume_from}, pacing={pacing})"
         )
 
         total_failures = 0
         batch_count = 0
         any_failure = False
+        repaired = {"libraries": 0, "ligo_only": 0, "event_id": 0}
+        before_counts = self._state_counts(qs)
 
         for start in range(0, total, batch_size):
             batch = list(qs[start : start + batch_size])
@@ -131,8 +148,13 @@ class Command(BaseCommand):
                     try:
                         fields = self._resolve_job(job)
                         updated.append((job, fields))
+                        for name in ("libraries", "ligo_only", "event_id"):
+                            if name in fields and fields[name] != getattr(job, name):
+                                repaired[name] += 1
                     except PortalUnavailable:
                         remaining.append(job)
+                    if pacing > 0:
+                        time.sleep(pacing)
                 failures = remaining
                 if failures and attempt < max_retries:
                     time.sleep(self._backoff(attempt))
@@ -160,8 +182,28 @@ class Command(BaseCommand):
             cache.delete(REVIEW_STATUSES_CACHE_KEY)
             self.stdout.write("Invalidated filter-option cache keys after successful backfill")
 
-        self.stdout.write(f"Backfill complete: {total} processed, {total_failures} failure(s).")
+        label = "Would repair" if dry_run else "Repaired"
+        after_counts = self._state_counts(qs)
+        self.stdout.write(
+            f"Backfill complete: {total} processed, {total_failures} failure(s). "
+            f"{label}: {repaired['libraries']} libraries, {repaired['ligo_only']} ligo_only, "
+            f"{repaired['event_id']} event links."
+        )
+        self.stdout.write(
+            f"State before: {before_counts['ligo_only']} ligo_only, "
+            f"{before_counts['event_linked']} event links, {before_counts['with_libraries']} with libraries. "
+            f"State after: {after_counts['ligo_only']} ligo_only, "
+            f"{after_counts['event_linked']} event links, {after_counts['with_libraries']} with libraries."
+        )
         self._exit_code = EXIT_FAILURES if any_failure else EXIT_OK
+
+    def _state_counts(self, qs):
+        """Return comparable state totals for the repaired fields over a queryset."""
+        return {
+            "ligo_only": qs.filter(ligo_only=True).count(),
+            "event_linked": qs.exclude(event_id=None).count(),
+            "with_libraries": qs.exclude(libraries=[]).count(),
+        }
 
     def _resolve_job(self, job):
         """Return the field updates for a single job, or raise PortalUnavailable."""
@@ -184,6 +226,20 @@ class Command(BaseCommand):
                 fields["libraries"] = normalise_libraries(current.get("libraries"))
             fields["current_history_id"] = current.get("commit_sha") or ""
             fields["current_history_timestamp"] = normalise_current_history_timestamp(current.get("commit_timestamp"))
+
+        # LIGO-only flag from the superevent's portal metadata (B-2), matching
+        # the cron's phase_metadata which uses detail.get("raw_payload", {}).
+        detail, state = get_superevent(job.sname)
+        if state == "down" or detail is None or not isinstance(detail, dict):
+            raise PortalUnavailable(job)
+        metadata = detail.get("raw_payload", {})
+        fields["ligo_only"] = gwflow_ligo_only_from_metadata(metadata)
+
+        # Authoritative event link (B-3): write the resolved EventID, or None
+        # on a no-match so stale links are cleared and reruns converge. A lookup
+        # failure propagates to the command's failure path (abort visibly).
+        event = EventID.objects.filter(Q(trigger_id=job.sname) | Q(event_id=job.sname)).first()
+        fields["event_id"] = event
         return fields
 
     def _backoff(self, attempt):

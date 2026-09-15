@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.core.management import CommandError, call_command
 from django.test import override_settings
 
-from bilbyui.models import GWFlowJob
+from bilbyui.models import EventID, GWFlowJob
 from bilbyui.services.gwflow import LIBRARIES_CACHE_KEY, REVIEW_STATUSES_CACHE_KEY
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -31,6 +31,18 @@ def versions(*version_dicts):
     return list(version_dicts)
 
 
+def superevent(gps_time=100.0, state="preferred"):
+    return {
+        "raw_payload": {
+            "GraceDB": {
+                "Events": [
+                    {"GPSTime": gps_time, "State": state},
+                ]
+            }
+        }
+    }
+
+
 def make_job(sname="S230601ag", libraries=None, **kwargs):
     return GWFlowJob.objects.create(
         sname=sname,
@@ -52,13 +64,17 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
     def _run(self, *args, **kwargs):
         out = StringIO()
         err = StringIO()
+        kwargs.setdefault("pacing", 0)
         with mock.patch("bilbyui.management.commands.gwflow_es_backfill.get_versions") as m:
             m.side_effect = kwargs.pop("get_versions_side_effect", None)
             m.return_value = kwargs.pop("get_versions_return", (versions(current_version()), "live"))
-            try:
-                exit_code = call_command("gwflow_es_backfill", *args, stdout=out, stderr=err, **kwargs)
-            except CommandError as e:
-                exit_code = e.returncode
+            with mock.patch("bilbyui.management.commands.gwflow_es_backfill.get_superevent") as sm:
+                sm.side_effect = kwargs.pop("get_superevent_side_effect", None)
+                sm.return_value = kwargs.pop("get_superevent_return", (superevent(), "live"))
+                try:
+                    exit_code = call_command("gwflow_es_backfill", *args, stdout=out, stderr=err, **kwargs)
+                except CommandError as e:
+                    exit_code = e.returncode
         return exit_code, out.getvalue(), err.getvalue()
 
     def test_populated_libraries_persisted(self):
@@ -253,3 +269,96 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         make_job(sname="S230602ag")
         _, out, _ = self._run()
         self.assertIn("Last completed job ID:", out)
+
+    @override_settings(EMBARGO_START_TIME=1000.0)
+    def test_ligo_only_true_when_trigger_after_embargo_start(self):
+        job = make_job()
+        self._run(get_superevent_return=(superevent(gps_time=2000.0), "live"))
+        job.refresh_from_db()
+        self.assertTrue(job.ligo_only)
+
+    @override_settings(EMBARGO_START_TIME=1000.0)
+    def test_ligo_only_false_when_trigger_before_embargo_start(self):
+        job = make_job()
+        self._run(get_superevent_return=(superevent(gps_time=100.0), "live"))
+        job.refresh_from_db()
+        self.assertFalse(job.ligo_only)
+
+    @override_settings(EMBARGO_START_TIME=None)
+    def test_ligo_only_false_when_no_embargo(self):
+        job = make_job()
+        self._run(get_superevent_return=(superevent(gps_time=2000.0), "live"))
+        job.refresh_from_db()
+        self.assertFalse(job.ligo_only)
+
+    def test_event_id_linked_when_trigger_id_matches_sname(self):
+        job = make_job(sname="S230601ag")
+        EventID.objects.create(event_id="GW123456_123456", trigger_id="S230601ag")
+        self._run()
+        job.refresh_from_db()
+        self.assertIsNotNone(job.event_id)
+        self.assertEqual(job.event_id.event_id, "GW123456_123456")
+
+    def test_event_id_linked_when_event_id_matches_sname(self):
+        job = make_job(sname="GW123456_123456")
+        EventID.objects.create(event_id="GW123456_123456", trigger_id="S230601ag")
+        self._run()
+        job.refresh_from_db()
+        self.assertIsNotNone(job.event_id)
+        self.assertEqual(job.event_id.event_id, "GW123456_123456")
+
+    def test_event_id_not_linked_when_no_matching_event(self):
+        job = make_job(sname="S230601ag")
+        self._run()
+        job.refresh_from_db()
+        self.assertIsNone(job.event_id)
+
+    def test_superevent_down_records_failure_and_returns_1(self):
+        job = make_job()
+        exit_code, _, err = self._run(
+            get_superevent_return=(None, "down"),
+        )
+        job.refresh_from_db()
+        self.assertEqual(exit_code, 1)
+        self.assertIn("Permanent failure", err)
+
+    def test_stale_event_link_cleared_on_no_match(self):
+        stale = EventID.objects.create(event_id="GW999999_999999", trigger_id="S999999zz")
+        job = make_job(sname="S230601ag", event_id=stale)
+        self._run()
+        job.refresh_from_db()
+        self.assertIsNone(job.event_id)
+
+    def test_pacing_sleeps_between_rows(self):
+        make_job(sname="S230601ag")
+        with mock.patch("bilbyui.management.commands.gwflow_es_backfill.time.sleep") as m:
+            self._run(pacing=0.1)
+        self.assertTrue(any(call.args == (0.1,) for call in m.call_args_list))
+
+    def test_event_lookup_failure_propagates(self):
+        make_job(sname="S230601ag")
+        with mock.patch("bilbyui.models.EventID.objects.filter", side_effect=Exception("boom")):
+            with self.assertRaisesRegex(Exception, "boom"):
+                self._run()
+
+    def test_negative_pacing_returns_2(self):
+        out = StringIO()
+        err = StringIO()
+        with self.assertRaises(CommandError) as ctx:
+            call_command("gwflow_es_backfill", "--pacing", "-1", stdout=out, stderr=err)
+        self.assertEqual(ctx.exception.returncode, 2)
+        self.assertIn("--pacing must be >= 0", err.getvalue())
+
+    def test_dry_run_does_not_persist_new_fields(self):
+        stale = EventID.objects.create(event_id="GW999999_999999", trigger_id="S999999zz")
+        job = make_job(sname="S230601ag", ligo_only=True, event_id=stale)
+        self._run("--dry-run", get_superevent_return=(superevent(gps_time=100.0), "live"))
+        job.refresh_from_db()
+        self.assertTrue(job.ligo_only)
+        self.assertEqual(job.event_id, stale)
+
+    def test_reports_before_after_state_counts(self):
+        make_job(sname="S230601ag")
+        _, out, _ = self._run()
+        self.assertIn("State before:", out)
+        self.assertIn("State after:", out)
