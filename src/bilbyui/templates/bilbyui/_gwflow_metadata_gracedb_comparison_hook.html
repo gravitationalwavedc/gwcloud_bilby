@@ -1,0 +1,70 @@
+{% load gwflow_tags %}
+<div class="gwflow-comparison gwflow-comparison--gracedb"
+     data-comparison-kind="events"
+     data-column-count="{{ comparative_set.columns|length }}"
+     data-row-count="{{ comparative_set.rows|length }}"
+     x-data="{ columnsExpanded: false }">
+  <button type="button"
+          id="gracedb-comparison-columns-control"
+          class="btn btn-link px-0 mb-2"
+          style="display: none"
+          x-show="true"
+          @click="columnsExpanded = !columnsExpanded"
+          @keydown.enter.prevent="columnsExpanded = !columnsExpanded"
+          @keydown.space.prevent="columnsExpanded = !columnsExpanded"
+          aria-controls="gracedb-comparison-table"
+          aria-expanded="false"
+          :aria-expanded="columnsExpanded.toString()">
+    <span x-show="!columnsExpanded">Show all columns ⌄</span>
+    <span x-show="columnsExpanded">Show fewer columns ⌃</span>
+  </button>
+
+  <div role="region"
+       aria-label="GraceDB events, 12-column comparison"
+       tabindex="0"
+       class="table-scroll-region">
+    <table id="gracedb-comparison-table"
+           class="table table-sm table-bordered gwflow-comparison-table">
+      <caption>GraceDB events comparison, {{ comparative_set.rows|length }} record{{ comparative_set.rows|length|pluralize }}</caption>
+      <thead>
+        <tr>
+          {% for column in comparative_set.columns %}
+            <th scope="col"
+                data-column-key="{{ column.key }}"
+                data-default-visible="{{ column.default_visible|yesno:'true,false' }}"
+                {% if column.identity %}class="table-sticky-identity"{% endif %}
+                {% if not column.default_visible %}x-show="columnsExpanded"{% endif %}>
+              {{ column.label }}
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in comparative_set.rows %}
+          <tr>
+            {% for column in comparative_set.columns %}
+              {% for cell in row.cells %}
+                {% if forloop.counter0 == forloop.parentloop.counter0 %}
+                  {% if column.identity %}
+                    <th scope="row"
+                        class="table-sticky-identity"
+                        data-column-key="{{ column.key }}"
+                        data-metadata-path="{{ cell.path }}">
+                      {% format_value cell.raw_value cell.formatter %}
+                    </th>
+                  {% else %}
+                    <td data-column-key="{{ column.key }}"
+                        data-metadata-path="{{ cell.path }}"
+                        {% if not column.default_visible %}x-show="columnsExpanded"{% endif %}>
+                      {% format_value cell.raw_value cell.formatter %}
+                    </td>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

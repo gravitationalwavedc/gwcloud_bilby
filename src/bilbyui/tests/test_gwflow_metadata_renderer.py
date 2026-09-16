@@ -1,399 +1,204 @@
-"""Pure Django template tests for the A8 metadata renderer.
+"""Django template tests for the GWFlow metadata presentation renderer."""
 
-These tests exercise ``bilbyui/_gwflow_metadata.html`` (and its section
-includes) directly via ``render_to_string``. They do NOT touch the database,
-authentication, or Elasticsearch, so they deliberately do not extend
-``BilbyTestCase``.
-"""
+import re
 
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase
 
-from bilbyui.templatetags.gwflow_tags import get_item, human_value, sort_items
-
-FULL_PAYLOAD = {
-    "schema_version": "3",
-    "commit_sha": "abcdefgh12345678",
-    "commit_timestamp": "2024-01-02T03:04:05Z",
-    "info": {"notes": "Info notes here."},
-    "gracedb": {
-        "events": [
-            {
-                "uid": "E1",
-                "pipeline": "gstlal",
-                "state": "CREATED",
-                "gps_time": 1234567890.0,
-                "far": 1e-6,
-                "network_snr": 12.3,
-                "h1_snr": 9.1,
-                "l1_snr": 8.2,
-                "v1_snr": 5.0,
-                "pastro": 0.99,
-                "p_bbh": 0.9,
-                "p_bns": 0.05,
-                "p_nsbh": 0.05,
-                "mass_1": 35.0,
-                "mass_2": 30.0,
-            }
-        ],
-        "instruments": ["H1", "L1"],
-        "advok": "ADVOK-1",
-        "superevent_far": 1e-7,
-        "superevent_pastro": 0.999,
-        "notes": "GraceDB notes.",
-    },
-    "pe": {
-        "results": [
-            {
-                "uid": "PE1",
-                "inference_software": "bilby",
-                "waveform_approximant": "IMRPhenomXPHM",
-                "run_status": "complete",
-                "review_status": "reviewed",
-                "analysts": [{"name": "Alice"}, {"name": "Bob"}],
-                "reviewers": [{"name": "Carol"}],
-                "deprecated": True,
-                "notes": "PE notes.",
-            }
-        ],
-        "analysts": "Alice, Bob",
-        "reviewers": "Carol",
-        "status": "complete",
-        "notes": "PE section notes.",
-    },
-    "tgr": {
-        "imrct_analyses": [
-            {
-                "uid": "I1",
-                "description": "IMRCT analysis",
-                "analysis_software": "imrct",
-                "analysts": [{"name": "Alice"}],
-                "notes": "imrct notes",
-            }
-        ],
-        "tiger_analyses": [
-            {
-                "uid": "T1",
-                "description": "TIGER analysis",
-                "analysis_software": "tiger",
-                "analysts": [{"name": "Bob"}],
-                "notes": "tiger notes",
-            }
-        ],
-        "notes": "TGR notes.",
-    },
-    "lensing": {
-        "multiplet_groups": [{"companion_sname": "S230601ag"}],
-        "singlet_analyses": [{"uid": "S1"}],
-        "notes": "Lensing notes.",
-    },
-    "detchar": {
-        "glitch": "no",
-        "notes": "Detchar notes.",
-    },
-    "extreme_matter": {
-        "tidal_deformability": "400.0",
-        "notes": "Extreme matter notes.",
-    },
-    "cosmology": {
-        "hubble_constant": "67.4",
-        "notes": "Cosmology notes.",
-    },
-    "rnp": {
-        "has_remnant": "yes",
-        "notes": "RNP notes.",
-    },
-    "catalog_tracking": {
-        "catalog": "GWTC-3",
-        "notes": "Catalog tracking notes.",
-    },
-    "publications": {
-        "papers": [{"arxiv_id": "1234.5678", "title": "A paper"}],
-        "notes": "Publications notes.",
-    },
-}
-
-A7_CURRENT_PAYLOAD = {
-    "schema_version": "3",
-    "commit_sha": "abcdefgh12345678",
-    "commit_timestamp": "2024-01-02T03:04:05Z",
-    "gracedb": {"events": [{"uid": "E1", "pipeline": "gstlal"}]},
-}
-
-A9_HISTORICAL_PAYLOAD = {
-    "gracedb": {"events": [{"uid": "E1", "pipeline": "gstlal", "state": "CREATED"}]},
-}
+from bilbyui.services.gwflow_metadata import build_metadata_presentation
 
 
 class GWFlowMetadataRendererTests(SimpleTestCase):
-    """Direct template rendering tests for the A8 metadata renderer."""
+    """Exercise the root renderer using its presentation-model contract."""
 
-    def _render(self, payload, stale=False):
+    template_name = "bilbyui/_gwflow_metadata.html"
+
+    def render(self, payload, *, historical=False):
+        presentation = build_metadata_presentation(
+            payload,
+            historical=historical,
+        )
         return render_to_string(
-            "bilbyui/_gwflow_metadata.html",
-            {"payload": payload, "stale": stale},
+            self.template_name,
+            {
+                "presentation": presentation,
+                "historical": historical,
+            },
         )
 
-    def test_full_v3_fixture_renders_all_sections(self):
-        output = self._render(FULL_PAYLOAD)
+    def test_sections_render_in_policy_order_and_absent_sections_are_omitted(self):
+        payload = {
+            "publications": {"notes": "Publications notes"},
+            "rnp": {"notes": "RNP notes"},
+            "cosmology": {"notes": "Cosmology notes"},
+            "extreme_matter": {"notes": "Extreme matter notes"},
+            "detchar": {"notes": "Detchar notes"},
+            "lensing": {"notes": "Lensing notes"},
+            "tgr": {"notes": "TGR notes"},
+            "pe": {"notes": "PE notes"},
+            "gracedb": {"notes": "GraceDB notes"},
+            "info": {"notes": "Info notes"},
+            "catalog_tracking": {"notes": "Catalogue notes"},
+        }
 
-        for section in [
+        output = self.render(payload)
+        expected_headings = (
+            "Summary",
             "Info",
             "GraceDB",
-            "Parameter Estimation",
-            "TGR",
+            "Parameter estimation (PE)",
+            "Tests of general relativity (TGR)",
             "Lensing",
-            "Detchar",
-            "Extreme Matter",
+            "Detector characterisation (Detchar)",
+            "Extreme matter",
             "Cosmology",
-            "RNP",
-            "Catalog Tracking",
+            "Rapid neutron-star parameter estimation (RNP)",
+            "Catalogue tracking",
             "Publications",
-        ]:
-            self.assertIn(section, output)
-
-        for value in [
-            "Info notes here.",
-            "E1",
-            "gstlal",
-            "CREATED",
-            "1234567890.0",
-            "H1, L1",
-            "GraceDB notes.",
-            "PE1",
-            "bilby",
-            "IMRPhenomXPHM",
-            "complete",
-            "reviewed",
-            "Alice, Bob",
-            "Carol",
-            "PE section notes.",
-            "I1",
-            "T1",
-            "TGR notes.",
-            "S1",
-            "S230601ag",
-            "Lensing notes.",
-            "glitch",
-            "no",
-            "Detchar notes.",
-            "tidal_deformability",
-            "400.0",
-            "Extreme matter notes.",
-            "hubble_constant",
-            "67.4",
-            "Cosmology notes.",
-            "has_remnant",
-            "yes",
-            "RNP notes.",
-            "catalog",
-            "GWTC-3",
-            "Catalog tracking notes.",
-            "arxiv_id",
-            "1234.5678",
-            "A paper",
-            "Publications notes.",
-        ]:
-            self.assertIn(value, output)
-
-    def test_empty_dict_renders_fallback_without_cards(self):
-        output = self._render({})
-
-        self.assertNotIn("card", output)
-        self.assertIn("No metadata available.", output)
-
-    def test_none_sections_render_without_error_or_empty_cards(self):
-        output = self._render({"gracedb": None})
-
-        self.assertNotIn("card", output)
-        self.assertNotIn("No metadata available.", output)
-
-    def test_truthy_non_dict_sections_render_without_error(self):
-        output = self._render(
-            {
-                "tgr": "unexpected-string",
-                "detchar": ["item1", "item2"],
-                "gracedb": {"events": [{"uid": "E1", "pipeline": "gstlal"}]},
-            }
         )
 
-        self.assertIn("E1", output)
-        self.assertIn("gstlal", output)
-        self.assertNotIn("unexpected-string", output)
+        positions = [output.index(f">{heading}</h2>") for heading in expected_headings]
+        self.assertEqual(positions, sorted(positions))
+        self.assertNotIn("Additional metadata", output)
 
-    def test_generic_section_notes_rendered_once(self):
-        output = self._render({"detchar": {"foo": "bar", "notes": "Detchar notes."}})
-
-        self.assertEqual(output.count("Detchar notes."), 1)
-
-    def test_generic_section_list_of_scalars_rendered_as_text(self):
-        output = self._render({"detchar": {"instruments": ["H1", "L1"]}})
-
-        self.assertIn("H1, L1", output)
-        self.assertNotIn("['H1'", output)
-
-    def test_pe_section_level_analysts_list_of_dicts_rendered_as_names(self):
-        output = self._render(
+        partial = self.render(
             {
-                "pe": {
-                    "analysts": [{"name": "Alice"}, {"name": "Bob"}],
-                    "reviewers": [{"name": "Carol"}],
+                "gracedb": {"notes": "present"},
+                "publications": {"notes": "also present"},
+            }
+        )
+        self.assertIn(">Summary</h2>", partial)
+        self.assertIn(">GraceDB</h2>", partial)
+        self.assertIn(">Publications</h2>", partial)
+        for omitted in (
+            ">Info</h2>",
+            ">Parameter estimation (PE)</h2>",
+            ">Tests of general relativity (TGR)</h2>",
+            ">Lensing</h2>",
+            ">Detector characterisation (Detchar)</h2>",
+            ">Extreme matter</h2>",
+            ">Cosmology</h2>",
+            ">Rapid neutron-star parameter estimation (RNP)</h2>",
+            ">Catalogue tracking</h2>",
+        ):
+            self.assertNotIn(omitted, partial)
+
+    def test_present_falsy_values_are_not_replaced_by_missing_marker(self):
+        output = self.render(
+            {
+                "info": {
+                    "notes": None,
+                    "zero": 0,
+                    "false_value": False,
+                    "true_value": True,
+                    "empty_string": "",
                 }
             }
         )
 
-        self.assertIn("Analysts: Alice, Bob", output)
-        self.assertIn("Reviewers: Carol", output)
-        self.assertNotIn("[{'name'", output)
+        # Values render literally; None renders as an em dash. Template
+        # whitespace may surround <dd> content, so match flexibly.
+        self.assertRegex(output, r">\s*—\s*</dd>")
+        self.assertIn(">0</dd>", output)
+        self.assertIn(">✗ False</dd>", output)
+        self.assertIn(">✓ True</dd>", output)
+        self.assertIn(">&quot;&quot;</dd>", output)
+        self.assertEqual(len(re.findall(r">\s*—\s*</dd>", output)), 1)
 
-    def test_unknown_extra_keys_ignored(self):
-        output = self._render(
+    def test_disclosure_has_count_and_accessible_control(self):
+        output = self.render(
             {
-                "sname": "S230601ag",
-                "foo": "bar",
-                "gracedb": {"events": [{"uid": "E1", "pipeline": "gstlal"}]},
+                "info": {
+                    "notes": "Visible detail",
+                    "remaining": {
+                        "first": "one",
+                        "second": "two",
+                        "third": "three",
+                    },
+                }
             }
         )
 
-        self.assertNotIn("foo", output)
-        self.assertNotIn("bar", output)
-        self.assertNotIn("S230601ag", output)
-        self.assertIn("E1", output)
-        self.assertIn("gstlal", output)
+        self.assertIn("Show all 3 fields", output)
+        self.assertIn('aria-expanded="false"', output)
+        self.assertIn(':aria-expanded="open.toString()"', output)
+        self.assertIn('aria-controls="metadata-disclosure-info"', output)
+        self.assertIn('id="metadata-disclosure-info"', output)
 
-    def test_analyst_names_joined_with_commas(self):
-        output = self._render(
+        no_disclosure = self.render({"info": {"notes": "Only detail"}})
+        self.assertNotIn("Show all 0 fields", no_disclosure)
+        self.assertNotIn("metadata-disclosure", no_disclosure)
+
+    def test_historical_banner_only_changes_historical_chrome(self):
+        payload = {
+            "info": {"notes": "Stable metadata body"},
+            "gracedb": {"notes": "Stable GraceDB body"},
+        }
+        current = self.render(payload)
+        historical = self.render(payload, historical=True)
+
+        banner = "Viewing historical metadata — not the current record"
+        self.assertNotIn(banner, current)
+        self.assertNotIn("gwflow-metadata--historical", current)
+        self.assertIn(banner, historical)
+        self.assertIn("gwflow-metadata--historical", historical)
+
+        current_body = current[current.index('<section class="card') :]
+        historical_body = historical[historical.index('<section class="card') :]
+        self.assertEqual(current_body, historical_body)
+
+    def test_unsafe_values_are_html_escaped(self):
+        unsafe = '<script>alert("unsafe")</script><b>bold</b>'
+        output = self.render(
             {
+                "info": {
+                    "notes": unsafe,
+                    "unregistered": unsafe,
+                }
+            }
+        )
+
+        self.assertNotIn("<script>", output)
+        self.assertNotIn("<b>bold</b>", output)
+        self.assertIn("&lt;script&gt;", output)
+        self.assertIn("&lt;b&gt;bold&lt;/b&gt;", output)
+
+    def test_comparative_sets_render_accessible_real_tables(self):
+        output = self.render(
+            {
+                "gracedb": {
+                    "events": [
+                        {
+                            "uid": "G123",
+                            "pipeline": "gstlal",
+                            "state": "ready",
+                        }
+                    ]
+                },
                 "pe": {
                     "results": [
                         {
-                            "uid": "PE1",
-                            "analysts": [{"name": "Alice"}, {"name": "Bob"}, {"name": "Carol"}],
-                            "reviewers": [{"name": "Dave"}],
+                            "uid": "PE123",
+                            "inference_software": "bilby",
+                            "run_status": "complete",
                         }
                     ]
-                }
+                },
             }
         )
 
-        self.assertIn("Alice, Bob, Carol", output)
-        self.assertIn("Dave", output)
-
-    def test_deprecated_badge_rendered(self):
-        output = self._render(
-            {
-                "pe": {
-                    "results": [
-                        {
-                            "uid": "PE1",
-                            "analysts": [{"name": "Alice"}],
-                            "deprecated": True,
-                        }
-                    ]
-                }
-            }
+        self.assertEqual(output.count("<table"), 2)
+        self.assertEqual(output.count("<caption>"), 2)
+        self.assertEqual(output.count('scope="col"'), 20)
+        self.assertEqual(output.count('role="region"'), 2)
+        self.assertEqual(output.count("table-scroll-region"), 2)
+        self.assertIn(
+            'aria-label="GraceDB events, 12-column comparison"',
+            output,
         )
-
-        self.assertIn("deprecated", output)
-        self.assertIn("badge-warning", output)
-
-    def test_same_include_renders_current_and_historical_shapes(self):
-        current = self._render(A7_CURRENT_PAYLOAD)
-        historical = self._render(A9_HISTORICAL_PAYLOAD)
-
-        self.assertIn("E1", current)
-        self.assertIn("gstlal", current)
-        self.assertIn("E1", historical)
-        self.assertIn("gstlal", historical)
-
-    def test_stale_flag_does_not_render_note_in_metadata_pane(self):
-        # The stale notice now lives in the full-page context strip (issue #53);
-        # the metadata pane itself renders content without a cached-copy note.
-        stale_output = self._render({"gracedb": {"notes": "x"}}, stale=True)
-        live_output = self._render({"gracedb": {"notes": "x"}}, stale=False)
-
-        self.assertNotIn("Showing cached copy.", stale_output)
-        self.assertNotIn("Showing cached copy.", live_output)
-        self.assertIn("x", stale_output)
-        self.assertIn("x", live_output)
-
-    def test_tgr_list_keys_rendered_in_alphabetical_order(self):
-        output = self._render(
-            {
-                "tgr": {
-                    "tiger_analyses": [
-                        {
-                            "uid": "T1",
-                            "description": "TIGER analysis",
-                            "analysis_software": "tiger",
-                            "analysts": [{"name": "Bob"}],
-                        }
-                    ],
-                    "imrct_analyses": [
-                        {
-                            "uid": "I1",
-                            "description": "IMRCT analysis",
-                            "analysis_software": "imrct",
-                            "analysts": [{"name": "Alice"}],
-                        }
-                    ],
-                    "notes": "TGR notes.",
-                }
-            }
+        self.assertIn(
+            'aria-label="Parameter estimation results, 8-column comparison"',
+            output,
         )
-
-        self.assertLess(
-            output.index("imrct_analyses"),
-            output.index("tiger_analyses"),
-        )
-
-    def test_metadata_pane_does_not_render_provenance_triple(self):
-        # The provenance triple (schema_version + short commit_sha +
-        # commit_timestamp) now appears only in the context strip (issue #53),
-        # never in the metadata pane.
-        output = self._render(
-            {
-                "schema_version": "3",
-                "commit_sha": "abcdefgh12345678",
-                "commit_timestamp": "2024-01-02T03:04:05Z",
-            }
-        )
-
-        self.assertNotIn("v3", output)
-        self.assertNotIn("abcdefgh", output)
-        self.assertNotIn("2024-01-02T03:04:05Z", output)
-
-
-class TestGWFlowTagsFilters(SimpleTestCase):
-    def test_get_item_returns_value_for_existing_key(self):
-        self.assertEqual(get_item({"a": 1}, "a"), 1)
-
-    def test_get_item_returns_none_for_missing_key(self):
-        self.assertIsNone(get_item({"a": 1}, "b"))
-
-    def test_get_item_returns_none_for_non_dict(self):
-        self.assertIsNone(get_item(None, "a"))
-        self.assertIsNone(get_item([1, 2], "a"))
-        self.assertIsNone(get_item("string", "a"))
-
-    def test_sort_items_sorts_dict_items(self):
-        self.assertEqual(sort_items({"b": 2, "a": 1}), [("a", 1), ("b", 2)])
-
-    def test_sort_items_returns_empty_for_non_dict(self):
-        self.assertEqual(sort_items("string"), [])
-        self.assertEqual(sort_items(None), [])
-        self.assertEqual(sort_items([1, 2]), [])
-
-    def test_human_value_passes_scalars_through(self):
-        self.assertEqual(human_value("text"), "text")
-        self.assertEqual(human_value(5), 5)
-
-    def test_human_value_returns_none_for_none_and_dict(self):
-        self.assertIsNone(human_value(None))
-        self.assertIsNone(human_value({"a": 1}))
-
-    def test_human_value_joins_list_of_dict_names(self):
-        self.assertEqual(human_value([{"name": "Alice"}, {"name": "Bob"}]), "Alice, Bob")
-
-    def test_human_value_joins_list_of_scalars(self):
-        self.assertEqual(human_value(["H1", "L1"]), "H1, L1")
+        self.assertIn("GraceDB events comparison, 1 record", output)
+        self.assertIn("Parameter estimation results comparison, 1 record", output)

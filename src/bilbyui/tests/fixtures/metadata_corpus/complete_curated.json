@@ -1,0 +1,91 @@
+{
+  "info": {
+    "status": "ready",
+    "notes": {
+      "created_at": "2026-09-15T23:10:00Z",
+      "contact": {"display_name": "Example Analyst", "orcid": "0000-0000-0000-0000"},
+      "public_url": "https://example.invalid/gw/event",
+      "zero": 0,
+      "false_value": false,
+      "true_value": true,
+      "empty_text": "",
+      "none_value": null,
+      "empty_list": [],
+      "empty_mapping": {},
+      "nested": {
+        "level_two": {
+          "scientific": {"value": 1.2e-8, "unit": "Hz"},
+          "scalar_list": ["H1", "L1", "V1"],
+          "record_list": [
+            {"kind": "review", "status": "complete"},
+            {"kind": "validation", "probability": 0.99}
+          ],
+          "heterogeneous": ["text", 0, false, {"state": "unknown"}]
+        }
+      }
+    }
+  },
+  "gracedb": {
+    "instruments": ["H1", "L1", "V1"],
+    "advok": "approved",
+    "superevent_far": {"value": 2.5e-9, "unit": "Hz"},
+    "superevent_pastro": 0.97,
+    "notes": "Sanitised GraceDB metadata",
+    "events": [
+      {
+        "uid": "G-SANITISED-001",
+        "pipeline": "gstlal",
+        "state": "preferred",
+        "gps_time": 1450000000.25,
+        "far": {"value": 1.1e-10, "unit": "Hz"},
+        "network_snr": 18.4,
+        "pastro": 0.98,
+        "p_bbh": 0.72,
+        "p_bns": 0.18,
+        "p_nsbh": 0.08,
+        "mass_1": {"value": 35.2, "unit": "M_sun"},
+        "mass_2": {"value": 28.1, "unit": "M_sun"}
+      }
+    ]
+  },
+  "pe": {
+    "status": "complete",
+    "analysts": [{"display_name": "Example Analyst"}],
+    "reviewers": [{"display_name": "Example Reviewer"}],
+    "notes": "Sanitised parameter-estimation metadata",
+    "results": [
+      {
+        "uid": "PE-SANITISED-001",
+        "inference_software": "bilby",
+        "waveform_approximant": "IMRPhenomXPHM",
+        "run_status": "complete",
+        "review_status": "reviewed",
+        "analysts": ["Example Analyst"],
+        "reviewers": ["Example Reviewer"],
+        "deprecated": false
+      }
+    ]
+  },
+  "tgr": {
+    "notes": "Sanitised tests-of-general-relativity metadata",
+    "results": [
+      {
+        "uid": "TGR-SANITISED-001",
+        "analysis_software": "example-tgr",
+        "analysts": ["Example Analyst"],
+        "description": "Consistency analysis"
+      }
+    ]
+  },
+  "lensing": {
+    "notes": "Sanitised lensing metadata",
+    "multiplet_groups": [{"companion_sname": "S-SANITISED-002"}],
+    "singlet_analyses": [{"uid": "LENS-SANITISED-001"}]
+  },
+  "detchar": {"notes": "Detector state reviewed"},
+  "extreme_matter": {"notes": "Equation-of-state follow-up pending"},
+  "cosmology": {"notes": "Cosmology-ready"},
+  "rnp": {"notes": "Rapid estimate complete"},
+  "catalog_tracking": {"notes": "Included in sanitised catalogue"},
+  "publications": {"notes": "No publication identifier assigned"}
+}

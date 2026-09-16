@@ -1,0 +1,62 @@
+{% load gwflow_tags %}
+<section class="card gw-form-card mb-4{% if section.fallback %} gwflow-metadata-section--fallback{% endif %}"
+         aria-labelledby="metadata-section-{{ section.id|slugify }}">
+  <div class="card-header">
+    <h2 id="metadata-section-{{ section.id|slugify }}" class="h5 mb-0">{{ section.heading }}</h2>
+  </div>
+  <div class="card-body">
+    {% if section.summary %}
+      <h3 class="h6">Key fields</h3>
+      <dl class="row">
+        {% for field in section.summary %}
+          <dt class="col-sm-4">{{ field.label }}</dt>
+          <dd class="col-sm-8" data-metadata-path="{{ field.path }}">
+            {% format_value field.raw_value field.formatter %}
+          </dd>
+        {% endfor %}
+      </dl>
+    {% endif %}
+
+    {% if section.detail %}
+      <h3 class="h6">Details</h3>
+      <dl class="row{% if not section.disclosure and not section.comparative_sets %} mb-0{% endif %}">
+        {% for field in section.detail %}
+          <dt class="col-sm-4">{{ field.label }}</dt>
+          <dd class="col-sm-8" data-metadata-path="{{ field.path }}">
+            {% format_value field.raw_value field.formatter %}
+          </dd>
+        {% endfor %}
+      </dl>
+    {% endif %}
+
+    {% for comparative_set in section.comparative_sets %}
+      {% if comparative_set.kind == "events" %}
+        {% include "bilbyui/_gwflow_metadata_gracedb_comparison_hook.html" with comparative_set=comparative_set only %}
+      {% elif comparative_set.kind == "results" %}
+        {% include "bilbyui/_gwflow_metadata_pe_comparison_hook.html" with comparative_set=comparative_set only %}
+      {% endif %}
+    {% endfor %}
+
+    {% if section.disclosed_leaf_count %}
+      {% with panel_id="metadata-disclosure-"|add:section.id|slugify %}
+        <div class="metadata-disclosure mt-3" x-data="{ open: false }">
+          <button type="button"
+                  class="btn btn-link px-0"
+                  style="display: none"
+                  x-show="true"
+                  @click="open = !open"
+                  :aria-expanded="open.toString()"
+                  aria-expanded="false"
+                  aria-controls="{{ panel_id }}"
+                  x-text="open ? 'Hide {{ section.disclosed_leaf_count }} fields' : 'Show all {{ section.disclosed_leaf_count }} fields'">
+            Show all {{ section.disclosed_leaf_count }} fields
+          </button>
+          <div id="{{ panel_id }}" :hidden="!open">
+            <h3 class="sr-only">All remaining fields</h3>
+            {% include "bilbyui/_gwflow_metadata_nodes.html" with nodes=section.disclosure level=3 only %}
+          </div>
+        </div>
+      {% endwith %}
+    {% endif %}
+  </div>
+</section>
