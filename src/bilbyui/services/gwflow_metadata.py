@@ -271,9 +271,7 @@ def _iter_leaf_paths(value: Any, path: str = "") -> tuple[str, ...]:
                 walk(nested, nested_path)
             return
 
-        if isinstance(child, Sequence) and not isinstance(
-            child, (str, bytes, bytearray)
-        ):
+        if isinstance(child, Sequence) and not isinstance(child, (str, bytes, bytearray)):
             sequence_path = f"{child_path}[]"
             for nested in child:
                 walk(nested, sequence_path)
@@ -306,10 +304,8 @@ def _reset_unmapped_warning_cache() -> None:
     _emit_unmapped_metadata_warning.cache_clear()
 
 
-def warn_unmapped_metadata_leaves(
-    payload: Mapping[str, Any], *, sname: Any
-) -> None:
-    """Warn once per process-local sname and unmapped canonical leaf path."""
+def warn_unmapped_metadata_leaves(payload: Mapping[str, Any], *, sname: Any) -> None:
+    """Rate-limit warnings by process-local sname and canonical leaf path."""
 
     if not isinstance(payload, Mapping):
         return

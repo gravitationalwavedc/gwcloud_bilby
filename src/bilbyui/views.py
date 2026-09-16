@@ -1674,8 +1674,8 @@ def _render_gwflow_metadata_section(request, sname):
         )
     presentation = None
     if isinstance(data, dict):
-        warn_unmapped_metadata_leaves(data, sname=sname)
         presentation = build_metadata_presentation(data)
+        warn_unmapped_metadata_leaves(data, sname=sname)
 
     return (
         TemplateResponse(
@@ -1743,8 +1743,8 @@ def gwflow_job_history_version_partial(request, sname, history_id):
         raise Http404("Version not found")
     presentation = None
     if isinstance(data, dict):
-        warn_unmapped_metadata_leaves(data, sname=sname)
         presentation = build_metadata_presentation(data, historical=True)
+        warn_unmapped_metadata_leaves(data, sname=sname)
 
     return TemplateResponse(
         request,

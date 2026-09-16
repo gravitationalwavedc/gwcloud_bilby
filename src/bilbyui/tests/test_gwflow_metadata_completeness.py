@@ -135,9 +135,7 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
     @mock.patch("bilbyui.views.warn_unmapped_metadata_leaves")
     @mock.patch("bilbyui.views.get_superevent")
     @mock.patch("bilbyui.views._get_gwflow_job_or_404")
-    def test_current_path_warns_immediately_before_build(
-        self, get_job, get_superevent, warn, build
-    ):
+    def test_current_path_warns_after_build(self, get_job, get_superevent, warn, build):
         payload = {"info": {"upstream": "visible"}}
         get_job.return_value = mock.Mock()
         get_superevent.return_value = (payload, "live")
@@ -148,7 +146,7 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
         response, stale = _render_gwflow_metadata_section(self.request, "S-CURRENT")
 
         self.assertFalse(stale)
-        self.assertEqual([event[0] for event in events], ["warn", "build"])
+        self.assertEqual([event[0] for event in events], ["build", "warn"])
         warn.assert_called_once_with(payload, sname="S-CURRENT")
         self.assertEqual(response.context_data["payload"], payload)
 
@@ -156,9 +154,7 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
     @mock.patch("bilbyui.views.warn_unmapped_metadata_leaves")
     @mock.patch("bilbyui.views.get_version")
     @mock.patch("bilbyui.views._get_gwflow_job_or_404")
-    def test_historical_path_warns_immediately_before_build(
-        self, get_job, get_version, warn, build
-    ):
+    def test_historical_path_warns_after_build(self, get_job, get_version, warn, build):
         payload = {"info": {"upstream": "visible"}}
         get_job.return_value = mock.Mock()
         get_version.return_value = (payload, "live")
@@ -166,11 +162,9 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
         warn.side_effect = lambda *args, **kwargs: events.append(("warn", args, kwargs))
         build.side_effect = lambda *args, **kwargs: events.append(("build", args, kwargs)) or mock.Mock()
 
-        response = gwflow_job_history_version_partial(
-            self.request, "S-HISTORY", "version-1"
-        )
+        response = gwflow_job_history_version_partial(self.request, "S-HISTORY", "version-1")
 
-        self.assertEqual([event[0] for event in events], ["warn", "build"])
+        self.assertEqual([event[0] for event in events], ["build", "warn"])
         warn.assert_called_once_with(payload, sname="S-HISTORY")
         build.assert_called_once_with(payload, historical=True)
         self.assertEqual(response.context_data["payload"], payload)

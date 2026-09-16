@@ -295,12 +295,7 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
                 "gracedb.events[].new_metric",
             ],
         )
-        self.assertTrue(
-            all(
-                record.getMessage() == "unmapped gwflow metadata leaf"
-                for record in cm.records
-            )
-        )
+        self.assertTrue(all(record.getMessage() == "unmapped gwflow metadata leaf" for record in cm.records))
         self.assertNotIn("UX8", "\n".join(cm.output))
 
     def test_historical_context_does_not_change_scientific_body(self):
