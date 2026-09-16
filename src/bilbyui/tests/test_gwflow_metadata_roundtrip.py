@@ -10,7 +10,9 @@ from django.test import SimpleTestCase
 from bilbyui.services.gwflow_metadata import (
     FIELD_REGISTRY,
     KNOWN_KEYS,
+    _reset_unmapped_warning_cache,
     build_metadata_presentation,
+    warn_unmapped_metadata_leaves,
 )
 from bilbyui.templatetags.gwflow_tags import format_value
 
@@ -282,12 +284,19 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
             },
             "UnmappedProbe": {"deep": {"sentinel": "UX8"}},
         }
+        _reset_unmapped_warning_cache()
         with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as cm:
-            build_metadata_presentation(payload)
-        combined = "\n".join(cm.output)
-        self.assertEqual(combined.count("gracedb.events[].new_metric"), 1)
-        self.assertIn("UnmappedProbe.deep.sentinel", combined)
-        self.assertNotIn("UX8", combined)
+            warn_unmapped_metadata_leaves(payload, sname="S-TEST")
+        _reset_unmapped_warning_cache()
+        self.assertEqual(
+            [record.path for record in cm.records],
+            [
+                "UnmappedProbe.deep.sentinel",
+                "gracedb.events[].new_metric",
+            ],
+        )
+        self.assertTrue(all(record.getMessage() == "unmapped gwflow metadata leaf" for record in cm.records))
+        self.assertNotIn("UX8", "\n".join(cm.output))
 
     def test_historical_context_does_not_change_scientific_body(self):
         payload = load_fixture("historical_curated.json")

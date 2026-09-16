@@ -9,8 +9,9 @@ not matched by wildcards, so callers can detect upstream schema drift.
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 from types import MappingProxyType
 from typing import Any, Literal
 
@@ -258,33 +259,61 @@ def KNOWN_KEYS() -> frozenset[str]:
     return frozenset(f"{section}.{field.key}" for section in SECTION_ORDER for field in FIELD_REGISTRY[section])
 
 
-def _canonical_leaf_paths(value: Any, path: str = "") -> Any:
-    """Yield canonical scalar leaf paths, using ``[]`` for list indices."""
-    if isinstance(value, Mapping):
-        for key, child in value.items():
-            child_path = f"{path}.{key}" if path else str(key)
-            yield from _canonical_leaf_paths(child, child_path)
-        return
-    if isinstance(value, list):
-        list_path = f"{path}[]"
-        for child in value:
-            yield from _canonical_leaf_paths(child, list_path)
-        return
-    yield path
+def _iter_leaf_paths(value: Any, path: str = "") -> tuple[str, ...]:
+    """Return sorted, deduplicated canonical scalar leaf paths."""
 
+    paths: set[str] = set()
 
-def _has_registered_owner(path: str, known: frozenset[str]) -> bool:
-    """Return True if ``path`` is, or descends from, a registered leaf path."""
-    return any(
-        path == candidate or path.startswith(f"{candidate}.") or path.startswith(f"{candidate}[]")
-        for candidate in known
-    )
+    def walk(child: Any, child_path: str) -> None:
+        if isinstance(child, Mapping):
+            for key, nested in child.items():
+                nested_path = f"{child_path}.{key}" if child_path else str(key)
+                walk(nested, nested_path)
+            return
+
+        if isinstance(child, Sequence) and not isinstance(child, (str, bytes, bytearray)):
+            sequence_path = f"{child_path}[]"
+            for nested in child:
+                walk(nested, sequence_path)
+            return
+
+        if child_path:
+            paths.add(child_path)
+
+    walk(value, path)
+    return tuple(sorted(paths))
 
 
 def _unmapped_paths(payload: Mapping[str, Any]) -> tuple[str, ...]:
-    """Return sorted, deduplicated canonical paths not covered by the registry."""
-    known = KNOWN_KEYS()
-    return tuple(sorted({path for path in _canonical_leaf_paths(payload) if not _has_registered_owner(path, known)}))
+    """Return canonical scalar leaf paths absent from the registry."""
+
+    return tuple(sorted(set(_iter_leaf_paths(payload)) - KNOWN_KEYS()))
+
+
+@lru_cache(maxsize=512)
+def _emit_unmapped_metadata_warning(sname: str, path: str) -> None:
+    logger.warning(
+        "unmapped gwflow metadata leaf",
+        extra={"path": path, "sname": sname},
+    )
+
+
+def _reset_unmapped_warning_cache() -> None:
+    """Clear process-local warning suppression state for isolated tests."""
+
+    _emit_unmapped_metadata_warning.cache_clear()
+
+
+def warn_unmapped_metadata_leaves(payload: Mapping[str, Any], *, sname: Any) -> None:
+    """Rate-limit warnings by process-local sname and canonical leaf path."""
+
+    if not isinstance(payload, Mapping):
+        return
+
+    normalised_sname = str(sname).strip() if sname is not None else ""
+    normalised_sname = normalised_sname or "unknown"
+    for path in _unmapped_paths(payload):
+        _emit_unmapped_metadata_warning(normalised_sname, path)
 
 
 _MISSING = object()
@@ -570,13 +599,6 @@ def build_metadata_presentation(payload: Mapping[str, Any], *, historical: bool 
                 data_shape=node.shape,
                 fallback=True,
             )
-        )
-
-    unmapped = _unmapped_paths(payload)
-    if unmapped:
-        logger.warning(
-            "unmapped gwflow metadata leaf paths: %s",
-            ", ".join(unmapped),
         )
 
     return MetadataPresentation(bool(historical), tuple(root_summary), tuple(sections))
