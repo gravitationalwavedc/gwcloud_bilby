@@ -272,6 +272,23 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
         ):
             assert_fixture_complete(self, payload)
 
+    def test_unknown_leaves_in_comparative_records_render_in_disclosure(self):
+        payload = {
+            "gracedb": {
+                "events": [
+                    {"uid": "E1", "new_metric": 5, "new_nested": {"sentinel": "UX8"}}
+                ]
+            },
+            "pe": {"results": [{"uid": "P1", "extra": {"deep": "PEUX8"}}]},
+        }
+        presentation, _html, parsed = rendered_fixture(payload)
+        paths = presentation_paths(presentation)
+        self.assertGreater(paths["gracedb.events[0].new_metric"], 0)
+        self.assertGreater(paths["gracedb.events[0].new_nested"], 0)
+        self.assertGreater(paths["pe.results[0].extra"], 0)
+        self.assertIn("UX8", parsed.text)
+        self.assertIn("PEUX8", parsed.text)
+
     def test_historical_context_does_not_change_scientific_body(self):
         payload = load_fixture("historical_curated.json")
         current, _current_html, current_parser = rendered_fixture(payload)

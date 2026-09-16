@@ -38,7 +38,6 @@ class FieldSpec:
     label: str
     formatter: str
     tier: Tier
-    group: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +45,6 @@ class PresentationField:
     path: str
     label: str
     raw_value: Any
-    formatted_value: Any
     formatter: str
     tier: str
 
@@ -333,7 +331,6 @@ def _field(section: str, spec: FieldSpec, value: Any) -> PresentationField:
         path=f"{section}.{spec.key}",
         label=spec.label,
         raw_value=value,
-        formatted_value=value,
         formatter=spec.formatter,
         tier=spec.tier,
     )
@@ -341,6 +338,30 @@ def _field(section: str, spec: FieldSpec, value: Any) -> PresentationField:
 
 def _top_registered_key(path: str) -> str:
     return path.split(".", 1)[0].removesuffix("[]")
+
+
+def _comparative_residual(
+    section_id: str,
+    record_key: str,
+    records: list,
+    registered_keys: frozenset[str],
+) -> tuple[DisclosureNode, ...]:
+    """Preserve unregistered leaves inside comparative records as disclosure nodes."""
+    nodes: list[DisclosureNode] = []
+    for index, record in enumerate(records):
+        if not isinstance(record, Mapping):
+            continue
+        for key, child in record.items():
+            if str(key) in registered_keys:
+                continue
+            nodes.append(
+                _node(
+                    f"{section_id}.{record_key}[{index}].{key}",
+                    _raw_label(str(key)),
+                    child,
+                )
+            )
+    return tuple(nodes)
 
 
 def _comparative(
@@ -425,6 +446,19 @@ def _build_section(
         )
         if table is not None:
             comparative_sets.append(table)
+            records = mapping.get("events")
+            if isinstance(records, list):
+                disclosure.extend(
+                    _comparative_residual(
+                        section_id,
+                        "events",
+                        records,
+                        frozenset(
+                            spec.key.rsplit(".", 1)[-1]
+                            for spec in _GRACEDB_EVENT_FIELDS
+                        ),
+                    )
+                )
     elif section_id == "pe":
         table = _comparative(
             section_id,
@@ -435,6 +469,19 @@ def _build_section(
         )
         if table is not None:
             comparative_sets.append(table)
+            records = mapping.get("results")
+            if isinstance(records, list):
+                disclosure.extend(
+                    _comparative_residual(
+                        section_id,
+                        "results",
+                        records,
+                        frozenset(
+                            spec.key.rsplit(".", 1)[-1]
+                            for spec in _PE_RESULT_FIELDS
+                        ),
+                    )
+                )
 
     for key, child in mapping.items():
         if str(key) not in consumed_top:

@@ -1740,7 +1740,11 @@ def gwflow_job_history_version_partial(request, sname, history_id):
             "job": job,
             "history_id": history_id,
             "payload": data,
-            "presentation": build_metadata_presentation(data) if isinstance(data, dict) else None,
+            "presentation": (
+                build_metadata_presentation(data, historical=True)
+                if isinstance(data, dict)
+                else None
+            ),
             "stale": state == "stale",
         },
     )

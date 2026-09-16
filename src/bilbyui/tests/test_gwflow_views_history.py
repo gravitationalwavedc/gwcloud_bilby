@@ -224,6 +224,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.assertContains(response, "v3")
         self.assertContains(response, "E99")
         self.assertContains(response, "pycbc")
+        self.assertContains(response, "Viewing historical metadata")
         self.assertNotContains(response, "vv3")
         self.assertNotContains(response, "Showing cached copy")
         self.assertNotContains(response, "<!doctype html>")
@@ -247,6 +248,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "E99")
         self.assertContains(response, "pycbc")
+        self.assertContains(response, "Viewing historical metadata")
         self.assertNotContains(response, "Showing cached copy")
         self.assertNotContains(response, "<!doctype html>")
 
