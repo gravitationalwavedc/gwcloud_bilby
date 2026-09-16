@@ -1,0 +1,23 @@
+{% load gwflow_tags %}
+{% if nodes %}
+  <dl class="metadata-node-list mb-0">
+    {% for node in nodes %}
+      {% if node.shape == "scalar" %}
+        <dt>{{ node.label }}</dt>
+        <dd data-metadata-path="{{ node.path }}">{{ node.value|text }}</dd>
+      {% elif node.shape == "scalar-list" and not node.children %}
+        <dt>{{ node.label }}</dt>
+        <dd data-metadata-path="{{ node.path }}">{{ node.value|text }}</dd>
+      {% else %}
+        <dt class="metadata-group-label">{{ node.label }}</dt>
+        <dd class="metadata-group" data-metadata-path="{{ node.path }}">
+          {% if node.children %}
+            {% include "bilbyui/_gwflow_metadata_nodes.html" with nodes=node.children level=level only %}
+          {% else %}
+            {{ node.value|text }}
+          {% endif %}
+        </dd>
+      {% endif %}
+    {% endfor %}
+  </dl>
+{% endif %}

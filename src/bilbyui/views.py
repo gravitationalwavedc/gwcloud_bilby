@@ -54,6 +54,7 @@ from .services.gwflow import (
     list_gwflow_filter_options,
     list_gwflow_jobs,
 )
+from .services.gwflow_metadata import build_metadata_presentation
 from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
 from .types import GWFlowPendingFile
@@ -1674,6 +1675,7 @@ def _render_gwflow_metadata_section(request, sname):
             "bilbyui/_gwflow_metadata.html",
             {
                 "payload": data,
+                "presentation": build_metadata_presentation(data) if isinstance(data, dict) else None,
                 "stale": stale,
             },
         ),
@@ -1738,6 +1740,7 @@ def gwflow_job_history_version_partial(request, sname, history_id):
             "job": job,
             "history_id": history_id,
             "payload": data,
+            "presentation": (build_metadata_presentation(data, historical=True) if isinstance(data, dict) else None),
             "stale": state == "stale",
         },
     )

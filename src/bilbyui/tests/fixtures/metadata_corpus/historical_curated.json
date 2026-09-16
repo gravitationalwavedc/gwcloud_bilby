@@ -1,0 +1,29 @@
+{
+  "info": {
+    "status": "archived",
+    "notes": "Sanitised historical metadata snapshot"
+  },
+  "gracedb": {
+    "instruments": ["H1", "L1"],
+    "advok": "unknown",
+    "superevent_far": 0,
+    "superevent_pastro": 0,
+    "notes": null,
+    "events": [
+      {
+        "uid": "G-HISTORICAL-001",
+        "pipeline": "pycbc",
+        "state": "archived",
+        "gps_time": 1234567890,
+        "far": 0,
+        "network_snr": 0,
+        "pastro": 0,
+        "p_bbh": 0,
+        "p_bns": 1,
+        "p_nsbh": 0,
+        "mass_1": {"value": 0, "unit": "M_sun"},
+        "mass_2": {"value": 0, "unit": "M_sun"}
+      }
+    ]
+  }
+}
