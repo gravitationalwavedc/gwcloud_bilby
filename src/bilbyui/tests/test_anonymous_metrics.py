@@ -225,14 +225,15 @@ class TestAnonymousMetrics(LiveServerTestCase):
         info.path.prev = None
         info.path.key = "publicBilbyJobs"
 
-        with mock.patch(
-            "bilbyui.utils.anonymous_metrics.AnonymousMetrics.objects.create",
-            side_effect=RuntimeError("DB error"),
-        ), self.assertLogs("bilbyui.utils.anonymous_metrics", level="WARNING") as logs:
+        with (
+            mock.patch(
+                "bilbyui.utils.anonymous_metrics.AnonymousMetrics.objects.create",
+                side_effect=RuntimeError("DB error"),
+            ),
+            self.assertLogs("bilbyui.utils.anonymous_metrics", level="WARNING") as logs,
+        ):
             result = middleware.resolve(next_func, None, info, first=50)
 
         next_func.assert_called_once_with(None, info, first=50)
         self.assertEqual(result, "result")
-        self.assertTrue(
-            any("Failed to record anonymous metrics" in log for log in logs.output)
-        )
+        self.assertTrue(any("Failed to record anonymous metrics" in log for log in logs.output))
