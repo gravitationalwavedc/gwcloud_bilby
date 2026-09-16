@@ -616,6 +616,16 @@ class TestGWFlowServices(BilbyTestCase):
         # Explicit "eq" relation is exact.
         self.assertEqual(_extract_es_total({"hits": {"total": {"value": 10000, "relation": "eq"}}}), 10000)
 
+    def test_extract_es_total_defensive_fallbacks(self):
+        from bilbyui.services.jobs import _extract_es_total
+
+        # An unparseable string total falls back to 0.
+        self.assertEqual(_extract_es_total({"hits": {"total": "not-a-number"}}), 0)
+        # A dict total without a "value" key falls back to 0.
+        self.assertEqual(_extract_es_total({"hits": {"total": {}}}), 0)
+        # A non-int, non-str total (e.g. a float) falls back to 0.
+        self.assertEqual(_extract_es_total({"hits": {"total": 42.5}}), 0)
+
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_requests_exact_total(self, mock_get_es_client):
         mock_client = MagicMock()
