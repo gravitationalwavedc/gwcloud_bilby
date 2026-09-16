@@ -289,6 +289,23 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
         self.assertIn("UX8", parsed.text)
         self.assertIn("PEUX8", parsed.text)
 
+    def test_unmapped_paths_are_logged_deduplicated_without_values(self):
+        payload = {
+            "gracedb": {
+                "events": [
+                    {"uid": "E1", "new_metric": 5},
+                    {"uid": "E2", "new_metric": 6},
+                ]
+            },
+            "UnmappedProbe": {"deep": {"sentinel": "UX8"}},
+        }
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as cm:
+            build_metadata_presentation(payload)
+        combined = "\n".join(cm.output)
+        self.assertEqual(combined.count("gracedb.events[].new_metric"), 1)
+        self.assertIn("UnmappedProbe.deep.sentinel", combined)
+        self.assertNotIn("UX8", combined)
+
     def test_historical_context_does_not_change_scientific_body(self):
         payload = load_fixture("historical_curated.json")
         current, _current_html, current_parser = rendered_fixture(payload)

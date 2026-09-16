@@ -8,10 +8,13 @@ not matched by wildcards, so callers can detect upstream schema drift.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, Literal
+
+logger = logging.getLogger(__name__)
 
 Tier = Literal["summary", "detail", "disclosure"]
 TIERS = frozenset({"summary", "detail", "disclosure"})
@@ -258,6 +261,45 @@ def KNOWN_KEYS() -> frozenset[str]:
         f"{section}.{field.key}"
         for section in SECTION_ORDER
         for field in FIELD_REGISTRY[section]
+    )
+
+
+def _canonical_leaf_paths(value: Any, path: str = "") -> Any:
+    """Yield canonical scalar leaf paths, using ``[]`` for list indices."""
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            child_path = f"{path}.{key}" if path else str(key)
+            yield from _canonical_leaf_paths(child, child_path)
+        return
+    if isinstance(value, list):
+        list_path = f"{path}[]"
+        for child in value:
+            yield from _canonical_leaf_paths(child, list_path)
+        return
+    yield path
+
+
+def _has_registered_owner(path: str, known: frozenset[str]) -> bool:
+    """Return True if ``path`` is, or descends from, a registered leaf path."""
+    return any(
+        path == candidate
+        or path.startswith(f"{candidate}.")
+        or path.startswith(f"{candidate}[]")
+        for candidate in known
+    )
+
+
+def _unmapped_paths(payload: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return sorted, deduplicated canonical paths not covered by the registry."""
+    known = KNOWN_KEYS()
+    return tuple(
+        sorted(
+            {
+                path
+                for path in _canonical_leaf_paths(payload)
+                if not _has_registered_owner(path, known)
+            }
+        )
     )
 
 
@@ -552,6 +594,13 @@ def build_metadata_presentation(
                 data_shape=node.shape,
                 fallback=True,
             )
+        )
+
+    unmapped = _unmapped_paths(payload)
+    if unmapped:
+        logger.warning(
+            "unmapped gwflow metadata leaf paths: %s",
+            ", ".join(unmapped),
         )
 
     return MetadataPresentation(bool(historical), tuple(root_summary), tuple(sections))
