@@ -99,3 +99,39 @@ class VersionTupleTestCase(BilbyTestCase):
     def test_version_tuple_with_none_timestamp(self):
         job = GWFlowJob(current_history_timestamp=None, current_history_id="")
         self.assertEqual(version_tuple(job), (None, ""))
+
+from bilbyui.services.gwflow_versions import diff_payloads
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class GWFlowStructuredDiffTestCase(BilbyTestCase):
+    def test_added_leaf(self):
+        outcome = diff_payloads({}, {"info": {"status": "ready"}}, baseline_schema="v1", selected_schema="v1")
+        self.assertEqual(outcome.status, "semantic")
+        self.assertEqual(outcome.changes[0].kind, "added")
+        self.assertEqual(outcome.changes[0].path, ("info",))
+
+    def test_removed_leaf(self):
+        outcome = diff_payloads({"status": "ready"}, {}, baseline_schema="v1", selected_schema="v1")
+        self.assertEqual(outcome.changes[0].kind, "removed")
+        self.assertFalse(outcome.changes[0].selected_present)
+
+    def test_changed_leaf(self):
+        outcome = diff_payloads({"status": "draft"}, {"status": "ready"})
+        self.assertEqual(outcome.changes[0].kind, "changed")
+
+    def test_nested_leaf_path(self):
+        outcome = diff_payloads({"pe": {"status": "draft"}}, {"pe": {"status": "ready"}})
+        self.assertEqual(outcome.changes[0].path, ("pe", "status"))
+
+    def test_scalar_type_change_is_changed(self):
+        outcome = diff_payloads({"value": False}, {"value": 0})
+        self.assertEqual(outcome.changes[0].kind, "changed")
+        self.assertIs(outcome.changes[0].baseline_value, False)
+        self.assertEqual(type(outcome.changes[0].selected_value), int)
+
+    def test_cross_schema_is_caveated_without_semantic_changes(self):
+        outcome = diff_payloads({"status": "a"}, {"status": "b"}, baseline_schema="v1", selected_schema="v2")
+        self.assertEqual(outcome.status, "cross_schema")
+        self.assertEqual(outcome.changes, ())
+        self.assertEqual(outcome.reason, "Diff may be incomplete across schema versions")

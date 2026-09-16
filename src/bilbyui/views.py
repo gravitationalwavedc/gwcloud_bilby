@@ -58,6 +58,11 @@ from .services.gwflow_metadata import (
     build_metadata_presentation,
     warn_unmapped_metadata_leaves,
 )
+from .services.gwflow_versions import (
+    diff_payloads,
+    prepare_version_snapshots,
+    resolve_history_selection,
+)
 from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs, list_user_jobs, update_job
 from .status import JobStatus
 from .types import GWFlowPendingFile
@@ -1710,6 +1715,37 @@ def _render_gwflow_history_section(request, sname):
             ),
             stale,
         )
+
+    snapshots = prepare_version_snapshots(
+        versions if isinstance(versions, list) else (),
+        current_sha=job.current_history_id or "",
+    )
+    selected = baseline = outcome = presentation = None
+    compare_mode = request.GET.get("compare")
+    try:
+        selected, baseline, compare_mode = resolve_history_selection(
+            snapshots,
+            requested_sha=request.GET.get("version"),
+            compare=compare_mode,
+        )
+    except LookupError:
+        if request.GET.get("version"):
+            raise Http404("Version not found") from None
+        compare_mode = "prev"
+    else:
+        if selected.payload is not None:
+            presentation = build_metadata_presentation(
+                selected.payload,
+                historical=not selected.is_current,
+            )
+            warn_unmapped_metadata_leaves(selected.payload, sname=sname)
+        outcome = diff_payloads(
+            baseline.payload if baseline else None,
+            selected.payload,
+            baseline_schema=baseline.schema_version if baseline else None,
+            selected_schema=selected.schema_version,
+        )
+
     return (
         TemplateResponse(
             request,
@@ -1717,6 +1753,14 @@ def _render_gwflow_history_section(request, sname):
             {
                 "job": job,
                 "versions": versions,
+                "snapshots": snapshots,
+                "selected_version": selected,
+                "baseline_version": baseline,
+                "compare_mode": compare_mode,
+                "diff_outcome": outcome,
+                "presentation": presentation,
+                "baseline_raw_json": json.dumps(baseline.payload if baseline and baseline.payload is not None else None),
+                "selected_raw_json": json.dumps(selected.payload if selected and selected.payload is not None else None),
                 "stale": stale,
             },
         ),

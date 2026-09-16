@@ -104,17 +104,18 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         self.assertContains(response, "v2")
         self.assertNotContains(response, "vv3")
         # Current badge
-        self.assertContains(response, '<span class="badge badge-primary">current</span>')
-        # Version inspection HTMX attributes
+        self.assertContains(response, '<span class="badge badge-primary">Current</span>')
+        # Canonical history links use query-backed selection and comparison.
+        history_url = reverse("bilbyui:gwflow_job_history", args=[self.job.sname])
         self.assertContains(
             response,
-            f'hx-get="{reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, "1111222233334444555566667777888899990000"])}"',
+            f'hx-get="{history_url}?version=1111222233334444555566667777888899990000&amp;compare=prev"',
         )
         self.assertContains(
             response,
-            f'hx-get="{reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, "aaaabbbbccccddddeeeeffff0000111122223333"])}"',
+            f'hx-get="{history_url}?version=aaaabbbbccccddddeeeeffff0000111122223333&amp;compare=prev"',
         )
-        self.assertContains(response, 'hx-target="#gwflow-history-version"')
+        self.assertContains(response, 'hx-target="#gwflow-history-region"')
         self.assertContains(response, 'id="gwflow-history-version"')
         self.assertNotContains(response, "Showing cached copy")
         self.assertNotContains(response, "<!doctype html>")
@@ -140,7 +141,7 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         response = self.client.get(url, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '<span class="badge badge-primary">current</span>')
+        self.assertContains(response, '<span class="badge badge-primary">Current</span>')
 
     @mock.patch(
         "bilbyui.views.get_versions",
@@ -188,7 +189,7 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         response = self.client.get(self.url, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No history available.")
+        self.assertContains(response, "No version history is available for this record.")
         self.assertContains(response, 'id="gwflow-history-version"')
 
 
@@ -224,7 +225,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.assertContains(response, "v3")
         self.assertContains(response, "E99")
         self.assertContains(response, "pycbc")
-        self.assertContains(response, "Viewing historical metadata")
+        self.assertContains(response, "Viewing version 11112222 (historical) — not the current record")
         self.assertNotContains(response, "vv3")
         self.assertNotContains(response, "Showing cached copy")
         self.assertNotContains(response, "<!doctype html>")
@@ -248,7 +249,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "E99")
         self.assertContains(response, "pycbc")
-        self.assertContains(response, "Viewing historical metadata")
+        self.assertContains(response, "Viewing version 11112222 (historical) — not the current record")
         self.assertNotContains(response, "Showing cached copy")
         self.assertNotContains(response, "<!doctype html>")
 

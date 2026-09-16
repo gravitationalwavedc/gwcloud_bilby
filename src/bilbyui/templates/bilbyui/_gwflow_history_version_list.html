@@ -1,0 +1,43 @@
+<nav class="gwflow-history__versions"
+     aria-label="Available versions"
+     data-history-rail
+     x-data
+     x-on:keydown.arrow-down.prevent="
+       const links = [...$el.querySelectorAll('[data-version-link]')];
+       const index = links.indexOf(document.activeElement);
+       if (index >= 0 && index < links.length - 1) links[index + 1].focus()
+     "
+     x-on:keydown.arrow-up.prevent="
+       const links = [...$el.querySelectorAll('[data-version-link]')];
+       const index = links.indexOf(document.activeElement);
+       if (index > 0) links[index - 1].focus()
+     ">
+  <div class="list-group">
+    {% for v in snapshots reversed %}
+      <a href="{% url 'bilbyui:gwflow_job_history' sname=job.sname %}?version={{ v.full_sha|urlencode }}&amp;compare={{ compare_mode }}"
+         class="list-group-item list-group-item-action gwflow-history__version{% if selected_version.full_sha == v.full_sha %} gwflow-history__version--selected{% endif %}"
+         data-version-link
+         data-version-sha="{{ v.full_sha }}"
+         {% if selected_version.full_sha == v.full_sha %}aria-current="true"{% endif %}
+         hx-get="{% url 'bilbyui:gwflow_job_history' sname=job.sname %}?version={{ v.full_sha|urlencode }}&amp;compare={{ compare_mode }}"
+         hx-target="#gwflow-history-region"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         hx-sync="#gwflow-history-region:replace"
+         hx-indicator="#gwflow-history-loading">
+        <span class="gwflow-history__version-main">
+          <code class="gwflow-history__sha" title="{{ v.full_sha }}">{{ v.short_sha }}</code>
+          {% if v.schema_version %}<span class="badge badge-secondary">Schema {{ v.schema_version }}</span>{% endif %}
+          {% if v.is_current %}<span class="badge badge-primary">Current</span>{% endif %}
+          {% if selected_version.full_sha == v.full_sha %}<span class="gwflow-history__selected-text">Selected</span>{% endif %}
+        </span>
+        {% if v.recorded_at %}
+          <time class="gwflow-history__timestamp"
+                datetime="{{ v.recorded_at|date:'c' }}">{{ v.recorded_at|date:"Y-m-d H:i:s" }} UTC</time>
+        {% else %}
+          <span class="gwflow-history__timestamp">Timestamp unavailable</span>
+        {% endif %}
+      </a>
+    {% endfor %}
+  </div>
+</nav>
