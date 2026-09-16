@@ -1,0 +1,23 @@
+{
+  "info": {
+    "notes": "Optional summary highlights intentionally absent"
+  },
+  "pe": {
+    "status": "queued",
+    "analysts": [],
+    "reviewers": [],
+    "notes": "",
+    "results": [
+      {
+        "uid": "PE-SANITISED-EMPTY",
+        "inference_software": "bilby",
+        "waveform_approximant": "Unknown",
+        "run_status": "queued",
+        "review_status": "not-reviewed",
+        "analysts": [],
+        "reviewers": [],
+        "deprecated": true
+      }
+    ]
+  }
+}

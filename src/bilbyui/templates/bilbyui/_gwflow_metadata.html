@@ -1,59 +1,39 @@
-{% if payload %}
-  {% if payload.info %}
-    {% with info=payload.info %}
-      {% include "bilbyui/_gwflow_metadata_info.html" %}
-    {% endwith %}
-  {% endif %}
-  {% if payload.gracedb %}
-    {% with gracedb=payload.gracedb %}
-      {% include "bilbyui/_gwflow_metadata_gracedb.html" %}
-    {% endwith %}
-  {% endif %}
-  {% if payload.pe %}
-    {% with pe=payload.pe %}
-      {% include "bilbyui/_gwflow_metadata_pe.html" %}
-    {% endwith %}
-  {% endif %}
-  {% if payload.tgr %}
-    {% with tgr=payload.tgr %}
-      {% include "bilbyui/_gwflow_metadata_tgr.html" %}
-    {% endwith %}
-  {% endif %}
-  {% if payload.lensing %}
-    {% with lensing=payload.lensing %}
-      {% include "bilbyui/_gwflow_metadata_lensing.html" %}
-    {% endwith %}
-  {% endif %}
-  {% if payload.detchar %}
-    {% with section=payload.detchar section_name="Detchar" %}
-      {% include "bilbyui/_gwflow_metadata_generic.html" %}
-    {% endwith %}
-  {% endif %}
-  {% if payload.extreme_matter %}
-    {% with section=payload.extreme_matter section_name="Extreme Matter" %}
-      {% include "bilbyui/_gwflow_metadata_generic.html" %}
-    {% endwith %}
-  {% endif %}
-  {% if payload.cosmology %}
-    {% with section=payload.cosmology section_name="Cosmology" %}
-      {% include "bilbyui/_gwflow_metadata_generic.html" %}
-    {% endwith %}
-  {% endif %}
-  {% if payload.rnp %}
-    {% with section=payload.rnp section_name="RNP" %}
-      {% include "bilbyui/_gwflow_metadata_generic.html" %}
-    {% endwith %}
-  {% endif %}
-  {% if payload.catalog_tracking %}
-    {% with section=payload.catalog_tracking section_name="Catalog Tracking" %}
-      {% include "bilbyui/_gwflow_metadata_generic.html" %}
-    {% endwith %}
-  {% endif %}
-  {% if payload.publications %}
-    {% with section=payload.publications section_name="Publications" %}
-      {% include "bilbyui/_gwflow_metadata_generic.html" %}
-    {% endwith %}
-  {% endif %}
+{% load gwflow_tags %}
+{% if presentation %}
+  <div class="gwflow-metadata{% if historical or presentation.historical %} gwflow-metadata--historical{% endif %}">
+    {% if historical or presentation.historical %}
+      <div class="alert alert-warning border-warning mb-4" role="note">
+        <span aria-hidden="true">⚠</span>
+        <strong>Viewing historical metadata — not the current record</strong>
+      </div>
+    {% endif %}
+
+    <section class="card gw-form-card mb-4" aria-labelledby="metadata-summary-heading">
+      <div class="card-header">
+        <h2 id="metadata-summary-heading" class="h5 mb-0">Summary</h2>
+      </div>
+      <div class="card-body">
+        {% if presentation.summary %}
+          <dl class="row mb-0">
+            {% for field in presentation.summary %}
+              <dt class="col-sm-4">{{ field.label }}</dt>
+              <dd class="col-sm-8" data-metadata-path="{{ field.path }}">
+                {% format_value field.raw_value field.formatter %}
+              </dd>
+            {% endfor %}
+          </dl>
+        {% else %}
+          <p class="text-muted mb-0">No summary highlights available.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    {% for section in presentation.sections %}
+      {% include "bilbyui/_gwflow_metadata_section.html" with section=section only %}
+    {% endfor %}
+  </div>
+{% elif payload %}
+  <p class="text-muted">Metadata presentation is unavailable.</p>
 {% else %}
   <p class="text-muted">No metadata available.</p>
 {% endif %}
