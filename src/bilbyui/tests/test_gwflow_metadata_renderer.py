@@ -102,7 +102,7 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         self.assertIn(">0</dd>", output)
         self.assertIn(">✗ False</dd>", output)
         self.assertIn(">✓ True</dd>", output)
-        self.assertIn('>&quot;&quot;</dd>', output)
+        self.assertIn(">&quot;&quot;</dd>", output)
         self.assertEqual(len(re.findall(r">\s*—\s*</dd>", output)), 1)
 
     def test_disclosure_has_count_and_accessible_control(self):

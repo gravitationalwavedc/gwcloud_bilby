@@ -47,9 +47,7 @@ COMPARATIVE_COLUMNS = frozenset(
 )
 REGISTERED_PATHS = KNOWN_KEYS() | COMPARATIVE_COLUMNS
 FORMATTER_BY_PATH = {
-    f"{section}.{field.key}": field.formatter
-    for section, fields in FIELD_REGISTRY.items()
-    for field in fields
+    f"{section}.{field.key}": field.formatter for section, fields in FIELD_REGISTRY.items() for field in fields
 }
 
 
@@ -115,9 +113,7 @@ def registered_owner(path):
     owners = [
         candidate
         for candidate in REGISTERED_PATHS
-        if path == candidate
-        or path.startswith(f"{candidate}.")
-        or path.startswith(f"{candidate}[]")
+        if path == candidate or path.startswith(f"{candidate}.") or path.startswith(f"{candidate}[]")
     ]
     if not owners:
         return None
@@ -125,13 +121,7 @@ def registered_owner(path):
 
 
 def unmapped_paths(payload):
-    return sorted(
-        {
-            path
-            for path, _value in fixture_scalar_leaves(payload)
-            if registered_owner(path) is None
-        }
-    )
+    return sorted({path for path, _value in fixture_scalar_leaves(payload) if registered_owner(path) is None})
 
 
 def assert_fixture_complete(testcase, payload):
@@ -219,8 +209,7 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
             # Equal scalar values cannot pass merely because another field
             # rendered the same substring: every owning path must be built.
             duplicate_values = Counter(
-                json.dumps(value, sort_keys=True)
-                for _path, value in fixture_scalar_leaves(payload)
+                json.dumps(value, sort_keys=True) for _path, value in fixture_scalar_leaves(payload)
             )
             for leaf_path, value in fixture_scalar_leaves(payload):
                 if duplicate_values[json.dumps(value, sort_keys=True)] > 1:
@@ -240,9 +229,7 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
                     )
 
         expected_exercised = {
-            f"{section}.{field.key}"
-            for section, fields in FIELD_REGISTRY.items()
-            for field in fields
+            f"{section}.{field.key}" for section, fields in FIELD_REGISTRY.items() for field in fields
         }
         self.assertEqual(expected_exercised, exercised)
 
@@ -274,11 +261,7 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
 
     def test_unknown_leaves_in_comparative_records_render_in_disclosure(self):
         payload = {
-            "gracedb": {
-                "events": [
-                    {"uid": "E1", "new_metric": 5, "new_nested": {"sentinel": "UX8"}}
-                ]
-            },
+            "gracedb": {"events": [{"uid": "E1", "new_metric": 5, "new_nested": {"sentinel": "UX8"}}]},
             "pe": {"results": [{"uid": "P1", "extra": {"deep": "PEUX8"}}]},
         }
         presentation, _html, parsed = rendered_fixture(payload)

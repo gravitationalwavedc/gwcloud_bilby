@@ -16,12 +16,7 @@ from bilbyui.tests.e2e.utils import AsyncE2ETestCase, async_e2e_test, load_axe, 
 from bilbyui.tests.testcases import BilbyTestCase
 
 AXE_SCOPE_SELECTOR = ".gwflow-metadata"
-METADATA_FIXTURE = (
-    Path(__file__).resolve().parents[1]
-    / "fixtures"
-    / "metadata_corpus"
-    / "complete_curated.json"
-)
+METADATA_FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "metadata_corpus" / "complete_curated.json"
 
 
 class GWFlowMetadataPageBase(AsyncE2ETestCase):
@@ -74,17 +69,10 @@ class GWFlowMetadataPageBase(AsyncE2ETestCase):
 
 class TestGWFlowMetadataAxeScan(GWFlowMetadataPageBase):
     def assert_no_serious_or_critical_violations(self, violations):
-        blocking = [
-            violation
-            for violation in violations
-            if violation.get("impact") in ("serious", "critical")
-        ]
+        blocking = [violation for violation in violations if violation.get("impact") in ("serious", "critical")]
         detail = "\n".join(
             f"- {violation['id']} ({violation.get('impact')}): "
-            + "; ".join(
-                " > ".join(str(part) for part in node["target"])
-                for node in violation["nodes"]
-            )
+            + "; ".join(" > ".join(str(part) for part in node["target"]) for node in violation["nodes"])
             for violation in blocking
         )
         self.assertEqual(
@@ -108,8 +96,6 @@ class TestGWFlowMetadataAxeScan(GWFlowMetadataPageBase):
         )
         if await disclosure.count():
             await disclosure.first.click()
-            await self.page.locator(
-                f"{AXE_SCOPE_SELECTOR} [x-show]"
-            ).first.wait_for(state="visible")
+            await self.page.locator(f"{AXE_SCOPE_SELECTOR} [x-show]").first.wait_for(state="visible")
             violations = await run_axe(self.page, AXE_SCOPE_SELECTOR)
             self.assert_no_serious_or_critical_violations(violations)

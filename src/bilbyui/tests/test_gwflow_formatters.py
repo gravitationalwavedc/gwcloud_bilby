@@ -65,11 +65,7 @@ class GwflowFormatterTests(SimpleTestCase):
             utc_timestamp("not-a-date"),
             "Invalid timestamp: not-a-date",
         )
-        self.assertTrue(
-            utc_timestamp("2026-08-20T14:32:00").startswith(
-                "Unknown timezone:"
-            )
-        )
+        self.assertTrue(utc_timestamp("2026-08-20T14:32:00").startswith("Unknown timezone:"))
         self.assertEqual(utc_timestamp(None), "—")
 
     def test_person_name(self):
@@ -130,9 +126,7 @@ class GwflowFormatterTests(SimpleTestCase):
         )
         self.assertEqual(list_value([]), EMPTY_LIST)
 
-        rendered = str(
-            list_accessible(["H1", "L1", "V1", "K1"], 2)
-        )
+        rendered = str(list_accessible(["H1", "L1", "V1", "K1"], 2))
         self.assertIn("H1, L1, +2 more", rendered)
         for item in ("H1", "L1", "V1", "K1"):
             self.assertIn(item, rendered)
@@ -152,16 +146,8 @@ class GwflowFormatterTests(SimpleTestCase):
         unsafe = link("javascript:alert(1)")
         self.assertEqual(unsafe, "javascript:alert(1)")
         template_output = (
-            Engine(
-                libraries={
-                    "gwflow_tags": (
-                        "bilbyui.templatetags.gwflow_tags"
-                    )
-                }
-            )
-            .from_string(
-                "{% load gwflow_tags %}{% link value %}"
-            )
+            Engine(libraries={"gwflow_tags": ("bilbyui.templatetags.gwflow_tags")})
+            .from_string("{% load gwflow_tags %}{% link value %}")
             .render(Context({"value": "<script>alert(1)</script>"}))
         )
         self.assertNotIn("<script>", template_output)
@@ -173,16 +159,8 @@ class GwflowFormatterTests(SimpleTestCase):
 
     def test_text_is_autoescaped_by_template_engine(self):
         output = (
-            Engine(
-                libraries={
-                    "gwflow_tags": (
-                        "bilbyui.templatetags.gwflow_tags"
-                    )
-                }
-            )
-            .from_string(
-                "{% load gwflow_tags %}{{ value|text }}"
-            )
+            Engine(libraries={"gwflow_tags": ("bilbyui.templatetags.gwflow_tags")})
+            .from_string("{% load gwflow_tags %}{{ value|text }}")
             .render(Context({"value": "<strong>unsafe</strong>"}))
         )
         self.assertEqual(

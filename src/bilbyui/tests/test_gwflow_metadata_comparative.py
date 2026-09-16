@@ -7,12 +7,7 @@ from django.test import SimpleTestCase
 
 from bilbyui.services.gwflow_metadata import build_metadata_presentation
 
-FIXTURE = (
-    Path(__file__).parent
-    / "fixtures"
-    / "metadata_corpus"
-    / "complete_curated.json"
-)
+FIXTURE = Path(__file__).parent / "fixtures" / "metadata_corpus" / "complete_curated.json"
 
 GRACEDB_COLUMNS = (
     "uid",
@@ -79,11 +74,7 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
         parser.feed(html)
         elements = parser.elements
 
-        regions = [
-            attrs
-            for tag, attrs in elements
-            if tag == "div" and attrs.get("role") == "region"
-        ]
+        regions = [attrs for tag, attrs in elements if tag == "div" and attrs.get("role") == "region"]
         self.assertEqual(len(regions), 1)
         self.assertEqual(regions[0].get("aria-label"), region_label)
         self.assertEqual(regions[0].get("tabindex"), "0")
@@ -92,20 +83,12 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
             regions[0].get("class", "").split(),
         )
 
-        tables = [
-            attrs
-            for tag, attrs in elements
-            if tag == "table" and attrs.get("id") == table_id
-        ]
+        tables = [attrs for tag, attrs in elements if tag == "table" and attrs.get("id") == table_id]
         self.assertEqual(len(tables), 1)
         self.assertIn("<caption>", html)
         self.assertIn("1 record", html)
 
-        column_headers = [
-            attrs
-            for tag, attrs in elements
-            if tag == "th" and attrs.get("scope") == "col"
-        ]
+        column_headers = [attrs for tag, attrs in elements if tag == "th" and attrs.get("scope") == "col"]
         self.assertEqual(
             tuple(header["data-column-key"] for header in column_headers),
             expected_columns,
@@ -113,9 +96,7 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
         self.assertEqual(len(column_headers), len(expected_columns))
 
         default_visible = {
-            header["data-column-key"]
-            for header in column_headers
-            if header["data-default-visible"] == "true"
+            header["data-column-key"] for header in column_headers if header["data-default-visible"] == "true"
         }
         self.assertEqual(default_visible, expected_defaults)
         for header in column_headers:
@@ -124,11 +105,7 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
             else:
                 self.assertEqual(header.get("x-show"), "columnsExpanded")
 
-        row_headers = [
-            attrs
-            for tag, attrs in elements
-            if tag == "th" and attrs.get("scope") == "row"
-        ]
+        row_headers = [attrs for tag, attrs in elements if tag == "th" and attrs.get("scope") == "row"]
         self.assertEqual(len(row_headers), 1)
         self.assertIn(
             "table-sticky-identity",
@@ -139,18 +116,13 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
             column_headers[0].get("class", "").split(),
         )
         self.assertFalse(
-            any(
-                "table-sticky-identity" in header.get("class", "").split()
-                for header in column_headers[1:]
-            )
+            any("table-sticky-identity" in header.get("class", "").split() for header in column_headers[1:])
         )
 
         body_cells = [
             attrs
             for tag, attrs in elements
-            if tag in {"td", "th"}
-            and attrs.get("data-column-key") in expected_columns
-            and attrs.get("scope") != "col"
+            if tag in {"td", "th"} and attrs.get("data-column-key") in expected_columns and attrs.get("scope") != "col"
         ]
         self.assertEqual(len(body_cells), len(expected_columns))
         self.assertEqual(
@@ -163,11 +135,7 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
             else:
                 self.assertEqual(cell.get("x-show"), "columnsExpanded")
 
-        buttons = [
-            attrs
-            for tag, attrs in elements
-            if tag == "button" and attrs.get("aria-controls") == table_id
-        ]
+        buttons = [attrs for tag, attrs in elements if tag == "button" and attrs.get("aria-controls") == table_id]
         self.assertEqual(len(buttons), 1)
         button = buttons[0]
         self.assertEqual(button.get("type"), "button")
@@ -196,11 +164,7 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
             GRACEDB_COLUMNS,
         )
         self.assertEqual(
-            {
-                column.key
-                for column in self.grace.columns
-                if column.default_visible
-            },
+            {column.key for column in self.grace.columns if column.default_visible},
             GRACEDB_DEFAULTS,
         )
         html = self.render(
@@ -222,11 +186,7 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
             PE_COLUMNS,
         )
         self.assertEqual(
-            {
-                column.key
-                for column in self.pe.columns
-                if column.default_visible
-            },
+            {column.key for column in self.pe.columns if column.default_visible},
             PE_DEFAULTS,
         )
         html = self.render(

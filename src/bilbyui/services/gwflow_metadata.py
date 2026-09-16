@@ -243,9 +243,7 @@ def validate_registry(
             if field.tier not in TIERS:
                 raise ValueError(f"unknown tier {field.tier!r} for {section}.{field.key}")
             if field.formatter not in FORMATTER_NAMES:
-                raise ValueError(
-                    f"unknown formatter {field.formatter!r} for {section}.{field.key}"
-                )
+                raise ValueError(f"unknown formatter {field.formatter!r} for {section}.{field.key}")
             if field.key in seen:
                 raise ValueError(f"duplicate registry path: {section}.{field.key}")
             seen.add(field.key)
@@ -257,11 +255,7 @@ validate_registry()
 def KNOWN_KEYS() -> frozenset[str]:
     """Return immutable canonical full leaf-path patterns for every tier."""
 
-    return frozenset(
-        f"{section}.{field.key}"
-        for section in SECTION_ORDER
-        for field in FIELD_REGISTRY[section]
-    )
+    return frozenset(f"{section}.{field.key}" for section in SECTION_ORDER for field in FIELD_REGISTRY[section])
 
 
 def _canonical_leaf_paths(value: Any, path: str = "") -> Any:
@@ -282,9 +276,7 @@ def _canonical_leaf_paths(value: Any, path: str = "") -> Any:
 def _has_registered_owner(path: str, known: frozenset[str]) -> bool:
     """Return True if ``path`` is, or descends from, a registered leaf path."""
     return any(
-        path == candidate
-        or path.startswith(f"{candidate}.")
-        or path.startswith(f"{candidate}[]")
+        path == candidate or path.startswith(f"{candidate}.") or path.startswith(f"{candidate}[]")
         for candidate in known
     )
 
@@ -292,15 +284,7 @@ def _has_registered_owner(path: str, known: frozenset[str]) -> bool:
 def _unmapped_paths(payload: Mapping[str, Any]) -> tuple[str, ...]:
     """Return sorted, deduplicated canonical paths not covered by the registry."""
     known = KNOWN_KEYS()
-    return tuple(
-        sorted(
-            {
-                path
-                for path in _canonical_leaf_paths(payload)
-                if not _has_registered_owner(path, known)
-            }
-        )
-    )
+    return tuple(sorted({path for path in _canonical_leaf_paths(payload) if not _has_registered_owner(path, known)}))
 
 
 _MISSING = object()
@@ -341,28 +325,30 @@ def _lookup(value: Any, path: str) -> Any:
         current = current[part]
     return current
 
+
 def _raw_label(key: str) -> str:
     return key.replace("_", " ").strip() or "Unnamed field"
 
 
 def _node(path: str, label: str, value: Any) -> DisclosureNode:
     if isinstance(value, Mapping):
-        children = tuple(
-            _node(f"{path}.{key}", _raw_label(str(key)), child)
-            for key, child in value.items()
-        )
+        children = tuple(_node(f"{path}.{key}", _raw_label(str(key)), child) for key, child in value.items())
         return DisclosureNode(
-            path, label, "mapping", children=children,
+            path,
+            label,
+            "mapping",
+            children=children,
             leaf_count=sum(child.leaf_count for child in children),
         )
     if isinstance(value, list):
-        children = tuple(
-            _node(f"{path}[{index}]", f"Item {index + 1}", child)
-            for index, child in enumerate(value)
-        )
+        children = tuple(_node(f"{path}[{index}]", f"Item {index + 1}", child) for index, child in enumerate(value))
         shape = "record-list" if value and all(isinstance(item, Mapping) for item in value) else "scalar-list"
         return DisclosureNode(
-            path, label, shape, value=() if not value else None, children=children,
+            path,
+            label,
+            shape,
+            value=() if not value else None,
+            children=children,
             leaf_count=sum(child.leaf_count for child in children),
         )
     return DisclosureNode(path, label, "scalar", value=value, leaf_count=1)
@@ -495,10 +481,7 @@ def _build_section(
                         section_id,
                         "events",
                         records,
-                        frozenset(
-                            spec.key.rsplit(".", 1)[-1]
-                            for spec in _GRACEDB_EVENT_FIELDS
-                        ),
+                        frozenset(spec.key.rsplit(".", 1)[-1] for spec in _GRACEDB_EVENT_FIELDS),
                     )
                 )
     elif section_id == "pe":
@@ -518,10 +501,7 @@ def _build_section(
                         section_id,
                         "results",
                         records,
-                        frozenset(
-                            spec.key.rsplit(".", 1)[-1]
-                            for spec in _PE_RESULT_FIELDS
-                        ),
+                        frozenset(spec.key.rsplit(".", 1)[-1] for spec in _PE_RESULT_FIELDS),
                     )
                 )
 
@@ -534,9 +514,7 @@ def _build_section(
 
     if comparative_sets:
         shape = "comparative"
-    elif isinstance(value, Mapping) and all(
-        not isinstance(child, (Mapping, list)) for child in value.values()
-    ):
+    elif isinstance(value, Mapping) and all(not isinstance(child, (Mapping, list)) for child in value.values()):
         shape = "scalar-mapping"
     elif isinstance(value, Mapping):
         shape = "nested"
@@ -558,9 +536,7 @@ def _build_section(
     )
 
 
-def build_metadata_presentation(
-    payload: Mapping[str, Any], *, historical: bool = False
-) -> MetadataPresentation:
+def build_metadata_presentation(payload: Mapping[str, Any], *, historical: bool = False) -> MetadataPresentation:
     """Build immutable template-ready metadata without I/O or request state."""
 
     if not isinstance(payload, Mapping):

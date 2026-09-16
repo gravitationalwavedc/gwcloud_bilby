@@ -49,9 +49,7 @@ def _presence_text(value: Any) -> str | None:
 
 
 def _is_sequence(value: Any) -> bool:
-    return isinstance(value, Sequence) and not isinstance(
-        value, (str, bytes, bytearray)
-    )
+    return isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray))
 
 
 def text(value: Any) -> str:
@@ -103,10 +101,7 @@ def person(value: Any) -> str:
         if candidate is not None and candidate != "":
             return text(candidate)
 
-    components = [
-        value.get(key)
-        for key in ("title", "first_name", "firstName", "given_name", "givenName")
-    ]
+    components = [value.get(key) for key in ("title", "first_name", "firstName", "given_name", "givenName")]
     surname = next(
         (
             value.get(key)
@@ -235,9 +230,7 @@ def human_value(value: Any) -> str:
     if isinstance(value, Mapping):
         return text(value)
     if _is_sequence(value):
-        return ", ".join(
-            person(item) if isinstance(item, Mapping) else text(item) for item in value
-        ) or EMPTY_LIST
+        return ", ".join(person(item) if isinstance(item, Mapping) else text(item) for item in value) or EMPTY_LIST
     return text(value)
 
 

@@ -167,11 +167,7 @@ class GWFlowMetadataCorpusTests(SimpleTestCase):
                 known_keys=KNOWN_KEYS() | COMPARATIVE_COLUMNS,
             )
         }
-        expected = {
-            f"{section}.{field.key}"
-            for section, fields in FIELD_REGISTRY.items()
-            for field in fields
-        }
+        expected = {f"{section}.{field.key}" for section, fields in FIELD_REGISTRY.items() for field in fields}
         self.assertEqual(expected, exercised)
 
     def test_negative_clone_reports_full_canonical_probe_path(self):

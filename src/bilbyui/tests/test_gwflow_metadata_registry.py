@@ -57,9 +57,7 @@ class GWFlowMetadataRegistryTests(SimpleTestCase):
             for field in fields:
                 self.assertIn(field.tier, TIERS)
 
-        bad = MappingProxyType(
-            {"info": (FieldSpec("status", "Status", "status", "other"),)}
-        )
+        bad = MappingProxyType({"info": (FieldSpec("status", "Status", "status", "other"),)})
         with self.assertRaisesRegex(ValueError, "unknown tier"):
             validate_registry(bad)
 
@@ -77,9 +75,7 @@ class GWFlowMetadataRegistryTests(SimpleTestCase):
 
     def test_unknown_formatter_is_rejected(self):
         self.assertIn("scientific", FORMATTER_NAMES)
-        bad = MappingProxyType(
-            {"info": (FieldSpec("status", "Status", "magic", "summary"),)}
-        )
+        bad = MappingProxyType({"info": (FieldSpec("status", "Status", "magic", "summary"),)})
         with self.assertRaisesRegex(ValueError, "unknown formatter"):
             validate_registry(bad)
 
@@ -111,9 +107,7 @@ class GWFlowMetadataRegistryTests(SimpleTestCase):
         }
         result = build_metadata_presentation(payload, historical=True)
         self.assertTrue(result.historical)
-        self.assertEqual([section.id for section in result.sections], [
-            "info", "gracedb", "unknown:UnmappedProbe"
-        ])
+        self.assertEqual([section.id for section in result.sections], ["info", "gracedb", "unknown:UnmappedProbe"])
         self.assertEqual([field.raw_value for field in result.summary], ["", False, 0])
         gracedb = result.sections[1]
         self.assertEqual(gracedb.disclosed_leaf_count, 1)
