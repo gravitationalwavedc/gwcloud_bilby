@@ -16,6 +16,10 @@ class TestNumericEsRecords(SimpleTestCase):
         record = {"_id": "corrupt-non-numeric-id"}
         self.assertEqual(_numeric_es_records([record]), [])
 
+    def test_drops_superscript_digit_string_id(self):
+        record = {"_id": "²"}
+        self.assertEqual(_numeric_es_records([record]), [])
+
     def test_drops_missing_id(self):
         record = {"_source": {"job": "missing-id-hit"}}
         self.assertEqual(_numeric_es_records([record]), [])
