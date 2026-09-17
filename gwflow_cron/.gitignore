@@ -1,6 +1,7 @@
 gwflow_ingest.log
 *.bk/
 sqlite.db
+sqlite.lock
 .venv/
 .coverage
 coverage.xml
