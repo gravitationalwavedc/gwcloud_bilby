@@ -164,28 +164,37 @@ class TestHistoryKeyboardWalkthrough(GWFlowHistoryPageBase):
         count = await links.count()
         self.assertGreaterEqual(count, 2)
 
-        # The rail renders newest-first; capture the first link's SHA so the
-        # assertion is order-agnostic.
-        first_sha = await links.nth(0).get_attribute("data-version-sha")
+        # The rail renders newest-first; select a NON-current version so the
+        # "vs current" comparison is meaningful (not a self-comparison).
+        target_sha = await links.nth(1).get_attribute("data-version-sha")
 
         # Keyboard-only select: focus a version link and activate it with Enter
         # (native link behaviour), which must update the URL to that version.
-        await links.nth(0).focus()
+        await links.nth(1).focus()
         self.assertEqual(
             await self.page.evaluate("document.activeElement.getAttribute('data-version-sha')"),
-            first_sha,
+            target_sha,
             "a version link must be keyboard-focusable",
         )
         await self.page.keyboard.press("Enter")
         await self.page.wait_for_function(
-            f"() => location.search.includes('version={first_sha}')",
+            f"() => location.search.includes('version={target_sha}')",
             timeout=10000,
         )
 
-        # Compare: the compare control must be reachable in the keyboard flow.
+        # Compare: operate the native compare controls using only the keyboard.
         compare = self.page.locator(".gwflow-history__compare")
         await compare.wait_for(state="attached", timeout=10000)
-        self.assertTrue(await compare.is_visible(), "compare control must be visible after selection")
+        current_radio = compare.locator('input[name="compare"][value="current"]')
+        await current_radio.focus()
+        await self.page.keyboard.press("Space")
+        await compare.locator('button[type="submit"]').press("Enter")
+        await self.page.wait_for_function(
+            "() => location.search.includes('compare=current')",
+            timeout=10000,
+        )
 
-        # Read: the selected version's metadata must be present.
-        self.assertIn("gwflow-history__metadata", await self.page.content())
+        # Read: the changes result must render with a labelled baseline.
+        await self.page.wait_for_selector(".gwflow-changes", state="attached", timeout=10000)
+        normalized = " ".join((await self.page.content()).split())
+        self.assertIn("Changes from current version", normalized)
