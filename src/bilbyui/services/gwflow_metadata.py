@@ -287,7 +287,14 @@ def _iter_leaf_paths(value: Any, path: str = "") -> tuple[str, ...]:
 def _unmapped_paths(payload: Mapping[str, Any]) -> tuple[str, ...]:
     """Return canonical scalar leaf paths absent from the registry."""
 
-    return tuple(sorted(set(_iter_leaf_paths(payload)) - KNOWN_KEYS()))
+    known = KNOWN_KEYS()
+    return tuple(
+        sorted(
+            path
+            for path in _iter_leaf_paths(payload)
+            if path not in known and path.removesuffix("[]") not in known
+        )
+    )
 
 
 @lru_cache(maxsize=512)
