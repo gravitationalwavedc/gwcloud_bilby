@@ -289,11 +289,7 @@ def _unmapped_paths(payload: Mapping[str, Any]) -> tuple[str, ...]:
 
     known = KNOWN_KEYS()
     return tuple(
-        sorted(
-            path
-            for path in _iter_leaf_paths(payload)
-            if path not in known and path.removesuffix("[]") not in known
-        )
+        sorted(path for path in _iter_leaf_paths(payload) if path not in known and path.removesuffix("[]") not in known)
     )
 
 
