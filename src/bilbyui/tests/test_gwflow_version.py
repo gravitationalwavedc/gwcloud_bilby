@@ -197,9 +197,7 @@ class GWFlowHistorySelectionTestCase(BilbyTestCase):
         self.assertEqual(mode, "current")
 
     def test_deep_link_selects_requested_version(self):
-        selected, baseline, mode = resolve_history_selection(
-            self._snapshots(), requested_sha="a" * 40, compare="prev"
-        )
+        selected, baseline, mode = resolve_history_selection(self._snapshots(), requested_sha="a" * 40, compare="prev")
         self.assertEqual(selected.full_sha, "a" * 40)
         self.assertIsNone(baseline)
 

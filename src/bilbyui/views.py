@@ -1765,8 +1765,12 @@ def _render_gwflow_history_section(request, sname):
                 "diff_outcome": outcome,
                 "presentation": presentation,
                 "baseline_presentation": baseline_presentation,
-                "baseline_raw_json": json.dumps(baseline.payload if baseline and baseline.payload is not None else None),
-                "selected_raw_json": json.dumps(selected.payload if selected and selected.payload is not None else None),
+                "baseline_raw_json": json.dumps(
+                    baseline.payload if baseline and baseline.payload is not None else None
+                ),
+                "selected_raw_json": json.dumps(
+                    selected.payload if selected and selected.payload is not None else None
+                ),
                 "stale": stale,
             },
         ),
