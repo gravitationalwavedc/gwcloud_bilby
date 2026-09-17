@@ -48,7 +48,7 @@ class Command(BaseCommand):
     def _find_orphaned_dirs(self, upload_dir: Path) -> tuple[int, list[Path]]:
         """Scan upload_dir for numeric subdirectories and return candidate count and orphan paths."""
         candidate_map: dict[int, Path] = {
-            int(entry.name): entry for entry in upload_dir.iterdir() if entry.is_dir() and entry.name.isdigit()
+            int(entry.name): entry for entry in upload_dir.iterdir() if entry.is_dir() and entry.name.isdecimal()
         }
 
         if not candidate_map:
