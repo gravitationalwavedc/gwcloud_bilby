@@ -5,7 +5,7 @@ URL-backed selection with back/forward restoration, deep-link landing, and the
 keyboard-only select -> compare -> read flow. ``get_versions`` is patched at
 the view layer (visible to the live-server thread because
 ``StaticLiveServerTestCase`` runs it in a thread of the same process) so the
-history pane renders deterministic, stable versions and payloads.
+history pane renders deterministic metadata rows and production-shaped\nper-version detail payloads.
 """
 
 from __future__ import annotations
@@ -34,23 +34,32 @@ def _versions():
                 "commit_timestamp": "2026-08-08 10:00:00 UTC",
                 "schema_version": "v1",
                 "is_current": False,
-                "payload": {"info": {"status": "draft"}},
             },
             {
                 "commit_sha": SHA_V2,
                 "commit_timestamp": "2026-08-09 10:00:00 UTC",
                 "schema_version": "v1",
                 "is_current": False,
-                "payload": {"info": {"status": "ready"}, "extra": "v2-only"},
             },
             {
                 "commit_sha": SHA_V3,
                 "commit_timestamp": "2026-08-10 10:00:00 UTC",
                 "schema_version": "v1",
                 "is_current": True,
-                "payload": {"info": {"status": "ready"}, "extra": "v3-only"},
             },
         ],
+        "live",
+    )
+
+
+def _version_detail(sname, sha):
+    payloads = {
+        SHA_V1: {"info": {"status": "draft"}},
+        SHA_V2: {"info": {"status": "ready"}, "extra": "v2-only"},
+        SHA_V3: {"info": {"status": "ready"}, "extra": "v3-only"},
+    }
+    return (
+        {"sname": sname, "commit_sha": sha, "raw_payload": payloads[sha]},
         "live",
     )
 
@@ -61,6 +70,7 @@ class GWFlowHistoryPageBase(AsyncE2ETestCase):
     user = None
     page = None
     _get_versions_patcher = None
+    _get_version_patcher = None
     _get_superevent_patcher = None
     #: Optional query string appended to the initial history URL (e.g. a deep
     #: link). Subclasses set this so the deep link is the FIRST navigation,
@@ -74,6 +84,12 @@ class GWFlowHistoryPageBase(AsyncE2ETestCase):
         self._get_versions_patcher = mock.patch("bilbyui.views.get_versions", side_effect=lambda sname: _versions())
         self._get_versions_patcher.start()
         self.addCleanup(self._get_versions_patcher.stop)
+        self._get_version_patcher = mock.patch(
+            "bilbyui.views.get_version",
+            side_effect=_version_detail,
+        )
+        self._get_version_patcher.start()
+        self.addCleanup(self._get_version_patcher.stop)
         self._get_superevent_patcher = mock.patch(
             "bilbyui.views.get_superevent",
             return_value=({"sname": SNAME}, "live"),
