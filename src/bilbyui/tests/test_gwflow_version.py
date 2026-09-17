@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from django.test import override_settings
 
 from bilbyui.models import GWFlowJob
+from bilbyui.services.gwflow_versions import diff_payloads, prepare_version_snapshots, resolve_history_selection
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_version import (
     normalise_current_history_timestamp,
@@ -100,8 +101,6 @@ class VersionTupleTestCase(BilbyTestCase):
         job = GWFlowJob(current_history_timestamp=None, current_history_id="")
         self.assertEqual(version_tuple(job), (None, ""))
 
-from bilbyui.services.gwflow_versions import diff_payloads
-
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class GWFlowStructuredDiffTestCase(BilbyTestCase):
@@ -135,3 +134,75 @@ class GWFlowStructuredDiffTestCase(BilbyTestCase):
         self.assertEqual(outcome.status, "cross_schema")
         self.assertEqual(outcome.changes, ())
         self.assertEqual(outcome.reason, "Diff may be incomplete across schema versions")
+
+    def test_list_added_tail_produces_added_records(self):
+        outcome = diff_payloads(
+            {"detectors": ["H1"]},
+            {"detectors": ["H1", "L1", "V1"]},
+            baseline_schema="v1",
+            selected_schema="v1",
+        )
+        self.assertEqual(outcome.status, "semantic")
+        kinds = [c.kind for c in outcome.changes]
+        self.assertEqual(kinds, ["added", "added"])
+        self.assertEqual(outcome.changes[0].path, ("detectors", 1))
+        self.assertEqual(outcome.changes[1].path, ("detectors", 2))
+
+    def test_list_removed_tail_produces_removed_records(self):
+        outcome = diff_payloads(
+            {"detectors": ["H1", "L1", "V1"]},
+            {"detectors": ["H1"]},
+            baseline_schema="v1",
+            selected_schema="v1",
+        )
+        self.assertEqual(outcome.status, "semantic")
+        kinds = [c.kind for c in outcome.changes]
+        self.assertEqual(kinds, ["removed", "removed"])
+        self.assertFalse(outcome.changes[0].selected_present)
+
+    def test_list_equal_length_changed_element(self):
+        outcome = diff_payloads(
+            {"detectors": ["H1", "L1"]},
+            {"detectors": ["H1", "V1"]},
+            baseline_schema="v1",
+            selected_schema="v1",
+        )
+        self.assertEqual(outcome.status, "semantic")
+        self.assertEqual(outcome.changes[0].kind, "changed")
+        self.assertEqual(outcome.changes[0].path, ("detectors", 1))
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class GWFlowHistorySelectionTestCase(BilbyTestCase):
+    def _snapshots(self):
+        return prepare_version_snapshots(
+            [
+                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC", "is_current": False},
+                {"commit_sha": "b" * 40, "commit_timestamp": "2026-08-09 10:00:00 UTC", "is_current": False},
+                {"commit_sha": "c" * 40, "commit_timestamp": "2026-08-10 10:00:00 UTC", "is_current": True},
+            ],
+            current_sha="c" * 40,
+        )
+
+    def test_default_selects_current_with_previous_baseline(self):
+        selected, baseline, mode = resolve_history_selection(self._snapshots(), requested_sha=None, compare=None)
+        self.assertEqual(selected.full_sha, "c" * 40)
+        self.assertEqual(baseline.full_sha, "b" * 40)
+        self.assertEqual(mode, "prev")
+
+    def test_compare_current_uses_current_baseline(self):
+        selected, baseline, mode = resolve_history_selection(self._snapshots(), requested_sha=None, compare="current")
+        self.assertEqual(selected.full_sha, "c" * 40)
+        self.assertEqual(baseline.full_sha, "c" * 40)
+        self.assertEqual(mode, "current")
+
+    def test_deep_link_selects_requested_version(self):
+        selected, baseline, mode = resolve_history_selection(
+            self._snapshots(), requested_sha="a" * 40, compare="prev"
+        )
+        self.assertEqual(selected.full_sha, "a" * 40)
+        self.assertIsNone(baseline)
+
+    def test_unknown_version_raises_lookup_error(self):
+        with self.assertRaises(LookupError):
+            resolve_history_selection(self._snapshots(), requested_sha="z" * 40, compare="prev")

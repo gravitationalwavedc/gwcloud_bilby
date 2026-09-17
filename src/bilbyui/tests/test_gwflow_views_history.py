@@ -419,3 +419,60 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         response.render()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.template_name, "bilbyui/_gwflow_history.html")
+
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404", return_value=mock.Mock())
+    @mock.patch(
+        "bilbyui.views.get_versions",
+        return_value=(
+            [
+                {
+                    "commit_sha": "1111222233334444555566667777888899990000",
+                    "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                    "schema_version": "v1",
+                    "is_current": False,
+                    "payload": {"info": {"status": "draft"}},
+                },
+                {
+                    "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
+                    "commit_timestamp": "2026-08-10 10:00:00 UTC",
+                    "schema_version": "v2",
+                    "is_current": True,
+                    "payload": {"info": {"status": "ready"}},
+                },
+            ],
+            "live",
+        ),
+    )
+    def test_cross_schema_renders_side_by_side_summaries(self, mock_get_versions, mock_get_job):
+        response, _ = _render_gwflow_history_section(self.request, self.sname)
+        response.render()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Diff may be incomplete across schema versions")
+        # Both curated side-by-side summaries must render (not just SHAs).
+        self.assertContains(response, "Baseline — version 11112222")
+        self.assertContains(response, "Selected — version aaaabbbb")
+        self.assertContains(response, "draft")
+        self.assertContains(response, "ready")
+
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404", return_value=mock.Mock())
+    @mock.patch(
+        "bilbyui.views.get_versions",
+        return_value=(
+            [
+                {
+                    "commit_sha": "1111222233334444555566667777888899990000",
+                    "commit_timestamp": "2026-08-10 10:00:00 UTC",
+                    "schema_version": "v1",
+                    "is_current": True,
+                    "payload": {"info": {"status": "ready"}},
+                }
+            ],
+            "live",
+        ),
+    )
+    def test_selected_version_renders_completed_announcement(self, mock_get_versions, mock_get_job):
+        response, _ = _render_gwflow_history_section(self.request, self.sname)
+        response.render()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'role="status"')
+        self.assertContains(response, "Selected version 11112222")

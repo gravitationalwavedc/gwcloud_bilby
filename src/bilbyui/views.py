@@ -1720,7 +1720,7 @@ def _render_gwflow_history_section(request, sname):
         versions if isinstance(versions, list) else (),
         current_sha=job.current_history_id or "",
     )
-    selected = baseline = outcome = presentation = None
+    selected = baseline = outcome = presentation = baseline_presentation = None
     compare_mode = request.GET.get("compare")
     try:
         selected, baseline, compare_mode = resolve_history_selection(
@@ -1745,6 +1745,11 @@ def _render_gwflow_history_section(request, sname):
             baseline_schema=baseline.schema_version if baseline else None,
             selected_schema=selected.schema_version,
         )
+        if outcome.status == "cross_schema" and baseline is not None and baseline.payload is not None:
+            baseline_presentation = build_metadata_presentation(
+                baseline.payload,
+                historical=True,
+            )
 
     return (
         TemplateResponse(
@@ -1759,6 +1764,7 @@ def _render_gwflow_history_section(request, sname):
                 "compare_mode": compare_mode,
                 "diff_outcome": outcome,
                 "presentation": presentation,
+                "baseline_presentation": baseline_presentation,
                 "baseline_raw_json": json.dumps(baseline.payload if baseline and baseline.payload is not None else None),
                 "selected_raw_json": json.dumps(selected.payload if selected and selected.payload is not None else None),
                 "stale": stale,

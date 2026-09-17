@@ -18,6 +18,11 @@
     </div>
   {% endif %}
 
+  <p class="sr-only" role="status" aria-live="polite">
+    Selected version {{ selected_version.short_sha }}.
+    {% if baseline_version %}Compared with {% if compare_mode == "current" %}current{% else %}previous{% endif %} version {{ baseline_version.short_sha }}.{% endif %}
+  </p>
+
   <h3 id="selected-version-heading" class="h5">Selected version details</h3>
 
   <form method="get"

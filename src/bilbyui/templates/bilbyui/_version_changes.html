@@ -51,8 +51,14 @@
       selected schema {{ diff_outcome.selected_schema|default:"unknown" }}.
     </div>
     <div class="gwflow-changes__fallback">
-      <section aria-label="Baseline"><h4 class="h6">Baseline</h4><p>Version {{ baseline_version.short_sha }}</p></section>
-      <section aria-label="Selected version"><h4 class="h6">Selected version</h4><p>Version {{ selected_version.short_sha }}</p></section>
+      <section aria-label="Baseline version {{ baseline_version.short_sha }}">
+        <h4 class="h6">Baseline — version {{ baseline_version.short_sha }}</h4>
+        {% include "bilbyui/_gwflow_metadata.html" with payload=baseline_version.payload presentation=baseline_presentation suppress_historical_banner=True %}
+      </section>
+      <section aria-label="Selected version {{ selected_version.short_sha }}">
+        <h4 class="h6">Selected — version {{ selected_version.short_sha }}</h4>
+        {% include "bilbyui/_gwflow_metadata.html" with payload=selected_version.payload presentation=presentation suppress_historical_banner=True %}
+      </section>
     </div>
   {% elif diff_outcome %}
     <div class="alert alert-warning border-warning" role="note">

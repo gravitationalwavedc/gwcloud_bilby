@@ -123,10 +123,6 @@ def _record(
     )
 
 
-class _UnstableList(ValueError):
-    pass
-
-
 def _walk(baseline: Any, selected: Any, path: tuple[str | int, ...]) -> list[ChangeRecord]:
     if baseline is _MISSING:
         return [_record(path, "added", selected=selected)]
@@ -155,11 +151,14 @@ def _walk(baseline: Any, selected: Any, path: tuple[str | int, ...]) -> list[Cha
         return changes
 
     if baseline_list:
-        if len(baseline) != len(selected):
-            raise _UnstableList("list length changed")
         changes = []
-        for index, (old, new) in enumerate(zip(baseline, selected, strict=True)):
-            changes.extend(_walk(old, new, (*path, index)))
+        common_length = min(len(baseline), len(selected))
+        for index in range(common_length):
+            changes.extend(_walk(baseline[index], selected[index], (*path, index)))
+        for index in range(common_length, len(baseline)):
+            changes.extend(_walk(baseline[index], _MISSING, (*path, index)))
+        for index in range(common_length, len(selected)):
+            changes.extend(_walk(_MISSING, selected[index], (*path, index)))
         return changes
 
     if not _same_scalar(baseline, selected):
@@ -205,13 +204,6 @@ def diff_payloads(
         )
     try:
         changes = tuple(_walk(baseline, selected, ()))
-    except _UnstableList as exc:
-        return DiffOutcome(
-            "unsupported_shape",
-            baseline_schema=baseline_schema,
-            selected_schema=selected_schema,
-            reason=str(exc),
-        )
     except (TypeError, ValueError, RecursionError) as exc:
         return DiffOutcome(
             "failed",
