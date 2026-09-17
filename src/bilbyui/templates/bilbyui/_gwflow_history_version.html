@@ -1,13 +1,73 @@
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h5>
-    Version: <span class="badge badge-secondary">{{ history_id|slice:":8" }}</span>
-    {% if payload.schema_version %}
-      <span class="badge badge-secondary mr-1">{{ payload.schema_version }}</span>
-    {% endif %}
-  </h5>
-  {% if payload.commit_timestamp %}
-    <span class="text-muted">{{ payload.commit_timestamp }}</span>
-  {% endif %}
-</div>
+{% if payload %}
+  <div class="alert alert-warning border-warning gwflow-history__historical" role="note">
+    <strong>Viewing version {{ history_id|slice:":8" }} (historical) — not the current record</strong>
+  </div>
 
-{% include "bilbyui/_gwflow_metadata.html" with payload=payload presentation=presentation %}
+  <h3 id="selected-version-heading" class="h5">
+    Historical version {{ history_id|slice:":8" }}
+    {% if payload.schema_version %}
+      <span class="badge badge-secondary">Schema {{ payload.schema_version }}</span>
+    {% endif %}
+  </h3>
+
+  {% include "bilbyui/_gwflow_metadata.html" with payload=payload presentation=presentation suppress_historical_banner=True %}
+{% elif selected_version %}
+  {% if not selected_version.is_current %}
+    <div class="alert alert-warning border-warning gwflow-history__historical" role="note">
+      <strong>Viewing version {{ selected_version.short_sha }} (historical) — not the current record</strong>
+    </div>
+  {% endif %}
+
+  <p class="sr-only" role="status" aria-live="polite">
+    Selected version {{ selected_version.short_sha }}.
+    {% if baseline_version %}Compared with {% if compare_mode == "current" %}current{% else %}previous{% endif %} version {{ baseline_version.short_sha }}.{% endif %}
+  </p>
+
+  <h3 id="selected-version-heading" class="h5">Selected version details</h3>
+
+  <form method="get"
+        action="{% url 'bilbyui:gwflow_job_history' sname=job.sname %}"
+        class="gwflow-history__compare"
+        hx-get="{% url 'bilbyui:gwflow_job_history' sname=job.sname %}"
+        hx-target="#gwflow-history-region"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-sync="#gwflow-history-region:replace"
+        hx-indicator="#gwflow-history-loading">
+    <input type="hidden" name="version" value="{{ selected_version.full_sha }}">
+    <fieldset>
+      <legend class="h6">Compare selected version</legend>
+      <div class="gwflow-history__compare-options">
+        <label>
+          <input type="radio" name="compare" value="prev" {% if compare_mode == "prev" %}checked{% endif %}>
+          vs previous
+        </label>
+        <label>
+          <input type="radio" name="compare" value="current" {% if compare_mode == "current" %}checked{% endif %}>
+          vs current
+        </label>
+        <button type="submit" class="btn btn-secondary btn-sm">Compare</button>
+      </div>
+    </fieldset>
+  </form>
+
+  <div id="gwflow-history-loading"
+       class="htmx-indicator gwflow-history__loading"
+       role="status"
+       aria-label="Version comparison">
+    <div class="async-skeleton" aria-hidden="true">
+      <div class="async-skeleton-row"></div>
+      <div class="async-skeleton-row"></div>
+    </div>
+    <span class="sr-only">Loading version comparison…</span>
+  </div>
+
+  {% include "bilbyui/_version_changes.html" %}
+
+  {% if presentation %}
+    <section class="gwflow-history__metadata" aria-labelledby="selected-metadata-heading">
+      <h3 id="selected-metadata-heading" class="h5">Metadata for selected version</h3>
+      {% include "bilbyui/_gwflow_metadata.html" with payload=selected_version.payload presentation=presentation suppress_historical_banner=True %}
+    </section>
+  {% endif %}
+{% endif %}
