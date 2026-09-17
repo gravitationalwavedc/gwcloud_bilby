@@ -50,9 +50,10 @@ Populate `.env` with production values for:
 - `JOB_CONTROLLER_BUNDLE`: the bundle value selected for GWFlow production.
 - `DB_PATH` and `STAGING_DIR`: container paths used by the bind mounts.
 - `HOST_DB_PATH` and `HOST_STAGING_PATH`: host paths for sqlite state and staging storage.
+- `LOCK_PATH` and `HOST_LOCK_PATH`: container and host paths for the ingest lock file. `run_cron.sh` bind-mounts the host lock into the container so a single lock serialises every run; the container exits early (without doing work) if the lock is already held.
 - `MAX_FILES_PER_RUN` and `MAX_BYTES_PER_RUN`: caps from the production capacity decision.
 
-`run_cron.sh` uses `set -euo pipefail`; missing `DB_PATH`, `HOST_DB_PATH`, `STAGING_DIR`, or `HOST_STAGING_PATH` values will stop the wrapper before Docker runs. This is intentional so broken environment provisioning fails early.
+`run_cron.sh` uses `set -euo pipefail`; missing `DB_PATH`, `HOST_DB_PATH`, `STAGING_DIR`, `HOST_STAGING_PATH`, `LOCK_PATH`, or `HOST_LOCK_PATH` values will stop the wrapper before Docker runs. This is intentional so broken environment provisioning fails early.
 
 Do not commit `.env`.
 

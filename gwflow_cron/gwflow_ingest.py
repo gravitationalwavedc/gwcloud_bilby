@@ -482,7 +482,7 @@ def run(args=None):
 
     settings.validate_settings()
 
-    lock_path = Path(settings.DB_PATH).with_suffix(".lock")
+    lock_path = Path(settings.LOCK_PATH) if settings.LOCK_PATH else Path(settings.DB_PATH).with_suffix(".lock")
     lock_file = None
     try:
         lock_file = lock_path.open("w")

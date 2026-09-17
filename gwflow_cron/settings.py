@@ -42,6 +42,12 @@ except ImportError:
     MAX_BYTES_PER_RUN = int(os.getenv("MAX_BYTES_PER_RUN", "21474836480"))
     MAX_RETRY_ATTEMPTS = int(os.getenv("MAX_RETRY_ATTEMPTS", "24"))
 
+# Path to the ingest lock file. `run_cron.sh` bind-mounts HOST_LOCK_PATH here so
+# a single lock is shared across container invocations; without the mount the
+# lock would live in the container's private overlay and fail to serialise
+# separate `docker run` instances. Falls back to a sibling of DB_PATH when unset.
+LOCK_PATH = os.getenv("LOCK_PATH")
+
 BACKFILL = False
 
 

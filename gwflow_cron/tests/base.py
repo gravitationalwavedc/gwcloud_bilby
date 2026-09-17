@@ -34,6 +34,7 @@ class GWFlowTestBase(unittest.TestCase):
         state.init_db(self.con)
 
         settings.DB_PATH = ":memory:"
+        settings.LOCK_PATH = None
         settings.GWCLOUD_TOKEN = "VALID"
         settings.GWCLOUD_ENDPOINT = "https://gwcloud.org.au/graphql"
         settings.JOB_CONTROLLER_JWT_SECRET = "VALID_SECRET"

@@ -52,6 +52,43 @@ class TestLockingAndExecution(GWFlowTestBase):
                 finally:
                     fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
+    def test_configured_lock_path_is_used_and_blocks(self):
+        """A lock held on settings.LOCK_PATH must short-circuit the run.
+
+        This is the shared, bind-mounted lock used in production; it must take
+        precedence over the DB-sibling fallback.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = str(Path(tmp) / "state.db")
+            Path(db_path).touch()
+            lock_path = str(Path(tmp) / "ingest.lock")
+            with open(lock_path, "w") as lock_file:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                try:
+                    with (
+                        patch.object(settings, "LOCK_PATH", lock_path),
+                        patch.object(settings, "DB_PATH", db_path),
+                    ):
+                        res = gwflow_ingest.run([])
+                        self.assertEqual(res, 0)
+                finally:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            # The DB-sibling fallback lock must not have been used.
+            self.assertFalse(Path(db_path).with_suffix(".lock").exists())
+
+    def test_configured_lock_path_is_acquired(self):
+        """With LOCK_PATH set, the run acquires (and creates) that lock file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = str(Path(tmp) / "state.db")
+            lock_path = str(Path(tmp) / "ingest.lock")
+            with (
+                patch.object(settings, "LOCK_PATH", lock_path),
+                patch.object(settings, "DB_PATH", db_path),
+            ):
+                res = gwflow_ingest.run([])
+                self.assertEqual(res, 0)
+            self.assertTrue(Path(lock_path).exists())
+
 
 if __name__ == "__main__":
     import unittest
