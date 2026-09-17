@@ -67,6 +67,12 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
             current_history_id="1111222233334444555566667777888899990000",
         )
         self.url = reverse("bilbyui:gwflow_job_history", args=[self.job.sname])
+        self.get_version_patcher = mock.patch(
+            "bilbyui.views.get_version",
+            return_value=({"raw_payload": {}}, "live"),
+        )
+        self.get_version_patcher.start()
+        self.addCleanup(self.get_version_patcher.stop)
 
     @mock.patch(
         "bilbyui.views.get_versions",
@@ -338,6 +344,12 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         self.factory = RequestFactory()
         self.sname = "S230601ag"
         self.request = self.factory.get(reverse("bilbyui:gwflow_job_history", args=[self.sname]))
+        self.get_version_patcher = mock.patch(
+            "bilbyui.views.get_version",
+            return_value=({"raw_payload": {}}, "live"),
+        )
+        self.mock_get_version = self.get_version_patcher.start()
+        self.addCleanup(self.get_version_patcher.stop)
 
     @mock.patch("bilbyui.views._get_gwflow_job_or_404", return_value=mock.Mock())
     @mock.patch("bilbyui.views.get_versions", return_value=(None, "down"))
@@ -430,20 +442,22 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
                     "commit_timestamp": "2026-08-09 10:00:00 UTC",
                     "schema_version": "v1",
                     "is_current": False,
-                    "payload": {"info": {"status": "draft"}},
                 },
                 {
                     "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
                     "commit_timestamp": "2026-08-10 10:00:00 UTC",
                     "schema_version": "v2",
                     "is_current": True,
-                    "payload": {"info": {"status": "ready"}},
                 },
             ],
             "live",
         ),
     )
     def test_cross_schema_renders_side_by_side_summaries(self, mock_get_versions, mock_get_job):
+        self.mock_get_version.side_effect = [
+            ({"raw_payload": {"info": {"status": "ready"}}}, "live"),
+            ({"raw_payload": {"info": {"status": "draft"}}}, "live"),
+        ]
         response, _ = _render_gwflow_history_section(self.request, self.sname)
         response.render()
         self.assertEqual(response.status_code, 200)
@@ -464,15 +478,161 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
                     "commit_timestamp": "2026-08-10 10:00:00 UTC",
                     "schema_version": "v1",
                     "is_current": True,
-                    "payload": {"info": {"status": "ready"}},
                 }
             ],
             "live",
         ),
     )
     def test_selected_version_renders_completed_announcement(self, mock_get_versions, mock_get_job):
+        self.mock_get_version.return_value = (
+            {"raw_payload": {"info": {"status": "ready"}}},
+            "live",
+        )
         response, _ = _render_gwflow_history_section(self.request, self.sname)
         response.render()
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'role="status"')
         self.assertContains(response, "Selected version 11112222")
+
+    def _metadata_versions(self):
+        return [
+            {
+                "commit_sha": "0000000000000000000000000000000000000000",
+                "commit_timestamp": "2026-08-08 10:00:00 UTC",
+                "schema_version": "v2",
+                "is_current": False,
+            },
+            {
+                "commit_sha": "1111222233334444555566667777888899990000",
+                "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                "schema_version": "v2",
+                "is_current": False,
+            },
+            {
+                "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
+                "commit_timestamp": "2026-08-10 10:00:00 UTC",
+                "schema_version": "v2",
+                "is_current": True,
+            },
+        ]
+
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404")
+    @mock.patch("bilbyui.views.get_versions")
+    def test_payload_less_rows_render_detail_payload_diff(self, mock_get_versions, mock_get_job):
+        mock_get_job.return_value.current_history_id = "aaaabbbbccccddddeeeeffff0000111122223333"
+        mock_get_versions.return_value = (self._metadata_versions()[1:], "live")
+        self.mock_get_version.side_effect = [
+            ({"raw_payload": {"info": {"status": "ready"}}}, "live"),
+            ({"raw_payload": {"info": {"status": "draft"}}}, "live"),
+        ]
+
+        response, stale = _render_gwflow_history_section(self.request, self.sname)
+        response.render()
+
+        self.assertFalse(stale)
+        self.assertEqual(response.context_data["diff_outcome"].status, "semantic")
+        self.assertContains(response, "info.status")
+        self.assertContains(response, "draft")
+        self.assertContains(response, "ready")
+        self.assertNotEqual(response.context_data["baseline_raw_json"], "null")
+        self.assertNotEqual(response.context_data["selected_raw_json"], "null")
+
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404")
+    @mock.patch("bilbyui.views.get_versions")
+    def test_fetches_only_selected_and_resolved_baseline_details(self, mock_get_versions, mock_get_job):
+        selected_sha = "aaaabbbbccccddddeeeeffff0000111122223333"
+        baseline_sha = "1111222233334444555566667777888899990000"
+        mock_get_job.return_value.current_history_id = selected_sha
+        mock_get_versions.return_value = (self._metadata_versions(), "live")
+        self.mock_get_version.side_effect = [
+            ({"raw_payload": {"value": 2}}, "live"),
+            ({"raw_payload": {"value": 1}}, "live"),
+        ]
+
+        _render_gwflow_history_section(self.request, self.sname)
+
+        self.assertEqual(
+            self.mock_get_version.call_args_list,
+            [
+                mock.call(self.sname, selected_sha),
+                mock.call(self.sname, baseline_sha),
+            ],
+        )
+
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404")
+    @mock.patch("bilbyui.views.get_versions")
+    def test_compare_current_fetches_same_sha_once(self, mock_get_versions, mock_get_job):
+        current_sha = "aaaabbbbccccddddeeeeffff0000111122223333"
+        mock_get_job.return_value.current_history_id = current_sha
+        mock_get_versions.return_value = (self._metadata_versions(), "live")
+        request = self.factory.get(
+            reverse("bilbyui:gwflow_job_history", args=[self.sname]),
+            {"version": current_sha, "compare": "current"},
+        )
+        self.mock_get_version.return_value = (
+            {"raw_payload": {"info": {"status": "ready"}}},
+            "live",
+        )
+
+        response, _ = _render_gwflow_history_section(request, self.sname)
+        response.render()
+
+        self.mock_get_version.assert_called_once_with(self.sname, current_sha)
+        self.assertEqual(
+            response.context_data["baseline_raw_json"],
+            response.context_data["selected_raw_json"],
+        )
+
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404")
+    @mock.patch("bilbyui.views.get_versions")
+    def test_selected_detail_failure_renders_unavailable(self, mock_get_versions, mock_get_job):
+        mock_get_job.return_value.current_history_id = "aaaabbbbccccddddeeeeffff0000111122223333"
+        mock_get_versions.return_value = (self._metadata_versions()[1:], "live")
+        self.mock_get_version.side_effect = [
+            (None, "down"),
+            ({"raw_payload": {"info": {"status": "draft"}}}, "live"),
+        ]
+
+        response, stale = _render_gwflow_history_section(self.request, self.sname)
+        response.render()
+
+        self.assertFalse(stale)
+        self.assertEqual(response.context_data["diff_outcome"].status, "unavailable")
+        self.assertContains(response, "A semantic comparison is unavailable")
+        self.assertEqual(response.context_data["selected_raw_json"], "null")
+
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404")
+    @mock.patch("bilbyui.views.get_versions")
+    def test_baseline_detail_failure_renders_no_baseline(self, mock_get_versions, mock_get_job):
+        mock_get_job.return_value.current_history_id = "aaaabbbbccccddddeeeeffff0000111122223333"
+        mock_get_versions.return_value = (self._metadata_versions()[1:], "live")
+        self.mock_get_version.side_effect = [
+            ({"raw_payload": {"info": {"status": "ready"}}}, "live"),
+            (None, "down"),
+        ]
+
+        response, stale = _render_gwflow_history_section(self.request, self.sname)
+        response.render()
+
+        self.assertFalse(stale)
+        self.assertEqual(response.context_data["diff_outcome"].status, "no_baseline")
+        self.assertContains(response, "No previous version is available for comparison")
+        self.assertEqual(response.context_data["baseline_raw_json"], "null")
+        self.assertNotEqual(response.context_data["selected_raw_json"], "null")
+
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404")
+    @mock.patch("bilbyui.views.get_versions")
+    def test_stale_required_detail_sets_stale_indicator(self, mock_get_versions, mock_get_job):
+        mock_get_job.return_value.current_history_id = "aaaabbbbccccddddeeeeffff0000111122223333"
+        mock_get_versions.return_value = (self._metadata_versions()[1:], "live")
+        self.mock_get_version.side_effect = [
+            ({"raw_payload": {"info": {"status": "ready"}}}, "stale"),
+            ({"raw_payload": {"info": {"status": "draft"}}}, "live"),
+        ]
+
+        response, stale = _render_gwflow_history_section(self.request, self.sname)
+        response.render()
+
+        self.assertTrue(stale)
+        self.assertTrue(response.context_data["stale"])
+        self.assertContains(response, "Showing cached copy")
