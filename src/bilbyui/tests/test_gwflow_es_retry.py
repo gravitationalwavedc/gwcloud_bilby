@@ -184,3 +184,56 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
         mock_scan.assert_called_once()
         mock_get_version.assert_called_once_with(job.sname, job.current_history_id)
         self.assertIn("1 re-indexed", output)
+
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.Command.handle_job")
+    def test_unexpected_error_fails(self, mock_handle_job):
+        """An unexpected handle_job exception is logged, counted as failed, and raises."""
+        self._make_job()
+        mock_handle_job.side_effect = RuntimeError("boom")
+
+        out = StringIO()
+        with self.assertLogs("bilbyui.management.commands.gwflow_es_retry", level="ERROR") as logs:
+            with self.assertRaises(CommandError):
+                call_command("gwflow_es_retry", stdout=out)
+
+        self.assertTrue(any("GWFlow ES retry failed" in line for line in logs.output))
+        self.assertIn("0 re-indexed, 0 skipped, 1 failed", out.getvalue())
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True)
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.helpers.scan")
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.get_es_client")
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.get_version")
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.gwflow_elastic_search_update")
+    def test_no_doc_ignored_when_es_disabled(self, mock_update, mock_get_version, mock_es, mock_scan):
+        """With IGNORE_ELASTIC_SEARCH, --no-doc keeps candidates without scanning ES."""
+        job = self._make_job()
+        mock_get_version.return_value = ({"ParameterEstimation": {"results": []}}, "live")
+
+        output = self._run("--no-doc")
+
+        mock_scan.assert_not_called()
+        mock_es.assert_not_called()
+        mock_get_version.assert_called_once_with(job.sname, job.current_history_id)
+        self.assertIn("1 re-indexed", output)
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=False)
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.helpers.scan")
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.get_es_client")
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.get_version")
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.gwflow_elastic_search_update")
+    def test_no_doc_scan_failure_degrades(self, mock_update, mock_get_version, mock_es, mock_scan):
+        """If the ES scan fails, --no-doc degrades to the original candidates."""
+        job = self._make_job()
+
+        def scan_fails_after_hit(*args, **kwargs):
+            yield {"_id": "1"}
+            raise ConnectionError("es down")
+
+        mock_scan.side_effect = scan_fails_after_hit
+        mock_get_version.return_value = ({"ParameterEstimation": {"results": []}}, "live")
+
+        output = self._run("--no-doc")
+
+        mock_scan.assert_called_once()
+        mock_get_version.assert_called_once_with(job.sname, job.current_history_id)
+        self.assertIn("1 re-indexed", output)
