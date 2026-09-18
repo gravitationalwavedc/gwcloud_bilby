@@ -923,3 +923,48 @@ class TestBilbyIniToArgs(TestCase):
         self.assertEqual(args.channel_dict, "{'H1': 'GWOSC'}")
         self.assertTrue(args.gaussian_noise)
         self.assertEqual(args.n_simulation, 1)
+
+
+class TestPrepareIniData(TestCase):
+    def setUp(self):
+        # Make the _bundledb stub importable so core.submit can be imported
+        misc_dir = str(Path(__file__).parent / "misc")
+        sys.path.append(misc_dir)
+        self.addCleanup(sys.path.remove, misc_dir)
+
+    def _job_parameters(self, **extra):
+        ini = args_to_bilby_ini(
+            {
+                "label": "test-prepare-ini",
+                "detectors": ["H1"],
+                "trigger-time": "12345678",
+                "injection-numbers": [],
+            }
+        ).decode("utf-8")
+        params = {"name": "test-prepare-ini", "description": "Some description", "ini_string": ini}
+        params.update(extra)
+        return json.dumps(params)
+
+    @patch("core.submit.prepare_supporting_files")
+    def test_prepare_ini_data_forwards_supporting_files(self, mock_prepare_supporting_files):
+        # A job_parameters dict containing supporting_files should delegate to
+        # prepare_supporting_files with the parsed args, the list, and the working directory
+        supporting_files = [{"type": "psd", "key": "H1", "file_name": "test.psd", "token": "token"}]
+        job_parameters = self._job_parameters(supporting_files=supporting_files)
+
+        from core.submit import prepare_ini_data
+
+        args = prepare_ini_data(job_parameters, "/a/working/directory")
+
+        mock_prepare_supporting_files.assert_called_once_with(args, supporting_files, "/a/working/directory")
+
+    @patch("core.submit.prepare_supporting_files")
+    def test_prepare_ini_data_skips_supporting_files_when_absent(self, mock_prepare_supporting_files):
+        # A job_parameters dict without supporting_files should not call prepare_supporting_files
+        job_parameters = self._job_parameters()
+
+        from core.submit import prepare_ini_data
+
+        prepare_ini_data(job_parameters, "/a/working/directory")
+
+        mock_prepare_supporting_files.assert_not_called()
