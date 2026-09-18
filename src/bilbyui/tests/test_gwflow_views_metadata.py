@@ -84,3 +84,16 @@ class TestRenderGWFlowMetadataSection(BilbyTestCase):
         self.assertEqual(rendered.status_code, 200)
         self.assertContains(rendered, "E1")
         self.assertContains(rendered, "gstlal")
+
+    @mock.patch("bilbyui.views.get_superevent", return_value=([], "live"))
+    def test_non_dict_payload_renders_raw_with_none_presentation(self, mock_get_superevent):
+        response, stale = _render_gwflow_metadata_section(self.request, self.job.sname)
+
+        mock_get_superevent.assert_called_once_with(self.job.sname)
+        self.assertFalse(stale)
+        self.assertEqual(response.template_name, "bilbyui/_gwflow_metadata.html")
+        self.assertIsNone(response.context_data["presentation"])
+        self.assertEqual(response.context_data["payload"], [])
+        rendered = response.render()
+        self.assertEqual(rendered.status_code, 200)
+        self.assertNotContains(rendered, "async-error")
