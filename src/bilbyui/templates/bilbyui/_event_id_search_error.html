@@ -1,0 +1,2 @@
+{% url 'bilbyui:event_id_search' as search_url %}
+{% include "bilbyui/_async_state.html" with state="error" thing="event IDs" region_label="Event ID search results" reason=reason retry_url=retry_url retry_target="#event-id-results" %}

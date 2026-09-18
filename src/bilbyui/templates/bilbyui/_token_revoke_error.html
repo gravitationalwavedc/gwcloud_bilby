@@ -1,0 +1,5 @@
+<div class="card gw-form-card mb-2" data-token-id="{{ token_id }}" role="region" aria-label="Token revocation">
+  <div class="card-body">
+    {% include "bilbyui/_async_state.html" with state="error" thing="the token" region_label="Token revocation" reason=reason retry_url=retry_url retry_target="closest [data-token-id]" retry_method="post" retry_swap="outerHTML" %}
+  </div>
+</div>

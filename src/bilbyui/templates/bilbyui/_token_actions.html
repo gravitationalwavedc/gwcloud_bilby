@@ -11,6 +11,7 @@
             hx-post="{% url 'bilbyui:api_token_create' %}"
             hx-target="#token-actions"
             hx-swap="innerHTML"
+            hx-indicator="#token-create-indicator"
             class="mt-3">
         {% csrf_token %}
         <div class="form-group">
@@ -27,6 +28,9 @@
         <div class="d-flex">
           <button type="button" class="btn btn-secondary mr-2" @click="open = false">Cancel</button>
           <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+        <div id="token-create-indicator" class="htmx-indicator" aria-hidden="true">
+          {% include "bilbyui/_async_state.html" with state="loading" thing="the token" region_label="Token creation" %}
         </div>
       </form>
     </div>

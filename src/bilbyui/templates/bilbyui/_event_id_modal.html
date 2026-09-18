@@ -16,8 +16,12 @@
                hx-get="{% url 'bilbyui:event_id_search' %}?job_id={{ job.id }}"
                hx-trigger="input changed delay:250ms, search"
                hx-target="#event-id-results"
-               hx-swap="innerHTML" />
-        <div id="event-id-results">
+               hx-swap="innerHTML"
+               hx-indicator="#event-id-search-indicator-{{ job.id }}" />
+        <div id="event-id-search-indicator-{{ job.id }}" class="htmx-indicator" aria-hidden="true">
+          {% include "bilbyui/_async_state.html" with state="loading" thing="event IDs" region_label="Event ID search" %}
+        </div>
+        <div id="event-id-results" role="region" aria-label="Event ID search results">
           <p class="text-muted">Type to search…</p>
         </div>
       </div>

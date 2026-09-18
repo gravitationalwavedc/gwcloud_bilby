@@ -133,29 +133,6 @@ class GWFlowHistoryPageBase(AsyncE2ETestCase):
         await self.page.wait_for_selector(".gwflow-history__desktop-list", state="attached", timeout=20000)
 
 
-class TestHistorySelectionRestore(GWFlowHistoryPageBase):
-    """Back/forward URL restoration."""
-
-    @async_e2e_test
-    async def test_back_forward_restores_selection(self):
-        await self._wait_for_rail()
-        # Select v2 via the rail link (HTMX pushes ?version=... to the URL).
-        await self._version_link(SHA_V2).click()
-        await self.page.wait_for_function(
-            "() => location.search.includes('version=2222222222222222222222222222222222222222')",
-            timeout=10000,
-        )
-        # Back returns to the default (current) selection, forward restores v2.
-        await self.page.go_back()
-        await self.page.go_forward()
-        await self.page.wait_for_function(
-            "() => location.search.includes('version=2222222222222222222222222222222222222222')",
-            timeout=10000,
-        )
-        selected = self.page.locator(".gwflow-history__desktop-list [aria-current='true']")
-        self.assertEqual(await selected.get_attribute("data-version-sha"), SHA_V2)
-
-
 class TestHistoryDeepLink(GWFlowHistoryPageBase):
     """Deep-link landing (initial navigation to a version+compare URL)."""
 

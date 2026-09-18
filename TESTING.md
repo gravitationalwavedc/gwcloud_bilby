@@ -110,3 +110,59 @@ overflow, and clipboard e2e tests:
 - **Clipboard.** The copy handler is async: it reports "Copied" only when
   `navigator.clipboard.writeText` resolves and "Copy failed" when it rejects,
   so a denied or unavailable clipboard never announces a false success.
+
+## HTMX interaction contract suite
+
+The interaction contract suite lives in `src/bilbyui/tests/htmx_contract/`.
+Its registry defines expected endpoint behaviour, the audit reconciles template
+declarations with that registry, and shared helpers exercise the declared
+server and browser contracts.
+
+When adding or changing an HTMX interaction:
+
+1. Add the template declaration and a matching registry entry with its URL,
+   target, swap semantics, states, focus behaviour, and response expectations.
+2. Add deterministic scenarios and fixtures for every reachable response
+   branch. Control data and failure conditions explicitly; do not use sleeps,
+   timing assumptions, or external state.
+3. Mark implemented states as `reachable`. Mark states that do not apply as
+   `not_applicable(reason)` with a specific product or protocol reason. The
+   files region is local-first, so its unsupported remote response states are
+   `not_applicable`, rather than simulated endpoint branches.
+4. Give requestless declarations, such as clipboard or client-only behaviour,
+   an explicit reasoned exemption so the audit can distinguish them from
+   missing registry entries.
+5. Run the audit and read its endpoint, declaration, state, and target
+   diagnostics together. Fix the production declaration or the single registry
+   source rather than weakening an assertion.
+
+Do not create a second hand-maintained endpoint inventory. Production
+declarations and the registry are the authoritative inputs to the audit.
+Product-required states that cannot currently be reached must remain visible as
+blocking gaps and require stakeholder sign-off before being classified as
+unreachable or not applicable.
+
+Focused server verification:
+
+```bash
+cd src
+DJANGO_SETTINGS_MODULE=gw_bilby.test .venv/bin/python manage.py test bilbyui.tests.htmx_contract
+```
+
+Focused browser verification requires the shared Playwright endpoint:
+
+```bash
+cd src
+test -n "${PW_WS_ENDPOINT:-}" || {
+  echo "PW_WS_ENDPOINT is required for Playwright contract tests" >&2
+  exit 1
+}
+DJANGO_SETTINGS_MODULE=gw_bilby.test .venv/bin/python manage.py test bilbyui.tests.e2e.test_htmx_contract_e2e
+```
+
+The existing GitLab `django-tests` job starts the shared Playwright server,
+exports `PW_WS_ENDPOINT`, and runs `run_coverage.sh --parallel`; ordinary Django
+discovery therefore includes both contract layers without another job, runner,
+or dependency. Registry-wide inventory and audit tests must use
+`--parallel 1`, because parallel workers must not independently construct or
+compare the complete declaration inventory.

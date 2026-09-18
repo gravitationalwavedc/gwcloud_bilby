@@ -31,6 +31,7 @@
       </button>
       <form hx-post="{% url 'bilbyui:api_token_revoke' token_id=token.id %}"
             hx-swap="none"
+            hx-indicator="#token-revoke-indicator-{{ token.id }}"
             class="token-revoke-confirm d-inline">
         {% csrf_token %}
         <span class="text-danger mr-2">Are you sure?</span>
@@ -39,6 +40,9 @@
                 class="btn btn-secondary btn-sm token-revoke-cancel">
           Cancel
         </button>
+        <div id="token-revoke-indicator-{{ token.id }}" class="htmx-indicator" aria-hidden="true">
+          {% include "bilbyui/_async_state.html" with state="loading" thing="the token" region_label="Token revocation" %}
+        </div>
       </form>
     </div>
   </div>
