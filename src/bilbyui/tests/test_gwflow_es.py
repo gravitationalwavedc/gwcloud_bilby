@@ -492,6 +492,19 @@ class TestCollectReviewStatuses(BilbyTestCase):
 
         self.assertEqual(result, [])
 
+    def test_collect_null_review_status_collected_as_none(self):
+        metadata = {
+            "ParameterEstimation": {"results": [{"review_status": None}]},
+            "TGR": [{"review_status": {"nested": "pending"}}],
+        }
+
+        with self.assertLogs("bilbyui.utils.gwflow_es", level="WARNING") as logs:
+            result = _collect_review_statuses(metadata, self.job)
+
+        self.assertEqual(result, [None])
+        self.assertEqual(len(logs.records), 1)
+        self.assertTrue(all("Non-scalar review_status" in r.getMessage() for r in logs.records))
+
 
 class TestGWFlowESUpdateRemove(BilbyTestCase):
     def setUp(self):
