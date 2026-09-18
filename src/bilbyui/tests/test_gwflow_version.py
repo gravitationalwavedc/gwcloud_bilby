@@ -204,3 +204,20 @@ class GWFlowHistorySelectionTestCase(BilbyTestCase):
     def test_unknown_version_raises_lookup_error(self):
         with self.assertRaises(LookupError):
             resolve_history_selection(self._snapshots(), requested_sha="z" * 40, compare="prev")
+
+    def test_no_current_row_falls_back_to_latest_snapshot(self):
+        snapshots = prepare_version_snapshots(
+            [
+                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC", "is_current": False},
+                {"commit_sha": "b" * 40, "commit_timestamp": "2026-08-09 10:00:00 UTC", "is_current": False},
+            ],
+            current_sha="",
+        )
+        selected, baseline, mode = resolve_history_selection(snapshots, requested_sha=None, compare=None)
+        self.assertEqual(selected.full_sha, "b" * 40)
+        self.assertEqual(baseline.full_sha, "a" * 40)
+        self.assertEqual(mode, "prev")
+
+    def test_empty_history_raises_lookup_error(self):
+        with self.assertRaises(LookupError):
+            resolve_history_selection((), requested_sha=None, compare=None)
