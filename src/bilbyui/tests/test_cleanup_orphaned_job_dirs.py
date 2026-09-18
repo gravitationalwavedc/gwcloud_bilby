@@ -171,6 +171,18 @@ class TestCleanupOrphanedJobDirs(BilbyTestCase):
         self.assertTrue(valid_dir.exists())
         self.assertTrue(numeric_file.exists())
 
+    def test_cleanup_unicode_digit_dir_is_skipped(self):
+        """A directory whose name is a Unicode digit (e.g. superscript "²") must be
+        skipped as a non-candidate rather than crashing int() with a ValueError.
+        """
+        (self.upload_dir / "\u00b2").mkdir()
+
+        out = StringIO()
+        with self.settings(JOB_UPLOAD_DIR=str(self.upload_dir)):
+            call_command("cleanup_orphaned_job_dirs", stdout=out)
+
+        self.assertIn("0 directories checked. No candidate job directories found.", out.getvalue())
+
     def test_cleanup_zero_candidate_directories(self):
         """When JOB_UPLOAD_DIR has no numeric subdirectories, reports 0 directories checked."""
         # Add non-numeric dir and file
