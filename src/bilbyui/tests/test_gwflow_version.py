@@ -135,6 +135,28 @@ class GWFlowStructuredDiffTestCase(BilbyTestCase):
         self.assertEqual(outcome.changes, ())
         self.assertEqual(outcome.reason, "Diff may be incomplete across schema versions")
 
+    def test_no_baseline_when_baseline_is_none(self):
+        outcome = diff_payloads(None, {"status": "ready"}, baseline_schema="v1", selected_schema="v1")
+        self.assertEqual(outcome.status, "no_baseline")
+        self.assertEqual(outcome.baseline_schema, "v1")
+        self.assertEqual(outcome.selected_schema, "v1")
+
+    def test_unavailable_when_selected_is_none(self):
+        outcome = diff_payloads({"status": "ready"}, None, baseline_schema="v1", selected_schema="v1")
+        self.assertEqual(outcome.status, "unavailable")
+        self.assertEqual(outcome.reason, "selected payload unavailable")
+
+    def test_unsupported_shape_for_non_mapping_root(self):
+        outcome = diff_payloads({"status": "ready"}, ["not", "a", "mapping"])
+        self.assertEqual(outcome.status, "unsupported_shape")
+        self.assertEqual(outcome.reason, "payload root must be a mapping")
+
+    def test_mapping_vs_list_shape_mismatch_is_changed(self):
+        outcome = diff_payloads({"detectors": {"a": 1}}, {"detectors": ["a"]})
+        self.assertEqual(outcome.status, "semantic")
+        self.assertEqual(outcome.changes[0].kind, "changed")
+        self.assertEqual(outcome.changes[0].path, ("detectors",))
+
     def test_list_added_tail_produces_added_records(self):
         outcome = diff_payloads(
             {"detectors": ["H1"]},
@@ -170,6 +192,40 @@ class GWFlowStructuredDiffTestCase(BilbyTestCase):
         self.assertEqual(outcome.status, "semantic")
         self.assertEqual(outcome.changes[0].kind, "changed")
         self.assertEqual(outcome.changes[0].path, ("detectors", 1))
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class GWFlowSnapshotTimestampTestCase(BilbyTestCase):
+    def _snapshots(self, rows):
+        return prepare_version_snapshots(rows)
+
+    def test_naive_datetime_treated_as_utc(self):
+        snapshots = self._snapshots([{"commit_sha": "a" * 40, "commit_timestamp": datetime(2024, 1, 1, 12, 0, 0)}])
+        self.assertEqual(snapshots[0].recorded_at, datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC))
+        self.assertEqual(snapshots[0].recorded_at.tzinfo, UTC)
+
+    def test_aware_datetime_converted_to_utc(self):
+        raw = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone(timedelta(hours=5)))
+        snapshots = self._snapshots([{"commit_sha": "a" * 40, "commit_timestamp": raw}])
+        self.assertEqual(snapshots[0].recorded_at, datetime(2024, 1, 1, 7, 0, 0, tzinfo=UTC))
+
+    def test_non_string_timestamp_returns_none(self):
+        snapshots = self._snapshots([{"commit_sha": "a" * 40, "commit_timestamp": 12345}])
+        self.assertIsNone(snapshots[0].recorded_at)
+
+    def test_malformed_timestamp_returns_none(self):
+        snapshots = self._snapshots([{"commit_sha": "a" * 40, "commit_timestamp": "not-a-date"}])
+        self.assertIsNone(snapshots[0].recorded_at)
+
+    def test_row_without_sha_is_skipped(self):
+        snapshots = self._snapshots(
+            [
+                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC"},
+                {"commit_timestamp": "2026-08-09 10:00:00 UTC"},
+                {"commit_sha": "b" * 40, "commit_timestamp": "2026-08-10 10:00:00 UTC"},
+            ]
+        )
+        self.assertEqual([s.full_sha for s in snapshots], ["a" * 40, "b" * 40])
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
