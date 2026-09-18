@@ -48,6 +48,20 @@ class LeafPathTests(SimpleTestCase):
                 sname="S-KNOWN",
             )
 
+    def test_registered_scalar_list_leaves_are_silent_but_unregistered_still_warns(self):
+        payload = {
+            "gracedb": {"instruments": ["H1", "L1"]},
+            "pe": {"results": [{"uid": "u", "analysts": ["a"]}]},
+            "info": {"z_unknown": ["x"]},
+        }
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
+            warn_unmapped_metadata_leaves(payload, sname="S-LIST")
+
+        self.assertEqual(
+            [record.path for record in captured.records],
+            ["info.z_unknown[]"],
+        )
+
     def test_warning_records_are_exact_sorted_and_contain_no_values(self):
         payload = {"info": {"z_unknown": "SECRET-Z", "a_unknown": "SECRET-A"}}
 
