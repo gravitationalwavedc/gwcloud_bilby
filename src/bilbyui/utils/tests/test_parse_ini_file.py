@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from types import SimpleNamespace
 from unittest import mock
 
@@ -291,6 +292,24 @@ class TestSafeJsonDumps(BilbyTestCase):
         self.assertEqual(envelope["meta"]["nan"], "nan")
         self.assertEqual(envelope["meta"]["np_scalar"], 1.5)
         self.assertEqual(envelope["meta"]["broken"], "<unserializable object>")
+
+    def test_non_json_native_values_degrade_to_string(self):
+        # Complex numbers, bytes and datetimes are not JSON-native, so they
+        # must degrade to a plain string representation with round_trip=False.
+        cosmology = FlatLambdaCDM(H0=67.9, Om0=0.3065, name="test")
+        cosmology.meta["complex"] = complex(1, 2)
+        cosmology.meta["complex_array"] = np.array([1 + 2j, 3 + 4j])
+        cosmology.meta["bytes"] = b"hello"
+        cosmology.meta["datetime"] = datetime(2024, 1, 1)
+
+        envelope = json.loads(safe_json_dumps(cosmology))
+        self.assertEqual(envelope["__gwcloud_type__"], "astropy.cosmology")
+        # Any nested fallback propagates round_trip to false.
+        self.assertFalse(envelope["round_trip"])
+        self.assertEqual(envelope["meta"]["complex"], "(1+2j)")
+        self.assertEqual(envelope["meta"]["complex_array"], ["(1+2j)", "(3+4j)"])
+        self.assertEqual(envelope["meta"]["bytes"], "b'hello'")
+        self.assertEqual(envelope["meta"]["datetime"], "2024-01-01 00:00:00")
 
     def test_non_finite_float_is_not_round_trippable(self):
         # A non-finite float is stored as a string and therefore cannot be
