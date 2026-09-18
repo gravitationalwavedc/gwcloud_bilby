@@ -202,6 +202,31 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
             "pe-comparison-table",
         )
 
+    def test_comparative_residual_skips_non_dict_records(self):
+        payload = {
+            "gracedb": {
+                "events": [
+                    "malformed-non-dict-entry",
+                    {
+                        "uid": "G-SANITISED-001",
+                        "pipeline": "gstlal",
+                        "state": "preferred",
+                        "far": {"value": 1.1e-10, "unit": "Hz"},
+                        "network_snr": 18.4,
+                        "custom_field": {"value": "kept"},
+                    },
+                ]
+            }
+        }
+        presentation = build_metadata_presentation(payload)
+        section = next(section for section in presentation.sections if section.id == "gracedb")
+        self.assertEqual(section.data_shape, "comparative")
+        self.assertEqual(len(section.comparative_sets), 1)
+        self.assertEqual(len(section.comparative_sets[0].rows), 1)
+        residual_paths = {node.path for node in section.disclosure}
+        self.assertIn("gracedb.events[1].custom_field", residual_paths)
+        self.assertNotIn("gracedb.events[0].custom_field", residual_paths)
+
     def test_all_columns_are_server_rendered_for_no_javascript_access(self):
         for template_name, comparative_set, columns in (
             (
