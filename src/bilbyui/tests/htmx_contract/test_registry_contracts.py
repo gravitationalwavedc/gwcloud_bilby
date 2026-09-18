@@ -216,9 +216,7 @@ class RegistryContractTests(BilbyTestCase):
         response = self.client.get(fixture_url(self, contract), HTTP_HX_REQUEST="true")
         self.assertEqual(response.status_code, 200)
         parser = parse_fragment(response.content)
-        expected = contract.region_id.replace(
-            "{job_id}", str(fixture.kwargs["job_id"])
-        )
+        expected = contract.region_id.replace("{job_id}", str(fixture.kwargs["job_id"]))
         self.assertEqual(parser.start_tags[0][1].get("id"), expected)
 
     def test_server_executor_scope_is_explicit_and_non_synthetic(self):

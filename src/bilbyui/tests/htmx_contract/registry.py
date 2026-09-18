@@ -180,9 +180,7 @@ def validate_registry(contracts: tuple[EndpointContract, ...] | list[EndpointCon
 
         unknown_async = contract.async_states - RESPONSE_STATES
         if unknown_async:
-            errors.append(
-                f"{label}: async_states contains non-response states: {', '.join(sorted(unknown_async))}"
-            )
+            errors.append(f"{label}: async_states contains non-response states: {', '.join(sorted(unknown_async))}")
         for state in contract.async_states:
             expected_role = ASYNC_ROLES[state]
             expectation = contract.announcement.get(state)
@@ -219,9 +217,7 @@ def resolve_contract(
     return matches[0]
 
 
-def _announcement(
-    states: frozenset[str], announcing: Mapping[str, str]
-) -> Mapping[str, AnnouncementExpectation]:
+def _announcement(states: frozenset[str], announcing: Mapping[str, str]) -> Mapping[str, AnnouncementExpectation]:
     return MappingProxyType(
         {
             state: (
@@ -270,7 +266,9 @@ def _contract(
     retry = None
     if states["retry"] == "reachable":
         terminals = responses - {"error"}
-        retry = RetryExpectation("error", terminals or frozenset({"content"}), ".async-error button[hx-get], .async-error form[hx-post]")
+        retry = RetryExpectation(
+            "error", terminals or frozenset({"content"}), ".async-error button[hx-get], .async-error form[hx-post]"
+        )
 
     roles: dict[str, str] = {state: ASYNC_ROLES[state] for state in async_states}
     roles.setdefault("error", "alert")

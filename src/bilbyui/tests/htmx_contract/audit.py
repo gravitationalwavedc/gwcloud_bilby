@@ -352,8 +352,7 @@ def reconcile(
     registry_names = _registered_url_names(contracts)
     rendered_names = Counter(item.name for item in rendered)
     element_attributes = {
-        (declaration.path, declaration.element, declaration.name): declaration
-        for declaration in source
+        (declaration.path, declaration.element, declaration.name): declaration for declaration in source
     }
 
     def contracts_for(url_name):
@@ -393,15 +392,10 @@ def reconcile(
             matching = [
                 contract
                 for contract in matches
-                if getattr(contract, "region_id", None) == target_literal
-                and _contract_swap(contract) == swap_literal
+                if getattr(contract, "region_id", None) == target_literal and _contract_swap(contract) == swap_literal
             ]
             if not matching:
-                location = (
-                    target_declaration.location
-                    if target_declaration is not None
-                    else declaration.location
-                )
+                location = target_declaration.location if target_declaration is not None else declaration.location
                 errors.append(
                     f"{location}: hx-target #{target_literal} with hx-swap "
                     f"{swap_literal!r} matches no registry contract for {declared_url_name!r}"
@@ -412,15 +406,9 @@ def reconcile(
                     f"{swap_literal!r} matches {len(matching)} registry contracts; ambiguous"
                 )
         elif swap_literal is not None:
-            swap_matches = [
-                contract for contract in matches if _contract_swap(contract) == swap_literal
-            ]
+            swap_matches = [contract for contract in matches if _contract_swap(contract) == swap_literal]
             if not swap_matches and len({_contract_swap(contract) for contract in matches}) == 1:
-                location = (
-                    swap_declaration.location
-                    if swap_declaration is not None
-                    else declaration.location
-                )
+                location = swap_declaration.location if swap_declaration is not None else declaration.location
                 errors.append(
                     f"{location}: effective hx-swap {swap_literal!r} disagrees with "
                     f"contract swap {_contract_swap(matches[0])!r}"
@@ -474,9 +462,7 @@ def reconcile(
         for declared_url_name in declared_url_names:
             matches = contracts_for(declared_url_name)
             if not matches:
-                errors.append(
-                    f"{declaration.location}: {declared_url_name!r} resolves to 0 registry entries"
-                )
+                errors.append(f"{declaration.location}: {declared_url_name!r} resolves to 0 registry entries")
                 continue
             check_static_target_swap(declaration, declared_url_name, matches)
         if require_rendered and rendered_names[declaration.name] == 0:
@@ -489,10 +475,7 @@ def reconcile(
         if url_name is None:
             errors.append(f"{observation.route}: unresolved rendered URL {observation.value!r} for {observation.name}")
         elif registry_names[url_name] == 0:
-            errors.append(
-                f"{observation.route}: rendered URL {observation.value!r} maps to "
-                "0 registry entries"
-            )
+            errors.append(f"{observation.route}: rendered URL {observation.value!r} maps to 0 registry entries")
 
     if errors:
         raise AuditError("HTMX declaration reconciliation failed:\n- " + "\n- ".join(errors))

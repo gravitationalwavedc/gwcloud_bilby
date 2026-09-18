@@ -48,9 +48,7 @@ def job(test_case: BilbyTestCase) -> RequestFixture:
             "description": "HTMX contract fixture",
             "job_controller_id": 60001,
             "private": False,
-            "ini_string": create_test_ini_string(
-                {"detectors": "[\'H1\']", "label": "contract_job"}
-            ),
+            "ini_string": create_test_ini_string({"detectors": "['H1']", "label": "contract_job"}),
         },
     )
     return RequestFixture({"job_id": instance.id}, {}, {"name": "Contract job"})
@@ -86,8 +84,7 @@ def resolve_fixture(test_case: BilbyTestCase, key: str | None) -> RequestFixture
         factory = FIXTURE_FACTORIES[key]
     except KeyError as error:
         raise KeyError(
-            f"Unknown HTMX contract fixture {key!r}; available: "
-            f"{', '.join(sorted(FIXTURE_FACTORIES))}"
+            f"Unknown HTMX contract fixture {key!r}; available: {', '.join(sorted(FIXTURE_FACTORIES))}"
         ) from error
     return factory(test_case)
 
@@ -97,4 +94,3 @@ def fixture_url(test_case: BilbyTestCase, contract) -> str:
         raise ValueError(f"{contract.name}: client-only contract has no URL")
     fixture = resolve_fixture(test_case, contract.url_kwargs_fixture)
     return reverse(contract.url_name, kwargs=fixture.kwargs)
-

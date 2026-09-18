@@ -77,9 +77,7 @@ CONTRACTS = {
             "error": not_applicable(
                 "files render from the local mirror; portal outage only degrades analysis enrichment and never blocks the region"
             ),
-            "retry": not_applicable(
-                "files render from the local mirror; no blocking portal error exists to retry"
-            ),
+            "retry": not_applicable("files render from the local mirror; no blocking portal error exists to retry"),
         },
         "evidence": [
             "src/bilbyui/templates/bilbyui/gwflow_detail.html:44-49,73",

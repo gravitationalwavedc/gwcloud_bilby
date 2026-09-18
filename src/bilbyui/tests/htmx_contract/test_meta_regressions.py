@@ -14,21 +14,15 @@ from .registry import REGISTRY, AnnouncementExpectation, validate_registry
 
 class ContractMetaRegressionTests(BilbyTestCase):
     def test_wrong_target_id_is_detected(self):
-        contract = next(
-            item for item in REGISTRY if item.name == "gwflow_version_select_compare"
-        )
-        response = HttpResponse(
-            '<div id="wrong-target"></div>'
-        )
+        contract = next(item for item in REGISTRY if item.name == "gwflow_version_select_compare")
+        response = HttpResponse('<div id="wrong-target"></div>')
         with self.assertRaisesRegex(AssertionError, "fragment root must match target"):
             assert_response_contract(self, contract, response, state="content")
 
     def test_innerhtml_swap_tolerates_a_non_target_root(self):
         contract = REGISTRY[0]
         self.assertEqual(contract.swap, "innerHTML")
-        response = HttpResponse(
-            '<div id="some-other-root"><p role="status">3 superevents match</p></div>'
-        )
+        response = HttpResponse('<div id="some-other-root"><p role="status">3 superevents match</p></div>')
         assert_response_contract(self, contract, response, state="content")
 
     def test_retry_control_must_match_the_registered_selector(self):
@@ -75,9 +69,7 @@ class ContractMetaRegressionTests(BilbyTestCase):
             contract,
             announcement=MappingProxyType(announcements),
         )
-        response = HttpResponse(
-            '<div id="gwflow-job-list"></div>'
-        )
+        response = HttpResponse('<div id="gwflow-job-list"></div>')
         with self.assertRaisesRegex(AssertionError, "expected one announcement"):
             assert_response_contract(self, stale, response, state="content")
 

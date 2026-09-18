@@ -98,8 +98,7 @@ class HTMXFocusAndAnnouncementContractTest(
         await search.fill("focus")
         await self.wait_for_settle_count(page, 1)
         await page.wait_for_function(
-            "() => document.querySelector('.result-count')"
-            "?.textContent.includes('5 superevents match')"
+            "() => document.querySelector('.result-count')?.textContent.includes('5 superevents match')"
         )
 
         self.assertEqual(
@@ -172,21 +171,16 @@ class HTMXSearchRaceContractTest(
         search = page.locator("#search")
         await search.fill("first")
         first_started, first_release = RACE_GATE.events("first")
-        self.assertTrue(
-            await sync_to_async(first_started.wait, thread_sensitive=False)(10)
-        )
+        self.assertTrue(await sync_to_async(first_started.wait, thread_sensitive=False)(10))
 
         await search.fill("last")
         first_release.set()
         last_started, last_release = RACE_GATE.events("last")
-        self.assertTrue(
-            await sync_to_async(last_started.wait, thread_sensitive=False)(10)
-        )
+        self.assertTrue(await sync_to_async(last_started.wait, thread_sensitive=False)(10))
         last_release.set()
 
         await page.wait_for_function(
-            "() => document.querySelector('.result-count')"
-            "?.textContent.includes('4 superevents match')"
+            "() => document.querySelector('.result-count')?.textContent.includes('4 superevents match')"
         )
         self.assertIn("search=last", page.url)
         self.assertNotIn("search=first", page.url)
@@ -206,25 +200,19 @@ class HTMXHistoryContractTest(
         initial_length = await page.evaluate("history.length")
 
         await self._version_link(SHA_V2).click()
-        await page.wait_for_function(
-            f"() => location.search.includes('version={SHA_V2}')"
-        )
+        await page.wait_for_function(f"() => location.search.includes('version={SHA_V2}')")
         self.assertEqual(await page.evaluate("history.length"), initial_length + 1)
         self.assertEqual(
-            await page.locator(
-                ".gwflow-history__desktop-list [aria-current='true']"
-            ).get_attribute("data-version-sha"),
+            await page.locator(".gwflow-history__desktop-list [aria-current='true']").get_attribute("data-version-sha"),
             SHA_V2,
         )
 
         await page.go_back()
-        await page.wait_for_function(
-            f"() => !location.search.includes('version={SHA_V2}')"
-        )
+        await page.wait_for_function(f"() => !location.search.includes('version={SHA_V2}')")
         self.assertEqual(page.url, initial_url)
-        restored = await page.locator(
-            ".gwflow-history__desktop-list [aria-current='true']"
-        ).get_attribute("data-version-sha")
+        restored = await page.locator(".gwflow-history__desktop-list [aria-current='true']").get_attribute(
+            "data-version-sha"
+        )
         self.assertNotEqual(restored, SHA_V2)
         self.assertIsNotNone(restored)
         self.assertIn(restored, {SHA_V1, restored})
@@ -263,17 +251,11 @@ class HTMXClipboardContractTest(
 
         await copy.focus()
         await copy.click()
-        await page.wait_for_function(
-            "() => document.querySelector('.token-copy-status')"
-            "?.textContent === 'Copied!'"
-        )
+        await page.wait_for_function("() => document.querySelector('.token-copy-status')?.textContent === 'Copied!'")
         copied = await page.evaluate("navigator.clipboard.readText()")
         self.assertEqual(copied, expected)
         self.assertEqual(
-            await page.evaluate(
-                "document.activeElement && document.activeElement.classList"
-                ".contains('token-copy')"
-            ),
+            await page.evaluate("document.activeElement && document.activeElement.classList.contains('token-copy')"),
             True,
         )
 
@@ -304,15 +286,9 @@ class HTMXLoadingIndicatorContractTest(
             """
         )
         await page.locator("#library").select_option("lib1")
-        await page.wait_for_function(
-            "() => window.__loadingLifecycle.includes('before')"
-        )
-        await page.wait_for_function(
-            "() => window.__loadingLifecycle.includes('settled')"
-        )
-        await page.wait_for_function(
-            "() => document.querySelector('#gwflow-job-list-loading')?.hidden"
-        )
+        await page.wait_for_function("() => window.__loadingLifecycle.includes('before')")
+        await page.wait_for_function("() => window.__loadingLifecycle.includes('settled')")
+        await page.wait_for_function("() => document.querySelector('#gwflow-job-list-loading')?.hidden")
         self.assertEqual(
             await page.evaluate("window.__loadingLifecycle"),
             ["before", "settled"],

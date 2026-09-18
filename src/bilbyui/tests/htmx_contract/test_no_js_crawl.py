@@ -38,11 +38,7 @@ class NoJavaScriptCrawlTests(BilbyTestCase):
         )
 
     def test_every_full_page_entry_has_page_shell_and_registered_region(self):
-        full_page_contracts = [
-            contract
-            for contract in REGISTRY
-            if contract.full_page and contract.method == "get"
-        ]
+        full_page_contracts = [contract for contract in REGISTRY if contract.full_page and contract.method == "get"]
         self.assertTrue(full_page_contracts)
 
         for contract in full_page_contracts:
@@ -66,11 +62,7 @@ class NoJavaScriptCrawlTests(BilbyTestCase):
                 self.assertIn(contract.region_id, parse_fragment(content).ids)
 
     def test_follows_one_pagination_link_when_offered(self):
-        contract = next(
-            item
-            for item in REGISTRY
-            if item.name == "gwflow_list_search_filter_pagination"
-        )
+        contract = next(item for item in REGISTRY if item.name == "gwflow_list_search_filter_pagination")
         first = self._complete_page(contract, pagination=True)
         second = self._complete_page(contract)
         url = fixture_url(self, contract)

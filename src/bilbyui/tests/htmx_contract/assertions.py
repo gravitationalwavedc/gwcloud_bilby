@@ -41,11 +41,7 @@ class FragmentCollector(HTMLParser):
 
     @property
     def ids(self) -> list[str]:
-        return [
-            element_id
-            for _, attrs in self.start_tags
-            if (element_id := attrs.get("id")) is not None
-        ]
+        return [element_id for _, attrs in self.start_tags if (element_id := attrs.get("id")) is not None]
 
     @property
     def announcements(self) -> list[dict[str, str | None]]:
@@ -59,8 +55,7 @@ class FragmentCollector(HTMLParser):
     def marker_count(self, class_name: str, role: str) -> int:
         """Count real async-state elements matching their class and live-region role."""
         return sum(
-            class_name in (attrs.get("class") or "").split()
-            and attrs.get("role") == role
+            class_name in (attrs.get("class") or "").split() and attrs.get("role") == role
             for _, attrs in self.start_tags
         )
 
@@ -123,10 +118,7 @@ class FragmentCollector(HTMLParser):
             return self.ids.count(wanted)
         if selector.startswith("."):
             wanted = selector[1:]
-            return sum(
-                wanted in (attrs.get("class") or "").split()
-                for _, attrs in self.start_tags
-            )
+            return sum(wanted in (attrs.get("class") or "").split() for _, attrs in self.start_tags)
         if selector.startswith("[") and selector.endswith("]"):
             attribute = selector[1:-1].split("=", 1)[0]
             return sum(attribute in attrs for _, attrs in self.start_tags)
@@ -193,10 +185,7 @@ def assert_response_contract(test_case, contract: EndpointContract, response, *,
         test_case.assertEqual(
             parser.marker_count(class_name, role),
             1,
-            (
-                f"{contract.name}: expected exactly one real production marker "
-                f".{class_name}[role={role!r}] for {state}"
-            ),
+            (f"{contract.name}: expected exactly one real production marker .{class_name}[role={role!r}] for {state}"),
         )
 
     test_case.assertLessEqual(
