@@ -1,6 +1,12 @@
+from types import SimpleNamespace
+
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args
+from bilbyui.utils.ini_utils import (
+    bilby_args_to_ini_string,
+    bilby_ini_string_to_args,
+    prepare_args_for_data_input,
+)
 
 
 def _args_to_dict(args):
@@ -61,3 +67,47 @@ class TestIniUtils(BilbyTestCase):
         self.assertEqual(roundtrip_args.label, "my-custom-label")
         self.assertEqual(roundtrip_args.n_parallel, 4)
         self.assertEqual(roundtrip_args.pn_phase_order, 12345)
+
+
+class TestPrepareArgsForDataInput(BilbyTestCase):
+    def test_generation_seed_without_idx_sets_idx_to_zero(self):
+        args = SimpleNamespace(generation_seed=1234, idx=None, ini="something")
+
+        prepare_args_for_data_input(args)
+
+        self.assertEqual(args.idx, 0)
+
+    def test_generation_seed_with_idx_keeps_idx(self):
+        args = SimpleNamespace(generation_seed=1234, idx=5, ini="something")
+
+        prepare_args_for_data_input(args)
+
+        self.assertEqual(args.idx, 5)
+
+    def test_no_generation_seed_leaves_idx_none(self):
+        args = SimpleNamespace(generation_seed=None, idx=None, ini="something")
+
+        prepare_args_for_data_input(args)
+
+        self.assertIsNone(args.idx)
+
+    def test_conda_env_is_nulled(self):
+        args = SimpleNamespace(generation_seed=None, idx=None, ini="something", conda_env="myenv")
+
+        prepare_args_for_data_input(args)
+
+        self.assertIsNone(args.conda_env)
+
+    def test_conda_env_absent_left_unchanged(self):
+        args = SimpleNamespace(generation_seed=None, idx=None, ini="something")
+
+        prepare_args_for_data_input(args)
+
+        self.assertFalse(hasattr(args, "conda_env"))
+
+    def test_ini_is_nulled(self):
+        args = SimpleNamespace(generation_seed=None, idx=None, ini="something")
+
+        prepare_args_for_data_input(args)
+
+        self.assertIsNone(args.ini)
