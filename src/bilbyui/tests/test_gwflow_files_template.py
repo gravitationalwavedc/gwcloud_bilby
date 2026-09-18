@@ -265,3 +265,21 @@ class TestGWFlowFilesTemplateStates(BilbyTestCase):
         self.assertContains(response, "analysis-1")
         self.assertNotContains(response, "IMRPhenomXPHM")
         self.assertNotContains(response, "run_status")
+
+    def test_non_dict_live_payload_renders_blocks_without_metadata(self):
+        """When get_superevent returns a non-dict (e.g. a list) with "live"
+        state, the isinstance(data, dict) guard keeps analyses None and the
+        files template still renders analysis blocks built from files alone,
+        without portal metadata."""
+        from unittest import mock
+
+        _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=True)
+
+        with mock.patch("bilbyui.views.get_superevent", return_value=(["not-a-dict"], "live")):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "gw-analysis-block")
+        self.assertContains(response, "analysis-1")
+        self.assertNotContains(response, "IMRPhenomXPHM")
+        self.assertNotContains(response, "run_status")
