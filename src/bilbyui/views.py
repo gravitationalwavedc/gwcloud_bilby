@@ -2250,7 +2250,19 @@ def event_id_search(request):
         raise Http404
 
     job = _get_view_job_or_404(job_id, request.user)
-    matches = _filter_event_ids_for_query(list_event_ids_for_user(request.user), query)
+    try:
+        matches = _filter_event_ids_for_query(list_event_ids_for_user(request.user), query)
+    except (ValidationError, ConnectionError, TimeoutError):
+        retry_url = f"{reverse('bilbyui:event_id_search')}?{request.GET.urlencode()}"
+        return TemplateResponse(
+            request,
+            "bilbyui/_event_id_search_error.html",
+            {
+                "reason": "the event service is temporarily unavailable",
+                "retry_url": retry_url,
+            },
+            status=503,
+        )
 
     if not matches:
         return HttpResponse('<p class="text-muted">No matches</p>')
@@ -2270,7 +2282,19 @@ def event_id_search(request):
 @resolve_job_ref_view
 def event_id_modal(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
-    return TemplateResponse(request, "bilbyui/_event_id_modal.html", {"job": job})
+    try:
+        return TemplateResponse(request, "bilbyui/_event_id_modal.html", {"job": job})
+    except (ValidationError, ConnectionError, TimeoutError):
+        return TemplateResponse(
+            request,
+            "bilbyui/_event_id_modal_error.html",
+            {
+                "job": job,
+                "retry_url": reverse("bilbyui:event_id_modal", args=[job.id]),
+                "retry_target": f"#event-id-modal-{job.id}",
+            },
+            status=503,
+        )
 
 
 @login_required
@@ -2343,16 +2367,40 @@ def api_token_view(request):
 def api_token_create(request):
     name = request.POST.get("name", "").strip()
     if not name:
-        return HttpResponse("Token name cannot be empty", status=400)
+        return TemplateResponse(
+            request,
+            "bilbyui/_token_create_error.html",
+            {
+                "reason": "the token name is empty",
+                "retry_url": reverse("bilbyui:api_token_create"),
+                "retry_fields": {"name": name},
+            },
+            status=400,
+        )
     max_name_length = APISessionToken._meta.get_field("name").max_length
     if len(name) > max_name_length:
-        return HttpResponse(f"Token name must be at most {max_name_length} characters", status=400)
+        return TemplateResponse(
+            request,
+            "bilbyui/_token_create_error.html",
+            {
+                "reason": f"the token name must be at most {max_name_length} characters",
+                "retry_url": reverse("bilbyui:api_token_create"),
+                "retry_fields": {"name": name},
+            },
+            status=400,
+        )
 
     try:
         token = create_token(request.user, name)
     except (ValidationError, IntegrityError):
-        return HttpResponse(
-            "Ensure you do not already have a token with the same name",
+        return TemplateResponse(
+            request,
+            "bilbyui/_token_create_error.html",
+            {
+                "reason": "Ensure you do not already have a token with the same name",
+                "retry_url": reverse("bilbyui:api_token_create"),
+                "retry_fields": {"name": name},
+            },
             status=400,
         )
 
@@ -2372,8 +2420,22 @@ def api_token_create(request):
 def api_token_revoke(request, token_id):
     try:
         revoke_token(request.user, token_id)
-    except (PermissionDenied, APISessionToken.DoesNotExist):
+    except PermissionDenied:
         raise Http404 from None
+    except APISessionToken.DoesNotExist:
+        response = TemplateResponse(
+            request,
+            "bilbyui/_token_revoke_error.html",
+            {
+                "token_id": token_id,
+                "reason": "it no longer exists",
+                "retry_url": reverse("bilbyui:api_token_revoke", args=[token_id]),
+            },
+            status=404,
+        )
+        response["HX-Retarget"] = f'[data-token-id="{token_id}"]'
+        response["HX-Reswap"] = "outerHTML"
+        return response
 
     response = HttpResponse(status=204)
     response["HX-Trigger"] = "token-revoked"

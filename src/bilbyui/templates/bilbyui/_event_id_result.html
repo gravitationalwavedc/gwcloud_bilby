@@ -2,6 +2,7 @@
   <form hx-post="{% url 'bilbyui:edit_job_event_id' job_id=job.id %}"
         hx-target="#event-id-field-{{ job.id }}"
         hx-swap="outerHTML"
+        hx-indicator="#event-id-field-indicator-{{ job.id }}"
         class="mb-0">
     {% csrf_token %}
     <input type="hidden" name="event_id" value="{{ event.event_id }}" />

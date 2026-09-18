@@ -13,17 +13,25 @@
   <button type="button" class="btn btn-sm btn-link"
           hx-get="{% url 'bilbyui:event_id_modal' job_id=job.id %}"
           hx-target="#event-id-modal-{{ job.id }}"
-          hx-swap="outerHTML">{% if job.event_id %}Change{% else %}Set{% endif %} Event ID</button>
+          hx-swap="outerHTML"
+          hx-indicator="#event-id-modal-indicator-{{ job.id }}">{% if job.event_id %}Change{% else %}Set{% endif %} Event ID</button>
   {% if job.event_id %}
   <form hx-post="{% url 'bilbyui:edit_job_event_id' job_id=job.id %}"
         hx-target="closest [data-field='event-id']"
         hx-swap="outerHTML"
+        hx-indicator="#event-id-field-indicator-{{ job.id }}"
         style="display: inline;">
     {% csrf_token %}
     <input type="hidden" name="event_id" value="" />
     <button type="submit" class="btn btn-sm btn-link text-danger">Clear</button>
   </form>
   {% endif %}
+  <div id="event-id-modal-indicator-{{ job.id }}" class="htmx-indicator" aria-hidden="true">
+    {% include "bilbyui/_async_state.html" with state="loading" thing="the Event ID dialog" region_label="Event ID dialog" %}
+  </div>
+  <div id="event-id-field-indicator-{{ job.id }}" class="htmx-indicator" aria-hidden="true">
+    {% include "bilbyui/_async_state.html" with state="loading" thing="the Event ID" region_label="Event ID" %}
+  </div>
   <div id="event-id-modal-{{ job.id }}"></div>
   {% endif %}
 </div>

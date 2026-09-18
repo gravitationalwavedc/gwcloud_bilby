@@ -5,6 +5,7 @@
       hx-post="{% if field == 'name' %}{% url 'bilbyui:edit_job_name' job_id=job_id %}{% else %}{% url 'bilbyui:edit_job_description' job_id=job_id %}{% endif %}"
       hx-target="#field-{{ field }}-{{ job_id }}"
       hx-swap="outerHTML"
+      hx-indicator="#field-{{ field }}-indicator-{{ job_id }}"
     >
       {% csrf_token %}
       <label class="sr-only" for="job-{{ field }}-input">
@@ -55,6 +56,7 @@
           hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field=field %}"
           hx-target="#field-{{ field }}-{{ job_id }}"
           hx-swap="outerHTML"
+          hx-indicator="#field-{{ field }}-indicator-{{ job_id }}"
         >
           <i class="bi bi-x" aria-hidden="true"></i>
         </button>
@@ -71,6 +73,7 @@
           hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field='name' %}?editing=1"
           hx-target="#field-{{ field }}-{{ job_id }}"
           hx-swap="outerHTML"
+          hx-indicator="#field-{{ field }}-indicator-{{ job_id }}"
         >
           <i class="bi bi-pencil" aria-hidden="true"></i>
         </button>
@@ -83,10 +86,14 @@
           hx-get="{% url 'bilbyui:view_job_field_partial' job_id=job_id field='description' %}?editing=1"
           hx-target="#field-{{ field }}-{{ job_id }}"
           hx-swap="outerHTML"
+          hx-indicator="#field-{{ field }}-indicator-{{ job_id }}"
         >
           <i class="bi bi-pencil" aria-hidden="true"></i>
         </button>
       {% endif %}
     </div>
   {% endif %}
+  <div id="field-{{ field }}-indicator-{{ job_id }}" class="htmx-indicator" aria-hidden="true">
+    {% include "bilbyui/_async_state.html" with state="loading" thing=field region_label=field %}
+  </div>
 </div>
