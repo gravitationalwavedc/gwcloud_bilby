@@ -224,3 +224,17 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
                     )
                 self.assertNotIn(" x-cloak", html)
                 self.assertNotIn(" hidden", html)
+
+    def test_gracedb_non_list_events_renders_without_comparative_table(self):
+        presentation = build_metadata_presentation({"gracedb": {"events": "not-a-list"}})
+        sections = {section.id: section for section in presentation.sections}
+        grace = sections["gracedb"]
+        self.assertEqual(grace.comparative_sets, ())
+        self.assertEqual(grace.data_shape, "scalar-mapping")
+
+    def test_pe_non_dict_result_record_is_skipped(self):
+        presentation = build_metadata_presentation({"pe": {"results": ["not-a-dict"]}})
+        sections = {section.id: section for section in presentation.sections}
+        pe = sections["pe"]
+        self.assertEqual(len(pe.comparative_sets), 1)
+        self.assertEqual(pe.comparative_sets[0].rows, ())
