@@ -15,6 +15,7 @@ from bilbyui.tests.test_utils import (
     generate_elastic_doc,
     silence_errors,
 )
+from bilbyui.utils.anonymous_metrics import AnonymousMetricsMiddleware
 
 User = get_user_model()
 
@@ -212,3 +213,27 @@ class TestAnonymousMetrics(LiveServerTestCase):
         self.assertDictEqual(result, self.public_bilby_job_expected)
 
         self.assertEqual(AnonymousMetrics.objects.all().count(), 0)
+
+    def test_anonymous_request_metrics_create_failure_does_not_break_request(self):
+        middleware = AnonymousMetricsMiddleware()
+
+        next_func = mock.Mock(return_value="result")
+
+        info = mock.Mock()
+        info.context.headers.get.return_value = f"{self.public_id} {self.session_id}"
+        info.context.user.is_authenticated = False
+        info.path.prev = None
+        info.path.key = "publicBilbyJobs"
+
+        with (
+            mock.patch(
+                "bilbyui.utils.anonymous_metrics.AnonymousMetrics.objects.create",
+                side_effect=RuntimeError("DB error"),
+            ),
+            self.assertLogs("bilbyui.utils.anonymous_metrics", level="WARNING") as logs,
+        ):
+            result = middleware.resolve(next_func, None, info, first=50)
+
+        next_func.assert_called_once_with(None, info, first=50)
+        self.assertEqual(result, "result")
+        self.assertTrue(any("Failed to record anonymous metrics" in log for log in logs.output))
