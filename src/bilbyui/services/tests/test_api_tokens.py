@@ -31,6 +31,13 @@ class TestApiTokensService(BilbyTestCase):
         self.assertEqual(list_tokens(self.user), [])
         self.assertFalse(APISessionToken.objects.filter(id=token.id).exists())
 
+    def test_create_token_falls_back_to_password_without_authentication_method(self):
+        self.user.authentication_methods = []
+        self.user.save()
+
+        token = create_token(self.user, "test-token")
+        self.assertEqual(token.authentication_method, "password")
+
     def test_revoke_token_raises_for_other_users_token(self):
         token = create_token(self.user, "test-token")
         self.authenticate(id=2, name="other user", primary_email="other@example.com")
