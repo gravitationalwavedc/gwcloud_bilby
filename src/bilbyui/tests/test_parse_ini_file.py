@@ -105,6 +105,13 @@ class TestNormalise(BilbyTestCase):
         self.assertFalse(ok)
         self.assertEqual(normalised, {"a": str(float("inf"))})
 
+    def test_mapping_with_non_string_key_not_round_trippable(self):
+        # A non-string key (e.g. int 1) collapses to the same stored form as
+        # the string key "1", so the original key type cannot be reconstructed.
+        normalised, ok = _normalise({1: "a"})
+        self.assertFalse(ok)
+        self.assertEqual(normalised, {"1": "a"})
+
     def test_list_tuple_recursion_with_round_trip_propagation(self):
         normalised, ok = _normalise([1, (2, 3.0)])
         self.assertTrue(ok)
