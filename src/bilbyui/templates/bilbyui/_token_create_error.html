@@ -1,0 +1,3 @@
+<div id="token-actions" class="mt-4" role="region" aria-label="Token creation">
+  {% include "bilbyui/_async_state.html" with state="error" thing="the token" region_label="Token creation" reason=reason retry_url=retry_url retry_target="#token-actions" retry_method="post" retry_fields=retry_fields %}
+</div>

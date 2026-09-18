@@ -32,7 +32,16 @@
     Couldn't load {{ thing_label }} because {{ reason|default:"the service is temporarily unavailable" }}.
   </p>
   {% if retry_url and retry_target %}
-  <button type="button" class="btn btn-primary" hx-get="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="innerHTML">Retry</button>
+  {% if retry_method == "post" %}
+  <form method="post" action="{{ retry_url }}" hx-post="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="{{ retry_swap|default:'innerHTML' }}">
+    {% csrf_token %}
+    {# Security contract: retry_url, retry_method, retry_target, retry_swap, and retry_fields must be constructed by trusted server code. Never pass request.GET, request.POST, or a user-provided absolute URL directly. #}
+    {% for key, value in retry_fields.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+    <button type="submit" class="btn btn-primary">Retry</button>
+  </form>
+  {% else %}
+  <button type="button" class="btn btn-primary" hx-get="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="{{ retry_swap|default:'innerHTML' }}">Retry</button>
+  {% endif %}
   {% endif %}
 </div>
 {% endif %}
