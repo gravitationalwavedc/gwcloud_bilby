@@ -46,7 +46,7 @@ def _numeric_es_records(records):
         raw_id = record.get("_id")
         if isinstance(raw_id, int):
             normalized.append(record)
-        elif isinstance(raw_id, str) and raw_id.isdigit():
+        elif isinstance(raw_id, str) and raw_id.isdecimal():
             normalized.append({**record, "_id": int(raw_id)})
     return normalized
 
