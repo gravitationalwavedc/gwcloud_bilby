@@ -395,6 +395,117 @@ class TestCondor(TestCase):
             with patch("htcondor.JobEventLog", lambda path: FakeJobEventLog(path, events)):
                 self.assertEqual(sched.status(None, details), (None, None))
 
+    def test_status_evicted_held_released(self):
+        sched = CondorScheduler()
+
+        class FakeEvent:
+            def __init__(self, event_type, cluster=None, log_notes=None, terminated_normally=None, return_value=None):
+                self.type = event_type
+                self.cluster = cluster
+                self._log_notes = log_notes
+                self._terminated_normally = terminated_normally
+                self._return_value = return_value
+
+            def get(self, key, default=None):
+                if key == "LogNotes":
+                    return self._log_notes if self._log_notes is not None else default
+                return default
+
+            def __getitem__(self, key):
+                if key == "LogNotes":
+                    if self._log_notes is None:
+                        raise KeyError(key)
+                    return self._log_notes
+                if key == "TerminatedNormally":
+                    return self._terminated_normally
+                if key == "ReturnValue":
+                    return self._return_value
+                raise KeyError(key)
+
+        class FakeJobEventLog:
+            def __init__(self, path, events):
+                self._events = events
+
+            def events(self, stop_after=0):
+                return list(self._events)
+
+        with TemporaryDirectory() as td:
+            submit_dir = os.path.join(td, "job", "submit")
+            os.makedirs(submit_dir)
+            fn = os.path.join(submit_dir, "job.submit.nodes.log")
+            with open(fn, "w") as f:
+                f.write("...\n")
+
+            details = {"working_directory": td, "submit_directory": "job/submit"}
+
+            for event_type in [
+                htcondor.JobEventType.JOB_EVICTED,
+                htcondor.JobEventType.JOB_HELD,
+                htcondor.JobEventType.JOB_RELEASED,
+            ]:
+                events = [
+                    FakeEvent(htcondor.JobEventType.SUBMIT, cluster=222, log_notes="DAG Node: foo_plot_arg_0"),
+                    FakeEvent(event_type),
+                ]
+                with patch("htcondor.JobEventLog", lambda path: FakeJobEventLog(path, events)):
+                    self.assertEqual(sched.status(None, details), (JobStatus.RUNNING, "Job is running"))
+
+    def test_status_terminated_abnormally(self):
+        sched = CondorScheduler()
+
+        class FakeEvent:
+            def __init__(self, event_type, cluster=None, log_notes=None, terminated_normally=None, return_value=None):
+                self.type = event_type
+                self.cluster = cluster
+                self._log_notes = log_notes
+                self._terminated_normally = terminated_normally
+                self._return_value = return_value
+
+            def get(self, key, default=None):
+                if key == "LogNotes":
+                    return self._log_notes if self._log_notes is not None else default
+                return default
+
+            def __getitem__(self, key):
+                if key == "LogNotes":
+                    if self._log_notes is None:
+                        raise KeyError(key)
+                    return self._log_notes
+                if key == "TerminatedNormally":
+                    return self._terminated_normally
+                if key == "ReturnValue":
+                    return self._return_value
+                raise KeyError(key)
+
+        class FakeJobEventLog:
+            def __init__(self, path, events):
+                self._events = events
+
+            def events(self, stop_after=0):
+                return list(self._events)
+
+        with TemporaryDirectory() as td:
+            submit_dir = os.path.join(td, "job", "submit")
+            os.makedirs(submit_dir)
+            fn = os.path.join(submit_dir, "job.submit.nodes.log")
+            with open(fn, "w") as f:
+                f.write("...\n")
+
+            details = {"working_directory": td, "submit_directory": "job/submit"}
+
+            # A JOB_TERMINATED event that did not terminate normally
+            events = [
+                FakeEvent(htcondor.JobEventType.SUBMIT, cluster=222, log_notes="DAG Node: foo_plot_arg_0"),
+                FakeEvent(
+                    htcondor.JobEventType.JOB_TERMINATED,
+                    cluster=111,
+                    terminated_normally=False,
+                    return_value=1,
+                ),
+            ]
+            with patch("htcondor.JobEventLog", lambda path: FakeJobEventLog(path, events)):
+                self.assertEqual(sched.status(None, details), (JobStatus.ERROR, "Job terminated abnormally"))
+
     def test_status_error_short(self):
         sched = CondorScheduler()
 
