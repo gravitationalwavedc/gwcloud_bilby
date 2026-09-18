@@ -257,6 +257,24 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
         self.assertEqual(grace.comparative_sets, ())
         self.assertEqual(grace.data_shape, "scalar-mapping")
 
+    def test_gracedb_non_list_events_surfaces_raw_value_in_disclosure(self):
+        presentation = build_metadata_presentation({"gracedb": {"events": "not-a-list"}})
+        sections = {section.id: section for section in presentation.sections}
+        grace = sections["gracedb"]
+        self.assertEqual(grace.comparative_sets, ())
+        disclosure = {node.path: node for node in grace.disclosure}
+        self.assertIn("gracedb.events", disclosure)
+        self.assertEqual(disclosure["gracedb.events"].value, "not-a-list")
+
+    def test_pe_non_list_results_surfaces_raw_value_in_disclosure(self):
+        presentation = build_metadata_presentation({"pe": {"results": "not-a-list"}})
+        sections = {section.id: section for section in presentation.sections}
+        pe = sections["pe"]
+        self.assertEqual(pe.comparative_sets, ())
+        disclosure = {node.path: node for node in pe.disclosure}
+        self.assertIn("pe.results", disclosure)
+        self.assertEqual(disclosure["pe.results"].value, "not-a-list")
+
     def test_pe_non_dict_result_record_is_skipped(self):
         presentation = build_metadata_presentation({"pe": {"results": ["not-a-dict"]}})
         sections = {section.id: section for section in presentation.sections}

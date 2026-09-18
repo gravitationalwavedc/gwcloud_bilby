@@ -516,6 +516,10 @@ def _build_section(
                         frozenset(spec.key.rsplit(".", 1)[-1] for spec in _GRACEDB_EVENT_FIELDS),
                     )
                 )
+        else:
+            raw = mapping.get("events", _MISSING)
+            if raw is not _MISSING:
+                disclosure.append(_node(f"{section_id}.events", _raw_label("events"), raw))
     elif section_id == "pe":
         table = _comparative(
             section_id,
@@ -536,6 +540,10 @@ def _build_section(
                         frozenset(spec.key.rsplit(".", 1)[-1] for spec in _PE_RESULT_FIELDS),
                     )
                 )
+        else:
+            raw = mapping.get("results", _MISSING)
+            if raw is not _MISSING:
+                disclosure.append(_node(f"{section_id}.results", _raw_label("results"), raw))
 
     for key, child in mapping.items():
         if str(key) not in consumed_top:
