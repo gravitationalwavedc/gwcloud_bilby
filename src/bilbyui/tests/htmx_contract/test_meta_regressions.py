@@ -14,24 +14,44 @@ from .registry import REGISTRY, AnnouncementExpectation, validate_registry
 
 class ContractMetaRegressionTests(BilbyTestCase):
     def test_wrong_target_id_is_detected(self):
-        contract = REGISTRY[0]
+        contract = next(
+            item for item in REGISTRY if item.name == "gwflow_version_select_compare"
+        )
         response = HttpResponse(
-            '<div id="wrong-target" data-async-state="content"></div>'
+            '<div id="wrong-target"></div>'
         )
         with self.assertRaisesRegex(AssertionError, "fragment root must match target"):
             assert_response_contract(self, contract, response, state="content")
 
+    def test_innerhtml_swap_tolerates_a_non_target_root(self):
+        contract = REGISTRY[0]
+        self.assertEqual(contract.swap, "innerHTML")
+        response = HttpResponse(
+            '<div id="some-other-root"><p role="status">3 superevents match</p></div>'
+        )
+        assert_response_contract(self, contract, response, state="content")
+
+    def test_retry_control_must_match_the_registered_selector(self):
+        contract = REGISTRY[0]
+        response = HttpResponse(
+            '<div class="async-error" role="alert">Failed</div>'
+            '<button hx-get="/retry/" hx-target="#gwflow-job-list">Retry</button>'
+        )
+        with self.assertRaisesRegex(AssertionError, "retry control matching"):
+            assert_response_contract(self, contract, response, state="error")
+
     def test_missing_state_partial_is_detected(self):
         contract = REGISTRY[0]
         response = HttpResponse('<div id="gwflow-job-list"></div>')
-        with self.assertRaisesRegex(AssertionError, "missing data-async-state"):
+        with self.assertRaisesRegex(AssertionError, r"async-empty.*role='status'"):
             assert_response_contract(self, contract, response, state="empty")
 
     def test_duplicate_announcement_is_detected(self):
         contract = REGISTRY[0]
         response = HttpResponse(
-            '<div id="gwflow-job-list" data-async-state="error">'
-            '<p role="alert">First</p><p role="alert">Second</p></div>'
+            '<div id="gwflow-job-list">'
+            '<div class="async-error" role="alert">First</div>'
+            '<p role="alert">Second</p></div>'
         )
         with self.assertRaisesRegex(AssertionError, "duplicate announcements"):
             assert_response_contract(self, contract, response, state="error")
@@ -56,7 +76,7 @@ class ContractMetaRegressionTests(BilbyTestCase):
             announcement=MappingProxyType(announcements),
         )
         response = HttpResponse(
-            '<div id="gwflow-job-list" data-async-state="content"></div>'
+            '<div id="gwflow-job-list"></div>'
         )
         with self.assertRaisesRegex(AssertionError, "expected one announcement"):
             assert_response_contract(self, stale, response, state="content")

@@ -57,6 +57,10 @@ _IGNORED_SOURCE_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _START_TAG_RE = re.compile(r"<[A-Za-z][^<>]*>", re.DOTALL)
+_HREF_ATTRIBUTE_RE = re.compile(
+    r"""href\s*=\s*(?P<quote>["'])(?P<value>.*?)(?P=quote)""",
+    re.DOTALL,
+)
 
 
 class AuditError(AssertionError):
@@ -73,6 +77,8 @@ class SourceDeclaration:
     url_names: tuple[str, ...] = ()
     context: tuple[str, ...] = ()
     dynamic: bool = False
+    element: int = 0
+    boost_url_names: tuple[str, ...] = ()
 
     @property
     def location(self) -> str:
@@ -143,8 +149,10 @@ def extract_source(source: str, path: str = "<template>") -> tuple[SourceDeclara
     errors: list[str] = []
     masked = _masked_source(source)
 
-    for tag_match in _START_TAG_RE.finditer(masked):
+    for element, tag_match in enumerate(_START_TAG_RE.finditer(masked)):
         tag_source = tag_match.group()
+        href_match = _HREF_ATTRIBUTE_RE.search(tag_source)
+        boost_url_names = _url_names(href_match.group("value")) if href_match else ()
         for match in _SOURCE_ATTRIBUTE_RE.finditer(tag_source):
             raw_name = match.group("name")
             name = _canonical_name(raw_name)
@@ -177,6 +185,8 @@ def extract_source(source: str, path: str = "<template>") -> tuple[SourceDeclara
                     url_names=url_names,
                     context=_context_at(masked, absolute_offset),
                     dynamic=dynamic,
+                    element=element,
+                    boost_url_names=boost_url_names if name == "hx-boost" else (),
                 )
             )
 
@@ -314,6 +324,11 @@ def _registered_url_names(contracts) -> Counter[str]:
     return names
 
 
+def _contract_swap(contract) -> str:
+    """Return a contract's normalised swap, defaulting to htmx's ``innerHTML``."""
+    return normalise_value(getattr(contract, "swap", None) or "innerHTML")
+
+
 def _resolve_rendered_url(value: str) -> str | None:
     path = urlsplit(value).path
     if not path or not path.startswith("/"):
@@ -336,6 +351,106 @@ def reconcile(
     exemptions: dict[str, Exemption] = {}
     registry_names = _registered_url_names(contracts)
     rendered_names = Counter(item.name for item in rendered)
+    element_attributes = {
+        (declaration.path, declaration.element, declaration.name): declaration
+        for declaration in source
+    }
+
+    def contracts_for(url_name):
+        return [
+            contract
+            for contract in contracts
+            if url_name
+            in (
+                getattr(contract, "url_names", ())
+                or ((getattr(contract, "url_name", None),) if getattr(contract, "url_name", None) else ())
+            )
+        ]
+
+    def element_target_swap(path, element):
+        """Return an element's static literal target/swap, mirroring htmx defaults."""
+        target_declaration = element_attributes.get((path, element, "hx-target"))
+        target_literal = None
+        if target_declaration is not None:
+            target = target_declaration.value
+            if "{{" not in target and "{%" not in target and target.lstrip().startswith("#"):
+                target_literal = normalise_value(target).removeprefix("#")
+
+        swap_declaration = element_attributes.get((path, element, "hx-swap"))
+        swap_value = swap_declaration.value if swap_declaration is not None else "innerHTML"
+        swap_literal = None
+        if "{{" not in swap_value and "{%" not in swap_value:
+            swap_literal = normalise_value(swap_value)
+
+        return target_declaration, target_literal, swap_declaration, swap_literal
+
+    def check_static_target_swap(declaration, declared_url_name, matches):
+        """Apply the registry target/swap matching rule for one resolved URL name."""
+        target_declaration, target_literal, swap_declaration, swap_literal = element_target_swap(
+            declaration.path, declaration.element
+        )
+        if target_literal is not None and swap_literal is not None:
+            matching = [
+                contract
+                for contract in matches
+                if getattr(contract, "region_id", None) == target_literal
+                and _contract_swap(contract) == swap_literal
+            ]
+            if not matching:
+                location = (
+                    target_declaration.location
+                    if target_declaration is not None
+                    else declaration.location
+                )
+                errors.append(
+                    f"{location}: hx-target #{target_literal} with hx-swap "
+                    f"{swap_literal!r} matches no registry contract for {declared_url_name!r}"
+                )
+            elif len(matching) > 1:
+                errors.append(
+                    f"{declaration.location}: {declared_url_name!r} #{target_literal} "
+                    f"{swap_literal!r} matches {len(matching)} registry contracts; ambiguous"
+                )
+        elif swap_literal is not None:
+            swap_matches = [
+                contract for contract in matches if _contract_swap(contract) == swap_literal
+            ]
+            if not swap_matches and len({_contract_swap(contract) for contract in matches}) == 1:
+                location = (
+                    swap_declaration.location
+                    if swap_declaration is not None
+                    else declaration.location
+                )
+                errors.append(
+                    f"{location}: effective hx-swap {swap_literal!r} disagrees with "
+                    f"contract swap {_contract_swap(matches[0])!r}"
+                )
+            elif len(swap_matches) > 1:
+                errors.append(
+                    f"{declaration.location}: {declared_url_name!r} swap {swap_literal!r} "
+                    f"matches {len(swap_matches)} registry contracts; ambiguous"
+                )
+
+    def reconcile_boost_navigation(declaration):
+        """Reconcile a boosted anchor against contracts covering its static href.
+
+        Boosted navigation to endpoints outside the registry is out of scope and
+        therefore skipped rather than failed; dynamic hrefs are never resolved.
+        """
+        if declaration.dynamic or not declaration.boost_url_names:
+            return
+        target_declaration, target_literal, swap_declaration, swap_literal = element_target_swap(
+            declaration.path, declaration.element
+        )
+        static_target = target_declaration is not None and target_literal is not None
+        static_swap = swap_declaration is not None and swap_literal is not None
+        if not (static_target or static_swap):
+            return
+        for boost_url_name in declaration.boost_url_names:
+            matches = contracts_for(boost_url_name)
+            if not matches:
+                continue
+            check_static_target_swap(declaration, boost_url_name, matches)
 
     for declaration in source:
         if declaration.name not in REQUEST_ATTRIBUTES:
@@ -345,6 +460,8 @@ def reconcile(
                 errors.append(f"{declaration.location}: no bounded exemption for {declaration.name}")
             else:
                 exemptions[key] = Exemption(key, reason)
+            if declaration.name == "hx-boost":
+                reconcile_boost_navigation(declaration)
             if require_rendered and rendered_names[declaration.name] == 0:
                 errors.append(f"{declaration.location}: declaration absent from rendered fixtures: {declaration.name}")
             continue
@@ -355,12 +472,13 @@ def reconcile(
         if not declared_url_names:
             errors.append(f"{declaration.location}: unresolved URL for {declaration.name}")
         for declared_url_name in declared_url_names:
-            if registry_names[declared_url_name] != 1:
+            matches = contracts_for(declared_url_name)
+            if not matches:
                 errors.append(
-                    f"{declaration.location}: {declared_url_name!r} resolves to "
-                    f"{registry_names[declared_url_name]} registry entries, "
-                    "expected exactly one"
+                    f"{declaration.location}: {declared_url_name!r} resolves to 0 registry entries"
                 )
+                continue
+            check_static_target_swap(declaration, declared_url_name, matches)
         if require_rendered and rendered_names[declaration.name] == 0:
             errors.append(f"{declaration.location}: request declaration absent from rendered fixtures")
 
@@ -370,10 +488,10 @@ def reconcile(
         url_name = _resolve_rendered_url(observation.value)
         if url_name is None:
             errors.append(f"{observation.route}: unresolved rendered URL {observation.value!r} for {observation.name}")
-        elif registry_names[url_name] != 1:
+        elif registry_names[url_name] == 0:
             errors.append(
                 f"{observation.route}: rendered URL {observation.value!r} maps to "
-                f"{registry_names[url_name]} registry entries, expected exactly one"
+                "0 registry entries"
             )
 
     if errors:

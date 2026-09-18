@@ -20,8 +20,8 @@ from .registry import REGISTRY
 TEMPLATE_ROOT = Path(__file__).resolve().parents[2] / "templates"
 
 
-def contract(url_name):
-    return SimpleNamespace(url_name=url_name)
+def contract(url_name, *, target=None, swap=None):
+    return SimpleNamespace(url_name=url_name, region_id=target, swap=swap)
 
 
 class SourceExtractorTests(SimpleTestCase):
@@ -120,7 +120,7 @@ class ReconciliationTests(SimpleTestCase):
             "token.html",
         )
         rendered = extract_rendered('<button hx-post="/synthetic/">Create</button>', "/fixture/")
-        with self.assertRaisesRegex(AuditError, "2 registry entries"):
+        with self.assertRaisesRegex(AuditError, "ambiguous"):
             reconcile(
                 source,
                 rendered,
@@ -129,6 +129,68 @@ class ReconciliationTests(SimpleTestCase):
                     contract("bilbyui:api_token_create"),
                 ],
             )
+
+    def test_wrong_literal_target_fails_reconciliation(self):
+        source = extract_source(
+            "<button hx-get=\"{% url 'bilbyui:event_id_search' %}\""
+            ' hx-target="#wrong-region" hx-swap="innerHTML">Search</button>',
+            "search.html",
+        )
+        registry = [contract("bilbyui:event_id_search", target="event-id-results", swap="innerHTML")]
+        with self.assertRaisesRegex(AuditError, "matches no registry contract"):
+            reconcile(source, [], registry, require_rendered=False)
+
+    def test_wrong_literal_swap_fails_reconciliation(self):
+        source = extract_source(
+            "<button hx-get=\"{% url 'bilbyui:event_id_search' %}\""
+            ' hx-target="#event-id-results" hx-swap="outerHTML">Search</button>',
+            "search.html",
+        )
+        registry = [contract("bilbyui:event_id_search", target="event-id-results", swap="innerHTML")]
+        with self.assertRaisesRegex(AuditError, "matches no registry contract"):
+            reconcile(source, [], registry, require_rendered=False)
+
+    def test_wrong_boost_target_with_registered_href_fails_reconciliation(self):
+        source = extract_source(
+            "<a href=\"{% url 'bilbyui:gwflow_job_metadata' sname=job.sname %}\""
+            ' hx-boost="true" hx-target="#WRONG-PANE" hx-swap="innerHTML">Metadata</a>',
+            "gwflow_detail.html",
+        )
+        registry = [contract("bilbyui:gwflow_job_metadata", target="detail-pane", swap="innerHTML")]
+        with self.assertRaisesRegex(AuditError, "matches no registry contract"):
+            reconcile(source, [], registry, require_rendered=False)
+
+    def test_matching_boost_target_with_registered_href_reconciles(self):
+        source = extract_source(
+            "<a href=\"{% url 'bilbyui:gwflow_job_metadata' sname=job.sname %}\""
+            ' hx-boost="true" hx-target="#detail-pane" hx-swap="innerHTML">Metadata</a>',
+            "gwflow_detail.html",
+        )
+        registry = [contract("bilbyui:gwflow_job_metadata", target="detail-pane", swap="innerHTML")]
+        exemptions = reconcile(source, [], registry, require_rendered=False)
+        self.assertIn("hx-boost", {item.name for item in exemptions})
+
+    def test_boost_to_unregistered_href_is_skipped(self):
+        source = extract_source(
+            "<a href=\"{% url 'bilbyui:view_job_results_section' job_id=job.id %}\""
+            ' hx-boost="true" hx-target="#job-section-pane" hx-swap="innerHTML">Results</a>',
+            "view_job.html",
+        )
+        registry = [contract("bilbyui:gwflow_job_metadata", target="detail-pane", swap="innerHTML")]
+        reconcile(source, [], registry, require_rendered=False)
+
+    def test_matching_target_and_swap_reconciles(self):
+        source = extract_source(
+            "<button hx-get=\"{% url 'bilbyui:event_id_search' %}\""
+            ' hx-target="#event-id-results" hx-swap="innerHTML">Search</button>',
+            "search.html",
+        )
+        registry = [contract("bilbyui:event_id_search", target="event-id-results", swap="innerHTML")]
+        exemptions = reconcile(source, [], registry, require_rendered=False)
+        self.assertEqual(
+            {item.name for item in exemptions},
+            {"hx-target", "hx-swap"},
+        )
 
     def test_requestless_declarations_receive_reasoned_exemptions(self):
         source = extract_source(

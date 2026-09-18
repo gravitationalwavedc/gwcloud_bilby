@@ -1,8 +1,6 @@
-"""Deterministic fixture and external-boundary support for contract tests."""
+"""Deterministic fixture support for contract tests."""
 
-from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
-from unittest.mock import patch
 
 import django
 from django.apps import apps
@@ -11,6 +9,9 @@ from django.urls import reverse
 if not apps.ready:
     django.setup()
 
+from bilbyui.models import BilbyJob, GWFlowJob  # noqa: E402
+from bilbyui.services.api_tokens import create_token  # noqa: E402
+from bilbyui.tests.test_utils import create_test_ini_string  # noqa: E402
 from bilbyui.tests.testcases import BilbyTestCase  # noqa: E402
 
 
@@ -25,30 +26,53 @@ def no_kwargs(_test_case: BilbyTestCase) -> RequestFixture:
     return RequestFixture({}, {}, {})
 
 
-def gwflow_job(_test_case: BilbyTestCase) -> RequestFixture:
-    return RequestFixture({"sname": "S240101a"}, {}, {})
+def gwflow_job(test_case: BilbyTestCase) -> RequestFixture:
+    sname = "S240101a"
+    GWFlowJob.objects.get_or_create(
+        sname=sname,
+        defaults={
+            "user": test_case.user,
+            "libraries": ["cbc-workflow-o4a"],
+            "schema_version": "v3",
+            "ligo_only": False,
+        },
+    )
+    return RequestFixture({"sname": sname}, {}, {})
 
 
-def gwflow_version(_test_case: BilbyTestCase) -> RequestFixture:
-    return RequestFixture({"sname": "S240101a", "history_id": "contract-history"}, {}, {})
+def job(test_case: BilbyTestCase) -> RequestFixture:
+    instance, _ = BilbyJob.objects.get_or_create(
+        user=test_case.user,
+        name="Contract job",
+        defaults={
+            "description": "HTMX contract fixture",
+            "job_controller_id": 60001,
+            "private": False,
+            "ini_string": create_test_ini_string(
+                {"detectors": "[\'H1\']", "label": "contract_job"}
+            ),
+        },
+    )
+    return RequestFixture({"job_id": instance.id}, {}, {"name": "Contract job"})
 
 
-def job(_test_case: BilbyTestCase) -> RequestFixture:
-    return RequestFixture({"job_id": "contract-job"}, {}, {"name": "Contract job"})
+def event_search(test_case: BilbyTestCase) -> RequestFixture:
+    fixture = job(test_case)
+    return RequestFixture(
+        {},
+        {"q": "S240101a", "job_id": str(fixture.kwargs["job_id"])},
+        {},
+    )
 
 
-def event_search(_test_case: BilbyTestCase) -> RequestFixture:
-    return RequestFixture({}, {"query": "S240101a"}, {})
-
-
-def token(_test_case: BilbyTestCase) -> RequestFixture:
-    return RequestFixture({"token_id": 1}, {}, {})
+def token(test_case: BilbyTestCase) -> RequestFixture:
+    instance = create_token(test_case.user, "contract-token")
+    return RequestFixture({"token_id": instance.id}, {}, {})
 
 
 FIXTURE_FACTORIES = {
     "no_kwargs": no_kwargs,
     "gwflow_job": gwflow_job,
-    "gwflow_version": gwflow_version,
     "job": job,
     "event_search": event_search,
     "token": token,
@@ -74,26 +98,3 @@ def fixture_url(test_case: BilbyTestCase, contract) -> str:
     fixture = resolve_fixture(test_case, contract.url_kwargs_fixture)
     return reverse(contract.url_name, kwargs=fixture.kwargs)
 
-
-@contextmanager
-def isolated_external_services():
-    """Make accidental network-backed contract setup fail deterministically."""
-    blocked = RuntimeError("live external call blocked by HTMX contract fixtures")
-    with ExitStack() as stack:
-        stack.enter_context(
-            patch("bilbyui.services.gwflow.get_es_client", side_effect=blocked)
-        )
-        stack.enter_context(patch("bilbyui.views.get_superevent", side_effect=blocked))
-        stack.enter_context(patch("bilbyui.views.get_version", side_effect=blocked))
-        yield
-
-
-class HTMXContractTestCase(BilbyTestCase):
-    """BilbyTestCase base with authenticated local user and blocked externals."""
-
-    def setUp(self):
-        super().setUp()
-        self.authenticate()
-        self._external_guard = isolated_external_services()
-        self._external_guard.__enter__()
-        self.addCleanup(self._external_guard.__exit__, None, None, None)

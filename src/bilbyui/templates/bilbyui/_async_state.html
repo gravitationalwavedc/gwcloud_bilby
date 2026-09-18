@@ -35,6 +35,7 @@
   {% if retry_method == "post" %}
   <form method="post" action="{{ retry_url }}" hx-post="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="{{ retry_swap|default:'innerHTML' }}">
     {% csrf_token %}
+    {# Security contract: retry_url, retry_method, retry_target, retry_swap, and retry_fields must be constructed by trusted server code. Never pass request.GET, request.POST, or a user-provided absolute URL directly. #}
     {% for key, value in retry_fields.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
     <button type="submit" class="btn btn-primary">Retry</button>
   </form>

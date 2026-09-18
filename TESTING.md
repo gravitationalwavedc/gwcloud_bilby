@@ -114,9 +114,15 @@ overflow, and clipboard e2e tests:
 ## HTMX interaction contract suite
 
 The interaction contract suite lives in `src/bilbyui/tests/htmx_contract/`.
-Its registry defines expected endpoint behaviour, the audit reconciles template
-declarations with that registry, and shared helpers exercise the declared
-server and browser contracts.
+Its registry defines expected endpoint behaviour. For each request-bearing
+declaration (`hx-get`/`hx-post`), the audit resolves its URL to a registry
+contract and requires a statically declared literal `hx-target`/`hx-swap` to
+match that contract's target and swap. Registered `hx-boost` navigation is
+reconciled the same way: the anchor's static `{% url %}` `href` resolves to a
+contract and its static literal `hx-target`/`hx-swap` must match. Boosted links
+to endpoints outside the registry are out of scope and skipped, and dynamic
+template values (targets or hrefs) are declared, never fabricated. Shared
+helpers exercise the declared server and browser contracts.
 
 When adding or changing an HTMX interaction:
 

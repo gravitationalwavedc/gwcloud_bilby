@@ -12,6 +12,20 @@ LIFECYCLE_STATES = frozenset({"idle", "loading"})
 RESPONSE_STATES = frozenset({"content", "empty", "stale", "error"})
 ROLES = frozenset({"status", "alert"})
 METHODS = frozenset({"get", "post", "delete"})
+# States rendered through the shared _async_state.html partial, the CSS marker
+# class that identifies them, and the live-region role that partial emits.
+ASYNC_MARKERS = {
+    "loading": "async-loading",
+    "empty": "async-empty",
+    "stale": "async-notice",
+    "error": "async-error",
+}
+ASYNC_ROLES = {
+    "loading": "status",
+    "empty": "status",
+    "stale": "alert",
+    "error": "alert",
+}
 
 
 @dataclass(frozen=True)
@@ -67,6 +81,12 @@ class EndpointContract:
     retry: RetryExpectation | None
     not_applicable: Mapping[str, str] = field(default_factory=_empty_mapping)
     blocking_gaps: Mapping[str, str] = field(default_factory=_empty_mapping)
+    # Response states whose fragment is the shared _async_state.html partial.
+    # ``target`` remains the initiating element's target; only outerHTML swaps
+    # replace that element with the response root, so fragment-root equality is
+    # asserted only for outerHTML, non-async states. innerHTML swaps assert a
+    # non-empty fragment plus the registered announcement/marker instead.
+    async_states: frozenset[str] = frozenset()
     accepted_statuses: frozenset[int] = frozenset({200})
     redirect: RedirectExpectation | None = None
     oob_roots: tuple[OOBExpectation, ...] = ()
@@ -158,6 +178,20 @@ def validate_registry(contracts: tuple[EndpointContract, ...] | list[EndpointCon
         if missing_announcements:
             errors.append(f"{label}: missing announcement semantics for {', '.join(sorted(missing_announcements))}")
 
+        unknown_async = contract.async_states - RESPONSE_STATES
+        if unknown_async:
+            errors.append(
+                f"{label}: async_states contains non-response states: {', '.join(sorted(unknown_async))}"
+            )
+        for state in contract.async_states:
+            expected_role = ASYNC_ROLES[state]
+            expectation = contract.announcement.get(state)
+            if expectation is None or expectation.role != expected_role:
+                errors.append(
+                    f"{label}: async state {state!r} must announce role {expected_role!r} "
+                    f"to match its .{ASYNC_MARKERS[state]} marker"
+                )
+
         if contract.region_id:
             for registered_url_name in contract.url_names:
                 key = (registered_url_name, contract.region_id)
@@ -185,12 +219,14 @@ def resolve_contract(
     return matches[0]
 
 
-def _announcement(states: frozenset[str]) -> Mapping[str, AnnouncementExpectation]:
+def _announcement(
+    states: frozenset[str], announcing: Mapping[str, str]
+) -> Mapping[str, AnnouncementExpectation]:
     return MappingProxyType(
         {
             state: (
-                AnnouncementExpectation(role="alert")
-                if state == "error"
+                AnnouncementExpectation(role=announcing[state])
+                if state in announcing
                 else AnnouncementExpectation(
                     silence_reason="Content-equivalent fragment replacement is intentionally silent"
                 )
@@ -216,6 +252,8 @@ def _contract(
     focus: FocusExpectation = DEFAULT_FOCUS,
     capabilities: frozenset[BrowserCapability] = frozenset({"loading", "announcement"}),
     full_page: bool = True,
+    async_states: frozenset[str] = frozenset(),
+    announcing: Mapping[str, str] | None = None,
 ) -> EndpointContract:
     source = REACHABILITY[name]
     states = source["states"]
@@ -232,7 +270,12 @@ def _contract(
     retry = None
     if states["retry"] == "reachable":
         terminals = responses - {"error"}
-        retry = RetryExpectation("error", terminals or frozenset({"content"}), "[data-async-retry]")
+        retry = RetryExpectation("error", terminals or frozenset({"content"}), ".async-error button[hx-get], .async-error form[hx-post]")
+
+    roles: dict[str, str] = {state: ASYNC_ROLES[state] for state in async_states}
+    roles.setdefault("error", "alert")
+    if announcing:
+        roles.update(announcing)
 
     return EndpointContract(
         name=name,
@@ -248,8 +291,9 @@ def _contract(
         retry=retry,
         not_applicable=MappingProxyType(not_applicable),
         blocking_gaps=MappingProxyType(blocking_gaps),
+        async_states=async_states,
         accepted_statuses=statuses,
-        announcement=_announcement(responses),
+        announcement=_announcement(responses, roles),
         focus=focus,
         capabilities=capabilities,
         full_page=full_page,
@@ -265,6 +309,8 @@ REGISTRY = (
         swap="innerHTML",
         kwargs="no_kwargs",
         capabilities=frozenset({"loading", "announcement", "race", "history"}),
+        async_states=frozenset({"empty", "error"}),
+        announcing={"content": "status", "empty": "status"},
     ),
     _contract(
         "gwflow_detail_metadata",
@@ -274,6 +320,7 @@ REGISTRY = (
         swap="innerHTML",
         kwargs="gwflow_job",
         focus=FocusExpectation("section_heading", "#detail-pane [tabindex='-1']"),
+        async_states=frozenset({"error"}),
     ),
     _contract(
         "gwflow_detail_files",
@@ -283,6 +330,8 @@ REGISTRY = (
         swap="innerHTML",
         kwargs="gwflow_job",
         focus=FocusExpectation("section_heading", "#detail-pane [tabindex='-1']"),
+        async_states=frozenset({"empty"}),
+        announcing={"empty": "status"},
     ),
     _contract(
         "gwflow_detail_history",
@@ -292,25 +341,31 @@ REGISTRY = (
         swap="innerHTML",
         kwargs="gwflow_job",
         focus=FocusExpectation("section_heading", "#detail-pane [tabindex='-1']"),
+        async_states=frozenset({"error"}),
+        announcing={"content": "status", "stale": "status"},
     ),
     _contract(
         "gwflow_version_select_compare",
         method="get",
-        url_name="bilbyui:gwflow_job_history_version",
+        url_name="bilbyui:gwflow_job_history",
         target="#gwflow-history-region",
         swap="outerHTML",
-        kwargs="gwflow_version",
+        kwargs="gwflow_job",
         focus=FocusExpectation("preserve"),
+        async_states=frozenset({"error"}),
+        announcing={"content": "status", "stale": "status"},
     ),
     _contract(
         "event_id_modal_open",
         method="get",
         url_name="bilbyui:event_id_modal",
-        target="#modal-container",
-        swap="innerHTML",
+        target="#event-id-modal-{job_id}",
+        swap="outerHTML",
         kwargs="job",
+        statuses=frozenset({200, 503}),
         focus=FocusExpectation("modal_search", "#event-id-search"),
         capabilities=frozenset({"loading", "announcement", "focus"}),
+        async_states=frozenset({"error"}),
         full_page=False,
     ),
     _contract(
@@ -320,8 +375,10 @@ REGISTRY = (
         target="#event-id-results",
         swap="innerHTML",
         kwargs="event_search",
+        statuses=frozenset({200, 503}),
         focus=FocusExpectation("preserve"),
         capabilities=frozenset({"loading", "announcement", "race"}),
+        async_states=frozenset({"error"}),
         full_page=False,
     ),
     _contract(
@@ -354,6 +411,7 @@ REGISTRY = (
         statuses=frozenset({200, 400}),
         focus=FocusExpectation("token_result", "#token-actions"),
         capabilities=frozenset({"loading", "announcement", "focus"}),
+        async_states=frozenset({"error"}),
         full_page=False,
     ),
     _contract(
