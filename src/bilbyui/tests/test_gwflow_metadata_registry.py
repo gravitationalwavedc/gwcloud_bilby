@@ -116,6 +116,26 @@ class GWFlowMetadataRegistryTests(SimpleTestCase):
         self.assertEqual(unknown.disclosed_leaf_count, 1)
         self.assertNotIn("UnmappedProbe.deep.sentinel", KNOWN_KEYS())
 
+    def test_builder_discloses_non_mapping_section_values_without_raising(self):
+        scalar = build_metadata_presentation({"info": "scalar-value"})
+        scalar_section = scalar.sections[0]
+        self.assertEqual(scalar_section.id, "info")
+        self.assertEqual(scalar_section.data_shape, "scalar")
+        self.assertEqual(scalar_section.disclosure[0].path, "info")
+        self.assertEqual(scalar_section.disclosure[0].value, "scalar-value")
+        self.assertEqual(scalar_section.disclosure[0].leaf_count, 1)
+
+        scalar_list = build_metadata_presentation({"info": ["a", "b"]})
+        scalar_list_section = scalar_list.sections[0]
+        self.assertEqual(scalar_list_section.data_shape, "scalar-list")
+        self.assertEqual(scalar_list_section.disclosure[0].shape, "scalar-list")
+        self.assertEqual(len(scalar_list_section.disclosure[0].children), 2)
+
+        record_list = build_metadata_presentation({"info": [{"a": 1}]})
+        record_list_section = record_list.sections[0]
+        self.assertEqual(record_list_section.data_shape, "record-list")
+        self.assertEqual(record_list_section.disclosure[0].shape, "record-list")
+
     def test_builder_comparative_contracts_are_explicit(self):
         payload = {
             "gracedb": {"events": [{"uid": "G1", "far": 0}]},
