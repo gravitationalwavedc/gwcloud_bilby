@@ -33,6 +33,11 @@ class TestParseEmbargoArgs(BilbyTestCase):
         trigger_time, _ = _parse_embargo_args(_args(trigger_time="NOT_A_REAL_EVENT", n_simulation="0"))
         self.assertIsNone(trigger_time)
 
+    @patch("bilbyui.views.event_gps", side_effect=KeyError("gps"))
+    def test_gwosc_malformed_response_trigger_time_returns_none(self, _mock_event_gps):
+        trigger_time, _ = _parse_embargo_args(_args(trigger_time="NOT_A_REAL_EVENT", n_simulation="0"))
+        self.assertIsNone(trigger_time)
+
     def test_trigger_time_type_error_returns_none(self):
         trigger_time, _ = _parse_embargo_args(_args(trigger_time=None, n_simulation="0"))
         self.assertIsNone(trigger_time)

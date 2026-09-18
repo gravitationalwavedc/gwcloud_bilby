@@ -136,7 +136,7 @@ def _parse_embargo_args(args):
     except ValueError:  # If trigger time is not able to be converted to a float
         try:
             trigger_time = event_gps(args.trigger_time)  # Try to resolve event name to GPS time
-        except (ValueError, requests.RequestException):  # If event_gps cannot resolve the event or gwosc is unreachable
+        except (ValueError, requests.RequestException, KeyError):  # If event_gps cannot resolve the event or gwosc is unreachable
             trigger_time = None
     except TypeError:
         trigger_time = None
