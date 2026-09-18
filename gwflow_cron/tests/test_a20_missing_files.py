@@ -23,6 +23,12 @@ except ImportError:
     from test_bilby_children import _bilby_analysis, _bilby_detail, _make_gwc, _write_fetch_files
 
 
+class _MissingFilesError(GWDCUnknownException):
+    def __init__(self, msg, extensions):
+        self.extensions = extensions
+        super().__init__(msg)
+
+
 class TestResolveMissingPath(unittest.TestCase):
     def test_absolute_path_returned_as_is(self):
         self.assertEqual(resolve_missing_path("/calib/cal1.txt", "", None), "/calib/cal1.txt")
@@ -168,7 +174,7 @@ class TestPhaseBilbyChildrenMissingFiles(GWFlowTestBase):
         def upload(description=None, job_archive=None, public=None):
             upload_calls[0] += 1
             if upload_calls[0] == 1:
-                raise GWDCUnknownException("missing", extensions={"missing_files": missing})
+                raise _MissingFilesError("missing", {"missing_files": missing})
             with tarfile.open(job_archive, "r:gz") as tar:
                 captured_names.extend(tar.getnames())
             return uploaded
@@ -297,7 +303,7 @@ class TestPhaseBilbyChildrenMissingFiles(GWFlowTestBase):
         def upload(description=None, job_archive=None, public=None):
             upload_calls[0] += 1
             if upload_calls[0] == 1:
-                raise GWDCUnknownException("missing", extensions={"missing_files": missing})
+                raise _MissingFilesError("missing", {"missing_files": missing})
             return uploaded
 
         gwc.upload_job_archive.side_effect = upload
