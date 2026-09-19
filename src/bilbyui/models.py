@@ -725,7 +725,10 @@ class FileDownloadToken(models.Model):
         cls.prune()
 
         # Next try to find the instance matching the specified token
-        return cls.objects.filter(token=token).first()
+        try:
+            return cls.objects.filter(token=token).first()
+        except ValidationError:
+            return None
 
     @classmethod
     def create(cls, job, paths):
