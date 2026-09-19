@@ -193,6 +193,16 @@ class GWFlowStructuredDiffTestCase(BilbyTestCase):
         self.assertEqual(outcome.changes[0].kind, "changed")
         self.assertEqual(outcome.changes[0].path, ("detectors", 1))
 
+    def test_deeply_nested_payload_returns_failed_outcome(self):
+        depth = 2000
+        baseline = selected = None
+        for _ in range(depth):
+            baseline = {"nested": baseline}
+            selected = {"nested": selected}
+        outcome = diff_payloads(baseline, selected, baseline_schema="v1", selected_schema="v1")
+        self.assertEqual(outcome.status, "failed")
+        self.assertEqual(outcome.reason, "RecursionError")
+
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class GWFlowSnapshotTimestampTestCase(BilbyTestCase):
