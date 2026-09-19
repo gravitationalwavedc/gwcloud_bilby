@@ -1,6 +1,7 @@
 from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
+from django.http import Http404
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
@@ -493,6 +494,19 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'role="status"')
         self.assertContains(response, "Selected version 11112222")
+
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404")
+    @mock.patch("bilbyui.views.get_versions")
+    def test_unknown_version_deep_link_raises_404(self, mock_get_versions, mock_get_job):
+        mock_get_job.return_value.current_history_id = "aaaabbbbccccddddeeeeffff0000111122223333"
+        mock_get_versions.return_value = (self._metadata_versions(), "live")
+        request = self.factory.get(
+            reverse("bilbyui:gwflow_job_history", args=[self.sname]),
+            {"version": "ffffffffffffffffffffffffffffffffffffffff"},
+        )
+
+        with self.assertRaises(Http404):
+            _render_gwflow_history_section(request, self.sname)
 
     def _metadata_versions(self):
         return [
