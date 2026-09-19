@@ -684,7 +684,10 @@ class SupportingFile(models.Model):
         Retrieves the SupportingFile object matching the provided download token. Returns None if the token doesn't
         exist or the file is not yet uploaded.
         """
-        return cls.objects.filter(download_token=token, upload_token__isnull=True).first()
+        try:
+            return cls.objects.filter(download_token=token, upload_token__isnull=True).first()
+        except ValidationError:
+            return None
 
 
 class IniKeyValue(models.Model):

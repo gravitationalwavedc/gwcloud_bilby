@@ -835,6 +835,11 @@ class TestSupportingFile(BilbyTestCase):
         SupportingFile.save_from_parsed(self.job, self.parsed)
         self.assertIsNone(SupportingFile.get_by_download_token(str(uuid.uuid4())))
 
+    def test_get_by_download_token_malformed(self):
+        # Test that a supporting file can't be fetched by a malformed (non-UUID) token rather than raising
+        SupportingFile.save_from_parsed(self.job, self.parsed)
+        self.assertIsNone(SupportingFile.get_by_download_token("not-a-uuid"))
+
     def test_get_by_download_token(self):
         # Test that it's possible to get a SupportingFile object by the download token.
         SupportingFile.save_from_parsed(self.job, self.parsed)
