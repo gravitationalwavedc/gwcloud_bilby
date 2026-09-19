@@ -9,7 +9,12 @@ from django.test import override_settings
 
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.embargo import should_embargo_job, user_subject_to_embargo
+from bilbyui.utils.embargo import (
+    _gwflow_trigger_time_from_metadata,
+    gwflow_ligo_only_from_metadata,
+    should_embargo_job,
+    user_subject_to_embargo,
+)
 from bilbyui.utils.ini_utils import bilby_ini_string_to_args
 from bilbyui.views import check_job_embargo_status
 
@@ -182,3 +187,95 @@ class ShouldEmbargoJobTestCase(BilbyTestCase):
     def test_none_user_treated_as_non_ligo(self):
         # A None user is treated as a non-LIGO user and subject to embargo
         self.assertTrue(should_embargo_job(None, EMBARGO_START, False))
+
+
+class GwflowTriggerTimeFromMetadataTestCase(BilbyTestCase):
+    def test_non_dict_metadata_returns_none(self):
+        # Malformed top-level metadata fails open (no trigger time)
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(None))
+        self.assertIsNone(_gwflow_trigger_time_from_metadata("not-a-dict"))
+
+    def test_missing_grace_db_returns_none(self):
+        # Missing GraceDB key fails open
+        self.assertIsNone(_gwflow_trigger_time_from_metadata({}))
+
+    def test_non_list_events_returns_none(self):
+        # Events that is not a list fails open
+        self.assertIsNone(_gwflow_trigger_time_from_metadata({"GraceDB": {"Events": "nope"}}))
+
+    def test_empty_events_returns_none(self):
+        self.assertIsNone(_gwflow_trigger_time_from_metadata({"GraceDB": {"Events": []}}))
+
+    def test_non_dict_event_skipped(self):
+        # Non-dict events are skipped; if none usable, returns None
+        metadata = {"GraceDB": {"Events": ["not-a-dict", 42]}}
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
+
+    def test_missing_gps_time_skipped(self):
+        # Events missing GPSTime are skipped
+        metadata = {"GraceDB": {"Events": [{"State": "preferred"}]}}
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
+
+    def test_non_numeric_gps_time_skipped(self):
+        # Events with non-numeric GPSTime are skipped
+        metadata = {"GraceDB": {"Events": [{"GPSTime": "not-a-number"}]}}
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
+
+    def test_preferred_event_wins(self):
+        # The preferred event is selected even if it is not first
+        metadata = {
+            "GraceDB": {
+                "Events": [
+                    {"State": "noise", "GPSTime": "100.5"},
+                    {"State": "preferred", "GPSTime": "200.5"},
+                ]
+            }
+        }
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 200.5)
+
+    def test_first_usable_event_is_fallback(self):
+        # Without a preferred event, the first usable event is used
+        metadata = {
+            "GraceDB": {
+                "Events": [
+                    {"GPSTime": None},
+                    {"GPSTime": "not-a-number"},
+                    {"GPSTime": "300.5"},
+                ]
+            }
+        }
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 300.5)
+
+
+@override_settings(EMBARGO_START_TIME=1000.0)
+class GwflowLigoOnlyFromMetadataTestCase(BilbyTestCase):
+    def test_no_embargo_start_time_returns_false(self):
+        # With no embargo start time configured, everything is public
+        with override_settings(EMBARGO_START_TIME=None):
+            self.assertFalse(gwflow_ligo_only_from_metadata(_events([("preferred", "2000.0")])))
+
+    def test_missing_trigger_returns_false(self):
+        # Malformed metadata fails open (public)
+        self.assertFalse(gwflow_ligo_only_from_metadata({}))
+        self.assertFalse(gwflow_ligo_only_from_metadata(None))
+
+    def test_malformed_embargo_start_time_returns_false(self):
+        # A malformed EMBARGO_START_TIME fails open (public)
+        with override_settings(EMBARGO_START_TIME="not-a-number"):
+            self.assertFalse(gwflow_ligo_only_from_metadata(_events([("preferred", "2000.0")])))
+
+    def test_trigger_below_start_returns_false(self):
+        # Real data before the embargo start time is public
+        self.assertFalse(gwflow_ligo_only_from_metadata(_events([("preferred", "999.0")])))
+
+    def test_trigger_at_start_returns_true(self):
+        # Real data at the embargo start time is LIGO-only (equality)
+        self.assertTrue(gwflow_ligo_only_from_metadata(_events([("preferred", "1000.0")])))
+
+    def test_trigger_above_start_returns_true(self):
+        # Real data after the embargo start time is LIGO-only
+        self.assertTrue(gwflow_ligo_only_from_metadata(_events([("preferred", "1000.5")])))
+
+
+def _events(entries):
+    return {"GraceDB": {"Events": [{"State": state, "GPSTime": gps} for state, gps in entries]}}
