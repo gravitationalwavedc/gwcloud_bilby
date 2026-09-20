@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import requests
+import tenacity
 
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import _parse_embargo_args
@@ -35,6 +36,11 @@ class TestParseEmbargoArgs(BilbyTestCase):
 
     @patch("bilbyui.views.event_gps", side_effect=KeyError("gps"))
     def test_gwosc_malformed_response_trigger_time_returns_none(self, _mock_event_gps):
+        trigger_time, _ = _parse_embargo_args(_args(trigger_time="NOT_A_REAL_EVENT", n_simulation="0"))
+        self.assertIsNone(trigger_time)
+
+    @patch("bilbyui.views.event_gps", side_effect=tenacity.RetryError("last_attempt"))
+    def test_gwosc_timeout_trigger_time_returns_none(self, _mock_event_gps):
         trigger_time, _ = _parse_embargo_args(_args(trigger_time="NOT_A_REAL_EVENT", n_simulation="0"))
         self.assertIsNone(trigger_time)
 
