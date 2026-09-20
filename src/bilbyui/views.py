@@ -1,3 +1,4 @@
+import datetime
 import functools
 import hashlib
 import json
@@ -1948,6 +1949,9 @@ def _get_job_status_context(job, user):
                         status_date = status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
                     else:
                         status_date = job.last_updated
+
+    if isinstance(status_date, datetime.datetime):
+        status_date = status_date.strftime("%Y-%m-%d %H:%M:%S UTC")
 
     return {
         "status_name": status_name,
