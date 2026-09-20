@@ -1101,7 +1101,10 @@ def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None, i
 
 
 def update_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=None):
-    event = EventID.get_by_event_id(event_id, user)
+    try:
+        event = EventID.get_by_event_id(event_id, user)
+    except EventID.DoesNotExist:
+        raise GraphQLError(f"Event ID '{event_id}' not found.")
     event.update(
         trigger_id=trigger_id,
         nickname=nickname,
@@ -1113,7 +1116,10 @@ def update_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is
 
 
 def delete_event_id(user, event_id):
-    event = EventID.get_by_event_id(event_id, user)
+    try:
+        event = EventID.get_by_event_id(event_id, user)
+    except EventID.DoesNotExist:
+        raise GraphQLError(f"Event ID '{event_id}' not found.")
     event.delete()
     return f"EventID {event_id} successfully deleted!"
 
