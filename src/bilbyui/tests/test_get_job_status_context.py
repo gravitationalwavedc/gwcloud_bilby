@@ -31,7 +31,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
         self.assertEqual(result["status_name"], "Completed")
         self.assertEqual(result["status_badge_class"], "primary")
-        self.assertEqual(result["status_date"], self.job.last_updated)
+        self.assertEqual(result["status_date"], self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"))
 
     def test_external_job_returns_completed(self):
         self.job.job_type = BilbyJobType.EXTERNAL
@@ -42,7 +42,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
         self.assertEqual(result["status_name"], "Completed")
         self.assertEqual(result["status_badge_class"], "primary")
-        self.assertEqual(result["status_date"], self.job.last_updated)
+        self.assertEqual(result["status_date"], self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"))
 
     def test_missing_job_controller_id_returns_unknown(self):
         self.job.job_controller_id = None
@@ -52,7 +52,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
         self.assertEqual(result["status_name"], "Unknown")
         self.assertEqual(result["status_badge_class"], "dark")
-        self.assertEqual(result["status_date"], self.job.last_updated)
+        self.assertEqual(result["status_date"], self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"))
 
     @mock.patch("bilbyui.views.request_job_filter", return_value=("OK", []))
     def test_empty_filter_result_returns_unknown(self, mock_filter):
@@ -60,7 +60,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
         self.assertEqual(result["status_name"], "Unknown")
         self.assertEqual(result["status_badge_class"], "dark")
-        self.assertEqual(result["status_date"], self.job.last_updated)
+        self.assertEqual(result["status_date"], self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"))
         mock_filter.assert_called_once_with(self.user.id, ids=[10001])
 
     @mock.patch("bilbyui.views.request_job_filter", return_value=("UNKNOWN", "Error getting job filter"))
@@ -69,7 +69,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
         self.assertEqual(result["status_name"], "Unknown")
         self.assertEqual(result["status_badge_class"], "dark")
-        self.assertEqual(result["status_date"], self.job.last_updated)
+        self.assertEqual(result["status_date"], self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"))
         mock_filter.assert_called_once_with(self.user.id, ids=[10001])
 
     @mock.patch(
@@ -81,7 +81,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
         self.assertEqual(result["status_name"], "Unknown")
         self.assertEqual(result["status_badge_class"], "dark")
-        self.assertEqual(result["status_date"], self.job.last_updated)
+        self.assertEqual(result["status_date"], self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"))
 
     @mock.patch(
         "bilbyui.views.request_job_filter",
@@ -106,7 +106,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
         self.assertEqual(result["status_name"], "Unknown")
         self.assertEqual(result["status_badge_class"], "dark")
-        self.assertEqual(result["status_date"], self.job.last_updated)
+        self.assertEqual(result["status_date"], self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"))
 
     @mock.patch(
         "bilbyui.views.request_job_filter",
@@ -117,7 +117,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
         self.assertEqual(result["status_name"], "Unknown")
         self.assertEqual(result["status_badge_class"], "dark")
-        self.assertEqual(result["status_date"], self.job.last_updated)
+        self.assertEqual(result["status_date"], self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"))
 
     @mock.patch(
         "bilbyui.views.request_job_filter",
@@ -128,7 +128,7 @@ class TestGetJobStatusContext(BilbyTestCase):
 
         self.assertEqual(result["status_name"], "Unknown")
         self.assertEqual(result["status_badge_class"], "dark")
-        self.assertEqual(result["status_date"], self.job.last_updated)
+        self.assertEqual(result["status_date"], self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"))
 
     @mock.patch(
         "bilbyui.views.request_job_filter",
@@ -191,4 +191,4 @@ class TestGetJobStatusContext(BilbyTestCase):
 
         self.assertEqual(result["status_name"], "Unknown")
         self.assertEqual(result["status_badge_class"], "dark")
-        self.assertEqual(result["status_date"], self.job.last_updated)
+        self.assertEqual(result["status_date"], self.job.last_updated.strftime("%Y-%m-%d %H:%M:%S UTC"))
