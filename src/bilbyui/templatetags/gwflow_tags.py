@@ -138,6 +138,8 @@ def probability(value: Any, precision: int = 3) -> str:
         return "1"
     safe_precision = max(0, int(precision))
     rendered = f"{number:.{safe_precision}f}".rstrip("0").rstrip(".")
+    if rendered == "0":
+        return scientific(number)
     return rendered
 
 
