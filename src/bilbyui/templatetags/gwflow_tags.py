@@ -137,6 +137,8 @@ def probability(value: Any, precision: int = 3) -> str:
     if number == 1:
         return "1"
     rendered = f"{number:.{precision}f}".rstrip("0").rstrip(".")
+    if rendered == "0":
+        return scientific(number)
     return rendered
 
 

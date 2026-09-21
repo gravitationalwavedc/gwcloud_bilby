@@ -127,6 +127,13 @@ class GwflowFormatterTests(SimpleTestCase):
         self.assertEqual(probability(float("inf")), "inf")
         self.assertEqual(probability("not-a-number"), "not-a-number")
 
+    def test_probability_preserves_small_nonzero_values(self):
+        self.assertNotEqual(probability(0.0001), "0")
+        self.assertNotEqual(probability(0.0005), "0")
+        self.assertEqual(probability(0), "0")
+        self.assertEqual(probability(1), "1")
+        self.assertEqual(probability(0.5), "0.5")
+
     def test_scientific_formats_small_negative_zero_and_units(self):
         self.assertEqual(scientific(3.1e-9, "Hz"), "3.1×10⁻⁹ Hz")
         self.assertEqual(scientific(-2.5e-4, "s"), "-2.5×10⁻⁴ s")
