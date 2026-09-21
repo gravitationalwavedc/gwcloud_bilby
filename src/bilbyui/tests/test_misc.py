@@ -47,6 +47,12 @@ class CheckRequestLeakTestCase(BilbyTestCase):
         with override_settings(ALLOW_HTTP_LEAKS=True):
             check_request_leak()
 
+    def test_leak_raises_when_explicitly_disallowed(self):
+        # Explicitly setting ALLOW_HTTP_LEAKS to False must keep the leak check active
+        with override_settings(ALLOW_HTTP_LEAKS=False):
+            with self.assertRaisesRegex(Exception, "HTTP request leaked during testing"):
+                check_request_leak()
+
     def test_no_leak_when_outbox_absent(self):
         # When mail.outbox is absent (not test mode), check_request_leak must not raise
         original = django.core.mail.outbox
