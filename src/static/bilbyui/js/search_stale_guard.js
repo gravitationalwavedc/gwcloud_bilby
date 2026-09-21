@@ -67,6 +67,10 @@
     var reqRev = xhr && requestRevisions.get(xhr);
     if (reqRev !== undefined && reqRev !== revision) {
       event.detail.shouldSwap = false;
+      document.dispatchEvent(new CustomEvent(
+        "bilbyui:listRequestSuppressed",
+        {detail: event.detail}
+      ));
     }
   });
 })();

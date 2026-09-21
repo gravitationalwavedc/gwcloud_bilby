@@ -244,42 +244,53 @@ class TestGWFlowLoadingTransition(GWFlowResultsPageBase):
     async def test_loading_transition_and_persistent_target(self):
         page = self.page
         await page.wait_for_selector(".result-count")
-        loading = page.locator("#gwflow-job-list-loading")
+        indicator = page.locator("#gwflow-loading-indicator")
+        region = page.locator("#gwflow-results-region")
         target = page.locator("#gwflow-job-list")
+        status = page.locator("#gwflow-results-status")
+        rows_before = await target.locator(".gwflow-job-row").count()
 
-        self.assertFalse(
-            await loading.evaluate("el => el.classList.contains('htmx-request')"),
-            "no request in flight when idle",
-        )
-        self.assertEqual(
-            await loading.evaluate("el => getComputedStyle(el).display"),
-            "none",
-            "loading indicator must be hidden by default",
-        )
+        self.assertEqual(await target.locator("#gwflow-loading-indicator").count(), 0)
+        self.assertTrue(await indicator.evaluate("el => el.hidden"))
+        self.assertEqual(await indicator.get_attribute("aria-hidden"), "true")
+        self.assertEqual(await region.get_attribute("aria-busy"), "false")
 
         await page.locator("#search").press_sequentially("abc")
         self.assertTrue(
             await sync_to_async(GATE.wait_started)(),
             "the search request must reach the server",
         )
-
         await page.wait_for_function(
-            "() => document.getElementById('gwflow-job-list-loading').classList.contains('htmx-request')",
+            "() => document.getElementById('gwflow-results-region')"
+            ".getAttribute('aria-busy') === 'true'",
             timeout=5000,
         )
+
+        self.assertFalse(await indicator.evaluate("el => el.hidden"))
+        self.assertEqual(await indicator.get_attribute("aria-hidden"), "false")
+        self.assertEqual(await region.get_attribute("aria-busy"), "true")
         self.assertEqual(
-            await loading.evaluate("el => getComputedStyle(el).display"),
-            "block",
-            "loading indicator must be visible while a request is in flight",
+            await target.locator(".gwflow-job-row").count(),
+            rows_before,
+            "existing rows must remain visible while the request is in flight",
         )
-        self.assertEqual(await target.count(), 1, "persistent target must survive during the swap")
 
         await sync_to_async(GATE.release)()
         await page.wait_for_function(
-            "() => !document.getElementById('gwflow-job-list-loading').classList.contains('htmx-request')",
+            "() => document.getElementById('gwflow-results-region')"
+            ".getAttribute('aria-busy') === 'false'",
             timeout=10000,
         )
+
+        self.assertTrue(await indicator.evaluate("el => el.hidden"))
+        self.assertEqual(await indicator.get_attribute("aria-hidden"), "true")
         self.assertEqual(await target.count(), 1, "persistent target must survive after the swap")
+        self.assertEqual(
+            await page.locator("#gwflow-results-status").count(),
+            1,
+            "there must be exactly one polite results status node",
+        )
+        self.assertEqual(await status.text_content(), "2 superevents match")
 
 
 class TestGWFlowReset(GWFlowResultsPageBase):
@@ -348,10 +359,19 @@ class TestGWFlowInvalidAxeScan(GWFlowResultsPageBase):
 class TestGWFlowLoadingAxeScan(GWFlowResultsPageBase):
     @async_e2e_test
     async def test_no_serious_or_critical_axe_violations(self):
-        await self.page.wait_for_selector(".result-count")
-        await self.page.evaluate(
-            "() => { const el = document.getElementById('gwflow-job-list-loading'); "
-            "el.hidden = false; el.classList.add('htmx-request'); }"
+        page = self.page
+        await page.wait_for_selector(".result-count")
+
+        async def delay_list_request(route):
+            await page.wait_for_timeout(1000)
+            await route.continue_()
+
+        await page.route("**/gwflow/?*", delay_list_request, times=1)
+        await page.locator("#library").select_option("lib1")
+        await page.wait_for_function(
+            "() => !document.getElementById('gwflow-loading-indicator').hidden"
         )
-        await self.page.wait_for_selector("#gwflow-job-list-loading")
-        await self._assert_zero_serious_critical("#gwflow-job-list-loading")
+        await self._assert_zero_serious_critical("#gwflow-loading-indicator")
+        await page.wait_for_function(
+            "() => document.getElementById('gwflow-loading-indicator').hidden"
+        )
