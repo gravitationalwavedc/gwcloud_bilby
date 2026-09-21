@@ -157,6 +157,14 @@ class GwflowFormatterTests(SimpleTestCase):
             "not-a-number Hz",
         )
 
+    def test_scientific_renders_subnormal_values_without_raising(self):
+        rendered = scientific(5e-324)
+        self.assertIn("e-324", rendered)
+        self.assertNotIn("×", rendered)
+        rendered_negative = scientific(-5e-324, "Hz")
+        self.assertIn("e-324", rendered_negative)
+        self.assertIn(" Hz", rendered_negative)
+
     def test_list_short_long_empty_and_all_items_accessible(self):
         self.assertEqual(list_value(["H1", "L1"]), "H1, L1")
         self.assertEqual(
