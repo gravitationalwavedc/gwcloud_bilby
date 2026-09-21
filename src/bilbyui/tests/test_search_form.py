@@ -633,16 +633,15 @@ class TestListSurfaceLoadingContract(BilbyTestCase):
                         self.assertIsNone(tag)
 
     def test_surface_by_source_matrix_marks_absent_sources_na(self):
+        # Conditionally rendered chip, Reset, pagination, and Retry sources are
+        # covered by the dedicated all-surface wiring test in
+        # test_active_filters_pagination.py.
         selectors = {
             "search": 'id="search"',
             "advanced mirror": 'id="advanced-search"',
             "Library": 'id="library"',
             "Review": 'id="review"',
             "Updated": 'id="time_range"',
-            "chip removal": "data-filter-param",
-            "Reset": "data-filter-reset",
-            "pagination": 'data-pagination-focus="true"',
-            "Retry": ">Retry</button>",
         }
         expected = {
             "gwflow": {
@@ -651,10 +650,6 @@ class TestListSurfaceLoadingContract(BilbyTestCase):
                 "Library": True,
                 "Review": True,
                 "Updated": True,
-                "chip removal": False,
-                "Reset": True,
-                "pagination": False,
-                "Retry": False,
             },
             "my-jobs": {
                 "search": True,
@@ -662,10 +657,6 @@ class TestListSurfaceLoadingContract(BilbyTestCase):
                 "Library": False,
                 "Review": False,
                 "Updated": True,
-                "chip removal": False,
-                "Reset": False,
-                "pagination": False,
-                "Retry": False,
             },
             "public-jobs": {
                 "search": True,
@@ -673,10 +664,6 @@ class TestListSurfaceLoadingContract(BilbyTestCase):
                 "Library": False,
                 "Review": False,
                 "Updated": True,
-                "chip removal": False,
-                "Reset": False,
-                "pagination": False,
-                "Retry": False,
             },
         }
         for surface, spec in self.surfaces.items():

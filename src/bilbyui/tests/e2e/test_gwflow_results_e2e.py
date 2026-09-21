@@ -261,8 +261,7 @@ class TestGWFlowLoadingTransition(GWFlowResultsPageBase):
             "the search request must reach the server",
         )
         await page.wait_for_function(
-            "() => document.getElementById('gwflow-results-region')"
-            ".getAttribute('aria-busy') === 'true'",
+            "() => document.getElementById('gwflow-results-region').getAttribute('aria-busy') === 'true'",
             timeout=5000,
         )
 
@@ -277,8 +276,7 @@ class TestGWFlowLoadingTransition(GWFlowResultsPageBase):
 
         await sync_to_async(GATE.release)()
         await page.wait_for_function(
-            "() => document.getElementById('gwflow-results-region')"
-            ".getAttribute('aria-busy') === 'false'",
+            "() => document.getElementById('gwflow-results-region').getAttribute('aria-busy') === 'false'",
             timeout=10000,
         )
 
@@ -368,10 +366,6 @@ class TestGWFlowLoadingAxeScan(GWFlowResultsPageBase):
 
         await page.route("**/gwflow/?*", delay_list_request, times=1)
         await page.locator("#library").select_option("lib1")
-        await page.wait_for_function(
-            "() => !document.getElementById('gwflow-loading-indicator').hidden"
-        )
+        await page.wait_for_function("() => !document.getElementById('gwflow-loading-indicator').hidden")
         await self._assert_zero_serious_critical("#gwflow-loading-indicator")
-        await page.wait_for_function(
-            "() => document.getElementById('gwflow-loading-indicator').hidden"
-        )
+        await page.wait_for_function("() => document.getElementById('gwflow-loading-indicator').hidden")

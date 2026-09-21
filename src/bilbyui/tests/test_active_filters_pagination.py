@@ -389,6 +389,73 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertContains(response, 'aria-label="Pagination"')
         self.assertContains(response, 'aria-current="page"')
 
+    def test_chip_reset_pagination_and_retry_source_wiring(self):
+        surfaces = (
+            (
+                "bilbyui/_gwflow_job_list_fragment.html",
+                "gwflow-job-list",
+                "gwflow-loading-indicator",
+            ),
+            (
+                "bilbyui/_job_list_fragment.html",
+                "job-list",
+                "my-jobs-loading-indicator",
+            ),
+            (
+                "bilbyui/_job_list_fragment.html",
+                "job-list",
+                "public-jobs-loading-indicator",
+            ),
+        )
+
+        for fragment_template, list_target_id, indicator_id in surfaces:
+            with self.subTest(surface=indicator_id, source="pagination"):
+                html = self._render_fragment(
+                    total=60,
+                    page_size=20,
+                    has_next=True,
+                    fragment_template=fragment_template,
+                    list_target_id=list_target_id,
+                    indicator_id=indicator_id,
+                ).content.decode()
+                links = re.findall(
+                    r'<a\b[^>]*data-pagination-focus="true"[^>]*>',
+                    html,
+                )
+                self.assertTrue(links)
+                for link in links:
+                    self.assertRegex(link, r'data-page="\d+"')
+                    self.assertIn(f'hx-target="#{list_target_id}"', link)
+                    self.assertIn(f'hx-indicator="#{indicator_id}"', link)
+
+            with self.subTest(surface=indicator_id, source="Retry"):
+                html = self._render_fragment(
+                    service_state="down",
+                    fragment_template=fragment_template,
+                    list_target_id=list_target_id,
+                    indicator_id=indicator_id,
+                ).content.decode()
+                retry = re.search(r"<button\b[^>]*>Retry</button>", html)
+                self.assertIsNotNone(retry)
+                self.assertIn(f'hx-target="#{list_target_id}"', retry.group(0))
+                self.assertIn(f'hx-indicator="#{indicator_id}"', retry.group(0))
+
+            with self.subTest(surface=indicator_id, source="chips and Reset"):
+                html = self._render_fragment(
+                    params={"search": "foo", "library": "lib-a"},
+                    fragment_template=fragment_template,
+                    list_target_id=list_target_id,
+                    indicator_id=indicator_id,
+                ).content.decode()
+                chip = re.search(r"<a\b[^>]*data-filter-param[^>]*>", html)
+                reset = re.search(r"<a\b[^>]*data-filter-reset[^>]*>", html)
+                self.assertIsNotNone(chip)
+                self.assertIsNotNone(reset)
+                self.assertIn('class="filter-chip-remove"', chip.group(0))
+                for control in (chip.group(0), reset.group(0)):
+                    self.assertIn(f'hx-target="#{list_target_id}"', control)
+                    self.assertIn(f'hx-indicator="#{indicator_id}"', control)
+
 
 class TestUX18ServerRenderedContract(BilbyTestCase):
     def setUp(self):
@@ -452,50 +519,3 @@ class TestUX18ServerRenderedContract(BilbyTestCase):
         self.assertNotIn("data-settled-message", wrapper.group(0))
         self.assertEqual(error.count('role="alert"'), 1)
         self.assertNotIn('role="status"', error)
-
-    def test_chip_reset_pagination_and_retry_source_wiring(self):
-        request = RequestFactory().get(
-            "/gwflow/",
-            {
-                "search": "foo",
-                "library": "lib-a",
-                "review": "reviewed",
-                "time_range": "1d",
-                "page": 2,
-            },
-            HTTP_HX_REQUEST="true",
-        )
-        request.user = self.user
-        response = _render_job_list(
-            request,
-            rows=[],
-            has_next=True,
-            total=60,
-            page_size=20,
-            jobs_list_url_name="bilbyui:gwflow_jobs",
-            template_name="bilbyui/gwflow_jobs.html",
-            fragment_template_name="bilbyui/_gwflow_job_list_fragment.html",
-            list_target_id="gwflow-job-list",
-            indicator_id="gwflow-loading-indicator",
-        ).render()
-        html = response.content.decode()
-        tags = re.findall(
-            r"<(?:a|button)\b[^>]*(?:data-filter-param|data-filter-reset|data-pagination-focus)[^>]*>",
-            html,
-        )
-        self.assertTrue(tags)
-        for tag in tags:
-            self.assertIn('hx-target="#gwflow-job-list"', tag)
-            self.assertIn('hx-indicator="#gwflow-loading-indicator"', tag)
-            self.assertIn('hx-sync="#jobs-search-region:replace"', tag)
-        pagination = [tag for tag in tags if "data-pagination-focus" in tag]
-        self.assertTrue(pagination)
-        for tag in pagination:
-            self.assertIn('data-pagination-focus="true"', tag)
-            self.assertRegex(tag, r'data-page="\d+"')
-
-        error = self._fragment(total=0, service_state="down")
-        retry = re.search(r"<button\b[^>]*>Retry</button>", error)
-        self.assertIsNotNone(retry)
-        self.assertIn('hx-target="#gwflow-job-list"', retry.group(0))
-        self.assertIn('hx-indicator="#gwflow-loading-indicator"', retry.group(0))

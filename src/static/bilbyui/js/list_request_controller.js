@@ -182,6 +182,7 @@
     var state = resolveRegion(detail);
     var indicator;
     var status;
+    var config;
     var pagination;
     var page;
     var token;
@@ -195,6 +196,13 @@
     token = state.nextToken;
     state.activeToken = token;
     clearTimer(state);
+
+    config = detail.requestConfig || {};
+    state.retry = {
+      verb: (config.verb || "get").toLowerCase(),
+      path: config.path || window.location.pathname,
+      parameters: config.parameters || null
+    };
 
     requestState.set(identity, {
       token: token,
@@ -268,6 +276,103 @@
     return "";
   }
 
+  function buildRetryUrl(state) {
+    var retry = state.retry || {};
+    var parameters = retry.parameters;
+    var query = [];
+    var key;
+
+    if (retry.verb !== "get" || !retry.path) {
+      return "";
+    }
+
+    if (parameters && typeof parameters === "object") {
+      Object.keys(parameters).forEach(function (parameter) {
+        var values = Array.isArray(parameters[parameter])
+          ? parameters[parameter]
+          : [parameters[parameter]];
+
+        values.forEach(function (value) {
+          if (value === null || value === undefined || value === "") {
+            return;
+          }
+          query.push(
+            encodeURIComponent(parameter) + "=" + encodeURIComponent(value)
+          );
+        });
+      });
+    }
+
+    key = retry.path.indexOf("?") === -1 ? "?" : "&";
+    return retry.path + (query.length ? key + query.join("&") : "");
+  }
+
+  function renderTransportError(state) {
+    var target = document.getElementById(state.targetId);
+    var indicatorId = state.element.getAttribute("data-list-indicator");
+    var heading = state.element.getAttribute("aria-label") || "";
+    var url = buildRetryUrl(state);
+    var wrapper;
+    var alertBox;
+    var message;
+    var prefix;
+    var retryButton;
+
+    if (!target) {
+      return;
+    }
+
+    wrapper = document.createElement("div");
+    wrapper.className = "list-fragment";
+    wrapper.setAttribute("data-settled-kind", "error");
+
+    alertBox = document.createElement("div");
+    alertBox.className = "async-error";
+    alertBox.setAttribute("role", "alert");
+    if (heading) {
+      alertBox.setAttribute("aria-label", heading);
+    }
+
+    message = document.createElement("p");
+    message.className = "async-error-message mb-0";
+    prefix = document.createElement("span");
+    prefix.className = "sr-only";
+    prefix.textContent = "Error: ";
+    message.appendChild(prefix);
+    message.appendChild(document.createTextNode(
+      "Couldn't load the results because the service is temporarily unavailable."
+    ));
+
+    retryButton = document.createElement("button");
+    retryButton.type = "button";
+    retryButton.className = "btn btn-primary";
+    retryButton.textContent = "Retry";
+    retryButton.setAttribute("hx-get", url);
+    retryButton.setAttribute("hx-target", "#" + state.targetId);
+    retryButton.setAttribute("hx-swap", "innerHTML");
+    if (indicatorId) {
+      retryButton.setAttribute("hx-indicator", "#" + indicatorId);
+    }
+
+    alertBox.appendChild(message);
+    alertBox.appendChild(retryButton);
+    wrapper.appendChild(alertBox);
+    target.textContent = "";
+    target.appendChild(wrapper);
+
+    if (window.htmx && typeof window.htmx.process === "function") {
+      window.htmx.process(wrapper);
+    } else {
+      retryButton.addEventListener("click", function () {
+        if (url) {
+          window.location.href = url;
+        } else {
+          window.location.reload();
+        }
+      });
+    }
+  }
+
   function finishRequest(event, publishSettledMessage) {
     var detail = event.detail || {};
     var identity = requestIdentity(detail);
@@ -279,19 +384,19 @@
 
     if (!identity ||
         (typeof identity !== "object" && typeof identity !== "function")) {
-      return;
+      return null;
     }
 
     metadata = requestState.get(identity);
     if (!metadata || metadata.settled) {
-      return;
+      return null;
     }
 
     state = metadata.region;
     if (state.activeToken !== metadata.token) {
       metadata.settled = true;
       requestState.delete(identity);
-      return;
+      return null;
     }
 
     metadata.settled = true;
@@ -319,6 +424,14 @@
         status.textContent = message;
       }
     }
+    return state;
+  }
+
+  function finishFailure(event) {
+    var state = finishRequest(event, false);
+    if (state) {
+      renderTransportError(state);
+    }
   }
 
   function clearHistoryPending() {
@@ -345,15 +458,9 @@
   document.addEventListener("htmx:afterSwap", function (event) {
     finishRequest(event, true);
   });
-  document.addEventListener("htmx:responseError", function (event) {
-    finishRequest(event, false);
-  });
-  document.addEventListener("htmx:sendError", function (event) {
-    finishRequest(event, false);
-  });
-  document.addEventListener("htmx:timeout", function (event) {
-    finishRequest(event, false);
-  });
+  document.addEventListener("htmx:responseError", finishFailure);
+  document.addEventListener("htmx:sendError", finishFailure);
+  document.addEventListener("htmx:timeout", finishFailure);
   document.addEventListener("htmx:abort", function (event) {
     finishRequest(event, false);
   });

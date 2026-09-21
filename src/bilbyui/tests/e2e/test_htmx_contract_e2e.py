@@ -298,16 +298,12 @@ class HTMXLoadingIndicatorContractTest(
 
         await page.locator("#library").select_option("lib1")
         await page.wait_for_function("() => window.__loadingLifecycle.includes('before')")
-        await page.wait_for_function(
-            "() => !document.getElementById('gwflow-loading-indicator').hidden"
-        )
+        await page.wait_for_function("() => !document.getElementById('gwflow-loading-indicator').hidden")
         self.assertFalse(await indicator.evaluate("el => el.hidden"))
         self.assertEqual(await indicator.get_attribute("aria-hidden"), "false")
 
         await page.wait_for_function("() => window.__loadingLifecycle.includes('settled')")
-        await page.wait_for_function(
-            "() => document.getElementById('gwflow-loading-indicator').hidden"
-        )
+        await page.wait_for_function("() => document.getElementById('gwflow-loading-indicator').hidden")
         self.assertTrue(await indicator.evaluate("el => el.hidden"))
         self.assertEqual(await indicator.get_attribute("aria-hidden"), "true")
         self.assertEqual(

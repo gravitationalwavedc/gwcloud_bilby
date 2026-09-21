@@ -128,6 +128,7 @@ django-tests:
     - mkdir -p .playwright
     - test -f .playwright/package.json || printf '%s\n' '{"name":"e2e-test-deps","private":true}' > .playwright/package.json
     - npm install --prefix .playwright --ignore-scripts --no-audit --no-fund --save-exact "playwright@$(src/.venv/bin/python -c 'from importlib.metadata import version; print(version("playwright"))')" "axe-core@4.10.3"
+    - node src/static/bilbyui/js/tests/list_request_controller.test.mjs
     # Start ONE shared Playwright browser server and export its endpoint so every
     # parallel Django worker reuses it. Without this each worker that reaches an
     # e2e test spawns its own Node process + headless Chromium, which exhausts

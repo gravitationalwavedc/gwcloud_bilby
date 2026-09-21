@@ -14,25 +14,26 @@ class TestGWFlowForcedLatencyLoading(GWFlowJobsPageBase):
             await page.wait_for_timeout(1000)
             await route.continue_()
 
+        search = page.locator("#search")
         await page.route("**/gwflow/?*", delay_list_request, times=1)
-        await page.locator("#library").select_option("lib1")
+        await search.focus()
+        await search.fill("S2306")
+        await search.evaluate("(el) => el.setSelectionRange(3, 3)")
+        await page.wait_for_function("() => !document.getElementById('gwflow-loading-indicator').hidden")
         await page.wait_for_function(
-            "() => !document.getElementById('gwflow-loading-indicator').hidden"
+            "() => document.getElementById('gwflow-results-region').getAttribute('aria-busy') === 'true'"
         )
-        await page.wait_for_function(
-            "() => document.getElementById('gwflow-results-region')"
-            ".getAttribute('aria-busy') === 'true'"
-        )
+        assert await page.evaluate("document.activeElement.id") == "search"
+        assert await search.evaluate("(el) => el.selectionStart") == 3
         assert await page.locator("#gwflow-job-list .result-count").count() == 1
         assert await page.locator("#gwflow-job-list table").count() >= 1
 
+        await page.wait_for_function("() => document.getElementById('gwflow-loading-indicator').hidden === true")
         await page.wait_for_function(
-            "() => document.getElementById('gwflow-loading-indicator').hidden === true"
+            "() => document.getElementById('gwflow-results-region').getAttribute('aria-busy') === 'false'"
         )
-        await page.wait_for_function(
-            "() => document.getElementById('gwflow-results-region')"
-            ".getAttribute('aria-busy') === 'false'"
-        )
+        assert await page.evaluate("document.activeElement.id") == "search"
+        assert await search.evaluate("(el) => el.selectionStart") == 3
         status = (await page.locator("#gwflow-results-status").inner_text()).strip()
         assert "superevent" in status, f"unexpected settled status: {status!r}"
         await page.unroute_all(behavior="ignoreErrors")
@@ -44,57 +45,37 @@ class TestGWFlowLoadingFailureRetry(GWFlowJobsPageBase):
         page = self.page
         await page.wait_for_selector(".result-count")
 
-        async def error_fragment(route):
+        async def transport_failure(route):
             await route.fulfill(
-                status=200,
-                content_type="text/html",
-                body="""
-                <div class="list-fragment" data-settled-kind="error">
-                  <div class="async-error" role="alert" aria-label="GWFlow job list">
-                    <p>Couldn't load the GWFlow jobs.</p>
-                    <button
-                      type="button"
-                      class="btn btn-primary"
-                      hx-get="/gwflow/?page=1"
-                      hx-target="#gwflow-job-list"
-                      hx-swap="innerHTML"
-                      hx-indicator="#gwflow-loading-indicator"
-                    >Retry</button>
-                  </div>
-                </div>
-                """,
+                status=503,
+                content_type="text/plain",
+                body="Service unavailable",
             )
 
-        await page.route("**/gwflow/?*", error_fragment, times=1)
+        await page.route("**/gwflow/?*", transport_failure, times=1)
         await page.locator("#library").select_option("lib1")
 
-        await page.wait_for_selector("#gwflow-job-list [role='alert']")
+        alert = page.locator("#gwflow-job-list [role='alert']")
+        await alert.wait_for()
+        retry = alert.get_by_role("button", name="Retry")
+        await retry.wait_for()
+        await page.wait_for_function("() => document.getElementById('gwflow-loading-indicator').hidden === true")
         await page.wait_for_function(
-            "() => document.getElementById('gwflow-loading-indicator').hidden === true"
-        )
-        await page.wait_for_function(
-            "() => document.getElementById('gwflow-results-region')"
-            ".getAttribute('aria-busy') === 'false'"
+            "() => document.getElementById('gwflow-results-region').getAttribute('aria-busy') === 'false'"
         )
 
-        async def delay_list_request(route):
+        async def delayed_success(route):
             await page.wait_for_timeout(1000)
             await route.continue_()
 
-        await page.route("**/gwflow/?*", delay_list_request, times=1)
-        await page.get_by_role("button", name="Retry").click()
+        await page.route("**/gwflow/?*", delayed_success, times=1)
+        await retry.click()
+        await page.wait_for_function("() => !document.getElementById('gwflow-loading-indicator').hidden")
         await page.wait_for_function(
-            "() => !document.getElementById('gwflow-loading-indicator').hidden"
+            "() => document.getElementById('gwflow-results-region').getAttribute('aria-busy') === 'true'"
         )
+        await page.wait_for_function("() => document.getElementById('gwflow-loading-indicator').hidden === true")
         await page.wait_for_function(
-            "() => document.getElementById('gwflow-results-region')"
-            ".getAttribute('aria-busy') === 'true'"
-        )
-        await page.wait_for_function(
-            "() => document.getElementById('gwflow-loading-indicator').hidden === true"
-        )
-        await page.wait_for_function(
-            "() => document.getElementById('gwflow-results-region')"
-            ".getAttribute('aria-busy') === 'false'"
+            "() => document.getElementById('gwflow-results-region').getAttribute('aria-busy') === 'false'"
         )
         await page.unroute_all(behavior="ignoreErrors")

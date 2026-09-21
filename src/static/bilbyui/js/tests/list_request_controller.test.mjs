@@ -2,7 +2,7 @@
  * Isolated tests for list_request_controller.js.
  *
  * Run:
- * /home/lewis/.nvm/versions/node/v22.14.0/bin/node /home/lewis/Projects/gwdc/gwcloud_bilby-76/src/static/bilbyui/js/tests/list_request_controller.test.mjs
+ * node src/static/bilbyui/js/tests/list_request_controller.test.mjs
  */
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -10,11 +10,11 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const require = createRequire(import.meta.url);
-const { chromium } = require(
-  "/home/lewis/Projects/gwdc/gwcloud_bilby/.playwright/node_modules/playwright"
-);
-
 const testFile = fileURLToPath(import.meta.url);
+const repoRoot = path.resolve(path.dirname(testFile), "../../../../..");
+const { chromium } = require(
+  path.join(repoRoot, ".playwright/node_modules/playwright")
+);
 const controllerPath = path.resolve(
   path.dirname(testFile),
   "../list_request_controller.js"
@@ -134,7 +134,12 @@ async function dispatch(page, name, requestName, options = {}) {
           detail: {
             elt,
             xhr: window.__requests[identityName],
-            target
+            target,
+            requestConfig: settings.requestConfig || {
+              verb: "get",
+              path: "/jobs/",
+              parameters: {search: "binary", empty: ""}
+            }
           }
         })
       );
@@ -376,6 +381,50 @@ try {
       await page.locator("#test-status").textContent(),
       "ID nodes updated"
     );
+    await page.close();
+  });
+
+  for (const failureEvent of [
+    "htmx:responseError",
+    "htmx:sendError",
+    "htmx:timeout"
+  ]) {
+    await run(`${failureEvent} renders current-token recovery UI`, async () => {
+      const page = await newFixture(browser);
+      await dispatch(page, "htmx:beforeRequest", "failure");
+      await dispatch(page, failureEvent, "failure");
+      const error = page.locator(
+        '#job-list [data-settled-kind="error"] [role="alert"]'
+      );
+      const retry = error.getByRole("button", { name: "Retry" });
+      assert.equal(await error.count(), 1);
+      assert.equal(await retry.count(), 1);
+      assert.equal(await retry.getAttribute("hx-get"), "/jobs/?search=binary");
+      assert.equal(await retry.getAttribute("hx-target"), "#job-list");
+      assert.equal(
+        await retry.getAttribute("hx-indicator"),
+        "#test-indicator"
+      );
+      assert.equal((await snapshot(page)).busy, "false");
+      assert.equal((await snapshot(page)).hidden, true);
+      await page.close();
+    });
+  }
+
+  await run("superseded-token failure renders no recovery UI", async () => {
+    const page = await newFixture(browser);
+    await dispatch(page, "htmx:beforeRequest", "A");
+    await dispatch(page, "htmx:beforeRequest", "B");
+    await dispatch(page, "htmx:responseError", "A");
+    assert.equal(
+      await page.locator(
+        '#job-list [data-settled-kind="error"]'
+      ).count(),
+      0
+    );
+    assert.equal((await snapshot(page)).busy, "true");
+    assert.equal((await snapshot(page)).hidden, false);
+    await dispatch(page, "htmx:abort", "B");
     await page.close();
   });
 } finally {
