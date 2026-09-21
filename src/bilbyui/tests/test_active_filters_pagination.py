@@ -5,6 +5,7 @@ Renders the list fragments via the existing list views (services mocked as in
 test_gwflow_views_list.py) and via _render_job_list for full context control.
 """
 
+import re
 from pathlib import Path
 from unittest import mock
 
@@ -92,10 +93,21 @@ class TestActiveFiltersPagination(BilbyTestCase):
     def test_gwflow_result_count_renders_role_status(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user)
         response = self._get_gwflow(total=5)
+        html = response.content.decode()
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'role="status"')
         self.assertContains(response, "5 superevents match")
+        self.assertEqual(html.count('role="status"'), 1)
+        status = re.search(
+            r'<p[^>]*id="gwflow-results-status"[^>]*>(.*?)</p>',
+            html,
+            re.S,
+        )
+        self.assertIsNotNone(status)
+        self.assertEqual(status.group(1).strip(), "")
+        fragment = html[html.index('class="list-fragment"') :]
+        self.assertNotIn('role="status"', fragment)
+        self.assertNotIn("aria-live", fragment)
 
     def test_gwflow_result_count_singular(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user)
@@ -123,8 +135,12 @@ class TestActiveFiltersPagination(BilbyTestCase):
             list_target_id="job-list",
         )
 
-        self.assertContains(response, 'role="status"')
+        html = response.content.decode()
         self.assertContains(response, "3 jobs match")
+        self.assertContains(response, 'data-settled-kind="content"')
+        self.assertContains(response, 'data-settled-message="3 jobs match"')
+        self.assertNotIn('role="status"', html)
+        self.assertNotIn("aria-live", html)
 
     def test_job_fragment_result_count_singular(self):
         response = self._render_fragment(
@@ -372,3 +388,135 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertContains(response, "Reset all")
         self.assertContains(response, 'aria-label="Pagination"')
         self.assertContains(response, 'aria-current="page"')
+
+    def test_chip_reset_pagination_and_retry_source_wiring(self):
+        surfaces = (
+            (
+                "bilbyui/_gwflow_job_list_fragment.html",
+                "gwflow-job-list",
+                "gwflow-loading-indicator",
+            ),
+            (
+                "bilbyui/_job_list_fragment.html",
+                "job-list",
+                "my-jobs-loading-indicator",
+            ),
+            (
+                "bilbyui/_job_list_fragment.html",
+                "job-list",
+                "public-jobs-loading-indicator",
+            ),
+        )
+
+        for fragment_template, list_target_id, indicator_id in surfaces:
+            with self.subTest(surface=indicator_id, source="pagination"):
+                html = self._render_fragment(
+                    total=60,
+                    page_size=20,
+                    has_next=True,
+                    fragment_template=fragment_template,
+                    list_target_id=list_target_id,
+                    indicator_id=indicator_id,
+                ).content.decode()
+                links = re.findall(
+                    r'<a\b[^>]*data-pagination-focus="true"[^>]*>',
+                    html,
+                )
+                self.assertTrue(links)
+                for link in links:
+                    self.assertRegex(link, r'data-page="\d+"')
+                    self.assertIn(f'hx-target="#{list_target_id}"', link)
+                    self.assertIn(f'hx-indicator="#{indicator_id}"', link)
+
+            with self.subTest(surface=indicator_id, source="Retry"):
+                html = self._render_fragment(
+                    service_state="down",
+                    fragment_template=fragment_template,
+                    list_target_id=list_target_id,
+                    indicator_id=indicator_id,
+                ).content.decode()
+                retry = re.search(r"<button\b[^>]*>Retry</button>", html)
+                self.assertIsNotNone(retry)
+                self.assertIn(f'hx-target="#{list_target_id}"', retry.group(0))
+                self.assertIn(f'hx-indicator="#{indicator_id}"', retry.group(0))
+                self.assertIn('hx-sync="#jobs-search-region:replace"', retry.group(0))
+
+            with self.subTest(surface=indicator_id, source="chips and Reset"):
+                html = self._render_fragment(
+                    params={"search": "foo", "library": "lib-a"},
+                    fragment_template=fragment_template,
+                    list_target_id=list_target_id,
+                    indicator_id=indicator_id,
+                ).content.decode()
+                chip = re.search(r"<a\b[^>]*data-filter-param[^>]*>", html)
+                reset = re.search(r"<a\b[^>]*data-filter-reset[^>]*>", html)
+                self.assertIsNotNone(chip)
+                self.assertIsNotNone(reset)
+                self.assertIn('class="filter-chip-remove"', chip.group(0))
+                for control in (chip.group(0), reset.group(0)):
+                    self.assertIn(f'hx-target="#{list_target_id}"', control)
+                    self.assertIn(f'hx-indicator="#{indicator_id}"', control)
+
+
+class TestUX18ServerRenderedContract(BilbyTestCase):
+    def setUp(self):
+        self.authenticate()
+
+    def _fragment(self, **overrides):
+        request = RequestFactory().get("/gwflow/", HTTP_HX_REQUEST="true")
+        request.user = self.user
+        values = {
+            "rows": [],
+            "has_next": False,
+            "total": 3,
+            "page_size": 20,
+            "jobs_list_url_name": "bilbyui:gwflow_jobs",
+            "template_name": "bilbyui/gwflow_jobs.html",
+            "fragment_template_name": "bilbyui/_gwflow_job_list_fragment.html",
+            "list_target_id": "gwflow-job-list",
+            "indicator_id": "gwflow-loading-indicator",
+            "region_id": "gwflow-results-region",
+            "region_heading_id": "gwflow-results-heading",
+            "region_status_id": "gwflow-results-status",
+        }
+        values.update(overrides)
+        return _render_job_list(request, **values).render().content.decode()
+
+    def test_fragment_excludes_persistent_page_owners(self):
+        html = self._fragment()
+        for identifier in (
+            "gwflow-results-region",
+            "gwflow-loading-indicator",
+            "gwflow-results-heading",
+            "gwflow-results-status",
+            "gwflow-job-list",
+        ):
+            self.assertNotIn(f'id="{identifier}"', html)
+        self.assertNotIn('role="status"', html)
+        self.assertNotIn("aria-live", html)
+
+    def test_async_state_does_not_render_persistent_indicator(self):
+        source = get_template("bilbyui/_async_state.html").template.source
+        self.assertNotIn("_list_loading_indicator.html", source)
+        self.assertNotIn("data-list-indicator-el", source)
+
+    def test_settled_metadata_content_empty_and_error(self):
+        content = self._fragment(total=3, rows=[{"sname": "S230601ag"}])
+        self.assertIn('data-settled-kind="content"', content)
+        self.assertIn('data-settled-message="3 superevents match"', content)
+        self.assertNotIn('role="status"', content)
+        self.assertNotIn("aria-live", content)
+
+        empty = self._fragment(total=0)
+        self.assertIn('data-settled-kind="empty"', empty)
+        self.assertIn("No superevents yet.", empty)
+        self.assertNotIn('role="status"', empty)
+        self.assertNotIn("aria-live", empty)
+
+        error = self._fragment(total=0, service_state="down")
+        self.assertIn('data-settled-kind="error"', error)
+        wrapper = re.search(r'<div class="list-fragment"[^>]*>', error)
+        self.assertIsNotNone(wrapper)
+        self.assertNotIn("data-settled-message", wrapper.group(0))
+        self.assertEqual(error.count('role="alert"'), 1)
+        self.assertNotIn('role="status"', error)

@@ -269,9 +269,19 @@ class HTMXLoadingIndicatorContractTest(
     @async_e2e_test
     async def test_loading_indicator_contract(self):
         page = self.page
-        indicator = page.locator("#gwflow-job-list-loading")
-        self.assertTrue(await indicator.is_hidden())
+        indicator = page.locator("#gwflow-loading-indicator")
+        target = page.locator("#gwflow-job-list")
 
+        self.assertEqual(await indicator.count(), 1)
+        self.assertEqual(await target.locator("#gwflow-loading-indicator").count(), 0)
+        self.assertTrue(await indicator.evaluate("el => el.hidden"))
+        self.assertEqual(await indicator.get_attribute("aria-hidden"), "true")
+
+        async def delay_list_request(route):
+            await page.wait_for_timeout(1000)
+            await route.continue_()
+
+        await page.route("**/gwflow/?*", delay_list_request, times=1)
         await page.evaluate(
             """
             () => {
@@ -285,10 +295,17 @@ class HTMXLoadingIndicatorContractTest(
             }
             """
         )
+
         await page.locator("#library").select_option("lib1")
         await page.wait_for_function("() => window.__loadingLifecycle.includes('before')")
+        await page.wait_for_function("() => !document.getElementById('gwflow-loading-indicator').hidden")
+        self.assertFalse(await indicator.evaluate("el => el.hidden"))
+        self.assertEqual(await indicator.get_attribute("aria-hidden"), "false")
+
         await page.wait_for_function("() => window.__loadingLifecycle.includes('settled')")
-        await page.wait_for_function("() => document.querySelector('#gwflow-job-list-loading')?.hidden")
+        await page.wait_for_function("() => document.getElementById('gwflow-loading-indicator').hidden")
+        self.assertTrue(await indicator.evaluate("el => el.hidden"))
+        self.assertEqual(await indicator.get_attribute("aria-hidden"), "true")
         self.assertEqual(
             await page.evaluate("window.__loadingLifecycle"),
             ["before", "settled"],

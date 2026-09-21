@@ -1,4 +1,4 @@
-{# Numbered pagination with prev/next (issue #51 UX-4). Rendered only when total_pages > 1. Native hrefs carry every active param (JS-disabled crawl works); HTMX boosts the canonical href (hx-boost) so the enhanced and native navigation can never diverge. All requests sync through #jobs-search-region (shared with the form and chips) so only one list request is in flight at a time. The current page renders as a non-actionable span with aria-current="page"; for out-of-range page requests the window is clamped around pagination_page so recovery links + a current-page marker are always rendered. Contract: total_pages, pagination_page, page_range, page, has_next, search, library, review, time_range, jobs_list_url_name, list_target_id. #}
+{# Numbered pagination with prev/next (issue #51 UX-4). Rendered only when total_pages > 1. Native hrefs carry every active param; HTMX enhances the same canonical links. Contract: total_pages, pagination_page, page_range, page, has_next, search, library, review, time_range, jobs_list_url_name, list_target_id, indicator_id. #}
 {% if total_pages > 1 %}
 {% with search_q=search|urlencode library_q=library|urlencode review_q=review|urlencode %}
 <nav class="pagination-wrap" aria-label="Pagination">
@@ -15,7 +15,9 @@
         hx-swap="innerHTML"
         hx-sync="#jobs-search-region:replace"
         hx-push-url="true"
-        hx-indicator="#gwflow-job-list-loading"
+        {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
+        data-pagination-focus="true"
+        data-page="{{ page|add:"-1" }}"
       >&laquo;</a>
     </li>
     {% endif %}
@@ -32,7 +34,9 @@
         hx-swap="innerHTML"
         hx-sync="#jobs-search-region:replace"
         hx-push-url="true"
-        hx-indicator="#gwflow-job-list-loading"
+        {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
+        data-pagination-focus="true"
+        data-page="{{ p }}"
       >{{ p }}</a>
       {% endif %}
     </li>
@@ -49,7 +53,9 @@
         hx-swap="innerHTML"
         hx-sync="#jobs-search-region:replace"
         hx-push-url="true"
-        hx-indicator="#gwflow-job-list-loading"
+        {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
+        data-pagination-focus="true"
+        data-page="{{ page|add:"1" }}"
       >&raquo;</a>
     </li>
     {% endif %}

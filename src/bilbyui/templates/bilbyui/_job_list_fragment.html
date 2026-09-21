@@ -1,21 +1,34 @@
 <title>{% if page > 1 %}{{ page_title_prefix }} — page {{ page }} — GWCloud{% else %}{{ page_title_prefix }} — GWCloud{% endif %}</title>
 {% if service_state == "down" %}
-  {% include "bilbyui/_async_state.html" with state="error" thing="the job list" region_label="Job list" retry_url=retry_url retry_target=retry_target %}
+<div class="list-fragment" data-settled-kind="error">
+  {% include "bilbyui/_async_state.html" with state="error" thing="the job list" region_label="Job list" retry_url=retry_url retry_target=retry_target indicator_id=indicator_id retry_sync="#jobs-search-region:replace" %}
+</div>
 {% elif service_state == "invalid" %}
+<div class="list-fragment" data-settled-kind="error">
   <div class="alert alert-warning" role="alert">
     The search expression is invalid. Check the advanced syntax and try again.
   </div>
-{% else %}
-  <p class="result-count" role="status">{{ total }} job{{ total|pluralize }} match</p>
-  {% include "bilbyui/_active_filters.html" %}
+</div>
+{% elif rows %}
+<div class="list-fragment" data-settled-kind="content" data-settled-message="{{ total }} job{{ total|pluralize }} match">
+  <p class="result-count">{{ total }} job{{ total|pluralize }} match</p>
+  {% include "bilbyui/_active_filters.html" with indicator_id=indicator_id %}
   {% for node in rows %}
     {% include "bilbyui/_job_row.html" %}
-  {% empty %}
-    {% if total %}
-      <p class="text-muted">This page has no jobs. Choose another page below.</p>
-    {% else %}
-      <p class="text-muted">Create a new job or try searching 'Any time'.</p>
-    {% endif %}
   {% endfor %}
-  {% include "bilbyui/_pagination.html" %}
+  {% include "bilbyui/_pagination.html" with indicator_id=indicator_id %}
+</div>
+{% elif total %}
+<div class="list-fragment" data-settled-kind="content" data-settled-message="{{ total }} job{{ total|pluralize }} match">
+  {% include "bilbyui/_active_filters.html" with indicator_id=indicator_id %}
+  <p class="result-count">{{ total }} job{{ total|pluralize }} match</p>
+  <p class="text-muted">This page has no jobs. Choose another page below.</p>
+  {% include "bilbyui/_pagination.html" with indicator_id=indicator_id %}
+</div>
+{% else %}
+<div class="list-fragment" data-settled-kind="empty" data-settled-message="No jobs yet. Create a new job or try searching 'Any time'.">
+  {% include "bilbyui/_active_filters.html" with indicator_id=indicator_id %}
+  {% include "bilbyui/_async_state.html" with state="empty" thing="jobs" empty_hint="Create a new job or try searching 'Any time'." suppress_live=True %}
+  {% include "bilbyui/_pagination.html" with indicator_id=indicator_id %}
+</div>
 {% endif %}
