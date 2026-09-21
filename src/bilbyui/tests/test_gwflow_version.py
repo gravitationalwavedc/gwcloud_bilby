@@ -227,6 +227,28 @@ class GWFlowSnapshotTimestampTestCase(BilbyTestCase):
         )
         self.assertEqual([s.full_sha for s in snapshots], ["a" * 40, "b" * 40])
 
+    def test_undated_rows_retained_after_dated_in_source_order(self):
+        snapshots = self._snapshots(
+            [
+                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-10 10:00:00 UTC"},
+                {"commit_sha": "b" * 40, "commit_timestamp": "not-a-date"},
+                {"commit_sha": "c" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC"},
+                {"commit_sha": "d" * 40},
+                {"commit_sha": "e" * 40, "commit_timestamp": "not-a-date"},
+            ]
+        )
+        self.assertEqual([s.full_sha for s in snapshots], ["c" * 40, "a" * 40, "b" * 40, "d" * 40, "e" * 40])
+
+    def test_dated_rows_sort_by_timestamp_then_sha(self):
+        snapshots = self._snapshots(
+            [
+                {"commit_sha": "z" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC"},
+                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC"},
+                {"commit_sha": "m" * 40, "commit_timestamp": "2026-08-09 10:00:00 UTC"},
+            ]
+        )
+        self.assertEqual([s.full_sha for s in snapshots], ["a" * 40, "z" * 40, "m" * 40])
+
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class GWFlowHistorySelectionTestCase(BilbyTestCase):
