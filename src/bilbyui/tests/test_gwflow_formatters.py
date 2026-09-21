@@ -126,6 +126,9 @@ class GwflowFormatterTests(SimpleTestCase):
         )
         self.assertEqual(list_value([]), EMPTY_LIST)
 
+    def test_list_value_degrades_on_non_numeric_limit(self):
+        self.assertEqual(list_value(["a", "b"], "abc"), "a, b")
+
         rendered = str(list_accessible(["H1", "L1", "V1", "K1"], 2))
         self.assertIn("H1, L1, +2 more", rendered)
         for item in ("H1", "L1", "V1", "K1"):
