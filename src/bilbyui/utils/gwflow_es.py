@@ -102,13 +102,13 @@ def parse_analyses(metadata: dict) -> list:
                     # Parse analysts / reviewers as lists of strings
                     raw_analysts = item.get("analysts") or []
                     if isinstance(raw_analysts, list):
-                        analysts = [a.get("name") if isinstance(a, dict) else str(a) for a in raw_analysts if a]
+                        analysts = [a.get("name") if isinstance(a, dict) else str(a) for a in raw_analysts if a and (not isinstance(a, dict) or a.get("name"))]
                     else:
                         analysts = [str(raw_analysts)]
 
                     raw_reviewers = item.get("reviewers") or []
                     if isinstance(raw_reviewers, list):
-                        reviewers = [r.get("name") if isinstance(r, dict) else str(r) for r in raw_reviewers if r]
+                        reviewers = [r.get("name") if isinstance(r, dict) else str(r) for r in raw_reviewers if r and (not isinstance(r, dict) or r.get("name"))]
                     else:
                         reviewers = [str(raw_reviewers)]
 
