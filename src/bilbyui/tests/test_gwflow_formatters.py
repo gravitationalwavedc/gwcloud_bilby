@@ -157,6 +157,13 @@ class GwflowFormatterTests(SimpleTestCase):
             "not-a-number Hz",
         )
 
+    def test_scientific_normalises_when_rounded_coefficient_reaches_ten(self):
+        self.assertEqual(scientific(9.999, "", 3), "1×10¹")
+        self.assertEqual(scientific(99.99, "", 3), "1×10²")
+        self.assertEqual(scientific(0.9999, "", 3), "1×10⁰")
+        self.assertEqual(scientific(-9.999, "", 3), "-1×10¹")
+        self.assertEqual(scientific(3.1e-9, "", 3), "3.1×10⁻⁹")
+
     def test_list_short_long_empty_and_all_items_accessible(self):
         self.assertEqual(list_value(["H1", "L1"]), "H1, L1")
         self.assertEqual(

@@ -160,6 +160,9 @@ def scientific(value: Any, unit: str = "", precision: int = 3) -> str:
     coefficient = number / (10**exponent)
     significant_decimals = max(0, precision - 1)
     coefficient_text = f"{coefficient:.{significant_decimals}f}".rstrip("0").rstrip(".")
+    if coefficient_text in ("10", "-10"):
+        coefficient_text = "1" if coefficient >= 0 else "-1"
+        exponent += 1
     rendered = f"{coefficient_text}×10{str(exponent).translate(_SUPERSCRIPT)}"
     return _with_unit(rendered, unit)
 
