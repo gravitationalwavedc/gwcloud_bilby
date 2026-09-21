@@ -71,7 +71,9 @@ class TestJobSubmission(BilbyTestCase):
                         "virgoMinimumFrequency": str(to_dec(float(rand_float(10, 900)))),
                         "virgoMaximumFrequency": str(to_dec(float(rand_float(1000, 20000)))),
                         "duration": str(to_dec(float(random.choice(["4", "8", "16", "32", "64", "128"])))),
-                        "samplingFrequency": str(to_dec(float(random.choice(["512", "1024", "2048", "4096", "8192", "16384"])))),
+                        "samplingFrequency": str(
+                            to_dec(float(random.choice(["512", "1024", "2048", "4096", "8192", "16384"])))
+                        ),
                     },
                     "prior": {"priorDefault": random.choice(["4s", "8s", "16s", "32s", "64s", "128s"])},
                     "sampler": {
