@@ -329,6 +329,25 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         self.assertEqual(analyses[0]["analysts"], ["Alice", "Bob"])
         self.assertEqual(analyses[0]["reviewers"], ["Carol", "Dave"])
 
+    def test_parse_analyses_dict_entry_without_name_dropped(self):
+        """Dict list entries without a usable 'name' are dropped, not persisted as None."""
+        metadata = {
+            "ParameterEstimation": {
+                "results": [
+                    {
+                        "uid": "pe-1",
+                        "analysts": [{"name": "Alice"}, {"id": "x"}, None],
+                        "reviewers": [{"id": "y"}, {"name": "Carol"}, ""],
+                    }
+                ]
+            }
+        }
+
+        analyses = parse_analyses(metadata)
+
+        self.assertEqual(analyses[0]["analysts"], ["Alice"])
+        self.assertEqual(analyses[0]["reviewers"], ["Carol"])
+
     def test_parse_analyses_section_dict_without_results_list(self):
         """A section dict without a 'results' list is treated as a single record."""
         metadata = {
