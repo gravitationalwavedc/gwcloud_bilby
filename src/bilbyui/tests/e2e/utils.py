@@ -204,3 +204,13 @@ async def run_axe(page, scope_selector: str):
             ).then((r) => r.violations)""",
         scope_selector,
     )
+
+async def run_axe_document(page):
+    """Run axe over the WHOLE document (no scope/include) and return violations.
+
+    True full-page scan: no region scoping, so shell and content are both
+    covered. Callers must not filter results to mask findings.
+    """
+    return await page.evaluate(
+        "() => axe.run(document, { resultTypes: ['violations'] }).then((r) => r.violations)"
+    )

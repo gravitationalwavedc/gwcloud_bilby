@@ -95,15 +95,15 @@
         font-size: $font-size-sm;
 
         a {
-            // Accent orange at its default lightness fails WCAG AA on the
-            // gray-100 page background, so breadcrumb links use a darkened
-            // shade that passes 4.5:1 on both the gray-100 body and white
+            // $link-color is the accessible orange link token (#9c4f1a,
+            // 5.27:1 on gray-100), so breadcrumb links use it directly;
+            // hover darkens slightly for state feedback
             // (FRONTEND-BIBLE rule 4; see _colours.scss).
-            color: darken($link-color, 35%);
+            color: $link-color;
 
             &:hover,
             &:focus {
-                color: darken($link-color, 40%);
+                color: darken($link-color, 10%);
                 text-decoration: underline;
             }
         }
