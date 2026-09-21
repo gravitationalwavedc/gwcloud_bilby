@@ -29,6 +29,9 @@ $black: #02244b;
 
 // Accents
 $accent-orange: #d98236;
+
+// Accessible link shade (WCAG 2.2 AA on light surfaces — issue #67).
+$orange-700: #9c4f1a;
 $accent-red: #d94141;
 
 // Primary Blue
@@ -37,4 +40,30 @@ $body-color: $black;
 $body-bg: $gray-100;
 
 $primary: $blue-600;
-$link-color: $accent-orange;
+// App-wide accessible link colour (intentional scope, approved in
+// docs/plans/designs/099-ux16-shell-and-palette-contrast.md): Bootstrap's
+// `$link-color` feeds ordinary anchors, `.btn-link` and pagination, so one
+// darker orange-family token keeps every link consumer >= 4.5:1 on light surfaces.
+$link-color: $orange-700;
+
+// Accessible shell text colours (WCAG 2.2 AA on light surfaces — issue #67).
+// Opaque blue-family tokens keep computed contrast stable (no alpha compositing).
+$shell-nav-link-color: #31577f;
+$shell-nav-link-hover-color: #173f6b;
+$shell-nav-link-active-color: $black;
+$shell-nav-link-disabled-color: $gray-400;
+$shell-code-color: #31577f;
+
+// Map Bootstrap 4.6 !default variables to the tokens above. _colours.scss is
+// imported before vendor/bootstrap/bootstrap (theme.scss), so these win.
+$navbar-light-color: $shell-nav-link-color;
+$navbar-light-hover-color: $shell-nav-link-hover-color;
+$navbar-light-active-color: $shell-nav-link-active-color;
+$navbar-light-disabled-color: $shell-nav-link-disabled-color;
+$code-color: $shell-code-color;
+
+// Active pagination chip: darken from $primary so white label text clears
+// WCAG 2.2 AA (7.16:1); keeps $primary unchanged elsewhere (issue #67).
+$pagination-active-bg: $blue-800;
+$pagination-active-border-color: $blue-800;
+
