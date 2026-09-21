@@ -439,6 +439,7 @@ class TestActiveFiltersPagination(BilbyTestCase):
                 self.assertIsNotNone(retry)
                 self.assertIn(f'hx-target="#{list_target_id}"', retry.group(0))
                 self.assertIn(f'hx-indicator="#{indicator_id}"', retry.group(0))
+                self.assertIn('hx-sync="#jobs-search-region:replace"', retry.group(0))
 
             with self.subTest(surface=indicator_id, source="chips and Reset"):
                 html = self._render_fragment(

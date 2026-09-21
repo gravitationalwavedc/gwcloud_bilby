@@ -50,7 +50,7 @@ const fixture = `<!doctype html>
       aria-live="polite"
       aria-atomic="true"
     ></p>
-    <button id="search-trigger" hx-target="#job-list">Search</button>
+    <button id="search-trigger" hx-target="#job-list" hx-sync="#jobs-search-region:replace">Search</button>
     <a
       id="pagination-trigger"
       href="?page=2"
@@ -405,6 +405,7 @@ try {
         await retry.getAttribute("hx-indicator"),
         "#test-indicator"
       );
+      assert.equal(await retry.getAttribute("hx-sync"), "#jobs-search-region:replace");
       assert.equal((await snapshot(page)).busy, "false");
       assert.equal((await snapshot(page)).hidden, true);
       await page.close();

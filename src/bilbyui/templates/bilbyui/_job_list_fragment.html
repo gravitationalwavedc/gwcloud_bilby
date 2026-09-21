@@ -1,7 +1,7 @@
 <title>{% if page > 1 %}{{ page_title_prefix }} — page {{ page }} — GWCloud{% else %}{{ page_title_prefix }} — GWCloud{% endif %}</title>
 {% if service_state == "down" %}
 <div class="list-fragment" data-settled-kind="error">
-  {% include "bilbyui/_async_state.html" with state="error" thing="the job list" region_label="Job list" retry_url=retry_url retry_target=retry_target indicator_id=indicator_id %}
+  {% include "bilbyui/_async_state.html" with state="error" thing="the job list" region_label="Job list" retry_url=retry_url retry_target=retry_target indicator_id=indicator_id retry_sync="#jobs-search-region:replace" %}
 </div>
 {% elif service_state == "invalid" %}
 <div class="list-fragment" data-settled-kind="error">

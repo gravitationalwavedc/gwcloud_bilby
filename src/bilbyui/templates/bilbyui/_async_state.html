@@ -1,4 +1,4 @@
-{# Reusable async state machine partial (issue #50). suppress_live=True prevents settled fragments from creating a second live region. #}
+{# Reusable async state machine partial (issue #50). suppress_live=True prevents settled fragments from creating a second live region. retry_sync, when supplied by a caller, adds an hx-sync scope to the retry controls so list Retry shares the shared request-synchronisation group; when absent, behaviour is unchanged. #}
 {% with thing_label=thing|default:"this" %}
 {% with region_label=region_label|default:thing_label %}
 {% if state == "loading" %}
@@ -19,7 +19,7 @@
   <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
   <span class="async-notice-text">The cached copy of {{ thing_label }} is shown.</span>
   {% if retry_url and retry_target %}
-  <button type="button" class="btn btn-primary btn-sm" hx-get="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="innerHTML" {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}>Refresh</button>
+  <button type="button" class="btn btn-primary btn-sm" hx-get="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="innerHTML" {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}{% if retry_sync %} hx-sync="{{ retry_sync }}"{% endif %}>Refresh</button>
   {% endif %}
 </div>
 {% elif state == "error" %}
@@ -30,14 +30,14 @@
   </p>
   {% if retry_url and retry_target %}
   {% if retry_method == "post" %}
-  <form method="post" action="{{ retry_url }}" hx-post="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="{{ retry_swap|default:'innerHTML' }}" {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}>
+  <form method="post" action="{{ retry_url }}" hx-post="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="{{ retry_swap|default:'innerHTML' }}" {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}{% if retry_sync %} hx-sync="{{ retry_sync }}"{% endif %}>
     {% csrf_token %}
     {# Security contract: retry_url, retry_method, retry_target, retry_swap, and retry_fields must be constructed by trusted server code. Never pass request data or user-provided absolute URLs directly. #}
     {% for key, value in retry_fields.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
     <button type="submit" class="btn btn-primary">Retry</button>
   </form>
   {% else %}
-  <button type="button" class="btn btn-primary" hx-get="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="{{ retry_swap|default:'innerHTML' }}" {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}>Retry</button>
+  <button type="button" class="btn btn-primary" hx-get="{{ retry_url }}" hx-target="{{ retry_target }}" hx-swap="{{ retry_swap|default:'innerHTML' }}" {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}{% if retry_sync %} hx-sync="{{ retry_sync }}"{% endif %}>Retry</button>
   {% endif %}
   {% endif %}
 </div>

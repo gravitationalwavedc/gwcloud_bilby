@@ -176,6 +176,15 @@
     return element.closest("[data-pagination-focus='true']");
   }
 
+  function syncScope(element) {
+    if (!element || element.nodeType !== 1 ||
+        typeof element.closest !== "function") {
+      return "";
+    }
+    var holder = element.closest("[hx-sync]");
+    return holder ? holder.getAttribute("hx-sync") : "";
+  }
+
   function beginRequest(event) {
     var detail = event.detail || {};
     var identity = requestIdentity(detail);
@@ -203,6 +212,7 @@
       path: config.path || window.location.pathname,
       parameters: config.parameters || null
     };
+    state.sync = syncScope(detail.elt);
 
     requestState.set(identity, {
       token: token,
@@ -352,6 +362,9 @@
     retryButton.setAttribute("hx-swap", "innerHTML");
     if (indicatorId) {
       retryButton.setAttribute("hx-indicator", "#" + indicatorId);
+    }
+    if (state.sync) {
+      retryButton.setAttribute("hx-sync", state.sync);
     }
 
     alertBox.appendChild(message);
