@@ -22,7 +22,7 @@
       hx-swap="innerHTML"
       hx-sync="#jobs-search-region:replace"
       hx-push-url="true"
-      hx-indicator="#gwflow-job-list-loading"
+      {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
       hx-on::after-swap="document.querySelector('.active-filters .filter-chip-remove, .filter-reset, form input[name=&quot;search&quot;]')?.focus()"
     >&times;</a>
   </span>
@@ -36,7 +36,7 @@
     hx-swap="innerHTML"
     hx-sync="#jobs-search-region:replace"
     hx-push-url="true"
-    hx-indicator="#gwflow-job-list-loading"
+    {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
   >Reset all</a>
 </div>
 <script>

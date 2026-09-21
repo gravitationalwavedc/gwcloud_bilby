@@ -522,3 +522,152 @@ class TestHelpOnAllSurfaces(BilbyTestCase):
         response = self.client.get(reverse("bilbyui:my_jobs"))
         self.assertNotContains(response, 'name="library"')
         self.assertNotContains(response, 'name="review"')
+
+
+class TestListSurfaceLoadingContract(BilbyTestCase):
+    surfaces = {
+        "gwflow": {
+            "url": "/gwflow/",
+            "patch": "bilbyui.views.list_gwflow_jobs",
+            "result": _gwflow_ok_result,
+            "region": "gwflow-results-region",
+            "target": "gwflow-job-list",
+            "indicator": "gwflow-loading-indicator",
+            "heading": "gwflow-results-heading",
+            "status": "gwflow-results-status",
+            "filters": True,
+        },
+        "my-jobs": {
+            "url": "/job-list/",
+            "patch": "bilbyui.views.list_user_jobs",
+            "result": _user_jobs_ok_result,
+            "region": "my-jobs-results-region",
+            "target": "job-list",
+            "indicator": "my-jobs-loading-indicator",
+            "heading": "my-jobs-results-heading",
+            "status": "my-jobs-results-status",
+            "filters": False,
+        },
+        "public-jobs": {
+            "url": "/",
+            "patch": "bilbyui.views.list_public_jobs",
+            "result": _public_jobs_ok_result,
+            "region": "public-jobs-results-region",
+            "target": "job-list",
+            "indicator": "public-jobs-loading-indicator",
+            "heading": "public-jobs-results-heading",
+            "status": "public-jobs-results-status",
+            "filters": False,
+        },
+    }
+
+    def setUp(self):
+        self.authenticate()
+
+    def _page(self, spec):
+        with mock.patch(spec["patch"], return_value=spec["result"]()):
+            return self.client.get(spec["url"]).content.decode()
+
+    def test_each_page_has_one_normative_owner_set(self):
+        for surface, spec in self.surfaces.items():
+            with self.subTest(surface=surface):
+                html = self._page(spec)
+                for identifier in (
+                    spec["region"],
+                    spec["target"],
+                    spec["indicator"],
+                    spec["heading"],
+                    spec["status"],
+                ):
+                    self.assertEqual(html.count(f'id="{identifier}"'), 1)
+                region = re.search(
+                    rf'<div[^>]*id="{spec["region"]}"[^>]*>',
+                    html,
+                )
+                self.assertIsNotNone(region)
+                tag = region.group(0)
+                self.assertIn('role="region"', tag)
+                self.assertIn(f'aria-labelledby="{spec["heading"]}"', tag)
+                self.assertIn('aria-busy="false"', tag)
+                self.assertIn("data-list-region", tag)
+                self.assertIn(f'data-list-target="{spec["target"]}"', tag)
+                self.assertIn(f'data-list-indicator="{spec["indicator"]}"', tag)
+                self.assertIn(f'data-list-heading="{spec["heading"]}"', tag)
+                self.assertIn(f'data-list-status="{spec["status"]}"', tag)
+
+    def test_search_advanced_and_filter_source_wiring(self):
+        for surface, spec in self.surfaces.items():
+            with self.subTest(surface=surface):
+                html = self._page(spec)
+                form = re.search(r'<form[^>]*class="gwflow-search-form"[^>]*>', html, re.S)
+                self.assertIsNotNone(form)
+                self.assertIn(f'hx-target="#{spec["target"]}"', form.group(0))
+                self.assertIn(f'hx-indicator="#{spec["indicator"]}"', form.group(0))
+                self.assertIn('hx-sync="#jobs-search-region:replace"', form.group(0))
+                for control_id in ("search", "time_range"):
+                    tag = re.search(
+                        rf'<(?:input|select)[^>]*id="{control_id}"[^>]*>',
+                        html,
+                    )
+                    self.assertIsNotNone(tag)
+                    self.assertIn(
+                        f'hx-indicator="#{spec["indicator"]}"',
+                        tag.group(0),
+                    )
+                advanced = re.search(
+                    r'<input[^>]*id="advanced-search"[^>]*>',
+                    html,
+                )
+                self.assertIsNotNone(advanced)
+                self.assertNotIn("hx-get", advanced.group(0))
+                self.assertNotIn("hx-target", advanced.group(0))
+                for control_id in ("library", "review"):
+                    tag = re.search(rf'<select[^>]*id="{control_id}"[^>]*>', html)
+                    if spec["filters"]:
+                        self.assertIsNotNone(tag)
+                        self.assertIn(
+                            f'hx-indicator="#{spec["indicator"]}"',
+                            tag.group(0),
+                        )
+                    else:
+                        self.assertIsNone(tag)
+
+    def test_surface_by_source_matrix_marks_absent_sources_na(self):
+        # Conditionally rendered chip, Reset, pagination, and Retry sources are
+        # covered by the dedicated all-surface wiring test in
+        # test_active_filters_pagination.py.
+        selectors = {
+            "search": 'id="search"',
+            "advanced mirror": 'id="advanced-search"',
+            "Library": 'id="library"',
+            "Review": 'id="review"',
+            "Updated": 'id="time_range"',
+        }
+        expected = {
+            "gwflow": {
+                "search": True,
+                "advanced mirror": True,
+                "Library": True,
+                "Review": True,
+                "Updated": True,
+            },
+            "my-jobs": {
+                "search": True,
+                "advanced mirror": True,
+                "Library": False,
+                "Review": False,
+                "Updated": True,
+            },
+            "public-jobs": {
+                "search": True,
+                "advanced mirror": True,
+                "Library": False,
+                "Review": False,
+                "Updated": True,
+            },
+        }
+        for surface, spec in self.surfaces.items():
+            html = self._page(spec)
+            for source, present in expected[surface].items():
+                with self.subTest(surface=surface, source=source):
+                    self.assertEqual(selectors[source] in html, present)

@@ -22,10 +22,11 @@ def render_state(**kwargs):
 class _LiveRegionCounter(HTMLParser):
     """Count live regions (role=status + role=alert) that are not hidden.
 
-    The GWFlow list page carries a persistent loading-indicator sibling
-    (``#gwflow-job-list-loading``) that is ``hidden`` unless a request is in
-    flight. A hidden live region is not an active announcement, so it must
-    not count towards the "exactly one live region per branch" budget.
+    The list pages carry one persistent polite status node (the single list
+    live region) plus a persistent visual loading indicator
+    (``#gwflow-loading-indicator``) that is NOT a live region. Hidden live
+    regions are not active announcements and must not count towards the
+    "exactly one live region per branch" budget.
     """
 
     def __init__(self):
@@ -398,7 +399,16 @@ class TestGWFlowJobsListFailureBranch(BilbyTestCase):
         self.assertContains(response, 'hx-target="#gwflow-job-list"')
         self.assertContains(response, "Retry")
         self.assertNotContains(response, "No GWFlow jobs found.")
-        self.assertEqual(_live_region_count(response.content.decode()), 1)
+        html = response.content.decode()
+        self.assertEqual(html.count('role="alert"'), 1)
+        self.assertEqual(html.count('role="status"'), 1)
+        status = re.search(
+            r'<p[^>]*class="list-results-status"[^>]*>(.*?)</p>',
+            html,
+            re.S,
+        )
+        self.assertIsNotNone(status)
+        self.assertEqual(status.group(1).strip(), "")
 
     @patch("bilbyui.views.list_gwflow_jobs", return_value=_gwflow_jobs_down_result())
     def test_down_htmx_fragment_renders_error_state(self, mock_list):
@@ -428,7 +438,16 @@ class TestGWFlowJobsListFailureBranch(BilbyTestCase):
             f'hx-get="{reverse("bilbyui:gwflow_jobs")}?page=2&amp;search=S2306%2A%20%26%20co&amp;time_range=all"',
         )
         self.assertContains(response, 'hx-target="#gwflow-job-list"')
-        self.assertEqual(_live_region_count(response.content.decode()), 1)
+        html = response.content.decode()
+        self.assertEqual(html.count('role="alert"'), 1)
+        self.assertEqual(html.count('role="status"'), 1)
+        status = re.search(
+            r'<p[^>]*class="list-results-status"[^>]*>(.*?)</p>',
+            html,
+            re.S,
+        )
+        self.assertIsNotNone(status)
+        self.assertEqual(status.group(1).strip(), "")
 
 
 class TestPublicJobsListFailureBranch(BilbyTestCase):
@@ -458,7 +477,16 @@ class TestPublicJobsListFailureBranch(BilbyTestCase):
         )
         self.assertContains(response, 'hx-target="#job-list"')
         self.assertContains(response, "Retry")
-        self.assertEqual(_live_region_count(response.content.decode()), 1)
+        html = response.content.decode()
+        self.assertEqual(html.count('role="alert"'), 1)
+        self.assertEqual(html.count('role="status"'), 1)
+        status = re.search(
+            r'<p[^>]*class="list-results-status"[^>]*>(.*?)</p>',
+            html,
+            re.S,
+        )
+        self.assertIsNotNone(status)
+        self.assertEqual(status.group(1).strip(), "")
 
     @patch("bilbyui.views.list_public_jobs", return_value=_public_jobs_down_result())
     def test_down_htmx_fragment_renders_error_state(self, mock_list):
@@ -505,7 +533,16 @@ class TestMyJobsListFailureBranch(BilbyTestCase):
         )
         self.assertContains(response, 'hx-target="#job-list"')
         self.assertContains(response, "Retry")
-        self.assertEqual(_live_region_count(response.content.decode()), 1)
+        html = response.content.decode()
+        self.assertEqual(html.count('role="alert"'), 1)
+        self.assertEqual(html.count('role="status"'), 1)
+        status = re.search(
+            r'<p[^>]*class="list-results-status"[^>]*>(.*?)</p>',
+            html,
+            re.S,
+        )
+        self.assertIsNotNone(status)
+        self.assertEqual(status.group(1).strip(), "")
 
     @patch("bilbyui.views.list_user_jobs", return_value=_user_jobs_down_result())
     def test_down_htmx_fragment_renders_error_state(self, mock_list):

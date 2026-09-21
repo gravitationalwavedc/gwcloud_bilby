@@ -38,7 +38,7 @@
   hx-swap="innerHTML"
   hx-sync="#jobs-search-region:replace"
   hx-push-url="true"
-  {% if list_target_id == 'gwflow-job-list' %}hx-indicator="#gwflow-job-list-loading"{% endif %}
+  {% if indicator_id %}hx-indicator="#{{ indicator_id }}" data-list-indicator="{{ indicator_id }}"{% endif %}
 >
   <input type="hidden" name="page" value="1">
 
@@ -61,6 +61,7 @@
           hx-get="{% url jobs_list_url_name %}"
           hx-include="closest form"
           hx-trigger="input changed delay:300ms, search"
+          {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
         >
       </div>
     </div>
@@ -116,6 +117,7 @@
               hx-get="{% url jobs_list_url_name %}"
               hx-include="closest form"
               hx-trigger="change"
+              {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
               {% if filter_options.libraries.state == "unavailable" %}disabled{% endif %}
               {% if filter_options.libraries.state == "unavailable" %}aria-describedby="library-options-status"{% endif %}
             >
@@ -141,6 +143,7 @@
               hx-get="{% url jobs_list_url_name %}"
               hx-include="closest form"
               hx-trigger="change"
+              {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
               {% if filter_options.review_statuses.state == "unavailable" %}disabled{% endif %}
               {% if filter_options.review_statuses.state == "unavailable" %}aria-describedby="review-options-status"{% endif %}
             >
@@ -167,6 +170,7 @@
               hx-get="{% url jobs_list_url_name %}"
               hx-include="closest form"
               hx-trigger="change"
+              {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
             >
               <option value="all"{% if time_range == "all" %} selected{% endif %}>Any time</option>
               <option value="1d"{% if time_range == "1d" %} selected{% endif %}>Updated past 24 hours</option>

@@ -1,4 +1,5 @@
 {% extends "bilbyui/base.html" %}
+{% load static %}
 
 {% block title %}{% if page > 1 %}{{ page_title_prefix }} — page {{ page }} — GWCloud{% else %}{{ page_title_prefix }} — GWCloud{% endif %}{% endblock %}
 
@@ -24,14 +25,31 @@
     <div class="card gw-form-card">
       <div class="card-body">
         <div id="jobs-search-region">
-          {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_bilby_search_help.html" show_gwflow_filters=False list_target_id="job-list" %}
+          {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_bilby_search_help.html" show_gwflow_filters=False list_target_id="job-list" indicator_id="public-jobs-loading-indicator" %}
           {% include "bilbyui/_search_state_sync.html" %}
-          <div id="job-list" class="mt-4">
-            {% include "bilbyui/_job_list_fragment.html" %}
+          <div
+            id="public-jobs-results-region"
+            class="list-results-region"
+            role="region"
+            aria-labelledby="public-jobs-results-heading"
+            aria-busy="false"
+            data-list-region
+            data-list-target="job-list"
+            data-list-indicator="public-jobs-loading-indicator"
+            data-list-heading="public-jobs-results-heading"
+            data-list-status="public-jobs-results-status"
+          >
+            <h2 id="public-jobs-results-heading" class="sr-only list-results-heading">Public Jobs results</h2>
+            {% include "bilbyui/_list_loading_indicator.html" with indicator_id="public-jobs-loading-indicator" indicator_text="Updating results…" %}
+            <p id="public-jobs-results-status" class="list-results-status" role="status" aria-live="polite" aria-atomic="true"></p>
+            <div id="job-list" class="mt-4">
+              {% include "bilbyui/_job_list_fragment.html" %}
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+<script src="{% static 'bilbyui/js/list_request_controller.js' %}"></script>
 {% endblock %}

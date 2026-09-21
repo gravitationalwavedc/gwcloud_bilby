@@ -1,4 +1,5 @@
 {% extends "bilbyui/base.html" %}
+{% load static %}
 
 {% block title %}{% if page > 1 %}{{ page_title_prefix }} — page {{ page }} — GWCloud{% else %}{{ page_title_prefix }} — GWCloud{% endif %}{% endblock %}
 
@@ -12,17 +13,31 @@
     <div class="card gw-form-card">
       <div class="card-body">
         <div id="jobs-search-region">
-          {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_gwflow_search_help.html" show_gwflow_filters=True filter_options=filter_options list_target_id="gwflow-job-list" service_state=service_state %}
+          {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_gwflow_search_help.html" show_gwflow_filters=True filter_options=filter_options list_target_id="gwflow-job-list" indicator_id="gwflow-loading-indicator" service_state=service_state %}
           {% include "bilbyui/_search_state_sync.html" %}
-          <div id="gwflow-job-list" class="mt-4" role="region" aria-label="GWFlow job list">
-            {% include "bilbyui/_gwflow_job_list_fragment.html" %}
-          </div>
-          <div id="gwflow-job-list-loading" class="gwflow-loading" hidden>
-            {% include "bilbyui/_async_state.html" with state="loading" thing="GWFlow jobs" region_label="GWFlow job list" %}
+          <div
+            id="gwflow-results-region"
+            class="list-results-region"
+            role="region"
+            aria-labelledby="gwflow-results-heading"
+            aria-busy="false"
+            data-list-region
+            data-list-target="gwflow-job-list"
+            data-list-indicator="gwflow-loading-indicator"
+            data-list-heading="gwflow-results-heading"
+            data-list-status="gwflow-results-status"
+          >
+            <h2 id="gwflow-results-heading" class="sr-only list-results-heading">GWFlow results</h2>
+            {% include "bilbyui/_list_loading_indicator.html" with indicator_id="gwflow-loading-indicator" indicator_text="Updating results…" %}
+            <p id="gwflow-results-status" class="list-results-status" role="status" aria-live="polite" aria-atomic="true"></p>
+            <div id="gwflow-job-list" class="mt-4">
+              {% include "bilbyui/_gwflow_job_list_fragment.html" %}
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+<script src="{% static 'bilbyui/js/list_request_controller.js' %}"></script>
 {% endblock %}

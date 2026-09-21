@@ -1128,20 +1128,45 @@ class TestGWFlowResultsSemantics(BilbyTestCase):
             response = self.client.get(self.url)
         self.assertEqual(_visible_live_region_count(response.content.decode()), 1)
 
+    def _assert_failure_live_regions(self, response):
+        html = response.content.decode()
+        self.assertEqual(html.count('role="status"'), 1)
+        self.assertEqual(html.count('role="alert"'), 1)
+        status = re.search(
+            r'<p[^>]*id="gwflow-results-status"[^>]*>(.*?)</p>',
+            html,
+            re.S,
+        )
+        self.assertIsNotNone(status)
+        self.assertEqual(status.group(1).strip(), "")
+
     def test_error_branch_single_live_region(self):
         with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=lambda user, **kw: self._state_result("down")):
             response = self.client.get(self.url)
-        self.assertEqual(_visible_live_region_count(response.content.decode()), 1)
+        self._assert_failure_live_regions(response)
 
     def test_invalid_branch_single_live_region(self):
         with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=lambda user, **kw: self._state_result("invalid")):
             response = self.client.get(self.url)
-        self.assertEqual(_visible_live_region_count(response.content.decode()), 1)
+        self._assert_failure_live_regions(response)
 
     def test_loading_branch_single_live_region(self):
         with mock.patch("bilbyui.views.list_gwflow_jobs", side_effect=_gwflow_jobs_side_effect()):
             response = self.client.get(self.url)
         html = response.content.decode()
-        loading = re.search(r'<div id="gwflow-job-list-loading".*?</div>\s*</div>', html, re.S)
-        self.assertIsNotNone(loading, "persistent loading sibling must be present")
-        self.assertEqual(loading.group(0).count('role="status"'), 1)
+        region_position = html.index('id="gwflow-results-region"')
+        indicator_position = html.index('id="gwflow-loading-indicator"')
+        inner_position = html.index('id="gwflow-job-list"')
+        self.assertLess(region_position, indicator_position)
+        self.assertLess(indicator_position, inner_position)
+        indicator = re.search(
+            r'<span[^>]*id="gwflow-loading-indicator"[^>]*>(.*?)</span>\s*</span>',
+            html,
+            re.S,
+        )
+        self.assertIsNotNone(indicator)
+        self.assertNotIn('role="status"', indicator.group(0))
+        self.assertNotIn('role="alert"', indicator.group(0))
+        self.assertNotIn("aria-live", indicator.group(0))
+        self.assertIn('id="gwflow-results-status"', html)
+        self.assertNotIn('id="gwflow-job-list-loading"', html)
