@@ -81,7 +81,14 @@ def should_embargo_job(user, trigger_time, simulated):
         logger.debug("Job not subject to embargo: no embargo start time configured")
         return False
 
-    result = trigger_time >= settings.EMBARGO_START_TIME
+    # EMBARGO_START_TIME arrives as a string from the environment; treat it as
+    # a numeric GPS threshold. A malformed value fails open (public).
+    try:
+        embargo_start = float(settings.EMBARGO_START_TIME)
+    except (TypeError, ValueError):
+        return False
+
+    result = trigger_time >= embargo_start
     logger.debug(
         "Embargo check: trigger_time=%s, EMBARGO_START_TIME=%s, result=%s",
         trigger_time,

@@ -93,6 +93,21 @@ class TestShouldEmbargoJob(BilbyTestCase):
         self.assertFalse(should_embargo_job(self.user, None, True))
         self.assertFalse(should_embargo_job(self.user, None, False))
 
+    @override_settings(EMBARGO_START_TIME="1.5")
+    def test_with_embargo_string_start_time(self):
+        # EMBARGO_START_TIME arrives as a string from the environment; it should
+        # be treated as a numeric GPS threshold (regression: float >= str raised
+        # TypeError)
+        self.user = ADACSAnonymousUser()
+        self.assertFalse(should_embargo_job(self.user, 1.0, False))
+        self.assertTrue(should_embargo_job(self.user, 2.0, False))
+
+    @override_settings(EMBARGO_START_TIME="not-a-number")
+    def test_with_embargo_malformed_start_time(self):
+        # A malformed EMBARGO_START_TIME fails open (public)
+        self.user = ADACSAnonymousUser()
+        self.assertFalse(should_embargo_job(self.user, 2.0, False))
+
     @override_settings(EMBARGO_START_TIME=1.5)
     def test_with_embargo_none_user(self):
         # When user is None, should treat as non-LIGO user for embargo checking
