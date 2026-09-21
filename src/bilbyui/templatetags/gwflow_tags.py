@@ -163,7 +163,10 @@ def scientific(value: Any, unit: str = "", precision: int = 3) -> str:
         return _with_unit("0", unit)
 
     exponent = math.floor(math.log10(abs(number)))
-    coefficient = number / (10**exponent)
+    power = 10**exponent
+    if power == 0 or math.isinf(power):
+        return _with_unit(f"{number:.{precision}e}", unit)
+    coefficient = number / power
     try:
         safe_precision = max(0, int(precision))
     except (TypeError, ValueError):
