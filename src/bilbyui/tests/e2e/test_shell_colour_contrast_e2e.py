@@ -140,23 +140,15 @@ def _assert_contrast(testcase, result, selector, viewport):
     testcase.assertGreaterEqual(
         result["ratio"],
         4.5,
-        f"{selector} contrast at {viewport}px was {result['ratio']:.3f}:1 "
-        f"(fg={result['fg']}, bg={result['bg']})",
+        f"{selector} contrast at {viewport}px was {result['ratio']:.3f}:1 (fg={result['fg']}, bg={result['bg']})",
     )
 
 
 def _blocking_axe_detail(violations):
-    blocking = [
-        violation
-        for violation in violations
-        if violation.get("impact") in ("serious", "critical")
-    ]
+    blocking = [violation for violation in violations if violation.get("impact") in ("serious", "critical")]
     detail = "\n".join(
         f"- {violation['id']} ({violation.get('impact')}): "
-        + "; ".join(
-            " > ".join(str(part) for part in node["target"])
-            for node in violation["nodes"]
-        )
+        + "; ".join(" > ".join(str(part) for part in node["target"]) for node in violation["nodes"])
         for violation in blocking
     )
     return blocking, detail
