@@ -53,3 +53,9 @@ class TestGetById(BilbyTestCase):
         job = self._create_job(private=True, is_ligo_job=False, name="own-private")
 
         self.assertEqual(BilbyJob.get_by_id(job.id, self.user), job)
+
+    def test_malformed_non_integer_id_raises_does_not_exist(self):
+        self.authenticate()
+
+        with self.assertRaises(BilbyJob.DoesNotExist):
+            BilbyJob.get_by_id("not-an-int", self.user)

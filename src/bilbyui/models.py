@@ -237,7 +237,10 @@ class BilbyJob(models.Model):
         :param user: The GWCloudUser instance making the request
         :return: BilbyJob
         """
-        job = cls.objects.get(id=bid)
+        try:
+            job = cls.objects.get(id=bid)
+        except (ValidationError, ValueError):
+            raise cls.DoesNotExist
 
         # Users can only access the job if it is public or (the user is authenticated AND the user also owns the job)
         if job.private and (user.is_anonymous or user.id != job.user.id):
