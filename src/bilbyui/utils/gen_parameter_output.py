@@ -62,8 +62,11 @@ def to_dec(val):
     if val - floor(val):
         return Decimal(str(val))
 
-    # The number is whole, cast it to an int and then parse it with Decimal
-    return Decimal(int(val))
+    # The number is whole; for int (and bool) values keep exact integer handling,
+    # for floats use the string form to avoid float precision loss
+    if isinstance(val, int):
+        return Decimal(int(val))
+    return Decimal(str(val))
 
 
 def generate_parameter_output(job):
