@@ -1,5 +1,7 @@
 """Rendered shell colour-contrast checks and true full-document axe gates."""
 
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
 from bilbyui.tests.e2e.base import GWFlowJobsPageBase, TechValueDemoPageBase
 from bilbyui.tests.e2e.utils import async_e2e_test, load_axe, run_axe_document
 
@@ -232,7 +234,7 @@ class TestLinkContrastGWFlowPage(GWFlowJobsPageBase):
             for selector in selectors:
                 try:
                     await self.page.wait_for_selector(selector, timeout=5000)
-                except Exception:
+                except PlaywrightTimeoutError:
                     region_html = await self.page.locator("main").inner_html()
                     self.fail(
                         f"Expected '{selector}' after applying library=lib1 at "

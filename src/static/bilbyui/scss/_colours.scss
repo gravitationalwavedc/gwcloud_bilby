@@ -40,6 +40,10 @@ $body-color: $black;
 $body-bg: $gray-100;
 
 $primary: $blue-600;
+// App-wide accessible link colour (intentional scope, approved in
+// docs/plans/designs/099-ux16-shell-and-palette-contrast.md): Bootstrap's
+// `$link-color` feeds ordinary anchors, `.btn-link` and pagination, so one
+// darker orange-family token keeps every link consumer >= 4.5:1 on light surfaces.
 $link-color: $orange-700;
 
 // Accessible shell text colours (WCAG 2.2 AA on light surfaces — issue #67).
