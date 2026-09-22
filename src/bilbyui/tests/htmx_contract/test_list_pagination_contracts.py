@@ -53,10 +53,7 @@ class ListPaginationContractTests(SimpleTestCase):
                 contract = contracts[name]
                 self.assertEqual(contract.focus.rule, "explicit_pagination_heading")
                 self.assertEqual(contract.focus.selector, f"#{heading}")
-                self.assertTrue(
-                    {"focus", "history", "announcement", "loading"}
-                    <= contract.capabilities
-                )
+                self.assertTrue({"focus", "history", "announcement", "loading"} <= contract.capabilities)
 
     def test_shell_has_one_persistent_heading_and_polite_atomic_status(self):
         for name, (page, _, region_id, heading_id, status_id) in SURFACES.items():
@@ -82,29 +79,19 @@ class ListPaginationContractTests(SimpleTestCase):
                 source = (TEMPLATES / fragment).read_text()
                 parser = Markup()
                 parser.feed(source)
-                roots = [
-                    attrs for _, attrs in parser.tags
-                    if "data-settled-kind" in attrs
-                ]
+                roots = [attrs for _, attrs in parser.tags if "data-settled-kind" in attrs]
                 self.assertTrue(roots)
                 self.assertTrue(all("data-document-title" in root for root in roots))
-                messages = [
-                    root["data-settled-message"]
-                    for root in roots if "data-settled-message" in root
-                ]
+                messages = [root["data-settled-message"] for root in roots if "data-settled-message" in root]
                 self.assertTrue(messages)
                 self.assertTrue(any("pagination_page" in message for message in messages))
                 list_roots = [
-                    attrs
-                    for _, attrs in parser.tags
-                    if "list-fragment" in (attrs.get("class") or "").split()
+                    attrs for _, attrs in parser.tags if "list-fragment" in (attrs.get("class") or "").split()
                 ]
                 self.assertTrue(list_roots)
-                self.assertFalse(any(
-                    attrs.get("role") in {"status", "alert"}
-                    or "aria-live" in attrs
-                    for attrs in list_roots
-                ))
+                self.assertFalse(
+                    any(attrs.get("role") in {"status", "alert"} or "aria-live" in attrs for attrs in list_roots)
+                )
 
     def test_pagination_links_are_focus_annotated_and_canonical(self):
         parser = Markup()

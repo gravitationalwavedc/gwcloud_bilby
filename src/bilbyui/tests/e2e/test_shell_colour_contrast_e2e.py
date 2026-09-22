@@ -226,8 +226,7 @@ class TestLinkContrastGWFlowPage(GWFlowJobsPageBase):
             except PlaywrightTimeoutError:
                 region_html = await self.page.locator("main").inner_html()
                 self.fail(
-                    f"Expected '{selector}' after applying library=lib1 at "
-                    f"{width}px. Main-region HTML:\n{region_html}"
+                    f"Expected '{selector}' after applying library=lib1 at {width}px. Main-region HTML:\n{region_html}"
                 )
             result = await _contrast(self.page, selector)
             _assert_contrast(self, result, selector, width)

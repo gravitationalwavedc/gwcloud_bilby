@@ -609,17 +609,12 @@ try {
     await page.close();
   });
 
-  await run("popstate uses pre-navigation focus when browser already blurred to body", async () => {
+  await run("history restore leaves focus untouched when no list element was focused", async () => {
     const page = await newFixture(browser);
     const observed = await page.evaluate(async () => {
       const search = document.getElementById("search-trigger");
       search.focus();
       search.blur();
-      const atPopstate = {
-        id: document.activeElement.id,
-        tagName: document.activeElement.tagName,
-        connected: document.activeElement.isConnected
-      };
       window.dispatchEvent(new PopStateEvent("popstate"));
       document.getElementById("job-list").innerHTML =
         '<div data-settled-kind="content" ' +
@@ -627,26 +622,22 @@ try {
       document.dispatchEvent(
         new CustomEvent("htmx:historyRestore", {detail: {}})
       );
-      await new Promise((resolve) => setTimeout(resolve, 350));
+      await new Promise((resolve) => setTimeout(resolve, 0));
       return {
-        atPopstate,
-        afterRestore: {
+        active: {
           id: document.activeElement.id,
           tagName: document.activeElement.tagName,
-          connected: document.activeElement.isConnected
+          connected: document.activeElement.isConnected,
+          isBody: document.activeElement === document.body
         },
         title: document.title
       };
     });
-    assert.deepEqual(observed.atPopstate, {
+    assert.deepEqual(observed.active, {
       id: "",
       tagName: "BODY",
-      connected: true
-    });
-    assert.deepEqual(observed.afterRestore, {
-      id: "search-trigger",
-      tagName: "BUTTON",
-      connected: true
+      connected: true,
+      isBody: true
     });
     assert.equal(observed.title, "Approved first-page title");
     await page.close();
@@ -695,7 +686,7 @@ try {
     await page.close();
   });
 
-  await run("detached history heading survives asynchronous body resets", async () => {
+  await run("detached history restore focuses the heading exactly once", async () => {
     const page = await newFixture(browser);
     const observed = await page.evaluate(async () => {
       const target = document.getElementById("job-list");
@@ -721,10 +712,7 @@ try {
         new CustomEvent("htmx:historyRestore", {detail: {}})
       );
 
-      setTimeout(() => heading.blur(), 70);
-      setTimeout(() => heading.blur(), 190);
-
-      await new Promise((resolve) => setTimeout(resolve, 350));
+      await new Promise((resolve) => setTimeout(resolve, 0));
       return {
         detachedConnected: detached.isConnected,
         headingFocusCalls,
@@ -737,10 +725,6 @@ try {
         title: document.title
       };
     });
-
-    console.log(
-      "DETACHED_HEADING_FOCUS " + JSON.stringify(observed)
-    );
     assert.equal(observed.detachedConnected, false);
     assert.deepEqual(observed.active, {
       id: "test-results-heading",
@@ -748,7 +732,7 @@ try {
       connected: true,
       isBody: false
     });
-    assert.equal(observed.headingFocusCalls, 3);
+    assert.equal(observed.headingFocusCalls, 1);
     assert.equal(observed.title, "Restored detached title");
     await page.close();
   });
@@ -797,10 +781,11 @@ try {
     await page.close();
   });
 
-  await run("duplicate history restore schedules one deterministic focus pass", async () => {
+  await run("history restore does not double-focus a surviving element", async () => {
     const page = await newFixture(browser);
     const observed = await page.evaluate(async () => {
       const search = document.getElementById("search-trigger");
+      search.focus();
       let focusCalls = 0;
       const originalFocus = search.focus.bind(search);
       search.focus = (options) => {
@@ -808,8 +793,6 @@ try {
         originalFocus(options);
       };
 
-      search.focus();
-      search.blur();
       window.dispatchEvent(new PopStateEvent("popstate"));
       document.getElementById("job-list").innerHTML =
         '<div data-settled-kind="content" ' +
@@ -834,17 +817,13 @@ try {
         title: document.title
       };
     });
-
-    console.log(
-      "HISTORY_FOCUS_RESULT " + JSON.stringify(observed)
-    );
     assert.deepEqual(observed.active, {
       id: "search-trigger",
       tagName: "BUTTON",
       connected: true,
       isBody: false
     });
-    assert.equal(observed.focusCalls, 2);
+    assert.equal(observed.focusCalls, 0);
     assert.equal(observed.title, "Approved first-page title");
     await page.close();
   });

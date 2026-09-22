@@ -15,6 +15,7 @@ KNOWN_ATTRIBUTES = frozenset(
     {
         "hx-boost",
         "hx-get",
+        "hx-history-elt",
         "hx-include",
         "hx-indicator",
         "hx-post",
@@ -30,6 +31,7 @@ KNOWN_ATTRIBUTES = frozenset(
 REQUEST_ATTRIBUTES = frozenset({"hx-get", "hx-post"})
 REQUESTLESS_REASONS = {
     "hx-boost": "Inherited navigation enhancement; descendants own the routes.",
+    "hx-history-elt": "History snapshot scope; it does not initiate a request.",
     "hx-include": "Request parameter composition, derived from its requesting element.",
     "hx-indicator": "Loading indicator selector, derived from its requesting element.",
     "hx-on:*": "Client event handler; it does not declare a server endpoint.",

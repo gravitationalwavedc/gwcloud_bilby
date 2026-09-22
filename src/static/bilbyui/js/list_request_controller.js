@@ -78,8 +78,6 @@
       timer: null,
       pendingPagination: null,
       historyFocus: null,
-      historyRepairPending: false,
-      lastFocusedElement: null,
       defaultText: defaultText
     });
   }
@@ -513,105 +511,29 @@
     }
   }
 
-  function rememberFocusedElement(event) {
-    var focused = event.target;
-    var i;
-
-    if (!focused || focused.nodeType !== 1 ||
-        focused === document.body ||
-        focused === document.documentElement) {
-      return;
-    }
-
-    for (i = 0; i < regions.length; i += 1) {
-      regions[i].lastFocusedElement = focused;
-    }
-  }
-
   function snapshotHistoryFocus() {
     var active = document.activeElement;
-
     var i;
     var state;
     var target;
-    var focused;
 
     for (i = 0; i < regions.length; i += 1) {
       state = regions[i];
       target = document.getElementById(state.targetId);
-      focused = active;
-      if (!focused ||
-          focused === document.body ||
-          focused === document.documentElement) {
-        focused = state.lastFocusedElement;
-      }
       state.historyFocus = {
-        element: focused,
-        elementId: focused && focused.id || "",
+        element: active,
+        elementId: (active && active.id) || "",
         wasInsideTarget: Boolean(
-          target && focused && target.contains(focused)
+          target && active && target.contains(active)
         )
       };
-      state.historyRepairPending = false;
       clearPendingPagination(state);
     }
   }
 
-  function historyFocusTarget(
-    state,
-    candidate,
-    candidateId,
-    wasInsideTarget
-  ) {
-    var currentCandidate = candidate;
-    var headingId;
-
-    if ((!currentCandidate || !currentCandidate.isConnected) && candidateId) {
-      currentCandidate = document.getElementById(candidateId);
-    }
-
-    if (!wasInsideTarget &&
-        currentCandidate &&
-        currentCandidate.isConnected) {
-      return currentCandidate;
-    }
-
-    if (wasInsideTarget) {
-      headingId = state.element.getAttribute("data-list-heading");
-      return headingId ? document.getElementById(headingId) : null;
-    }
-
-    return null;
-  }
-
-  function restoreHistoryFocus(
-    state,
-    candidate,
-    candidateId,
-    wasInsideTarget,
-    force
-  ) {
-    var active = document.activeElement;
-    var target = historyFocusTarget(
-      state,
-      candidate,
-      candidateId,
-      wasInsideTarget
-    );
-
-    restoreDocumentTitle(state);
-    if (target &&
-        target.isConnected &&
-        (force ||
-         active === document.body ||
-         active === document.documentElement)) {
-      target.focus({preventScroll: true});
-    }
-  }
-
-  function finishHistoryFocusRepair(state) {
-    state.historyFocus = null;
-    state.historyRepairPending = false;
+  function historyHeading(state) {
+    var headingId = state.element.getAttribute("data-list-heading");
+    return headingId ? document.getElementById(headingId) : null;
   }
 
   function restoreHistory() {
@@ -619,63 +541,37 @@
     var state;
     var snapshot;
     var candidate;
-    var candidateId;
-    var wasInsideTarget;
+    var target;
+    var active;
 
     for (i = 0; i < regions.length; i += 1) {
       state = regions[i];
       clearPendingPagination(state);
       restoreDocumentTitle(state);
 
-      if (state.historyRepairPending) {
-        continue;
-      }
-
       snapshot = state.historyFocus;
       candidate = snapshot && snapshot.element;
-      candidateId = snapshot && snapshot.elementId || "";
-      wasInsideTarget = Boolean(snapshot && snapshot.wasInsideTarget);
-      state.historyRepairPending = true;
+      if (candidate && !candidate.isConnected && snapshot.elementId) {
+        candidate = document.getElementById(snapshot.elementId);
+      }
 
-      (function (
-        historyState,
-        historyCandidate,
-        historyCandidateId,
-        candidateWasInsideTarget
-      ) {
-        window.setTimeout(function () {
-          restoreHistoryFocus(
-            historyState,
-            historyCandidate,
-            historyCandidateId,
-            candidateWasInsideTarget,
-            true
-          );
-        }, 0);
+      if (snapshot && snapshot.wasInsideTarget) {
+        target = historyHeading(state);
+      } else if (candidate && candidate.isConnected) {
+        target = candidate;
+      } else {
+        target = null;
+      }
 
-        [50, 100, 175, 250].forEach(function (delay) {
-          window.setTimeout(function () {
-            restoreHistoryFocus(
-              historyState,
-              historyCandidate,
-              historyCandidateId,
-              candidateWasInsideTarget,
-              false
-            );
-          }, delay);
-        });
+      active = document.activeElement;
+      if (target &&
+          target !== active &&
+          (active === document.body ||
+           active === document.documentElement)) {
+        target.focus({preventScroll: true});
+      }
 
-        window.setTimeout(function () {
-          restoreHistoryFocus(
-            historyState,
-            historyCandidate,
-            historyCandidateId,
-            candidateWasInsideTarget,
-            false
-          );
-          finishHistoryFocusRepair(historyState);
-        }, 325);
-      })(state, candidate, candidateId, wasInsideTarget);
+      state.historyFocus = null;
     }
   }
 
@@ -689,7 +585,6 @@
     onReady();
   }
 
-  document.addEventListener("focusin", rememberFocusedElement);
   document.addEventListener("htmx:load", function (event) {
     discoverRegions((event.detail && event.detail.elt) || document);
   });

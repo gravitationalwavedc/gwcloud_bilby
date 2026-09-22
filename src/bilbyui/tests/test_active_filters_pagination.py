@@ -265,7 +265,6 @@ class TestActiveFiltersPagination(BilbyTestCase):
             f'href="{reverse("bilbyui:gwflow_jobs")}?page=3&search=&library=&review=&time_range=all"',
         )
 
-
     def test_accessible_pagination_contract_and_context(self):
         response = self._render_fragment(
             {"page": 2, "search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d"},
@@ -395,7 +394,9 @@ class TestActiveFiltersPagination(BilbyTestCase):
     def test_current_page_is_non_actionable(self):
         response = self._render_fragment({"page": 2}, total=60, has_next=True)
 
-        self.assertContains(response, '<span class="page-link" aria-current="page" aria-label="Page 2, current page">2</span>')
+        self.assertContains(
+            response, '<span class="page-link" aria-current="page" aria-label="Page 2, current page">2</span>'
+        )
         self.assertNotContains(
             response,
             f'hx-get="{reverse("bilbyui:gwflow_jobs")}?page=2&search=&library=&review=&time_range=all"',
@@ -441,7 +442,9 @@ class TestActiveFiltersPagination(BilbyTestCase):
 
         self.assertContains(response, 'aria-label="GWFlow pagination"')
         self.assertContains(response, 'aria-current="page"')
-        self.assertContains(response, '<span class="page-link" aria-current="page" aria-label="Page 3, current page">3</span>')
+        self.assertContains(
+            response, '<span class="page-link" aria-current="page" aria-label="Page 3, current page">3</span>'
+        )
         for p in (1, 2):
             self.assertContains(
                 response,
