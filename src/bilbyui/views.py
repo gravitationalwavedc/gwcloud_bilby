@@ -1391,6 +1391,7 @@ def _render_job_list(
     page_size=20,
     filter_options=None,
     page_title_prefix="",
+    pagination_label=None,
     page=None,
     max_page=None,
 ):
@@ -1406,6 +1407,14 @@ def _render_job_list(
     has_next = has_next and page < total_pages
     pagination_page = min(page, total_pages)
     page_range = list(range(max(1, pagination_page - 2), min(total_pages, pagination_page + 2) + 1))
+    shown_count = len(rows)
+    page_title = (
+        f"{page_title_prefix} — page {pagination_page} — GWCloud"
+        if pagination_page > 1
+        else f"{page_title_prefix} — GWCloud"
+    )
+    if pagination_label is None:
+        pagination_label = f"{page_title_prefix} pagination"
 
     retry_params = {"page": page, "search": search, "time_range": time_range}
     if library:
@@ -1446,6 +1455,9 @@ def _render_job_list(
         "active_filters": active_filters,
         "reset_url": reverse(jobs_list_url_name),
         "page_title_prefix": page_title_prefix,
+        "page_title": page_title,
+        "pagination_label": pagination_label,
+        "shown_count": shown_count,
     }
     if list_target_id is not None:
         context["list_target_id"] = list_target_id
@@ -1492,6 +1504,7 @@ def public_jobs_view(request):
         region_status_id="public-jobs-results-status",
         service_state=public_jobs_result.get("state", "ok"),
         page_title_prefix="Public Jobs",
+        pagination_label="Public Jobs pagination",
         page=page,
         max_page=ES_MAX_PAGE,
     )
@@ -1553,6 +1566,7 @@ def gwflow_jobs_view(request):
         region_status_id="gwflow-results-status",
         service_state=result.get("state", "ok"),
         page_title_prefix="GWFlow",
+        pagination_label="GWFlow jobs pagination",
         page=page,
         max_page=ES_MAX_PAGE,
     )
@@ -1885,6 +1899,7 @@ def my_jobs_view(request):
         region_status_id="my-jobs-results-status",
         service_state=user_jobs_result.get("state", "ok"),
         page_title_prefix="My Jobs",
+        pagination_label="My Jobs pagination",
         page=page,
     )
 

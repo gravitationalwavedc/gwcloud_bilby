@@ -90,7 +90,7 @@ class HTMXFocusAndAnnouncementContractTest(
     async def test_focus_and_announcement_contract(self):
         page = self.page
         contract = self.contract("gwflow_list_search_filter_pagination")
-        self.assertEqual(contract.focus.rule, "preserve")
+        self.assertEqual(contract.focus.rule, "explicit_pagination_heading")
         self.assertIn("announcement", contract.capabilities)
         await self.install_settle_observer(page)
 

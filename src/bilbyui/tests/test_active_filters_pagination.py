@@ -70,13 +70,14 @@ class TestActiveFiltersPagination(BilbyTestCase):
         has_next=False,
         fragment_template="bilbyui/_gwflow_job_list_fragment.html",
         list_target_id="gwflow-job-list",
+        rows=None,
         **kwargs,
     ):
         request = RequestFactory().get(self.url, params or {}, HTTP_HX_REQUEST="true")
         request.user = self.user
         return _render_job_list(
             request,
-            rows=[],
+            rows=rows if rows is not None else [],
             has_next=has_next,
             total=total,
             page_size=page_size,
@@ -84,6 +85,7 @@ class TestActiveFiltersPagination(BilbyTestCase):
             template_name="bilbyui/gwflow_jobs.html",
             fragment_template_name=fragment_template,
             list_target_id=list_target_id,
+            page_title_prefix=kwargs.pop("page_title_prefix", "GWFlow"),
             **kwargs,
         ).render()
 
@@ -138,7 +140,7 @@ class TestActiveFiltersPagination(BilbyTestCase):
         html = response.content.decode()
         self.assertContains(response, "3 jobs match")
         self.assertContains(response, 'data-settled-kind="content"')
-        self.assertContains(response, 'data-settled-message="3 jobs match"')
+        self.assertContains(response, 'data-settled-message="Page 1 of 1, no jobs shown"')
         self.assertNotIn('role="status"', html)
         self.assertNotIn("aria-live", html)
 
@@ -249,11 +251,11 @@ class TestActiveFiltersPagination(BilbyTestCase):
     def test_pagination_renders_numbered_links_with_aria_current(self):
         response = self._render_fragment({"page": 2}, total=60, has_next=True)
 
-        self.assertContains(response, 'aria-label="Pagination"')
+        self.assertContains(response, 'aria-label="GWFlow pagination"')
         self.assertContains(response, 'rel="prev"')
         self.assertContains(response, 'rel="next"')
         self.assertContains(response, 'aria-current="page"')
-        self.assertContains(response, 'class="page-item active"')
+        self.assertContains(response, 'class="page-item pagination__number active"')
         self.assertContains(
             response,
             f'href="{reverse("bilbyui:gwflow_jobs")}?page=1&search=&library=&review=&time_range=all"',
@@ -262,6 +264,115 @@ class TestActiveFiltersPagination(BilbyTestCase):
             response,
             f'href="{reverse("bilbyui:gwflow_jobs")}?page=3&search=&library=&review=&time_range=all"',
         )
+
+
+    def test_accessible_pagination_contract_and_context(self):
+        response = self._render_fragment(
+            {"page": 2, "search": "foo", "library": "lib-a", "review": "reviewed", "time_range": "1d"},
+            total=100,
+            has_next=True,
+            page_title_prefix="GWFlow",
+            pagination_label="GWFlow jobs pagination",
+        )
+        html = response.content.decode()
+        self.assertIn('aria-label="GWFlow jobs pagination"', html)
+        self.assertRegex(html, r'<span aria-hidden="true">&laquo;</span> Previous')
+        self.assertRegex(html, r'Next <span aria-hidden="true">&raquo;</span>')
+        self.assertIn('aria-label="Page 1"', html)
+        self.assertIn('aria-label="Page 2, current page"', html)
+        self.assertIn("Page 2 of 5", html)
+        self.assertIn("pagination__previous", html)
+        self.assertIn("pagination__number", html)
+        self.assertIn("pagination__context", html)
+        self.assertIn("pagination__next", html)
+        current = re.search(r'<span class="page-link" aria-current="page"[^>]*>2</span>', html)
+        self.assertIsNotNone(current)
+        self.assertNotRegex(html, r'<a[^>]*aria-current="page"')
+        links = re.findall(r'<a\b[^>]*data-pagination-focus="true"[^>]*>', html)
+        self.assertTrue(links)
+        for link in links:
+            self.assertIn('hx-boost="true"', link)
+            self.assertIn('hx-sync="#jobs-search-region:replace"', link)
+            self.assertIn('hx-push-url="true"', link)
+            self.assertRegex(link, r'data-page="\d+"')
+            self.assertIn("search=foo", link)
+            self.assertIn("library=lib-a", link)
+            self.assertIn("review=reviewed", link)
+            self.assertIn("time_range=1d", link)
+
+    def test_page_range_is_clamped_ascending_unique_and_plus_minus_two(self):
+        response = self._render_fragment(
+            {"page": 499},
+            total=20000,
+            page_size=20,
+            has_next=True,
+            max_page=499,
+            page_title_prefix="GWFlow",
+        )
+        html = response.content.decode()
+        labels = [int(value) for value in re.findall(r'aria-label="Page (\d+)"', html)]
+        self.assertEqual(labels, [497, 498])
+        self.assertEqual(labels, sorted(set(labels)))
+        self.assertNotIn("page=500", html)
+        self.assertIn("Page 499 of 499", html)
+        self.assertIn('data-document-title="GWFlow — page 499 — GWCloud"', html)
+
+    def test_fragment_document_title_and_page_aware_messages(self):
+        page_one = self._render_fragment(
+            total=0,
+            page_title_prefix="GWFlow",
+            pagination_label="GWFlow jobs pagination",
+        ).content.decode()
+        self.assertIn('data-document-title="GWFlow — GWCloud"', page_one)
+        self.assertNotIn("<title>", page_one)
+        self.assertIn('data-settled-message="No superevents match your search."', page_one)
+        self.assertNotIn("Page 1 of", re.search(r'<div class="list-fragment"[^>]*>', page_one).group(0))
+
+        reachable_empty = self._render_fragment(
+            {"page": 2},
+            total=60,
+            page_title_prefix="GWFlow",
+            pagination_label="GWFlow jobs pagination",
+        ).content.decode()
+        self.assertIn('data-document-title="GWFlow — page 2 — GWCloud"', reachable_empty)
+        self.assertIn('data-settled-message="Page 2 of 3, no superevents shown"', reachable_empty)
+        self.assertNotIn("<title>", reachable_empty)
+
+        content = self._render_fragment(
+            {"page": 2},
+            rows=[{"sname": "S230601ag"}],
+            total=60,
+            page_title_prefix="GWFlow",
+            pagination_label="GWFlow jobs pagination",
+        ).content.decode()
+        self.assertIn('data-settled-message="Page 2 of 3, 1 superevent shown"', content)
+        self.assertEqual(content.count('class="result-count"'), 1)
+
+    def test_job_fragment_page_aware_empty_messages_and_title(self):
+        reachable = self._render_fragment(
+            {"page": 2},
+            total=40,
+            fragment_template="bilbyui/_job_list_fragment.html",
+            list_target_id="job-list",
+            page_title_prefix="My Jobs",
+            pagination_label="My Jobs pagination",
+        ).content.decode()
+        self.assertIn('data-document-title="My Jobs — page 2 — GWCloud"', reachable)
+        self.assertIn('data-settled-message="Page 2 of 2, no jobs shown"', reachable)
+        self.assertEqual(reachable.count('class="result-count"'), 1)
+        self.assertNotIn("<title>", reachable)
+
+        whole_empty = self._render_fragment(
+            total=0,
+            fragment_template="bilbyui/_job_list_fragment.html",
+            list_target_id="job-list",
+            page_title_prefix="Public Jobs",
+            pagination_label="Public Jobs pagination",
+        ).content.decode()
+        self.assertIn('data-document-title="Public Jobs — GWCloud"', whole_empty)
+        self.assertIn('data-settled-message="No jobs match your search."', whole_empty)
+        self.assertNotIn("Page 1 of", re.search(r'<div class="list-fragment"[^>]*>', whole_empty).group(0))
+        self.assertEqual(whole_empty.count('class="result-count"'), 0)
 
     def test_pagination_links_are_progressively_enhanced(self):
         response = self._render_fragment({"page": 2}, total=60, has_next=True)
@@ -284,7 +395,7 @@ class TestActiveFiltersPagination(BilbyTestCase):
     def test_current_page_is_non_actionable(self):
         response = self._render_fragment({"page": 2}, total=60, has_next=True)
 
-        self.assertContains(response, '<span class="page-link" aria-current="page">2</span>')
+        self.assertContains(response, '<span class="page-link" aria-current="page" aria-label="Page 2, current page">2</span>')
         self.assertNotContains(
             response,
             f'hx-get="{reverse("bilbyui:gwflow_jobs")}?page=2&search=&library=&review=&time_range=all"',
@@ -328,9 +439,9 @@ class TestActiveFiltersPagination(BilbyTestCase):
         # current-page marker are still rendered.
         response = self._render_fragment({"page": 99}, total=60, has_next=False)
 
-        self.assertContains(response, 'aria-label="Pagination"')
+        self.assertContains(response, 'aria-label="GWFlow pagination"')
         self.assertContains(response, 'aria-current="page"')
-        self.assertContains(response, '<span class="page-link" aria-current="page">3</span>')
+        self.assertContains(response, '<span class="page-link" aria-current="page" aria-label="Page 3, current page">3</span>')
         for p in (1, 2):
             self.assertContains(
                 response,
@@ -386,7 +497,7 @@ class TestActiveFiltersPagination(BilbyTestCase):
         self.assertContains(response, "40 superevents match")
         self.assertContains(response, 'aria-label="Remove search filter"')
         self.assertContains(response, "Reset all")
-        self.assertContains(response, 'aria-label="Pagination"')
+        self.assertContains(response, 'aria-label="GWFlow jobs pagination"')
         self.assertContains(response, 'aria-current="page"')
 
     def test_chip_reset_pagination_and_retry_source_wiring(self):
@@ -503,13 +614,13 @@ class TestUX18ServerRenderedContract(BilbyTestCase):
     def test_settled_metadata_content_empty_and_error(self):
         content = self._fragment(total=3, rows=[{"sname": "S230601ag"}])
         self.assertIn('data-settled-kind="content"', content)
-        self.assertIn('data-settled-message="3 superevents match"', content)
+        self.assertIn('data-settled-message="Page 1 of 1, 1 superevent shown"', content)
         self.assertNotIn('role="status"', content)
         self.assertNotIn("aria-live", content)
 
         empty = self._fragment(total=0)
         self.assertIn('data-settled-kind="empty"', empty)
-        self.assertIn("No superevents yet.", empty)
+        self.assertIn("No superevents match your search.", empty)
         self.assertNotIn('role="status"', empty)
         self.assertNotIn("aria-live", empty)
 

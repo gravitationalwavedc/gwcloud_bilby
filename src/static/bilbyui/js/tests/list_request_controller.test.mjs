@@ -35,9 +35,11 @@ const fixture = `<!doctype html>
     data-list-region
     data-list-target="job-list"
     data-list-indicator="test-indicator"
+    data-list-heading="test-results-heading"
     data-list-status="test-status"
     aria-busy="false"
   >
+    <h2 id="test-results-heading" tabindex="-1">Test results</h2>
     <span
       id="test-indicator"
       class="list-loading-indicator"
@@ -125,6 +127,11 @@ async function dispatch(page, name, requestName, options = {}) {
             ? ""
             : ' data-settled-message="' +
               settings.settled.message +
+              '"') +
+          (settings.settled.title === undefined
+            ? ""
+            : ' data-document-title="' +
+              settings.settled.title +
               '"') +
           "></div>";
       }
@@ -411,6 +418,458 @@ try {
       await page.close();
     });
   }
+
+
+  await run("explicit pagination success sets title and focuses heading once", async () => {
+    const page = await newFixture(browser);
+    await page.evaluate(() => {
+      const heading = document.getElementById("test-results-heading");
+      window.__headingFocusCount = 0;
+      const originalFocus = heading.focus.bind(heading);
+      heading.focus = (options) => {
+        window.__headingFocusCount += 1;
+        window.__focusOptions = options;
+        originalFocus(options);
+      };
+    });
+    await dispatch(page, "htmx:beforeRequest", "page", {
+      triggerId: "pagination-trigger"
+    });
+    await dispatch(page, "htmx:afterSwap", "page", {
+      triggerId: "pagination-trigger",
+      settled: {
+        kind: "content",
+        message: "Page 2 of 4, 20 jobs shown",
+        title: "My Jobs, page 2"
+      }
+    });
+    assert.equal(await page.title(), "My Jobs, page 2");
+    assert.equal(
+      await page.evaluate(() => document.activeElement.id),
+      "test-results-heading"
+    );
+    assert.equal(await page.evaluate(() => window.__headingFocusCount), 1);
+    assert.deepEqual(
+      await page.evaluate(() => window.__focusOptions),
+      { preventScroll: true }
+    );
+    assert.equal(
+      (await snapshot(page)).status,
+      "Page 2 of 4, 20 jobs shown"
+    );
+    await page.close();
+  });
+
+  for (const triggerId of ["search-trigger", "other-trigger"]) {
+    await run(`${triggerId} success does not focus results heading`, async () => {
+      const page = await newFixture(browser);
+      const targetId = triggerId === "other-trigger" ? "other-target" : "job-list";
+      await dispatch(page, "htmx:beforeRequest", "normal", {
+        triggerId,
+        targetId
+      });
+      await dispatch(page, "htmx:afterSwap", "normal", {
+        triggerId,
+        targetId,
+        settled: {
+          kind: "content",
+          message: "Settled",
+          title: "Search title"
+        }
+      });
+      assert.notEqual(
+        await page.evaluate(() => document.activeElement.id),
+        "test-results-heading"
+      );
+      await page.close();
+    });
+  }
+
+  await run("replacement search clears pagination focus ownership", async () => {
+    const page = await newFixture(browser);
+    await dispatch(page, "htmx:beforeRequest", "page", {
+      triggerId: "pagination-trigger"
+    });
+    await dispatch(page, "htmx:beforeRequest", "search");
+    await dispatch(page, "htmx:afterSwap", "search", {
+      settled: {
+        kind: "content",
+        message: "Search settled",
+        title: "Search results"
+      }
+    });
+    assert.notEqual(
+      await page.evaluate(() => document.activeElement.id),
+      "test-results-heading"
+    );
+    await page.close();
+  });
+
+  await run("stale success cannot focus or set document title", async () => {
+    const page = await newFixture(browser);
+    await page.evaluate(() => { document.title = "Original"; });
+    await dispatch(page, "htmx:beforeRequest", "A", {
+      triggerId: "pagination-trigger"
+    });
+    await dispatch(page, "htmx:beforeRequest", "B");
+    await dispatch(page, "htmx:afterSwap", "A", {
+      triggerId: "pagination-trigger",
+      settled: {
+        kind: "content",
+        message: "Stale",
+        title: "Stale title"
+      }
+    });
+    assert.equal(await page.title(), "Original");
+    assert.notEqual(
+      await page.evaluate(() => document.activeElement.id),
+      "test-results-heading"
+    );
+    await dispatch(page, "htmx:abort", "B");
+    await page.close();
+  });
+
+  for (const terminal of [
+    "htmx:responseError",
+    "htmx:sendError",
+    "htmx:timeout",
+    "htmx:abort",
+    "bilbyui:listRequestSuppressed"
+  ]) {
+    await run(`${terminal} clears pagination without focus`, async () => {
+      const page = await newFixture(browser);
+      await dispatch(page, "htmx:beforeRequest", "page", {
+        triggerId: "pagination-trigger"
+      });
+      await dispatch(page, terminal, "page", {
+        triggerId: "pagination-trigger"
+      });
+      assert.notEqual(
+        await page.evaluate(() => document.activeElement.id),
+        "test-results-heading"
+      );
+      await page.close();
+    });
+  }
+
+  await run("popstate and history restore do not become pagination activation", async () => {
+    const page = await newFixture(browser);
+    await page.evaluate(() => {
+      document.getElementById("search-trigger").focus();
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      document.getElementById("job-list").innerHTML =
+        '<div data-settled-kind="content" ' +
+        'data-document-title="Restored title" ' +
+        'data-settled-message="Must not announce"></div>';
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+    });
+    await advance(page, 0);
+    assert.equal(await page.title(), "Restored title");
+    assert.equal(
+      await page.evaluate(() => document.activeElement.id),
+      "search-trigger"
+    );
+    assert.equal((await snapshot(page)).status, "");
+    await page.close();
+  });
+
+  await run("history restore repairs detached list focus exactly once", async () => {
+    const page = await newFixture(browser);
+    await page.evaluate(() => {
+      const target = document.getElementById("job-list");
+      target.innerHTML = '<a id="old-page" href="#">Old page</a>';
+      document.getElementById("old-page").focus();
+      const heading = document.getElementById("test-results-heading");
+      window.__historyFocusCount = 0;
+      const originalFocus = heading.focus.bind(heading);
+      heading.focus = (options) => {
+        window.__historyFocusCount += 1;
+        originalFocus(options);
+      };
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      target.innerHTML =
+        '<div data-settled-kind="content" ' +
+        'data-document-title="Restored page"></div>';
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+    });
+    await advance(page, 0);
+    assert.equal(
+      await page.evaluate(() => document.activeElement.id),
+      "test-results-heading"
+    );
+    assert.equal(await page.evaluate(() => window.__historyFocusCount), 1);
+    assert.equal(await page.title(), "Restored page");
+    await page.close();
+  });
+
+  await run("popstate uses pre-navigation focus when browser already blurred to body", async () => {
+    const page = await newFixture(browser);
+    const observed = await page.evaluate(async () => {
+      const search = document.getElementById("search-trigger");
+      search.focus();
+      search.blur();
+      const atPopstate = {
+        id: document.activeElement.id,
+        tagName: document.activeElement.tagName,
+        connected: document.activeElement.isConnected
+      };
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      document.getElementById("job-list").innerHTML =
+        '<div data-settled-kind="content" ' +
+        'data-document-title="Approved first-page title"></div>';
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      return {
+        atPopstate,
+        afterRestore: {
+          id: document.activeElement.id,
+          tagName: document.activeElement.tagName,
+          connected: document.activeElement.isConnected
+        },
+        title: document.title
+      };
+    });
+    assert.deepEqual(observed.atPopstate, {
+      id: "",
+      tagName: "BODY",
+      connected: true
+    });
+    assert.deepEqual(observed.afterRestore, {
+      id: "search-trigger",
+      tagName: "BUTTON",
+      connected: true
+    });
+    assert.equal(observed.title, "Approved first-page title");
+    await page.close();
+  });
+
+  await run("history restore repairs body fallback to surviving outside focus", async () => {
+    const page = await newFixture(browser);
+    const observed = await page.evaluate(async () => {
+      const search = document.getElementById("search-trigger");
+      search.focus();
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      search.blur();
+      document.getElementById("job-list").innerHTML =
+        '<div data-settled-kind="content" ' +
+        'data-document-title="Page one title"></div>';
+      const before = {
+        id: document.activeElement.id,
+        tagName: document.activeElement.tagName,
+        connected: document.activeElement.isConnected
+      };
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      return {
+        before,
+        after: {
+          id: document.activeElement.id,
+          tagName: document.activeElement.tagName,
+          connected: document.activeElement.isConnected
+        },
+        title: document.title
+      };
+    });
+    assert.deepEqual(observed.before, {
+      id: "",
+      tagName: "BODY",
+      connected: true
+    });
+    assert.deepEqual(observed.after, {
+      id: "search-trigger",
+      tagName: "BUTTON",
+      connected: true
+    });
+    assert.equal(observed.title, "Page one title");
+    await page.close();
+  });
+
+  await run("detached history heading survives asynchronous body resets", async () => {
+    const page = await newFixture(browser);
+    const observed = await page.evaluate(async () => {
+      const target = document.getElementById("job-list");
+      target.innerHTML = '<a id="detached-page" href="#">Page</a>';
+      const detached = document.getElementById("detached-page");
+      const heading = document.getElementById("test-results-heading");
+      let headingFocusCalls = 0;
+      const originalFocus = heading.focus.bind(heading);
+      heading.focus = (options) => {
+        headingFocusCalls += 1;
+        originalFocus(options);
+      };
+
+      detached.focus();
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      target.innerHTML =
+        '<div data-settled-kind="content" ' +
+        'data-document-title="Restored detached title"></div>';
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+
+      setTimeout(() => heading.blur(), 70);
+      setTimeout(() => heading.blur(), 190);
+
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      return {
+        detachedConnected: detached.isConnected,
+        headingFocusCalls,
+        active: {
+          id: document.activeElement.id,
+          tagName: document.activeElement.tagName,
+          connected: document.activeElement.isConnected,
+          isBody: document.activeElement === document.body
+        },
+        title: document.title
+      };
+    });
+
+    console.log(
+      "DETACHED_HEADING_FOCUS " + JSON.stringify(observed)
+    );
+    assert.equal(observed.detachedConnected, false);
+    assert.deepEqual(observed.active, {
+      id: "test-results-heading",
+      tagName: "H2",
+      connected: true,
+      isBody: false
+    });
+    assert.equal(observed.headingFocusCalls, 3);
+    assert.equal(observed.title, "Restored detached title");
+    await page.close();
+  });
+
+  await run("whole-body history restore re-resolves surviving focus by id", async () => {
+    const page = await newFixture(browser);
+    const observed = await page.evaluate(async () => {
+      const oldSearch = document.getElementById("search-trigger");
+      oldSearch.focus();
+      window.dispatchEvent(new PopStateEvent("popstate"));
+
+      const replacement = oldSearch.cloneNode(true);
+      oldSearch.replaceWith(replacement);
+      document.getElementById("job-list").innerHTML =
+        '<div data-settled-kind="content" ' +
+        'data-document-title="Restored body title"></div>';
+
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      return {
+        oldConnected: oldSearch.isConnected,
+        active: {
+          id: document.activeElement.id,
+          tagName: document.activeElement.tagName,
+          connected: document.activeElement.isConnected,
+          isBody: document.activeElement === document.body
+        },
+        title: document.title
+      };
+    });
+
+    console.log(
+      "RERESOLVED_HISTORY_FOCUS " + JSON.stringify(observed)
+    );
+    assert.equal(observed.oldConnected, false);
+    assert.deepEqual(observed.active, {
+      id: "search-trigger",
+      tagName: "BUTTON",
+      connected: true,
+      isBody: false
+    });
+    assert.equal(observed.title, "Restored body title");
+    await page.close();
+  });
+
+  await run("duplicate history restore schedules one deterministic focus pass", async () => {
+    const page = await newFixture(browser);
+    const observed = await page.evaluate(async () => {
+      const search = document.getElementById("search-trigger");
+      let focusCalls = 0;
+      const originalFocus = search.focus.bind(search);
+      search.focus = (options) => {
+        focusCalls += 1;
+        originalFocus(options);
+      };
+
+      search.focus();
+      search.blur();
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      document.getElementById("job-list").innerHTML =
+        '<div data-settled-kind="content" ' +
+        'data-document-title="Approved first-page title"></div>';
+
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return {
+        focusCalls,
+        active: {
+          id: document.activeElement.id,
+          tagName: document.activeElement.tagName,
+          connected: document.activeElement.isConnected,
+          isBody: document.activeElement === document.body
+        },
+        title: document.title
+      };
+    });
+
+    console.log(
+      "HISTORY_FOCUS_RESULT " + JSON.stringify(observed)
+    );
+    assert.deepEqual(observed.active, {
+      id: "search-trigger",
+      tagName: "BUTTON",
+      connected: true,
+      isBody: false
+    });
+    assert.equal(observed.focusCalls, 2);
+    assert.equal(observed.title, "Approved first-page title");
+    await page.close();
+  });
+
+
+  await run("history restore preserves surviving focus", async () => {
+    const page = await newFixture(browser);
+    await page.evaluate(() => {
+      const search = document.getElementById("search-trigger");
+      search.focus();
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      document.getElementById("job-list").innerHTML =
+        '<div data-settled-kind="content" ' +
+        'data-document-title="Preserved focus"></div>';
+      document.dispatchEvent(
+        new CustomEvent("htmx:historyRestore", {detail: {}})
+      );
+    });
+    await advance(page, 0);
+    assert.equal(
+      await page.evaluate(() => document.activeElement.id),
+      "search-trigger"
+    );
+    await page.close();
+  });
 
   await run("superseded-token failure renders no recovery UI", async () => {
     const page = await newFixture(browser);
