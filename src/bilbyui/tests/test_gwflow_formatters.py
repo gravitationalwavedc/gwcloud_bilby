@@ -103,6 +103,12 @@ class GwflowFormatterTests(SimpleTestCase):
     def test_person_scalar(self):
         self.assertEqual(person("Single Name"), "Single Name")
 
+    def test_person_without_name_or_email_falls_back_to_text(self):
+        self.assertEqual(
+            person({"some_unrelated": "value"}),
+            text({"some_unrelated": "value"}),
+        )
+
     def test_boolean_formats_both_values_and_preserves_zero(self):
         self.assertEqual(boolean(True), "✓ True")
         self.assertEqual(boolean(False), "✗ False")
