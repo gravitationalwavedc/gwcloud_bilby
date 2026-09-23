@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from graphql_relay.node.node import to_global_id
 
-from bilbyui.schema import _pad_result_for_cursor, _parse_after_cursor, _parse_file_size
+from bilbyui.schema import MAX_CURSOR_OFFSET, _pad_result_for_cursor, _parse_after_cursor, _parse_file_size
 from bilbyui.tests.testcases import BilbyTestCase
 
 
@@ -26,6 +26,12 @@ class TestParseAfterCursor(BilbyTestCase):
         kwargs = {"after": to_global_id("BilbyJobNode", 5)}
         _parse_after_cursor(kwargs)
         self.assertEqual(kwargs["after"], 5)
+
+    def test_huge_positive_offset_capped(self):
+        kwargs = {"after": to_global_id("BilbyJobNode", 10**9)}
+        _parse_after_cursor(kwargs)
+        self.assertEqual(kwargs["after"], MAX_CURSOR_OFFSET)
+        self.assertEqual(len(_pad_result_for_cursor(kwargs["after"], ["a", "b"])), MAX_CURSOR_OFFSET + 3)
 
     def test_malformed_cursor_falls_back_to_none(self):
         kwargs = {"after": "not-a-valid-cursor"}

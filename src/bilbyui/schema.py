@@ -69,12 +69,20 @@ from .views import (
 
 logger = logging.getLogger(__name__)
 
+#: Upper bound for a decoded relay cursor offset. Mirrors Elasticsearch's default
+#: ``index.max_result_window`` (10,000) so a crafted huge positive cursor cannot
+#: drive ``[None] * (after + 1)`` into a multi-gigabyte padding allocation.
+MAX_CURSOR_OFFSET = 10000
+
 
 def _parse_after_cursor(kwargs):
     after = kwargs.get("after")
     if after is not None:
         try:
             after = int(from_global_id(after)[1])
+            # A huge positive id should be capped so the padding list in
+            # _pad_result_for_cursor stays bounded.
+            after = min(after, MAX_CURSOR_OFFSET)
         except (ValueError, TypeError):
             # A malformed cursor (e.g. invalid base64 or a non-numeric id) should
             # fall back to the first page instead of raising and returning a 500.
