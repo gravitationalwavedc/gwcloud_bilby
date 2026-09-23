@@ -172,3 +172,54 @@ discovery therefore includes both contract layers without another job, runner,
 or dependency. Registry-wide inventory and audit tests must use
 `--parallel 1`, because parallel workers must not independently construct or
 compare the complete declaration inventory.
+
+## Accessibility & responsive verification gates
+
+These tracked instructions are self-contained. A more detailed local extended copy is available at `docs/checklists/accessibility-responsive-gates.md`; because `docs/` is gitignored, that copy is not required to operate or interpret the committed verification suite.
+
+### Gates
+
+- **Axe content region and isolated chrome:** scan the primary content region and shared site chrome independently so violations remain attributable.
+- **Five-width overflow crawl:** check every registered page at 320, 375, 768, 1024, and 1440 pixels for horizontal overflow and report the route, width, selector, and geometry.
+- **Computed contrast sweep:** evaluate computed foreground and background colours, reporting selector, colours, measured ratio, and required threshold.
+- **Keyboard journeys:** verify keyboard-only focus order, visible focus, activation, dismissal, and focus return across registered journeys.
+- **Target size:** require registered interactive targets to measure at least 24×24 CSS pixels and report undersized selectors and measured boxes.
+- **Reduced motion:** emulate the reduced-motion preference and verify that non-essential animations and transitions are suppressed.
+- **Seeded meta-tests:** deliberately inject representative accessibility, contrast, overflow, target-size, and registry defects to prove each gate detects and diagnoses known failures.
+
+### Focused commands
+
+Run registry-wide inventory tests serially with `--parallel 1`.
+
+```bash
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.e2e.test_a11y_gates --parallel 1
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.e2e.test_accessibility_chrome --parallel 1
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.e2e.test_contrast --parallel 1
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.e2e.test_keyboard_journeys --parallel 1
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.e2e.test_responsive_crawl --parallel 1
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.e2e.test_target_size --parallel 1
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.e2e.test_reduced_motion --parallel 1
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.e2e.test_accessibility_meta --parallel 1
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.e2e.test_accessibility_sidecar --parallel 1
+cd src && DJANGO_SETTINGS_MODULE=gw_bilby.test poetry run python manage.py test bilbyui.tests.e2e.test_pathological_fixtures --parallel 1
+```
+
+### Full suite and coverage
+
+```bash
+cd src && bash run_coverage.sh --parallel
+```
+
+### CI operation
+
+The existing `django-tests` job installs Node and Playwright, starts the shared application server, exports `PW_WS_ENDPOINT`, and runs coverage. Its accessibility timing step uses `timeout 600s`, and accessibility evidence is retained from `reports/a11y` as CI artifacts. Registry-wide inventory tests MUST use `--parallel 1`; parallel workers can each observe only a partial registry and produce misleading omissions or duplicates.
+
+### Evidence interpretation and triage
+
+Read each diagnostic as evidence tied to the reported route, viewport, selector, interaction step, computed style, or element geometry. Reproduce the smallest focused module first, then determine whether the result is a product defect, fixture defect, stale registry entry, or test-harness failure. Preserve `reports/a11y` output when escalating a CI-only failure.
+
+Treat axe findings rated **serious** or **critical** as blocking. Lower-impact findings still require triage and either a fix or a documented rationale. Overflow, keyboard, target-size, reduced-motion, and applicable AA contrast failures are also blocking when they reproduce against a registered user journey.
+
+Investigate registry-to-reality mismatches before weakening an assertion. A registered selector, route, or focus destination must exist in rendered reality. For example, a token-revoke journey expecting focus to return to `#token-list-heading` is a registry mismatch when that selector does not exist; fix the product markup or registry contract rather than suppressing the failure. Also check authentication state, seeded data, responsive substitutions, and feature visibility when a registered element is absent.
+
+The **advisory AAA contrast report is non-blocking**. Use it to identify improvement opportunities, but do not fail CI solely because a colour pair misses the AAA threshold when it satisfies the required blocking AA policy.
