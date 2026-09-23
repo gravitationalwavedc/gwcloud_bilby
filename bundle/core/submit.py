@@ -282,7 +282,7 @@ def run_data_generation(data_gen_command, wk_dir):
         if "--error=" in bit:
             error_file = bit.split("--error=")[-1]
 
-        if "--output" in bit:
+        if "--output=" in bit:
             output_file = bit.split("--output=")[-1]
 
     # Get the last parameter to sbatch, which is the script to run to generate the data
