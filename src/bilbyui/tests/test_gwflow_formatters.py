@@ -10,6 +10,7 @@ from bilbyui.templatetags.gwflow_tags import (
     FORMATTERS,
     boolean,
     format_value,
+    get_item,
     human_value,
     link,
     list_accessible,
@@ -17,6 +18,7 @@ from bilbyui.templatetags.gwflow_tags import (
     person,
     probability,
     scientific,
+    sort_items,
     status,
     text,
     utc_timestamp,
@@ -180,6 +182,28 @@ class GwflowFormatterTests(SimpleTestCase):
             human_value([0, False, ""]),
             '0, ✗ False, ""',
         )
+
+    def test_get_item_returns_value_for_existing_key(self):
+        self.assertEqual(get_item({"name": "Ada Lovelace"}, "name"), "Ada Lovelace")
+
+    def test_get_item_returns_none_for_missing_key(self):
+        self.assertIsNone(get_item({"name": "Ada Lovelace"}, "missing"))
+
+    def test_get_item_returns_none_for_non_dict(self):
+        self.assertIsNone(get_item(["name"], "name"))
+        self.assertIsNone(get_item("name", "name"))
+        self.assertIsNone(get_item(None, "name"))
+
+    def test_sort_items_sorts_dict_items(self):
+        self.assertEqual(
+            sort_items({"b": 2, "a": 1}),
+            [("a", 1), ("b", 2)],
+        )
+
+    def test_sort_items_returns_empty_list_for_non_dict(self):
+        self.assertEqual(sort_items(["b", "a"]), [])
+        self.assertEqual(sort_items("ab"), [])
+        self.assertEqual(sort_items(None), [])
 
     def test_formatter_dispatch_is_explicit_and_rejects_unknown_names(self):
         self.assertEqual(
