@@ -9778,19 +9778,59 @@ a.text-dark:hover, a.text-dark:focus {
   outline-offset: 2px;
 }
 
+.list-results-heading {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  scroll-margin-top: calc(var(--navbar-h, 0px) + 1rem);
+}
+.list-results-heading:focus, .list-results-heading:focus-visible {
+  outline: 2px solid #55b6fc;
+  outline-offset: 2px;
+}
+
 .pagination-wrap {
   margin-top: 1rem;
 }
 
 .pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  padding-left: 0;
   margin-bottom: 0;
+  list-style: none;
 }
 
-.page-link:focus {
+.page-item {
+  margin: 0;
+}
+
+.page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+}
+.page-link:focus, .page-link:focus-visible {
+  z-index: 2;
   outline: 2px solid #55b6fc;
   outline-offset: 2px;
 }
 
+.pagination__context {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  .pagination__number {
+    display: none;
+  }
+  .pagination__context {
+    display: list-item;
+  }
+}
 .page-item.active .page-link {
   font-weight: 700;
 }

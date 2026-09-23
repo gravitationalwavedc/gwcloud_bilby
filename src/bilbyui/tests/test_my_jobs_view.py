@@ -89,7 +89,7 @@ class TestMyJobsView(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "<!doctype html>", status_code=200)
         self.assertContains(response, "Fragment job")
-        self.assertContains(response, "<title>My Jobs — GWCloud</title>")
+        self.assertContains(response, 'data-document-title="My Jobs — GWCloud"')
         self.assertNotContains(response, "<h1")
 
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
@@ -110,7 +110,7 @@ class TestMyJobsView(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Paged job 29")
-        self.assertContains(response, 'aria-label="Pagination"')
+        self.assertContains(response, 'aria-label="My Jobs pagination"')
         self.assertContains(response, "page=2")
 
     @mock.patch("bilbyui.views.list_user_jobs")
@@ -170,7 +170,7 @@ class TestMyJobsView(BilbyTestCase):
         response = self.client.get(self.url, {"page": 2}, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "<title>My Jobs — page 2 — GWCloud</title>")
+        self.assertContains(response, 'data-document-title="My Jobs — page 2 — GWCloud"')
 
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_invalid_time_range_defaults_to_all(self, request_job_filter):

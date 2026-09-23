@@ -46,6 +46,15 @@
     if (!targetId) {
       return;
     }
+    targetId = targetId.replace(/^#/, "");
+
+    for (i = 0; i < regions.length; i += 1) {
+      if (regions[i].targetId === targetId &&
+          !regions[i].element.isConnected) {
+        regions[i].element = element;
+        return;
+      }
+    }
 
     var indicatorId = element.getAttribute("data-list-indicator");
     var indicator = indicatorId ? document.getElementById(indicatorId) : null;
@@ -63,11 +72,12 @@
 
     regions.push({
       element: element,
-      targetId: targetId.replace(/^#/, ""),
+      targetId: targetId,
       nextToken: 0,
       activeToken: null,
       timer: null,
       pendingPagination: null,
+      historyFocus: null,
       defaultText: defaultText
     });
   }
@@ -231,7 +241,7 @@
     pagination = paginationTrigger(detail.elt);
     if (pagination) {
       page = pagination.getAttribute("data-page");
-      state.pendingPagination = {page: page};
+      state.pendingPagination = {page: page, token: token};
       if (indicator && page) {
         setIndicatorText(indicator, "Loading page " + page + "\u2026");
       }
@@ -260,19 +270,23 @@
     }, 1000);
   }
 
-  function settledMessage(state) {
+  function fragmentMetadata(state) {
     var target = state.element.querySelector("#" + state.targetId);
     var settled;
+
+    if (!target) {
+      return null;
+    }
+
+    settled = target.querySelector("[data-settled-kind]");
+    return settled || target.querySelector("[data-document-title]");
+  }
+
+  function settledMessage(state) {
+    var settled = fragmentMetadata(state);
     var kind;
     var message;
 
-    if (!target) {
-      return "";
-    }
-
-    settled = target.querySelector(
-      "[data-settled-kind][data-settled-message]"
-    );
     if (!settled) {
       return "";
     }
@@ -284,6 +298,44 @@
       return message;
     }
     return "";
+  }
+
+  function restoreDocumentTitle(state) {
+    var settled = fragmentMetadata(state);
+    var title = settled && settled.getAttribute("data-document-title");
+
+    if (title) {
+      document.title = title;
+    }
+  }
+
+  function focusHeading(state) {
+    var heading = childFor(state, "data-list-heading");
+    var rect;
+    var probe;
+    var probeX;
+    var probeY;
+
+    if (!heading) {
+      return;
+    }
+
+    heading.focus({preventScroll: true});
+    rect = heading.getBoundingClientRect();
+    probeX = Math.max(0, Math.min(
+      window.innerWidth - 1,
+      rect.left + Math.max(1, rect.width / 2)
+    ));
+    probeY = Math.max(0, Math.min(
+      window.innerHeight - 1,
+      rect.top + Math.max(1, Math.min(rect.height || 1, 2))
+    ));
+    probe = document.elementFromPoint(probeX, probeY);
+
+    if (rect.top < 0 ||
+        (probe && probe !== heading && !heading.contains(probe))) {
+      heading.scrollIntoView({block: "start"});
+    }
   }
 
   function buildRetryUrl(state) {
@@ -394,6 +446,7 @@
     var indicator;
     var status;
     var message;
+    var pagination;
 
     if (!identity ||
         (typeof identity !== "object" && typeof identity !== "function")) {
@@ -427,14 +480,25 @@
       indicator.setAttribute("aria-hidden", "true");
     }
 
+    pagination = state.pendingPagination &&
+      state.pendingPagination.token === metadata.token
+      ? state.pendingPagination
+      : null;
+
     state.activeToken = null;
     clearPendingPagination(state);
     requestState.delete(identity);
 
-    if (publishSettledMessage && status) {
-      message = settledMessage(state);
-      if (message) {
-        status.textContent = message;
+    if (publishSettledMessage) {
+      restoreDocumentTitle(state);
+      if (status) {
+        message = settledMessage(state);
+        if (message) {
+          status.textContent = message;
+        }
+      }
+      if (pagination) {
+        focusHeading(state);
       }
     }
     return state;
@@ -447,10 +511,67 @@
     }
   }
 
-  function clearHistoryPending() {
+  function snapshotHistoryFocus() {
+    var active = document.activeElement;
     var i;
+    var state;
+    var target;
+
     for (i = 0; i < regions.length; i += 1) {
-      clearPendingPagination(regions[i]);
+      state = regions[i];
+      target = document.getElementById(state.targetId);
+      state.historyFocus = {
+        element: active,
+        elementId: (active && active.id) || "",
+        wasInsideTarget: Boolean(
+          target && active && target.contains(active)
+        )
+      };
+      clearPendingPagination(state);
+    }
+  }
+
+  function historyHeading(state) {
+    var headingId = state.element.getAttribute("data-list-heading");
+    return headingId ? document.getElementById(headingId) : null;
+  }
+
+  function restoreHistory() {
+    var i;
+    var state;
+    var snapshot;
+    var candidate;
+    var target;
+    var active;
+
+    for (i = 0; i < regions.length; i += 1) {
+      state = regions[i];
+      clearPendingPagination(state);
+      restoreDocumentTitle(state);
+
+      snapshot = state.historyFocus;
+      candidate = snapshot && snapshot.element;
+      if (candidate && !candidate.isConnected && snapshot.elementId) {
+        candidate = document.getElementById(snapshot.elementId);
+      }
+
+      if (snapshot && snapshot.wasInsideTarget) {
+        target = historyHeading(state);
+      } else if (candidate && candidate.isConnected) {
+        target = candidate;
+      } else {
+        target = null;
+      }
+
+      active = document.activeElement;
+      if (target &&
+          target !== active &&
+          (active === document.body ||
+           active === document.documentElement)) {
+        target.focus({preventScroll: true});
+      }
+
+      state.historyFocus = null;
     }
   }
 
@@ -480,6 +601,6 @@
   document.addEventListener("bilbyui:listRequestSuppressed", function (event) {
     finishRequest(event, false);
   });
-  document.addEventListener("htmx:historyRestore", clearHistoryPending);
-  window.addEventListener("popstate", clearHistoryPending);
+  document.addEventListener("htmx:historyRestore", restoreHistory);
+  window.addEventListener("popstate", snapshotHistoryFocus);
 })();

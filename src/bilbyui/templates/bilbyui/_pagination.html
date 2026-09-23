@@ -1,10 +1,10 @@
-{# Numbered pagination with prev/next (issue #51 UX-4). Rendered only when total_pages > 1. Native hrefs carry every active param; HTMX enhances the same canonical links. Contract: total_pages, pagination_page, page_range, page, has_next, search, library, review, time_range, jobs_list_url_name, list_target_id, indicator_id. #}
+{# Numbered pagination with canonical prev/next links. Render only for more than one page. #}
 {% if total_pages > 1 %}
 {% with search_q=search|urlencode library_q=library|urlencode review_q=review|urlencode %}
-<nav class="pagination-wrap" aria-label="Pagination">
+<nav class="pagination-wrap" aria-label="{{ pagination_label|default:'Jobs pagination' }}">
   <ul class="pagination">
     {% if page > 1 %}
-    <li class="page-item">
+    <li class="page-item pagination__previous">
       <a
         class="page-link"
         href="{% url jobs_list_url_name %}?page={{ page|add:"-1" }}&search={{ search_q }}&library={{ library_q }}&review={{ review_q }}&time_range={{ time_range|urlencode }}"
@@ -18,16 +18,17 @@
         {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
         data-pagination-focus="true"
         data-page="{{ page|add:"-1" }}"
-      >&laquo;</a>
+      ><span aria-hidden="true">&laquo;</span> Previous</a>
     </li>
     {% endif %}
     {% for p in page_range %}
-    <li class="page-item{% if p == pagination_page %} active{% endif %}">
+    <li class="page-item pagination__number{% if p == pagination_page %} active{% endif %}">
       {% if p == pagination_page %}
-      <span class="page-link" aria-current="page">{{ p }}</span>
+      <span class="page-link" aria-current="page" aria-label="Page {{ pagination_page }}, current page">{{ pagination_page }}</span>
       {% else %}
       <a
         class="page-link"
+        aria-label="Page {{ p }}"
         href="{% url jobs_list_url_name %}?page={{ p }}&search={{ search_q }}&library={{ library_q }}&review={{ review_q }}&time_range={{ time_range|urlencode }}"
         hx-boost="true"
         hx-target="#{{ list_target_id|default:'job-list' }}"
@@ -41,8 +42,11 @@
       {% endif %}
     </li>
     {% endfor %}
+    <li class="page-item pagination__context">
+      <span class="page-link">Page {{ pagination_page }} of {{ total_pages }}</span>
+    </li>
     {% if has_next %}
-    <li class="page-item">
+    <li class="page-item pagination__next">
       <a
         class="page-link"
         href="{% url jobs_list_url_name %}?page={{ page|add:"1" }}&search={{ search_q }}&library={{ library_q }}&review={{ review_q }}&time_range={{ time_range|urlencode }}"
@@ -56,7 +60,7 @@
         {% if indicator_id %}hx-indicator="#{{ indicator_id }}"{% endif %}
         data-pagination-focus="true"
         data-page="{{ page|add:"1" }}"
-      >&raquo;</a>
+      >Next <span aria-hidden="true">&raquo;</span></a>
     </li>
     {% endif %}
   </ul>

@@ -1,14 +1,13 @@
-<title>{% if page > 1 %}{{ page_title_prefix }} — page {{ page }} — GWCloud{% else %}{{ page_title_prefix }} — GWCloud{% endif %}</title>
 {% if service_state == "down" %}
-<div class="list-fragment" data-settled-kind="error">
+<div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="error">
   {% include "bilbyui/_async_state.html" with state="error" thing="the GWFlow jobs" region_label="GWFlow job list" retry_url=retry_url retry_target=retry_target indicator_id=indicator_id retry_sync="#jobs-search-region:replace" %}
 </div>
 {% elif service_state == "invalid" %}
-<div class="list-fragment" data-settled-kind="error">
+<div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="error">
   <div class="alert alert-warning" role="alert">The search expression is invalid. Check the advanced syntax and try again.</div>
 </div>
 {% elif rows %}
-<div class="list-fragment" data-settled-kind="content" data-settled-message="{{ total }} superevent{{ total|pluralize }} match">
+<div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="content" data-settled-message="Page {{ pagination_page }} of {{ total_pages }}, {{ shown_count }} superevent{{ shown_count|pluralize }} shown">
   {% include "bilbyui/_active_filters.html" with indicator_id=indicator_id %}
   <p class="result-count">{{ total }} superevent{{ total|pluralize }} match</p>
   <table class="gwflow-results-table">
@@ -31,13 +30,13 @@
   {% include "bilbyui/_pagination.html" with indicator_id=indicator_id %}
 </div>
 {% elif total %}
-<div class="list-fragment" data-settled-kind="empty" data-settled-message="This page has no GWFlow jobs. Choose another page below.">
+<div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="empty" data-settled-message="Page {{ pagination_page }} of {{ total_pages }}, no superevents shown">
   {% include "bilbyui/_active_filters.html" with indicator_id=indicator_id %}
   <p class="text-muted">This page has no GWFlow jobs. Choose another page below.</p>
   {% include "bilbyui/_pagination.html" with indicator_id=indicator_id %}
 </div>
 {% else %}
-<div class="list-fragment" data-settled-kind="empty" data-settled-message="No superevents yet. Try clearing your filters or resetting the search.">
+<div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="empty" data-settled-message="No superevents match your search.">
   {% include "bilbyui/_active_filters.html" with indicator_id=indicator_id %}
   {% include "bilbyui/_async_state.html" with state="empty" thing="superevents" empty_hint="Try clearing your filters or resetting the search." suppress_live=True %}
   <a
