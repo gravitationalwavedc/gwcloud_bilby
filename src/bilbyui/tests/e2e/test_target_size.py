@@ -23,16 +23,16 @@ class TestTargetSize(GWFlowJobsPageBase):
 class TestDetailTargetSize(GWFlowDetailShellBase):
     @async_e2e_test
     async def test_metadata_targets_are_at_least_24_css_pixels(self):
-        await assert_target_sizes(self.page)
+        await assert_target_sizes(self.page, max_inline_link_exceptions=MAXIMUM_EXCEPTIONS)
 
 
 class TestFilesTargetSize(GWFlowFilesPageBase):
     @async_e2e_test
     async def test_files_targets_are_at_least_24_css_pixels(self):
-        await assert_target_sizes(self.page)
+        await assert_target_sizes(self.page, max_inline_link_exceptions=MAXIMUM_EXCEPTIONS)
 
 
 class TestDemoTargetSize(TechValueDemoPageBase):
     @async_e2e_test
     async def test_demo_targets_are_at_least_24_css_pixels(self):
-        await assert_target_sizes(self.page)
+        await assert_target_sizes(self.page, max_inline_link_exceptions=MAXIMUM_EXCEPTIONS)

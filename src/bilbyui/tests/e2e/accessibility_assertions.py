@@ -198,12 +198,20 @@ CONTRAST_SWEEP_JS = r"""
         if (!visible(el) || el.disabled) continue;
         const s = getComputedStyle(el);
         if (el.matches("svg, svg *")) {
+            if (el.closest('[aria-hidden="true"]')) continue;
             if (s.fill !== "none") add(el, "icon-fill", s.fill, 3, "meaningful SVG fill");
             if (s.stroke !== "none") add(el, "icon-stroke", s.stroke, 3, "meaningful SVG stroke");
         } else {
-            const widths = [s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth];
-            if (widths.some(width => parseFloat(width) > 0)) {
-                add(el, "control-boundary", s.borderColor, 3, "control boundary");
+            const sides = [
+                ["top", s.borderTopWidth, s.borderTopColor],
+                ["right", s.borderRightWidth, s.borderRightColor],
+                ["bottom", s.borderBottomWidth, s.borderBottomColor],
+                ["left", s.borderLeftWidth, s.borderLeftColor],
+            ];
+            for (const [side, width, colour] of sides) {
+                if (parseFloat(width) > 0) {
+                    add(el, "control-boundary", colour, 3, `control boundary (${side})`);
+                }
             }
         }
     }

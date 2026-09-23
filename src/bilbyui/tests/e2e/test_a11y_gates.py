@@ -1,5 +1,7 @@
 """Axe accessibility gate for rendered page content regions."""
 
+import asyncio
+
 from bilbyui.tests.e2e.accessibility_assertions import assert_no_serious_axe_violations
 from bilbyui.tests.e2e.base import (
     GWFlowDetailShellBase,
@@ -75,3 +77,37 @@ class TestListErrorContentAxe(GWFlowJobsPageBase):
     async def test_error_content_has_no_blocking_axe_findings(self):
         await self.page.wait_for_selector(".async-error")
         await _assert_axe_gate(self, "#gwflow-job-list", "gwflow_list_search_filter_pagination", "error")
+
+
+class TestListLoadingContentAxe(GWFlowJobsPageBase):
+    """Scan the deterministic in-flight list state while its request is held.
+
+    The list controller reveals ``#gwflow-loading-indicator`` (removing its
+    ``hidden`` attribute) for the duration of an htmx request; holding the
+    request at the network layer lets the gate scan that exact rendered state.
+    """
+
+    @async_e2e_test
+    async def test_loading_content_has_no_blocking_axe_findings(self):
+        page = self.page
+        await page.wait_for_selector("#gwflow-job-list")
+        release = asyncio.Event()
+
+        async def hold(route):
+            await release.wait()
+            await route.continue_()
+
+        await page.route("**/gwflow/?*", hold, times=1)
+        await page.locator("#search").fill("S2306")
+        await page.wait_for_function("() => !document.getElementById('gwflow-loading-indicator').hidden")
+        try:
+            await _assert_axe_gate(
+                self,
+                "#gwflow-results-region",
+                "gwflow_list_search_filter_pagination",
+                "loading",
+            )
+        finally:
+            release.set()
+        await page.wait_for_function("() => document.getElementById('gwflow-loading-indicator').hidden === true")
+        await page.unroute_all(behavior="ignoreErrors")

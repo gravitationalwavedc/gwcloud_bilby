@@ -8,7 +8,8 @@ from playwright.async_api import expect
 
 from bilbyui.models import BilbyJob
 from bilbyui.services.api_tokens import create_token
-from bilbyui.tests.e2e.base import GWFlowDetailShellBase
+from bilbyui.tests.e2e.base import GWFlowListToDetailBase
+from bilbyui.tests.e2e.test_copy_clipboard_e2e import RESOLVED_FAKE
 from bilbyui.tests.e2e.utils import AsyncE2ETestCase, async_e2e_test
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
@@ -131,7 +132,7 @@ class TestKeyboardEditName(_KeyboardEditNameBase):
         await expect(self.page.locator("#job-name-error")).to_have_count(0)
 
 
-class TestKeyboardGwflowJourney(GWFlowDetailShellBase):
+class TestKeyboardGwflowJourney(GWFlowListToDetailBase):
     def _versions(self):
         return (
             [
@@ -153,18 +154,42 @@ class TestKeyboardGwflowJourney(GWFlowDetailShellBase):
 
     @async_e2e_test
     async def test_keyboard_gwflow_detail_journey(self):
-        history = self.page.locator('a[data-gwflow-section][href*="/history/"]')
+        page = self.page
+
+        # search -> detail: keyboard from the list search surface into a result
+        # row, then activate navigation into the detail shell.
+        search = page.locator("#search")
+        await search.focus()
+        await expect(search).to_be_focused()
+        await search.fill("S2306")
+        await expect(page.locator("#gwflow-job-list .result-count")).to_contain_text("5 superevents match")
+
+        result_reached = False
+        for _ in range(60):
+            await page.keyboard.press("Tab")
+            result_reached = await page.evaluate("() => !!document.activeElement.closest('.gwflow-view-btn')")
+            if result_reached:
+                break
+        self.assertTrue(result_reached, "Search result link was not keyboard-reachable")
+        view = page.locator(".gwflow-view-btn:focus")
+        await expect(view).to_be_focused()
+        await view.press("Enter")
+        await page.wait_for_url("**/gwflow/S230601ag/metadata/")
+        await expect(page.locator(".detail-shell")).to_be_visible()
+
+        # detail -> history -> version select -> compare
+        history = page.locator('a[data-gwflow-section][href*="/history/"]')
         await history.focus()
         await expect(history).to_be_focused()
         await history.press("Enter")
 
-        region = self.page.locator("#gwflow-history-region")
+        region = page.locator("#gwflow-history-region")
         await expect(region).to_be_visible()
 
         version_reached = False
         for _ in range(80):
-            await self.page.keyboard.press("Tab")
-            version_reached = await self.page.evaluate("() => !!document.activeElement.closest('[data-version-link]')")
+            await page.keyboard.press("Tab")
+            version_reached = await page.evaluate("() => !!document.activeElement.closest('[data-version-link]')")
             if version_reached:
                 break
         self.assertTrue(version_reached, "History loaded but version link was not keyboard-reachable")
@@ -173,7 +198,7 @@ class TestKeyboardGwflowJourney(GWFlowDetailShellBase):
         await version.press("Enter")
         await expect(region.locator("#gwflow-history-version")).to_be_visible()
 
-        region = self.page.locator("#gwflow-history-region")
+        region = page.locator("#gwflow-history-region")
         await expect(region).to_be_visible()
         await expect(region.locator("#gwflow-history-version")).to_be_visible()
 
@@ -181,7 +206,7 @@ class TestKeyboardGwflowJourney(GWFlowDetailShellBase):
         await expect(compare).to_be_attached()
         await expect(compare).to_be_enabled()
 
-        await self.page.wait_for_load_state("networkidle", timeout=5000)
+        await page.wait_for_load_state("networkidle", timeout=5000)
 
         # Re-anchor on a known focusable element inside the history region, then
         # reach the compare control with Tab so keyboard reachability is proven.
@@ -191,8 +216,8 @@ class TestKeyboardGwflowJourney(GWFlowDetailShellBase):
 
         compare_reached = False
         for _ in range(80):
-            await self.page.keyboard.press("Tab")
-            compare_reached = await self.page.evaluate(
+            await page.keyboard.press("Tab")
+            compare_reached = await page.evaluate(
                 """() => document.activeElement
                 && document.activeElement.matches(
                     'input[name="compare"][value="prev"]'
@@ -210,15 +235,26 @@ class TestKeyboardGwflowJourney(GWFlowDetailShellBase):
             "none",
         )
 
-        files = self.page.locator('a[data-gwflow-section][href*="/files/"]')
+        # download: the files region always renders the uploaded fixture's
+        # download link, so this leg is unconditional.
+        files = page.locator('a[data-gwflow-section][href*="/files/"]')
         await files.focus()
         await expect(files).to_be_focused()
         await files.press("Enter")
-        await expect(self.page.locator("#detail-pane")).to_be_visible()
+        await expect(page.locator("#detail-pane")).to_be_visible()
 
-        download = self.page.locator('a[href*="/download/"]').first
-        if await download.count():
-            await download.focus()
-            await expect(download).to_be_focused()
-            await expect(download).to_have_attribute("target", "_blank")
-            self.assertIn("/download/", await download.get_attribute("href"))
+        download = page.locator("#detail-pane a[href*='/download/']").first
+        await expect(download).to_be_visible()
+        await download.focus()
+        await expect(download).to_be_focused()
+        await expect(download).to_have_attribute("target", "_blank")
+        self.assertIn("/download/", await download.get_attribute("href"))
+
+        # copy: keyboard-activate the persistent header copy control and assert
+        # the status region receives feedback (clipboard fake installed first).
+        await page.evaluate(RESOLVED_FAKE)
+        copy = page.locator(".context-identity .tech-value-copy").first
+        await copy.focus()
+        await expect(copy).to_be_focused()
+        await copy.press("Enter")
+        await expect(page.locator(".context-identity .tech-value-status").first).to_have_text("Copied")

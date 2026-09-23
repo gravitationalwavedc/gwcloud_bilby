@@ -313,3 +313,60 @@ class GWFlowDetailShellBase(AsyncE2ETestCase):
 
     def metadata_url(self) -> str:
         return f"{self.live_server_url}{reverse('bilbyui:gwflow_job_metadata', args=[self.sname])}"
+
+
+class GWFlowListToDetailBase(GWFlowJobsPageBase):
+    """
+    A logged-in browser page open on the GWFlow list with BOTH list and detail
+    services patched, so a keyboard journey can start on the search surface and
+    navigate into a deterministic detail shell.
+
+    The list services come from :class:`GWFlowJobsPageBase`; this base adds the
+    detail services (``get_superevent`` / ``get_versions``). The fixture job is
+    ``ligo_only=False`` because the shared e2e user is not a LIGO user: the list
+    requires no membership, and the detail visibility check must not 404.
+    """
+
+    sname = "S230601ag"
+
+    def _metadata_payload(self):
+        return ({"sname": self.sname}, "live")
+
+    def _versions(self):
+        return (
+            [
+                {
+                    "commit_sha": "1111222233334444555566667777888899990000",
+                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "schema_version": "3",
+                    "is_current": True,
+                }
+            ],
+            "live",
+        )
+
+    async def asetUp(self):
+        await super().asetUp()
+        detail_patchers = (
+            mock.patch("bilbyui.views.get_superevent", side_effect=lambda sname: self._metadata_payload()),
+            mock.patch("bilbyui.views.get_versions", side_effect=lambda sname: self._versions()),
+        )
+        self._patchers = self._patchers + detail_patchers
+        for patcher in detail_patchers:
+            patcher.start()
+
+    def _create_fixtures(self):
+        job = GWFlowJob.objects.create(
+            sname=self.sname,
+            user=self.user,
+            libraries=["lib1"],
+            ligo_only=False,
+        )
+        GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="analysis-1",
+            path="outdir/a.h5",
+            file_name="a.h5",
+            file_size=1024,
+            uploaded=True,
+        )

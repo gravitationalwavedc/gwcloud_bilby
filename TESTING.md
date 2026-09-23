@@ -99,6 +99,18 @@ region by region.
 - Axe scope: scans run against the page content region, not app chrome;
   shell-wide contrast fixes are tracked outside this suite.
 
+### Representative coverage and dispositions
+
+Accessibility coverage is deliberately representative, not exhaustive: each
+gate (`axe`, `overflow`, `contrast`, `keyboard`, `target_size`,
+`reduced_motion`) exercises one deterministic reachable state per route. The
+sidecar in `src/bilbyui/tests/e2e/accessibility_cases.py` records a disposition
+for every interaction contract and gate, using `covered`, `journey_only`,
+`not_applicable:<reason>`, or `deferred:<reason>`. Reasoned dispositions must
+carry a specific reason; `deferred` contracts stay visible as known gaps rather
+than being silently dropped. The issue's `tests/playwright/` path maps to this
+repository's `tests/e2e/` convention.
+
 ## Technical-value component
 
 The `_tech_value.html` primitive (issue #49) is covered by render, keyboard,
