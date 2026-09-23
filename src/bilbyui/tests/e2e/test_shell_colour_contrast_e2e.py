@@ -215,25 +215,54 @@ class TestNavLinkActiveContrastGWFlowPage(GWFlowJobsPageBase):
 class TestLinkContrastGWFlowPage(GWFlowJobsPageBase):
     @async_e2e_test
     async def test_filter_reset_and_pagination_link_contrast(self):
-        selectors = (
-            ".filter-reset",
-            ".page-link",
-            '.page-item.active .page-link[aria-current="page"]',
-        )
+        pagination_widths_checked = []
         for width in VIEWPORT_WIDTHS:
             await self.page.set_viewport_size({"width": width, "height": 900})
             await self.page.goto(f"{self.gwflow_url()}?library=lib1")
-            for selector in selectors:
-                try:
-                    await self.page.wait_for_selector(selector, timeout=5000)
-                except PlaywrightTimeoutError:
-                    region_html = await self.page.locator("main").inner_html()
-                    self.fail(
-                        f"Expected '{selector}' after applying library=lib1 at "
-                        f"{width}px. Main-region HTML:\n{region_html}"
-                    )
-                result = await _contrast(self.page, selector)
-                _assert_contrast(self, result, selector, width)
+
+            selector = ".filter-reset"
+            try:
+                await self.page.wait_for_selector(selector, timeout=5000)
+            except PlaywrightTimeoutError:
+                region_html = await self.page.locator("main").inner_html()
+                self.fail(
+                    f"Expected '{selector}' after applying library=lib1 at {width}px. Main-region HTML:\n{region_html}"
+                )
+            result = await _contrast(self.page, selector)
+            _assert_contrast(self, result, selector, width)
+
+            visible_pagination_selectors = await self.page.evaluate(
+                """() => Array.from(document.querySelectorAll("main .page-link"))
+                    .filter((el) => {
+                        const style = getComputedStyle(el);
+                        const rect = el.getBoundingClientRect();
+                        return style.display !== "none"
+                            && style.visibility !== "hidden"
+                            && rect.width > 0
+                            && rect.height > 0;
+                    })
+                    .map((el, index) => {
+                        const marker = `contrast-visible-${index}`;
+                        el.setAttribute("data-contrast-marker", marker);
+                        return `main .page-link[data-contrast-marker="${marker}"]`;
+                    })"""
+            )
+
+            if visible_pagination_selectors:
+                pagination_widths_checked.append(width)
+            for pagination_selector in visible_pagination_selectors:
+                result = await _contrast(self.page, pagination_selector)
+                _assert_contrast(
+                    self,
+                    result,
+                    pagination_selector,
+                    width,
+                )
+
+        self.assertTrue(
+            pagination_widths_checked,
+            "Expected visible pagination controls at one or more viewports",
+        )
 
 
 class TestFullPageAxeScanDemoPage(TechValueDemoPageBase):

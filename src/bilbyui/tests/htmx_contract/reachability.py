@@ -38,6 +38,50 @@ CONTRACTS = {
             "src/bilbyui/views.py:1483-1537",
         ],
     },
+    "my_jobs_list_search_filter_pagination": {
+        "family": "My Jobs list/search/filter/pagination",
+        "method": "GET",
+        "url_name": "bilbyui:my_jobs",
+        "target": "#job-list",
+        "swap": "innerHTML",
+        "states": {
+            "idle": REACHABLE,
+            "loading": REACHABLE,
+            "content": REACHABLE,
+            "empty": REACHABLE,
+            "stale": not_applicable("My Jobs list has no stale server response semantic"),
+            "error": REACHABLE,
+            "retry": REACHABLE,
+        },
+        "evidence": [
+            "src/bilbyui/templates/bilbyui/my_jobs.html",
+            "src/bilbyui/templates/bilbyui/_job_list_fragment.html",
+            "src/bilbyui/templates/bilbyui/_pagination.html",
+            "src/bilbyui/views.py:_render_job_list",
+        ],
+    },
+    "public_jobs_list_search_filter_pagination": {
+        "family": "Public Jobs list/search/filter/pagination",
+        "method": "GET",
+        "url_name": "bilbyui:public_jobs",
+        "target": "#job-list",
+        "swap": "innerHTML",
+        "states": {
+            "idle": REACHABLE,
+            "loading": REACHABLE,
+            "content": REACHABLE,
+            "empty": REACHABLE,
+            "stale": not_applicable("Public Jobs list has no stale server response semantic"),
+            "error": REACHABLE,
+            "retry": REACHABLE,
+        },
+        "evidence": [
+            "src/bilbyui/templates/bilbyui/public_jobs.html",
+            "src/bilbyui/templates/bilbyui/_job_list_fragment.html",
+            "src/bilbyui/templates/bilbyui/_pagination.html",
+            "src/bilbyui/views.py:_render_job_list",
+        ],
+    },
     # gwflow_detail.html:30-73 defines navigation, target, swap and skeleton.
     # views.py:1547-1555 returns an HTMX section fragment.
     "gwflow_detail_metadata": {

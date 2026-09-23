@@ -95,7 +95,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "<!doctype html>")
         self.assertContains(response, "S230601ag")
-        self.assertContains(response, "<title>GWFlow — GWCloud</title>")
+        self.assertContains(response, 'data-document-title="GWFlow — GWCloud"')
         self.assertNotContains(response, "<h1")
 
     def test_search_help_renders(self):
@@ -116,7 +116,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'aria-label="Pagination"')
+        self.assertContains(response, 'aria-label="GWFlow jobs pagination"')
         self.assertContains(response, 'rel="next"')
         self.assertContains(response, f'href="{reverse("bilbyui:gwflow_jobs")}?page=2')
 
@@ -129,7 +129,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
             response = self.client.get(self.url, {"search": "S2306* & co"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'aria-label="Pagination"')
+        self.assertContains(response, 'aria-label="GWFlow jobs pagination"')
         self.assertContains(response, "search=S2306%2A%20%26%20co")
         self.assertNotContains(response, "search=S2306* & co")
 
@@ -811,7 +811,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
             response = self.client.get(self.url, {"page": 2}, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "<title>GWFlow — page 2 — GWCloud</title>")
+        self.assertContains(response, 'data-document-title="GWFlow — page 2 — GWCloud"')
 
     def test_fragment_title_omits_page_number_on_first_page(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user)
@@ -819,7 +819,7 @@ class TestGWFlowJobsListFiltersAndPagination(BilbyTestCase):
             response = self.client.get(self.url, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "<title>GWFlow — GWCloud</title>")
+        self.assertContains(response, 'data-document-title="GWFlow — GWCloud"')
         self.assertNotContains(response, "<title>GWFlow — page 1 — GWCloud</title>")
 
     def test_full_page_title_includes_page_number_when_greater_than_one(self):

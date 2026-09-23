@@ -113,29 +113,73 @@
 }
 
 // ---------------------------------------------------------------------------
-// Numbered pagination (_pagination.html)
+// Results heading and responsive pagination
 // ---------------------------------------------------------------------------
-.pagination-wrap {
-    margin-top: $spacer;
-}
+// Stable focus destination for settled and restored list navigation.
+.list-results-heading {
+    margin-top: 0;
+    margin-bottom: $spacer;
+    scroll-margin-top: calc(var(--navbar-h, 0px) + #{$spacer});
 
-.pagination {
-    margin-bottom: 0;
-}
-
-.page-link {
-    // Bootstrap 4.6 removes the outline and relies on a box-shadow; keep that
-    // ring and add a high-contrast outline so keyboard focus is unmistakable
-    // (WCAG 2.4.7).
-    &:focus {
+    &:focus,
+    &:focus-visible {
         outline: 2px solid $blue-500;
         outline-offset: 2px;
     }
 }
 
+.pagination-wrap {
+    margin-top: $spacer;
+}
+
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: $spacer * 0.25;
+    padding-left: 0;
+    margin-bottom: 0;
+    list-style: none;
+}
+
+.page-item {
+    margin: 0;
+}
+
+.page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+
+    // Bootstrap 4.6 removes the outline and relies on a box-shadow; keep that
+    // ring and add a high-contrast outline so keyboard focus is unmistakable.
+    &:focus,
+    &:focus-visible {
+        z-index: 2;
+        outline: 2px solid $blue-500;
+        outline-offset: 2px;
+    }
+}
+
+.pagination__context {
+    display: none;
+}
+
+@include media-breakpoint-down(sm) {
+    .pagination__number {
+        display: none;
+    }
+
+    .pagination__context {
+        display: list-item;
+    }
+}
+
 // The active page carries both .active and aria-current="page"; Bootstrap
 // colors it with the brand primary. Keep the default but guarantee the current
-// page link is visually distinct from its neighbours.
+// page target is visually distinct from its neighbours.
 .page-item.active .page-link {
     font-weight: $font-weight-bold;
 }

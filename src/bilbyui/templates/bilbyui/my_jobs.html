@@ -30,10 +30,10 @@
             data-list-heading="my-jobs-results-heading"
             data-list-status="my-jobs-results-status"
           >
-            <h2 id="my-jobs-results-heading" class="sr-only list-results-heading">My Jobs results</h2>
+            <h2 id="my-jobs-results-heading" class="list-results-heading" tabindex="-1">My Jobs results</h2>
             {% include "bilbyui/_list_loading_indicator.html" with indicator_id="my-jobs-loading-indicator" indicator_text="Updating results…" %}
             <p id="my-jobs-results-status" class="list-results-status" role="status" aria-live="polite" aria-atomic="true"></p>
-            <div id="job-list" class="mt-4">
+            <div id="job-list" class="mt-4" hx-history-elt="true">
               {% include "bilbyui/_job_list_fragment.html" %}
             </div>
           </div>

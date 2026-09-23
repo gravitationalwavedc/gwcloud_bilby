@@ -147,7 +147,7 @@ class TestPublicJobsView(BilbyTestCase):
         self.assertContains(response, "Job 24")
         self.assertContains(response, "Job 5")
         self.assertNotContains(response, "Job 4")
-        self.assertContains(response, 'aria-label="Pagination"')
+        self.assertContains(response, 'aria-label="Public Jobs pagination"')
         self.assertContains(response, "page=2")
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
@@ -186,7 +186,7 @@ class TestPublicJobsView(BilbyTestCase):
         response = self.client.get(self.url, {"page": 2}, HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "<title>Public Jobs — page 2 — GWCloud</title>")
+        self.assertContains(response, 'data-document-title="Public Jobs — page 2 — GWCloud"')
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", return_value=("UNKNOWN", "Error getting job filter"))
@@ -408,7 +408,7 @@ class TestPublicJobsView(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "<!doctype html>", status_code=200)
         self.assertContains(response, "Fragment job")
-        self.assertContains(response, "<title>Public Jobs — GWCloud</title>")
+        self.assertContains(response, 'data-document-title="Public Jobs — GWCloud"')
         self.assertNotContains(response, "<h1")
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)

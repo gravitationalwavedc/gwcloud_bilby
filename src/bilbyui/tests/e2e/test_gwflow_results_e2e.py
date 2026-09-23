@@ -288,7 +288,7 @@ class TestGWFlowLoadingTransition(GWFlowResultsPageBase):
             1,
             "there must be exactly one polite results status node",
         )
-        self.assertEqual(await status.text_content(), "2 superevents match")
+        self.assertEqual(await status.text_content(), "Page 1 of 1, 2 superevents shown")
 
 
 class TestGWFlowReset(GWFlowResultsPageBase):
