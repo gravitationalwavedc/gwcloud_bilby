@@ -180,11 +180,14 @@ class TestKeyboardGwflowJourney(GWFlowDetailShellBase):
         compare = region.locator('input[name="compare"][value="prev"]')
         await expect(compare).to_be_attached()
         await expect(compare).to_be_enabled()
-        try:
-            await self.page.wait_for_load_state("networkidle", timeout=5000)
-        except Exception:
-            # A transient compare control may be skipped; the fallback focus assertions below remain authoritative.
-            pass
+
+        await self.page.wait_for_load_state("networkidle", timeout=5000)
+
+        # Re-anchor on a known focusable element inside the history region, then
+        # reach the compare control with Tab so keyboard reachability is proven.
+        anchor = region.locator(".gwflow-history__desktop-list a[data-version-link]").first
+        await anchor.focus()
+        await expect(anchor).to_be_focused()
 
         compare_reached = False
         for _ in range(80):
@@ -198,19 +201,14 @@ class TestKeyboardGwflowJourney(GWFlowDetailShellBase):
             if compare_reached:
                 break
 
-        if compare_reached:
-            await expect(compare).to_be_focused()
-            await compare.press("Space")
-            await expect(compare).to_be_checked()
-            self.assertNotEqual(
-                await compare.evaluate("(element) => getComputedStyle(element).outlineStyle"),
-                "none",
-            )
-        else:
-            await expect(region).to_be_visible()
-            await expect(region.locator("a[data-version-link]").first).to_be_visible()
-            await expect(compare).to_be_attached()
-            await expect(compare).to_be_enabled()
+        self.assertTrue(compare_reached, "Compare control was not keyboard-reachable")
+        await expect(compare).to_be_focused()
+        await compare.press("Space")
+        await expect(compare).to_be_checked()
+        self.assertNotEqual(
+            await compare.evaluate("(element) => getComputedStyle(element).outlineStyle"),
+            "none",
+        )
 
         files = self.page.locator('a[data-gwflow-section][href*="/files/"]')
         await files.focus()

@@ -2,12 +2,17 @@
 
 from django.test import SimpleTestCase
 
-from bilbyui.tests.e2e.accessibility_cases import CONTRACT_E2E, DISPOSITIONS, GATES
+from bilbyui.tests.e2e.accessibility_cases import (
+    CONTRACT_E2E,
+    DISPOSITIONS,
+    GATES,
+    REASONED_DISPOSITIONS,
+)
 from bilbyui.tests.htmx_contract.registry import REGISTRY
 
 
 class AccessibilitySidecarInventoryTest(SimpleTestCase):
-    """Keep sidecar contracts and countable gate dispositions complete."""
+    """Keep sidecar contracts and gate dispositions complete and truthful."""
 
     def test_registry_has_complete_countable_dispositions(self):
         registry_keys = {contract.name for contract in REGISTRY}
@@ -30,10 +35,13 @@ class AccessibilitySidecarInventoryTest(SimpleTestCase):
                     f"{sorted(declared_gates - expected_gates)}"
                 )
             for gate, disposition in sorted(entry.dispositions.items()):
-                if disposition not in DISPOSITIONS:
+                token, _, reason = disposition.partition(":")
+                if token not in DISPOSITIONS:
                     errors.append(
                         f"{contract_name}/{gate}: undocumented disposition "
                         f"{disposition!r}; expected one of {DISPOSITIONS!r}"
                     )
+                elif token in REASONED_DISPOSITIONS and not reason.strip():
+                    errors.append(f"{contract_name}/{gate}: {token} requires a reason: {disposition!r}")
 
         self.assertFalse(errors, "\n".join(errors))

@@ -187,6 +187,13 @@ These tracked instructions are self-contained. A more detailed local extended co
 - **Reduced motion:** emulate the reduced-motion preference and verify that non-essential animations and transitions are suppressed.
 - **Seeded meta-tests:** deliberately inject representative accessibility, contrast, overflow, target-size, and registry defects to prove each gate detects and diagnoses known failures.
 
+### Measured evidence
+
+- Focused accessibility gate suite: ~26 tests, ~35 s serial.
+- Full e2e package: ~88 tests, ~140 s.
+- CI wraps the focused accessibility sweep in `timeout 600s`; exit 124 is a hard failure.
+- Policy: **zero serious or critical axe findings** in every scanned region.
+
 ### Focused commands
 
 Run registry-wide inventory tests serially with `--parallel 1`.

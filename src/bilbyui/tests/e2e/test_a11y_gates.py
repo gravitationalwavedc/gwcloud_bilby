@@ -1,31 +1,15 @@
 """Axe accessibility gate for rendered page content regions."""
 
+from bilbyui.tests.e2e.accessibility_assertions import assert_no_serious_axe_violations
 from bilbyui.tests.e2e.base import (
     GWFlowDetailShellBase,
     GWFlowFilesPageBase,
     GWFlowJobsPageBase,
     TechValueDemoPageBase,
 )
-from bilbyui.tests.e2e.utils import async_e2e_test, load_axe, run_axe
+from bilbyui.tests.e2e.utils import async_e2e_test, load_axe
 
 CONTENT_SCOPE = "main"
-BLOCKING_IMPACTS = {"serious", "critical"}
-
-
-def _format_findings(violations, contract, state, scope):
-    """Return blocking findings and actionable diagnostics."""
-    blocking = [violation for violation in violations if violation.get("impact") in BLOCKING_IMPACTS]
-    lines = []
-    for violation in blocking:
-        for node in violation.get("nodes", []):
-            target = " > ".join(str(part) for part in node.get("target", []))
-            html = " ".join(node.get("html", "").split())[:240]
-            lines.append(
-                f"rule={violation.get('id')} impact={violation.get('impact')} "
-                f"selector={target!r} html={html!r} contract={contract!r} "
-                f"state={state!r} scope={scope!r}"
-            )
-    return blocking, "\n".join(lines)
 
 
 class TestContentAxe(GWFlowJobsPageBase):
@@ -37,25 +21,21 @@ class TestContentAxe(GWFlowJobsPageBase):
         state = "initial"
         await self.page.wait_for_selector(CONTENT_SCOPE, state="visible")
         await load_axe(self.page)
-        violations = await run_axe(self.page, CONTENT_SCOPE)
-        blocking, diagnostics = _format_findings(
-            violations,
-            contract,
-            state,
+        await assert_no_serious_axe_violations(
+            self.page,
             CONTENT_SCOPE,
-        )
-        self.assertEqual(
-            [],
-            blocking,
-            "Serious/critical content-region axe findings:\n" + diagnostics,
+            context=f"contract={contract!r} state={state!r} scope={CONTENT_SCOPE!r}",
         )
 
 
 async def _assert_axe_gate(case, scope, contract, state="initial"):
     await case.page.wait_for_selector(scope, state="visible")
     await load_axe(case.page)
-    blocking, diagnostics = _format_findings(await run_axe(case.page, scope), contract, state, scope)
-    case.assertEqual([], blocking, "Serious/critical content-region axe findings:\n" + diagnostics)
+    await assert_no_serious_axe_violations(
+        case.page,
+        scope,
+        context=f"contract={contract!r} state={state!r} scope={scope!r}",
+    )
 
 
 class TestDetailContentAxe(GWFlowDetailShellBase):

@@ -2,11 +2,11 @@
 
 from .accessibility_assertions import (
     assert_active_element,
-    assert_minimum_target_size,
+    assert_no_contrast_failures,
     assert_no_horizontal_overflow,
     assert_no_infinite_animation,
     assert_no_serious_axe_violations,
-    assert_text_contrast,
+    assert_target_sizes,
 )
 from .utils import AsyncE2ETestCase, async_e2e_test, load_axe
 
@@ -70,13 +70,13 @@ class AccessibilityDetectorMetaTests(AsyncE2ETestCase):
                     </style></head><body>
                     <p id="subject">Readable text</p></body></html>
                 """,
-                "assertion": lambda: assert_text_contrast(self.page, "#subject"),
+                "assertion": lambda: assert_no_contrast_failures(self.page, "#subject"),
                 "seed": """
                     const subject = document.querySelector('#subject');
                     subject.style.color = 'rgb(119,119,119)';
                     subject.style.backgroundColor = 'rgb(136,136,136)';
                 """,
-                "expected": "low-contrast text pair",
+                "expected": "computed contrast failures",
             },
             {
                 "name": "target below 24px",
@@ -88,11 +88,11 @@ class AccessibilityDetectorMetaTests(AsyncE2ETestCase):
                     <button id="subject" aria-label="Action"></button>
                     </body></html>
                 """,
-                "assertion": lambda: assert_minimum_target_size(self.page, "#subject"),
+                "assertion": lambda: assert_target_sizes(self.page, scope_selector="body", selector="#subject"),
                 "seed": """
                     document.querySelector('#subject').style.width = '20px';
                 """,
-                "expected": "target below 24px",
+                "expected": "undersized interactive targets",
             },
             {
                 "name": "post-swap focus loss",
@@ -128,7 +128,7 @@ class AccessibilityDetectorMetaTests(AsyncE2ETestCase):
                     document.querySelector('#subject').style.animation =
                         'spin 1s linear infinite';
                 """,
-                "expected": "infinite animation under reduced motion",
+                "expected": "infinite animations remain in reduced-motion mode",
                 "reduced_motion": True,
             },
         )
