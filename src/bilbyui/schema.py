@@ -80,6 +80,9 @@ def _parse_after_cursor(kwargs):
     if after is not None:
         try:
             after = int(from_global_id(after)[1])
+            # A negative numeric id should fall back to the first page instead of
+            # producing a negative offset that Elasticsearch rejects.
+            after = max(0, after)
             # A huge positive id should be capped so the padding list in
             # _pad_result_for_cursor stays bounded.
             after = min(after, MAX_CURSOR_OFFSET)

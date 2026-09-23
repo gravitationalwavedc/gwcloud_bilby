@@ -33,6 +33,12 @@ class TestParseAfterCursor(BilbyTestCase):
         self.assertEqual(kwargs["after"], MAX_CURSOR_OFFSET)
         self.assertEqual(len(_pad_result_for_cursor(kwargs["after"], ["a", "b"])), MAX_CURSOR_OFFSET + 3)
 
+    def test_negative_offset_normalises_to_zero(self):
+        kwargs = {"after": to_global_id("BilbyJobNode", -5)}
+        _parse_after_cursor(kwargs)
+        self.assertEqual(kwargs["after"], 0)
+        self.assertEqual(_pad_result_for_cursor(kwargs["after"], ["a", "b"]), [None, "a", "b"])
+
     def test_malformed_cursor_falls_back_to_none(self):
         kwargs = {"after": "not-a-valid-cursor"}
         _parse_after_cursor(kwargs)
