@@ -744,6 +744,36 @@ class TestSlurmStatusDirect(TestCase):
     @patch("_bundledb.delete_job")
     @patch("scheduler.slurm.SlurmScheduler.status")
     @patch.object(settings, "scheduler", EScheduler.SLURM)
+    def test_slurm_status_skips_malformed_line(self, status_mock, delete_job_mock):
+        with TemporaryDirectory() as tmpdir:
+            os.mkdir(os.path.join(tmpdir, "submit"))
+
+            with open(os.path.join(tmpdir, "submit", "slurm_ids"), "w") as f:
+                f.writelines(["12345\n", "jid0 99999\n"])
+                f.flush()
+
+            from core.status import slurm_status
+
+            status_mock.side_effect = Mock(return_value=(JobStatus.QUEUED, JobStatus.display_name(JobStatus.QUEUED)))
+
+            result = slurm_status({"working_directory": str(tmpdir), "submit_directory": "submit"})
+
+            # A malformed line is skipped with a warning rather than crashing the poll;
+            # only the well-formed line is recorded.
+            self.assertEqual(
+                result["status"],
+                [
+                    {"status": 500, "what": "submit", "info": "Completed"},
+                    {"status": 40, "what": "jid0", "info": "Queued"},
+                ],
+            )
+            self.assertEqual(result["complete"], False)
+            self.assertEqual(delete_job_mock.call_count, 0)
+            self.assertEqual(status_mock.call_count, 1)
+
+    @patch("_bundledb.delete_job")
+    @patch("scheduler.slurm.SlurmScheduler.status")
+    @patch.object(settings, "scheduler", EScheduler.SLURM)
     def test_slurm_status_completed(self, status_mock, delete_job_mock):
         with TemporaryDirectory() as tmpdir:
             os.mkdir(os.path.join(tmpdir, "submit"))
