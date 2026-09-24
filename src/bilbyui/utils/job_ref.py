@@ -16,7 +16,7 @@ def parse_job_ref(job_ref):
     :return: A tuple of (job_id, is_relay_id) where job_id is the integer job id and
         is_relay_id is True when job_ref was a Relay global id
     """
-    if job_ref.isdigit():
+    if job_ref.isdecimal():
         return int(job_ref), False
 
     try:
