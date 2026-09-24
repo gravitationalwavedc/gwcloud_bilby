@@ -601,6 +601,27 @@ Parent test-real_data0_12345678-0_analysis_H1_arg_0 Child test-real_data0_123456
 
     @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
     @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
+    def test_run_data_generation_bare_output_flag(self, *args, **kwargs):
+        # A data generation command with a bare --output token (no =) should not set
+        # output_file and therefore should not write a spurious output file
+        with TemporaryDirectory() as td:
+            script = os.path.join(td, "data_gen.sh")
+            with open(script, "w") as f:
+                f.write("#!/bin/bash\necho test\n")
+
+            popen_command = f"/bin/bash {script}"
+            self.popen.set_command(popen_command, stdout=b"stdout test", stderr=b"stderr test")
+
+            from core.submit import run_data_generation
+
+            run_data_generation("sbatch --output ./data_gen.sh", td)
+
+            # No output file should have been written
+            self.assertFalse(os.path.exists(os.path.join(td, "--output")))
+            self.assertFalse(os.path.exists(os.path.join(td, "data_gen.sh.out")))
+
+    @patch("core.submit.create_or_update_job", side_effect=update_job_mock)
+    @patch("core.submit.working_directory", side_effect=working_directory_mock_fn)
     def test_run_data_generation_with_output_flags(self, *args, **kwargs):
         # A data generation command with --output= and --error= flags should write the
         # captured stdout and stderr to the corresponding output files
