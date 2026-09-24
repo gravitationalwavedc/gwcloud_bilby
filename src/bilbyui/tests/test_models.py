@@ -500,6 +500,10 @@ class TestFileDownloadToken(BilbyTestCase):
         # No records should exist in the database anymore
         self.assertFalse(FileDownloadToken.objects.exists())
 
+    def test_get_by_token_malformed(self):
+        # Test that get_by_token returns None for a malformed (non-UUID) token rather than raising
+        self.assertIsNone(FileDownloadToken.get_by_token("not-a-uuid"))
+
 
 class TestBilbyJobUploadToken(BilbyTestCase):
     def setUp(self):
