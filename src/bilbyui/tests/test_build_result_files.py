@@ -6,7 +6,7 @@ from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, ExternalBilbyJob, FileDownloadToken
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.views import _build_result_file_entries, _build_result_files
+from bilbyui.views import _build_result_file_entries, _build_result_files, _safe_external_url
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
@@ -169,3 +169,30 @@ class TestBuildResultFiles(BilbyTestCase):
         )
 
         self.assertEqual(_build_result_file_entries(job), [])
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class TestSafeExternalUrl(BilbyTestCase):
+    def test_plain_http_url_is_returned_unchanged(self):
+        self.assertEqual(_safe_external_url("http://example.com/results.tar.gz"), "http://example.com/results.tar.gz")
+
+    def test_plain_https_url_is_returned_unchanged(self):
+        self.assertEqual(_safe_external_url("https://example.com/results.tar.gz"), "https://example.com/results.tar.gz")
+
+    def test_javascript_scheme_is_sanitised(self):
+        self.assertEqual(_safe_external_url("javascript:alert(1)"), "")
+
+    def test_data_scheme_is_sanitised(self):
+        self.assertEqual(_safe_external_url("data:text/html,<script>alert(1)</script>"), "")
+
+    def test_ftp_scheme_is_sanitised(self):
+        self.assertEqual(_safe_external_url("ftp://example.com/results.tar.gz"), "")
+
+    def test_protocol_relative_url_is_sanitised(self):
+        self.assertEqual(_safe_external_url("//example.com/results.tar.gz"), "")
+
+    def test_empty_value_is_sanitised(self):
+        self.assertEqual(_safe_external_url(""), "")
+
+    def test_none_value_is_sanitised(self):
+        self.assertEqual(_safe_external_url(None), "")
