@@ -132,6 +132,31 @@ class GwflowFormatterTests(SimpleTestCase):
         self.assertEqual(scientific(-2.5e-4, "s"), "-2.5×10⁻⁴ s")
         self.assertEqual(scientific(0, "Hz"), "0 Hz")
 
+    def test_scientific_renders_mapping_value_and_unit(self):
+        self.assertEqual(
+            scientific({"value": 1.2e-8, "unit": "Hz"}),
+            "1.2×10⁻⁸ Hz",
+        )
+        self.assertEqual(
+            scientific({"value": 35.2, "unit": "M_sun"}),
+            "3.52×10¹ M_sun",
+        )
+
+    def test_scientific_mapping_without_unit_keeps_default_unit(self):
+        self.assertEqual(
+            scientific({"value": 1.2e-8}, "Hz"),
+            "1.2×10⁻⁸ Hz",
+        )
+
+    def test_scientific_non_finite_value_falls_back_to_text(self):
+        self.assertEqual(scientific(float("nan")), "nan")
+
+    def test_scientific_non_numeric_value_falls_back_to_text_with_unit(self):
+        self.assertEqual(
+            scientific("not-a-number", "Hz"),
+            "not-a-number Hz",
+        )
+
     def test_list_short_long_empty_and_all_items_accessible(self):
         self.assertEqual(list_value(["H1", "L1"]), "H1, L1")
         self.assertEqual(
