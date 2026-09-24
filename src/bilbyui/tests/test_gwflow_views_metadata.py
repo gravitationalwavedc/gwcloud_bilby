@@ -97,3 +97,4 @@ class TestRenderGWFlowMetadataSection(BilbyTestCase):
         rendered = response.render()
         self.assertEqual(rendered.status_code, 200)
         self.assertNotContains(rendered, "async-error")
+        self.assertContains(rendered, "No metadata available.")
