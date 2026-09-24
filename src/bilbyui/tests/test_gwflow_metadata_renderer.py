@@ -163,6 +163,23 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         self.assertIn("&lt;script&gt;", output)
         self.assertIn("&lt;b&gt;bold&lt;/b&gt;", output)
 
+    def test_scalar_list_disclosure_renders_items_and_empty_marker(self):
+        output = self.render(
+            {
+                "info": {
+                    "tags": ["a", "b"],
+                }
+            }
+        )
+
+        self.assertIn(">a</dd>", output)
+        self.assertIn(">b</dd>", output)
+
+        # An empty scalar list needs a sibling disclosure leaf to render the
+        # disclosure section at all; the empty-list branch then shows the marker.
+        empty = self.render({"info": {"tags": [], "note": "x"}})
+        self.assertIn("Empty list", empty)
+
     def test_comparative_sets_render_accessible_real_tables(self):
         output = self.render(
             {
