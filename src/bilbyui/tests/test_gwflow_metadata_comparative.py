@@ -263,3 +263,16 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
         pe = sections["pe"]
         self.assertEqual(len(pe.comparative_sets), 1)
         self.assertEqual(pe.comparative_sets[0].rows, ())
+
+    def test_non_dict_section_value_is_preserved_as_scalar_disclosure(self):
+        presentation = build_metadata_presentation({"gracedb": "just-a-string"})
+        sections = {section.id: section for section in presentation.sections}
+        grace = sections["gracedb"]
+        self.assertEqual(grace.data_shape, "scalar")
+        self.assertEqual(grace.disclosed_leaf_count, 1)
+        self.assertEqual(len(grace.disclosure), 1)
+        node = grace.disclosure[0]
+        self.assertEqual(node.path, "gracedb")
+        self.assertEqual(node.shape, "scalar")
+        self.assertEqual(node.value, "just-a-string")
+        self.assertEqual(node.leaf_count, 1)
