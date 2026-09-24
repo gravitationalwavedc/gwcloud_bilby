@@ -774,6 +774,47 @@ class TestSlurmStatusDirect(TestCase):
     @patch("_bundledb.delete_job")
     @patch("scheduler.slurm.SlurmScheduler.status")
     @patch.object(settings, "scheduler", EScheduler.SLURM)
+    def test_slurm_status_empty_slurm_ids(self, status_mock, delete_job_mock):
+        with TemporaryDirectory() as tmpdir:
+            os.mkdir(os.path.join(tmpdir, "submit"))
+
+            with open(os.path.join(tmpdir, "submit", "slurm_ids"), "w") as f:
+                f.flush()
+
+            from core.status import slurm_status
+
+            result = slurm_status({"working_directory": str(tmpdir), "submit_directory": "submit"})
+
+            # An empty slurm_ids file means no status was retrieved, so the job must
+            # not be marked complete or removed from the database.
+            self.assertEqual(result["complete"], False)
+            self.assertEqual(delete_job_mock.call_count, 0)
+            self.assertEqual(status_mock.call_count, 0)
+
+    @patch("_bundledb.delete_job")
+    @patch("scheduler.slurm.SlurmScheduler.status")
+    @patch.object(settings, "scheduler", EScheduler.SLURM)
+    def test_slurm_status_all_malformed_lines(self, status_mock, delete_job_mock):
+        with TemporaryDirectory() as tmpdir:
+            os.mkdir(os.path.join(tmpdir, "submit"))
+
+            with open(os.path.join(tmpdir, "submit", "slurm_ids"), "w") as f:
+                f.writelines(["12345\n", "67890\n"])
+                f.flush()
+
+            from core.status import slurm_status
+
+            result = slurm_status({"working_directory": str(tmpdir), "submit_directory": "submit"})
+
+            # When every line is malformed no status is retrieved, so the job must
+            # not be marked complete or removed from the database.
+            self.assertEqual(result["complete"], False)
+            self.assertEqual(delete_job_mock.call_count, 0)
+            self.assertEqual(status_mock.call_count, 0)
+
+    @patch("_bundledb.delete_job")
+    @patch("scheduler.slurm.SlurmScheduler.status")
+    @patch.object(settings, "scheduler", EScheduler.SLURM)
     def test_slurm_status_completed(self, status_mock, delete_job_mock):
         with TemporaryDirectory() as tmpdir:
             os.mkdir(os.path.join(tmpdir, "submit"))
