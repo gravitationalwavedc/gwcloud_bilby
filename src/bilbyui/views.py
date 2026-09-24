@@ -1942,11 +1942,7 @@ def _get_job_status_context(job, user):
             )
             if controller_job is None:
                 controller_job = next(
-                    (
-                        record
-                        for record in job_controller_jobs
-                        if isinstance(record, dict) and record.get("id") is None
-                    ),
+                    (record for record in job_controller_jobs if isinstance(record, dict) and record.get("id") is None),
                     None,
                 )
             if controller_job is not None:
