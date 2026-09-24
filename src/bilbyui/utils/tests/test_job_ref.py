@@ -13,6 +13,14 @@ class TestParseJobRef(BilbyTestCase):
     def test_numeric_job_ref(self):
         self.assertEqual(parse_job_ref("42"), (42, False))
 
+    def test_unicode_superscript_digit_raises_404(self):
+        with self.assertRaises(Http404):
+            parse_job_ref("²")
+
+    def test_circled_digit_raises_404(self):
+        with self.assertRaises(Http404):
+            parse_job_ref("①")
+
     def test_relay_job_ref(self):
         relay_id = to_global_id("BilbyJobNode", 7)
         self.assertEqual(parse_job_ref(relay_id), (7, True))
