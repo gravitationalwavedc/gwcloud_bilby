@@ -155,7 +155,9 @@ django-tests:
         "
         for module in $modules; do
           echo "ux14_module=$module"
-          DJANGO_SETTINGS_MODULE=gw_bilby.test /usr/bin/time             -f "ux14_module_elapsed=$module %e"             -o reports/a11y/timing.txt -a             .venv/bin/python manage.py test "$module" --parallel 1
+          start=$SECONDS
+          DJANGO_SETTINGS_MODULE=gw_bilby.test .venv/bin/python manage.py test "$module" --parallel 1
+          echo "ux14_module_elapsed=$module $((SECONDS - start))s" | tee -a reports/a11y/timing.txt
         done
       '
     - cat reports/a11y/timing.txt
