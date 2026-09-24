@@ -202,8 +202,8 @@ These tracked instructions are self-contained. A more detailed local extended co
 ### Measured evidence
 
 - Focused accessibility gate suite: ~26 tests, ~35 s serial.
-- Full e2e package: ~88 tests, ~140 s.
-- CI wraps the focused accessibility sweep in `timeout 600s`; exit 124 is a hard failure.
+- Full e2e package: ~88 tests, ~140 s when run in parallel.
+- The enforced upper bound is the SERIAL timed sweep: CI runs the accessibility modules serially under `timeout 600s`, and exit 124 is a hard failure. The full coverage suite (`run_coverage.sh --parallel`) runs in parallel and is not subject to that serial timeout.
 - Policy: **zero serious or critical axe findings** in every scanned region.
 
 ### Focused commands

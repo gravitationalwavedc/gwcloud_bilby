@@ -62,6 +62,9 @@ class _PathologicalDetailPageBase(AsyncE2ETestCase):
     user = None
     page = None
     sname = SNAME
+    #: Subclasses override to choose which superevent payload the metadata
+    #: section renders (e.g. the 100-event payload instead of the 12-column one).
+    superevent_fixture = "metadata"
     _patchers = ()
 
     async def asetUp(self):
@@ -71,7 +74,7 @@ class _PathologicalDetailPageBase(AsyncE2ETestCase):
         self._patchers = (
             mock.patch(
                 "bilbyui.views.get_superevent",
-                side_effect=lambda sname: (self.fixtures["metadata"], "live"),
+                side_effect=lambda sname: (self.fixtures[self.superevent_fixture], "live"),
             ),
             mock.patch(
                 "bilbyui.views.get_versions",
@@ -117,3 +120,42 @@ class TestPathologicalResponsiveCrawl(_PathologicalDetailPageBase):
                     context = f"pathological-{route} width={width}"
                     await assert_no_horizontal_overflow(self.page, context=context)
                     await assert_table_scroll_regions(self.page, context=context)
+
+
+class TestPathologicalSupereventEvents(_PathologicalDetailPageBase):
+    """The 100-event superevent renders every event without five-width overflow."""
+
+    superevent_fixture = "superevent"
+
+    @async_e2e_test
+    async def test_superevent_renders_100_events_without_overflow(self):
+        await self.page.wait_for_selector("#gracedb-comparison-table")
+        rows = self.page.locator("#gracedb-comparison-table tbody tr")
+        self.assertEqual(await rows.count(), SUPEREVENT_EVENT_COUNT)
+        for width in VIEWPORT_WIDTHS:
+            with self.subTest(case=f"pathological-superevent width={width}"):
+                await self.page.set_viewport_size({"width": width, "height": 900})
+                await self.page.reload()
+                await self.page.wait_for_load_state("networkidle")
+                context = f"pathological-superevent width={width}"
+                await assert_no_horizontal_overflow(self.page, context=context)
+                await assert_table_scroll_regions(self.page, context=context)
+
+
+class TestPathologicalVersionList(_PathologicalDetailPageBase):
+    """The long version history renders every version without five-width overflow."""
+
+    @async_e2e_test
+    async def test_version_list_renders_all_versions_without_overflow(self):
+        await self.page.click('a[data-gwflow-section][href*="/history/"]')
+        await self.page.wait_for_selector(".gwflow-history__desktop-list")
+        links = self.page.locator(".gwflow-history__desktop-list a[data-version-link]")
+        self.assertEqual(await links.count(), VERSION_COUNT)
+        for width in VIEWPORT_WIDTHS:
+            with self.subTest(case=f"pathological-versions width={width}"):
+                await self.page.set_viewport_size({"width": width, "height": 900})
+                await self.page.reload()
+                await self.page.wait_for_load_state("networkidle")
+                context = f"pathological-versions width={width}"
+                await assert_no_horizontal_overflow(self.page, context=context)
+                await assert_table_scroll_regions(self.page, context=context)

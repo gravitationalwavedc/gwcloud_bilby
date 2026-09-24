@@ -2,9 +2,9 @@
 
 from .accessibility_assertions import (
     assert_active_element,
+    assert_no_active_animation,
     assert_no_contrast_failures,
     assert_no_horizontal_overflow,
-    assert_no_infinite_animation,
     assert_no_serious_axe_violations,
     assert_target_sizes,
 )
@@ -123,12 +123,31 @@ class AccessibilityDetectorMetaTests(AsyncE2ETestCase):
                     </style></head><body>
                     <div id="subject">Loading</div></body></html>
                 """,
-                "assertion": lambda: assert_no_infinite_animation(self.page, "#subject"),
+                "assertion": lambda: assert_no_active_animation(self.page, "#subject"),
                 "seed": """
                     document.querySelector('#subject').style.animation =
                         'spin 1s linear infinite';
                 """,
-                "expected": "infinite animations remain in reduced-motion mode",
+                "expected": "active animations remain in reduced-motion mode",
+                "reduced_motion": True,
+            },
+            {
+                "name": "reduced-motion finite animation",
+                "clean": """
+                    <!doctype html>
+                    <html lang="en"><head><title>Clean motion fixture</title>
+                    <style>
+                    #subject{animation:none}
+                    @keyframes spin{to{transform:rotate(360deg)}}
+                    </style></head><body>
+                    <div id="subject">Loading</div></body></html>
+                """,
+                "assertion": lambda: assert_no_active_animation(self.page, "#subject"),
+                "seed": """
+                    document.querySelector('#subject').style.animation =
+                        'spin 1s linear 2';
+                """,
+                "expected": "active animations remain in reduced-motion mode",
                 "reduced_motion": True,
             },
         )

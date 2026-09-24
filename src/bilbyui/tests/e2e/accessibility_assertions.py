@@ -7,6 +7,8 @@ fails a route gate also fails its seed (and vice versa).
 
 from __future__ import annotations
 
+import json
+
 BLOCKING_AXE_IMPACTS = {"serious", "critical"}
 MINIMUM_TARGET_SIZE = 24
 TARGET_SELECTOR = (
@@ -301,6 +303,18 @@ async def assert_target_sizes(
             continue
         failures.append(attribution)
     prefix = f"{context}: " if context else ""
+    print(
+        "TARGET_SIZE_EXCEPTIONS="
+        + json.dumps(
+            {
+                "context": context,
+                "scope": scope_selector,
+                "exceptions": exceptions,
+                "failures": failures,
+            },
+            sort_keys=True,
+        )
+    )
     if max_inline_link_exceptions is not None:
         assert len(exceptions) <= max_inline_link_exceptions, (
             f"{prefix}more than {max_inline_link_exceptions} inline-link exceptions: {exceptions}"
@@ -308,40 +322,40 @@ async def assert_target_sizes(
     assert not failures, f"{prefix}undersized interactive targets: " + "; ".join(failures)
 
 
-INFINITE_ANIMATION_JS = r"""
+ACTIVE_ANIMATION_JS = r"""
 scope => {
     const elements = [scope, ...scope.querySelectorAll('*')];
     return elements.flatMap(element => {
         const style = getComputedStyle(element);
+        if (!style.animationName.split(',').some(name => name.trim() !== 'none')) return [];
         const durations = style.animationDuration.split(',').map(value => {
             if (value.trim().endsWith('ms')) return parseFloat(value);
             if (value.trim().endsWith('s')) return parseFloat(value) * 1000;
             return 0;
         });
-        const iterations = style.animationIterationCount.split(',');
-        const infinite = durations.some(
-            (duration, index) =>
-                duration > 0
-                && (iterations[index] || iterations[0] || '').trim() === 'infinite'
-        );
-        if (!infinite) return [];
+        if (!durations.some(duration => duration > 0)) return [];
         return [{
             tag: element.tagName.toLowerCase(),
             id: element.id,
             classes: String(element.className),
+            animationName: style.animationName,
             animationDuration: style.animationDuration,
-            animationIterationCount: style.animationIterationCount,
         }];
     });
 }
 """
 
 
-async def assert_no_infinite_animation(page, scope_selector: str = "body", *, context: str = "") -> None:
-    """Assert the reduced-motion tree contains no active infinite animation."""
-    motion = await page.locator(scope_selector).evaluate(INFINITE_ANIMATION_JS)
+async def assert_no_active_animation(page, scope_selector: str = "body", *, context: str = "") -> None:
+    """Assert the reduced-motion tree contains no active animation.
+
+    Any named animation with a positive duration counts as active, not only
+    infinite ones: finite essential motion is equally unwanted when the user
+    requests reduced motion.
+    """
+    motion = await page.locator(scope_selector).evaluate(ACTIVE_ANIMATION_JS)
     prefix = f"{context}: " if context else ""
-    assert not motion, f"{prefix}infinite animations remain in reduced-motion mode: {motion}"
+    assert not motion, f"{prefix}active animations remain in reduced-motion mode: {motion}"
 
 
 async def assert_active_element(page, expected_id: str) -> None:
