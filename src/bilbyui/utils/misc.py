@@ -6,7 +6,7 @@ from django.core import mail
 
 
 def check_request_leak():
-    if hasattr(mail, "outbox") and not hasattr(settings, "ALLOW_HTTP_LEAKS"):
+    if hasattr(mail, "outbox") and not getattr(settings, "ALLOW_HTTP_LEAKS", False):
         # We are in test mode!
         msg = "HTTP request leaked during testing"
         raise RuntimeError(msg)
