@@ -205,7 +205,10 @@ def link(value: Any, label: str = "") -> str:
     if not isinstance(value, str):
         return text(value)
 
-    parsed = urlsplit(value)
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return text(value)
     if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
         return text(value)
 
