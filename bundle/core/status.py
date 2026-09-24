@@ -121,6 +121,10 @@ def slurm_status(job):
     sched = get_scheduler()
     for _sid in slurm_ids:
         parts = _sid.split(" ")
+        if len(parts) < 2:
+            logger.warning("Skipping malformed slurm id line: %r", _sid)
+            continue
+
         what = parts[0]
         sid = parts[1]
 
