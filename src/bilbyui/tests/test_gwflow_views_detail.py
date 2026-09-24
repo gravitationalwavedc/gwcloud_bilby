@@ -236,6 +236,24 @@ class TestGWFlowJobFilesPartial(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Linked Bilby job")
 
+    @mock.patch("bilbyui.views.get_superevent", return_value=(["not", "a", "dict"], "live"))
+    def test_non_dict_payload_still_renders_local_files(self, mock_get_superevent):
+        GWFlowFile.objects.create(
+            job=self.job,
+            analysis_uid="",
+            path="data/super.txt",
+            file_name="super.txt",
+            file_size=1024,
+            uploaded=True,
+        )
+
+        response = self._get_fragment()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Superevent-level")
+        self.assertContains(response, "super.txt")
+        self.assertNotContains(response, "<!doctype html>")
+
 
 class TestGWFlowJobMetadataPartial(BilbyTestCase):
     def setUp(self):
