@@ -192,6 +192,9 @@ class GwflowFormatterTests(SimpleTestCase):
         self.assertNotIn("<script>", template_output)
         self.assertIn("&lt;script&gt;", template_output)
 
+    def test_link_malformed_url_degrades_to_text(self):
+        self.assertEqual(link("http://[::1"), "http://[::1")
+
     def test_status_maps_known_and_preserves_unknown(self):
         self.assertEqual(status("running"), "Running")
         self.assertEqual(status("science-review"), "science-review")
