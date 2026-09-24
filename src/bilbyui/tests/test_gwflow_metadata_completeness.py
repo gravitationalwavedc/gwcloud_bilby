@@ -62,6 +62,12 @@ class LeafPathTests(SimpleTestCase):
             ["info.z_unknown[]"],
         )
 
+    def test_non_mapping_payload_is_silent(self):
+        for payload in ("not-a-mapping", None, ["not-a-mapping"]):
+            with self.subTest(payload=payload):
+                with self.assertNoLogs("bilbyui.services.gwflow_metadata", level="WARNING"):
+                    warn_unmapped_metadata_leaves(payload, sname="S-NON-MAPPING")
+
     def test_warning_records_are_exact_sorted_and_contain_no_values(self):
         payload = {"info": {"z_unknown": "SECRET-Z", "a_unknown": "SECRET-A"}}
 
