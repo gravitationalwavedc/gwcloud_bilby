@@ -174,7 +174,10 @@ def list_value(value: Any, limit: int = 3) -> str:
         return presence
     if not _is_sequence(value):
         return text(value)
-    safe_limit = max(0, int(limit))
+    try:
+        safe_limit = max(0, int(limit))
+    except (TypeError, ValueError):
+        safe_limit = 3
     preview = ", ".join(text(item) for item in value[:safe_limit])
     remaining = len(value) - safe_limit
     if remaining > 0:
