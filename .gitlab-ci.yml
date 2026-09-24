@@ -139,6 +139,28 @@ django-tests:
     - test -s /tmp/pw_endpoint.txt || { echo "Playwright server failed to start"; cat /tmp/pw_server.err; exit 1; }
     - export PW_WS_ENDPOINT=$(cat /tmp/pw_endpoint.txt)
     - PATH=".venv/bin:$PATH" bash run_coverage.sh --parallel
+    # Measure the required accessibility sweep serially. timeout exit 124 is a
+    # hard CI failure; each module also emits and persists its elapsed seconds.
+    - mkdir -p reports/a11y
+    - |
+      /usr/bin/timeout 600s bash -c '
+        set -e
+        modules="
+          bilbyui.tests.e2e.test_a11y_gates
+          bilbyui.tests.e2e.test_responsive_crawl
+          bilbyui.tests.e2e.test_contrast
+          bilbyui.tests.e2e.test_keyboard_journeys
+          bilbyui.tests.e2e.test_target_size
+          bilbyui.tests.e2e.test_accessibility_meta
+        "
+        for module in $modules; do
+          echo "ux14_module=$module"
+          start=$SECONDS
+          DJANGO_SETTINGS_MODULE=gw_bilby.test .venv/bin/python manage.py test "$module" --parallel 1
+          echo "ux14_module_elapsed=$module $((SECONDS - start))s" | tee -a reports/a11y/timing.txt
+        done
+      '
+    - cat reports/a11y/timing.txt
     - .venv/bin/python -m coverage xml -o reports/coverage.xml
   # Match coverage.py "TOTAL ... 95%" line; capture group is the percentage (GitLab displays in MR/pipeline)
   coverage: '/TOTAL.+ (\d+%)/'
@@ -148,6 +170,9 @@ django-tests:
         coverage_format: cobertura
         path: src/reports/coverage.xml
       junit: src/reports/junit.xml
+    paths:
+      - src/reports/a11y/
+    when: always
 
 ruff-lint:
   extends: .src_poetry_base
