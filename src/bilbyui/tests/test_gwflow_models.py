@@ -131,6 +131,10 @@ class GWFlowModelsTestCase(BilbyTestCase):
 
         self.assertIsNone(GWFlowFile.get_by_download_token(str(uuid.uuid4())))
 
+    def test_get_by_download_token_malformed(self):
+        # Test that get_by_download_token returns None for a malformed (non-UUID) token rather than raising
+        self.assertIsNone(GWFlowFile.get_by_download_token("not-a-uuid"))
+
     def test_get_by_download_token(self):
         job = GWFlowJob.objects.create(
             sname="S230601ag",

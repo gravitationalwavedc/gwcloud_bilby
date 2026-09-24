@@ -570,7 +570,10 @@ class GWFlowFile(models.Model):
         Retrieves the GWFlowFile object matching the provided download token. Returns None if the token doesn't
         exist.
         """
-        return cls.objects.filter(download_token=token).select_related("job").first()
+        try:
+            return cls.objects.filter(download_token=token).select_related("job").first()
+        except ValidationError:
+            return None
 
 
 class SupportingFile(models.Model):
@@ -684,7 +687,10 @@ class SupportingFile(models.Model):
         Retrieves the SupportingFile object matching the provided download token. Returns None if the token doesn't
         exist or the file is not yet uploaded.
         """
-        return cls.objects.filter(download_token=token, upload_token__isnull=True).first()
+        try:
+            return cls.objects.filter(download_token=token, upload_token__isnull=True).first()
+        except ValidationError:
+            return None
 
 
 class IniKeyValue(models.Model):
