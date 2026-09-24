@@ -78,7 +78,11 @@ class CondorScheduler(Scheduler):
 
         # Find the most recent submit event and parse the log notes to find which job stage the submit
         # is for
-        submit_event = next(filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events))
+        try:
+            submit_event = next(filter(lambda x: x.type == htcondor.JobEventType.SUBMIT, events))
+        except StopIteration:
+            logger.warning("No SUBMIT event found in the job event log for %s", details["working_directory"])
+            return None, None
         notes = submit_event.get("LogNotes", "")
         if not isinstance(notes, str):
             logger.warning("Malformed LogNotes value found for the most recent job submission")
