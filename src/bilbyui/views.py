@@ -14,6 +14,7 @@ from urllib.parse import quote, urlparse
 import bilby_pipe
 import elasticsearch
 import requests
+import tenacity
 from adacs_sso_plugin.models import APISessionToken
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
@@ -140,6 +141,7 @@ def _parse_embargo_args(args):
             ValueError,
             requests.RequestException,
             KeyError,
+            tenacity.RetryError,
         ):  # If event_gps cannot resolve the event or gwosc is unreachable
             trigger_time = None
     except TypeError:
