@@ -340,6 +340,34 @@ class TestCondor(TestCase):
             with patch("htcondor.JobEventLog", lambda path: FakeJobEventLog(path, events)):
                 self.assertEqual(sched.status(None, details), (JobStatus.RUNNING, "Job is running"))
 
+    def test_status_no_submit_event(self):
+        sched = CondorScheduler()
+
+        class FakeEvent:
+            def __init__(self, event_type):
+                self.type = event_type
+
+        class FakeJobEventLog:
+            def __init__(self, path, events):
+                self._events = events
+
+            def events(self, stop_after=0):
+                return list(self._events)
+
+        with TemporaryDirectory() as td:
+            submit_dir = os.path.join(td, "job", "submit")
+            os.makedirs(submit_dir)
+            fn = os.path.join(submit_dir, "job.submit.nodes.log")
+            with open(fn, "w") as f:
+                f.write("...\n")
+
+            details = {"working_directory": td, "submit_directory": "job/submit"}
+
+            # A log with no SUBMIT event (e.g. truncated) must degrade to (None, None)
+            events = [FakeEvent(htcondor.JobEventType.EXECUTE)]
+            with patch("htcondor.JobEventLog", lambda path: FakeJobEventLog(path, events)):
+                self.assertEqual(sched.status(None, details), (None, None))
+
     def test_status_malformed_terminated_event(self):
         sched = CondorScheduler()
 
