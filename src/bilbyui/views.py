@@ -1936,10 +1936,19 @@ def _get_job_status_context(job, user):
                 (
                     record
                     for record in job_controller_jobs
-                    if isinstance(record, dict) and record.get("id") in (None, job.job_controller_id)
+                    if isinstance(record, dict) and record.get("id") == job.job_controller_id
                 ),
                 None,
             )
+            if controller_job is None:
+                controller_job = next(
+                    (
+                        record
+                        for record in job_controller_jobs
+                        if isinstance(record, dict) and record.get("id") is None
+                    ),
+                    None,
+                )
             if controller_job is not None:
                 history = controller_job.get("history")
                 if history:
