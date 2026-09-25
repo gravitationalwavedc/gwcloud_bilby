@@ -73,7 +73,13 @@ def request_file_list(job, path, recursive, user_id=None):
         else:
             # Not a recursive search
             for item in dir_path_obj.iterdir():
-                entry = _make_file_entry(item, item.is_dir(), job_dir)
+                try:
+                    is_dir = item.is_dir()
+                except OSError:
+                    # Skip entries that cannot be stat'ed (e.g. an unreadable
+                    # subdirectory), consistent with _make_file_entry.
+                    continue
+                entry = _make_file_entry(item, is_dir, job_dir)
                 if entry is not None:
                     file_list.append(entry)
 
