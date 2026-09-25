@@ -82,23 +82,32 @@ class PortalClient:
             )
             yield from sorted_results
 
-    def get_superevent(self, sname: str) -> dict:
+    def get_superevent(self, sname: str) -> dict | None:
         url = urljoin(self.base_url, f"api/v1/superevents/{sname}/")
         resp = self._request_with_retry("GET", url)
-        return resp.json()
+        try:
+            return resp.json()
+        except ValueError as exc:
+            logger.warning("Skipping superevent %s with non-JSON body: %s", sname, exc)
+            return None
 
-    def get_versions(self, sname: str) -> list:
+    def get_versions(self, sname: str) -> list | None:
         """Return the list of version dicts for a superevent.
 
         GETs {base_url}/api/v1/superevents/{sname}/versions/ as a single,
         non-paginated request via _request_with_retry and returns the parsed
         JSON body. _request_with_retry retries transport errors and 5xx
         responses (with backoff), but re-raises requests.HTTPError for 4xx
-        responses without retrying.
+        responses without retrying. Returns None if the 200 body is not
+        valid JSON.
         """
         url = urljoin(self.base_url, f"api/v1/superevents/{sname}/versions/")
         resp = self._request_with_retry("GET", url)
-        return resp.json()
+        try:
+            return resp.json()
+        except ValueError as exc:
+            logger.warning("Skipping versions for %s with non-JSON body: %s", sname, exc)
+            return None
 
     def iter_current_snames(self):
         url = urljoin(self.base_url, "api/v1/superevents/")
