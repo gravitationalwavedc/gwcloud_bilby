@@ -132,6 +132,11 @@ class GwflowFormatterTests(SimpleTestCase):
         self.assertEqual(scientific(-2.5e-4, "s"), "-2.5×10⁻⁴ s")
         self.assertEqual(scientific(0, "Hz"), "0 Hz")
 
+    def test_scientific_normalises_nonzero_subnormal_power(self):
+        self.assertEqual(scientific(1e-320), "1.000e-320")
+        self.assertEqual(scientific(1e-321), "9.980e-322")
+        self.assertNotIn("×", scientific(1e-320))
+
     def test_scientific_renders_mapping_value_and_unit(self):
         self.assertEqual(
             scientific({"value": 1.2e-8, "unit": "Hz"}),
