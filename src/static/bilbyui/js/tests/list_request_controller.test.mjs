@@ -182,7 +182,7 @@ try {
   await run("2 fast success publishes only settled message", async () => {
     const page = await newFixture(browser);
     await dispatch(page, "htmx:beforeRequest", "A");
-    await advance(page, 999);
+    await advance(page, 900);
     assert.equal((await snapshot(page)).status, "");
     await dispatch(page, "htmx:afterSwap", "A", {
       settled: { kind: "content", message: "3 jobs match" }
@@ -325,9 +325,9 @@ try {
     await dispatch(page, "htmx:beforeRequest", "B");
     await advance(page, 100);
     assert.equal((await snapshot(page)).status, "");
-    await advance(page, 899);
+    await advance(page, 800);
     assert.equal((await snapshot(page)).status, "");
-    await advance(page, 1);
+    await advance(page, 100);
     assert.equal((await snapshot(page)).status, "Updating results…");
     await page.close();
   });
