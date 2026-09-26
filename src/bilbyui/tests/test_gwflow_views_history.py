@@ -468,6 +468,9 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         self.assertContains(response, "Selected — version aaaabbbb")
         self.assertContains(response, "draft")
         self.assertContains(response, "ready")
+        # The surrounding Baseline/Selected headings already convey the historical
+        # context, so the redundant banner must be suppressed.
+        self.assertNotContains(response, "Viewing historical metadata — not the current record")
 
     @mock.patch("bilbyui.views._get_gwflow_job_or_404", return_value=mock.Mock())
     @mock.patch(
