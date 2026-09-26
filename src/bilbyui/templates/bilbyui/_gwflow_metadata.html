@@ -1,7 +1,7 @@
 {% load gwflow_tags %}
 {% if presentation %}
-  <div class="gwflow-metadata{% if historical or presentation.historical %} gwflow-metadata--historical{% endif %}">
-    {% if historical or presentation.historical %}
+  <div class="gwflow-metadata{% if historical and not suppress_historical_banner or presentation.historical and not suppress_historical_banner %} gwflow-metadata--historical{% endif %}">
+    {% if historical and not suppress_historical_banner or presentation.historical and not suppress_historical_banner %}
       <div class="alert alert-warning border-warning mb-4" role="note">
         <span aria-hidden="true">⚠</span>
         <strong>Viewing historical metadata — not the current record</strong>
