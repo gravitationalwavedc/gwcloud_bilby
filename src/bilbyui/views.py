@@ -1784,7 +1784,7 @@ def _render_gwflow_history_section(request, sname):
                 baseline_payload = baseline_detail.get("raw_payload") if isinstance(baseline_detail, Mapping) else None
                 stale = stale or baseline_state == "stale"
 
-        if selected_payload is not None:
+        if isinstance(selected_payload, dict):
             presentation = build_metadata_presentation(
                 selected_payload,
                 historical=not selected.is_current,
@@ -1796,7 +1796,7 @@ def _render_gwflow_history_section(request, sname):
             baseline_schema=baseline.schema_version if baseline else None,
             selected_schema=selected.schema_version,
         )
-        if outcome.status == "cross_schema" and baseline_payload is not None:
+        if outcome.status == "cross_schema" and isinstance(baseline_payload, dict):
             baseline_presentation = build_metadata_presentation(
                 baseline_payload,
                 historical=True,
