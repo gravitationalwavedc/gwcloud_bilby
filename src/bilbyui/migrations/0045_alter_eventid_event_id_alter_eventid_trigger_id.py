@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
                 unique=True,
                 validators=[
                     django.core.validators.RegexValidator(
-                        message="Must be of the form GW123456, GW123456_123456, or G123456",
+                        message="Must be of the form GW123456_123456, GW123456, or G123456",
                         regex="^(GW\\d{6}(_\\d{6})?|G\\d+)$",
                     )
                 ],

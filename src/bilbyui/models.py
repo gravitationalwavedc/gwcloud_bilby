@@ -113,7 +113,7 @@ class EventID(models.Model):
         validators=[
             RegexValidator(
                 regex=r"^(GW\d{6}(_\d{6})?|G\d+)$",
-                message="Must be of the form GW123456, GW123456_123456, or G123456",
+                message="Must be of the form GW123456_123456, GW123456, or G123456",
             )
         ],
     )
