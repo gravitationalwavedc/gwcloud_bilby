@@ -12,7 +12,7 @@
 // Results table — full width, fixed layout so long unbroken identifiers wrap
 // inside their column instead of widening the page (reflow 320px).
 // ---------------------------------------------------------------------------
-.gwflow-results-table {
+.results-table {
     width: 100%;
     min-width: 0;
     max-width: 100%;
@@ -24,13 +24,50 @@
         vertical-align: top;
         min-width: 0;
         max-width: 100%;
-        overflow-wrap: anywhere;
+    }
+
+    thead th {
+        color: $text-muted;
+        font-size: $font-size-sm;
+        font-weight: 600;
+        border-bottom: $border-width solid $border-color;
     }
 
     tbody tr {
-        border-top: $border-width solid $border-color;
         border-bottom: $border-width solid $border-color;
     }
+
+    // Numeric quantities and trailing actions align right (Frontend Bible
+    // numeric-alignment rule); reset to left on the mobile card stack.
+    .col-numeric,
+    .col-action {
+        text-align: right;
+    }
+
+    // The right-aligned numeric column and the adjacent left-aligned prose
+    // column meet at a shared boundary, so the value and the following text
+    // read as one cramped cluster. Open a deliberate gutter at that boundary
+    // without abandoning numeric alignment or changing column proportions.
+    .col-numeric {
+        padding-right: $spacer * 0.75;
+    }
+
+    .col-files {
+        padding-left: $spacer * 0.75;
+    }
+}
+
+// Secondary badge group: a primary value (sname / status) sits on its own
+// line and its supporting badges wrap below from a shared left edge, so badge
+// position never depends on the variable width of the primary value.
+.result-badge-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: $spacer * 0.25;
+    margin-top: $spacer * 0.25;
+    min-width: 0;
+    max-width: 100%;
 }
 
 // ---------------------------------------------------------------------------
@@ -38,7 +75,7 @@
 // the action link all get min-width:0 / max-width:100% and wrap long
 // unbroken tokens rather than widening the page.
 // ---------------------------------------------------------------------------
-.gwflow-job-row {
+.result-row {
     min-width: 0;
     max-width: 100%;
 }
@@ -56,6 +93,7 @@
 }
 
 .gwflow-job-sname {
+    display: block;
     min-width: 0;
     max-width: 100%;
     overflow-wrap: anywhere;
@@ -64,7 +102,7 @@
 // Badge group — the library / schema / pruned badges sit inline with the
 // sname; constrain them so a long label wraps instead of overflowing.
 // white-space: normal overrides Bootstrap's .badge { white-space: nowrap }.
-.gwflow-job-row .badge {
+.result-row .badge {
     min-width: 0;
     max-width: 100%;
     white-space: normal;
@@ -75,7 +113,7 @@
 // Action + disclosure buttons — 24px minimum target size, visible
 // :focus-visible outline with sufficient contrast (Frontend Bible 2.5.8).
 // ---------------------------------------------------------------------------
-.gwflow-view-btn,
+.result-view-btn,
 .event-id-toggle {
     min-width: 24px;
     min-height: 24px;
@@ -89,9 +127,13 @@
 // Bootstrap's btn-outline-primary uses $primary (#059cfa) for text — only
 // ~2.8:1 on the white background. Use a darker blue that clears 4.5:1
 // (Frontend Bible rule 4) for both the resting and hover states.
-.gwflow-view-btn {
+.result-view-btn {
     color: $blue-800;
     border-color: $blue-800;
+
+    // The visible label is the short word "View"; the record identity is
+    // visually hidden. Keep defensive max-width but no emergency wrapping.
+    max-width: 100%;
 
     &:hover,
     &:focus {
@@ -151,19 +193,19 @@
 // there is no label duplication.
 // ---------------------------------------------------------------------------
 @media (max-width: 767.98px) {
-    .gwflow-results-table,
-    .gwflow-results-table tbody,
-    .gwflow-results-table tr,
-    .gwflow-results-table td {
+    .results-table,
+    .results-table tbody,
+    .results-table tr,
+    .results-table td {
         display: block;
         width: 100%;
     }
 
-    .gwflow-results-table thead {
+    .results-table thead {
         display: none;
     }
 
-    .gwflow-job-row {
+    .result-row {
         padding: $spacer * 0.5;
         margin-bottom: $spacer * 0.5;
         border: $border-width solid $border-color;
@@ -171,13 +213,24 @@
         background-color: $body-bg;
     }
 
-    .gwflow-job-row:last-child {
+    .result-row:last-child {
         margin-bottom: 0;
     }
 
-    .gwflow-results-table td {
+    .results-table td {
         padding: $spacer * 0.5 0;
         border: 0;
+    }
+
+    // Reset right-aligned numeric/action columns to left in the card stack,
+    // and drop the desktop Analyses/Files boundary gutter (each cell is now a
+    // full-width labelled block with no shared vertical boundary).
+    .results-table .col-numeric,
+    .results-table .col-files,
+    .results-table .col-action {
+        text-align: left;
+        padding-left: 0;
+        padding-right: 0;
     }
 
     .cell-label {

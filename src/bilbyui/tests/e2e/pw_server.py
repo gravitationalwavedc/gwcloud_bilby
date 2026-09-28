@@ -22,6 +22,7 @@ from __future__ import annotations
 import contextlib
 import fcntl
 import json
+import os
 import subprocess
 import sys
 import time
@@ -34,6 +35,17 @@ AXE_CORE_VERSION = "4.10.3"
 
 _INSTALL_LOCK_TIMEOUT_SECONDS = 300
 """How long a worker waits for another worker's npm install before proceeding."""
+
+_SERVER_START_ATTEMPTS = 4
+"""Total attempts to start the shared browser server before giving up.
+
+Parallel workers each start their own server; under memory pressure a start can
+fail transiently (the Node process exits before printing its endpoint). A few
+retries with backoff absorb that without needing a CI-style shared server.
+"""
+
+_SERVER_START_BACKOFF_SECONDS = 0.5
+"""Base delay between browser-server start attempts (doubled each retry)."""
 
 
 @dataclass
@@ -192,13 +204,28 @@ await new Promise(() => {});
 """
 
 
-def start_pw_server() -> PWServerProc:
-    """Start one shared headless Chromium launchServer and return its handle."""
-    playwright_dir = _ensure_playwright_installed()
+def _write_launch_script(wrapper_script: Path) -> None:
+    """Write ``launch_server.mjs`` atomically, skipping identical content.
 
-    wrapper_script = playwright_dir / "launch_server.mjs"
-    wrapper_script.write_text(LAUNCH_SERVER_MJS)
+    Every parallel worker calls this at startup. A plain ``write_text`` truncates
+    the file before writing, so a worker whose Node process is reading the file
+    (or a concurrent writer) can observe a partial script and exit without
+    printing its endpoint. Writing to a temp file and ``os.replace`` makes the
+    swap atomic; skipping identical content avoids rewriting at all once warm.
+    """
+    try:
+        if wrapper_script.read_text(encoding="utf-8") == LAUNCH_SERVER_MJS:
+            return
+    except OSError:
+        pass
 
+    tmp_script = wrapper_script.with_name(wrapper_script.name + ".tmp")
+    tmp_script.write_text(LAUNCH_SERVER_MJS, encoding="utf-8")
+    os.replace(tmp_script, wrapper_script)
+
+
+def _start_pw_server_attempt(playwright_dir: Path) -> PWServerProc:
+    """Start one launchServer process and read its endpoint (single attempt)."""
     proc = subprocess.Popen(
         ["node", "launch_server.mjs"],
         stdout=subprocess.PIPE,
@@ -215,9 +242,37 @@ def start_pw_server() -> PWServerProc:
         err = ""
         if proc.stderr is not None:
             err = proc.stderr.read(4000)
+        with contextlib.suppress(subprocess.TimeoutExpired, ProcessLookupError, OSError):
+            proc.kill()
+            proc.wait(timeout=10)
         raise RuntimeError(f"Failed to start the Playwright browser server.\n{err}")
 
     return PWServerProc(proc=proc, ws_endpoint=ws)
+
+
+def start_pw_server() -> PWServerProc:
+    """Start one shared headless Chromium launchServer and return its handle.
+
+    Retries a few times with backoff so a transient failure under parallel-worker
+    memory pressure does not abort a test, and writes the launch script atomically
+    so concurrent workers cannot read a partial file.
+    """
+    playwright_dir = _ensure_playwright_installed()
+
+    wrapper_script = playwright_dir / "launch_server.mjs"
+    _write_launch_script(wrapper_script)
+
+    last_error: RuntimeError | None = None
+    for attempt in range(1, _SERVER_START_ATTEMPTS + 1):
+        try:
+            return _start_pw_server_attempt(playwright_dir)
+        except RuntimeError as e:
+            last_error = e
+            if attempt < _SERVER_START_ATTEMPTS:
+                time.sleep(_SERVER_START_BACKOFF_SECONDS * (2 ** (attempt - 1)))
+
+    assert last_error is not None
+    raise last_error
 
 
 def stop_pw_server(server: PWServerProc | None) -> None:

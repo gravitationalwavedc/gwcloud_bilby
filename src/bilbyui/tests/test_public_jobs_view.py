@@ -205,7 +205,7 @@ class TestPublicJobsView(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Offline job")
-        self.assertContains(response, 'class="badge badge-dark mr-1">Unknown</span>')
+        self.assertContains(response, 'class="badge badge-dark">Unknown</span>')
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch(
@@ -455,7 +455,7 @@ class TestPublicJobsView(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No event ids")
+        self.assertContains(response, "No event IDs")
 
     def test_query_helper_edge_branches(self):
         # _extract_search_term: empty input, malformed/missing "(((" term, valid

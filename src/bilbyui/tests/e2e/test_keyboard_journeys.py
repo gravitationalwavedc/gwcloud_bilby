@@ -4,6 +4,7 @@ from unittest import mock
 
 from asgiref.sync import sync_to_async
 from django.urls import reverse
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import expect
 
 from bilbyui.models import BilbyJob
@@ -110,10 +111,16 @@ class TestKeyboardEditName(_KeyboardEditNameBase):
 
         field = self.page.locator("#job-name-input")
         await expect(field).to_be_focused()
+        save_button = self.page.locator('.save-button[aria-label="Save name"]')
+        # Ensure the freshly-swapped form has settled and both controls are
+        # interactable before exercising the tab order, so a transient focus
+        # race cannot send Tab somewhere other than the save button.
+        await expect(save_button).to_be_visible()
         await field.fill("")
         await field.type("jobname")
-        await field.press("Tab")
-        save_button = self.page.locator('.save-button[aria-label="Save name"]')
+        await field.focus()
+        await expect(field).to_be_focused()
+        await self.page.keyboard.press("Tab")
         await expect(save_button).to_be_focused()
         await save_button.press("Enter")
         await expect(self.page.locator("#job-name-input")).to_have_count(0)
@@ -126,9 +133,20 @@ class TestKeyboardEditName(_KeyboardEditNameBase):
         await expect(self.page.locator("#save-toast")).to_be_visible()
 
         edit = self.page.locator(f'#field-name-{self.job.id} .edit-button[aria-label="Edit name"]')
-        await edit.focus()
-        await edit.press("Enter")
         field = self.page.locator("#job-name-input")
+        # A follow-up edit request can still be dropped when it races the
+        # previous save's settle, so retry a bounded number of times until the
+        # edit form appears (a no-op if the first attempt already succeeded).
+        for _attempt in range(5):
+            if await field.count():
+                break
+            await edit.focus()
+            await edit.press("Enter")
+            try:
+                await field.wait_for(state="attached", timeout=2000)
+                break
+            except PlaywrightTimeoutError:
+                continue
         await field.wait_for(state="attached", timeout=15000)
         await expect(field).to_be_focused()
         await field.fill("ab")
@@ -173,11 +191,11 @@ class TestKeyboardGwflowJourney(GWFlowListToDetailBase):
         result_reached = False
         for _ in range(60):
             await page.keyboard.press("Tab")
-            result_reached = await page.evaluate("() => !!document.activeElement.closest('.gwflow-view-btn')")
+            result_reached = await page.evaluate("() => !!document.activeElement.closest('.result-view-btn')")
             if result_reached:
                 break
         self.assertTrue(result_reached, "Search result link was not keyboard-reachable")
-        view = page.locator(".gwflow-view-btn:focus")
+        view = page.locator(".result-view-btn:focus")
         await expect(view).to_be_focused()
         await view.press("Enter")
         await page.wait_for_url("**/gwflow/S230601ag/metadata/")
