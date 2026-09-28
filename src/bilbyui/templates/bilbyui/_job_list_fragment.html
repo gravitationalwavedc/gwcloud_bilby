@@ -10,11 +10,30 @@
 </div>
 {% elif rows %}
 <div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="content" data-settled-message="Page {{ pagination_page }} of {{ total_pages }}, {{ shown_count }} job{{ shown_count|pluralize }} shown">
-  <p class="result-count">{{ total }} job{{ total|pluralize }} match</p>
   {% include "bilbyui/_active_filters.html" with indicator_id=indicator_id %}
-  {% for node in rows %}
-    {% include "bilbyui/_job_row.html" %}
-  {% endfor %}
+  <p class="result-count">{{ total }} job{{ total|pluralize }} match</p>
+  <table class="results-table">
+    <caption class="sr-only">Jobs</caption>
+    <colgroup>
+      <col style="width: 18%">
+      <col style="width: 50%">
+      <col style="width: 20%">
+      <col style="width: 12%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th scope="col">Event IDs</th>
+        <th scope="col">Job</th>
+        <th scope="col">Status and labels</th>
+        <th scope="col" class="col-action">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for node in rows %}
+        {% include "bilbyui/_job_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
   {% include "bilbyui/_pagination.html" with indicator_id=indicator_id %}
 </div>
 {% elif total %}

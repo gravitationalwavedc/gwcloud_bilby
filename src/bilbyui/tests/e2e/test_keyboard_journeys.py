@@ -173,11 +173,11 @@ class TestKeyboardGwflowJourney(GWFlowListToDetailBase):
         result_reached = False
         for _ in range(60):
             await page.keyboard.press("Tab")
-            result_reached = await page.evaluate("() => !!document.activeElement.closest('.gwflow-view-btn')")
+            result_reached = await page.evaluate("() => !!document.activeElement.closest('.result-view-btn')")
             if result_reached:
                 break
         self.assertTrue(result_reached, "Search result link was not keyboard-reachable")
-        view = page.locator(".gwflow-view-btn:focus")
+        view = page.locator(".result-view-btn:focus")
         await expect(view).to_be_focused()
         await view.press("Enter")
         await page.wait_for_url("**/gwflow/S230601ag/metadata/")

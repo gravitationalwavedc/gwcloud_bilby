@@ -1,20 +1,24 @@
-<tr class="gwflow-job-row">
+<tr class="result-row">
   <td>
-    <span class="cell-label">Event ID(s)</span>
+    <span class="cell-label">Event IDs</span>
     {% include "bilbyui/_event_id_disclosure.html" with node=node %}
   </td>
   <td>
-    <span class="cell-label">Superevent &amp; sources</span>
+    <span class="cell-label">Superevent and sources</span>
     <span class="gwflow-job-sname font-weight-bold">{{ node.sname }}</span>
-    {% for lib in node.libraries %}<span class="badge badge-secondary mr-1">{{ lib }}</span>{% endfor %}
-    {% if node.schema_version %}<span class="badge badge-secondary mr-1">{{ node.schema_version }}</span>{% endif %}
-    {% if node.is_pruned %}<span class="badge badge-dark mr-1">pruned</span>{% endif %}
+    {% if node.libraries or node.schema_version or node.is_pruned %}
+      <div class="result-badge-group">
+        {% for lib in node.libraries %}<span class="badge badge-secondary">{{ lib }}</span>{% endfor %}
+        {% if node.schema_version %}<span class="badge badge-secondary">{{ node.schema_version }}</span>{% endif %}
+        {% if node.is_pruned %}<span class="badge badge-dark">pruned</span>{% endif %}
+      </div>
+    {% endif %}
   </td>
-  <td>
+  <td class="col-numeric">
     <span class="cell-label">Analyses</span>
     <span>{{ node.analysis_count }}</span>
   </td>
-  <td>
+  <td class="col-files">
     <span class="cell-label">Files</span>
     <span>{{ node.files_text }}</span>
     {% if node.files_total and node.files_uploaded == node.files_total %}
@@ -23,8 +27,8 @@
       <span class="badge badge-warning ml-1">incomplete</span>
     {% endif %}
   </td>
-  <td>
+  <td class="col-action">
     <span class="cell-label">Action</span>
-    <a class="btn btn-sm btn-outline-primary gwflow-view-btn" href="{% url 'bilbyui:gwflow_job_detail' sname=node.sname %}">View {{ node.sname }}</a>
+    <a class="btn btn-sm btn-outline-primary result-view-btn" href="{% url 'bilbyui:gwflow_job_detail' sname=node.sname %}">View <span class="sr-only">{{ node.sname }}</span></a>
   </td>
 </tr>

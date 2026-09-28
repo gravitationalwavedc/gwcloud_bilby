@@ -202,7 +202,7 @@ class TestGWFlowResultsMobile(GWFlowResultsPageBase):
         for viewport in VIEWPORTS:
             await page.set_viewport_size(viewport)
             await page.reload()
-            await page.wait_for_selector(".gwflow-job-row")
+            await page.wait_for_selector(".result-row")
 
             labels = page.locator(".cell-label")
             self.assertGreaterEqual(await labels.count(), 5, f"expected 5 cell-labels at {viewport['width']}px")
@@ -223,8 +223,8 @@ class TestGWFlowResultsTargetSize(GWFlowResultsPageBase):
     @async_e2e_test
     async def test_action_and_disclosure_targets_at_least_24px(self):
         page = self.page
-        await page.wait_for_selector(".gwflow-view-btn")
-        for selector in (".gwflow-view-btn", ".event-id-toggle"):
+        await page.wait_for_selector(".result-view-btn")
+        for selector in (".result-view-btn", ".event-id-toggle"):
             boxes = await page.evaluate(
                 f"""() => Array.from(document.querySelectorAll('{selector}')).map((el) => {{
                     const r = el.getBoundingClientRect();
@@ -248,7 +248,7 @@ class TestGWFlowLoadingTransition(GWFlowResultsPageBase):
         region = page.locator("#gwflow-results-region")
         target = page.locator("#gwflow-job-list")
         status = page.locator("#gwflow-results-status")
-        rows_before = await target.locator(".gwflow-job-row").count()
+        rows_before = await target.locator(".result-row").count()
 
         self.assertEqual(await target.locator("#gwflow-loading-indicator").count(), 0)
         self.assertTrue(await indicator.evaluate("el => el.hidden"))
@@ -269,7 +269,7 @@ class TestGWFlowLoadingTransition(GWFlowResultsPageBase):
         self.assertEqual(await indicator.get_attribute("aria-hidden"), "false")
         self.assertEqual(await region.get_attribute("aria-busy"), "true")
         self.assertEqual(
-            await target.locator(".gwflow-job-row").count(),
+            await target.locator(".result-row").count(),
             rows_before,
             "existing rows must remain visible while the request is in flight",
         )

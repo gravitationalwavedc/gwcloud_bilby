@@ -9779,8 +9779,9 @@ a.text-dark:hover, a.text-dark:focus {
 }
 
 .list-results-heading {
-  margin-top: 0;
+  margin-top: 1rem;
   margin-bottom: 1rem;
+  font-size: 1.5rem;
   scroll-margin-top: calc(var(--navbar-h, 0px) + 1rem);
 }
 .list-results-heading:focus, .list-results-heading:focus-visible {
@@ -10120,26 +10121,50 @@ a.text-dark:hover, a.text-dark:focus {
     width: 100%;
   }
 }
-.gwflow-results-table {
+.results-table {
   width: 100%;
   min-width: 0;
   max-width: 100%;
   table-layout: fixed;
 }
-.gwflow-results-table th,
-.gwflow-results-table td {
+.results-table th,
+.results-table td {
   padding: 0.5rem;
   vertical-align: top;
   min-width: 0;
   max-width: 100%;
-  overflow-wrap: anywhere;
 }
-.gwflow-results-table tbody tr {
-  border-top: 1px solid #afbacb;
+.results-table thead th {
+  color: #44546a;
+  font-size: 0.875rem;
+  font-weight: 600;
   border-bottom: 1px solid #afbacb;
 }
+.results-table tbody tr {
+  border-bottom: 1px solid #afbacb;
+}
+.results-table .col-numeric,
+.results-table .col-action {
+  text-align: right;
+}
+.results-table .col-numeric {
+  padding-right: 0.75rem;
+}
+.results-table .col-files {
+  padding-left: 0.75rem;
+}
 
-.gwflow-job-row {
+.result-badge-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.result-row {
   min-width: 0;
   max-width: 100%;
 }
@@ -10157,34 +10182,36 @@ a.text-dark:hover, a.text-dark:focus {
 }
 
 .gwflow-job-sname {
+  display: block;
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
 }
 
-.gwflow-job-row .badge {
+.result-row .badge {
   min-width: 0;
   max-width: 100%;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 
-.gwflow-view-btn,
+.result-view-btn,
 .event-id-toggle {
   min-width: 24px;
   min-height: 24px;
 }
-.gwflow-view-btn:focus-visible,
+.result-view-btn:focus-visible,
 .event-id-toggle:focus-visible {
   outline: 2px solid #059cfa;
   outline-offset: 1px;
 }
 
-.gwflow-view-btn {
+.result-view-btn {
   color: #035996;
   border-color: #035996;
+  max-width: 100%;
 }
-.gwflow-view-btn:hover, .gwflow-view-btn:focus {
+.result-view-btn:hover, .result-view-btn:focus {
   color: #fafdff;
   background-color: #035996;
   border-color: #035996;
@@ -10228,29 +10255,36 @@ a.text-dark:hover, a.text-dark:focus {
 }
 
 @media (max-width: 767.98px) {
-  .gwflow-results-table,
-  .gwflow-results-table tbody,
-  .gwflow-results-table tr,
-  .gwflow-results-table td {
+  .results-table,
+  .results-table tbody,
+  .results-table tr,
+  .results-table td {
     display: block;
     width: 100%;
   }
-  .gwflow-results-table thead {
+  .results-table thead {
     display: none;
   }
-  .gwflow-job-row {
+  .result-row {
     padding: 0.5rem;
     margin-bottom: 0.5rem;
     border: 1px solid #afbacb;
     border-radius: 0.25rem;
     background-color: #eff2f6;
   }
-  .gwflow-job-row:last-child {
+  .result-row:last-child {
     margin-bottom: 0;
   }
-  .gwflow-results-table td {
+  .results-table td {
     padding: 0.5rem 0;
     border: 0;
+  }
+  .results-table .col-numeric,
+  .results-table .col-files,
+  .results-table .col-action {
+    text-align: left;
+    padding-left: 0;
+    padding-right: 0;
   }
   .cell-label {
     position: static;

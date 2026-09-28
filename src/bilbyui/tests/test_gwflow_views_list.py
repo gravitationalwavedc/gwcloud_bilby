@@ -1015,9 +1015,9 @@ class TestGWFlowResultsSemantics(BilbyTestCase):
         self.assertContains(response, "<thead")
         self.assertContains(response, 'scope="col"')
         self.assertContains(response, "<tbody")
-        self.assertContains(response, '<tr class="gwflow-job-row">')
-        self.assertContains(response, '<th scope="col">Event ID(s)</th>')
-        self.assertContains(response, '<th scope="col">Action</th>')
+        self.assertContains(response, '<tr class="result-row">')
+        self.assertContains(response, '<th scope="col">Event IDs</th>')
+        self.assertContains(response, '<th scope="col" class="col-action">Action</th>')
 
     def test_event_ids_zero(self):
         html = self._render_disclosure({"id": 1, "event_id_all": [], "event_id_display": [], "event_id_extra": []})
