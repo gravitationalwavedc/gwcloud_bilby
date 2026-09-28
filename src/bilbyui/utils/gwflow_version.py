@@ -12,7 +12,7 @@ def normalise_libraries(raw):
     stored trimmed (leading/trailing whitespace removed) and compared
     case-sensitively against the stored (trimmed) form.
     """
-    if raw is None:
+    if not isinstance(raw, (list, tuple)):
         return []
 
     seen = set()
