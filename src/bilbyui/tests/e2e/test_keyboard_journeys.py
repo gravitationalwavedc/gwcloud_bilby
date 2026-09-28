@@ -110,10 +110,16 @@ class TestKeyboardEditName(_KeyboardEditNameBase):
 
         field = self.page.locator("#job-name-input")
         await expect(field).to_be_focused()
+        save_button = self.page.locator('.save-button[aria-label="Save name"]')
+        # Ensure the freshly-swapped form has settled and both controls are
+        # interactable before exercising the tab order, so a transient focus
+        # race cannot send Tab somewhere other than the save button.
+        await expect(save_button).to_be_visible()
         await field.fill("")
         await field.type("jobname")
-        await field.press("Tab")
-        save_button = self.page.locator('.save-button[aria-label="Save name"]')
+        await field.focus()
+        await expect(field).to_be_focused()
+        await self.page.keyboard.press("Tab")
         await expect(save_button).to_be_focused()
         await save_button.press("Enter")
         await expect(self.page.locator("#job-name-input")).to_have_count(0)

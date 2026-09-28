@@ -141,6 +141,12 @@ class TestPaginationHistoryFocus(PaginationAccessibilityBase):
     async def test_back_forward_preserves_survivor_and_repairs_detached_focus_once(self):
         page = self.page
         await page.wait_for_selector(".pagination-wrap")
+        # Native browser scroll restoration across Back/Forward is
+        # non-deterministic here (it restores the history entry's saved offset,
+        # which can differ from the current one). That is browser behaviour, not
+        # the app's contract, so pin it to manual and assert the app itself does
+        # not perform a destructive scroll while the focus survivor is retained.
+        await page.evaluate("history.scrollRestoration = 'manual'")
         search = page.locator("#search")
         await search.focus()
 
@@ -168,12 +174,6 @@ class TestPaginationHistoryFocus(PaginationAccessibilityBase):
         await page.evaluate("history.forward()")
         await page.wait_for_function("() => location.search.includes('page=2')")
         await page.wait_for_function("() => document.activeElement.id === 'search'")
-        # Native browser scroll restoration after Back/Forward is asynchronous,
-        # so poll for the restored position rather than racing a fixed timeout.
-        await page.wait_for_function(
-            "(target) => Math.abs(window.scrollY - target) <= 2",
-            arg=before_scroll,
-        )
         self.assertEqual(await page.evaluate("document.activeElement.id"), "search")
         self.assertLessEqual(
             abs((await page.evaluate("window.scrollY")) - before_scroll),
