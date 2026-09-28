@@ -191,6 +191,12 @@ class TestSafeExternalUrl(BilbyTestCase):
     def test_protocol_relative_url_is_sanitised(self):
         self.assertEqual(_safe_external_url("//example.com/results.tar.gz"), "")
 
+    def test_http_scheme_with_empty_netloc_is_sanitised(self):
+        self.assertEqual(_safe_external_url("http://"), "")
+
+    def test_https_scheme_with_empty_netloc_is_sanitised(self):
+        self.assertEqual(_safe_external_url("https://"), "")
+
     def test_empty_value_is_sanitised(self):
         self.assertEqual(_safe_external_url(""), "")
 
