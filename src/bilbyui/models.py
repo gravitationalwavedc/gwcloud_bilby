@@ -110,13 +110,23 @@ class EventID(models.Model):
         blank=False,
         null=False,
         unique=True,
-        validators=[RegexValidator(regex=r"^GW\d{6}_\d{6}$", message="Must be of the form GW123456_123456")],
+        validators=[
+            RegexValidator(
+                regex=r"^(GW\d{6}(_\d{6})?|G\d+)$",
+                message="Must be of the form GW123456, GW123456_123456, or G123456",
+            )
+        ],
     )
     trigger_id = models.CharField(
         max_length=15,
         blank=True,
         null=True,
-        validators=[RegexValidator(regex=r"^S\d{6}[a-z]{1,2}$", message="Must be of the form S123456a")],
+        validators=[
+            RegexValidator(
+                regex=r"^(S\d{6}[a-z]{1,2}|G\d+)$",
+                message="Must be of the form S123456a or G123456",
+            )
+        ],
     )
     nickname = models.CharField(max_length=20, blank=True, null=True)
     is_ligo_event = models.BooleanField(default=False)
