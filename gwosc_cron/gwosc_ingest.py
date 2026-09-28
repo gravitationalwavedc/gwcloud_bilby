@@ -95,6 +95,17 @@ def build_bilbyjob_name(event_name, config_name):
     return fix_job_name(f"{event_name}{EVENTNAME_SEPARATOR}{config_name}")
 
 
+def _read_config_value(dataset):
+    """Read a single config value from an HDF5 dataset, returning it as a str.
+
+    h5py stores a single string written via ``create_dataset(key, data="value")``
+    as a scalar dataset (shape ``()``), where ``ds[0]`` raises ValueError.
+    Array-shaped datasets (shape ``(1,)``) are read with ``ds[0]``.
+    """
+    value = dataset[()] if dataset.shape == () else dataset[0]
+    return value.decode("utf-8")
+
+
 def create_table(cursor):
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS completed_jobs (job_id TEXT PRIMARY KEY, success BOOLEAN, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reason TEXT, reason_data TEXT, catalog_shortname TEXT, common_name TEXT, all_succeeded INT, none_succeeded INT, is_latest_version BOOLEAN)"
@@ -401,7 +412,7 @@ def _check_and_download_inner(con, cur):
 
                         logger.info("config_file found: %s", toplevel_key)
                         config = h5[toplevel_key]["config_file"]["config"]
-                        ini_str = "\n".join(f"{k}={config[k][0].decode('utf-8')}" for k in config.keys())
+                        ini_str = "\n".join(f"{k}={_read_config_value(config[k])}" for k in config.keys())
                     except (KeyError, OSError, IndexError, AttributeError, ValueError):
                         error_msg = f"Failed to read H5 config data for key {toplevel_key!r} in {h5url}"
                         logger.exception(error_msg)
