@@ -167,7 +167,13 @@ class TestPaginationHistoryFocus(PaginationAccessibilityBase):
         self.assertFalse(back_focus["isBody"])
         await page.evaluate("history.forward()")
         await page.wait_for_function("() => location.search.includes('page=2')")
-        await page.wait_for_timeout(100)
+        await page.wait_for_function("() => document.activeElement.id === 'search'")
+        # Native browser scroll restoration after Back/Forward is asynchronous,
+        # so poll for the restored position rather than racing a fixed timeout.
+        await page.wait_for_function(
+            "(target) => Math.abs(window.scrollY - target) <= 2",
+            arg=before_scroll,
+        )
         self.assertEqual(await page.evaluate("document.activeElement.id"), "search")
         self.assertLessEqual(
             abs((await page.evaluate("window.scrollY")) - before_scroll),
