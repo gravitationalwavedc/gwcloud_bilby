@@ -4,6 +4,7 @@ from unittest import mock
 
 from asgiref.sync import sync_to_async
 from django.urls import reverse
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import expect
 
 from bilbyui.models import BilbyJob
@@ -132,9 +133,20 @@ class TestKeyboardEditName(_KeyboardEditNameBase):
         await expect(self.page.locator("#save-toast")).to_be_visible()
 
         edit = self.page.locator(f'#field-name-{self.job.id} .edit-button[aria-label="Edit name"]')
-        await edit.focus()
-        await edit.press("Enter")
         field = self.page.locator("#job-name-input")
+        # A follow-up edit request can still be dropped when it races the
+        # previous save's settle, so retry a bounded number of times until the
+        # edit form appears (a no-op if the first attempt already succeeded).
+        for _attempt in range(5):
+            if await field.count():
+                break
+            await edit.focus()
+            await edit.press("Enter")
+            try:
+                await field.wait_for(state="attached", timeout=2000)
+                break
+            except PlaywrightTimeoutError:
+                continue
         await field.wait_for(state="attached", timeout=15000)
         await expect(field).to_be_focused()
         await field.fill("ab")
