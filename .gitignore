@@ -33,3 +33,6 @@ docs
 
 # Playwright e2e runtime (Node packages + browser launcher wrapper)
 .playwright/
+
+# Local ADACS SSO mock users (dev only)
+.adacs_sso_users.json

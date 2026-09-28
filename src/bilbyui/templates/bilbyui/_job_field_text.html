@@ -66,6 +66,7 @@
     <div class="job-inline-field job-inline-field--readonly">
       {% if field == "name" %}
         <h1 class="job-inline-field__value">{{ value }}</h1>
+        {% if modifiable %}
         <button
           type="button"
           class="edit-button text-muted ml-2 job-control-target"
@@ -77,8 +78,10 @@
         >
           <i class="bi bi-pencil" aria-hidden="true"></i>
         </button>
+        {% endif %}
       {% else %}
         <p class="job-inline-field__value">{{ value }}</p>
+        {% if modifiable %}
         <button
           type="button"
           class="edit-button text-muted ml-2 job-control-target"
@@ -90,6 +93,7 @@
         >
           <i class="bi bi-pencil" aria-hidden="true"></i>
         </button>
+        {% endif %}
       {% endif %}
     </div>
   {% endif %}
