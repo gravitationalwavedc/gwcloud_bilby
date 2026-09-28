@@ -42,6 +42,39 @@
     }
 }
 
+// Bilby job inline fields (UX-11): the read-only value and its edit control
+// sit side by side, with wrapping protection so long names/descriptions do
+// not blow out the layout. Editing forms keep Bootstrap's block layout so
+// inputs stay full width with the save/cancel actions beneath.
+.job-inline-field--readonly {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: $spacer * 0.5;
+}
+
+.job-inline-field__value {
+    min-width: 0;
+}
+
+.job-inline-field__actions {
+    display: flex;
+    align-items: center;
+    gap: $spacer * 0.25;
+}
+
+// Loading indicators must not reserve layout space when idle. HTMX's default
+// only lowers opacity, which leaves the (often tall) skeleton occupying
+// space and creating large gaps between fields. Hide unless a request is
+// actually in flight (HTMX adds .htmx-request to the indicator element).
+.htmx-indicator {
+    display: none;
+}
+
+.htmx-indicator.htmx-request {
+    display: block;
+}
+
 // Alpine.js: hide elements with x-cloak until Alpine initialises them.
 [x-cloak] {
     display: none !important;

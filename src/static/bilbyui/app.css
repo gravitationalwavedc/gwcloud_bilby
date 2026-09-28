@@ -10417,6 +10417,31 @@ a.text-dark:hover, a.text-dark:focus {
   outline: none;
 }
 
+.job-inline-field--readonly {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.job-inline-field__value {
+  min-width: 0;
+}
+
+.job-inline-field__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-indicator.htmx-request {
+  display: block;
+}
+
 [x-cloak] {
   display: none !important;
 }
