@@ -650,3 +650,21 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         self.assertTrue(stale)
         self.assertTrue(response.context_data["stale"])
         self.assertContains(response, "Showing cached copy")
+
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404")
+    @mock.patch("bilbyui.views.get_versions")
+    def test_non_dict_payload_renders_raw_with_none_presentation(self, mock_get_versions, mock_get_job):
+        mock_get_job.return_value.current_history_id = "aaaabbbbccccddddeeeeffff0000111122223333"
+        mock_get_versions.return_value = (self._metadata_versions()[1:], "live")
+        self.mock_get_version.side_effect = [
+            ({"raw_payload": ["not", "a", "mapping"]}, "live"),
+            ({"raw_payload": {"info": {"status": "draft"}}}, "live"),
+        ]
+
+        response, stale = _render_gwflow_history_section(self.request, self.sname)
+        response.render()
+
+        self.assertFalse(stale)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context_data["presentation"])
+        self.assertEqual(response.context_data["selected_raw_json"], '["not", "a", "mapping"]')
