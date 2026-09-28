@@ -329,6 +329,24 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertTrue(result[0])
         self.assertNotIn("unreadable_file.txt", [entry["path"] for entry in result[1]])
 
+    def test_request_file_list_non_recursive_skips_unreadable_entry(self):
+        job_dir = self.job.get_upload_directory()
+        target_dir = Path(job_dir) / "data" / "unreadable_dir"
+        target_dir.mkdir()
+
+        real_is_dir = Path.is_dir
+
+        def is_dir_side_effect(self_obj):
+            if self_obj == target_dir:
+                raise PermissionError
+            return real_is_dir(self_obj)
+
+        with mock.patch.object(Path, "is_dir", new=is_dir_side_effect):
+            result = request_file_list(self.job, "./data", False, self.job.user_id)
+
+        self.assertTrue(result[0])
+        self.assertNotIn("unreadable_dir", [entry["path"] for entry in result[1]])
+
     def test_request_file_list_recursive_skips_path_escaping_entry(self):
         job_dir = self.job.get_upload_directory()
         target_file = Path(job_dir) / "data" / "escaping_file.txt"
