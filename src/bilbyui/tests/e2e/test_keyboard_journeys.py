@@ -120,10 +120,16 @@ class TestKeyboardEditName(_KeyboardEditNameBase):
         heading = self.page.locator(f"#field-name-{self.job.id} h1.job-inline-field__value")
         await expect(heading).to_have_text("jobname")
 
+        # Wait for HTMX to finish processing the save (its save-toast trigger)
+        # before re-entering edit mode, so the freshly-swapped edit button is
+        # fully bound and the follow-up edit request is not dropped.
+        await expect(self.page.locator("#save-toast")).to_be_visible()
+
         edit = self.page.locator(f'#field-name-{self.job.id} .edit-button[aria-label="Edit name"]')
         await edit.focus()
         await edit.press("Enter")
         field = self.page.locator("#job-name-input")
+        await field.wait_for(state="attached", timeout=15000)
         await expect(field).to_be_focused()
         await field.fill("ab")
         await field.press("Enter")
