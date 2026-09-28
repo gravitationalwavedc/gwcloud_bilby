@@ -70,12 +70,24 @@ poetry run python manage.py migrate --settings=gw_bilby.dev
 To run locally you will need access to an elasticsearch instance, which can be set up by following
 
 ```bash
-docker network create elastic
+# Create the docker network (safe to re-run; errors if it already exists are ignored)
+docker network create elastic || true
+
+# Pull the image (safe to re-run; pulls only if not present or outdated)
 docker pull docker.elastic.co/elasticsearch/elasticsearch:8.8.1
-docker run --name elasticsearch --net elastic -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -e "xpack.security.enabled=false" -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" -t docker.elastic.co/elasticsearch/elasticsearch:8.8.1
+
+# Remove any existing container with the same name so `docker run` never fails on a name clash
+docker rm -f elasticsearch || true
+
+# Run elasticsearch (no -t flag so it works in non-interactive shells)
+docker run --name elasticsearch --net elastic -p 9200:9200 -p 9300:9300 \
+  -e "discovery.type=single-node" \
+  -e "xpack.security.enabled=false" \
+  -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
+  docker.elastic.co/elasticsearch/elasticsearch:8.8.1
 ```
 
-This will work with the out-of-the-box development settings.
+This will work with the out-of-the-box development settings. The whole block is idempotent — you can re-run it any time without errors. To stop the instance later, run `docker stop elasticsearch`; to start it again, run `docker start elasticsearch`.
 
 ### Jobcontroller
 

@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from bilbyui.tests.testcases import BilbyTestCase
@@ -70,3 +71,28 @@ class TestRenderJobFieldText(BilbyTestCase):
     def test_status_code_passed_through(self):
         response = _render_job_field_text(self._request(), _job(), field="name", status=400)
         self.assertEqual(response.status_code, 400)
+
+
+class TestJobFieldTextTemplate(BilbyTestCase):
+    def _render(self, modifiable, field="name"):
+        return render_to_string(
+            "bilbyui/_job_field_text.html",
+            {
+                "field": field,
+                "value": "A value",
+                "job_id": 1,
+                "editing": False,
+                "error": "",
+                "modifiable": modifiable,
+            },
+        )
+
+    def test_edit_button_hidden_for_non_owner(self):
+        for field in ("name", "description"):
+            with self.subTest(field=field):
+                self.assertNotIn("edit-button", self._render(modifiable=False, field=field))
+
+    def test_edit_button_shown_for_owner(self):
+        for field in ("name", "description"):
+            with self.subTest(field=field):
+                self.assertIn("edit-button", self._render(modifiable=True, field=field))
