@@ -10,15 +10,22 @@
 <div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="content" data-settled-message="Page {{ pagination_page }} of {{ total_pages }}, {{ shown_count }} superevent{{ shown_count|pluralize }} shown">
   {% include "bilbyui/_active_filters.html" with indicator_id=indicator_id %}
   <p class="result-count">{{ total }} superevent{{ total|pluralize }} match</p>
-  <table class="gwflow-results-table">
+  <table class="results-table">
     <caption class="sr-only">GWFlow superevents</caption>
-    <thead class="sr-only">
+    <colgroup>
+      <col style="width: 18%">
+      <col style="width: 28%">
+      <col style="width: 10%">
+      <col style="width: 30%">
+      <col style="width: 14%">
+    </colgroup>
+    <thead>
       <tr>
-        <th scope="col">Event ID(s)</th>
-        <th scope="col">Superevent &amp; sources</th>
-        <th scope="col">Analyses</th>
-        <th scope="col">Files</th>
-        <th scope="col">Action</th>
+        <th scope="col">Event IDs</th>
+        <th scope="col">Superevent and sources</th>
+        <th scope="col" class="col-numeric">Analyses</th>
+        <th scope="col" class="col-files">Files</th>
+        <th scope="col" class="col-action">Action</th>
       </tr>
     </thead>
     <tbody>

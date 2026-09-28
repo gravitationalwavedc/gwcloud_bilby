@@ -64,7 +64,7 @@ class TestMyJobsView(BilbyTestCase):
         self.assertContains(response, "My job 2")
         self.assertNotContains(response, "Other job 0")
         self.assertNotContains(response, "Other job 2")
-        self.assertContains(response, 'class="badge badge-primary mr-1">Completed</span>')
+        self.assertContains(response, 'class="badge badge-primary">Completed</span>')
 
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_htmx_request_returns_fragment(self, request_job_filter):
@@ -252,4 +252,4 @@ class TestMyJobsView(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No event ids")
+        self.assertContains(response, "No event IDs")
