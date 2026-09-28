@@ -1,5 +1,6 @@
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.test import override_settings
 
 from bilbyui.models import BilbyPermissionError, EventID
@@ -88,19 +89,53 @@ class TestEventIDCreation(BilbyTestCase):
         self.assertEqual(event.is_ligo_event, self.params["input"]["isLigoEvent"])
         self.assertEqual(event.gps_time, self.params["input"]["gpsTime"])
 
+    def test_valid_legacy_event_id(self):
+        event = EventID.create(event_id="GW150914", gps_time=1126259462.391)
+        event.clean_fields()
+        self.assertEqual(event.event_id, "GW150914")
+        self.assertEqual(event.gps_time, 1126259462.391)
+
+    def test_valid_canonical_event_id(self):
+        event = EventID.create(event_id="GW150914_095045", gps_time=1126259462.391)
+        event.clean_fields()
+        self.assertEqual(event.event_id, "GW150914_095045")
+        self.assertEqual(event.gps_time, 1126259462.391)
+
+    def test_valid_gracedb_event_id(self):
+        event = EventID.create(event_id="G409107", gps_time=1234567890.0)
+        event.clean_fields()
+        self.assertEqual(event.event_id, "G409107")
+        self.assertEqual(event.gps_time, 1234567890.0)
+
+    def test_valid_legacy_trigger_id(self):
+        event = EventID.create(event_id="GW123456", trigger_id="G184098", gps_time=1126259462.391)
+        event.clean_fields()
+        self.assertEqual(event.event_id, "GW123456")
+        self.assertEqual(event.trigger_id, "G184098")
+        self.assertEqual(event.gps_time, 1126259462.391)
+
+    def test_valid_superevent_trigger_id(self):
+        event = EventID.create(event_id="GW123456_123456", trigger_id="S230601ag", gps_time=1234567890.0)
+        event.clean_fields()
+        self.assertEqual(event.event_id, "GW123456_123456")
+        self.assertEqual(event.trigger_id, "S230601ag")
+        self.assertEqual(event.gps_time, 1234567890.0)
+
     @silence_errors
     def test_bad_event_ids(self):
         self.authenticate()
 
         bad_event_ids = [
+            "GW12345",  # Too few digits for legacy GW
             "GW123456_1234567",  # Too many characters
             "GW123456_12345",  # Too few characters
             "GW1234567_12345",  # Underscore in wrong place
             "GG123456_123456",  # Should start with GW
-            "G123456_123456",  # Should start with GW
-            "123456_123456",  # Should start with GW
+            "G123456_123456",  # Underscore invalid with G prefix
+            "123456_123456",  # Should start with GW or G
             "GW123456-123456",  # Should have underscore
             "GW123a56-123456",  # Must not have letters after the GW
+            "invalid",
         ]
         for event_id in bad_event_ids:
             self.params["input"]["eventId"] = event_id
@@ -119,13 +154,49 @@ class TestEventIDCreation(BilbyTestCase):
             "S1234567a",  # Too many numbers
             "S12345a",  # Too few numbers
             "123456a",  # Must start with S
-            "G123456a",  # Must start with S
+            "G123456a",  # Must not end with letters when using G prefix
+            "invalid",
         ]
         for trigger_id in bad_trigger_ids:
             self.params["input"]["triggerId"] = trigger_id
             response = self.query(self.query_string, input_data=self.params["input"])
             self.assertResponseHasErrors(response)
             self.assertFalse(EventID.objects.all().exists())
+
+    def test_invalid_event_ids_raise_validation_error(self):
+        bad_event_ids = [
+            "GW12345",
+            "GW1234567",
+            "GW123456_12345",
+            "GW123456_1234567",
+            "S123456a",
+            "invalid",
+        ]
+        for bad_id in bad_event_ids:
+            with self.subTest(bad_id=bad_id):
+                with self.assertRaises(ValidationError):
+                    event = EventID(event_id=bad_id, gps_time=1234567890.0)
+                    event.clean_fields()
+
+    def test_invalid_trigger_ids_raise_validation_error(self):
+        bad_trigger_ids = [
+            "S12345",
+            "S123456",
+            "S1234567a",
+            "S123456abc",
+            "G123456a",
+            "GW123456",
+            "invalid",
+        ]
+        for bad_trigger in bad_trigger_ids:
+            with self.subTest(bad_trigger=bad_trigger):
+                with self.assertRaises(ValidationError):
+                    event = EventID(
+                        event_id="GW123456_123456",
+                        trigger_id=bad_trigger,
+                        gps_time=1234567890.0,
+                    )
+                    event.clean_fields()
 
 
 @override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])
