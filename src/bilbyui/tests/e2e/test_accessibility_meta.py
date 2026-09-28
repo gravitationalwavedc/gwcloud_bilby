@@ -99,7 +99,7 @@ class AccessibilityDetectorMetaTests(AsyncE2ETestCase):
                 "clean": """
                     <!doctype html>
                     <html lang="en"><head><title>Clean focus fixture</title></head>
-                    <body><button id="subject" autofocus>Swap</button>
+                    <body><button id="subject">Swap</button>
                     <div id="result"></div>
                     <script>document.querySelector('#subject').focus()</script>
                     </body></html>

@@ -88,6 +88,16 @@ async function newFixture(browser) {
   return page;
 }
 
+// Freeze the fake clock so fastForward() advances by exactly the requested
+// milliseconds. install() alone keeps ticking in real time, which lets a
+// boundary advance (e.g. 999 against the controller's 1000ms debounce) cross
+// the threshold. Only call this in tests that assert the debounce boundary;
+// freezing the clock stalls any real setTimeout() the page awaits (e.g. the
+// `setTimeout(resolve, 0)` flush used by the history-restore tests).
+async function freezeClock(page) {
+  await page.clock.pauseAt(new Date(Date.now() + 3_600_000));
+}
+
 async function snapshot(page) {
   return page.evaluate(() => {
     const region = document.getElementById("test-region");
@@ -181,6 +191,7 @@ try {
 
   await run("2 fast success publishes only settled message", async () => {
     const page = await newFixture(browser);
+    await freezeClock(page);
     await dispatch(page, "htmx:beforeRequest", "A");
     await advance(page, 999);
     assert.equal((await snapshot(page)).status, "");
@@ -320,6 +331,7 @@ try {
 
   await run("10 replacement cancels A timer and B owns progress", async () => {
     const page = await newFixture(browser);
+    await freezeClock(page);
     await dispatch(page, "htmx:beforeRequest", "A");
     await advance(page, 900);
     await dispatch(page, "htmx:beforeRequest", "B");
