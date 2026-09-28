@@ -4,14 +4,13 @@ from unittest import mock
 
 from asgiref.sync import sync_to_async
 from django.urls import reverse
-from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import expect
 
 from bilbyui.models import BilbyJob
 from bilbyui.services.api_tokens import create_token
 from bilbyui.tests.e2e.base import GWFlowListToDetailBase
 from bilbyui.tests.e2e.test_copy_clipboard_e2e import RESOLVED_FAKE
-from bilbyui.tests.e2e.utils import AsyncE2ETestCase, async_e2e_test
+from bilbyui.tests.e2e.utils import AsyncE2ETestCase, async_e2e_test, expect_htmx_settle
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -107,14 +106,12 @@ class TestKeyboardEditName(_KeyboardEditNameBase):
         edit = container.locator('.edit-button[aria-label="Edit name"]')
         await edit.focus()
         await expect(edit).to_be_focused()
-        await edit.press("Enter")
+        async with expect_htmx_settle(self.page):
+            await edit.press("Enter")
 
         field = self.page.locator("#job-name-input")
         await expect(field).to_be_focused()
         save_button = self.page.locator('.save-button[aria-label="Save name"]')
-        # Ensure the freshly-swapped form has settled and both controls are
-        # interactable before exercising the tab order, so a transient focus
-        # race cannot send Tab somewhere other than the save button.
         await expect(save_button).to_be_visible()
         await field.fill("")
         await field.type("jobname")
@@ -122,32 +119,22 @@ class TestKeyboardEditName(_KeyboardEditNameBase):
         await expect(field).to_be_focused()
         await self.page.keyboard.press("Tab")
         await expect(save_button).to_be_focused()
-        await save_button.press("Enter")
+        async with expect_htmx_settle(self.page):
+            await save_button.press("Enter")
         await expect(self.page.locator("#job-name-input")).to_have_count(0)
         heading = self.page.locator(f"#field-name-{self.job.id} h1.job-inline-field__value")
         await expect(heading).to_have_text("jobname")
 
-        # Wait for HTMX to finish processing the save (its save-toast trigger)
-        # before re-entering edit mode, so the freshly-swapped edit button is
-        # fully bound and the follow-up edit request is not dropped.
-        await expect(self.page.locator("#save-toast")).to_be_visible()
-
+        # Re-enter edit mode. The save swap replaced #field-name-{id} with the
+        # read-only field; expect_htmx_settle above waited for htmx to bind the
+        # replacement edit button, so the activation below is deterministic
+        # (previously this raced htmx's settle and the request was dropped).
         edit = self.page.locator(f'#field-name-{self.job.id} .edit-button[aria-label="Edit name"]')
-        field = self.page.locator("#job-name-input")
-        # A follow-up edit request can still be dropped when it races the
-        # previous save's settle, so retry a bounded number of times until the
-        # edit form appears (a no-op if the first attempt already succeeded).
-        for _attempt in range(5):
-            if await field.count():
-                break
-            await edit.focus()
+        await edit.focus()
+        async with expect_htmx_settle(self.page):
             await edit.press("Enter")
-            try:
-                await field.wait_for(state="attached", timeout=2000)
-                break
-            except PlaywrightTimeoutError:
-                continue
-        await field.wait_for(state="attached", timeout=15000)
+
+        field = self.page.locator("#job-name-input")
         await expect(field).to_be_focused()
         await field.fill("ab")
         await field.press("Enter")

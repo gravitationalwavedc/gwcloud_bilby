@@ -17,6 +17,7 @@ from __future__ import annotations
 import atexit
 import functools
 import os
+from contextlib import asynccontextmanager
 
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
@@ -213,3 +214,48 @@ async def run_axe_document(page):
     covered. Callers must not filter results to mask findings.
     """
     return await page.evaluate("() => axe.run(document, { resultTypes: ['violations'] }).then((r) => r.violations)")
+
+
+@asynccontextmanager
+async def expect_htmx_settle(page, timeout: float = 15000):
+    """Await the htmx swap triggered by the enclosed action before continuing.
+
+    htmx initialises swapped fragments asynchronously: it inserts the fragment,
+    then runs its settle step (``settleDelay``, 20ms by default) which binds the
+    new elements' ``hx-*`` triggers and only then dispatches ``htmx:afterSettle``
+    (see ``htmx.min.js``). A swapped control is therefore inert until settle, so
+    interacting with it immediately — or waiting on a side effect such as a
+    toast — races htmx's initialisation.
+
+    ``htmx:afterSettle`` bubbles, so one ``document.body`` listener is enough.
+    It is armed from a flag BEFORE the action and the wait happens on exit, so
+    the event cannot be missed. This replaces "wait for a side effect, then
+    retry the interaction" patterns with the framework's own lifecycle signal.
+
+    Usage::
+
+        async with expect_htmx_settle(self.page):
+            await edit.press("Enter")
+    """
+    await page.evaluate(
+        """() => {
+            window.__htmxSettled = false;
+            if (window.__htmxSettleProbe) {
+                document.body.removeEventListener('htmx:afterSettle', window.__htmxSettleProbe);
+            }
+            window.__htmxSettleProbe = () => { window.__htmxSettled = true; };
+            document.body.addEventListener('htmx:afterSettle', window.__htmxSettleProbe);
+        }"""
+    )
+    try:
+        yield
+        await page.wait_for_function("() => window.__htmxSettled === true", timeout=timeout)
+    finally:
+        await page.evaluate(
+            """() => {
+                if (window.__htmxSettleProbe) {
+                    document.body.removeEventListener('htmx:afterSettle', window.__htmxSettleProbe);
+                    window.__htmxSettleProbe = undefined;
+                }
+            }"""
+        )
