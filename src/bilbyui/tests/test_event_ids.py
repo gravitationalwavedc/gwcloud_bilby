@@ -1,11 +1,15 @@
+from unittest.mock import patch
+
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import override_settings
 
 from bilbyui.models import BilbyPermissionError, EventID
 from bilbyui.tests.test_utils import silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.views import create_event_id
 
 User = get_user_model()
 
@@ -197,6 +201,114 @@ class TestEventIDCreation(BilbyTestCase):
                         gps_time=1234567890.0,
                     )
                     event.clean_fields()
+
+    @silence_errors
+    def test_create_event_id_mutation_idempotent(self):
+        self.authenticate()
+
+        # Initial creation
+        response = self.query(self.query_string, input_data=self.params["input"])
+        self.assertResponseNoErrors(response)
+        self.assertEqual(
+            response.data["createEventId"]["result"],
+            f"EventID {self.params['input']['eventId']} successfully created!",
+        )
+
+        # Duplicate call with identical input succeeds and reports already exists
+        response2 = self.query(self.query_string, input_data=self.params["input"])
+        self.assertResponseNoErrors(response2)
+        self.assertEqual(
+            response2.data["createEventId"]["result"],
+            f"EventID {self.params['input']['eventId']} already exists (updated)!",
+        )
+        self.assertEqual(EventID.objects.filter(event_id=self.params["input"]["eventId"]).count(), 1)
+
+    @silence_errors
+    def test_create_event_id_mutation_non_permitted_user_blocked(self):
+        self.authenticate()
+        with override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[]):
+            response = self.query(self.query_string, input_data=self.params["input"])
+            self.assertResponseHasErrors(response)
+            self.assertEqual(response.errors[0]["message"], "User is not permitted to create EventIDs")
+
+    def test_create_event_id_idempotent_duplicate(self):
+        user = self.create_user()
+        event_id = "GW150914"
+        gps_time = 1126259462.391
+
+        msg1 = create_event_id(user, event_id=event_id, gps_time=gps_time)
+        self.assertEqual(msg1, f"EventID {event_id} successfully created!")
+        self.assertEqual(EventID.objects.filter(event_id=event_id).count(), 1)
+
+        msg2 = create_event_id(user, event_id=event_id, gps_time=gps_time)
+        self.assertEqual(msg2, f"EventID {event_id} already exists (updated)!")
+        self.assertEqual(EventID.objects.filter(event_id=event_id).count(), 1)
+
+    def test_create_event_id_idempotent_backfills_trigger_id(self):
+        user = self.create_user()
+        event_id = "GW123456_123456"
+        gps_time = 1234567890.0
+
+        msg1 = create_event_id(user, event_id=event_id, gps_time=gps_time, trigger_id=None)
+        self.assertEqual(msg1, f"EventID {event_id} successfully created!")
+        event = EventID.objects.get(event_id=event_id)
+        self.assertIsNone(event.trigger_id)
+
+        msg2 = create_event_id(user, event_id=event_id, gps_time=gps_time, trigger_id="S230601ag")
+        self.assertEqual(msg2, f"EventID {event_id} already exists (updated)!")
+        event.refresh_from_db()
+        self.assertEqual(event.trigger_id, "S230601ag")
+
+        # Calling again does not clobber existing trigger_id even if a different one is passed
+        msg3 = create_event_id(user, event_id=event_id, gps_time=gps_time, trigger_id="S230602ab")
+        self.assertEqual(msg3, f"EventID {event_id} already exists (updated)!")
+        event.refresh_from_db()
+        self.assertEqual(event.trigger_id, "S230601ag")
+
+    def test_create_event_id_idempotent_backfills_nickname(self):
+        user = self.create_user()
+        event_id = "GW123456_123456"
+        gps_time = 1234567890.0
+
+        msg1 = create_event_id(user, event_id=event_id, gps_time=gps_time, nickname=None)
+        self.assertEqual(msg1, f"EventID {event_id} successfully created!")
+        event = EventID.objects.get(event_id=event_id)
+        self.assertIsNone(event.nickname)
+
+        msg2 = create_event_id(user, event_id=event_id, gps_time=gps_time, nickname="GW150914")
+        self.assertEqual(msg2, f"EventID {event_id} already exists (updated)!")
+        event.refresh_from_db()
+        self.assertEqual(event.nickname, "GW150914")
+
+        # Calling again does not clobber existing nickname even if a different one is passed
+        msg3 = create_event_id(user, event_id=event_id, gps_time=gps_time, nickname="GWOther")
+        self.assertEqual(msg3, f"EventID {event_id} already exists (updated)!")
+        event.refresh_from_db()
+        self.assertEqual(event.nickname, "GW150914")
+
+    def test_create_event_id_validation_still_enforced(self):
+        user = self.create_user()
+        with self.assertRaises(ValidationError):
+            create_event_id(user, event_id="invalid_event_id", gps_time=1234567890.0)
+
+        with self.assertRaises(ValidationError):
+            create_event_id(user, event_id="GW150914", trigger_id="invalid_trigger", gps_time=1234567890.0)
+
+        # Also verify validation error when backfilling invalid trigger_id
+        create_event_id(user, event_id="GW150914", gps_time=1234567890.0)
+        with self.assertRaises(ValidationError):
+            create_event_id(user, event_id="GW150914", trigger_id="invalid_trigger", gps_time=1234567890.0)
+
+    def test_create_event_id_concurrent_race_integrity_error(self):
+        user = self.create_user()
+        event_id = "GW150914"
+        gps_time = 1126259462.391
+
+        # Simulate IntegrityError on save due to concurrent insertion race
+        with patch.object(EventID, "save", side_effect=IntegrityError("duplicate key")):
+            msg = create_event_id(user, event_id=event_id, gps_time=gps_time)
+            self.assertEqual(msg, f"EventID {event_id} already exists (updated)!")
+
 
 
 @override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])

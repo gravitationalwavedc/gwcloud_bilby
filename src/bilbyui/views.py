@@ -1090,13 +1090,33 @@ def file_download(request):
 
 
 def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
-    EventID.create(
+    event = EventID.objects.filter(event_id=event_id).first()
+    if event:
+        changed = False
+        if not event.trigger_id and trigger_id:
+            event.trigger_id = trigger_id
+            changed = True
+        if not event.nickname and nickname:
+            event.nickname = nickname
+            changed = True
+        if changed:
+            event.clean_fields()
+            event.save()
+        return f"EventID {event_id} already exists (updated)!"
+
+    event = EventID(
         event_id=event_id,
         trigger_id=trigger_id,
         nickname=nickname,
         is_ligo_event=is_ligo_event,
         gps_time=gps_time,
     )
+    event.clean_fields()
+    try:
+        with transaction.atomic():
+            event.save()
+    except IntegrityError:
+        return f"EventID {event_id} already exists (updated)!"
 
     return f"EventID {event_id} successfully created!"
 
