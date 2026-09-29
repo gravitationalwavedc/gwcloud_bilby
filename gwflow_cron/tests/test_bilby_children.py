@@ -541,6 +541,58 @@ class TestResolveEventIdFor(unittest.TestCase):
         self.assertIsNone(resolve_event_id_for("S1", None))
         self.assertIsNone(resolve_event_id_for("S1", ["not a dict"]))
 
+    def test_state_preferred_selects_correct_event(self):
+        events = [{"uid": f"EVT-{i}", "gps_time": 1000.0 + i, "state": "neighbor"} for i in range(4)]
+        events.append({"uid": "EVT-4", "gps_time": 1004.0, "state": "preferred"})
+        detail = {"gracedb": {"events": events}}
+        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-4", 1004.0))
+
+    def test_capitalized_state_preferred_selects_correct_event(self):
+        detail = {
+            "gracedb": {
+                "events": [
+                    {"uid": "EVT-A", "gps_time": 1000.0, "State": "neighbor"},
+                    {"uid": "EVT-B", "gps_time": 2000.0, "State": "Preferred"},
+                ],
+            }
+        }
+        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-B", 2000.0))
+
+    def test_state_preferred_takes_priority_over_first_event(self):
+        detail = {
+            "gracedb": {
+                "events": [
+                    {"uid": "EVT-A", "gps_time": 1000.0},
+                    {"uid": "EVT-B", "gps_time": 2000.0},
+                    {"uid": "EVT-C", "gps_time": 3000.0, "state": "preferred"},
+                ],
+            }
+        }
+        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-C", 3000.0))
+
+    def test_preferred_uid_takes_priority_over_state(self):
+        detail = {
+            "gracedb": {
+                "preferred_event": "EVT-B",
+                "events": [
+                    {"uid": "EVT-A", "gps_time": 1000.0, "state": "preferred"},
+                    {"uid": "EVT-B", "gps_time": 2000.0, "state": "neighbor"},
+                ],
+            }
+        }
+        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-B", 2000.0))
+
+    def test_UID_alias_in_preferred_uid_match(self):
+        detail = {
+            "gracedb": {
+                "preferred_event": "EVT-A",
+                "events": [
+                    {"UID": "EVT-A", "gps_time": 1234567890.5},
+                ],
+            }
+        }
+        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
+
 
 def _bilby_analysis(
     uid="uid1",
