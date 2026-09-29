@@ -1010,4 +1010,3 @@ class TestTriggerTimeAndGpsTimeSchema(BilbyTestCase):
         )
         event_val.refresh_from_db()
         self.assertEqual(event_val.gps_time, 987654321.0)
-

@@ -61,4 +61,3 @@ class TestEventIDAdmin(BilbyTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         instance = form.save()
         self.assertEqual(instance.gps_time, 123456789.0)
-
