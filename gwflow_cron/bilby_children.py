@@ -267,9 +267,16 @@ def resolve_event_id_for(sname: str, detail: dict) -> tuple[str, float] | None:
     chosen = None
     if preferred_uid:
         for ev in events:
-            if isinstance(ev, dict) and ev.get("uid") == preferred_uid:
+            if isinstance(ev, dict) and (ev.get("uid") == preferred_uid or ev.get("UID") == preferred_uid):
                 chosen = ev
                 break
+    if chosen is None:
+        for ev in events:
+            if isinstance(ev, dict):
+                state_val = ev.get("state") or ev.get("State")
+                if isinstance(state_val, str) and state_val.lower() == "preferred":
+                    chosen = ev
+                    break
     if chosen is None:
         for ev in events:
             if isinstance(ev, dict) and ev.get("is_preferred") in _TRUTHY_PREFERRED:
@@ -286,13 +293,15 @@ def resolve_event_id_for(sname: str, detail: dict) -> tuple[str, float] | None:
     if not isinstance(chosen, dict):
         return None
 
-    event_uid = chosen.get("uid")
+    event_uid = chosen.get("uid") or chosen.get("UID")
     if not isinstance(event_uid, str) or not event_uid:
         return None
 
     gps_time = chosen.get("gps_time")
     if gps_time is None:
         gps_time = chosen.get("gpstime")
+    if gps_time is None:
+        gps_time = chosen.get("GPSTime")
     if gps_time is None:
         gps_time = gracedb.get("preferred_event_gps")
     if gps_time is None:
