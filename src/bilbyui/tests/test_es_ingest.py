@@ -3,7 +3,7 @@ from io import StringIO
 from unittest import mock
 
 import requests
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.db import DatabaseError
 from django.test import override_settings
 
@@ -397,7 +397,7 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(gwflow_job.event_id.event_id, "G000005")
         self.assertEqual(gwflow_job.event_id.trigger_id, "S200115j")
         self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1263172181.28)
-        self.assertTrue(gwflow_job.event_id.is_ligo_event)
+        self.assertFalse(gwflow_job.event_id.is_ligo_event)
 
     def test_handle_gwflow_cascades_to_children_via_bilby_jobs(self):
         # 1. Unlinked parent that gets resolved during ingestion
@@ -595,24 +595,24 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(gwflow_job.event_id.event_id, "G000003")
         self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1252150000.5)
 
-    def test_handle_gwflow_invalid_gps_falls_back_to_default(self):
+    def test_handle_gwflow_invalid_gps_creates_null_gps_link(self):
         gwflow_job = GWFlowJob.objects.create(
-            sname="S190915a",
+            sname="S200118a",
             user=self.user,
             event_id=None,
         )
 
         detail_payload = {
             "GraceDB": {
-                "preferred_event_uid": "G000004",
-                "preferred_event_gps": "invalid-gps",
+                "preferred_event": "G000008",
+                "Events": [{"UID": "G000008", "GPSTime": "not-a-number"}],
             }
         }
 
         def fake_get(url, headers=None, timeout=None):
             if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S190915a"}])
-            if url.endswith("/api/v1/superevents/S190915a/"):
+                return self._list_page([{"sname": "S200118a"}])
+            if url.endswith("/api/v1/superevents/S200118a/"):
                 return _MockResponse(detail_payload, 200)
             raise AssertionError(f"Unexpected URL: {url}")
 
@@ -621,10 +621,11 @@ class TestEsIngestCommand(BilbyTestCase):
 
         gwflow_job.refresh_from_db()
         self.assertIsNotNone(gwflow_job.event_id)
-        self.assertEqual(gwflow_job.event_id.event_id, "G000004")
-        self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1126259462.391)
+        self.assertEqual(gwflow_job.event_id.event_id, "G000008")
+        self.assertIsNone(gwflow_job.event_id.gps_time)
 
-    def test_handle_gwflow_reconciles_is_ligo_event_and_trigger_id_on_existing_event(self):
+
+    def test_handle_gwflow_reuses_event_without_promoting_flag(self):
         existing_event = EventID.objects.create(
             event_id="G000007",
             gps_time=1262272821.5,
@@ -658,8 +659,9 @@ class TestEsIngestCommand(BilbyTestCase):
         gwflow_job.refresh_from_db()
         existing_event.refresh_from_db()
         self.assertEqual(gwflow_job.event_id, existing_event)
-        self.assertTrue(existing_event.is_ligo_event)
+        self.assertFalse(existing_event.is_ligo_event)
         self.assertEqual(existing_event.trigger_id, "S200116a")
+
 
     def test_handle_gwflow_ignores_malformed_chosen_uid(self):
         gwflow_job = GWFlowJob.objects.create(
@@ -688,3 +690,143 @@ class TestEsIngestCommand(BilbyTestCase):
         gwflow_job.refresh_from_db()
         self.assertIsNone(gwflow_job.event_id)
         self.assertFalse(EventID.objects.filter(event_id="INVALID-UID-12345").exists())
+
+    def test_es_ingest_source_has_no_is_ligo_event_or_sentinel(self):
+        import inspect
+
+        from bilbyui.management.commands import es_ingest as es_ingest_module
+
+        source = inspect.getsource(es_ingest_module)
+        flag = "is_ligo" + "_event"
+        sentinel = "1126259462" + ".391"
+        self.assertNotIn(flag, source)
+        self.assertNotIn(sentinel, source)
+
+    def test_handle_bilby_unparseable_gps_creates_null_gps_link(self):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="GW150914-v4--IMRPhenomD",
+            description="Historical GWOSC job",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        IniKeyValue.objects.create(
+            job=job,
+            key="trigger_time",
+            value="not-a-number",
+            index=0,
+            processed=True,
+        )
+
+        out = StringIO()
+        call_command("es_ingest", stdout=out)
+
+        job.refresh_from_db()
+        self.assertIsNotNone(job.event_id)
+        self.assertEqual(job.event_id.event_id, "GW150914")
+        self.assertIsNone(job.event_id.gps_time)
+
+    def test_handle_gwflow_cascade_links_all_children(self):
+        parent = GWFlowJob.objects.create(sname="S200220a", user=self.user, event_id=None)
+        parent_event = EventID.objects.create(event_id="G000011", gps_time=1266105618.0)
+        other_event = EventID.objects.create(event_id="G000012", gps_time=1266105619.0)
+
+        child_unlinked = BilbyJob.objects.create(
+            user_id=self.user.id, name="Child_Unlinked", gwflow_job=parent,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        child_correct = BilbyJob.objects.create(
+            user_id=self.user.id, name="Child_Correct", gwflow_job=parent, event_id=parent_event,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        child_conflict = BilbyJob.objects.create(
+            user_id=self.user.id, name="Child_Conflict", gwflow_job=parent, event_id=other_event,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+        detail_payload = {
+            "GraceDB": {
+                "preferred_event": "G000011",
+                "Events": [{"UID": "G000011", "GPSTime": 1266105618.0}],
+            }
+        }
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S200220a"}])
+            if url.endswith("/api/v1/superevents/S200220a/"):
+                return _MockResponse(detail_payload, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
+        self.assertIn("Child cascade: 3 processed, 0 failed", output)
+
+        parent.refresh_from_db()
+        child_unlinked.refresh_from_db()
+        child_correct.refresh_from_db()
+        child_conflict.refresh_from_db()
+        self.assertEqual(parent.event_id, parent_event)
+        self.assertEqual(child_unlinked.event_id, parent_event)
+        self.assertEqual(child_correct.event_id, parent_event)
+        self.assertEqual(child_conflict.event_id, parent_event)
+
+    def test_handle_gwflow_cascade_reports_failure_and_exits_nonzero(self):
+        parent = GWFlowJob.objects.create(sname="S200221a", user=self.user, event_id=None)
+        parent_event = EventID.objects.create(event_id="G000013", gps_time=1266105618.0)
+        parent.event_id = parent_event
+        parent.save()
+
+        child_correct = BilbyJob.objects.create(
+            user_id=self.user.id, name="Child_Correct", gwflow_job=parent, event_id=parent_event,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        child_fail = BilbyJob.objects.create(
+            user_id=self.user.id, name="Child_Fail", gwflow_job=parent,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        child_ok = BilbyJob.objects.create(
+            user_id=self.user.id, name="Child_Ok", gwflow_job=parent,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+        detail_payload = {
+            "GraceDB": {
+                "preferred_event": "G000013",
+                "Events": [{"UID": "G000013", "GPSTime": 1266105618.0}],
+            }
+        }
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S200221a"}])
+            if url.endswith("/api/v1/superevents/S200221a/"):
+                return _MockResponse(detail_payload, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        original_save = BilbyJob.save
+
+        def flaky_save(self, *args, **kwargs):
+            if getattr(self, "pk", None) == child_fail.pk:
+                raise RuntimeError("simulated child save failure")
+            return original_save(self, *args, **kwargs)
+
+        out = StringIO()
+        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
+            with override_settings(
+                CBCFLOW_PORTAL_URL="https://portal.example.com",
+                CBCFLOW_PORTAL_TOKEN="token",
+            ):
+                with mock.patch.object(BilbyJob, "save", autospec=True, side_effect=flaky_save):
+                    with self.assertRaises(CommandError):
+                        call_command("es_ingest", "--gwflow", stdout=out, stderr=out)
+
+        output = out.getvalue()
+        self.assertIn("Child cascade: 2 processed, 1 failed", output)
+
+        child_fail.refresh_from_db()
+        child_ok.refresh_from_db()
+        child_correct.refresh_from_db()
+        self.assertIsNone(child_fail.event_id)
+        self.assertEqual(child_ok.event_id, parent_event)
+        self.assertEqual(child_correct.event_id, parent_event)

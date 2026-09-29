@@ -1,11 +1,12 @@
 import json
 import logging
+import math
 import re
 import urllib.parse
 
 import requests
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Q
 
 from bilbyui.models import BilbyJob, EventID, GWFlowJob
@@ -88,20 +89,32 @@ class Command(BaseCommand):
                                 or job.inikeyvalue_set.filter(key="trigger_time", processed=False).first()
                             )
 
-                            gps = 1126259462.391
+                            gps = None
                             if ini_kv and ini_kv.value:
                                 try:
                                     val = json.loads(ini_kv.value)
-                                    gps = float(val)
+                                    parsed_gps = float(val)
                                 except (ValueError, TypeError, json.JSONDecodeError):
                                     try:
-                                        gps = float(ini_kv.value)
+                                        parsed_gps = float(ini_kv.value)
                                     except (ValueError, TypeError):
-                                        gps = 1126259462.391
+                                        parsed_gps = None
+                                if parsed_gps is not None and math.isfinite(parsed_gps):
+                                    gps = parsed_gps
+
+                            if gps is None:
+                                source_identifier = (
+                                    f"IniKeyValue {ini_kv.id}" if ini_kv is not None else f"BilbyJob {job.id}"
+                                )
+                                logger.warning(
+                                    "No finite GPS value for GWOSC source %s; creating EventID %s with gps_time=None",
+                                    source_identifier,
+                                    clean_prefix,
+                                )
 
                             event, _ = EventID.objects.get_or_create(
                                 event_id=clean_prefix,
-                                defaults={"gps_time": gps, "is_ligo_event": job.is_ligo_job},
+                                defaults={"gps_time": gps},
                             )
                             job.event_id = event
 
@@ -115,6 +128,38 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f"✗ Job {job.id} - {job.name}: {e}"))
 
         self.stdout.write(self.style.SUCCESS(f"\nIngestion complete: {success_count} succeeded, {error_count} failed"))
+
+    def _reconcile_gwflow_children(self, job) -> tuple[int, int]:
+        processed = 0
+        failed = 0
+        children = BilbyJob.objects.filter(gwflow_job=job).order_by("pk")
+
+        for child in children:
+            if child.event_id_id == job.event_id_id:
+                processed += 1
+                continue
+
+            try:
+                child.event_id = job.event_id
+                child.save(update_fields=["event_id"])
+                persisted = BilbyJob.objects.filter(
+                    pk=child.pk,
+                    event_id_id=job.event_id_id,
+                ).exists()
+                if not persisted:
+                    raise RuntimeError("persisted EventID does not match expected EventID")
+                processed += 1
+            except Exception as exc:
+                failed += 1
+                logger.exception(
+                    "Child cascade failed for parent %s, child %s, expected EventID %s: %s",
+                    job.id,
+                    child.id,
+                    job.event_id_id,
+                    exc,
+                )
+
+        return processed, failed
 
     def handle_gwflow(self):
         portal_url = getattr(settings, "CBCFLOW_PORTAL_URL", None)
@@ -133,6 +178,8 @@ class Command(BaseCommand):
         success_count = 0
         skip_count = 0
         error_count = 0
+        child_processed = 0
+        child_failed = 0
 
         self.stdout.write("Starting Elasticsearch ingestion for gwflow jobs from portal...")
 
@@ -252,32 +299,35 @@ class Command(BaseCommand):
                                     chosen_uid = preferred_uid
                                     gps_time = gracedb.get("preferred_event_gps") or gracedb.get("gps_time")
 
-                                gps_val = 1126259462.391
+                                gps_val = None
                                 if gps_time is not None:
                                     try:
                                         val = json.loads(gps_time) if isinstance(gps_time, str) else gps_time
-                                        gps_val = float(val)
+                                        parsed_gps = float(val)
                                     except (ValueError, TypeError, json.JSONDecodeError):
                                         try:
-                                            gps_val = float(gps_time)
+                                            parsed_gps = float(gps_time)
                                         except (ValueError, TypeError):
-                                            gps_val = 1126259462.391
+                                            parsed_gps = None
+                                    if parsed_gps is not None and math.isfinite(parsed_gps):
+                                        gps_val = parsed_gps
 
                                 if chosen_uid and re.match(r"^(GW\d{6}(_\d{6})?|G\d+)$", str(chosen_uid)):
+                                    if gps_val is None:
+                                        logger.warning(
+                                            "No finite GPS value for GWFlowJob %s (%s); "
+                                            "creating EventID %s with gps_time=None",
+                                            job.id,
+                                            sname,
+                                            chosen_uid,
+                                        )
                                     event, _ = EventID.objects.get_or_create(
                                         event_id=chosen_uid,
-                                        defaults={
-                                            "trigger_id": sname,
-                                            "gps_time": gps_val,
-                                            "is_ligo_event": job.ligo_only,
-                                        },
+                                        defaults={"trigger_id": sname, "gps_time": gps_val},
                                     )
 
                             if event is not None:
                                 update_fields = []
-                                if job.ligo_only and not event.is_ligo_event:
-                                    event.is_ligo_event = True
-                                    update_fields.append("is_ligo_event")
                                 if (
                                     not event.trigger_id
                                     and sname
@@ -291,11 +341,10 @@ class Command(BaseCommand):
                                 job.event_id = event
                                 job.save()
 
-                        # Decoupled child cascade: executes whenever job.event_id is not None
                         if job.event_id is not None:
-                            for child in job.bilby_jobs.filter(event_id__isnull=True):
-                                child.event_id = job.event_id
-                                child.save()
+                            processed, failed = self._reconcile_gwflow_children(job)
+                            child_processed += processed
+                            child_failed += failed
 
                         gwflow_elastic_search_update(job, metadata)
                         success_count += 1
@@ -320,3 +369,6 @@ class Command(BaseCommand):
                 f"\nGWFlow ingestion complete: {success_count} succeeded, {skip_count} skipped, {error_count} failed"
             )
         )
+        self.stdout.write(f"Child cascade: {child_processed} processed, {child_failed} failed")
+        if child_failed > 0:
+            raise CommandError(f"Child cascade failed: {child_failed} child jobs remain unlinked")
