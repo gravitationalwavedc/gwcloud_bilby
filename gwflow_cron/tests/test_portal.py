@@ -122,6 +122,36 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(detail["raw_payload"]["test"], 123)
 
     @responses.activate
+    def test_get_superevent_non_json_200_returns_none(self):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/"
+        responses.add(
+            responses.GET,
+            url,
+            body="<html><body>proxy error</body></html>",
+            status=200,
+            content_type="text/html",
+        )
+
+        detail = self.client.get_superevent(sname)
+        self.assertIsNone(detail)
+
+    @responses.activate
+    def test_get_versions_non_json_200_returns_none(self):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/versions/"
+        responses.add(
+            responses.GET,
+            url,
+            body="<html><body>proxy error</body></html>",
+            status=200,
+            content_type="text/html",
+        )
+
+        versions = self.client.get_versions(sname)
+        self.assertIsNone(versions)
+
+    @responses.activate
     def test_get_versions(self):
         sname = "S260101a"
         url = f"{self.base_url}/api/v1/superevents/{sname}/versions/"
