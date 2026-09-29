@@ -178,6 +178,30 @@ class TestEventIDUpdating(BilbyTestCase):
         self.assertEqual(event.gps_time, new_params["input"]["gpsTime"])
 
     @silence_errors
+    def test_update_nonexistent_event_id(self):
+        self.authenticate()
+
+        response = self.query(
+            self.query_string,
+            input_data={
+                "eventId": "GW999999_999999",
+                "triggerId": "S123456a",
+                "nickname": "new nickname",
+                "isLigoEvent": False,
+                "gpsTime": 87654321.87654321,
+            },
+        )
+
+        self.assertResponseHasErrors(response)
+
+        event = EventID.objects.all().last()
+        self.assertEqual(event.event_id, self.original_event.event_id)
+        self.assertEqual(event.trigger_id, self.original_event.trigger_id)
+        self.assertEqual(event.nickname, self.original_event.nickname)
+        self.assertEqual(event.is_ligo_event, self.original_event.is_ligo_event)
+        self.assertEqual(event.gps_time, self.original_event.gps_time)
+
+    @silence_errors
     def test_update_bad_trigger_ids(self):
         self.authenticate()
 
@@ -240,6 +264,21 @@ class TestEventIDDeletion(BilbyTestCase):
         self.assertResponseNoErrors(response)
 
         self.assertFalse(EventID.objects.filter(event_id="GW123456_123456").exists())
+
+    @silence_errors
+    def test_delete_nonexistent_event_id(self):
+        self.authenticate()
+
+        self.assertTrue(EventID.objects.filter(event_id="GW123456_123456").exists())
+
+        response = self.query(
+            self.query_string,
+            input_data={"eventId": "GW999999_999999"},
+        )
+
+        self.assertResponseHasErrors(response)
+
+        self.assertTrue(EventID.objects.filter(event_id="GW123456_123456").exists())
 
 
 @override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])
