@@ -1099,6 +1099,9 @@ def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None, i
         if not event.nickname and nickname:
             event.nickname = nickname
             changed = True
+        if is_ligo_event and not event.is_ligo_event:
+            event.is_ligo_event = True
+            changed = True
         if changed:
             event.clean_fields()
             event.save()

@@ -299,6 +299,32 @@ class TestEventIDCreation(BilbyTestCase):
         with self.assertRaises(ValidationError):
             create_event_id(user, event_id="GW150914", trigger_id="invalid_trigger", gps_time=1234567890.0)
 
+    def test_create_event_id_idempotent_promotes_ligo_event(self):
+        user = self.create_user()
+        event_id = "GW150914"
+        gps_time = 1126259462.391
+
+        create_event_id(user, event_id=event_id, gps_time=gps_time)
+        message = create_event_id(
+            user,
+            event_id=event_id,
+            gps_time=gps_time,
+            is_ligo_event=True,
+        )
+
+        self.assertEqual(message, f"EventID {event_id} already exists (updated)!")
+        event = EventID.objects.get(event_id=event_id)
+        self.assertTrue(event.is_ligo_event)
+
+        create_event_id(
+            user,
+            event_id=event_id,
+            gps_time=gps_time,
+            is_ligo_event=False,
+        )
+        event.refresh_from_db()
+        self.assertTrue(event.is_ligo_event)
+
     def test_create_event_id_concurrent_race_integrity_error(self):
         user = self.create_user()
         event_id = "GW150914"
