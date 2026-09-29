@@ -336,7 +336,6 @@ class TestEventIDCreation(BilbyTestCase):
             self.assertEqual(msg, f"EventID {event_id} already exists (updated)!")
 
 
-
 @override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])
 class TestEventIDUpdating(BilbyTestCase):
     def setUp(self):
