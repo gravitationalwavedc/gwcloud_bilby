@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import graphene
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django_filters import FilterSet, OrderingFilter
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
@@ -630,7 +631,10 @@ class EventIDMutation(relay.ClientIDMutation):
         if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
             raise GraphQLError("User is not permitted to create EventIDs")
 
-        message = create_event_id(user, **kwargs)
+        try:
+            message = create_event_id(user, **kwargs)
+        except ValidationError as e:
+            raise GraphQLError(str(e)) from e
 
         return EventIDMutation(result=message)
 
