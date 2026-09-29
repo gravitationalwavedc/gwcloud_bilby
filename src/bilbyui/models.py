@@ -130,7 +130,7 @@ class EventID(models.Model):
     )
     nickname = models.CharField(max_length=20, blank=True, null=True)
     is_ligo_event = models.BooleanField(default=False)
-    gps_time = models.FloatField(default=1126259462.391)
+    gps_time = models.FloatField(null=True, blank=True)
 
     @classmethod
     def get_by_event_id(cls, event_id, user):
@@ -149,7 +149,7 @@ class EventID(models.Model):
         return cls.objects.exclude(is_ligo_event=True)
 
     @classmethod
-    def create(cls, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
+    def create(cls, event_id, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=False):
         event = cls(
             event_id=event_id,
             trigger_id=trigger_id,
@@ -210,6 +210,7 @@ class BilbyJob(models.Model):
 
     labels = models.ManyToManyField(Label)
     event_id = models.ForeignKey(EventID, default=None, null=True, on_delete=models.SET_NULL)
+    trigger_time = models.FloatField(null=True, db_index=True)
 
     # Parent gwflow record, if this job is a bilby-PE analysis of a superevent
     gwflow_job = models.ForeignKey(
@@ -547,6 +548,7 @@ class GWFlowJob(models.Model):
 
     # Best-effort event link (sname matches EventID.trigger_id format)
     event_id = models.ForeignKey(EventID, default=None, null=True, on_delete=models.SET_NULL)
+    trigger_time = models.FloatField(null=True, db_index=True)
 
     creation_time = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
