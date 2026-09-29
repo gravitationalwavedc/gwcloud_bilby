@@ -45,6 +45,12 @@ class TestUtcTimestampFilter(BilbyTestCase):
     def test_garbage_string_returns_empty_string(self):
         self.assertEqual(utc_timestamp("not-a-date"), "")
 
+    def test_out_of_range_offset_returns_empty_string(self):
+        self.assertEqual(utc_timestamp("2023-01-01T00:00:00+24:00"), "")
+
+    def test_invalid_month_returns_empty_string(self):
+        self.assertEqual(utc_timestamp("2023-13-01T00:00:00"), "")
+
     def test_filter_registered_in_template_engine(self):
         template = Template("{% load frontend_tags %}{{ value|utc_timestamp }}")
         aware = timezone.make_aware(datetime(2026, 8, 20, 14, 32, 0), UTC)

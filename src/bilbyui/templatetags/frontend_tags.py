@@ -81,7 +81,10 @@ def utc_timestamp(value):
     if isinstance(value, datetime):
         return _to_utc(value).strftime(TIMESTAMP_FORMAT)
     if isinstance(value, str):
-        parsed = parse_datetime(value)
+        try:
+            parsed = parse_datetime(value)
+        except ValueError:
+            return ""
         if parsed is None:
             return ""
         return _to_utc(parsed).strftime(TIMESTAMP_FORMAT)
