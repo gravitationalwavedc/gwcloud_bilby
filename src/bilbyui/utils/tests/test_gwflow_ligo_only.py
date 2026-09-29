@@ -60,6 +60,12 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
         )
         self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
 
+    def test_lowercase_shape(self):
+        # Canonical portal shape (gracedb/events/gps_time, lowercase state)
+        # is resolved like the capitalised shape.
+        metadata = {"gracedb": {"events": [{"state": "preferred", "gps_time": 2000.0}]}}
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
 
 class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=None)
@@ -158,3 +164,12 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
     def test_malformed_embargo_start_time_fail_open(self):
         # Malformed EMBARGO_START_TIME fails open (public).
         self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 2000.0}])))
+
+    @override_settings(EMBARGO_START_TIME=1500.0)
+    def test_lowercase_shape(self):
+        # Canonical lowercase portal shape (gracedb/events/gps_time) yields
+        # the correct ligo_only value instead of always public.
+        metadata = {"gracedb": {"events": [{"state": "preferred", "gps_time": 2000.0}]}}
+        self.assertTrue(gwflow_ligo_only_from_metadata(metadata))
+        metadata_below = {"gracedb": {"events": [{"state": "preferred", "gps_time": 1000.0}]}}
+        self.assertFalse(gwflow_ligo_only_from_metadata(metadata_below))
