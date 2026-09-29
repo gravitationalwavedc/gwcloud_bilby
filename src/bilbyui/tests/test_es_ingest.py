@@ -688,6 +688,3 @@ class TestEsIngestCommand(BilbyTestCase):
         gwflow_job.refresh_from_db()
         self.assertIsNone(gwflow_job.event_id)
         self.assertFalse(EventID.objects.filter(event_id="INVALID-UID-12345").exists())
-
-
-

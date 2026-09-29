@@ -78,8 +78,12 @@ class Command(BaseCommand):
                         clean_prefix = re.sub(r"-v\d+$", "", raw_prefix)
                         if re.match(r"^(GW\d{6}(_\d{6})?|G\d+)$", clean_prefix):
                             ini_kv = (
-                                job.inikeyvalue_set.filter(key="trigger_time", processed=True).exclude(value="null").first()
-                                or job.inikeyvalue_set.filter(key="trigger_time", processed=False).exclude(value="null").first()
+                                job.inikeyvalue_set.filter(key="trigger_time", processed=True)
+                                .exclude(value="null")
+                                .first()
+                                or job.inikeyvalue_set.filter(key="trigger_time", processed=False)
+                                .exclude(value="null")
+                                .first()
                                 or job.inikeyvalue_set.filter(key="trigger_time", processed=True).first()
                                 or job.inikeyvalue_set.filter(key="trigger_time", processed=False).first()
                             )
@@ -198,9 +202,7 @@ class Command(BaseCommand):
                             event = EventID.objects.filter(Q(trigger_id=sname) | Q(event_id=sname)).first()
                             if event is None and isinstance(metadata, dict):
                                 raw = (
-                                    metadata.get("raw_payload")
-                                    if isinstance(metadata.get("raw_payload"), dict)
-                                    else {}
+                                    metadata.get("raw_payload") if isinstance(metadata.get("raw_payload"), dict) else {}
                                 )
                                 gracedb = (
                                     metadata.get("GraceDB")
@@ -276,7 +278,11 @@ class Command(BaseCommand):
                                 if job.ligo_only and not event.is_ligo_event:
                                     event.is_ligo_event = True
                                     update_fields.append("is_ligo_event")
-                                if not event.trigger_id and sname and re.match(r"^(S\d{6}[a-z]{1,2}|G\d+)$", str(sname)):
+                                if (
+                                    not event.trigger_id
+                                    and sname
+                                    and re.match(r"^(S\d{6}[a-z]{1,2}|G\d+)$", str(sname))
+                                ):
                                     event.trigger_id = sname
                                     update_fields.append("trigger_id")
                                 if update_fields:
