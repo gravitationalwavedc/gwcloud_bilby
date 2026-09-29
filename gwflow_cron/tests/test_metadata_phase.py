@@ -435,6 +435,91 @@ class TestMetadataPhase(GWFlowTestBase):
         self.assertEqual(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"], ["first"])
         self.assertIn("Multiple current versions", " ".join(logs.output))
 
+    def test_phase_metadata_creates_event_id_for_superevents(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = [
+            {
+                "sname": "S_EV",
+                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "schema_version": "1.0",
+                "commit_sha": "sha1",
+            },
+        ]
+        mock_portal.get_superevent.return_value = {
+            "sname": "S_EV",
+            "raw_payload": {},
+            "gracedb": {
+                "preferred_event": "EVT-X",
+                "events": [{"uid": "EVT-X", "gps_time": 1234567890.5}],
+            },
+        }
+        mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
+        mock_portal.iter_current_snames.return_value = ["S_EV"]
+
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = []
+
+        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        mock_gwc.create_event_id.assert_called_once_with("EVT-X", 1234567890.5, trigger_id="S_EV")
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+
+    def test_phase_metadata_missing_gracedb_graceful(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = [
+            {
+                "sname": "S_NOGDB",
+                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "schema_version": "1.0",
+                "commit_sha": "sha1",
+            },
+        ]
+        mock_portal.get_superevent.return_value = {
+            "sname": "S_NOGDB",
+            "raw_payload": {},
+        }
+        mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
+        mock_portal.iter_current_snames.return_value = ["S_NOGDB"]
+
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = []
+
+        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        mock_gwc.create_event_id.assert_not_called()
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+
+    def test_phase_metadata_create_event_id_exception_handled(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = [
+            {
+                "sname": "S_EVFAIL",
+                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "schema_version": "1.0",
+                "commit_sha": "sha1",
+            },
+        ]
+        mock_portal.get_superevent.return_value = {
+            "sname": "S_EVFAIL",
+            "raw_payload": {},
+            "gracedb": {
+                "preferred_event": "EVT-Y",
+                "events": [{"uid": "EVT-Y", "gps_time": 9876543210.0}],
+            },
+        }
+        mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
+        mock_portal.iter_current_snames.return_value = ["S_EVFAIL"]
+
+        mock_gwc = MagicMock()
+        mock_gwc.get_gwflow_job_list.return_value = []
+        mock_gwc.create_event_id.side_effect = RuntimeError("event id API down")
+
+        with self.assertLogs("gwflow_ingest", level="WARNING") as logs:
+            phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        self.assertIn("create_event_id failed", " ".join(logs.output))
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

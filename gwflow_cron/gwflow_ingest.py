@@ -173,6 +173,13 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                         metadata = {}
 
                     if gwc_client is not None:
+                        ev = resolve_event_id_for(row_sname, detail)
+                        if ev:
+                            try:
+                                gwc_client.create_event_id(ev[0], ev[1], trigger_id=row_sname)
+                            except Exception as e:
+                                logger.warning("create_event_id failed for superevent %s: %s", row_sname, e)
+
                         gwc_client.upsert_gwflow_job(
                             sname=row_sname,
                             event_id=row_sname,
