@@ -30,6 +30,9 @@ class TestToDec(BilbyTestCase):
     def test_converts_whole_float_to_integer_decimal(self):
         self.assertEqual(to_dec(2.0), Decimal(2))
 
+    def test_converts_large_whole_float_without_precision_loss(self):
+        self.assertEqual(to_dec(1e23), Decimal("1E+23"))
+
     def test_converts_whole_int(self):
         self.assertEqual(to_dec(42), Decimal(42))
 
