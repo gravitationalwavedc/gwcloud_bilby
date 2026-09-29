@@ -13,6 +13,7 @@ from bilbyui.models import (
     BilbyJobUploadToken,
     EventID,
     FileDownloadToken,
+    GWFlowJob,
     Label,
     SupportingFile,
     _safe_json_loads,
@@ -922,3 +923,90 @@ class TestSafeJsonLoads(BilbyTestCase):
         self.assertIsNone(_safe_json_loads(123))
         self.assertIsNone(_safe_json_loads({"a": 1}))
         self.assertIsNone(_safe_json_loads(["a"]))
+
+
+class TestTriggerTimeAndGpsTimeSchema(BilbyTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = cls.create_user()
+
+    def test_bilby_job_trigger_time_persistence(self):
+        # Persistence with trigger_time=None (default)
+        job_none = BilbyJob.objects.create(
+            user=self.user,
+            name="Job_Trigger_None",
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            trigger_time=None,
+        )
+        job_none.refresh_from_db()
+        self.assertIsNone(job_none.trigger_time)
+
+        # Persistence with a non-null float trigger_time
+        job_val = BilbyJob.objects.create(
+            user=self.user,
+            name="Job_Trigger_Value",
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            trigger_time=123456789.0,
+        )
+        job_val.refresh_from_db()
+        self.assertEqual(job_val.trigger_time, 123456789.0)
+
+    def test_gwflow_job_trigger_time_persistence(self):
+        # Persistence with trigger_time=None
+        gwflow_none = GWFlowJob.objects.create(
+            sname="S230601none",
+            user=self.user,
+            trigger_time=None,
+        )
+        gwflow_none.refresh_from_db()
+        self.assertIsNone(gwflow_none.trigger_time)
+
+        # Persistence with a non-null float trigger_time
+        gwflow_val = GWFlowJob.objects.create(
+            sname="S230601val",
+            user=self.user,
+            trigger_time=123456789.0,
+        )
+        gwflow_val.refresh_from_db()
+        self.assertEqual(gwflow_val.trigger_time, 123456789.0)
+
+    def test_event_id_gps_time_persistence(self):
+        # Persistence with gps_time=None
+        event_none = EventID.objects.create(
+            event_id="GW123456_000001",
+            gps_time=None,
+        )
+        event_none.refresh_from_db()
+        self.assertIsNone(event_none.gps_time)
+
+        # Persistence with non-null gps_time
+        event_val = EventID.objects.create(
+            event_id="GW123456_000002",
+            gps_time=123456789.0,
+        )
+        event_val.refresh_from_db()
+        self.assertEqual(event_val.gps_time, 123456789.0)
+
+    def test_event_id_create_helper(self):
+        # Test EventID.create with explicit gps_time=None
+        event_explicit_none = EventID.create(
+            event_id="GW123456_000003",
+            gps_time=None,
+        )
+        event_explicit_none.refresh_from_db()
+        self.assertIsNone(event_explicit_none.gps_time)
+
+        # Test EventID.create with omitted gps_time (default parameter)
+        event_omitted = EventID.create(
+            event_id="GW123456_000004",
+        )
+        event_omitted.refresh_from_db()
+        self.assertIsNone(event_omitted.gps_time)
+
+        # Test EventID.create with non-null value
+        event_val = EventID.create(
+            event_id="GW123456_000005",
+            gps_time=987654321.0,
+        )
+        event_val.refresh_from_db()
+        self.assertEqual(event_val.gps_time, 987654321.0)
