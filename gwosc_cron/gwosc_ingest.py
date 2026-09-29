@@ -41,7 +41,7 @@ MAX_RETRY_ATTEMPTS = 24
 
 _VERSION_RE = re.compile(r"-v(\d+)$")
 _JOB_NAME_RE = re.compile(r"[^a-z0-9_-]", re.IGNORECASE)
-_EVENT_ID_RE = re.compile(r"^GW\d{6}_\d{6}$")
+_EVENT_ID_RE = re.compile(r"^GW\d{6}(_\d{6})?$")
 
 
 def compute_is_latest_version(event_name, shared_common_names):
