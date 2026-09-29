@@ -50,6 +50,12 @@ class TestMakeFileEntry(BilbyTestCase):
 
         self.assertIsNone(_make_file_entry(link_path, False, self.job_dir))
 
+    def test_make_file_entry_symlink_loop_returns_none(self):
+        link_path = Path(self.job_dir) / "loop_link"
+        link_path.symlink_to(link_path)
+
+        self.assertIsNone(_make_file_entry(link_path, False, self.job_dir))
+
     def test_make_file_entry_unreadable_file_returns_none(self):
         file_path = Path(self.job_dir) / "unreadable.txt"
         file_path.touch()
