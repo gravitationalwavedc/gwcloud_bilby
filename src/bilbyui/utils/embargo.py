@@ -103,15 +103,28 @@ def _gwflow_trigger_time_from_metadata(metadata):
     Extract the trigger GPS time from portal metadata (issue #83).
 
     Selects the preferred event (``State == "preferred"``) if present, else
-    the first entry with a usable numeric ``GPSTime``, skipping malformed
-    entries (missing or non-numeric ``GPSTime``). Returns ``None`` when no
+    the first entry with a usable numeric GPS time, skipping malformed
+    entries (missing or non-numeric GPS time). Returns ``None`` when no
     usable event exists. Defensive: never raises on malformed metadata.
+    Accepts both the capitalised portal shape (``GraceDB`` / ``Events`` /
+    ``GPSTime``) and the canonical lowercase shape (``gracedb`` / ``events``
+    / ``gps_time`` / ``gpstime``), matching ``resolve_event_id_for``.
     """
     try:
-        events = metadata["GraceDB"]["Events"]
+        gracedb = metadata["GraceDB"]
     except (TypeError, KeyError):
+        gracedb = None
+    if not isinstance(gracedb, dict):
+        try:
+            gracedb = metadata["gracedb"]
+        except (TypeError, KeyError):
+            return None
+    if not isinstance(gracedb, dict):
         return None
 
+    events = gracedb.get("Events")
+    if not isinstance(events, list):
+        events = gracedb.get("events")
     if not isinstance(events, list):
         return None
 
@@ -120,6 +133,10 @@ def _gwflow_trigger_time_from_metadata(metadata):
         if not isinstance(event, dict):
             continue
         gps = event.get("GPSTime")
+        if gps is None:
+            gps = event.get("gps_time")
+        if gps is None:
+            gps = event.get("gpstime")
         if gps is None:
             continue
         try:
@@ -132,7 +149,7 @@ def _gwflow_trigger_time_from_metadata(metadata):
         return None
 
     for event, gps in usable:
-        if event.get("State") == "preferred":
+        if event.get("State") == "preferred" or event.get("state") == "preferred":
             return gps
 
     return usable[0][1]
