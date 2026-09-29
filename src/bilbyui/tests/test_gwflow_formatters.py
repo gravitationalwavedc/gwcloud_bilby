@@ -70,6 +70,18 @@ class GwflowFormatterTests(SimpleTestCase):
         self.assertTrue(utc_timestamp("2026-08-20T14:32:00").startswith("Unknown timezone:"))
         self.assertEqual(utc_timestamp(None), "—")
 
+    def test_utc_timestamp_degrades_on_out_of_range_offset(self):
+        self.assertEqual(
+            utc_timestamp("2023-01-01T00:00:00+24:00"),
+            "Invalid timestamp: 2023-01-01T00:00:00+24:00",
+        )
+
+    def test_utc_timestamp_degrades_on_invalid_month(self):
+        self.assertEqual(
+            utc_timestamp("2023-13-01T00:00:00"),
+            "Invalid timestamp: 2023-13-01T00:00:00",
+        )
+
     def test_person_name(self):
         self.assertEqual(person({"name": "Ada Lovelace"}), "Ada Lovelace")
 

@@ -78,7 +78,10 @@ def utc_timestamp(value: Any) -> str:
 
     parsed = value
     if isinstance(value, str):
-        parsed = parse_datetime(value)
+        try:
+            parsed = parse_datetime(value)
+        except ValueError:
+            return f"Invalid timestamp: {value}"
         if parsed is None:
             return f"Invalid timestamp: {value}"
     if not isinstance(parsed, datetime):
