@@ -169,6 +169,14 @@ class GwflowFormatterTests(SimpleTestCase):
         )
         self.assertEqual(list_value([]), EMPTY_LIST)
 
+    def test_probability_degrades_on_non_numeric_precision(self):
+        self.assertEqual(probability(0.5, "abc"), "0.5")
+        self.assertEqual(probability(0.5, None), "0.5")
+
+    def test_scientific_degrades_on_non_numeric_precision(self):
+        self.assertEqual(scientific(1234.5, "", "abc"), "1.23×10³")
+        self.assertEqual(scientific(1234.5, "", 3.0), "1.23×10³")
+
     def test_list_value_degrades_on_non_numeric_limit(self):
         self.assertEqual(list_value(["a", "b"], "abc"), "a, b")
 

@@ -136,7 +136,10 @@ def probability(value: Any, precision: int = 3) -> str:
         return "0"
     if number == 1:
         return "1"
-    safe_precision = max(0, int(precision))
+    try:
+        safe_precision = max(0, int(precision))
+    except (TypeError, ValueError):
+        safe_precision = 3
     rendered = f"{number:.{safe_precision}f}".rstrip("0").rstrip(".")
     return rendered
 
@@ -159,7 +162,11 @@ def scientific(value: Any, unit: str = "", precision: int = 3) -> str:
 
     exponent = math.floor(math.log10(abs(number)))
     coefficient = number / (10**exponent)
-    significant_decimals = max(0, precision - 1)
+    try:
+        safe_precision = max(0, int(precision))
+    except (TypeError, ValueError):
+        safe_precision = 3
+    significant_decimals = max(0, safe_precision - 1)
     coefficient_text = f"{coefficient:.{significant_decimals}f}".rstrip("0").rstrip(".")
     rendered = f"{coefficient_text}×10{str(exponent).translate(_SUPERSCRIPT)}"
     return _with_unit(rendered, unit)
