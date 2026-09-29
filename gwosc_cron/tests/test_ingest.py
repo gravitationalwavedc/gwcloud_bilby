@@ -118,6 +118,29 @@ class TestJobNameSanitizers(unittest.TestCase):
         )
 
 
+class TestEventIdRegex(unittest.TestCase):
+    """Unit tests for _EVENT_ID_RE matching."""
+
+    def test_matches_6digit_events(self):
+        self.assertIsNotNone(gwosc_ingest._EVENT_ID_RE.match("GW150914"))
+        self.assertIsNotNone(gwosc_ingest._EVENT_ID_RE.match("GW151226"))
+        self.assertIsNotNone(gwosc_ingest._EVENT_ID_RE.match("GW170817"))
+
+    def test_matches_12digit_canonical_events(self):
+        self.assertIsNotNone(gwosc_ingest._EVENT_ID_RE.match("GW190425_081805"))
+        self.assertIsNotNone(gwosc_ingest._EVENT_ID_RE.match("GW200129_065458"))
+
+    def test_rejects_invalid_event_patterns(self):
+        self.assertIsNone(gwosc_ingest._EVENT_ID_RE.match("GW00001"))
+        self.assertIsNone(gwosc_ingest._EVENT_ID_RE.match("GW1234567"))
+        self.assertIsNone(gwosc_ingest._EVENT_ID_RE.match("GW150914_"))
+        self.assertIsNone(gwosc_ingest._EVENT_ID_RE.match("GW150914_12345"))
+        self.assertIsNone(gwosc_ingest._EVENT_ID_RE.match("GW150914_1234567"))
+        self.assertIsNone(gwosc_ingest._EVENT_ID_RE.match("INVALID_NAME"))
+        self.assertIsNone(gwosc_ingest._EVENT_ID_RE.match("150914"))
+        self.assertIsNone(gwosc_ingest._EVENT_ID_RE.match("GW150914-v1"))
+
+
 @unittest.mock.patch("gwosc_ingest.GWCloud", autospec=True)
 class TestGWOSCCron(GWOSCTestBase):
     @responses.activate
@@ -451,28 +474,28 @@ class TestGWOSCCron(GWOSCTestBase):
             "https://gwosc.org/eventapi/json/allevents",
             json={
                 "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
+                    "GW00001": {
+                        "commonName": "GW00001",
                         "catalog.shortName": "GWTC-3-confident",
-                        "jsonurl": "https://test.org/GW000001.json",
+                        "jsonurl": "https://test.org/GW00001.json",
                     }
                 }
             },
         )
         responses.add(
             responses.GET,
-            "https://test.org/GW000001.json",
+            "https://test.org/GW00001.json",
             json={
                 "events": {
-                    "GW000001": {
-                        "commonName": "GW000001",
+                    "GW00001": {
+                        "commonName": "GW00001",
                         "catalog.shortName": "GWTC-3-confident",
                         "GPS": 1729400000,
                         "gracedb_id": "S123456z",
                         "parameters": {
                             "AAAAA": {
                                 "is_preferred": True,
-                                "data_url": "https://test.org/GW000001.h5",
+                                "data_url": "https://test.org/GW00001.h5",
                             }
                         },
                     }
@@ -481,21 +504,133 @@ class TestGWOSCCron(GWOSCTestBase):
         )
         with open("test_fixtures/good.h5", "rb") as f:
             h5data = f.read()
-        responses.add(responses.GET, "https://test.org/GW000001.h5", h5data)
+        responses.add(responses.GET, "https://test.org/GW00001.h5", h5data)
 
         with self.con_patch:
             gwosc_ingest.check_and_download()
 
         gwc.return_value.upload_external_job.assert_called_once_with(
-            "GW000001--IMRPhenom",
+            "GW00001--IMRPhenom",
             "IMRPhenom",
             False,
             "VALID=good",
-            "https://test.org/GW000001.h5",
+            "https://test.org/GW00001.h5",
         )
 
         gwc.return_value.create_event_id.assert_not_called()
         gwc.return_value.upload_external_job.return_value.set_event_id.assert_not_called()
+
+    @responses.activate
+    def test_6digit_event_id_creates_and_links(self, gwc):
+        """A 6-digit event ID (e.g. GW150914) matches _EVENT_ID_RE and triggers creation and linking."""
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json={
+                "events": {
+                    "GW150914": {
+                        "commonName": "GW150914",
+                        "catalog.shortName": "GWTC-1-confident",
+                        "jsonurl": "https://test.org/GW150914.json",
+                    }
+                }
+            },
+        )
+        responses.add(
+            responses.GET,
+            "https://test.org/GW150914.json",
+            json={
+                "events": {
+                    "GW150914": {
+                        "commonName": "GW150914",
+                        "catalog.shortName": "GWTC-1-confident",
+                        "GPS": 1729400000,
+                        "gracedb_id": "G184098",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": True,
+                                "data_url": "https://test.org/GW150914.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        with open("test_fixtures/good.h5", "rb") as f:
+            h5data = f.read()
+        responses.add(responses.GET, "https://test.org/GW150914.h5", h5data)
+
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW150914--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW150914.h5",
+        )
+
+        gwc.return_value.create_event_id.assert_called_once_with("GW150914", 1729400000, "G184098")
+        gwc.return_value.upload_external_job.return_value.set_event_id.assert_called_once_with(
+            gwc.return_value.create_event_id.return_value
+        )
+
+    @responses.activate
+    def test_canonical_event_id_creates_and_links(self, gwc):
+        """A 12-digit canonical event ID (e.g. GW190425_081805) matches _EVENT_ID_RE and triggers creation and linking."""
+        responses.add(
+            responses.GET,
+            "https://gwosc.org/eventapi/json/allevents",
+            json={
+                "events": {
+                    "GW190425_081805": {
+                        "commonName": "GW190425_081805",
+                        "catalog.shortName": "GWTC-2",
+                        "jsonurl": "https://test.org/GW190425_081805.json",
+                    }
+                }
+            },
+        )
+        responses.add(
+            responses.GET,
+            "https://test.org/GW190425_081805.json",
+            json={
+                "events": {
+                    "GW190425_081805": {
+                        "commonName": "GW190425_081805",
+                        "catalog.shortName": "GWTC-2",
+                        "GPS": 1729400000,
+                        "gracedb_id": "S190425z",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": True,
+                                "data_url": "https://test.org/GW190425_081805.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        with open("test_fixtures/good.h5", "rb") as f:
+            h5data = f.read()
+        responses.add(responses.GET, "https://test.org/GW190425_081805.h5", h5data)
+
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW190425_081805--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW190425_081805.h5",
+        )
+
+        gwc.return_value.create_event_id.assert_called_once_with("GW190425_081805", 1729400000, "S190425z")
+        gwc.return_value.upload_external_job.return_value.set_event_id.assert_called_once_with(
+            gwc.return_value.create_event_id.return_value
+        )
 
     @responses.activate
     def test_dont_duplicate_jobs(self, gwc):
