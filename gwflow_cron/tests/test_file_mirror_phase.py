@@ -126,6 +126,26 @@ class TestFileMirrorPhase(GWFlowTestBase):
         self.assertEqual(state.get_failure_count(cur, key_for(path="/data/foo1.h5")), 1)
         self.assertEqual(state.get_failure_count(cur, key_for(path="/data/foo2.h5")), 0)
 
+    def test_malformed_record_records_failure_and_continues(self):
+        gwc = MagicMock()
+        gwc.get_gwflow_pending_files.return_value = [
+            None,
+            make_rec(file_id="f2", path="/data/foo2.h5"),
+        ]
+        jc = MagicMock()
+        cur = self.con.cursor()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            staged = make_staged(tmpdir, "s2.h5")
+            with patch("gwflow_ingest.fetch_to_staging", return_value=staged):
+                phase_file_mirror(jc=jc, gwc_client=gwc, con=self.con)
+            self.assertFalse(staged.exists())
+
+        gwc.upload_gwflow_file.assert_called_once_with("f2", staged)
+        row = cur.execute("SELECT COUNT(*) AS n FROM job_errors WHERE job_id IS NULL").fetchone()
+        self.assertEqual(row["n"], 1)
+        self.assertEqual(state.get_failure_count(cur, key_for(path="/data/foo2.h5")), 0)
+
     def test_max_files_per_run_cap(self):
         gwc = MagicMock()
         gwc.get_gwflow_pending_files.return_value = [make_rec(file_id=f"f{i}") for i in range(3)]
