@@ -624,4 +624,70 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(gwflow_job.event_id.event_id, "G000004")
         self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1126259462.391)
 
+    def test_handle_gwflow_reconciles_is_ligo_event_and_trigger_id_on_existing_event(self):
+        existing_event = EventID.objects.create(
+            event_id="G000007",
+            gps_time=1262272821.5,
+            is_ligo_event=False,
+            trigger_id=None,
+        )
+        gwflow_job = GWFlowJob.objects.create(
+            sname="S200116a",
+            user=self.user,
+            event_id=None,
+            ligo_only=True,
+        )
+
+        detail_payload = {
+            "GraceDB": {
+                "preferred_event": "G000007",
+                "Events": [{"UID": "G000007", "GPSTime": 1262272821.5}],
+            }
+        }
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S200116a"}])
+            if url.endswith("/api/v1/superevents/S200116a/"):
+                return _MockResponse(detail_payload, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
+
+        gwflow_job.refresh_from_db()
+        existing_event.refresh_from_db()
+        self.assertEqual(gwflow_job.event_id, existing_event)
+        self.assertTrue(existing_event.is_ligo_event)
+        self.assertEqual(existing_event.trigger_id, "S200116a")
+
+    def test_handle_gwflow_ignores_malformed_chosen_uid(self):
+        gwflow_job = GWFlowJob.objects.create(
+            sname="S200117a",
+            user=self.user,
+            event_id=None,
+        )
+
+        detail_payload = {
+            "GraceDB": {
+                "preferred_event": "INVALID-UID-12345",
+                "Events": [{"UID": "INVALID-UID-12345", "GPSTime": 1262272821.5}],
+            }
+        }
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S200117a"}])
+            if url.endswith("/api/v1/superevents/S200117a/"):
+                return _MockResponse(detail_payload, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
+
+        gwflow_job.refresh_from_db()
+        self.assertIsNone(gwflow_job.event_id)
+        self.assertFalse(EventID.objects.filter(event_id="INVALID-UID-12345").exists())
+
+
 

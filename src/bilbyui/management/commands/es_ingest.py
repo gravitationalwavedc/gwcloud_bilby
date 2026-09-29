@@ -261,7 +261,7 @@ class Command(BaseCommand):
                                         except (ValueError, TypeError):
                                             gps_val = 1126259462.391
 
-                                if chosen_uid:
+                                if chosen_uid and re.match(r"^(GW\d{6}(_\d{6})?|G\d+)$", str(chosen_uid)):
                                     event, _ = EventID.objects.get_or_create(
                                         event_id=chosen_uid,
                                         defaults={
@@ -272,6 +272,16 @@ class Command(BaseCommand):
                                     )
 
                             if event is not None:
+                                update_fields = []
+                                if job.ligo_only and not event.is_ligo_event:
+                                    event.is_ligo_event = True
+                                    update_fields.append("is_ligo_event")
+                                if not event.trigger_id and sname and re.match(r"^(S\d{6}[a-z]{1,2}|G\d+)$", str(sname)):
+                                    event.trigger_id = sname
+                                    update_fields.append("trigger_id")
+                                if update_fields:
+                                    event.save(update_fields=update_fields)
+
                                 job.event_id = event
                                 job.save()
 
