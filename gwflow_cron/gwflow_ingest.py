@@ -449,12 +449,13 @@ def phase_file_mirror(jc: Any = None, gwc_client: Any = None, con: sqlite3.Conne
                 files_done >= settings.MAX_FILES_PER_RUN or bytes_done >= settings.MAX_BYTES_PER_RUN
             ):
                 break
-            analysis_uid = _get(rec, "analysis_uid") or ""
-            key = f"{_get(rec, 'sname')}/{analysis_uid}/{_get(rec, 'path')}"
-            if key in over_retry:
-                continue
+            key = None
             staged = None
             try:
+                analysis_uid = _get(rec, "analysis_uid") or ""
+                key = f"{_get(rec, 'sname')}/{analysis_uid}/{_get(rec, 'path')}"
+                if key in over_retry:
+                    continue
                 fetch_rec = _with_normalized_uid(rec, analysis_uid)
                 staged = fetch_to_staging(jc, fetch_rec)
                 size = staged.stat().st_size
