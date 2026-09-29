@@ -159,6 +159,22 @@ class TestBuildResultFiles(BilbyTestCase):
         self.assertEqual(result[0]["file_size"], 42)
         self.assertEqual(FileDownloadToken.objects.filter(job=job).count(), 1)
 
+    def test_external_job_unsafe_url_gets_empty_link_url(self):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="external_job",
+            description="external",
+            job_type=BilbyJobType.EXTERNAL,
+            ini_string=self.ini,
+        )
+        external = ExternalBilbyJob.objects.create(job=job, url="javascript:alert(1)")
+
+        result = _build_result_file_entries(job)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["path"], external.url)
+        self.assertEqual(result[0]["link_url"], "")
+
     def test_external_job_with_no_external_record_returns_empty(self):
         job = BilbyJob.objects.create(
             user_id=self.user.id,
