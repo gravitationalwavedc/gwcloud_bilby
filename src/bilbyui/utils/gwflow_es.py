@@ -1,11 +1,19 @@
 import contextlib
 import json
 import logging
+import math
 
 import elasticsearch
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _finite_numeric(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    numeric = float(value)
+    return numeric if math.isfinite(numeric) else None
 
 
 class InvalidGWFlowMetadata(Exception):
@@ -181,6 +189,12 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
     except RecursionError as exc:
         raise InvalidGWFlowMetadata("metadata is too deeply nested") from exc
 
+    trigger_values = [
+        job.trigger_time,
+        job.event_id.gps_time if job.event_id else None,
+    ]
+    finite = [value for value in (_finite_numeric(value) for value in trigger_values) if value is not None]
+
     return {
         "_gwcloud": {
             "sname": job.sname,
@@ -190,6 +204,7 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
             "lastUpdatedTime": last_updated_time,
             "reviewStatuses": review_statuses,
             "eventTriggerId": event_trigger_id,
+            "searchTriggerTime": max(finite) if finite else None,
         },
         "metadata": validated,
     }

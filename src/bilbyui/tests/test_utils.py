@@ -1,6 +1,7 @@
 import functools
 import json
 import logging
+import math
 import os
 import tarfile
 from collections import OrderedDict
@@ -9,6 +10,13 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from bilbyui.models import IniKeyValue
 from bilbyui.utils.ini_utils import bilby_ini_string_to_args
+
+
+def _finite_numeric(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    numeric = float(value)
+    return numeric if math.isfinite(numeric) else None
 
 
 def parse_test_ini(ini):
@@ -326,5 +334,14 @@ def generate_elastic_doc(job, user):
             "nickname": job.event_id.nickname,
             "gpsTime": job.event_id.gps_time,
         }
+
+    trigger_values = [
+        job.trigger_time,
+        job.event_id.gps_time if job.event_id else None,
+        job.gwflow_job.trigger_time if job.gwflow_job else None,
+        (job.gwflow_job.event_id.gps_time if job.gwflow_job and job.gwflow_job.event_id else None),
+    ]
+    finite = [value for value in (_finite_numeric(value) for value in trigger_values) if value is not None]
+    doc["searchTriggerTime"] = max(finite) if finite else None
 
     return doc

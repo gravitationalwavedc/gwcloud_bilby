@@ -33,6 +33,7 @@ _GWCLOUD_FIELDS = {
     "lastUpdatedTime",
     "reviewStatuses",
     "eventTriggerId",
+    "searchTriggerTime",
 }
 
 
@@ -225,10 +226,28 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         with self.assertRaises(InvalidGWFlowMetadata):
             build_gwflow_es_doc(self.job, metadata)
 
-    def test_build_gwflow_es_doc_envelope_has_exactly_seven_fields(self):
+    def test_build_gwflow_es_doc_envelope_has_exactly_eight_fields(self):
         doc = build_gwflow_es_doc(self.job, {"ParameterEstimation": {"results": []}})
 
         self.assertEqual(set(doc["_gwcloud"].keys()), _GWCLOUD_FIELDS)
+
+    def test_build_gwflow_es_doc_writes_search_trigger_time(self):
+        self.job.trigger_time = 100.0
+        self.job.save(update_fields=["trigger_time"])
+
+        doc = build_gwflow_es_doc(self.job, {"ParameterEstimation": {"results": []}})
+
+        self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], max(100.0, self.event_id.gps_time))
+
+    def test_build_gwflow_es_doc_search_trigger_time_none_without_finite_value(self):
+        self.job.trigger_time = None
+        self.job.save(update_fields=["trigger_time"])
+        self.job.event_id = None
+        self.job.save(update_fields=["event_id"])
+
+        doc = build_gwflow_es_doc(self.job, {"ParameterEstimation": {"results": []}})
+
+        self.assertIsNone(doc["_gwcloud"]["searchTriggerTime"])
 
     def test_build_gwflow_es_doc_metadata_deep_equal_to_input(self):
         metadata = {

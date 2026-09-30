@@ -70,6 +70,39 @@ class TestElasticSearch(BilbyTestCase):
         )
         lookup_users_mock.assert_called_once_with([job.user_id])
 
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_build_bilby_es_doc_writes_search_trigger_time(self, lookup_users_mock):
+        event = EventID.create(
+            "GW123456_123456",
+            12345678,
+            trigger_id="S123456a",
+            nickname="Test Nick",
+            is_ligo_event=True,
+        )
+        with mock.patch.object(BilbyJob, "elastic_search_update"):
+            job = BilbyJob.objects.create(
+                user_id=self.user.id,
+                name="Test1",
+                event_id=event,
+                trigger_time=10.0,
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+
+        doc = build_bilby_es_doc(job)
+        self.assertEqual(doc["searchTriggerTime"], 12345678.0)
+
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_build_bilby_es_doc_search_trigger_time_none_without_finite_value(self, lookup_users_mock):
+        with mock.patch.object(BilbyJob, "elastic_search_update"):
+            job = BilbyJob.objects.create(
+                user_id=self.user.id,
+                name="Test2",
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+
+        doc = build_bilby_es_doc(job)
+        self.assertIsNone(doc["searchTriggerTime"])
+
     @mock.patch("bilbyui.models.get_es_client")
     @mock.patch("bilbyui.models.build_bilby_es_doc")
     def test_live_writer_uses_canonical_builder(self, builder_mock, get_es_client_mock):
