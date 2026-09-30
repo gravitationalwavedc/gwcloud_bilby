@@ -178,9 +178,49 @@ class EventID(models.Model):
 
 
 @receiver(post_save, sender=EventID, dispatch_uid="event_id_save")
-def event_id_save(sender, instance, **kwargs):
-    for job in instance.bilbyjob_set.all():
-        job.elastic_search_update()
+def event_id_save(sender, instance, using, **kwargs):
+    from bilbyui.utils.reindex import reindex_affected_event
+
+    event_id = instance.id
+    transaction.on_commit(
+        lambda: reindex_affected_event(event_id),
+        using=using,
+    )
+
+
+def build_bilby_es_doc(job) -> dict | None:
+    """Build the canonical Elasticsearch document for a Bilby job."""
+    success, users = request_lookup_users([job.user_id])
+    if not success or not users:
+        return None
+    user = users[0]
+    if not isinstance(user, dict) or "name" not in user:
+        return None
+
+    doc = {
+        "user": {"name": user["name"]},
+        "job": {
+            "name": job.name,
+            "description": job.description,
+            "creationTime": job.creation_time,
+            "lastUpdatedTime": job.last_updated,
+        },
+        "labels": [{"name": label.name, "description": label.description} for label in job.labels.all()],
+        "eventId": None,
+        "ini": {kv.key: _safe_json_loads(kv.value) for kv in job.inikeyvalue_set.filter(processed=False)},
+        "params": {kv.key: _safe_json_loads(kv.value) for kv in job.inikeyvalue_set.filter(processed=True)},
+        "_private_info_": {"userId": job.user_id, "private": job.private},
+    }
+
+    if job.event_id:
+        doc["eventId"] = {
+            "eventId": job.event_id.event_id,
+            "triggerId": job.event_id.trigger_id,
+            "nickname": job.event_id.nickname,
+            "gpsTime": job.event_id.gps_time,
+        }
+
+    return doc
 
 
 class BilbyJob(models.Model):
@@ -427,39 +467,9 @@ class BilbyJob(models.Model):
 
     def _write_elastic_search_document(self, job):
         es = get_es_client()
-
-        # Get the user details for this job
-        success, users = request_lookup_users([job.user_id])
-        if not success or not users:
+        doc = build_bilby_es_doc(job)
+        if doc is None:
             return
-        user = users[0]
-        if not isinstance(user, dict) or "name" not in user:
-            return
-
-        # Generate the document for insertion or update in elastic search
-        doc = {
-            "user": {"name": user["name"]},
-            "job": {
-                "name": job.name,
-                "description": job.description,
-                "creationTime": job.creation_time,
-                "lastUpdatedTime": job.last_updated,
-            },
-            "labels": [{"name": label.name, "description": label.description} for label in job.labels.all()],
-            "eventId": None,
-            "ini": {kv.key: _safe_json_loads(kv.value) for kv in job.inikeyvalue_set.filter(processed=False)},
-            "params": {kv.key: _safe_json_loads(kv.value) for kv in job.inikeyvalue_set.filter(processed=True)},
-            "_private_info_": {"userId": job.user_id, "private": job.private},
-        }
-
-        # Set the event id if one is set on the job
-        if job.event_id:
-            doc["eventId"] = {
-                "eventId": job.event_id.event_id,
-                "triggerId": job.event_id.trigger_id,
-                "nickname": job.event_id.nickname,
-                "gpsTime": job.event_id.gps_time,
-            }
 
         # First try to update the document in elastic search if it exists, otherwise insert the new document
         try:

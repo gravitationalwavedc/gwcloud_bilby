@@ -134,9 +134,15 @@ class TestLabelAndEventIdReindexSignals(BilbyTestCase):
 
     def test_event_id_save_reindexes_related_jobs(self):
         self._create_job("Event_Related_Job", event_id=self.event_id)
-        with mock.patch.object(BilbyJob, "elastic_search_update") as es_update:
+        with (
+            mock.patch.object(BilbyJob, "elastic_search_update") as es_update,
+            mock.patch("bilbyui.utils.reindex.reindex_affected_event") as reindex_event,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
             self.event_id.save()
-        self.assertEqual(es_update.call_count, 1)
+
+        reindex_event.assert_called_once_with(self.event_id.id)
+        es_update.assert_not_called()
 
     def test_event_id_save_noop_without_jobs(self):
         orphan_event = EventID.objects.create(
@@ -146,6 +152,12 @@ class TestLabelAndEventIdReindexSignals(BilbyTestCase):
             is_ligo_event=False,
             gps_time=1126259462.391,
         )
-        with mock.patch.object(BilbyJob, "elastic_search_update") as es_update:
+        with (
+            mock.patch.object(BilbyJob, "elastic_search_update") as es_update,
+            mock.patch("bilbyui.utils.reindex.reindex_affected_event") as reindex_event,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
             orphan_event.save()
+
+        reindex_event.assert_called_once_with(orphan_event.id)
         es_update.assert_not_called()

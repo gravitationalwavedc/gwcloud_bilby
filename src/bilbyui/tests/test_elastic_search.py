@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.test import TransactionTestCase, override_settings
 
-from bilbyui.models import BilbyJob, EventID, Label
+from bilbyui.models import BilbyJob, EventID, Label, build_bilby_es_doc
 from bilbyui.tests.test_utils import create_test_ini_string, generate_elastic_doc
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -40,6 +40,62 @@ def request_elasticsearch_update_mock_raises(*args, **kwargs):
 class TestElasticSearch(BilbyTestCase):
     def setUp(self):
         self.user = self.create_user()
+
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_build_bilby_es_doc_preserves_document_shape(self, lookup_users_mock):
+        event_id = EventID.create(
+            "GW123456_123456",
+            12345678,
+            trigger_id="S123456a",
+            nickname="Test Nick",
+            is_ligo_event=True,
+        )
+        label = Label.objects.create(name="label 1", description="my label 1")
+
+        with mock.patch.object(BilbyJob, "elastic_search_update"):
+            job = BilbyJob.objects.create(
+                user_id=self.user.id,
+                name="Test1",
+                description="first job",
+                job_controller_id=2,
+                private=False,
+                event_id=event_id,
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+            job.labels.add(label)
+
+        self.assertDictEqual(
+            build_bilby_es_doc(job),
+            generate_elastic_doc(job, {"name": "buffy summers"}),
+        )
+        lookup_users_mock.assert_called_once_with([job.user_id])
+
+    @mock.patch("bilbyui.models.get_es_client")
+    @mock.patch("bilbyui.models.build_bilby_es_doc")
+    def test_live_writer_uses_canonical_builder(self, builder_mock, get_es_client_mock):
+        job = mock.Mock(id=17)
+        document = {"job": {"name": "canonical"}}
+        builder_mock.return_value = document
+
+        BilbyJob()._write_elastic_search_document(job)
+
+        builder_mock.assert_called_once_with(job)
+        get_es_client_mock.return_value.update.assert_called_once_with(
+            index=settings.ELASTIC_SEARCH_INDEX,
+            id=job.id,
+            doc=document,
+        )
+
+    @mock.patch("bilbyui.models.get_es_client")
+    @mock.patch("bilbyui.models.build_bilby_es_doc", return_value=None)
+    def test_live_writer_skips_transport_for_non_indexable_job(self, builder_mock, get_es_client_mock):
+        job = mock.Mock()
+
+        BilbyJob()._write_elastic_search_document(job)
+
+        builder_mock.assert_called_once_with(job)
+        get_es_client_mock.return_value.update.assert_not_called()
+        get_es_client_mock.return_value.index.assert_not_called()
 
     @mock.patch(
         "elasticsearch.Elasticsearch.update",
@@ -274,8 +330,7 @@ class TestElasticSearch(BilbyTestCase):
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_job_save_event_id_update(self, lookup_users_mock, elasticsearch_update_mock):
         """
-        Test that if we update an event id associated with a job, that the job's elastic search update
-        is triggered
+        Test that updating an event id schedules the related-job reindex fan-out.
         """
         event_id = EventID.create(
             "GW123456_123456",
@@ -296,16 +351,16 @@ class TestElasticSearch(BilbyTestCase):
                 ini_string=create_test_ini_string({"detectors": "['H1']"}),
             )
 
+        with (
+            mock.patch("bilbyui.utils.reindex.reindex_affected_event") as reindex_event,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
             event_id.is_ligo_event = False
             event_id.save()
 
-        # Update should have been called twice, which then raises elasticsearch.NotFoundError
-        self.assertEqual(elasticsearch_update_mock.call_count, 2)
-
-        self.assertDictEqual(
-            elasticsearch_update_mock.mock_calls[-1].kwargs["doc"],
-            generate_elastic_doc(job, {"name": "buffy summers"}),
-        )
+        reindex_event.assert_called_once_with(event_id.id)
+        self.assertEqual(elasticsearch_update_mock.call_count, 1)
+        self.assertEqual(elasticsearch_update_mock.mock_calls[0].kwargs["id"], job.id)
 
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
@@ -531,12 +586,18 @@ class TestElasticSearch(BilbyTestCase):
         # On rollback no ES write should have been performed
         elasticsearch_update_mock.assert_not_called()
 
+    @mock.patch("bilbyui.utils.reindex.reindex_affected_event")
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
-    def test_event_id_post_save_commit_and_rollback(self, lookup_users_mock, elasticsearch_update_mock):
+    def test_event_id_post_save_commit_and_rollback(
+        self,
+        lookup_users_mock,
+        elasticsearch_update_mock,
+        reindex_affected_event_mock,
+    ):
         """
-        Test that the EventID post_save signal triggers an ES update on commit, and performs no ES
-        write when the surrounding transaction rolls back
+        Test that the EventID post_save signal triggers reindex fan-out on commit, and performs no
+        ES write or fan-out when the surrounding transaction rolls back
         """
         event_id = EventID.create(
             "GW123456_123456",
@@ -560,9 +621,12 @@ class TestElasticSearch(BilbyTestCase):
             event_id.is_ligo_event = False
             event_id.save()
 
-        # On commit the event id post_save signal should have triggered an ES update
+        # On commit the EventID signal fans out through the reindex boundary, while the BilbyJob
+        # creation still performs its direct ES update.
+        reindex_affected_event_mock.assert_called_once_with(event_id.id)
         self.assertGreaterEqual(elasticsearch_update_mock.call_count, 1)
 
+        reindex_affected_event_mock.reset_mock()
         elasticsearch_update_mock.reset_mock()
 
         with transaction.atomic():
@@ -570,7 +634,8 @@ class TestElasticSearch(BilbyTestCase):
             event_id.save()
             transaction.set_rollback(True)
 
-        # On rollback no ES write should have been performed
+        # On rollback neither the fan-out callback nor an ES write should be performed.
+        reindex_affected_event_mock.assert_not_called()
         elasticsearch_update_mock.assert_not_called()
 
     @mock.patch("elasticsearch.Elasticsearch.update")
