@@ -320,6 +320,26 @@ class TestSafeJsonDumps(BilbyTestCase):
         self.assertEqual(envelope["meta"]["nan"], "nan")
         self.assertFalse(envelope["round_trip"])
 
+    def test_non_finite_quantity_is_not_round_trippable(self):
+        # A non-finite value inside a u.Quantity is stored as a string in
+        # the astropy.quantity envelope, so the cosmology's round_trip flag
+        # must be false. FlatLambdaCDM expands a scalar m_nu into one value
+        # per neutrino species, so every element degrades to "nan".
+        cosmology = FlatLambdaCDM(
+            H0=67.9,
+            Om0=0.3065,
+            Tcmb0=2.725,
+            Neff=3.04,
+            m_nu=u.Quantity(float("nan"), u.eV),
+            name="test",
+        )
+        envelope = json.loads(safe_json_dumps(cosmology))
+        m_nu = envelope["parameters"]["m_nu"]
+        self.assertEqual(m_nu["__gwcloud_type__"], "astropy.quantity")
+        self.assertEqual(m_nu["value"], ["nan", "nan", "nan"])
+        self.assertEqual(m_nu["unit"], "eV")
+        self.assertFalse(envelope["round_trip"])
+
     def test_missing_detectors_raises(self):
         with mock.patch(
             "bilbyui.utils.parse_ini_file.bilby_ini_string_to_args",
