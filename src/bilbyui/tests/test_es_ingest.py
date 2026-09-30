@@ -624,7 +624,6 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(gwflow_job.event_id.event_id, "G000008")
         self.assertIsNone(gwflow_job.event_id.gps_time)
 
-
     def test_handle_gwflow_reuses_event_without_promoting_flag(self):
         existing_event = EventID.objects.create(
             event_id="G000007",
@@ -661,7 +660,6 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(gwflow_job.event_id, existing_event)
         self.assertFalse(existing_event.is_ligo_event)
         self.assertEqual(existing_event.trigger_id, "S200116a")
-
 
     def test_handle_gwflow_ignores_malformed_chosen_uid(self):
         gwflow_job = GWFlowJob.objects.create(
@@ -732,15 +730,23 @@ class TestEsIngestCommand(BilbyTestCase):
         other_event = EventID.objects.create(event_id="G000012", gps_time=1266105619.0)
 
         child_unlinked = BilbyJob.objects.create(
-            user_id=self.user.id, name="Child_Unlinked", gwflow_job=parent,
+            user_id=self.user.id,
+            name="Child_Unlinked",
+            gwflow_job=parent,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         child_correct = BilbyJob.objects.create(
-            user_id=self.user.id, name="Child_Correct", gwflow_job=parent, event_id=parent_event,
+            user_id=self.user.id,
+            name="Child_Correct",
+            gwflow_job=parent,
+            event_id=parent_event,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         child_conflict = BilbyJob.objects.create(
-            user_id=self.user.id, name="Child_Conflict", gwflow_job=parent, event_id=other_event,
+            user_id=self.user.id,
+            name="Child_Conflict",
+            gwflow_job=parent,
+            event_id=other_event,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
 
@@ -778,15 +784,22 @@ class TestEsIngestCommand(BilbyTestCase):
         parent.save()
 
         child_correct = BilbyJob.objects.create(
-            user_id=self.user.id, name="Child_Correct", gwflow_job=parent, event_id=parent_event,
+            user_id=self.user.id,
+            name="Child_Correct",
+            gwflow_job=parent,
+            event_id=parent_event,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         child_fail = BilbyJob.objects.create(
-            user_id=self.user.id, name="Child_Fail", gwflow_job=parent,
+            user_id=self.user.id,
+            name="Child_Fail",
+            gwflow_job=parent,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         child_ok = BilbyJob.objects.create(
-            user_id=self.user.id, name="Child_Ok", gwflow_job=parent,
+            user_id=self.user.id,
+            name="Child_Ok",
+            gwflow_job=parent,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
 
@@ -841,11 +854,15 @@ class TestEsIngestCommand(BilbyTestCase):
         parent.save()
 
         child_persist_then_raise = BilbyJob.objects.create(
-            user_id=self.user.id, name="Child_Persist_Then_Raise", gwflow_job=parent,
+            user_id=self.user.id,
+            name="Child_Persist_Then_Raise",
+            gwflow_job=parent,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         child_ok = BilbyJob.objects.create(
-            user_id=self.user.id, name="Child_Ok", gwflow_job=parent,
+            user_id=self.user.id,
+            name="Child_Ok",
+            gwflow_job=parent,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
 
