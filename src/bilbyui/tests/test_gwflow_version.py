@@ -20,6 +20,12 @@ class NormaliseLibrariesTestCase(BilbyTestCase):
     def test_none_returns_empty(self):
         self.assertEqual(normalise_libraries(None), [])
 
+    def test_string_returns_empty(self):
+        self.assertEqual(normalise_libraries("cbc-workflow-o4a"), [])
+
+    def test_non_iterable_returns_empty(self):
+        self.assertEqual(normalise_libraries(123), [])
+
     def test_populated_libraries_preserved(self):
         self.assertEqual(
             normalise_libraries(["cbc-workflow-o4a", "cbc-workflow-o4b"]),
