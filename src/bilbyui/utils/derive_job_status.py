@@ -37,7 +37,11 @@ def derive_job_status(history):
     if not valid_entries:
         return JobStatus.DRAFT, "Unknown", None
 
-    latest, timestamp = max(valid_entries, key=lambda item: item[1])
+    latest = valid_entries[0]
+    for entry in valid_entries[1:]:
+        if entry[1] >= latest[1]:
+            latest = entry
+    latest, timestamp = latest
     state = latest["state"]
     display_name = JobStatus.display_name(state)
     logger.debug("Derived job status: state=%s, display_name=%s, timestamp=%s", state, display_name, timestamp)
