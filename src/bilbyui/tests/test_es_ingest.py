@@ -830,3 +830,60 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertIsNone(child_fail.event_id)
         self.assertEqual(child_ok.event_id, parent_event)
         self.assertEqual(child_correct.event_id, parent_event)
+
+    def test_handle_gwflow_cascade_counts_persisted_child_despite_save_error(self):
+        # A child save may persist the EventID and then raise from later save-path
+        # work. The counters must reflect the final persisted state, so it counts
+        # as processed and the command must not raise a false failure.
+        parent = GWFlowJob.objects.create(sname="S200222a", user=self.user, event_id=None)
+        parent_event = EventID.objects.create(event_id="G000014", gps_time=1266105618.0)
+        parent.event_id = parent_event
+        parent.save()
+
+        child_persist_then_raise = BilbyJob.objects.create(
+            user_id=self.user.id, name="Child_Persist_Then_Raise", gwflow_job=parent,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        child_ok = BilbyJob.objects.create(
+            user_id=self.user.id, name="Child_Ok", gwflow_job=parent,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+
+        detail_payload = {
+            "GraceDB": {
+                "preferred_event": "G000014",
+                "Events": [{"UID": "G000014", "GPSTime": 1266105618.0}],
+            }
+        }
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S200222a"}])
+            if url.endswith("/api/v1/superevents/S200222a/"):
+                return _MockResponse(detail_payload, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        original_save = BilbyJob.save
+
+        def persist_then_raise(self, *args, **kwargs):
+            result = original_save(self, *args, **kwargs)
+            if getattr(self, "pk", None) == child_persist_then_raise.pk:
+                raise RuntimeError("simulated post-persistence save failure")
+            return result
+
+        out = StringIO()
+        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
+            with override_settings(
+                CBCFLOW_PORTAL_URL="https://portal.example.com",
+                CBCFLOW_PORTAL_TOKEN="token",
+            ):
+                with mock.patch.object(BilbyJob, "save", autospec=True, side_effect=persist_then_raise):
+                    call_command("es_ingest", "--gwflow", stdout=out, stderr=out)
+
+        output = out.getvalue()
+        self.assertIn("Child cascade: 2 processed, 0 failed", output)
+
+        child_persist_then_raise.refresh_from_db()
+        child_ok.refresh_from_db()
+        self.assertEqual(child_persist_then_raise.event_id, parent_event)
+        self.assertEqual(child_ok.event_id, parent_event)

@@ -130,27 +130,20 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"\nIngestion complete: {success_count} succeeded, {error_count} failed"))
 
     def _reconcile_gwflow_children(self, job) -> tuple[int, int]:
-        processed = 0
-        failed = 0
+        # Derive the counters from the final persisted state: a child save may
+        # persist the EventID and then raise from later save-path work, so an
+        # exception alone does not mean the child is left unlinked.
         children = BilbyJob.objects.filter(gwflow_job=job).order_by("pk")
+        child_ids = list(children.values_list("pk", flat=True))
 
         for child in children:
             if child.event_id_id == job.event_id_id:
-                processed += 1
                 continue
 
             try:
                 child.event_id = job.event_id
                 child.save(update_fields=["event_id"])
-                persisted = BilbyJob.objects.filter(
-                    pk=child.pk,
-                    event_id_id=job.event_id_id,
-                ).exists()
-                if not persisted:
-                    raise RuntimeError("persisted EventID does not match expected EventID")
-                processed += 1
             except Exception as exc:
-                failed += 1
                 logger.exception(
                     "Child cascade failed for parent %s, child %s, expected EventID %s: %s",
                     job.id,
@@ -159,6 +152,11 @@ class Command(BaseCommand):
                     exc,
                 )
 
+        processed = BilbyJob.objects.filter(
+            pk__in=child_ids,
+            event_id_id=job.event_id_id,
+        ).count()
+        failed = len(child_ids) - processed
         return processed, failed
 
     def handle_gwflow(self):
