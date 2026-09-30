@@ -198,6 +198,19 @@ class TestBuildFileEntry(unittest.TestCase):
         self.assertEqual(entry["file_size"], None)
         self.assertEqual(entry["md5_sum"], "")
 
+    def test_integral_string_file_size_is_coerced_to_int(self):
+        entry = _build_file_entry("uid-3", {"path": "/data/x.dat", "file_size": "2048"})
+        self.assertEqual(entry["file_size"], 2048)
+        self.assertIsInstance(entry["file_size"], int)
+
+    def test_non_numeric_file_size_becomes_none(self):
+        entry = _build_file_entry("uid-4", {"path": "/data/x.dat", "file_size": "not-a-size"})
+        self.assertIsNone(entry["file_size"])
+
+    def test_non_integral_file_size_becomes_none(self):
+        entry = _build_file_entry("uid-5", {"path": "/data/x.dat", "file_size": 100.5})
+        self.assertIsNone(entry["file_size"])
+
 
 if __name__ == "__main__":
     unittest.main()
