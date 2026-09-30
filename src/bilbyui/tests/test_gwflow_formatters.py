@@ -150,6 +150,11 @@ class GwflowFormatterTests(SimpleTestCase):
         self.assertEqual(probability(1), "1")
         self.assertEqual(probability(0.5), "0.5")
 
+    def test_probability_preserves_near_one_values(self):
+        self.assertEqual(probability(0.9999), "0.9999")
+        self.assertEqual(probability(0.999), "0.999")
+        self.assertEqual(probability(1), "1")
+
     def test_scientific_formats_small_negative_zero_and_units(self):
         self.assertEqual(scientific(3.1e-9, "Hz"), "3.1×10⁻⁹ Hz")
         self.assertEqual(scientific(-2.5e-4, "s"), "-2.5×10⁻⁴ s")
