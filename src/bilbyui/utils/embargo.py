@@ -53,14 +53,10 @@ def get_embargo_start() -> float | None:
                 raise TypeError
             parsed = float(raw)
         except (TypeError, ValueError, OverflowError) as exc:
-            raise ImproperlyConfigured(
-                "EMBARGO_START_TIME must be empty or a finite numeric GPS threshold."
-            ) from exc
+            raise ImproperlyConfigured("EMBARGO_START_TIME must be empty or a finite numeric GPS threshold.") from exc
 
         if not math.isfinite(parsed):
-            raise ImproperlyConfigured(
-                "EMBARGO_START_TIME must be empty or a finite numeric GPS threshold."
-            )
+            raise ImproperlyConfigured("EMBARGO_START_TIME must be empty or a finite numeric GPS threshold.")
 
     _cached_embargo_start_raw = raw
     _cached_embargo_start = parsed
@@ -72,7 +68,6 @@ def user_subject_to_embargo(user):
         return False
 
     return not is_ligo_user(user)
-
 
 
 def is_simulated_value(text):
@@ -168,8 +163,7 @@ def is_record_public(record, user, *, is_simulation=None) -> bool:
                 record.gwflow_job.trigger_time if record.gwflow_job_id else None,
                 (
                     record.gwflow_job.event_id.gps_time
-                    if record.gwflow_job_id
-                    and record.gwflow_job.event_id_id
+                    if record.gwflow_job_id and record.gwflow_job.event_id_id
                     else None
                 ),
             ],
@@ -178,7 +172,6 @@ def is_record_public(record, user, *, is_simulation=None) -> bool:
         )
 
     raise TypeError(f"Unsupported visibility record type: {type(record).__name__}")
-
 
 
 def visible_to_user(qs, user, model_kind):
@@ -190,17 +183,12 @@ def visible_to_user(qs, user, model_kind):
         return qs
 
     if model_kind == "EventID":
-        return qs.filter(
-            Q(gps_time__lt=embargo_start) | Q(gps_time__isnull=True)
-        )
+        return qs.filter(Q(gps_time__lt=embargo_start) | Q(gps_time__isnull=True))
 
     if model_kind == "GWFlowJob":
         return qs.filter(
             (Q(trigger_time__lt=embargo_start) | Q(trigger_time__isnull=True))
-            & (
-                Q(event_id__gps_time__lt=embargo_start)
-                | Q(event_id__gps_time__isnull=True)
-            )
+            & (Q(event_id__gps_time__lt=embargo_start) | Q(event_id__gps_time__isnull=True))
         )
 
     if model_kind == "BilbyJob":
@@ -209,22 +197,14 @@ def visible_to_user(qs, user, model_kind):
             Q(simulated__gt=0)
             | (
                 (Q(trigger_time__lt=embargo_start) | Q(trigger_time__isnull=True))
-                & (
-                    Q(event_id__gps_time__lt=embargo_start)
-                    | Q(event_id__gps_time__isnull=True)
-                )
-                & (
-                    Q(gwflow_job__trigger_time__lt=embargo_start)
-                    | Q(gwflow_job__trigger_time__isnull=True)
-                )
-                & (
-                    Q(gwflow_job__event_id__gps_time__lt=embargo_start)
-                    | Q(gwflow_job__event_id__gps_time__isnull=True)
-                )
+                & (Q(event_id__gps_time__lt=embargo_start) | Q(event_id__gps_time__isnull=True))
+                & (Q(gwflow_job__trigger_time__lt=embargo_start) | Q(gwflow_job__trigger_time__isnull=True))
+                & (Q(gwflow_job__event_id__gps_time__lt=embargo_start) | Q(gwflow_job__event_id__gps_time__isnull=True))
             )
         )
 
     raise ValueError(f"Unsupported model kind: {model_kind!r}")
+
 
 def embargo_filter(qs, user):
     if not user_subject_to_embargo(user):

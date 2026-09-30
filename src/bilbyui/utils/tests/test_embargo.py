@@ -436,17 +436,12 @@ class TestAnnotateSimulation(BilbyTestCase):
             jobs.append((job, value))
 
         annotated = {
-            job.pk: job
-            for job in annotate_simulation(
-                BilbyJob.objects.filter(pk__in=[job.pk for job, _ in jobs])
-            )
+            job.pk: job for job in annotate_simulation(BilbyJob.objects.filter(pk__in=[job.pk for job, _ in jobs]))
         }
         for job, value in jobs:
             with self.subTest(value=value):
                 expected = int(value) if is_simulated_value(value) else None
-                if value.strip(" \t").lstrip("+").isdigit() and len(
-                    value.strip(" \t").lstrip("+")
-                ) <= 9:
+                if value.strip(" \t").lstrip("+").isdigit() and len(value.strip(" \t").lstrip("+")) <= 9:
                     expected = int(value)
                 self.assertEqual(annotated[job.pk].simulated, expected)
 
@@ -476,7 +471,6 @@ class TestAnnotateSimulation(BilbyTestCase):
         annotated = annotate_simulation(BilbyJob.objects.filter(pk=job.pk)).get()
         self.assertEqual(annotated.n_sim_raw, "not-an-integer")
         self.assertIsNone(annotated.simulated)
-
 
 
 @override_settings(EMBARGO_START_TIME=100)
@@ -533,9 +527,7 @@ class TestRecordPublic(BilbyTestCase):
 
         with self.assertNumQueries(0):
             self.assertTrue(is_record_public(before, self.user))
-            self.assertFalse(
-                is_record_public(equal, self.user, is_simulation=True)
-            )
+            self.assertFalse(is_record_public(equal, self.user, is_simulation=True))
 
     def test_gwflow_linked_unlinked_all_null_and_zero_queries(self):
         restricted_event = self.create_event(3, 100)
@@ -544,9 +536,9 @@ class TestRecordPublic(BilbyTestCase):
         all_null = self.create_gwflow(3)
         records = {
             record.pk: record
-            for record in GWFlowJob.objects.filter(
-                pk__in=[linked.pk, unlinked.pk, all_null.pk]
-            ).select_related("event_id")
+            for record in GWFlowJob.objects.filter(pk__in=[linked.pk, unlinked.pk, all_null.pk]).select_related(
+                "event_id"
+            )
         }
 
         with self.assertNumQueries(0):
@@ -562,12 +554,8 @@ class TestRecordPublic(BilbyTestCase):
         event_tainted_parent = self.create_gwflow(6, 99, restricted_event)
         public = self.create_bilby(1, 99, public_event, public_parent)
         direct_taint = self.create_bilby(2, 99, restricted_event)
-        parent_trigger_taint = self.create_bilby(
-            3, 99, public_event, trigger_tainted_parent
-        )
-        parent_event_taint = self.create_bilby(
-            4, 99, public_event, event_tainted_parent
-        )
+        parent_trigger_taint = self.create_bilby(3, 99, public_event, trigger_tainted_parent)
+        parent_event_taint = self.create_bilby(4, 99, public_event, event_tainted_parent)
         unlinked = self.create_bilby(5, 99)
         all_null = self.create_bilby(6)
         jobs = [
@@ -580,17 +568,13 @@ class TestRecordPublic(BilbyTestCase):
         ]
         records = {
             record.pk: record
-            for record in BilbyJob.objects.filter(
-                pk__in=[job.pk for job in jobs]
-            ).select_related("event_id", "gwflow_job__event_id")
+            for record in BilbyJob.objects.filter(pk__in=[job.pk for job in jobs]).select_related(
+                "event_id", "gwflow_job__event_id"
+            )
         }
 
         with self.assertNumQueries(0):
-            self.assertTrue(
-                is_record_public(
-                    records[public.pk], self.user, is_simulation=False
-                )
-            )
+            self.assertTrue(is_record_public(records[public.pk], self.user, is_simulation=False))
             for restricted in (
                 direct_taint,
                 parent_trigger_taint,
@@ -610,16 +594,8 @@ class TestRecordPublic(BilbyTestCase):
                     is_simulation=True,
                 )
             )
-            self.assertTrue(
-                is_record_public(
-                    records[unlinked.pk], self.user, is_simulation=False
-                )
-            )
-            self.assertTrue(
-                is_record_public(
-                    records[all_null.pk], self.user, is_simulation=False
-                )
-            )
+            self.assertTrue(is_record_public(records[unlinked.pk], self.user, is_simulation=False))
+            self.assertTrue(is_record_public(records[all_null.pk], self.user, is_simulation=False))
 
     def test_bilby_requires_simulation_state(self):
         job = self.create_bilby(7)

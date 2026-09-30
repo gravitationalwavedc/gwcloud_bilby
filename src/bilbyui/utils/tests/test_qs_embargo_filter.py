@@ -238,11 +238,7 @@ class TestVisibleToUser(BilbyTestCase):
         self._event(3, 100.0)
         self._event(4, 101.0)
 
-        actual = set(
-            visible_to_user(
-                EventID.objects.all(), self.nonmember, "EventID"
-            ).values_list("pk", flat=True)
-        )
+        actual = set(visible_to_user(EventID.objects.all(), self.nonmember, "EventID").values_list("pk", flat=True))
         self.assertEqual(actual, expected)
 
     @override_settings(EMBARGO_START_TIME=100.0)
@@ -262,9 +258,7 @@ class TestVisibleToUser(BilbyTestCase):
         self._gwflow(15, 101.0, early_event)
         self._gwflow(16, 99.0, equal_event)
 
-        queryset = visible_to_user(
-            GWFlowJob.objects.all(), self.nonmember, "GWFlowJob"
-        )
+        queryset = visible_to_user(GWFlowJob.objects.all(), self.nonmember, "GWFlowJob")
         self.assertEqual(set(queryset.values_list("pk", flat=True)), expected)
         self.assertIn("LEFT OUTER JOIN", str(queryset.query).upper())
 
@@ -310,11 +304,7 @@ class TestVisibleToUser(BilbyTestCase):
                 simulation_value=value,
             )
 
-        actual = set(
-            visible_to_user(
-                BilbyJob.objects.all(), self.nonmember, "BilbyJob"
-            ).values_list("pk", flat=True)
-        )
+        actual = set(visible_to_user(BilbyJob.objects.all(), self.nonmember, "BilbyJob").values_list("pk", flat=True))
         self.assertEqual(actual, expected)
 
     @override_settings(EMBARGO_START_TIME=100.0)
@@ -323,11 +313,7 @@ class TestVisibleToUser(BilbyTestCase):
         from bilbyui.utils.embargo import visible_to_user
 
         job = self._bilby("null regression")
-        self.assertTrue(
-            visible_to_user(
-                BilbyJob.objects.all(), self.nonmember, "BilbyJob"
-            ).filter(pk=job.pk).exists()
-        )
+        self.assertTrue(visible_to_user(BilbyJob.objects.all(), self.nonmember, "BilbyJob").filter(pk=job.pk).exists())
 
     @override_settings(EMBARGO_START_TIME=100.0)
     def test_adapter_object_parity_and_legacy_flag_independence(self):
@@ -363,10 +349,7 @@ class TestVisibleToUser(BilbyTestCase):
                 "EventID",
             ).values_list("pk", flat=True)
         )
-        loaded_events = {
-            record.pk: record
-            for record in EventID.objects.filter(pk__in=event_pks)
-        }
+        loaded_events = {record.pk: record for record in EventID.objects.filter(pk__in=event_pks)}
         with self.assertNumQueries(0):
             for record, expected in event_cases:
                 queryset_result = record.pk in visible_event_ids
@@ -382,15 +365,11 @@ class TestVisibleToUser(BilbyTestCase):
 
         event_tainted_parent = self._gwflow(31, 99.0, equal_event)
         event_tainted_parent.ligo_only = False
-        GWFlowJob.objects.filter(pk=event_tainted_parent.pk).update(
-            ligo_only=False
-        )
+        GWFlowJob.objects.filter(pk=event_tainted_parent.pk).update(ligo_only=False)
 
         trigger_tainted_parent = self._gwflow(32, 100.0, public_event)
         trigger_tainted_parent.ligo_only = False
-        GWFlowJob.objects.filter(pk=trigger_tainted_parent.pk).update(
-            ligo_only=False
-        )
+        GWFlowJob.objects.filter(pk=trigger_tainted_parent.pk).update(ligo_only=False)
 
         unlinked_parent = self._gwflow(33, 99.0)
         unlinked_parent.ligo_only = True
@@ -416,10 +395,7 @@ class TestVisibleToUser(BilbyTestCase):
             ).values_list("pk", flat=True)
         )
         loaded_gwflows = {
-            record.pk: record
-            for record in GWFlowJob.objects.filter(
-                pk__in=gwflow_pks
-            ).select_related("event_id")
+            record.pk: record for record in GWFlowJob.objects.filter(pk__in=gwflow_pks).select_related("event_id")
         }
         with self.assertNumQueries(0):
             for record, expected in gwflow_cases:
@@ -551,9 +527,7 @@ class TestVisibleToUser(BilbyTestCase):
         )
         for record, _, expected in bilby_cases:
             record.is_ligo_job = not expected
-            BilbyJob.objects.filter(pk=record.pk).update(
-                is_ligo_job=record.is_ligo_job
-            )
+            BilbyJob.objects.filter(pk=record.pk).update(is_ligo_job=record.is_ligo_job)
 
         bilby_pks = [record.pk for record, _, _ in bilby_cases]
         visible_bilby_ids = set(
@@ -565,9 +539,7 @@ class TestVisibleToUser(BilbyTestCase):
         )
         loaded_bilby = {
             record.pk: record
-            for record in BilbyJob.objects.filter(
-                pk__in=bilby_pks
-            ).select_related("event_id", "gwflow_job__event_id")
+            for record in BilbyJob.objects.filter(pk__in=bilby_pks).select_related("event_id", "gwflow_job__event_id")
         }
         with self.assertNumQueries(0):
             for record, raw_simulation, expected in bilby_cases:
