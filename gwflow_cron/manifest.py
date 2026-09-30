@@ -5,6 +5,19 @@ from typing import Any
 logger = logging.getLogger("gwflow_ingest.manifest")
 
 
+def _normalise_file_size(value):
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    return None
+
+
 def _build_file_entry(analysis_uid: str, file_obj: dict | None) -> dict | None:
     if not isinstance(file_obj, dict):
         return None
@@ -13,7 +26,7 @@ def _build_file_entry(analysis_uid: str, file_obj: dict | None) -> dict | None:
         return None
 
     file_name = Path(path).name
-    file_size = file_obj.get("file_size")
+    file_size = _normalise_file_size(file_obj.get("file_size"))
     md5_sum = file_obj.get("md5_sum", "")
 
     return {
