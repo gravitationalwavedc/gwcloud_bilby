@@ -67,6 +67,19 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
         metadata = {"gracedb": {"events": [{"state": "preferred", "gps_time": 2000.0}]}}
         self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
 
+    def test_capitalized_state_preferred_selected(self):
+        # Capitalised preferred state (State/state: "Preferred") is treated
+        # as preferred, matching resolve_event_id_for's case-insensitive match.
+        metadata_cap = _metadata_with_events(
+            [
+                {"GPSTime": 1000.0},
+                {"GPSTime": 2000.0, "State": "Preferred"},
+            ]
+        )
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata_cap), 2000.0)
+        metadata_lower_shape = {"gracedb": {"events": [{"state": "Preferred", "gps_time": 2000.0}]}}
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata_lower_shape), 2000.0)
+
 
 class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=None)
