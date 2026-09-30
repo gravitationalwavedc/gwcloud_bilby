@@ -1213,6 +1213,12 @@ class TestTreeRelativeTarget(unittest.TestCase):
         with self.assertRaises(StageError):
             _tree_relative_target("/")
 
+    def test_dot_only_path_raises(self):
+        with self.assertRaises(StageError):
+            _tree_relative_target("/.")
+        with self.assertRaises(StageError):
+            _tree_relative_target(".")
+
     def test_nul_byte_raises(self):
         with self.assertRaises(StageError):
             _tree_relative_target("pe/config\x00.ini")
