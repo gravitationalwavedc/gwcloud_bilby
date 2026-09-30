@@ -8,9 +8,9 @@ from django.template.loader import render_to_string
 from django.test import SimpleTestCase
 
 from bilbyui.services.gwflow_metadata import (
+    _MISSING,
     FIELD_REGISTRY,
     KNOWN_KEYS,
-    _MISSING,
     _lookup,
     _reset_unmapped_warning_cache,
     build_metadata_presentation,
