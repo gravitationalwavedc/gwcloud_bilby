@@ -147,6 +147,14 @@ def probability(value: Any, precision: int = 3) -> str:
     rendered = f"{number:.{safe_precision}f}".rstrip("0").rstrip(".")
     if rendered == "0":
         return scientific(number)
+    if rendered == "1":
+        sig = safe_precision + 1
+        while sig <= 50:
+            candidate = format(number, f".{sig}g")
+            if Decimal(candidate) != 1:
+                return candidate
+            sig += 1
+        return scientific(number)
     return rendered
 
 
