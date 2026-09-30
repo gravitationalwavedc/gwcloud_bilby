@@ -444,7 +444,8 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
         return gps
 
     for event, gps in usable:
-        if event.get("State") == "preferred" or event.get("state") == "preferred":
+        state_val = event.get("State") or event.get("state")
+        if isinstance(state_val, str) and state_val.lower() == "preferred":
             return gps
 
     return usable[0][1] if usable else None
