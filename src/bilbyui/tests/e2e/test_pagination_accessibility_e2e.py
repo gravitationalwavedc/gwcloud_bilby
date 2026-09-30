@@ -7,6 +7,36 @@ from bilbyui.tests.e2e.base import GWFlowJobsPageBase, _build_gwflow_result
 from bilbyui.tests.e2e.utils import async_e2e_test, load_axe, run_axe
 
 
+async def wait_for_scroll_settle(page, frames: int = 3, timeout: float = 2000):
+    """Wait until the viewport scroll offset is stable across animation frames."""
+    await page.wait_for_function(
+        """(frames) => new Promise((resolve) => {
+            let last = window.scrollY;
+            let stable = 0;
+            let seen = 0;
+
+            function step() {
+                seen += 1;
+                if (window.scrollY === last) {
+                    stable += 1;
+                } else {
+                    stable = 0;
+                    last = window.scrollY;
+                }
+                if (stable >= frames || seen > 600) {
+                    resolve(true);
+                    return;
+                }
+                requestAnimationFrame(step);
+            }
+
+            requestAnimationFrame(step);
+        })""",
+        arg=frames,
+        timeout=timeout,
+    )
+
+
 def _paginated_result(
     user,
     *,
@@ -154,6 +184,9 @@ class TestPaginationHistoryFocus(PaginationAccessibilityBase):
         await self.wait_settled()
         self.assertIn("page=2", page.url)
         await search.focus()
+        # focus() may initiate an asynchronous browser scroll. Capture the
+        # baseline only after that scroll and preceding HTMX layout work settle.
+        await wait_for_scroll_settle(page)
         before_scroll = await page.evaluate("window.scrollY")
         await page.evaluate("history.back()")
         await page.wait_for_function("() => !location.search.includes('page=2')")
@@ -175,6 +208,9 @@ class TestPaginationHistoryFocus(PaginationAccessibilityBase):
         await page.wait_for_function("() => location.search.includes('page=2')")
         await page.wait_for_function("() => document.activeElement.id === 'search'")
         self.assertEqual(await page.evaluate("document.activeElement.id"), "search")
+        # Focus restoration can complete before its browser-driven scroll does.
+        # Comparing settled offsets still detects a destructive app scroll.
+        await wait_for_scroll_settle(page)
         self.assertLessEqual(
             abs((await page.evaluate("window.scrollY")) - before_scroll),
             2,
