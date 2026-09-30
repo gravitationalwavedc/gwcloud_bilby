@@ -17,6 +17,7 @@ from bilbyui.tests.test_utils import (
     silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.embargo import get_embargo_start
 
 User = get_user_model()
 
@@ -736,7 +737,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
 
         self.assertEqual(
             elasticsearch_search.mock_calls[-1].kwargs["q"],
-            f"((*) AND _private_info_.private:false) AND (params.trigger_time:<{settings.EMBARGO_START_TIME} "
+            f"((*) AND _private_info_.private:false) AND (params.trigger_time:<{get_embargo_start()} "
             f"OR ini.n_simulation:>0)",
         )
 
@@ -776,7 +777,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         self.assertEqual(
             elasticsearch_search.mock_calls[-1].kwargs["q"],
             f'(((test) AND job.creationTime:["{_from.isoformat()}" TO "{to.isoformat()}"]) AND '
-            f"_private_info_.private:false) AND (params.trigger_time:<{settings.EMBARGO_START_TIME} "
+            f"_private_info_.private:false) AND (params.trigger_time:<{get_embargo_start()} "
             f"OR ini.n_simulation:>0)",
         )
 
