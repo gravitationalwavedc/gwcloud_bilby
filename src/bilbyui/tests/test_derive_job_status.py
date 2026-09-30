@@ -14,6 +14,18 @@ class DeriveJobStatusTestCase(BilbyTestCase):
         self.assertEqual(name, "Unknown")
         self.assertIsNone(timestamp)
 
+    def test_equal_timestamps_prefer_later_entry(self):
+        history = [
+            {"timestamp": "2024-01-01 00:00:00.000000 UTC", "state": 30},
+            {"timestamp": "2024-01-01 00:00:00.000000 UTC", "state": 50},
+        ]
+
+        state, name, timestamp = derive_job_status(history)
+
+        self.assertEqual(state, 50)
+        self.assertEqual(name, "Running")
+        self.assertEqual(str(timestamp), "2024-01-01 00:00:00")
+
     def test_latest_status_selected_by_timestamp(self):
         history = [
             {"timestamp": "2024-01-01 00:00:00.000000 UTC", "state": 30},
