@@ -71,6 +71,9 @@ class TestParseFileSize(BilbyTestCase):
     def test_parse_file_size_decimal_returns_decimal(self):
         self.assertEqual(_parse_file_size(Decimal("123.45")), Decimal("123.45"))
 
+    def test_parse_file_size_float_returns_short_decimal(self):
+        self.assertEqual(_parse_file_size(1.1), Decimal("1.1"))
+
     def test_parse_file_size_non_numeric_string_returns_none(self):
         self.assertIsNone(_parse_file_size("not-a-size"))
 

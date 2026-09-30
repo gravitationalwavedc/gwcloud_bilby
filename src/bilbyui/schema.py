@@ -335,7 +335,7 @@ class BilbyResultFiles(graphene.ObjectType):
 
 def _parse_file_size(value):
     try:
-        return Decimal(value)
+        return Decimal(str(value))
     except (decimal.InvalidOperation, TypeError, ValueError):
         return None
 
