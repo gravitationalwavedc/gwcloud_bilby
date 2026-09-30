@@ -1,3 +1,4 @@
+from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
 
 from bilbyui.tests.testcases import BilbyTestCase
@@ -161,9 +162,10 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
         self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 1000.0}])))
 
     @override_settings(EMBARGO_START_TIME="not-a-number")
-    def test_malformed_embargo_start_time_fail_open(self):
-        # Malformed EMBARGO_START_TIME fails open (public).
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 2000.0}])))
+    def test_malformed_embargo_start_time_fail_closed(self):
+        # Malformed non-null EMBARGO_START_TIME is a deployment error.
+        with self.assertRaises(ImproperlyConfigured):
+            gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 2000.0}]))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_lowercase_shape(self):
