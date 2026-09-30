@@ -10,6 +10,8 @@ from django.test import SimpleTestCase
 from bilbyui.services.gwflow_metadata import (
     FIELD_REGISTRY,
     KNOWN_KEYS,
+    _MISSING,
+    _lookup,
     _reset_unmapped_warning_cache,
     build_metadata_presentation,
     warn_unmapped_metadata_leaves,
@@ -163,6 +165,20 @@ def rendered_fixture(payload, historical=False):
     parser.feed(html)
     parser.close()
     return presentation, html, parser
+
+
+class GWFlowMetadataLookupTests(SimpleTestCase):
+    def test_list_lookup_missing_field_returns_missing(self):
+        value = {"tgr": {"results": [{"uid": "A"}, {"uid": "B", "companion_sname": "X"}]}}
+        self.assertIs(_lookup(value, "tgr.results[].companion_sname"), _MISSING)
+
+    def test_list_lookup_non_mapping_record_returns_missing(self):
+        value = {"tgr": {"results": [{"uid": "A"}, "not-a-dict"]}}
+        self.assertIs(_lookup(value, "tgr.results[].uid"), _MISSING)
+
+    def test_list_lookup_happy_path_collects_values(self):
+        value = {"tgr": {"results": [{"uid": "A"}, {"uid": "B"}]}}
+        self.assertEqual(_lookup(value, "tgr.results[].uid"), ["A", "B"])
 
 
 class GWFlowMetadataRoundTripTests(SimpleTestCase):
