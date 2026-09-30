@@ -124,10 +124,7 @@ class TestReindexJobs(BilbyTestCase):
 
     def test_201_ids_are_two_sorted_chunks_of_200_and_one(self):
         jobs = BilbyJob.objects.bulk_create(
-            [
-                BilbyJob(user=self.user, name=f"batch-{number:03d}", ini_string="[job]\n")
-                for number in range(201)
-            ]
+            [BilbyJob(user=self.user, name=f"batch-{number:03d}", ini_string="[job]\n") for number in range(201)]
         )
         ids = [job.id for job in reversed(jobs)] + [jobs[0].id]
         sizes = []
@@ -408,12 +405,7 @@ class TestVerifySearchTriggerTime(BilbyTestCase):
 
     @staticmethod
     def mget_response(rows, sources):
-        return {
-            "docs": [
-                {"_id": str(row.id), "found": True, "_source": sources[row.id]}
-                for row in rows
-            ]
-        }
+        return {"docs": [{"_id": str(row.id), "found": True, "_source": sources[row.id]} for row in rows]}
 
     def test_bilby_uses_maximum_of_all_four_raw_fields(self):
         direct_event = EventID.objects.create(event_id="G2001", gps_time=20.0)

@@ -224,8 +224,7 @@ def reindex_jobs(ids: Iterable[int], kind: str) -> ReindexCounts:
             if scanned != succeeded + failed:
                 raise AssertionError("inconsistent reindex counts")
             raise ReindexError(
-                f"reindex operation failed kind={kind} scanned={scanned} "
-                f"succeeded={succeeded} failed={failed}"
+                f"reindex operation failed kind={kind} scanned={scanned} succeeded={succeeded} failed={failed}"
             )
 
     counts = ReindexCounts(scanned, succeeded, failed)
@@ -257,17 +256,9 @@ def _reindex_id_queryset(queryset, kind, total):
 def reindex_affected_event(event_id) -> ReindexCounts:
     """Reindex all Bilby and GWFlow documents affected by an EventID."""
     direct = BilbyJob.objects.filter(event_id_id=event_id).order_by().values_list("id", flat=True)
-    children = (
-        BilbyJob.objects.filter(gwflow_job__event_id_id=event_id)
-        .order_by()
-        .values_list("id", flat=True)
-    )
+    children = BilbyJob.objects.filter(gwflow_job__event_id_id=event_id).order_by().values_list("id", flat=True)
     bilby_ids = direct.union(children).order_by("id")
-    gwflow_ids = (
-        GWFlowJob.objects.filter(event_id_id=event_id)
-        .order_by("id")
-        .values_list("id", flat=True)
-    )
+    gwflow_ids = GWFlowJob.objects.filter(event_id_id=event_id).order_by("id").values_list("id", flat=True)
 
     total = ReindexCounts(0, 0, 0)
     total = _reindex_id_queryset(bilby_ids, "bilby", total)
@@ -287,11 +278,7 @@ def _expected_trigger_time(job, kind):
             job.trigger_time,
             job.event_id.gps_time if job.event_id else None,
             job.gwflow_job.trigger_time if job.gwflow_job else None,
-            (
-                job.gwflow_job.event_id.gps_time
-                if job.gwflow_job and job.gwflow_job.event_id
-                else None
-            ),
+            (job.gwflow_job.event_id.gps_time if job.gwflow_job and job.gwflow_job.event_id else None),
         ]
     else:
         values = [
@@ -343,9 +330,7 @@ def verify_search_trigger_time(kind: str) -> None:
 
         response = es.mget(index=index, ids=[row.id for row in rows])
         documents = {
-            str(document.get("_id")): document
-            for document in response.get("docs", [])
-            if isinstance(document, dict)
+            str(document.get("_id")): document for document in response.get("docs", []) if isinstance(document, dict)
         }
 
         for job in rows:
@@ -387,6 +372,4 @@ def verify_search_trigger_time(kind: str) -> None:
         failures,
     )
     if failures:
-        raise ReindexError(
-            f"verification failed kind={kind} checked={checked} failures={failures}"
-        )
+        raise ReindexError(f"verification failed kind={kind} checked={checked} failures={failures}")

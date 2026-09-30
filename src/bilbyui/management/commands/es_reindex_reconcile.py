@@ -63,11 +63,7 @@ class Command(BaseCommand):
 
         cursor = after_id
         while True:
-            page = list(
-                queryset.filter(id__gt=cursor)
-                .order_by("id")
-                .values_list("id", flat=True)[:batch]
-            )
+            page = list(queryset.filter(id__gt=cursor).order_by("id").values_list("id", flat=True)[:batch])
             if not page:
                 return
 
@@ -75,9 +71,7 @@ class Command(BaseCommand):
                 reindex_jobs(page, kind)
             except ReindexError as exc:
                 failed_ids = ",".join(str(stable_id) for stable_id in page)
-                raise ReindexError(
-                    f"kind={kind} failed_ids={failed_ids} status=reindex_failed"
-                ) from exc
+                raise ReindexError(f"kind={kind} failed_ids={failed_ids} status=reindex_failed") from exc
 
             cursor = page[-1]
             self.stdout.write(f"kind={kind} last_successful_id={cursor}")

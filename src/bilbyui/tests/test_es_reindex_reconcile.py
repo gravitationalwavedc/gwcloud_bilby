@@ -35,9 +35,7 @@ class EsReindexReconcileCommandTests(BilbyTestCase):
                 "bilbyui.management.commands.es_reindex_reconcile.reindex_jobs",
                 return_value=ReindexCounts(0, 0, 0),
             ) as reindex,
-            mock.patch(
-                "bilbyui.management.commands.es_reindex_reconcile.verify_search_trigger_time"
-            ) as verify,
+            mock.patch("bilbyui.management.commands.es_reindex_reconcile.verify_search_trigger_time") as verify,
         ):
             call_command("es_reindex_reconcile", *args, stdout=output)
         return output.getvalue(), reindex, verify
@@ -124,9 +122,7 @@ class EsReindexReconcileCommandTests(BilbyTestCase):
                     ReindexError("failed"),
                 ],
             ),
-            mock.patch(
-                "bilbyui.management.commands.es_reindex_reconcile.verify_search_trigger_time"
-            ) as verify,
+            mock.patch("bilbyui.management.commands.es_reindex_reconcile.verify_search_trigger_time") as verify,
         ):
             with self.assertRaises(CommandError) as raised:
                 call_command(
@@ -174,14 +170,10 @@ class EsReindexReconcileCommandTests(BilbyTestCase):
     def test_verification_failure_exits_nonzero(self):
         output = StringIO()
         with (
-            mock.patch(
-                "bilbyui.management.commands.es_reindex_reconcile.reindex_jobs"
-            ) as reindex,
+            mock.patch("bilbyui.management.commands.es_reindex_reconcile.reindex_jobs") as reindex,
             mock.patch(
                 "bilbyui.management.commands.es_reindex_reconcile.verify_search_trigger_time",
-                side_effect=ReindexError(
-                    "verification failed kind=gwflow checked=1 failures=1"
-                ),
+                side_effect=ReindexError("verification failed kind=gwflow checked=1 failures=1"),
             ),
         ):
             with self.assertRaises(CommandError) as raised:
@@ -199,12 +191,8 @@ class EsReindexReconcileCommandTests(BilbyTestCase):
         for value in ("0", "201"):
             with self.subTest(value=value):
                 with (
-                    mock.patch(
-                        "bilbyui.management.commands.es_reindex_reconcile.reindex_jobs"
-                    ) as reindex,
-                    mock.patch(
-                        "bilbyui.management.commands.es_reindex_reconcile.verify_search_trigger_time"
-                    ) as verify,
+                    mock.patch("bilbyui.management.commands.es_reindex_reconcile.reindex_jobs") as reindex,
+                    mock.patch("bilbyui.management.commands.es_reindex_reconcile.verify_search_trigger_time") as verify,
                 ):
                     with self.assertRaises(CommandError):
                         call_command(
