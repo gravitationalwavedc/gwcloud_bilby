@@ -135,6 +135,26 @@ class GWFlowStructuredDiffTestCase(BilbyTestCase):
         self.assertIs(outcome.changes[0].baseline_value, False)
         self.assertEqual(type(outcome.changes[0].selected_value), int)
 
+    def test_identical_nan_is_not_changed(self):
+        outcome = diff_payloads({"value": float("nan")}, {"value": float("nan")})
+        self.assertEqual(outcome.status, "semantic")
+        self.assertEqual(outcome.changes, ())
+
+    def test_equal_infinities_are_not_changed(self):
+        outcome = diff_payloads({"value": float("inf")}, {"value": float("inf")})
+        self.assertEqual(outcome.status, "semantic")
+        self.assertEqual(outcome.changes, ())
+
+    def test_opposite_infinities_are_changed(self):
+        outcome = diff_payloads({"value": float("inf")}, {"value": float("-inf")})
+        self.assertEqual(outcome.status, "semantic")
+        self.assertEqual(outcome.changes[0].kind, "changed")
+
+    def test_nan_vs_finite_is_changed(self):
+        outcome = diff_payloads({"value": float("nan")}, {"value": 1.0})
+        self.assertEqual(outcome.status, "semantic")
+        self.assertEqual(outcome.changes[0].kind, "changed")
+
     def test_cross_schema_is_caveated_without_semantic_changes(self):
         outcome = diff_payloads({"status": "a"}, {"status": "b"}, baseline_schema="v1", selected_schema="v2")
         self.assertEqual(outcome.status, "cross_schema")

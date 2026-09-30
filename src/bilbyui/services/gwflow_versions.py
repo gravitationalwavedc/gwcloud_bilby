@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -100,7 +101,11 @@ def prepare_version_snapshots(
 
 
 def _same_scalar(left: Any, right: Any) -> bool:
-    return type(left) is type(right) and left == right
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, float) and not math.isfinite(left):
+        return left == right or (math.isnan(left) and math.isnan(right))
+    return left == right
 
 
 def _is_sequence(value: Any) -> bool:
