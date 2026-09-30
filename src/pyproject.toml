@@ -45,6 +45,9 @@ unittest-xml-reporting = "*"
 testfixtures = "^12.3.0"
 pytest = "^9.1.1"
 playwright = "*"
+# Makes tracebacks picklable so the parallel test runner reports failures cleanly
+# instead of crashing on the unpicklable traceback (Django's recommended fix).
+tblib = "*"
 
 [build-system]
 requires = ["poetry-core"]
