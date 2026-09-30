@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from bilbyui.models import BilbyJob, EventID, Label
-from bilbyui.utils.embargo import embargo_filter, user_subject_to_embargo
+from bilbyui.utils.embargo import embargo_filter, get_embargo_start, user_subject_to_embargo
 from bilbyui.utils.gwflow_es import get_es_client
 from bilbyui.utils.job_validation import validate_job_name
 from bilbyui.utils.jobs.request_job_filter import request_job_filter
@@ -173,7 +173,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
     q = f"({q}) AND _private_info_.private:false"
 
     if user_subject_to_embargo(user):
-        q = f"({q}) AND (params.trigger_time:<{settings.EMBARGO_START_TIME} OR ini.n_simulation:>0)"
+        q = f"({q}) AND (params.trigger_time:<{get_embargo_start()} OR ini.n_simulation:>0)"
 
     try:
         results = es.search(
