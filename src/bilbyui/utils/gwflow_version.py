@@ -48,7 +48,7 @@ def normalise_current_history_timestamp(raw):
         if not value:
             return None
         try:
-            dt = datetime.fromisoformat(value)
+            dt = datetime.fromisoformat(value.replace(" UTC", "+00:00").replace("Z", "+00:00"))
         except (ValueError, TypeError) as exc:
             logger.warning("Malformed current_history_timestamp %r: %s", raw, exc)
             return None

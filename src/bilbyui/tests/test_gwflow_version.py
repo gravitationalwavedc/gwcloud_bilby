@@ -89,6 +89,14 @@ class NormaliseCurrentHistoryTimestampTestCase(BilbyTestCase):
         dt = normalise_current_history_timestamp("2024-01-01T12:00:00+05:00")
         self.assertEqual(dt, datetime(2024, 1, 1, 7, 0, 0, tzinfo=UTC))
 
+    def test_utc_suffix_string_parsed_as_utc(self):
+        dt = normalise_current_history_timestamp("2026-08-08 10:00:00 UTC")
+        self.assertEqual(dt, datetime(2026, 8, 8, 10, 0, 0, tzinfo=UTC))
+
+    def test_z_suffix_string_parsed_as_utc(self):
+        dt = normalise_current_history_timestamp("2026-08-08T10:00:00Z")
+        self.assertEqual(dt, datetime(2026, 8, 8, 10, 0, 0, tzinfo=UTC))
+
     def test_malformed_string_returns_none(self):
         self.assertIsNone(normalise_current_history_timestamp("not-a-date"))
 
