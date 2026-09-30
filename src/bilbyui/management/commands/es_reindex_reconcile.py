@@ -1,5 +1,6 @@
 import argparse
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from bilbyui.models import BilbyJob, GWFlowJob
@@ -39,6 +40,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *_args, **options):
+        if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
+            self.stdout.write("IGNORE_ELASTIC_SEARCH is set; es_reindex_reconcile is a no-op.")
+            return
+
         kinds = (options["kind"],) if options["kind"] else ("bilby", "gwflow")
         for kind in kinds:
             try:

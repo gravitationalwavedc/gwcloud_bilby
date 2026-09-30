@@ -201,6 +201,10 @@ def reindex_jobs(ids: Iterable[int], kind: str) -> ReindexCounts:
     if kind not in {"bilby", "gwflow"}:
         raise ValueError("kind must be 'bilby' or 'gwflow'")
 
+    # This mirrors the guards inside elastic_search_update / gwflow_elastic_search_update.
+    if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
+        return ReindexCounts(0, 0, 0)
+
     requested = sorted(set(ids))
     if not requested:
         return ReindexCounts(0, 0, 0)
@@ -313,6 +317,9 @@ def verify_search_trigger_time(kind: str) -> None:
     """Independently compare raw model fields with stored Elasticsearch values."""
     if kind not in {"bilby", "gwflow"}:
         raise ValueError("kind must be 'bilby' or 'gwflow'")
+
+    if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
+        return
 
     if kind == "bilby":
         queryset = BilbyJob.objects.select_related(

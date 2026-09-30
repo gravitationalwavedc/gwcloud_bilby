@@ -586,12 +586,18 @@ class TestElasticSearch(BilbyTestCase):
         # On rollback no ES write should have been performed
         elasticsearch_update_mock.assert_not_called()
 
+    @mock.patch("bilbyui.utils.reindex.reindex_affected_event")
     @mock.patch("elasticsearch.Elasticsearch.update")
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
-    def test_event_id_post_save_commit_and_rollback(self, lookup_users_mock, elasticsearch_update_mock):
+    def test_event_id_post_save_commit_and_rollback(
+        self,
+        lookup_users_mock,
+        elasticsearch_update_mock,
+        reindex_affected_event_mock,
+    ):
         """
-        Test that the EventID post_save signal triggers an ES update on commit, and performs no ES
-        write when the surrounding transaction rolls back
+        Test that the EventID post_save signal triggers reindex fan-out on commit, and performs no
+        ES write or fan-out when the surrounding transaction rolls back
         """
         event_id = EventID.create(
             "GW123456_123456",
@@ -615,9 +621,12 @@ class TestElasticSearch(BilbyTestCase):
             event_id.is_ligo_event = False
             event_id.save()
 
-        # On commit the event id post_save signal should have triggered an ES update
+        # On commit the EventID signal fans out through the reindex boundary, while the BilbyJob
+        # creation still performs its direct ES update.
+        reindex_affected_event_mock.assert_called_once_with(event_id.id)
         self.assertGreaterEqual(elasticsearch_update_mock.call_count, 1)
 
+        reindex_affected_event_mock.reset_mock()
         elasticsearch_update_mock.reset_mock()
 
         with transaction.atomic():
@@ -625,7 +634,8 @@ class TestElasticSearch(BilbyTestCase):
             event_id.save()
             transaction.set_rollback(True)
 
-        # On rollback no ES write should have been performed
+        # On rollback neither the fan-out callback nor an ES write should be performed.
+        reindex_affected_event_mock.assert_not_called()
         elasticsearch_update_mock.assert_not_called()
 
     @mock.patch("elasticsearch.Elasticsearch.update")

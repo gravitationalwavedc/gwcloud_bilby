@@ -2,6 +2,7 @@ from io import StringIO
 from unittest import mock
 
 from django.core.management import CommandError, call_command
+from django.test import override_settings
 
 from bilbyui.models import BilbyJob, GWFlowJob
 from bilbyui.tests.test_utils import create_test_ini_string
@@ -9,6 +10,7 @@ from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.reindex import ReindexCounts, ReindexError
 
 
+@override_settings(IGNORE_ELASTIC_SEARCH=False)
 class EsReindexReconcileCommandTests(BilbyTestCase):
     @classmethod
     def setUpTestData(cls):
@@ -39,6 +41,23 @@ class EsReindexReconcileCommandTests(BilbyTestCase):
         ):
             call_command("es_reindex_reconcile", *args, stdout=output)
         return output.getvalue(), reindex, verify
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True)
+    def test_noop_when_ignore_elastic_search(self):
+        output = StringIO()
+        command_path = "bilbyui.management.commands.es_reindex_reconcile"
+        with (
+            mock.patch(f"{command_path}.reindex_jobs") as reindex,
+            mock.patch(f"{command_path}.verify_search_trigger_time") as verify,
+        ):
+            call_command("es_reindex_reconcile", stdout=output)
+
+        self.assertIn(
+            "IGNORE_ELASTIC_SEARCH is set; es_reindex_reconcile is a no-op.",
+            output.getvalue(),
+        )
+        reindex.assert_not_called()
+        verify.assert_not_called()
 
     def test_omitted_kind_processes_bilby_then_gwflow(self):
         bilby = self.make_bilby("bilby")

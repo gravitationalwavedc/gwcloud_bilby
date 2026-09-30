@@ -1,12 +1,22 @@
 from unittest import mock
 
 from django.db import DEFAULT_DB_ALIAS, transaction
+from django.test import override_settings
 
 from bilbyui.models import EventID
 from bilbyui.tests.testcases import BilbyTestCase
 
 
+@override_settings(IGNORE_ELASTIC_SEARCH=False)
 class TestEventIDReindexSignal(BilbyTestCase):
+    @override_settings(IGNORE_ELASTIC_SEARCH=True)
+    def test_committed_save_makes_no_elasticsearch_call_when_ignore_elastic_search(self):
+        with mock.patch("bilbyui.utils.reindex.get_es_client") as client:
+            with self.captureOnCommitCallbacks(execute=True):
+                EventID.objects.create(event_id="G123458")
+
+        client.assert_not_called()
+
     @mock.patch("bilbyui.models.transaction.on_commit", wraps=transaction.on_commit)
     @mock.patch("bilbyui.models.BilbyJob.elastic_search_update")
     @mock.patch("bilbyui.utils.reindex.reindex_affected_event")

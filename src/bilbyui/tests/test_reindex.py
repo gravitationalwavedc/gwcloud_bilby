@@ -3,6 +3,7 @@ from unittest import mock
 
 import elasticsearch
 from django.conf import settings
+from django.test import override_settings
 
 from bilbyui.models import BilbyJob, EventID, GWFlowJob
 from bilbyui.tests.test_utils import create_test_ini_string
@@ -26,6 +27,7 @@ def bulk_error(stable_id, status, error_type="test_error"):
     }
 
 
+@override_settings(IGNORE_ELASTIC_SEARCH=False)
 class TestReindexJobs(BilbyTestCase):
     def setUp(self):
         self.user = self.create_user()
@@ -47,6 +49,21 @@ class TestReindexJobs(BilbyTestCase):
         }
         defaults.update(kwargs)
         return GWFlowJob.objects.create(**defaults)
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True)
+    def test_reindex_jobs_is_noop_when_ignore_elastic_search(self):
+        with mock.patch("bilbyui.utils.reindex.get_es_client") as client:
+            counts = reindex_jobs([1, 2], "bilby")
+
+        self.assertEqual(counts, ReindexCounts(0, 0, 0))
+        client.assert_not_called()
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True)
+    def test_verify_is_noop_when_ignore_elastic_search(self):
+        with mock.patch("bilbyui.utils.reindex.get_es_client") as client:
+            verify_search_trigger_time("bilby")
+
+        client.assert_not_called()
 
     def test_counts_contract_and_success_invariant(self):
         self.assertTrue(issubclass(ReindexCounts, tuple))
@@ -376,6 +393,7 @@ class TestReindexAffectedEvent(BilbyTestCase):
         self.assertEqual(counts, ReindexCounts(4, 4, 0))
 
 
+@override_settings(IGNORE_ELASTIC_SEARCH=False)
 class TestVerifySearchTriggerTime(BilbyTestCase):
     def setUp(self):
         self.user = self.create_user()
