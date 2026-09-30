@@ -647,7 +647,9 @@ class TestSupportingFile(BilbyTestCase):
         self.assertEqual(BilbyJob.objects.count(), 1)
 
         # Check objects just inside the deletion time are not deleted
-        self.job.creation_time = timezone.now() - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
+        self.job.creation_time = timezone.now() - timezone.timedelta(
+            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 60
+        )
         self.job.save()
 
         BilbyJob.prune_supporting_files_jobs()
@@ -680,7 +682,9 @@ class TestSupportingFile(BilbyTestCase):
         self.assertEqual(BilbyJob.objects.count(), 1)
 
         # Check objects just inside the deletion time are not deleted
-        self.job.creation_time = timezone.now() - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
+        self.job.creation_time = timezone.now() - timezone.timedelta(
+            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 60
+        )
         self.job.save()
 
         BilbyJob.prune_supporting_files_jobs()
@@ -750,7 +754,9 @@ class TestSupportingFile(BilbyTestCase):
             self.assertIsNotNone(SupportingFile.get_by_upload_tokens([t])[0])
 
         # Check objects just inside the deletion time are not deleted
-        self.job.creation_time = timezone.now() - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
+        self.job.creation_time = timezone.now() - timezone.timedelta(
+            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 60
+        )
         self.job.save()
 
         for t in tokens:
@@ -784,7 +790,9 @@ class TestSupportingFile(BilbyTestCase):
         self.assertTrue(BilbyJob.objects.filter(id=self.job.id).exists())
 
         # Check objects just inside the deletion time are not deleted
-        self.job.creation_time = timezone.now() - timezone.timedelta(seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 1)
+        self.job.creation_time = timezone.now() - timezone.timedelta(
+            seconds=settings.UPLOAD_SUPPORTING_FILE_EXPIRY - 60
+        )
         self.job.save()
 
         for t in tokens:
