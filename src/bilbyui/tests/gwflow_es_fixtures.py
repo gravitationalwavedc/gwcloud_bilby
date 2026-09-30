@@ -151,7 +151,7 @@ def assert_doc_matches_spec(testcase, doc, spec):
     envelope = doc["_gwcloud"]
     testcase.assertEqual(
         set(envelope.keys()),
-        {"sname", "libraries", "isPruned", "ligoOnly", "lastUpdatedTime", "reviewStatuses", "eventTriggerId"},
+        {"sname", "libraries", "isPruned", "ligoOnly", "lastUpdatedTime", "reviewStatuses", "eventTriggerId", "searchTriggerTime"},
     )
     testcase.assertEqual(envelope["sname"], spec["sname"])
     testcase.assertEqual(envelope["libraries"], spec["libraries"])
