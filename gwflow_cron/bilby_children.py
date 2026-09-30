@@ -196,6 +196,8 @@ def _tree_relative_target(p: str) -> str:
     if "\x00" in rel:
         raise StageError(f"NUL byte in path {p!r}")
     parts = Path(rel).parts
+    if not parts:
+        raise StageError(f"empty relative path for {p!r}")
     if ".." in parts:
         raise StageError(f"path traversal in {p!r}")
 
