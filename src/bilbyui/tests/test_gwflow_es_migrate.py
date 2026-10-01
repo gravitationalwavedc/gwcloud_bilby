@@ -108,7 +108,7 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
                 "sname",
                 "libraries",
                 "isPruned",
-                "ligoOnly",
+                "searchTriggerTime",
                 "lastUpdatedTime",
                 "reviewStatuses",
                 "eventTriggerId",

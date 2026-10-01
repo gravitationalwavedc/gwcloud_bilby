@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.test import TransactionTestCase, override_settings
 
-from bilbyui.models import BilbyJob, EventID, Label, build_bilby_es_doc
+from bilbyui.models import BilbyJob, EventID, GWFlowJob, Label, build_bilby_es_doc
 from bilbyui.tests.test_utils import create_test_ini_string, generate_elastic_doc
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -69,6 +69,99 @@ class TestElasticSearch(BilbyTestCase):
             generate_elastic_doc(job, {"name": "buffy summers"}),
         )
         lookup_users_mock.assert_called_once_with([job.user_id])
+
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_build_bilby_es_doc_uses_strict_maximum_across_all_sources(self, lookup_users_mock):
+        direct_event = EventID.objects.create(event_id="GW-DIRECT", gps_time=20.0)
+        parent_event = EventID.objects.create(event_id="GW-PARENT", gps_time=40.0)
+        parent = GWFlowJob.objects.create(
+            sname="S-PARENT",
+            user=self.user,
+            trigger_time=30.0,
+            event_id=parent_event,
+        )
+        with mock.patch.object(BilbyJob, "elastic_search_update"):
+            job = BilbyJob.objects.create(
+                user=self.user,
+                name="strict-max",
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+                trigger_time=10.0,
+                event_id=direct_event,
+                gwflow_job=parent,
+            )
+
+        doc = build_bilby_es_doc(job)
+
+        self.assertEqual(doc["searchTriggerTime"], 40.0)
+        self.assertEqual(doc["eventId"]["gpsTime"], 20.0)
+
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_build_bilby_es_doc_each_trigger_source(self, lookup_users_mock):
+        direct_event = EventID.objects.create(event_id="GW-DIRECT-SOURCE", gps_time=20.0)
+        parent_event = EventID.objects.create(event_id="GW-PARENT-SOURCE", gps_time=40.0)
+        parent = GWFlowJob.objects.create(
+            sname="S-PARENT-SOURCE",
+            user=self.user,
+            trigger_time=30.0,
+            event_id=parent_event,
+        )
+        cases = (
+            ("own", {"trigger_time": 10.0}, 10.0),
+            ("direct-event", {"event_id": direct_event}, 20.0),
+            ("parent", {"gwflow_job": parent}, 40.0),
+        )
+        for name, values, expected in cases:
+            with self.subTest(name=name), mock.patch.object(BilbyJob, "elastic_search_update"):
+                job = BilbyJob.objects.create(
+                    user=self.user,
+                    name=f"source-{name}",
+                    ini_string=create_test_ini_string({"detectors": "['H1']"}),
+                    **values,
+                )
+                self.assertEqual(build_bilby_es_doc(job)["searchTriggerTime"], expected)
+
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_build_bilby_es_doc_omits_search_trigger_time_without_finite_source(self, lookup_users_mock):
+        with mock.patch.object(BilbyJob, "elastic_search_update"):
+            job = BilbyJob.objects.create(
+                user=self.user,
+                name="no-trigger",
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+
+        self.assertNotIn("searchTriggerTime", build_bilby_es_doc(job))
+
+    @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
+    def test_build_bilby_es_doc_simulation_still_stores_search_trigger_time(self, lookup_users_mock):
+        with mock.patch.object(BilbyJob, "elastic_search_update"):
+            job = BilbyJob.objects.create(
+                user=self.user,
+                name="simulation-trigger",
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+                trigger_time=1234.0,
+            )
+        job.inikeyvalue_set.create(key="n_simulation", value="1", processed=False, index=0)
+
+        doc = build_bilby_es_doc(job)
+
+        self.assertEqual(doc["ini"]["n_simulation"], 1)
+        self.assertEqual(doc["searchTriggerTime"], 1234.0)
+
+    @mock.patch("bilbyui.models.BilbyJob._write_elastic_search_document")
+    def test_elastic_search_update_reloads_required_relations(self, writer_mock):
+        with mock.patch.object(BilbyJob, "elastic_search_update"):
+            job = BilbyJob.objects.create(
+                user=self.user,
+                name="relation-reload",
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            job.elastic_search_update()
+
+        reloaded = writer_mock.call_args.args[0]
+        self.assertIn("event_id", reloaded._state.fields_cache)
+        self.assertIn("gwflow_job", reloaded._state.fields_cache)
 
     @mock.patch("bilbyui.models.get_es_client")
     @mock.patch("bilbyui.models.build_bilby_es_doc")

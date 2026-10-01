@@ -5,6 +5,8 @@ import logging
 import elasticsearch
 from django.conf import settings
 
+from bilbyui.utils.search_trigger_time import max_finite_time
+
 logger = logging.getLogger(__name__)
 
 
@@ -147,7 +149,7 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
 
     The document is a lossless pass-through: 'metadata' is the raw portal dict,
     copied directly (not traversed or reconstructed), and '_gwcloud' is a thin
-    operational envelope containing only the seven approved fields.
+    operational envelope containing only the approved fields.
 
     Raises InvalidGWFlowMetadata when metadata is not a valid payload, before any
     ES call.
@@ -175,22 +177,31 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
         job.current_history_timestamp.isoformat() if getattr(job, "current_history_timestamp", None) else None
     )
     event_trigger_id = job.event_id.trigger_id if job.event_id else None
+    search_trigger_time = max_finite_time(
+        (
+            job.trigger_time,
+            job.event_id.gps_time if job.event_id else None,
+        )
+    )
 
     try:
         review_statuses = _collect_review_statuses(validated, job)
     except RecursionError as exc:
         raise InvalidGWFlowMetadata("metadata is too deeply nested") from exc
 
+    envelope = {
+        "sname": job.sname,
+        "libraries": job.libraries or [],
+        "isPruned": job.is_pruned,
+        "lastUpdatedTime": last_updated_time,
+        "reviewStatuses": review_statuses,
+        "eventTriggerId": event_trigger_id,
+    }
+    if search_trigger_time is not None:
+        envelope["searchTriggerTime"] = search_trigger_time
+
     return {
-        "_gwcloud": {
-            "sname": job.sname,
-            "libraries": job.libraries or [],
-            "isPruned": job.is_pruned,
-            "ligoOnly": job.ligo_only,
-            "lastUpdatedTime": last_updated_time,
-            "reviewStatuses": review_statuses,
-            "eventTriggerId": event_trigger_id,
-        },
+        "_gwcloud": envelope,
         "metadata": validated,
     }
 

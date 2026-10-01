@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import elasticsearch
 from django.template.loader import get_template
+from django.test import override_settings
 
 from bilbyui.models import BilbyJob, GWFlowJob
 from bilbyui.services.gwflow import list_gwflow_jobs
@@ -62,16 +63,20 @@ class TestListGWFlowJobsStateFlag(BilbyTestCase):
         self.assertEqual(res["jobs"], {})
         mock_client.search.assert_called_once()
 
+    @override_settings(EMBARGO_START_TIME=1500.0)
     @patch("elasticsearch.Elasticsearch")
     def test_reconciliation_mismatch_returns_state_ok(self, mock_es_cls):
         ligo_job = GWFlowJob.objects.create(
             sname="S200101b",
             user=self.user,
             ligo_only=True,
+            trigger_time=1500.0,
             is_pruned=False,
         )
         self._mock_search(mock_es_cls, [{"_id": ligo_job.id}])
+
         res = list_gwflow_jobs(self.user)
+
         self.assertEqual(res["state"], "ok")
         self.assertEqual(res["jobs"], {})
 
