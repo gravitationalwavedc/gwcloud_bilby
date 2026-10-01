@@ -132,15 +132,21 @@ def safe_json_dumps(value):
 
     JSON-serializable values are returned byte-identical to ``json.dumps``.
     astropy Cosmology instances are serialised into a structured envelope
-    (see ``_serialise_cosmology``). Any other non-serializable value is
-    persisted through an explicit degradation envelope (see ``_degrade``).
+    (see ``_serialise_cosmology``). Other known non-serializable types
+    (astropy Quantities, numpy arrays and scalars, mappings) are normalised
+    through ``_normalise`` into structured, round-trippable forms. Any
+    remaining unknown object is persisted through an explicit degradation
+    envelope (see ``_degrade``).
     """
     try:
         return json.dumps(value)
     except TypeError:
         if isinstance(value, astropy.cosmology.Cosmology):
             return json.dumps(_serialise_cosmology(value))
-        return json.dumps(_degrade(value))
+        normalised, _ = _normalise(value)
+        if isinstance(normalised, str):
+            return json.dumps(_degrade(value))
+        return json.dumps(normalised)
 
 
 def _safe_serialise(key, value):

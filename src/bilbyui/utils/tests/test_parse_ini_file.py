@@ -234,6 +234,18 @@ class TestSafeJsonDumps(BilbyTestCase):
         self.assertTrue(np.allclose(reconstructed.m_nu.value, cosmology.m_nu.value))
         self.assertEqual(reconstructed.m_nu.unit, cosmology.m_nu.unit)
 
+    def test_top_level_quantity_and_ndarray_normalise(self):
+        # A top-level astropy Quantity must be stored as a structured
+        # envelope rather than degraded to a string fallback.
+        quantity = u.Quantity([1.0, 2.0, 3.0], u.s)
+        envelope = json.loads(safe_json_dumps(quantity))
+        self.assertEqual(envelope["__gwcloud_type__"], "astropy.quantity")
+        self.assertEqual(envelope["value"], [1.0, 2.0, 3.0])
+        self.assertEqual(envelope["unit"], "s")
+
+        # A top-level numpy array must be stored as a JSON-native list.
+        self.assertEqual(json.loads(safe_json_dumps(np.array([1, 2, 3]))), [1, 2, 3])
+
     def test_unknown_exotic_top_level_degrades(self):
         serialised = safe_json_dumps(object())
         envelope = json.loads(serialised)
