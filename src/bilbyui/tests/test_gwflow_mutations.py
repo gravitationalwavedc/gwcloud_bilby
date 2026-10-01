@@ -10,6 +10,7 @@ from graphql import GraphQLError
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
+from bilbyui.services.gwflow import _gwflow_public_visibility_clause
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_es import build_gwflow_es_doc
@@ -1730,8 +1731,13 @@ class TestGWFlowLigoOnlyDerivation(BilbyTestCase):
 
         job = GWFlowJob.objects.get(sname="S230801after")
         self.assertTrue(job.ligo_only)
+
+        # GWFlowJob.trigger_time is populated by issue #107 (EMB-5); this exercises the #110 canonical builder contract.
+        GWFlowJob.objects.filter(pk=job.pk).update(trigger_time=2000.0)
+        job.refresh_from_db()
         doc = build_gwflow_es_doc(job, {"GraceDB": {"Events": [{"GPSTime": 2000.0}]}})
-        self.assertTrue(doc["_gwcloud"]["ligoOnly"])
+        self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], 2000.0)
+        self.assertNotIn("ligoOnly", doc["_gwcloud"])
         mock_es.assert_called_once()
 
     @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
@@ -1744,8 +1750,13 @@ class TestGWFlowLigoOnlyDerivation(BilbyTestCase):
 
         job = GWFlowJob.objects.get(sname="S230801before")
         self.assertFalse(job.ligo_only)
+
+        # GWFlowJob.trigger_time is populated by issue #107 (EMB-5); this exercises the #110 canonical builder contract.
+        GWFlowJob.objects.filter(pk=job.pk).update(trigger_time=1000.0)
+        job.refresh_from_db()
         doc = build_gwflow_es_doc(job, {"GraceDB": {"Events": [{"GPSTime": 1000.0}]}})
-        self.assertFalse(doc["_gwcloud"]["ligoOnly"])
+        self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], 1000.0)
+        self.assertNotIn("ligoOnly", doc["_gwcloud"])
         mock_es.assert_called_once()
 
     @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
@@ -1759,7 +1770,8 @@ class TestGWFlowLigoOnlyDerivation(BilbyTestCase):
         job = GWFlowJob.objects.get(sname="S230801missing")
         self.assertFalse(job.ligo_only)
         doc = build_gwflow_es_doc(job, {"GraceDB": {"Events": [{"GPSTime": "bad"}]}})
-        self.assertFalse(doc["_gwcloud"]["ligoOnly"])
+        self.assertNotIn("searchTriggerTime", doc["_gwcloud"])
+        self.assertNotIn("ligoOnly", doc["_gwcloud"])
         mock_es.assert_called_once()
 
     @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
@@ -1781,6 +1793,7 @@ class TestGWFlowLigoOnlyDerivation(BilbyTestCase):
             res = list_gwflow_jobs(self.non_ligo_user, search="GW150914", time_range="1d")
 
         self.assertIn(job.id, res["jobs"])
-        filter_terms = mock_client.search.call_args[1]["query"]["bool"]["filter"]
-        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filter_terms)
-        self.assertIn({"term": {"_gwcloud.isPruned": False}}, filter_terms)
+        filters = mock_client.search.call_args[1]["query"]["bool"]["filter"]
+        self.assertIn(_gwflow_public_visibility_clause(1500.0), filters)
+        self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
+        self.assertNotIn({"term": {"_gwcloud.ligoOnly": False}}, filters)

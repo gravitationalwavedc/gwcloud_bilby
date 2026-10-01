@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import elasticsearch
 from django.contrib.auth import get_user_model
 from django.core.cache import caches
+from django.test import override_settings
 from django.utils import timezone
 
 from bilbyui.models import GWFlowJob
@@ -11,6 +12,7 @@ from bilbyui.services.gwflow import (
     _collect_library_options,
     _collect_review_status_options,
     _facet_options,
+    _gwflow_public_visibility_clause,
     _is_fresh,
     _parse_cache_record,
     _public_visibility_filters,
@@ -35,6 +37,7 @@ def _agg_response(agg_name, keys):
     }
 
 
+@override_settings(EMBARGO_START_TIME=1000.0)
 class TestGWFlowServices(BilbyTestCase):
     def setUp(self):
         super().setUp()
@@ -61,6 +64,7 @@ class TestGWFlowServices(BilbyTestCase):
             sname="S200101b",
             user=self.ligo_user,
             ligo_only=True,
+            trigger_time=1000.0,
             is_pruned=False,
         )
         self.job_pruned = GWFlowJob.objects.create(
@@ -134,7 +138,9 @@ class TestGWFlowServices(BilbyTestCase):
 
         mock_client.search.assert_called_once()
         filter_terms = self._filter_terms(mock_client)
-        self.assertIn("_gwcloud.ligoOnly", filter_terms)
+        filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
+        self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
+        self.assertNotIn("_gwcloud.ligoOnly", filter_terms)
         self.assertIn("_gwcloud.isPruned", filter_terms)
         self.assertIn("_gwcloud.lastUpdatedTime", filter_terms)
 
@@ -155,6 +161,8 @@ class TestGWFlowServices(BilbyTestCase):
         res = list_gwflow_jobs(self.ligo_user, include_pruned=True)
 
         filter_terms = self._filter_terms(mock_client)
+        filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
+        self.assertNotIn(_gwflow_public_visibility_clause(1000.0), filters)
         self.assertNotIn("_gwcloud.ligoOnly", filter_terms)
         self.assertNotIn("_gwcloud.isPruned", filter_terms)
 
@@ -489,7 +497,9 @@ class TestGWFlowServices(BilbyTestCase):
         filter_terms = self._filter_terms(mock_client)
         self.assertEqual(filter_terms["_gwcloud.libraries"], 'cbc-workflow "o4a"')
         self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "approved")
-        self.assertIn("_gwcloud.ligoOnly", filter_terms)
+        filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
+        self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
+        self.assertNotIn("_gwcloud.ligoOnly", filter_terms)
         self.assertIn("_gwcloud.isPruned", filter_terms)
         self.assertIn(self.job_public.id, res["jobs"])
 
@@ -742,7 +752,9 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(filter_terms["_gwcloud.libraries"], "lib-a")
         self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "approved")
         self.assertIn("_gwcloud.lastUpdatedTime", filter_terms)
-        self.assertEqual(filter_terms["_gwcloud.ligoOnly"], False)
+        filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
+        self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
+        self.assertNotIn("_gwcloud.ligoOnly", filter_terms)
         self.assertEqual(filter_terms["_gwcloud.isPruned"], False)
         self.assertNotIn("libraries.keyword", filter_terms)
         self.assertNotIn("analyses.reviewStatus.keyword", filter_terms)
@@ -759,6 +771,7 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(mock_client.search.call_args[1]["request_timeout"], 10)
 
 
+@override_settings(EMBARGO_START_TIME=1000.0)
 class TestGWFlowFilterOptions(BilbyTestCase):
     def setUp(self):
         super().setUp()
@@ -802,7 +815,7 @@ class TestGWFlowFilterOptions(BilbyTestCase):
         self.assertEqual(call.kwargs["size"], 0)
         filters = call.kwargs["query"]["bool"]["filter"]
         self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
-        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
+        self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
 
     def test_libraries_cached_fresh(self):
         mock_client = self._mock_es(libraries=["a-library"])
@@ -832,7 +845,7 @@ class TestGWFlowFilterOptions(BilbyTestCase):
         self.assertEqual(call.kwargs["size"], 0)
         filters = call.kwargs["query"]["bool"]["filter"]
         self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
-        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
+        self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
 
     def test_review_statuses_cached_fresh(self):
         mock_client = self._mock_es(review_statuses=["approved"])
@@ -1040,6 +1053,7 @@ class TestGWFlowFilterOptions(BilbyTestCase):
         self.assertIsNone(caches["default"].get(REVIEW_STATUSES_CACHE_KEY))
 
 
+@override_settings(EMBARGO_START_TIME=1000.0)
 class TestCollectOptions(BilbyTestCase):
     def setUp(self):
         super().setUp()
@@ -1058,7 +1072,7 @@ class TestCollectOptions(BilbyTestCase):
         self.assertEqual(call.kwargs["aggs"]["libraries"]["terms"]["field"], "_gwcloud.libraries")
         filters = call.kwargs["query"]["bool"]["filter"]
         self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
-        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
+        self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_collect_review_status_options_uses_gwcloud_field_and_visibility(self, mock_get_es_client):
@@ -1074,7 +1088,7 @@ class TestCollectOptions(BilbyTestCase):
         self.assertEqual(call.kwargs["aggs"]["review_statuses"]["terms"]["size"], 50)
         filters = call.kwargs["query"]["bool"]["filter"]
         self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
-        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
+        self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_collect_review_status_options_empty_buckets_returns_empty_list(self, mock_get_es_client):
@@ -1085,15 +1099,38 @@ class TestCollectOptions(BilbyTestCase):
         self.assertEqual(_collect_review_status_options(), [])
 
 
+@override_settings(EMBARGO_START_TIME=1000.0)
 class TestPublicVisibilityFilters(BilbyTestCase):
-    def test_returns_pruned_and_ligo_only_clauses(self):
+    def test_exact_visibility_clause_shape(self):
+        self.assertEqual(
+            _gwflow_public_visibility_clause(1000.0),
+            {
+                "bool": {
+                    "should": [
+                        {"bool": {"must_not": {"exists": {"field": "_gwcloud.searchTriggerTime"}}}},
+                        {"range": {"_gwcloud.searchTriggerTime": {"lt": 1000.0}}},
+                    ],
+                    "minimum_should_match": 1,
+                }
+            },
+        )
+        self.assertNotIn("ini.n_simulation", str(_gwflow_public_visibility_clause(1000.0)))
+
+    @override_settings(EMBARGO_START_TIME=None)
+    def test_inactive_threshold_keeps_only_pruning_filter(self):
+        self.assertEqual(
+            _public_visibility_filters(),
+            [{"term": {"_gwcloud.isPruned": False}}],
+        )
+
+    def test_returns_pruned_and_dynamic_visibility_clauses(self):
         filters = _public_visibility_filters()
 
         self.assertEqual(
             filters,
             [
                 {"term": {"_gwcloud.isPruned": False}},
-                {"term": {"_gwcloud.ligoOnly": False}},
+                _gwflow_public_visibility_clause(1000.0),
             ],
         )
 
@@ -1101,7 +1138,7 @@ class TestPublicVisibilityFilters(BilbyTestCase):
         filters = _public_visibility_filters()
 
         self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
-        self.assertIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
+        self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
 
 
 class TestParseCacheRecord(BilbyTestCase):

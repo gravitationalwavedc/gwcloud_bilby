@@ -17,6 +17,15 @@ logger = logging.getLogger(__name__)
 HTTP_OK = 200
 
 
+def build_bilby_es_mapping():
+    """Return the Bilby index mapping body.
+
+    Declares the policy field explicitly as double. All other document fields
+    remain dynamically mapped (Bilby documents carry many params/ini fields).
+    """
+    return {"mappings": {"properties": {"searchTriggerTime": {"type": "double"}}}}
+
+
 class Command(BaseCommand):
     help = (
         "Ingest job details into Elasticsearch.\n\n"
@@ -56,6 +65,7 @@ class Command(BaseCommand):
         if not getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
             es = get_es_client()
             es.indices.delete(index=settings.ELASTIC_SEARCH_INDEX, ignore_unavailable=True)
+            es.indices.create(index=settings.ELASTIC_SEARCH_INDEX, body=build_bilby_es_mapping())
 
         self.stdout.write(f"Starting Elasticsearch ingestion for {total_jobs} bilby jobs...")
 

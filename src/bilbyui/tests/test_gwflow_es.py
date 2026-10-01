@@ -29,7 +29,7 @@ _GWCLOUD_FIELDS = {
     "sname",
     "libraries",
     "isPruned",
-    "ligoOnly",
+    "searchTriggerTime",
     "lastUpdatedTime",
     "reviewStatuses",
     "eventTriggerId",
@@ -101,10 +101,47 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         self.assertEqual(envelope["sname"], "S150914a")
         self.assertEqual(envelope["libraries"], ["cbc-workflow-o4a"])
         self.assertFalse(envelope["isPruned"])
-        self.assertTrue(envelope["ligoOnly"])
+        self.assertNotIn("ligoOnly", envelope)
+        self.assertEqual(envelope["searchTriggerTime"], 1126259462.4)
         self.assertEqual(envelope["lastUpdatedTime"], "2026-08-31T12:34:56+00:00")
         self.assertEqual(envelope["eventTriggerId"], "S150914a")
         self.assertEqual(envelope["reviewStatuses"], ["approved", "pending"])
+
+    def test_build_gwflow_es_doc_uses_own_trigger_time(self):
+        self.job.event_id = None
+        self.job.trigger_time = 100.0
+        self.job.save(update_fields=["event_id", "trigger_time"])
+
+        doc = build_gwflow_es_doc(self.job, {})
+
+        self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], 100.0)
+        self.assertNotIn("ligoOnly", doc["_gwcloud"])
+
+    def test_build_gwflow_es_doc_uses_event_gps_time(self):
+        self.job.trigger_time = None
+        self.job.save(update_fields=["trigger_time"])
+
+        doc = build_gwflow_es_doc(self.job, {})
+
+        self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], 1126259462.4)
+
+    def test_build_gwflow_es_doc_uses_strict_maximum(self):
+        self.job.trigger_time = 1126259463.4
+        self.job.save(update_fields=["trigger_time"])
+
+        doc = build_gwflow_es_doc(self.job, {})
+
+        self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], 1126259463.4)
+
+    def test_build_gwflow_es_doc_omits_search_trigger_time_without_finite_source(self):
+        self.job.event_id = None
+        self.job.trigger_time = None
+        self.job.save(update_fields=["event_id", "trigger_time"])
+
+        doc = build_gwflow_es_doc(self.job, {})
+
+        self.assertNotIn("searchTriggerTime", doc["_gwcloud"])
+        self.assertNotIn("ligoOnly", doc["_gwcloud"])
 
     def test_build_gwflow_es_doc_unknown_future_sections_preserved(self):
         metadata = {
@@ -776,12 +813,17 @@ class FakeGWFlowES:
             actual = next((v for v in actual if v is not None), None)
             if actual is None:
                 return False
-            actual_dt = datetime.datetime.fromisoformat(actual)
+            is_numeric = field.endswith("searchTriggerTime")
+            comparable = float(actual) if is_numeric else datetime.datetime.fromisoformat(actual)
             for op, bound in bounds.items():
-                bound_dt = datetime.datetime.fromisoformat(bound)
-                if op == "gte" and actual_dt < bound_dt:
+                boundary = float(bound) if is_numeric else datetime.datetime.fromisoformat(bound)
+                if op == "gt" and comparable <= boundary:
                     return False
-                if op == "lte" and actual_dt > bound_dt:
+                if op == "gte" and comparable < boundary:
+                    return False
+                if op == "lt" and comparable >= boundary:
+                    return False
+                if op == "lte" and comparable > boundary:
                     return False
         return True
 
@@ -807,15 +849,34 @@ class FakeGWFlowES:
             return self._range_matches(doc, clause["range"])
         if "query_string" in clause:
             return self._query_string_matches(doc, clause["query_string"]["query"])
+        if "exists" in clause:
+            return self._exists(doc, clause["exists"]["field"])
         if "bool" in clause:
             return self._matches_bool(doc, clause["bool"])
         raise NotImplementedError(f"Unsupported query clause in FakeGWFlowES: {clause!r}")
 
     def _matches_bool(self, doc, bool_q):
         for key in ("must", "filter"):
-            for clause in bool_q.get(key, []):
+            clauses = bool_q.get(key, [])
+            if isinstance(clauses, dict):
+                clauses = [clauses]
+            for clause in clauses:
                 if not self._matches_clause(doc, clause):
                     return False
+
+        must_not = bool_q.get("must_not", [])
+        if isinstance(must_not, dict):
+            must_not = [must_not]
+        if any(self._matches_clause(doc, clause) for clause in must_not):
+            return False
+
+        should = bool_q.get("should", [])
+        if isinstance(should, dict):
+            should = [should]
+        if should:
+            required = bool_q.get("minimum_should_match", 1)
+            if sum(self._matches_clause(doc, clause) for clause in should) < required:
+                return False
         return True
 
     def _sort_key(self, doc, sort):
@@ -877,6 +938,7 @@ class FakeGWFlowES:
         return response
 
 
+@override_settings(EMBARGO_START_TIME=1000.0)
 class TestGWFlowESIntegration(BilbyTestCase):
     """Deterministic integration test of the list query construction and
     filter-option aggregations against the #71 mapping using the canonical

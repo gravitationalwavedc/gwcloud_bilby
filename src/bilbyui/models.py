@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from bilbyui.utils.gwflow_es import get_es_client
 from bilbyui.utils.jobs.request_file_list import request_file_list
+from bilbyui.utils.search_trigger_time import max_finite_time
 
 from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
 
@@ -219,6 +220,17 @@ def build_bilby_es_doc(job) -> dict | None:
             "nickname": job.event_id.nickname,
             "gpsTime": job.event_id.gps_time,
         }
+
+    search_trigger_time = max_finite_time(
+        (
+            job.trigger_time,
+            job.event_id.gps_time if job.event_id else None,
+            job.gwflow_job.trigger_time if job.gwflow_job else None,
+            (job.gwflow_job.event_id.gps_time if job.gwflow_job and job.gwflow_job.event_id else None),
+        )
+    )
+    if search_trigger_time is not None:
+        doc["searchTriggerTime"] = search_trigger_time
 
     return doc
 
@@ -455,7 +467,7 @@ class BilbyJob(models.Model):
 
         def _update_after_commit():
             try:
-                job = BilbyJob.objects.using(db_alias).get(pk=job_id)
+                job = BilbyJob.objects.using(db_alias).select_related("event_id", "gwflow_job__event_id").get(pk=job_id)
             except BilbyJob.DoesNotExist:
                 return
             try:

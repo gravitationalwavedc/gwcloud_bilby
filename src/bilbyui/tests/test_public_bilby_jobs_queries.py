@@ -1,5 +1,4 @@
 import copy
-import re
 from datetime import datetime, timedelta
 from unittest import mock
 
@@ -11,15 +10,32 @@ from graphql_relay.node.node import to_global_id
 
 from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, EventID
+from bilbyui.services.jobs import _bilby_public_visibility_clause
 from bilbyui.tests.test_utils import (
     create_test_ini_string,
     generate_elastic_doc,
     silence_errors,
 )
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.embargo import get_embargo_start
 
 User = get_user_model()
+
+
+class TestBilbyPublicVisibilityClause(BilbyTestCase):
+    def test_exact_clause_shape_and_strict_boundary(self):
+        self.assertEqual(
+            _bilby_public_visibility_clause(1234.0),
+            {
+                "bool": {
+                    "should": [
+                        {"range": {"ini.n_simulation": {"gt": 0}}},
+                        {"bool": {"must_not": {"exists": {"field": "searchTriggerTime"}}}},
+                        {"range": {"searchTriggerTime": {"lt": 1234.0}}},
+                    ],
+                    "minimum_should_match": 1,
+                }
+            },
+        )
 
 
 class TestPublicBilbyJobsQueries(BilbyTestCase):
@@ -292,7 +308,12 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 elasticsearch_search.mock_calls[-1].kwargs,
                 {
                     "index": settings.ELASTIC_SEARCH_INDEX,
-                    "q": "(*) AND _private_info_.private:false",
+                    "query": {
+                        "bool": {
+                            "must": [{"match_all": {}}],
+                            "filter": [{"term": {"_private_info_.private": False}}],
+                        }
+                    },
                     "size": 51,
                     "from_": 0,
                     "sort": "job.lastUpdatedTime:desc",
@@ -390,7 +411,12 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 elasticsearch_search.mock_calls[-1].kwargs,
                 {
                     "index": settings.ELASTIC_SEARCH_INDEX,
-                    "q": "(*) AND _private_info_.private:false",
+                    "query": {
+                        "bool": {
+                            "must": [{"match_all": {}}],
+                            "filter": [{"term": {"_private_info_.private": False}}],
+                        }
+                    },
                     "size": 51,
                     "from_": 0,
                     "sort": "job.lastUpdatedTime:desc",
@@ -479,7 +505,12 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 elasticsearch_search.mock_calls[-1].kwargs,
                 {
                     "index": settings.ELASTIC_SEARCH_INDEX,
-                    "q": "(*) AND _private_info_.private:false",
+                    "query": {
+                        "bool": {
+                            "must": [{"match_all": {}}],
+                            "filter": [{"term": {"_private_info_.private": False}}],
+                        }
+                    },
                     "size": 51,
                     "from_": 99,
                     "sort": "job.lastUpdatedTime:desc",
@@ -504,7 +535,12 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                     elasticsearch_search.mock_calls[-1].kwargs,
                     {
                         "index": settings.ELASTIC_SEARCH_INDEX,
-                        "q": "(*) AND _private_info_.private:false",
+                        "query": {
+                            "bool": {
+                                "must": [{"match_all": {}}],
+                                "filter": [{"term": {"_private_info_.private": False}}],
+                            }
+                        },
                         "size": 26,
                         "from_": idx,
                         "sort": "job.lastUpdatedTime:desc",
@@ -532,7 +568,12 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 elasticsearch_search.mock_calls[-1].kwargs,
                 {
                     "index": settings.ELASTIC_SEARCH_INDEX,
-                    "q": "(*) AND _private_info_.private:false",
+                    "query": {
+                        "bool": {
+                            "must": [{"match_all": {}}],
+                            "filter": [{"term": {"_private_info_.private": False}}],
+                        }
+                    },
                     "size": 26,
                     "from_": 0,
                     "sort": "job.lastUpdatedTime:desc",
@@ -654,33 +695,26 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
                 | {"index": settings.ELASTIC_SEARCH_INDEX, "size": 51, "from_": 0},
             )
 
+            query = elasticsearch_search.mock_calls[-1].kwargs["query"]
+            self.assertEqual(query["bool"]["must"], [{"match_all": {}}])
+            self.assertEqual(
+                query["bool"]["filter"][0],
+                {"term": {"_private_info_.private": False}},
+            )
             if time_range == "all":
-                self.assertEqual(
-                    elasticsearch_search.mock_calls[-1].kwargs["q"],
-                    "(*) AND _private_info_.private:false",
-                )
+                self.assertEqual(len(query["bool"]["filter"]), 1)
             else:
-                delta = None
-                if time_range == "1d":
-                    delta = timedelta(days=1)
-                elif time_range == "1w":
-                    delta = timedelta(days=7)
-                elif time_range == "1m":
-                    delta = timedelta(days=31)
-                elif time_range == "1y":
-                    delta = timedelta(days=365)
-
-                regex = re.compile(r'job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')
-                _from, to = regex.search(elasticsearch_search.mock_calls[-1].kwargs["q"]).groups()
-
-                _from = datetime.fromisoformat(_from)
-                to = datetime.fromisoformat(to)
-
-                # To should be very close to now
-                self.assertTrue((to - now).total_seconds() < 1)
-
-                # From -> To should be equal to the delta
-                self.assertEqual((to - _from), delta)
+                delta = {
+                    "1d": timedelta(days=1),
+                    "1w": timedelta(days=7),
+                    "1m": timedelta(days=31),
+                    "1y": timedelta(days=365),
+                }[time_range]
+                bounds = query["bool"]["filter"][1]["range"]["job.creationTime"]
+                _from = datetime.fromisoformat(bounds["gte"])
+                to = datetime.fromisoformat(bounds["lte"])
+                self.assertTrue(abs((to - now).total_seconds()) < 1)
+                self.assertEqual(to - _from, delta)
 
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
@@ -717,8 +751,13 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         )
 
         self.assertEqual(
-            elasticsearch_search.mock_calls[-1].kwargs["q"],
-            "(*) AND _private_info_.private:false",
+            elasticsearch_search.mock_calls[-1].kwargs["query"],
+            {
+                "bool": {
+                    "must": [{"match_all": {}}],
+                    "filter": [{"term": {"_private_info_.private": False}}],
+                }
+            },
         )
 
     @override_settings(EMBARGO_START_TIME=1234)
@@ -735,11 +774,16 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             "publicBilbyJobs query returned unexpected data.",
         )
 
+        query = elasticsearch_search.mock_calls[-1].kwargs["query"]
+        self.assertEqual(query["bool"]["must"], [{"match_all": {}}])
         self.assertEqual(
-            elasticsearch_search.mock_calls[-1].kwargs["q"],
-            f"((*) AND _private_info_.private:false) AND (params.trigger_time:<{get_embargo_start()} "
-            f"OR ini.n_simulation:>0)",
+            query["bool"]["filter"],
+            [
+                {"term": {"_private_info_.private": False}},
+                _bilby_public_visibility_clause(1234.0),
+            ],
         )
+        self.assertNotIn("q", elasticsearch_search.mock_calls[-1].kwargs)
 
     @override_settings(EMBARGO_START_TIME=1234)
     @mock.patch("elasticsearch.Elasticsearch.search", side_effect=elasticsearch_search_mock)
@@ -761,25 +805,22 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             "publicBilbyJobs query returned unexpected data.",
         )
 
-        regex = re.compile(r'job\.creationTime:\["([^"]+)" TO "([^"]+)"\]')
-        _from, to = regex.search(elasticsearch_search.mock_calls[-1].kwargs["q"]).groups()
-
-        _from = datetime.fromisoformat(_from)
-        to = datetime.fromisoformat(to)
-
-        delta = timedelta(days=31)
-        # To should be very close to now
-        self.assertTrue((to - now).total_seconds() < 1)
-
-        # From -> To should be equal to the delta
-        self.assertEqual((to - _from), delta)
-
+        query = elasticsearch_search.mock_calls[-1].kwargs["query"]
+        self.assertEqual(query["bool"]["must"], [{"query_string": {"query": "test"}}])
         self.assertEqual(
-            elasticsearch_search.mock_calls[-1].kwargs["q"],
-            f'(((test) AND job.creationTime:["{_from.isoformat()}" TO "{to.isoformat()}"]) AND '
-            f"_private_info_.private:false) AND (params.trigger_time:<{get_embargo_start()} "
-            f"OR ini.n_simulation:>0)",
+            query["bool"]["filter"][0],
+            {"term": {"_private_info_.private": False}},
         )
+        bounds = query["bool"]["filter"][1]["range"]["job.creationTime"]
+        _from = datetime.fromisoformat(bounds["gte"])
+        to = datetime.fromisoformat(bounds["lte"])
+        self.assertTrue(abs((to - now).total_seconds()) < 1)
+        self.assertEqual(to - _from, timedelta(days=31))
+        self.assertEqual(
+            query["bool"]["filter"][2],
+            _bilby_public_visibility_clause(1234.0),
+        )
+        self.assertNotIn("q", elasticsearch_search.mock_calls[-1].kwargs)
 
         self.assertEqual(
             elasticsearch_search.mock_calls[-1].kwargs,
@@ -800,8 +841,13 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
             "publicBilbyJobs query returned unexpected data.",
         )
         self.assertEqual(
-            elasticsearch_search.mock_calls[-1].kwargs["q"],
-            "(*) AND _private_info_.private:false",
+            elasticsearch_search.mock_calls[-1].kwargs["query"],
+            {
+                "bool": {
+                    "must": [{"match_all": {}}],
+                    "filter": [{"term": {"_private_info_.private": False}}],
+                }
+            },
         )
 
     @mock.patch(
@@ -914,9 +960,7 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         variables = {"count": 50, "search": None, "timeRange": "all"}
 
         # Update the trigger time for one of the jobs to be after the embargo time
-        self.job1.ini_string = create_test_ini_string(
-            {"detectors": "['H1']", "trigger-time": settings.EMBARGO_START_TIME + 1}
-        )
+        self.job1.trigger_time = settings.EMBARGO_START_TIME + 1
         self.job1.save()
 
         # The embargoed job is excluded per-record; the authorised job remains.

@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from bilbyui.models import BilbyJob, EventID, Label
-from bilbyui.utils.embargo import embargo_filter, get_embargo_start, user_subject_to_embargo
+from bilbyui.utils.embargo import get_embargo_start, user_subject_to_embargo, visible_to_user
 from bilbyui.utils.gwflow_es import get_es_client
 from bilbyui.utils.job_validation import validate_job_name
 from bilbyui.utils.jobs.request_job_filter import request_job_filter
@@ -132,6 +132,19 @@ def _fetch_job_controller_jobs(jobs, user_id):
     return job_controller_jobs
 
 
+def _bilby_public_visibility_clause(threshold):
+    return {
+        "bool": {
+            "should": [
+                {"range": {"ini.n_simulation": {"gt": 0}}},
+                {"bool": {"must_not": {"exists": {"field": "searchTriggerTime"}}}},
+                {"range": {"searchTriggerTime": {"lt": threshold}}},
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+
+
 def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20, offset=None):
     if offset is None:
         offset = (page - 1) * page_size
@@ -156,29 +169,38 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         empty_result["state"] = "down"
         return empty_result
 
-    q = search or "*"
-
-    if "_private_info_" in q:
+    if "_private_info_" in search:
         user_id = user.id if user.is_authenticated else 0
         msg = f"User {user_id} attempted to search private info"
         logger.warning(msg)
         return empty_result
 
+    must = [{"query_string": {"query": search}}] if search else [{"match_all": {}}]
+    filters = [{"term": {"_private_info_.private": False}}]
+
     if time_range != "all":
         now = timezone.now()
         then = now - _time_range_to_timedelta(time_range)
-
-        q = f'({q}) AND job.creationTime:["{then.isoformat()}" TO "{now.isoformat()}"]'
-
-    q = f"({q}) AND _private_info_.private:false"
+        filters.append(
+            {
+                "range": {
+                    "job.creationTime": {
+                        "gte": then.isoformat(),
+                        "lte": now.isoformat(),
+                    }
+                }
+            }
+        )
 
     if user_subject_to_embargo(user):
-        q = f"({q}) AND (params.trigger_time:<{get_embargo_start()} OR ini.n_simulation:>0)"
+        filters.append(_bilby_public_visibility_clause(get_embargo_start()))
+
+    query = {"bool": {"must": must, "filter": filters}}
 
     try:
         results = es.search(
             index=settings.ELASTIC_SEARCH_INDEX,
-            q=q,
+            query=query,
             size=page_size + 1,
             from_=offset,
             sort="job.lastUpdatedTime:desc",
@@ -218,10 +240,7 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         .select_related("event_id")
         .prefetch_related("labels")
     )
-    qs_after = qs_before
-    if user_subject_to_embargo(user):
-        qs_after = embargo_filter(qs_before, user)
-
+    qs_after = visible_to_user(qs_before, user, "BilbyJob")
     qs_after = qs_after.filter(private=False)
 
     jobs = {job.id: job for job in qs_after}
