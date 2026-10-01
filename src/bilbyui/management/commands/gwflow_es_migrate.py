@@ -19,7 +19,7 @@ _GWCLOUD_STRICT_FIELDS = {
     "sname": {"type": "keyword"},
     "libraries": {"type": "keyword"},
     "isPruned": {"type": "boolean"},
-    "ligoOnly": {"type": "boolean"},
+    "searchTriggerTime": {"type": "double"},
     "lastUpdatedTime": {"type": "date", "format": "strict_date_optional_time||epoch_millis"},
     "reviewStatuses": {"type": "keyword"},
     "eventTriggerId": {"type": "keyword"},

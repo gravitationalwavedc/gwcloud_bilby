@@ -8,8 +8,8 @@ from django.utils import timezone
 
 from bilbyui.models import GWFlowJob
 from bilbyui.services.jobs import _extract_es_total, _numeric_es_records, _time_range_to_timedelta
+from bilbyui.utils.embargo import get_embargo_start, user_subject_to_embargo, visible_to_user
 from bilbyui.utils.gwflow_es import get_es_client
-from bilbyui.utils.misc import is_ligo_user
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +22,28 @@ _ES_ERRORS = (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.
 
 # Centralised visibility/pruning clauses shared by result retrieval and both
 # facet aggregations so the field names cannot drift.
-_GWCLOUD_LIGO_ONLY_FILTER = {"term": {"_gwcloud.ligoOnly": False}}
 _GWCLOUD_PRUNED_FILTER = {"term": {"_gwcloud.isPruned": False}}
+
+
+def _gwflow_public_visibility_clause(threshold):
+    return {
+        "bool": {
+            "should": [
+                {"bool": {"must_not": {"exists": {"field": "_gwcloud.searchTriggerTime"}}}},
+                {"range": {"_gwcloud.searchTriggerTime": {"lt": threshold}}},
+            ],
+            "minimum_should_match": 1,
+        }
+    }
 
 
 def _public_visibility_filters():
     """Public, non-pruned visibility clauses used by both facet aggregations."""
-    return [_GWCLOUD_PRUNED_FILTER, _GWCLOUD_LIGO_ONLY_FILTER]
+    filters = [_GWCLOUD_PRUNED_FILTER]
+    threshold = get_embargo_start()
+    if threshold is not None:
+        filters.append(_gwflow_public_visibility_clause(threshold))
+    return filters
 
 
 def _collect_library_options():
@@ -197,8 +212,8 @@ def list_gwflow_jobs(
         now = timezone.now()
         then = now - _time_range_to_timedelta(time_range)
         filters.append({"range": {"_gwcloud.lastUpdatedTime": {"gte": then.isoformat(), "lte": now.isoformat()}}})
-    if not is_ligo_user(user):
-        filters.append(_GWCLOUD_LIGO_ONLY_FILTER)
+    if user_subject_to_embargo(user):
+        filters.append(_gwflow_public_visibility_clause(get_embargo_start()))
     if not include_pruned:
         filters.append(_GWCLOUD_PRUNED_FILTER)
 
@@ -246,9 +261,7 @@ def list_gwflow_jobs(
     hit_ids = [record["_id"] for record in numeric_records]
     qs_before = GWFlowJob.objects.filter(id__in=hit_ids).select_related("event_id", "user").prefetch_related("files")
 
-    qs_after = qs_before
-    if not is_ligo_user(user):
-        qs_after = qs_after.filter(ligo_only=False)
+    qs_after = visible_to_user(qs_before, user, "GWFlowJob")
 
     if not include_pruned:
         qs_after = qs_after.filter(is_pruned=False)

@@ -1,4 +1,3 @@
-import re
 from datetime import datetime, timedelta
 from unittest import mock
 
@@ -12,86 +11,97 @@ from bilbyui.tests.test_utils import create_test_ini_string, generate_elastic_do
 from bilbyui.tests.testcases import BilbyTestCase
 
 
-def _extract_search_term(q):
-    if not q:
-        return None
+def _bool_query(query):
+    if not isinstance(query, dict):
+        return {}
+    bool_query = query.get("bool", {})
+    return bool_query if isinstance(bool_query, dict) else {}
 
-    if q.startswith("((("):
-        match = re.search(r"\(\(\(([^()]+)\)", q)
-        if match:
-            term = match.group(1).strip()
-            if term not in ("*", ""):
+
+def _extract_search_term(query):
+    for clause in _bool_query(query).get("must", []):
+        if "match_all" in clause:
+            continue
+        query_string = clause.get("query_string")
+        if isinstance(query_string, dict):
+            term = query_string.get("query")
+            if isinstance(term, str) and term:
                 return term
-        return None
-
-    match = re.match(r"^\(([^()]+)\)", q)
-    if not match:
-        return None
-
-    term = match.group(1).strip()
-    if term in ("*", ""):
-        return None
-
-    if term.startswith("job.creationTime"):
-        return None
-
-    return term
+    return None
 
 
-def _job_matches_embargo_filter(job, q):
-    if "params.trigger_time" not in q:
+def _structured_filters(query):
+    filters = _bool_query(query).get("filter", [])
+    return filters if isinstance(filters, list) else [filters]
+
+
+def _job_matches_time_range(job, query):
+    for clause in _structured_filters(query):
+        bounds = clause.get("range", {}).get("job.creationTime")
+        if not isinstance(bounds, dict):
+            continue
+
+        start = datetime.fromisoformat(bounds["gte"])
+        end = datetime.fromisoformat(bounds["lte"])
+        created = job.creation_time
+        if timezone.is_naive(created):
+            created = timezone.make_aware(created)
+        return start <= created <= end
+
+    return True
+
+
+def _visibility_clause(query):
+    for clause in _structured_filters(query):
+        should = clause.get("bool", {}).get("should", [])
+        if any(
+            "searchTriggerTime" in candidate.get("range", {})
+            or candidate.get("bool", {}).get("must_not", {}).get("exists", {}).get("field") == "searchTriggerTime"
+            for candidate in should
+        ):
+            return clause
+    return None
+
+
+def _job_matches_embargo_filter(doc, query):
+    clause = _visibility_clause(query)
+    if clause is None:
         return True
 
-    if settings.EMBARGO_START_TIME is None:
-        return True
+    should = clause["bool"]["should"]
+    threshold = next(
+        candidate["range"]["searchTriggerTime"]["lt"]
+        for candidate in should
+        if "searchTriggerTime" in candidate.get("range", {})
+    )
+    simulated = doc.get("ini", {}).get("n_simulation", 0)
 
-    trigger_kv = job.inikeyvalue_set.filter(key="trigger_time", processed=True).first()
-    simulated_kv = job.inikeyvalue_set.filter(key="n_simulation", processed=False).first()
-
-    trigger_time = float(trigger_kv.value) if trigger_kv else None
-    simulated = int(simulated_kv.value) if simulated_kv else 0
-
-    if simulated > 0:
-        return True
-
-    if trigger_time is None:
-        return True
-
-    return trigger_time < settings.EMBARGO_START_TIME
-
-
-def _job_matches_time_range(job, q):
-    match = re.search(r'job\.creationTime:\["([^"]+)" TO "([^"]+)"\]', q)
-    if not match:
-        return True
-
-    start = datetime.fromisoformat(match.group(1))
-    end = datetime.fromisoformat(match.group(2))
-    updated = job.last_updated
-    if timezone.is_naive(updated):
-        updated = timezone.make_aware(updated)
-
-    return start <= updated <= end
+    return simulated > 0 or "searchTriggerTime" not in doc or doc["searchTriggerTime"] < threshold
 
 
 def elasticsearch_search_mock(*args, **kwargs):
     user = {"name": "buffy summers", "id": 1}
     from_ = kwargs.get("from_", 0)
     size = kwargs.get("size", 21)
-    q = kwargs.get("q", "")
+    query = kwargs.get("query")
+    search_term = _extract_search_term(query)
 
     jobs = []
-    for job in BilbyJob.objects.filter(private=False).order_by("-last_updated", "-id"):
-        if not _job_matches_embargo_filter(job, q):
+    queryset = (
+        BilbyJob.objects.filter(private=False)
+        .select_related("event_id", "gwflow_job__event_id")
+        .order_by("-last_updated", "-id")
+    )
+    for job in queryset:
+        doc = generate_elastic_doc(job, user)
+        if not _job_matches_embargo_filter(doc, query):
             continue
-        if not _job_matches_time_range(job, q):
+        if not _job_matches_time_range(job, query):
             continue
-
-        search_term = _extract_search_term(q)
         if search_term and search_term not in job.name and search_term not in (job.description or ""):
             continue
 
-        jobs.append({"_source": generate_elastic_doc(job, user), "_id": job.id})
+        jobs.append({"_source": doc, "_id": job.id})
 
     page = jobs[from_ : from_ + size]
     return {"hits": {"total": {"value": len(jobs)}, "hits": page}}
@@ -276,7 +286,7 @@ class TestPublicJobsView(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Old job"}),
         )
         BilbyJob.objects.filter(pk=old_job.pk).update(
-            last_updated=timezone.now() - timedelta(days=2),
+            creation_time=timezone.now() - timedelta(days=2),
         )
 
         response = self.client.get(self.url, {"time_range": "1d"})
@@ -332,6 +342,7 @@ class TestPublicJobsView(BilbyTestCase):
             description="allowed",
             job_controller_id=4001,
             private=False,
+            trigger_time=1000.0,
             ini_string=create_test_ini_string(
                 {
                     "detectors": "['H1']",
@@ -347,6 +358,7 @@ class TestPublicJobsView(BilbyTestCase):
             description="hidden",
             job_controller_id=4002,
             private=False,
+            trigger_time=settings.EMBARGO_START_TIME + 1,
             ini_string=create_test_ini_string(
                 {
                     "detectors": "['H1']",
@@ -458,13 +470,56 @@ class TestPublicJobsView(BilbyTestCase):
         self.assertContains(response, "No event IDs")
 
     def test_query_helper_edge_branches(self):
-        # _extract_search_term: empty input, malformed/missing "(((" term, valid
-        # "(((" term, and a "(job.creationTime:...)" term.
+        match_all_query = {
+            "bool": {
+                "must": [{"match_all": {}}],
+                "filter": [{"term": {"_private_info_.private": False}}],
+            }
+        }
+        search_query = {
+            "bool": {
+                "must": [{"query_string": {"query": "GW150914"}}],
+                "filter": [{"term": {"_private_info_.private": False}}],
+            }
+        }
+        time_query = {
+            "bool": {
+                "must": [{"match_all": {}}],
+                "filter": [
+                    {"term": {"_private_info_.private": False}},
+                    {
+                        "range": {
+                            "job.creationTime": {
+                                "gte": "2020-01-01T00:00:00+00:00",
+                                "lte": "2021-01-01T00:00:00+00:00",
+                            }
+                        }
+                    },
+                ],
+            }
+        }
+        visibility_query = {
+            "bool": {
+                "must": [{"match_all": {}}],
+                "filter": [
+                    {"term": {"_private_info_.private": False}},
+                    {
+                        "bool": {
+                            "should": [
+                                {"range": {"ini.n_simulation": {"gt": 0}}},
+                                {"bool": {"must_not": {"exists": {"field": "searchTriggerTime"}}}},
+                                {"range": {"searchTriggerTime": {"lt": 1234.0}}},
+                            ],
+                            "minimum_should_match": 1,
+                        }
+                    },
+                ],
+            }
+        }
+
         self.assertIsNone(_extract_search_term(None))
-        self.assertIsNone(_extract_search_term("((("))
-        self.assertIsNone(_extract_search_term("(((*))"))
-        self.assertEqual(_extract_search_term("(((GW150914))"), "GW150914")
-        self.assertIsNone(_extract_search_term("(job.creationTime:[2020 TO 2021])"))
+        self.assertIsNone(_extract_search_term(match_all_query))
+        self.assertEqual(_extract_search_term(search_query), "GW150914")
 
         self.user = self.create_user()
         job = BilbyJob.objects.create(
@@ -475,20 +530,13 @@ class TestPublicJobsView(BilbyTestCase):
             private=False,
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Edge job"}),
         )
-
-        # _job_matches_embargo_filter: EMBARGO_START_TIME is None -> always allowed.
-        self.assertTrue(_job_matches_embargo_filter(job, "params.trigger_time:1000"))
-
-        # _job_matches_embargo_filter: trigger_time missing -> always allowed.
-        with override_settings(EMBARGO_START_TIME=1234.0):
-            job.inikeyvalue_set.filter(key="trigger_time").update(processed=False)
-            self.assertTrue(_job_matches_embargo_filter(job, "params.trigger_time:1000"))
-
-        # _job_matches_time_range: naive last_updated is made timezone-aware.
-        job.last_updated = datetime(2020, 6, 1)
-        self.assertTrue(
-            _job_matches_time_range(
-                job,
-                'job.creationTime:["2020-01-01T00:00:00+00:00" TO "2021-01-01T00:00:00+00:00"]',
-            )
+        document = generate_elastic_doc(
+            job,
+            {"name": "buffy summers", "id": self.user.id},
         )
+
+        self.assertTrue(_job_matches_embargo_filter(document, match_all_query))
+        self.assertTrue(_job_matches_embargo_filter(document, visibility_query))
+
+        job.creation_time = datetime(2020, 6, 1)
+        self.assertTrue(_job_matches_time_range(job, time_query))

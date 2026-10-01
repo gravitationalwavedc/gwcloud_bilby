@@ -24,6 +24,7 @@ FIXTURE_MATRIX = [
         "id": 1,
         "sname": "S230601ag",
         "ligo_only": False,
+        "gps_time": 100.0,
         "is_pruned": False,
         "libraries": ["cbc-workflow-o4a"],
         "event_trigger_id": "S230601ag",
@@ -46,6 +47,7 @@ FIXTURE_MATRIX = [
         "id": 2,
         "sname": "S230602ag",
         "ligo_only": False,
+        "gps_time": 200.0,
         "is_pruned": False,
         "libraries": ["cbc-workflow-o4c"],
         "event_trigger_id": "S230602ag",
@@ -63,6 +65,7 @@ FIXTURE_MATRIX = [
         "id": 3,
         "sname": "S230603ag",
         "ligo_only": True,
+        "gps_time": 1000.0,
         "is_pruned": False,
         "libraries": [],
         "event_trigger_id": "S230603ag",
@@ -78,6 +81,7 @@ FIXTURE_MATRIX = [
         "id": 4,
         "sname": "S230604ag",
         "ligo_only": False,
+        "gps_time": None,
         "is_pruned": True,
         "libraries": ["cbc-workflow-o4a"],
         "event_trigger_id": None,
@@ -90,6 +94,7 @@ FIXTURE_MATRIX = [
         "id": 5,
         "sname": "S230605ag",
         "ligo_only": False,
+        "gps_time": 500.0,
         "is_pruned": False,
         "libraries": ["cbc-workflow-o4a", "cbc-workflow-o4c"],
         "event_trigger_id": "S230605ag",
@@ -128,7 +133,7 @@ def build_canonical_fixtures(testcase_cls):
                 event_id=f"GW123456_{spec['id']:06d}",
                 trigger_id=spec["event_trigger_id"],
                 nickname=f"Event {spec['id']}",
-                gps_time=1126259462.4 + spec["id"],
+                gps_time=spec["gps_time"],
             )
         job = GWFlowJob.objects.create(
             id=spec["id"],
@@ -149,14 +154,25 @@ def build_canonical_fixtures(testcase_cls):
 def assert_doc_matches_spec(testcase, doc, spec):
     """Assert a built ES document matches its canonical fixture spec."""
     envelope = doc["_gwcloud"]
-    testcase.assertEqual(
-        set(envelope.keys()),
-        {"sname", "libraries", "isPruned", "ligoOnly", "lastUpdatedTime", "reviewStatuses", "eventTriggerId"},
-    )
+    expected_fields = {
+        "sname",
+        "libraries",
+        "isPruned",
+        "lastUpdatedTime",
+        "reviewStatuses",
+        "eventTriggerId",
+    }
+    if spec["gps_time"] is not None:
+        expected_fields.add("searchTriggerTime")
+    testcase.assertEqual(set(envelope.keys()), expected_fields)
     testcase.assertEqual(envelope["sname"], spec["sname"])
     testcase.assertEqual(envelope["libraries"], spec["libraries"])
     testcase.assertEqual(envelope["isPruned"], spec["is_pruned"])
-    testcase.assertEqual(envelope["ligoOnly"], spec["ligo_only"])
+    testcase.assertNotIn("ligoOnly", envelope)
+    if spec["gps_time"] is None:
+        testcase.assertNotIn("searchTriggerTime", envelope)
+    else:
+        testcase.assertEqual(envelope["searchTriggerTime"], spec["gps_time"])
     testcase.assertEqual(envelope["reviewStatuses"], spec["review_statuses"])
     testcase.assertEqual(envelope["lastUpdatedTime"], spec["last_updated_time"])
     testcase.assertEqual(envelope["eventTriggerId"], spec["event_trigger_id"])
@@ -231,11 +247,15 @@ def assert_defect_queries_assertable(testcase, docs_by_id):
         testcase.assertGreater((reference - parsed).days, 30)
     testcase.assertIsNone(d5["_gwcloud"]["lastUpdatedTime"])
 
-    # Non-LIGO option aggregation: ligoOnly:false on docs 1, 2, 4, 5; doc 3
-    # is LIGO-only.
-    for fx_id in (1, 2, 4, 5):
-        testcase.assertFalse(docs_by_id[fx_id]["doc"]["_gwcloud"]["ligoOnly"])
-    testcase.assertTrue(d3["_gwcloud"]["ligoOnly"])
+    # Dynamic visibility at T=1000: missing and below-threshold values are
+    # public, while equality is restricted.
+    testcase.assertEqual(d1["_gwcloud"]["searchTriggerTime"], 100.0)
+    testcase.assertEqual(d2["_gwcloud"]["searchTriggerTime"], 200.0)
+    testcase.assertEqual(d3["_gwcloud"]["searchTriggerTime"], 1000.0)
+    testcase.assertNotIn("searchTriggerTime", d4["_gwcloud"])
+    testcase.assertEqual(d5["_gwcloud"]["searchTriggerTime"], 500.0)
+    for entry in docs_by_id.values():
+        testcase.assertNotIn("ligoOnly", entry["doc"]["_gwcloud"])
 
 
 # Expected list-query results for the canonical fixture matrix (issue #72 query
