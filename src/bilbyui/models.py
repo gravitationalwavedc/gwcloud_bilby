@@ -414,18 +414,60 @@ class BilbyJob(models.Model):
     def save(self, *args, **kwargs):
         # Legacy or interrupted jobs may have NULL/empty ini_string; allow save but skip dependent updates
         has_ini = bool(self.ini_string and self.ini_string.strip())
+        db_alias = self._state.db
 
-        super().save(*args, **kwargs)
+        # Capture the prior trigger-relevant fields so a reindex is only
+        # scheduled when they actually change (e.g. not on a plain submit()).
+        if self.pk is not None:
+            prior = (
+                self.__class__.objects.using(db_alias)
+                .filter(pk=self.pk)
+                .values("trigger_time", "event_id_id", "gwflow_job_id")
+                .first()
+            )
+        else:
+            prior = None
 
-        if not has_ini:
-            return
+        # super().save() and parse_ini_file run under one outer transaction so
+        # a failed parse cannot leave a committed new ini_string with a stale
+        # trigger_time (the parser's inner atomic becomes a savepoint).
+        with transaction.atomic(using=db_alias):
+            super().save(*args, **kwargs)
 
-        # Whenever a job is saved, we need to regenerate the ini k/v pairs
-        parse_ini_file(self)
+            if not has_ini:
+                return
 
-        # We also need to update our record in elastic search to keep the mysql database and elastic search database
-        # in sync
-        self.elastic_search_update()
+            # Whenever a job is saved, we need to regenerate the ini k/v pairs
+            parse_ini_file(self)
+
+            # Keep the mysql database and elastic search database in sync after
+            # the transaction commits.
+            transaction.on_commit(self.elastic_search_update, using=db_alias)
+
+            if self._trigger_fields_changed(prior):
+                from bilbyui.utils.reindex import reindex_jobs
+
+                job_id = self.pk
+                transaction.on_commit(
+                    lambda: reindex_jobs([job_id], "bilby"),
+                    using=db_alias,
+                )
+
+    def _trigger_fields_changed(self, prior):
+        """Return whether trigger_time/event_id/gwflow_job changed vs prior.
+
+        New rows (no prior state) are indexed by elastic_search_update, so no
+        additional reindex is scheduled here.
+        """
+        if prior is None:
+            return False
+        current = (
+            self.__class__.objects.using(self._state.db)
+            .filter(pk=self.pk)
+            .values("trigger_time", "event_id_id", "gwflow_job_id")
+            .first()
+        )
+        return current != prior
 
     def get_file_list(self, path="", recursive=True):
         return request_file_list(self, path, recursive)

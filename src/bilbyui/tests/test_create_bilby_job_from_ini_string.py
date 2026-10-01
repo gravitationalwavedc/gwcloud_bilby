@@ -81,7 +81,7 @@ class TestCreateBilbyJobFromIniString(BilbyTestCase):
 
         mock_to_args.assert_called_once()
         mock_parse_embargo.assert_called_once()
-        self.assertEqual(mock_should_embargo.call_count, 2)
+        self.assertEqual(mock_should_embargo.call_count, 1)
         mock_to_ini.assert_called_once()
         mock_parse_sf.assert_called_once()
 
@@ -91,7 +91,6 @@ class TestCreateBilbyJobFromIniString(BilbyTestCase):
             description="desc",
             private=False,
             ini_string="ini",
-            is_ligo_job=False,
             cluster="default",
         )
         mock_supporting_file.save_from_parsed.assert_called_once_with(bilby_job, {})

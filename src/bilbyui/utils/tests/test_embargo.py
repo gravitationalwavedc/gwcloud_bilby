@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+from unittest import mock
+
 from adacs_sso_plugin.anonymous_user import ADACSAnonymousUser
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.apps import apps
@@ -17,6 +20,7 @@ from bilbyui.utils.embargo import (
     is_record_public,
     is_simulated_value,
     reset_embargo_start_cache,
+    resolve_job_trigger,
     should_embargo_job,
     user_subject_to_embargo,
 )
@@ -608,3 +612,55 @@ class TestRecordPublic(BilbyTestCase):
     def test_unsupported_type_raises(self):
         with self.assertRaises(TypeError):
             is_record_public(object(), self.user)
+
+
+class TestResolveJobTrigger(BilbyTestCase):
+    def test_processed_float_preferred(self):
+        processed = SimpleNamespace(trigger_time=2.5)
+        args = SimpleNamespace(trigger_time=9.0)
+        self.assertEqual(resolve_job_trigger(processed, args), 2.5)
+
+    def test_processed_none_falls_back_to_raw(self):
+        processed = SimpleNamespace(trigger_time=None)
+        args = SimpleNamespace(trigger_time="7.5")
+        self.assertEqual(resolve_job_trigger(processed, args), 7.5)
+
+    def test_numeric_string_normalised(self):
+        self.assertEqual(resolve_job_trigger(None, SimpleNamespace(trigger_time="3.0")), 3.0)
+
+    def test_event_name_resolved_via_gwosc(self):
+        with mock.patch("bilbyui.utils.embargo.event_gps", return_value=1126259462.0):
+            self.assertEqual(
+                resolve_job_trigger(None, SimpleNamespace(trigger_time="GW150914")),
+                1126259462.0,
+            )
+
+    def test_event_name_resolution_failure_returns_none(self):
+        with mock.patch("bilbyui.utils.embargo.event_gps", side_effect=ValueError("not found")):
+            self.assertIsNone(resolve_job_trigger(None, SimpleNamespace(trigger_time="GW999999")))
+
+    def test_boolean_rejected(self):
+        self.assertIsNone(resolve_job_trigger(None, SimpleNamespace(trigger_time=True)))
+        self.assertIsNone(resolve_job_trigger(SimpleNamespace(trigger_time=False), None))
+
+    def test_non_finite_rejected(self):
+        for value in (float("nan"), float("inf"), float("-inf"), "nan", "inf"):
+            with self.subTest(value=value):
+                self.assertIsNone(resolve_job_trigger(None, SimpleNamespace(trigger_time=value)))
+
+    def test_missing_both_returns_none(self):
+        self.assertIsNone(resolve_job_trigger())
+        self.assertIsNone(resolve_job_trigger(SimpleNamespace(trigger_time=None), SimpleNamespace(trigger_time=None)))
+
+    @override_settings(EMBARGO_START_TIME=100.0)
+    def test_admission_rejects_non_member_on_embargoed_real_job(self):
+        # A non-member attempting an embargoed real job is still rejected.
+        nonmember = self.create_user(
+            id=9001,
+            name="nonmember",
+            primary_email="nonmember@example.com",
+            authentication_method="password",
+        )
+        self.assertTrue(should_embargo_job(nonmember, 200.0, False))
+        self.assertFalse(should_embargo_job(nonmember, 50.0, False))
+        self.assertFalse(should_embargo_job(nonmember, 200.0, True))

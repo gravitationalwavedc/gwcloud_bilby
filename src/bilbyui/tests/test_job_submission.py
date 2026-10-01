@@ -818,7 +818,7 @@ class TestJobSubmission(BilbyTestCase):
         self.assertIsNone(response.errors)
 
         job = BilbyJob.objects.all().last()
-        self.assertTrue(job.is_ligo_job, "Real job on embargoed LIGO data should be marked as a LIGO job")
+        self.assertEqual(job.trigger_time, 1126259562.391)
 
     @patch("bilbyui.models.submit_job")
     def test_simulated_job_without_channels(self, mock_api_call):
@@ -1114,9 +1114,11 @@ class TestCreateBilbyJob(BilbyTestCase):
         self.assertEqual(job.name, "test_job")
         self.assertEqual(job.description, "test description")
         self.assertTrue(job.private)
-        self.assertFalse(job.is_ligo_job)
         self.assertIsNone(job.event_id)
         mock_submit.assert_called_once()
+
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 1126259462.391)
 
     @override_settings(EMBARGO_START_TIME=1.0)
     def test_embargoed_real_job_rejected_for_non_ligo_user(self):

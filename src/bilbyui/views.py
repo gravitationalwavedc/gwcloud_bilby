@@ -14,8 +14,6 @@ from urllib.parse import quote, urlparse
 
 import bilby_pipe
 import elasticsearch
-import requests
-import tenacity
 from adacs_sso_plugin.models import APISessionToken
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.parser import create_parser
@@ -35,7 +33,6 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 from graphql import GraphQLError
 from graphql_relay.node.node import from_global_id, to_global_id
-from gwosc.datasets import event_gps
 
 from .constants import BilbyJobType
 from .models import (
@@ -70,7 +67,7 @@ from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs
 from .status import JobStatus
 from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
-from .utils.embargo import gwflow_ligo_only_from_metadata, should_embargo_job
+from .utils.embargo import _normalise_trigger, gwflow_ligo_only_from_metadata, should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
 from .utils.gwflow_portal import get_superevent, get_version, get_versions
@@ -132,21 +129,10 @@ def check_job_embargo_status(user, args):
 
 def _parse_embargo_args(args):
     """Extract the trigger_time and n_simulation flags from parsed INI args for embargo checks."""
-    # Parse trigger_time from INI args - can be a float or event name like "GW150914"
-    try:
-        trigger_time = float(args.trigger_time)
-    except ValueError:  # If trigger time is not able to be converted to a float
-        try:
-            trigger_time = event_gps(args.trigger_time)  # Try to resolve event name to GPS time
-        except (
-            ValueError,
-            requests.RequestException,
-            KeyError,
-            tenacity.RetryError,
-        ):  # If event_gps cannot resolve the event or gwosc is unreachable
-            trigger_time = None
-    except TypeError:
-        trigger_time = None
+    # Parse trigger_time from INI args - can be a float or event name like "GW150914".
+    # Reuses the shared normaliser so admission and persistence resolve triggers
+    # identically (single source of truth for trigger resolution).
+    trigger_time = _normalise_trigger(getattr(args, "trigger_time", None))
 
     # Parse n_simulation from INI args - determines if job uses simulated data
     n_simulation = args.n_simulation
@@ -173,12 +159,6 @@ def _create_bilby_job_record(user, details, args, job_type, ini_string=None):
     if ini_string is None:
         ini_string = bilby_args_to_ini_string(args)
 
-    # Check if this job would be embargoed for non-LIGO users.
-    # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
-    # We pass None as the user parameter to simulate a non-LIGO user, which allows us
-    # to determine if the job contains embargoed data regardless of who is actually uploading it.
-    is_ligo_job = check_job_embargo_status(None, args)
-
     bilby_job = BilbyJob.objects.create(
         user=user,
         name=args.label,
@@ -186,7 +166,6 @@ def _create_bilby_job_record(user, details, args, job_type, ini_string=None):
         private=details.private,
         ini_string=ini_string,
         job_type=job_type,
-        is_ligo_job=is_ligo_job,
     )
 
     # Set official label for GWOSC ingest user
@@ -209,10 +188,6 @@ def create_bilby_job(user, params):
         raise GraphQLError(msg)
 
     validate_job_name(params.details.name)
-
-    # Check if this job would be embargoed for non-LIGO users.
-    # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
-    is_ligo_job = should_embargo_job(None, trigger_time, params.data.data_choice == "simulated")
 
     # todo: request_cpus
 
@@ -371,7 +346,6 @@ def create_bilby_job(user, params):
             name=params.details.name,
             description=params.details.description,
             private=params.details.private,
-            is_ligo_job=is_ligo_job,
             ini_string=ini_string,
             cluster=params.details.cluster,
             event_id=event_id,
@@ -532,10 +506,6 @@ def create_bilby_job_from_ini_string(user, params):
         msg = "Only LIGO users may run real jobs on embargoed LIGO data"
         raise GraphQLError(msg)
 
-    # Check if this job would be embargoed for non-LIGO users.
-    # If so, it contains proprietary LIGO data and should be marked as a LIGO job.
-    is_ligo_job = should_embargo_job(None, trigger_time, simulated)
-
     if args.outdir == ".":
         args.outdir = "./"
 
@@ -565,7 +535,6 @@ def create_bilby_job_from_ini_string(user, params):
         description=params.details.description,
         private=params.details.private,
         ini_string=ini_string,
-        is_ligo_job=is_ligo_job,
         cluster=params.details.cluster,
     )
     bilby_job.save()

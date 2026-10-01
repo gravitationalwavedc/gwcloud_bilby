@@ -2,6 +2,8 @@ import logging
 import math
 import re
 
+import requests
+import tenacity
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import (
@@ -15,6 +17,7 @@ from django.db.models import (
     When,
 )
 from django.db.models.functions import Cast
+from gwosc.datasets import event_gps
 
 from bilbyui import models
 
@@ -278,6 +281,52 @@ def should_embargo_job(user, trigger_time, simulated):
         result,
     )
     return result
+
+
+def _normalise_trigger(value):
+    """Normalise a trigger value to a finite float, or None.
+
+    Accepts a finite float, a numeric string, or an event name resolved via
+    gwosc. Rejects booleans (``bool`` is an ``int`` subclass) and non-finite
+    values. Returns None on resolution/conversion failure (same
+    network-failure behaviour as admission).
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        numeric = float(value)
+        return numeric if math.isfinite(numeric) else None
+    if isinstance(value, str):
+        try:
+            numeric = float(value)
+        except ValueError:
+            try:
+                numeric = event_gps(value)
+            except (ValueError, requests.RequestException, KeyError, tenacity.RetryError):
+                return None
+        return numeric if math.isfinite(numeric) else None
+    return None
+
+
+def resolve_job_trigger(processed_args=None, args=None) -> float | None:
+    """Resolve a job's trigger time to a finite float, or None.
+
+    Prefers the processed (post-processing) ``trigger_time``, falling back to
+    normalising the raw ``args.trigger_time``. Never fabricates a value.
+    """
+    if processed_args is not None:
+        value = getattr(processed_args, "trigger_time", None)
+        if value is not None:
+            resolved = _normalise_trigger(value)
+            if resolved is not None:
+                return resolved
+
+    if args is not None:
+        value = getattr(args, "trigger_time", None)
+        if value is not None:
+            return _normalise_trigger(value)
+
+    return None
 
 
 def _gwflow_trigger_time_from_metadata(metadata):

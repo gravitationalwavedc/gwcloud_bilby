@@ -959,9 +959,10 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
     def test_public_bilby_jobs_query_embargo_violation(self, request_job_filter, elasticsearch_search):
         variables = {"count": 50, "search": None, "timeRange": "all"}
 
-        # Update the trigger time for one of the jobs to be after the embargo time
-        self.job1.trigger_time = settings.EMBARGO_START_TIME + 1
-        self.job1.save()
+        # Update the trigger time for one of the jobs to be after the embargo
+        # time. Use QuerySet.update so the save override's parse (which would
+        # re-derive trigger_time from the ini) does not overwrite it.
+        BilbyJob.objects.filter(pk=self.job1.pk).update(trigger_time=settings.EMBARGO_START_TIME + 1)
 
         # The embargoed job is excluded per-record; the authorised job remains.
         response = self.query(self.public_bilby_job_query, variables=variables)

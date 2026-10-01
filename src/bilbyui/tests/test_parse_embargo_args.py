@@ -18,28 +18,28 @@ class TestParseEmbargoArgs(BilbyTestCase):
         self.assertEqual(trigger_time, 2.0)
         self.assertFalse(n_simulation)
 
-    @patch("bilbyui.views.event_gps", return_value=1126259462.4)
+    @patch("bilbyui.utils.embargo.event_gps", return_value=1126259462.4)
     def test_event_name_trigger_time_resolved(self, _mock_event_gps):
         trigger_time, _ = _parse_embargo_args(_args(trigger_time="GW150914", n_simulation="0"))
         _mock_event_gps.assert_called_once_with("GW150914")
         self.assertEqual(trigger_time, 1126259462.4)
 
-    @patch("bilbyui.views.event_gps", side_effect=ValueError("unknown event"))
+    @patch("bilbyui.utils.embargo.event_gps", side_effect=ValueError("unknown event"))
     def test_unresolvable_trigger_time_returns_none(self, _mock_event_gps):
         trigger_time, _ = _parse_embargo_args(_args(trigger_time="NOT_A_REAL_EVENT", n_simulation="0"))
         self.assertIsNone(trigger_time)
 
-    @patch("bilbyui.views.event_gps", side_effect=requests.RequestException("unreachable"))
+    @patch("bilbyui.utils.embargo.event_gps", side_effect=requests.RequestException("unreachable"))
     def test_gwosc_unreachable_trigger_time_returns_none(self, _mock_event_gps):
         trigger_time, _ = _parse_embargo_args(_args(trigger_time="NOT_A_REAL_EVENT", n_simulation="0"))
         self.assertIsNone(trigger_time)
 
-    @patch("bilbyui.views.event_gps", side_effect=KeyError("gps"))
+    @patch("bilbyui.utils.embargo.event_gps", side_effect=KeyError("gps"))
     def test_gwosc_malformed_response_trigger_time_returns_none(self, _mock_event_gps):
         trigger_time, _ = _parse_embargo_args(_args(trigger_time="NOT_A_REAL_EVENT", n_simulation="0"))
         self.assertIsNone(trigger_time)
 
-    @patch("bilbyui.views.event_gps", side_effect=tenacity.RetryError("last_attempt"))
+    @patch("bilbyui.utils.embargo.event_gps", side_effect=tenacity.RetryError("last_attempt"))
     def test_gwosc_timeout_trigger_time_returns_none(self, _mock_event_gps):
         trigger_time, _ = _parse_embargo_args(_args(trigger_time="NOT_A_REAL_EVENT", n_simulation="0"))
         self.assertIsNone(trigger_time)
