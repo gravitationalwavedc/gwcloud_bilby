@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.test import TransactionTestCase, override_settings
 
+from bilbyui.management.commands.es_ingest import Command, build_bilby_es_mapping
 from bilbyui.models import BilbyJob, EventID, GWFlowJob, Label, build_bilby_es_doc
 from bilbyui.tests.test_utils import create_test_ini_string, generate_elastic_doc
 from bilbyui.tests.testcases import BilbyTestCase
@@ -40,6 +41,48 @@ def request_elasticsearch_update_mock_raises(*args, **kwargs):
 class TestElasticSearch(BilbyTestCase):
     def setUp(self):
         self.user = self.create_user()
+
+    def test_bilby_mapping_declares_double_without_strict_or_marker_fields(self):
+        mapping = build_bilby_es_mapping()
+
+        self.assertEqual(
+            mapping["mappings"]["properties"]["searchTriggerTime"]["type"],
+            "double",
+        )
+        self.assertNotIn("policyIndexed", str(mapping))
+        self.assertNotEqual(mapping["mappings"].get("dynamic"), "strict")
+
+    @mock.patch("bilbyui.management.commands.es_ingest.get_es_client")
+    @mock.patch("bilbyui.management.commands.es_ingest.BilbyJob.objects")
+    def test_handle_bilby_deletes_then_creates_index(self, objects_mock, get_es_client_mock):
+        objects_mock.count.return_value = 0
+        objects_mock.select_related.return_value.all.return_value = []
+        es = get_es_client_mock.return_value
+        calls = []
+        es.indices.delete.side_effect = lambda **kwargs: calls.append(("delete", kwargs))
+        es.indices.create.side_effect = lambda **kwargs: calls.append(("create", kwargs))
+
+        Command().handle_bilby()
+
+        self.assertEqual(
+            calls,
+            [
+                (
+                    "delete",
+                    {
+                        "index": settings.ELASTIC_SEARCH_INDEX,
+                        "ignore_unavailable": True,
+                    },
+                ),
+                (
+                    "create",
+                    {
+                        "index": settings.ELASTIC_SEARCH_INDEX,
+                        "body": build_bilby_es_mapping(),
+                    },
+                ),
+            ],
+        )
 
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_build_bilby_es_doc_preserves_document_shape(self, lookup_users_mock):
