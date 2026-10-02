@@ -132,7 +132,14 @@ class Command(BaseCommand):
                 query={"query": {"match_all": {}}},
                 _source=False,
             ):
-                existing.add(hit["_id"])
+                # Elasticsearch serialises document _id as a string (e.g. "42"),
+                # while GWFlowJob.pk is an integer. Normalise to int so the
+                # pk__in lookup below compares like types.
+                raw_id = hit["_id"]
+                if isinstance(raw_id, int):
+                    existing.add(raw_id)
+                elif isinstance(raw_id, str) and raw_id.isdecimal():
+                    existing.add(int(raw_id))
         except Exception as exc:
             logger.warning("Could not scan ES for existing docs; skipping --no-doc: %s", exc)
             return candidates
