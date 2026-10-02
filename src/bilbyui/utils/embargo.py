@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 N_SIM_TEXT = r"^[ \t]*\+?[0-9]{1,9}[ \t]*\Z"
 
+_TRUTHY_PREFERRED = (True, "true", "True", "yes")
+
 _CACHE_UNSET = object()
 _cached_embargo_start_raw = _CACHE_UNSET
 _cached_embargo_start = None
@@ -372,10 +374,14 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
     the corresponding mapping under ``raw_payload``; once a mapping source is
     selected it is not abandoned even if its event list is unusable. Within
     the selected mapping, scan ``Events``/``events`` in source order, reject
-    non-finite/boolean/malformed GPS values, and return the first usable
-    preferred event (``State``/``state`` == "preferred"), otherwise the first
-    usable event. When no event has a usable GPS time, falls back to the
-    gracedb-level ``preferred_event_gps`` then ``gps_time`` fields.
+    non-finite/boolean/malformed GPS values, and select the preferred event
+    with the same precedence as ``resolve_event_id_for``:
+    ``preferred_event`` / ``preferred_event_uid`` (by uid), then
+    ``State == "preferred"``, then the ``is_preferred`` / ``preferred``
+    truthy flags, else the first usable event. When no event has a usable
+    GPS time, falls back to the gracedb-level ``preferred_event_gps`` then
+    ``gps_time`` fields. Returns ``None`` when no usable value exists.
+    Defensive: never raises on malformed metadata.
     """
     if not isinstance(metadata, Mapping):
         return None
@@ -443,9 +449,61 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
             return None
         return gps
 
-    for event, gps in usable:
-        state_val = event.get("State") or event.get("state")
-        if isinstance(state_val, str) and state_val.lower() == "preferred":
-            return gps
+    preferred_uid = gracedb.get("preferred_event")
+    if not preferred_uid:
+        preferred_uid = gracedb.get("preferred_event_uid")
 
-    return usable[0][1] if usable else None
+    chosen = None
+    if preferred_uid:
+        for event, gps in usable:
+            if event.get("uid") == preferred_uid or event.get("UID") == preferred_uid:
+                chosen = gps
+                break
+    if chosen is None:
+        for event, gps in usable:
+            state_val = event.get("State") or event.get("state")
+            if isinstance(state_val, str) and state_val.lower() == "preferred":
+                chosen = gps
+                break
+    if chosen is None:
+        for event, gps in usable:
+            if event.get("is_preferred") in _TRUTHY_PREFERRED:
+                chosen = gps
+                break
+    if chosen is None:
+        for event, gps in usable:
+            if event.get("preferred") in _TRUTHY_PREFERRED:
+                chosen = gps
+                break
+    if chosen is None:
+        chosen = usable[0][1] if usable else None
+
+    return chosen
+
+
+def gwflow_ligo_only_from_metadata(metadata):
+    """
+    Determine the ``ligo_only`` flag for a GWFlow job from its portal metadata.
+
+    Extracts the trigger GPS time from ``metadata["GraceDB"]["Events"]`` and
+    computes ``ligo_only`` per the embargo rule (matching
+    ``should_embargo_job`` semantics):
+
+    - ``EMBARGO_START_TIME is None`` -> ``False`` (all public).
+    - Valid trigger GPS time -> ``trigger_time >= EMBARGO_START_TIME``
+      (equality is LIGO-only).
+    - Missing / malformed trigger -> ``False`` (fail-open, public).
+
+    Args:
+        metadata: The raw portal payload dict (may be malformed).
+
+    Returns:
+        bool: True if the job should be LIGO-only, False otherwise.
+    """
+    trigger_time = _gwflow_trigger_time_from_metadata(metadata)
+
+    embargo_start = get_embargo_start()
+    if embargo_start is None or trigger_time is None:
+        return False
+
+    return trigger_time >= embargo_start
