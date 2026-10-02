@@ -645,9 +645,7 @@ class TestResolveJobTrigger(BilbyTestCase):
         for bad in (None, True, False, object(), "not-a-number"):
             with self.subTest(bad=bad):
                 with mock.patch("bilbyui.utils.embargo.event_gps", return_value=bad):
-                    self.assertIsNone(
-                        resolve_job_trigger(None, SimpleNamespace(trigger_time="GW150914"))
-                    )
+                    self.assertIsNone(resolve_job_trigger(None, SimpleNamespace(trigger_time="GW150914")))
 
     def test_decimal_normalised(self):
         # The structured admission path passes a graphene.Decimal; it must be
