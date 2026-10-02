@@ -7,8 +7,9 @@ import astropy.cosmology
 import astropy.units as u
 import numpy as np
 from astropy.cosmology import Cosmology, FlatLambdaCDM, LambdaCDM
+from django.test import override_settings
 
-from bilbyui.models import BilbyJob, IniKeyValue, _safe_json_loads
+from bilbyui.models import BilbyJob, EventID, IniKeyValue, _safe_json_loads
 from bilbyui.tests.test_utils import compare_ini_kvs, create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.parse_ini_file import _safe_serialise, parse_ini_file, safe_json_dumps
@@ -419,3 +420,190 @@ class TestSafeJsonDumps(BilbyTestCase):
         self.assertEqual(type(loaded["parameters"]["H0"]), dict)
         self.assertEqual(type(loaded["parameters"]["Om0"]), float)
         self.assertEqual(type(loaded["parameters"]["m_nu"]["value"]), list)
+
+
+class TestTriggerTimeWritePath(BilbyTestCase):
+    _job_counter = 0
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = cls.create_user()
+
+    def _job(self, ini_config=None):
+        TestTriggerTimeWritePath._job_counter += 1
+        return BilbyJob.objects.create(
+            user_id=self.user.id,
+            name=f"trigger-write-{TestTriggerTimeWritePath._job_counter}",
+            description="trigger write",
+            ini_string=create_test_ini_string(ini_config or {"detectors": "['H1']"}),
+        )
+
+    @override_settings(EMBARGO_START_TIME=100.0)
+    def test_below_equal_above_threshold_stored_as_processed_float(self):
+        for name, raw in (("below", "50.0"), ("equal", "100.0"), ("above", "150.0")):
+            with self.subTest(name=name):
+                job = self._job({"detectors": "['H1']", "trigger-time": raw})
+                job.refresh_from_db()
+                self.assertEqual(job.trigger_time, float(raw))
+
+    def test_missing_processed_falls_back_to_raw(self):
+        with mock.patch(
+            "bilbyui.views.bilby_ini_args_to_data_input",
+            side_effect=RuntimeError("boom"),
+        ):
+            job = self._job({"detectors": "['H1']", "trigger-time": "2.0"})
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 2.0)
+
+    def test_both_missing_yields_null(self):
+        job = self._job({"detectors": "['H1']"})
+        job.refresh_from_db()
+        self.assertIsNone(job.trigger_time)
+
+    def test_processed_conversion_failure_yields_raw_or_null(self):
+        # Raw value present -> normalized raw value is persisted.
+        with mock.patch(
+            "bilbyui.views.bilby_ini_args_to_data_input",
+            side_effect=RuntimeError("boom"),
+        ):
+            job = self._job({"detectors": "['H1']", "trigger-time": "7.5"})
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 7.5)
+
+        # Raw value absent -> NULL (never fabricated).
+        with mock.patch(
+            "bilbyui.views.bilby_ini_args_to_data_input",
+            side_effect=RuntimeError("boom"),
+        ):
+            job = self._job({"detectors": "['H1']"})
+        job.refresh_from_db()
+        self.assertIsNone(job.trigger_time)
+
+    def test_atomicity_failed_parse_does_not_commit_ini_or_trigger(self):
+        job = self._job({"detectors": "['H1']", "trigger-time": "3.0"})
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 3.0)
+        original_ini = job.ini_string
+
+        job.ini_string = create_test_ini_string({"detectors": "['H1']", "trigger-time": "9.0"})
+        with mock.patch(
+            "bilbyui.utils.parse_ini_file.bilby_ini_string_to_args",
+            return_value=SimpleNamespace(detectors=None),
+        ):
+            with self.assertRaises(ValueError):
+                job.save()
+
+        job.refresh_from_db()
+        self.assertEqual(job.ini_string, original_ini)
+        self.assertEqual(job.trigger_time, 3.0)
+
+    def test_blank_ini_preserves_trigger_time(self):
+        job = self._job({"detectors": "['H1']", "trigger-time": "4.0"})
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 4.0)
+
+        job.ini_string = ""
+        job.save()
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 4.0)
+
+    def test_typed_write_does_not_reparse(self):
+        job = self._job({"detectors": "['H1']", "trigger-time": "5.0"})
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 5.0)
+
+        with mock.patch(
+            "bilbyui.models.parse_ini_file",
+            wraps=parse_ini_file,
+        ) as parse_mock:
+            BilbyJob.objects.filter(pk=job.pk).update(trigger_time=6.0)
+
+        parse_mock.assert_not_called()
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 6.0)
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True)
+    @mock.patch("bilbyui.utils.reindex.reindex_jobs")
+    def test_trigger_field_change_schedules_reindex_on_commit(self, reindex_jobs_mock):
+        # Acceptance criterion #7: a trigger_time/event_id/gwflow_job change
+        # schedules reindex_jobs([...], "bilby") via transaction.on_commit.
+        job = self._job({"detectors": "['H1']", "trigger-time": "3.0"})
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 3.0)
+
+        job.ini_string = create_test_ini_string({"detectors": "['H1']", "trigger-time": "9.0"})
+        with self.captureOnCommitCallbacks(execute=True):
+            job.save()
+
+        reindex_jobs_mock.assert_called_once_with([job.pk], "bilby")
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 9.0)
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True)
+    @mock.patch("bilbyui.utils.reindex.reindex_jobs")
+    def test_unchanged_trigger_fields_do_not_schedule_reindex(self, reindex_jobs_mock):
+        # A plain save (no trigger-field change) must not schedule a redundant
+        # reindex, even though parse_ini_file re-runs.
+        job = self._job({"detectors": "['H1']", "trigger-time": "3.0"})
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 3.0)
+
+        job.name = "renamed"
+        with self.captureOnCommitCallbacks(execute=True):
+            job.save()
+
+        reindex_jobs_mock.assert_not_called()
+
+    def test_migration_mode_skips_runtime_trigger_update(self):
+        # When called from a historical migration (ini_key_value_klass is
+        # supplied), the runtime typed update must be skipped: the
+        # trigger_time column does not exist yet at migration 0020 (it
+        # arrives in 0046), so the runtime model would emit SQL against a
+        # table lacking the column.
+        job = self._job({"detectors": "['H1']", "trigger-time": "3.0"})
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 3.0)
+
+        with mock.patch.object(BilbyJob.objects, "filter") as filter_mock:
+            parse_ini_file(job, IniKeyValue)
+
+        filter_mock.assert_not_called()
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 3.0)
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True)
+    @mock.patch("bilbyui.utils.reindex.reindex_jobs")
+    def test_blank_ini_trigger_change_schedules_reindex(self, reindex_jobs_mock):
+        # Criterion #8: a trigger_time change on a blank-INI job must still
+        # schedule reindex_jobs via transaction.on_commit.
+        job = self._job({"detectors": "['H1']", "trigger-time": "3.0"})
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 3.0)
+
+        job.ini_string = ""
+        job.trigger_time = 9.0
+        with self.captureOnCommitCallbacks(execute=True):
+            job.save()
+
+        reindex_jobs_mock.assert_called_once_with([job.pk], "bilby")
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 9.0)
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True)
+    @mock.patch("bilbyui.utils.reindex.reindex_jobs")
+    def test_blank_ini_event_link_change_schedules_reindex(self, reindex_jobs_mock):
+        # Criterion #8: an event link change on a blank-INI job must still
+        # schedule reindex_jobs via transaction.on_commit.
+        job = self._job({"detectors": "['H1']"})
+        job.refresh_from_db()
+        self.assertIsNone(job.trigger_time)
+
+        event = EventID.objects.create(event_id="G123458")
+        job.ini_string = ""
+        job.event_id = event
+        with self.captureOnCommitCallbacks(execute=True):
+            job.save()
+
+        reindex_jobs_mock.assert_called_once_with([job.pk], "bilby")
+        job.refresh_from_db()
+        self.assertEqual(job.event_id_id, event.id)

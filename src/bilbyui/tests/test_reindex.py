@@ -396,12 +396,19 @@ class TestVerifySearchTriggerTime(BilbyTestCase):
         self.user = self.create_user()
 
     def bilby(self, name, **kwargs):
-        return BilbyJob.objects.create(
+        trigger_time = kwargs.pop("trigger_time", None)
+        job = BilbyJob.objects.create(
             user=self.user,
             name=name,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
             **kwargs,
         )
+        # The ini contains no trigger-time, so parse_ini_file derives NULL.
+        # Write the explicit trigger_time via QuerySet.update (bypassing the
+        # save override) so verification exercises the column value.
+        if trigger_time is not None:
+            BilbyJob.objects.filter(pk=job.pk).update(trigger_time=trigger_time)
+        return job
 
     @staticmethod
     def mget_response(rows, sources):

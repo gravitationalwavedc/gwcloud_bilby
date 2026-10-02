@@ -343,8 +343,8 @@ class TestExternalJobUploadLigoPermissions(BilbyTestCase):
             "create bilbyJob mutation returned unexpected data.",
         )
 
-        # Check that the job is marked as not proprietary
-        self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
+        # The trigger time should be persisted from the processed INI value.
+        self.assertEqual(BilbyJob.objects.all().last().trigger_time, 1128678900.4)
 
     @silence_errors
     def test_ligo_user_with_gwosc(self):
@@ -369,8 +369,8 @@ class TestExternalJobUploadLigoPermissions(BilbyTestCase):
             "create bilbyJob mutation returned unexpected data.",
         )
 
-        # Check that the job is marked as not proprietary
-        self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
+        # The trigger time should be persisted from the processed INI value.
+        self.assertEqual(BilbyJob.objects.all().last().trigger_time, 1128678900.4)
 
     @silence_errors
     def test_ligo_user_with_non_gwosc(self):
@@ -393,9 +393,9 @@ class TestExternalJobUploadLigoPermissions(BilbyTestCase):
 
             self.assertIn("jobId", response.data["uploadExternalBilbyJob"]["result"])
 
-            # Check that the job is marked as proprietary
+            # The trigger time should be persisted from the processed INI value.
             job = BilbyJob.objects.all().last()
-            self.assertFalse(job.is_ligo_job)
+            self.assertEqual(job.trigger_time, 1128678900.4)
             job.delete()
 
 

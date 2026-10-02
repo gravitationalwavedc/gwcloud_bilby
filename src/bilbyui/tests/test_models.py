@@ -939,22 +939,20 @@ class TestTriggerTimeAndGpsTimeSchema(BilbyTestCase):
         cls.user = cls.create_user()
 
     def test_bilby_job_trigger_time_persistence(self):
-        # Persistence with trigger_time=None (default)
+        # Persistence with no trigger-time in the ini -> NULL
         job_none = BilbyJob.objects.create(
             user=self.user,
             name="Job_Trigger_None",
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
-            trigger_time=None,
         )
         job_none.refresh_from_db()
         self.assertIsNone(job_none.trigger_time)
 
-        # Persistence with a non-null float trigger_time
+        # Persistence derived from the processed INI trigger value
         job_val = BilbyJob.objects.create(
             user=self.user,
             name="Job_Trigger_Value",
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-            trigger_time=123456789.0,
+            ini_string=create_test_ini_string({"detectors": "['H1']", "trigger-time": "123456789.0"}),
         )
         job_val.refresh_from_db()
         self.assertEqual(job_val.trigger_time, 123456789.0)
