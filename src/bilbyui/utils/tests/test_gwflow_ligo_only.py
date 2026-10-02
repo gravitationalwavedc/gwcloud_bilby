@@ -67,6 +67,77 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
         metadata = {"gracedb": {"events": [{"state": "preferred", "gps_time": 2000.0}]}}
         self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
 
+    def test_preferred_event_field_selected(self):
+        # preferred_event (by uid) selects that event's GPS time even when
+        # it is not first and no State == "preferred" is present.
+        metadata = {
+            "GraceDB": {
+                "preferred_event": "E2",
+                "Events": [
+                    {"uid": "E1", "GPSTime": 1000.0},
+                    {"uid": "E2", "GPSTime": 2000.0},
+                ],
+            }
+        }
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
+    def test_preferred_event_uid_alias_selected(self):
+        # preferred_event_uid is honoured as an alias of preferred_event.
+        metadata = {
+            "GraceDB": {
+                "preferred_event_uid": "E2",
+                "Events": [
+                    {"UID": "E1", "GPSTime": 1000.0},
+                    {"UID": "E2", "GPSTime": 2000.0},
+                ],
+            }
+        }
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
+    def test_is_preferred_flag_selected(self):
+        # is_preferred truthy flag selects that event's GPS time.
+        metadata = _metadata_with_events(
+            [
+                {"GPSTime": 1000.0},
+                {"GPSTime": 2000.0, "is_preferred": True},
+            ]
+        )
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
+    def test_preferred_flag_selected(self):
+        # preferred truthy flag selects that event's GPS time.
+        metadata = _metadata_with_events(
+            [
+                {"GPSTime": 1000.0},
+                {"GPSTime": 2000.0, "preferred": "yes"},
+            ]
+        )
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
+    def test_state_preferred_takes_priority_over_flags(self):
+        # State == "preferred" still wins over is_preferred / preferred flags.
+        metadata = _metadata_with_events(
+            [
+                {"GPSTime": 1000.0, "is_preferred": True},
+                {"GPSTime": 2000.0, "State": "preferred"},
+            ]
+        )
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
+    def test_preferred_event_takes_priority_over_state(self):
+        # preferred_event (by uid) wins over State == "preferred", matching
+        # resolve_event_id_for precedence.
+        metadata = {
+            "GraceDB": {
+                "preferred_event": "E1",
+                "Events": [
+                    {"uid": "E1", "GPSTime": 1000.0},
+                    {"uid": "E2", "GPSTime": 2000.0, "State": "preferred"},
+                ],
+            }
+        }
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 1000.0)
+
 
 class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=None)

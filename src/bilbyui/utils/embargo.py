@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 N_SIM_TEXT = r"^[ \t]*\+?[0-9]{1,9}[ \t]*\Z"
 
+_TRUTHY_PREFERRED = (True, "true", "True", "yes")
+
 _CACHE_UNSET = object()
 _cached_embargo_start_raw = _CACHE_UNSET
 _cached_embargo_start = None
@@ -352,10 +354,12 @@ def _gwflow_trigger_time_from_metadata(metadata):
     """
     Extract the trigger GPS time from portal metadata (issue #83).
 
-    Selects the preferred event (``State == "preferred"``) if present, else
-    the first entry with a usable numeric GPS time, skipping malformed
-    entries (missing or non-numeric GPS time). Returns ``None`` when no
-    usable event exists. Defensive: never raises on malformed metadata.
+    Selects the preferred event with the same rules as ``resolve_event_id_for``:
+    ``preferred_event`` / ``preferred_event_uid`` (by uid), then
+    ``State == "preferred"``, then the ``is_preferred`` / ``preferred`` truthy
+    flags, else the first entry with a usable numeric GPS time, skipping
+    malformed entries (missing or non-numeric GPS time). Returns ``None`` when
+    no usable event exists. Defensive: never raises on malformed metadata.
     Accepts both the capitalised portal shape (``GraceDB`` / ``Events`` /
     ``GPSTime``) and the canonical lowercase shape (``gracedb`` / ``events``
     / ``gps_time`` / ``gpstime``), matching ``resolve_event_id_for``.
@@ -398,11 +402,35 @@ def _gwflow_trigger_time_from_metadata(metadata):
     if not usable:
         return None
 
-    for event, gps in usable:
-        if event.get("State") == "preferred" or event.get("state") == "preferred":
-            return gps
+    preferred_uid = gracedb.get("preferred_event")
+    if not preferred_uid:
+        preferred_uid = gracedb.get("preferred_event_uid")
 
-    return usable[0][1]
+    chosen = None
+    if preferred_uid:
+        for event, gps in usable:
+            if event.get("uid") == preferred_uid or event.get("UID") == preferred_uid:
+                chosen = gps
+                break
+    if chosen is None:
+        for event, gps in usable:
+            if event.get("State") == "preferred" or event.get("state") == "preferred":
+                chosen = gps
+                break
+    if chosen is None:
+        for event, gps in usable:
+            if event.get("is_preferred") in _TRUTHY_PREFERRED:
+                chosen = gps
+                break
+    if chosen is None:
+        for event, gps in usable:
+            if event.get("preferred") in _TRUTHY_PREFERRED:
+                chosen = gps
+                break
+    if chosen is None:
+        chosen = usable[0][1]
+
+    return chosen
 
 
 def gwflow_ligo_only_from_metadata(metadata):
