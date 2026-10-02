@@ -230,4 +230,10 @@ def parse_ini_file(job, ini_key_value_klass=None):
         # Persist the derived trigger time atomically with the row
         # replacement via QuerySet.update (never save(update_fields=...),
         # which would re-enter the BilbyJob.save override).
-        BilbyJob.objects.filter(pk=job.pk).update(trigger_time=trigger_time)
+        #
+        # When called from a historical migration (ini_key_value_klass is
+        # supplied), skip the runtime typed write: the trigger_time column
+        # does not exist yet at migration 0020 (it arrives in 0046), and the
+        # runtime model would emit SQL against a table lacking the column.
+        if ini_key_value_klass is None:
+            BilbyJob.objects.filter(pk=job.pk).update(trigger_time=trigger_time)

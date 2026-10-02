@@ -67,7 +67,7 @@ from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs
 from .status import JobStatus
 from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
-from .utils.embargo import _normalise_trigger, gwflow_ligo_only_from_metadata, should_embargo_job
+from .utils.embargo import gwflow_ligo_only_from_metadata, resolve_job_trigger, should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
 from .utils.gwflow_portal import get_superevent, get_version, get_versions
@@ -130,9 +130,10 @@ def check_job_embargo_status(user, args):
 def _parse_embargo_args(args):
     """Extract the trigger_time and n_simulation flags from parsed INI args for embargo checks."""
     # Parse trigger_time from INI args - can be a float or event name like "GW150914".
-    # Reuses the shared normaliser so admission and persistence resolve triggers
-    # identically (single source of truth for trigger resolution).
-    trigger_time = _normalise_trigger(getattr(args, "trigger_time", None))
+    # Routes through the shared public resolver so admission and persistence
+    # resolve triggers identically (single source of truth for trigger
+    # resolution, per issue #106 protocol 1).
+    trigger_time = resolve_job_trigger(args=args)
 
     # Parse n_simulation from INI args - determines if job uses simulated data
     n_simulation = args.n_simulation

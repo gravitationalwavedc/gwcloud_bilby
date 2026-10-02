@@ -434,16 +434,18 @@ class BilbyJob(models.Model):
         with transaction.atomic(using=db_alias):
             super().save(*args, **kwargs)
 
-            if not has_ini:
-                return
+            if has_ini:
+                # Whenever a job is saved, we need to regenerate the ini k/v pairs
+                parse_ini_file(self)
 
-            # Whenever a job is saved, we need to regenerate the ini k/v pairs
-            parse_ini_file(self)
+                # Keep the mysql database and elastic search database in sync after
+                # the transaction commits.
+                transaction.on_commit(self.elastic_search_update, using=db_alias)
 
-            # Keep the mysql database and elastic search database in sync after
-            # the transaction commits.
-            transaction.on_commit(self.elastic_search_update, using=db_alias)
-
+            # Reindex whenever trigger_time/event_id/gwflow_job changes, even for
+            # blank-INI jobs (their linkage can still be set later, e.g. when an
+            # interrupted job completes). Criterion #8 requires the reindex
+            # regardless of INI presence.
             if self._trigger_fields_changed(prior):
                 from bilbyui.utils.reindex import reindex_jobs
 

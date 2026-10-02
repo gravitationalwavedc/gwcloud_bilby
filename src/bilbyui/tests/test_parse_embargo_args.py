@@ -18,6 +18,16 @@ class TestParseEmbargoArgs(BilbyTestCase):
         self.assertEqual(trigger_time, 2.0)
         self.assertFalse(n_simulation)
 
+    @patch("bilbyui.views.resolve_job_trigger", return_value=2.0)
+    def test_admission_delegates_to_public_resolver(self, mock_resolve):
+        # Issue #106 protocol 1: admission must route through the shared
+        # public resolve_job_trigger (single source of truth), not a private
+        # primitive.
+        args = _args(trigger_time="2.0", n_simulation="0")
+        trigger_time, _ = _parse_embargo_args(args)
+        mock_resolve.assert_called_once_with(args=args)
+        self.assertEqual(trigger_time, 2.0)
+
     @patch("bilbyui.utils.embargo.event_gps", return_value=1126259462.4)
     def test_event_name_trigger_time_resolved(self, _mock_event_gps):
         trigger_time, _ = _parse_embargo_args(_args(trigger_time="GW150914", n_simulation="0"))
