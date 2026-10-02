@@ -289,23 +289,42 @@ def _normalise_trigger(value):
     Accepts a finite float, a numeric string, or an event name resolved via
     gwosc. Rejects booleans (``bool`` is an ``int`` subclass) and non-finite
     values. Returns None on resolution/conversion failure (same
-    network-failure behaviour as admission).
+    network-failure behaviour as admission). Never raises.
     """
     if isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
-        numeric = float(value)
-        return numeric if math.isfinite(numeric) else None
+
     if isinstance(value, str):
         try:
             numeric = float(value)
-        except ValueError:
+        except (TypeError, ValueError, OverflowError):
             try:
                 numeric = event_gps(value)
-            except (ValueError, requests.RequestException, KeyError, tenacity.RetryError):
+            except (
+                TypeError,
+                ValueError,
+                OverflowError,
+                requests.RequestException,
+                KeyError,
+                tenacity.RetryError,
+            ):
                 return None
+        # event_gps may return None, a boolean, or another non-real object;
+        # validate the result through the same finite-float boundary.
+        if isinstance(numeric, bool):
+            return None
+        try:
+            numeric = float(numeric)
+        except (TypeError, ValueError, OverflowError):
+            return None
         return numeric if math.isfinite(numeric) else None
-    return None
+
+    # Any other numeric (int, float, Decimal, numpy scalar, ...).
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return numeric if math.isfinite(numeric) else None
 
 
 def resolve_job_trigger(processed_args=None, args=None) -> float | None:

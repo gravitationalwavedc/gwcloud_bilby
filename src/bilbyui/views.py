@@ -104,12 +104,6 @@ def check_job_embargo_status(user, args):
        - LIGO users can upload embargoed jobs, non-LIGO users cannot
        - Throws exception if non-LIGO user tries to upload embargoed data
 
-    2. JOB CLASSIFICATION CHECK (when user is None):
-       - Used in _create_bilby_job_record to determine the is_ligo_job flag
-       - Simulates a non-LIGO user to determine if the job contains proprietary LIGO data
-       - If the job would be embargoed for a non-LIGO user, it contains LIGO data
-       - This flag controls job visibility: non-LIGO users can't see LIGO data jobs
-
     The embargo logic considers:
     - trigger_time: Jobs with trigger_time >= EMBARGO_START_TIME are embargoed
     - n_simulation: Simulated jobs (n_simulation != 0) are never embargoed
@@ -181,7 +175,11 @@ def _create_bilby_job_record(user, details, args, job_type, ini_string=None):
 def create_bilby_job(user, params):
     logger.info("User %s creating Bilby job: %s", user.id, params.details.name)
 
-    trigger_time = float(params.data.trigger_time) if params.data.trigger_time is not None else None
+    # Route through the shared public resolver so admission and persistence
+    # resolve triggers identically (single source of truth, per issue #106
+    # protocol 1). params.data.trigger_time is a Decimal; the resolver
+    # normalises it to a finite float or None.
+    trigger_time = resolve_job_trigger(args=params.data)
 
     if should_embargo_job(user, trigger_time, params.data.data_choice == "simulated"):
         logger.warning("User %s attempted to run real job on embargoed data: %s", user.id, params.details.name)

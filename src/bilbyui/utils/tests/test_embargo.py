@@ -1,3 +1,4 @@
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest import mock
 
@@ -638,6 +639,21 @@ class TestResolveJobTrigger(BilbyTestCase):
     def test_event_name_resolution_failure_returns_none(self):
         with mock.patch("bilbyui.utils.embargo.event_gps", side_effect=ValueError("not found")):
             self.assertIsNone(resolve_job_trigger(None, SimpleNamespace(trigger_time="GW999999")))
+
+    def test_event_gps_malformed_output_returns_none(self):
+        # event_gps returning a non-real value must collapse to None, never raise.
+        for bad in (None, True, False, object(), "not-a-number"):
+            with self.subTest(bad=bad):
+                with mock.patch("bilbyui.utils.embargo.event_gps", return_value=bad):
+                    self.assertIsNone(
+                        resolve_job_trigger(None, SimpleNamespace(trigger_time="GW150914"))
+                    )
+
+    def test_decimal_normalised(self):
+        # The structured admission path passes a graphene.Decimal; it must be
+        # normalised to a finite float (or None), not dropped.
+        self.assertEqual(resolve_job_trigger(None, SimpleNamespace(trigger_time=Decimal("2.5"))), 2.5)
+        self.assertIsNone(resolve_job_trigger(None, SimpleNamespace(trigger_time=Decimal("NaN"))))
 
     def test_boolean_rejected(self):
         self.assertIsNone(resolve_job_trigger(None, SimpleNamespace(trigger_time=True)))
