@@ -153,9 +153,8 @@ class TestJobUpload(BilbyTestCase):
         self.assertEqual(job.description, test_description)
         self.assertEqual(job.private, test_private)
         self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
-        # Check that is_ligo_job is set correctly based on embargo status
-        # For a job without trigger_time or with simulated data, it should be False
-        self.assertFalse(job.is_ligo_job, "Job without embargoed data should not be marked as LIGO job")
+        # The trigger time should be persisted from the processed INI value.
+        self.assertEqual(job.trigger_time, 1128678900.4)
 
         # Check that the output directories and ini file were correctly created
         job_dir = job.get_upload_directory()
@@ -850,10 +849,10 @@ class TestJobUpload(BilbyTestCase):
 
         self.assertDictEqual(expected, response.data)
 
-        # Check that the job was created with is_ligo_job=True
+        # The trigger time should be persisted from the processed INI value.
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.name, test_name)
-        self.assertTrue(job.is_ligo_job, "Job should be marked as LIGO job due to embargoed data")
+        self.assertEqual(job.trigger_time, 2.0)
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
     def test_job_upload_non_embargoed_job(self):
@@ -894,10 +893,10 @@ class TestJobUpload(BilbyTestCase):
 
         self.assertDictEqual(expected, response.data)
 
-        # Check that the job was created with is_ligo_job=False
+        # The trigger time should be persisted from the processed INI value.
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.name, test_name)
-        self.assertFalse(job.is_ligo_job, "Job should not be marked as LIGO job for non-embargoed data")
+        self.assertEqual(job.trigger_time, 0.5)
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
     def test_job_upload_simulated_data(self):
@@ -938,12 +937,10 @@ class TestJobUpload(BilbyTestCase):
 
         self.assertDictEqual(expected, response.data)
 
-        # Check that the job was created with is_ligo_job=False (simulated data should not be LIGO job)
+        # The trigger time should still be persisted even for simulated data.
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.name, test_name)
-        self.assertFalse(
-            job.is_ligo_job, "Simulated data job should not be marked as LIGO job even with embargoed trigger time"
-        )
+        self.assertEqual(job.trigger_time, 2.0)
 
 
 class TestJobUploadLigoPermissions(BilbyTestCase):
@@ -1004,8 +1001,8 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
             "create bilbyJob mutation returned unexpected data.",
         )
 
-        # Check that the job is marked as not proprietary
-        self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
+        # The trigger time should be persisted from the processed INI value.
+        self.assertEqual(BilbyJob.objects.all().last().trigger_time, 1128678900.4)
 
     def test_ligo_user_with_gwosc(self):
         # This test checks that a non LIGO user can still create non LIGO jobs
@@ -1039,8 +1036,8 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
             "create bilbyJob mutation returned unexpected data.",
         )
 
-        # Check that the job is marked as not proprietary
-        self.assertFalse(BilbyJob.objects.all().last().is_ligo_job)
+        # The trigger time should be persisted from the processed INI value.
+        self.assertEqual(BilbyJob.objects.all().last().trigger_time, 1128678900.4)
 
     @silence_errors
     def test_ligo_user_with_non_gwosc(self):
@@ -1073,9 +1070,9 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
 
             self.assertIn("jobId", response.data["uploadBilbyJob"]["result"])
 
-            # Check that the job is marked as proprietary
+            # The trigger time should be persisted from the processed INI value.
             job = BilbyJob.objects.all().last()
-            self.assertFalse(job.is_ligo_job)
+            self.assertEqual(job.trigger_time, 1128678900.4)
             job.delete()
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
@@ -1115,7 +1112,7 @@ class TestJobUploadLigoPermissions(BilbyTestCase):
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.name, test_name)
         self.assertEqual(job.user, token_owner)
-        self.assertTrue(job.is_ligo_job)
+        self.assertEqual(job.trigger_time, 2.0)
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
     @silence_errors
@@ -2321,9 +2318,8 @@ class TestHdf5JobUpload(BilbyTestCase):
         self.assertEqual(job.description, test_description)
         self.assertEqual(job.private, test_private)
         self.assertEqual(job.job_type, BilbyJobType.UPLOADED)
-        # Check that is_ligo_job is set correctly based on embargo status
-        # For a job without trigger_time or with simulated data, it should be False
-        self.assertFalse(job.is_ligo_job, "Job without embargoed data should not be marked as LIGO job")
+        # The trigger time should be persisted from the processed INI value.
+        self.assertEqual(job.trigger_time, 1128678900.4)
 
         # Check that the files were uploaded correctly
         job_dir = job.get_upload_directory()
@@ -2750,10 +2746,10 @@ class TestHdf5JobUpload(BilbyTestCase):
 
         self.assertDictEqual(expected, response.data)
 
-        # Check that the job was created with is_ligo_job=True
+        # The trigger time should be persisted from the processed INI value.
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.name, test_name)
-        self.assertTrue(job.is_ligo_job, "HDF5 job should be marked as LIGO job due to embargoed data")
+        self.assertEqual(job.trigger_time, 2.0)
 
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name, EMBARGO_START_TIME=1.0)
     def test_hdf5_job_upload_non_embargoed_job(self):
@@ -2795,10 +2791,10 @@ class TestHdf5JobUpload(BilbyTestCase):
 
         self.assertDictEqual(expected, response.data)
 
-        # Check that the job was created with is_ligo_job=False
+        # The trigger time should be persisted from the processed INI value.
         job = BilbyJob.objects.all().last()
         self.assertEqual(job.name, test_name)
-        self.assertFalse(job.is_ligo_job, "HDF5 job should not be marked as LIGO job for non-embargoed data")
+        self.assertEqual(job.trigger_time, 0.5)
 
 
 class TestUploadMutationReturnType(BilbyTestCase):

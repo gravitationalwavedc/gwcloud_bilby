@@ -37,11 +37,12 @@ class TestCreateBilbyJobRecord(BilbyTestCase):
         self.assertEqual(job.description, "test description")
         self.assertFalse(job.private)
         self.assertEqual(job.job_type, BilbyJobType.NORMAL)
-        self.assertFalse(job.is_ligo_job)
         self.assertEqual(BilbyJob.objects.count(), 1)
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 1.0)
 
     @override_settings(EMBARGO_START_TIME=1.5)
-    def test_embargoed_job_marked_as_ligo_job(self):
+    def test_embargoed_job_persists_trigger_time(self):
         args = _args_from_ini(
             {
                 "label": "myjob",
@@ -53,10 +54,11 @@ class TestCreateBilbyJobRecord(BilbyTestCase):
 
         job = _create_bilby_job_record(self.user, self.details, args, BilbyJobType.NORMAL)
 
-        self.assertTrue(job.is_ligo_job)
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 2.0)
 
     @override_settings(EMBARGO_START_TIME=1.5)
-    def test_simulated_job_not_marked_as_ligo_job(self):
+    def test_simulated_job_persists_trigger_time(self):
         args = _args_from_ini(
             {
                 "label": "myjob",
@@ -68,7 +70,8 @@ class TestCreateBilbyJobRecord(BilbyTestCase):
 
         job = _create_bilby_job_record(self.user, self.details, args, BilbyJobType.NORMAL)
 
-        self.assertFalse(job.is_ligo_job)
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 2.0)
 
     @override_settings(GWOSC_INGEST_USER=1)
     def test_gwosc_ingest_user_gets_official_label(self):

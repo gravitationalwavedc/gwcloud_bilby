@@ -818,7 +818,7 @@ class TestJobSubmission(BilbyTestCase):
         self.assertIsNone(response.errors)
 
         job = BilbyJob.objects.all().last()
-        self.assertTrue(job.is_ligo_job, "Real job on embargoed LIGO data should be marked as a LIGO job")
+        self.assertEqual(job.trigger_time, 1126259562.391)
 
     @patch("bilbyui.models.submit_job")
     def test_simulated_job_without_channels(self, mock_api_call):
@@ -1114,9 +1114,21 @@ class TestCreateBilbyJob(BilbyTestCase):
         self.assertEqual(job.name, "test_job")
         self.assertEqual(job.description, "test description")
         self.assertTrue(job.private)
-        self.assertFalse(job.is_ligo_job)
         self.assertIsNone(job.event_id)
         mock_submit.assert_called_once()
+
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 1126259462.391)
+
+    @patch("bilbyui.views.resolve_job_trigger", return_value=2.0)
+    @patch.object(BilbyJob, "submit")
+    def test_structured_admission_delegates_to_public_resolver(self, mock_submit, mock_resolve):
+        # Issue #106 protocol 1: the structured admission path must route
+        # through the shared public resolve_job_trigger, not a direct float()
+        # conversion.
+        params = _make_params()
+        create_bilby_job(self.user, params)
+        mock_resolve.assert_called_once_with(args=params.data)
 
     @override_settings(EMBARGO_START_TIME=1.0)
     def test_embargoed_real_job_rejected_for_non_ligo_user(self):

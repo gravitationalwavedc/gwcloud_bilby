@@ -8,6 +8,7 @@ import astropy.units as u
 import numpy as np
 from django.db import transaction
 
+from bilbyui.utils.embargo import resolve_job_trigger
 from bilbyui.utils.ini_utils import bilby_ini_string_to_args
 
 logger = logging.getLogger(__name__)
@@ -169,7 +170,7 @@ def parse_ini_file(job, ini_key_value_klass=None):
     """
 
     # Avoiding circular imports
-    from bilbyui.models import IniKeyValue
+    from bilbyui.models import BilbyJob, IniKeyValue
     from bilbyui.views import bilby_ini_args_to_data_input
 
     klass = ini_key_value_klass or IniKeyValue
@@ -190,6 +191,7 @@ def parse_ini_file(job, ini_key_value_klass=None):
     # Parse the args through DataGenerationInput to postprocess any values
     args.outdir = "./"
 
+    processed_args = None
     try:
         processed_args = bilby_ini_args_to_data_input(args)
 
@@ -214,6 +216,10 @@ def parse_ini_file(job, ini_key_value_klass=None):
     except Exception:
         logger.exception("Error parsing INI file for job %s", job.id)
 
+    # Derive the trigger time once: prefer the processed value if present and
+    # finite, else the normalized raw value, else None. Never fabricate.
+    trigger_time = resolve_job_trigger(processed_args, args)
+
     # Replace existing k/v rows for this job atomically. All serialisation
     # happens above, before entering the transaction, so a serialisation
     # failure never leaves existing rows deleted and the transaction stays
@@ -221,3 +227,13 @@ def parse_ini_file(job, ini_key_value_klass=None):
     with transaction.atomic(using=klass.objects.db):
         klass.objects.filter(job=job).delete()
         klass.objects.bulk_create(items)
+        # Persist the derived trigger time atomically with the row
+        # replacement via QuerySet.update (never save(update_fields=...),
+        # which would re-enter the BilbyJob.save override).
+        #
+        # When called from a historical migration (ini_key_value_klass is
+        # supplied), skip the runtime typed write: the trigger_time column
+        # does not exist yet at migration 0020 (it arrives in 0046), and the
+        # runtime model would emit SQL against a table lacking the column.
+        if ini_key_value_klass is None:
+            BilbyJob.objects.filter(pk=job.pk).update(trigger_time=trigger_time)

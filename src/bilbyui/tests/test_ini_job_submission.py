@@ -242,7 +242,7 @@ class TestIniJobSubmission(BilbyTestCase):
         self.assertIsNone(response.errors)
 
         job = BilbyJob.objects.all().last()
-        self.assertTrue(job.is_ligo_job, "Real job on embargoed LIGO data should be marked as a LIGO job")
+        self.assertEqual(job.trigger_time, 1128678900.4)
 
     @silence_errors
     def test_ini_job_submission_no_ini_string(self):
