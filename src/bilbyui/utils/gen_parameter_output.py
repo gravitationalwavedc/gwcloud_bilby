@@ -6,7 +6,6 @@ from math import floor
 from numbers import Number
 
 import numpy as np
-
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.input import Input
 from bilby_pipe.utils import logger
