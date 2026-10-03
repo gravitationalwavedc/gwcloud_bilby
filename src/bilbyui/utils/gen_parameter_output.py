@@ -5,6 +5,8 @@ from functools import lru_cache
 from math import floor
 from numbers import Number
 
+import numpy as np
+
 from bilby_pipe.data_generation import DataGenerationInput
 from bilby_pipe.input import Input
 from bilby_pipe.utils import logger
@@ -32,6 +34,13 @@ def _get_default_prior_files():
 
 
 def to_dec(val):
+    # NumPy scalars (e.g. numpy.bool_) are not subclasses of numbers.Number nor
+    # Python bool, so they would fall through the numeric guard and be returned
+    # unchanged. Route them through .item() to their Python native so they are
+    # handled like their Python equivalents (mirrors _normalise in parse_ini_file).
+    if isinstance(val, np.generic):
+        val = val.item()
+
     if isinstance(val, Decimal):
         return val
 
