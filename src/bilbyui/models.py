@@ -42,7 +42,7 @@ class BilbyPermissionError(PermissionError):
 
 
 from .utils.auth.lookup_users import request_lookup_users
-from .utils.embargo import embargo_filter
+from .utils.embargo import embargo_filter, is_record_public, is_simulated_value
 from .utils.gwflow_es import gwflow_elastic_search_remove
 from .utils.jobs.submit_job import submit_job
 from .utils.misc import is_ligo_user
@@ -311,6 +311,17 @@ class BilbyJob(models.Model):
 
         # Users can only access the job if they are a ligo user
         if job.is_ligo_job and not is_ligo_user(user):
+            raise BilbyPermissionError
+
+        # Users can only access the job if it is public under the trigger-time
+        # embargo policy. New jobs no longer persist is_ligo_job, so this gate
+        # keeps embargoed jobs hidden from non-LIGO users via single-job paths.
+        raw_n_simulation = (
+            IniKeyValue.objects.filter(job=job, key="n_simulation", processed=False)
+            .values_list("value", flat=True)
+            .first()
+        )
+        if not is_record_public(job, user, is_simulation=is_simulated_value(raw_n_simulation)):
             raise BilbyPermissionError
 
         return job

@@ -59,3 +59,52 @@ class TestGetById(BilbyTestCase):
 
         with self.assertRaises(BilbyJob.DoesNotExist):
             BilbyJob.get_by_id("not-an-int", self.user)
+
+
+@override_settings(EMBARGO_START_TIME=1.5)
+class TestGetByIdEmbargo(BilbyTestCase):
+    def setUp(self):
+        self.user, _ = User.objects.update_or_create(
+            id=1,
+            defaults={"name": "buffy summers", "primary_email": "buffy@test.com"},
+        )
+        self.create_user(id=1)
+
+    def _create_embargoed_job(self, *, user_id=1):
+        # New jobs (post-e3837bf2) carry no is_ligo_job; embargo is driven by
+        # the persisted trigger_time and the raw n_simulation value.
+        return BilbyJob.objects.create(
+            user_id=user_id,
+            name="embargoed-job",
+            private=False,
+            is_ligo_job=False,
+            ini_string=create_test_ini_string(
+                {
+                    "detectors": "['H1']",
+                    "trigger-time": 2.0,
+                    "n-simulation": 0,
+                }
+            ),
+        )
+
+    def test_embargoed_job_hidden_from_non_ligo_user(self):
+        job = self._create_embargoed_job()
+        self.authenticate()
+
+        with self.assertRaises(BilbyPermissionError):
+            BilbyJob.get_by_id(job.id, self.user)
+
+    def test_embargoed_job_visible_to_ligo_user(self):
+        job = self._create_embargoed_job()
+        ligo_user = self.create_user(id=2, name="willow", primary_email="willow@test.com")
+        ligo_user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
+        ligo_user.save()
+        self.authenticate(user=ligo_user)
+
+        self.assertEqual(BilbyJob.get_by_id(job.id, self.user), job)
+
+    def test_embargoed_job_visible_to_owner(self):
+        job = self._create_embargoed_job()
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+
+        self.assertEqual(BilbyJob.get_by_id(job.id, self.user), job)
