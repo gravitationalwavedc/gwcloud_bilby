@@ -211,6 +211,11 @@ class TestBuildFileEntry(unittest.TestCase):
         entry = _build_file_entry("uid-5", {"path": "/data/x.dat", "file_size": 100.5})
         self.assertIsNone(entry["file_size"])
 
+    def test_scientific_notation_integral_string_file_size_is_coerced_to_int(self):
+        entry = _build_file_entry("uid-6", {"path": "/data/x.dat", "file_size": "1e3"})
+        self.assertEqual(entry["file_size"], 1000)
+        self.assertIsInstance(entry["file_size"], int)
+
 
 if __name__ == "__main__":
     unittest.main()

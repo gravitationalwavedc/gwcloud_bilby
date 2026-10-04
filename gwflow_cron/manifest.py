@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -12,9 +13,12 @@ def _normalise_file_size(value):
         return value
     if isinstance(value, str):
         try:
-            return int(value)
-        except ValueError:
+            parsed = Decimal(value)
+        except (InvalidOperation, ValueError):
             return None
+        if parsed == parsed.to_integral_value():
+            return int(parsed)
+        return None
     return None
 
 
