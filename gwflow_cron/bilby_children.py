@@ -1,5 +1,6 @@
 import configparser
 import logging
+import math
 import re
 import shutil
 import tarfile
@@ -310,6 +311,9 @@ def resolve_event_id_for(sname: str, detail: dict) -> tuple[str, float] | None:
         gps_time = gracedb.get("gps_time")
 
     try:
-        return event_uid, float(gps_time)
+        parsed = float(gps_time)
     except (TypeError, ValueError):
         return None
+    if not math.isfinite(parsed):
+        return None
+    return event_uid, parsed
