@@ -158,6 +158,22 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
             with self.subTest(metadata=metadata):
                 self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
 
+    def test_preferred_event_gps_fallback(self):
+        # No usable per-event GPS time -> gracedb-level preferred_event_gps is used.
+        metadata = {"gracedb": {"events": [{"gps_time": None}], "preferred_event_gps": 2000.0}}
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
+    def test_gps_time_fallback(self):
+        # No usable per-event GPS time and no preferred_event_gps ->
+        # gracedb-level gps_time is used.
+        metadata = {"gracedb": {"events": [], "gps_time": 2000.0}}
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
+    def test_no_gracedb_gps_fallback_returns_none(self):
+        # No usable event GPS and no gracedb-level fallback -> None.
+        metadata = {"gracedb": {"events": [{"gps_time": "bad"}], "preferred_event_gps": None, "gps_time": None}}
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
+
 
 class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=None)
@@ -271,3 +287,25 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
         self.assertTrue(gwflow_ligo_only_from_metadata(metadata))
         metadata_below = {"gracedb": {"events": [{"state": "preferred", "gps_time": 1000.0}]}}
         self.assertFalse(gwflow_ligo_only_from_metadata(metadata_below))
+
+    @override_settings(EMBARGO_START_TIME=1500.0)
+    def test_preferred_event_gps_fallback(self):
+        # No usable per-event GPS time -> gracedb-level preferred_event_gps
+        # drives ligo_only instead of failing open.
+        metadata = {"gracedb": {"events": [{"gps_time": None}], "preferred_event_gps": 2000.0}}
+        self.assertTrue(gwflow_ligo_only_from_metadata(metadata))
+        metadata_below = {"gracedb": {"events": [], "preferred_event_gps": 1000.0}}
+        self.assertFalse(gwflow_ligo_only_from_metadata(metadata_below))
+
+    @override_settings(EMBARGO_START_TIME=1500.0)
+    def test_gps_time_fallback(self):
+        # No usable per-event GPS time and no preferred_event_gps ->
+        # gracedb-level gps_time drives ligo_only.
+        metadata = {"gracedb": {"events": [], "gps_time": 2000.0}}
+        self.assertTrue(gwflow_ligo_only_from_metadata(metadata))
+
+    @override_settings(EMBARGO_START_TIME=1500.0)
+    def test_no_gracedb_gps_fallback_fails_open(self):
+        # No usable event GPS and no gracedb-level fallback -> fail-open (False).
+        metadata = {"gracedb": {"events": [{"gps_time": "bad"}], "preferred_event_gps": None, "gps_time": None}}
+        self.assertFalse(gwflow_ligo_only_from_metadata(metadata))
