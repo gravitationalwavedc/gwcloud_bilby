@@ -391,7 +391,7 @@ def _gwflow_trigger_time_from_metadata(metadata):
             continue
         try:
             gps = float(gps)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             continue
         usable.append((event, gps))
 

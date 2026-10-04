@@ -67,6 +67,13 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
         metadata = {"gracedb": {"events": [{"state": "preferred", "gps_time": 2000.0}]}}
         self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
 
+    def test_out_of_range_gps_time_skipped(self):
+        # A numeric GPSTime that overflows Python's float range (e.g. a huge
+        # int) raises OverflowError from float(); it is skipped like any
+        # other malformed entry rather than crashing the caller.
+        metadata = _metadata_with_events([{"GPSTime": 10**1000}])
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
+
 
 class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=None)
@@ -98,6 +105,7 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
         self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": None}])))
         self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{}])))
         self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": [1, 2]}])))
+        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 10**1000}])))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_missing_event(self):
