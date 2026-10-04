@@ -67,7 +67,12 @@ from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs
 from .status import JobStatus
 from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
-from .utils.embargo import _gwflow_trigger_time_from_metadata, resolve_job_trigger, should_embargo_job
+from .utils.embargo import (
+    _gwflow_trigger_time_from_metadata,
+    is_record_public,
+    resolve_job_trigger,
+    should_embargo_job,
+)
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
 from .utils.gwflow_portal import get_superevent, get_version, get_versions
@@ -1574,8 +1579,10 @@ def gwflow_jobs_view(request):
 
 
 def _get_gwflow_job_or_404(request, sname):
-    job = get_object_or_404(GWFlowJob, sname=sname)
+    job = get_object_or_404(GWFlowJob.objects.select_related("event_id"), sname=sname)
     if job.ligo_only and not is_ligo_user(request.user):
+        raise Http404
+    if not is_ligo_user(request.user) and not is_record_public(job, request.user):
         raise Http404
     return job
 
