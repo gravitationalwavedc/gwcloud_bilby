@@ -638,6 +638,29 @@ class TestEventIDGetByEventId(BilbyTestCase):
         return EventID.get_by_event_id(event_id, user)
 
 
+@override_settings(EMBARGO_START_TIME=1.5)
+class TestEventIDGetByEventIdEmbargo(BilbyTestCase):
+    def setUp(self):
+        self.embargoed_event = EventID.create(event_id="GW123456_123456", gps_time=2.0, is_ligo_event=False)
+        self.public_event = EventID.create(event_id="GW123456_654321", gps_time=1.0, is_ligo_event=False)
+
+    def test_get_by_event_id_raises_for_embargoed_event_non_ligo_user(self):
+        user = self.create_user()
+        with self.assertRaises(BilbyPermissionError):
+            self.get_by_event_id(self.embargoed_event.event_id, user)
+
+    def test_get_by_event_id_returns_embargoed_event_for_ligo_user(self):
+        user = self.create_user(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+        self.assertEqual(self.get_by_event_id(self.embargoed_event.event_id, user), self.embargoed_event)
+
+    def test_get_by_event_id_returns_public_event_for_non_ligo_user(self):
+        user = self.create_user()
+        self.assertEqual(self.get_by_event_id(self.public_event.event_id, user), self.public_event)
+
+    def get_by_event_id(self, event_id, user):
+        return EventID.get_by_event_id(event_id, user)
+
+
 class TestEventIDFilterByLigo(BilbyTestCase):
     def setUp(self):
         EventID.create(event_id="GW123456_123456", gps_time=1234567890.0, is_ligo_event=True)

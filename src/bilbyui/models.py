@@ -42,7 +42,7 @@ class BilbyPermissionError(PermissionError):
 
 
 from .utils.auth.lookup_users import request_lookup_users
-from .utils.embargo import embargo_filter
+from .utils.embargo import embargo_filter, is_record_public
 from .utils.gwflow_es import gwflow_elastic_search_remove
 from .utils.jobs.submit_job import submit_job
 from .utils.misc import is_ligo_user
@@ -138,6 +138,13 @@ class EventID(models.Model):
         event = cls.objects.get(event_id=event_id)
 
         if event.is_ligo_event and not is_ligo_user(user):
+            raise BilbyPermissionError
+
+        # Users can only access the event if it is public under the trigger-time
+        # embargo policy. New events no longer persist is_ligo_event, so this
+        # gate keeps embargoed events hidden from non-LIGO users via the
+        # single-record read path.
+        if not is_record_public(event, user):
             raise BilbyPermissionError
 
         return event
