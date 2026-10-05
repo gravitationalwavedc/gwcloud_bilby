@@ -67,7 +67,7 @@ from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs
 from .status import JobStatus
 from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
-from .utils.embargo import gwflow_ligo_only_from_metadata, resolve_job_trigger, should_embargo_job
+from .utils.embargo import _gwflow_trigger_time_from_metadata, resolve_job_trigger, should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
 from .utils.gwflow_portal import get_superevent, get_version, get_versions
@@ -78,6 +78,7 @@ from .utils.job_validation import validate_job_name
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
 from .utils.misc import es_section_dict, is_ligo_user
+from .utils.reindex import reindex_jobs
 from .utils.time_range import _normalize_time_range
 
 logger = logging.getLogger(__name__)
@@ -2600,6 +2601,7 @@ def upsert_gwflow_job(user, params):
 
     with transaction.atomic():
         job, created = GWFlowJob.objects.get_or_create(sname=sname, defaults={"user": user})
+        prior_trigger_state = (job.trigger_time, job.event_id_id)
 
         # --- Version-ordering guard (issue #74) ---
         # The authoritative version is (current_history_timestamp, current_history_id):
@@ -2653,14 +2655,14 @@ def upsert_gwflow_job(user, params):
                 except Exception as e:
                     logger.warning("EventID lookup failed for event_id %s on job %s: %s", event_id_param, sname, e)
 
-            # Derive ligo_only from the portal metadata when provided (issue #83).
-            # The embargo start time and the superevent's trigger GPS time
-            # determine public visibility; this overrides any value supplied via
-            # the generic update loop above.
             if metadata_dict is not None:
-                job.ligo_only = gwflow_ligo_only_from_metadata(metadata_dict)
+                job.trigger_time = _gwflow_trigger_time_from_metadata(metadata_dict)
 
             job.save()
+
+            if (job.trigger_time, job.event_id_id) != prior_trigger_state:
+                job_id = job.id
+                transaction.on_commit(lambda job_id=job_id: reindex_jobs([job_id], "gwflow"))
 
             # Facet-relevant fields (libraries, ligo_only, is_pruned, review
             # statuses) may have changed — invalidate the cached filter options
