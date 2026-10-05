@@ -2,6 +2,7 @@ from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
@@ -130,6 +131,41 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertResponseNoErrors(res_ligo)
         self.assertIsNotNone(res_ligo.data["gwflowJobBySname"])
         self.assertEqual(res_ligo.data["gwflowJobBySname"]["sname"], "S230601ah")
+
+    @override_settings(EMBARGO_START_TIME=1500.0)
+    def test_gwflow_job_by_sname_trigger_time_embargo(self):
+        query = """
+            query GetBySname($sname: String!) {
+                gwflowJobBySname(sname: $sname) {
+                    id
+                    sname
+                }
+            }
+        """
+        event = EventID.objects.create(event_id="S230601ak", gps_time=1600.0)
+        embargoed = GWFlowJob.objects.create(
+            sname="S230601ak",
+            user=self.ingest_user,
+            schema_version="v1",
+            libraries=["cbc-workflow-o4a"],
+            ligo_only=False,
+            is_pruned=False,
+            trigger_time=1600.0,
+            event_id=event,
+        )
+
+        # Non-LIGO user cannot see an embargoed (trigger-time) superevent
+        self._auth_as(self.normal_user)
+        res = self.query(query, variables={"sname": embargoed.sname})
+        self.assertResponseNoErrors(res)
+        self.assertIsNone(res.data["gwflowJobBySname"])
+
+        # LIGO user can see it
+        self._auth_as(self.ligo_user)
+        res_ligo = self.query(query, variables={"sname": embargoed.sname})
+        self.assertResponseNoErrors(res_ligo)
+        self.assertIsNotNone(res_ligo.data["gwflowJobBySname"])
+        self.assertEqual(res_ligo.data["gwflowJobBySname"]["sname"], embargoed.sname)
 
     def test_gwflow_job_by_sname_missing_returns_none(self):
         query = """

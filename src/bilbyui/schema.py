@@ -46,6 +46,7 @@ from .types import (
     SupportingFileUploadResult,
 )
 from .utils.derive_job_status import derive_job_status
+from .utils.embargo import is_record_public
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
@@ -228,6 +229,8 @@ def _visible_gwflow_job(job, user):
         return None
     if job.ligo_only and not is_ligo_user(user):
         return None
+    if not is_record_public(job, user):
+        return None
     return job
 
 
@@ -253,7 +256,11 @@ class BilbyJobNode(DjangoObjectType):
         user_id = user.id if user.is_authenticated else 0
 
         qs = BilbyJob.bilby_job_filter(queryset, user)
-        qs = qs.select_related("event_id", "gwflow_job").prefetch_related("labels").select_related("user")
+        qs = (
+            qs.select_related("event_id", "gwflow_job", "gwflow_job__event_id")
+            .prefetch_related("labels")
+            .select_related("user")
+        )
 
         _cache_job_controller_jobs(qs, user_id, info.context)
 
@@ -398,7 +405,7 @@ class Query:
 
     def resolve_gwflow_job_by_sname(self, info, sname):
         try:
-            job = GWFlowJob.objects.get(sname=sname)
+            job = GWFlowJob.objects.select_related("event_id").get(sname=sname)
         except GWFlowJob.DoesNotExist:
             return None
 
