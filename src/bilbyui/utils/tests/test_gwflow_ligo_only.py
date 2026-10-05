@@ -139,11 +139,7 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
 
         for index, value in enumerate(values):
             with self.subTest(index=index, value_type=type(value).__name__):
-                self.assertIsNone(
-                    _gwflow_trigger_time_from_metadata(
-                        _metadata_with_events([{"GPSTime": value}])
-                    )
-                )
+                self.assertIsNone(_gwflow_trigger_time_from_metadata(_metadata_with_events([{"GPSTime": value}])))
 
     def test_malformed_and_missing_metadata_return_none(self):
         cases = (

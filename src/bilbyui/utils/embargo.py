@@ -350,7 +350,16 @@ def resolve_job_trigger(processed_args=None, args=None) -> float | None:
 
 
 def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
-    """Return the preferred finite GraceDB trigger time, if available."""
+    """Return a finite trigger time from GraceDB metadata, or ``None``.
+
+    A valid top-level ``GraceDB``/``gracedb`` mapping takes precedence over
+    the corresponding mapping under ``raw_payload``; once a mapping source is
+    selected it is not abandoned even if its event list is unusable. Within
+    the selected mapping, scan ``Events``/``events`` in source order, reject
+    non-finite/boolean/malformed GPS values, and return the first usable
+    preferred event (``State``/``state`` == "preferred"), otherwise the first
+    usable event.
+    """
     if not isinstance(metadata, Mapping):
         return None
 
@@ -408,6 +417,7 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
             return gps
 
     return usable[0][1] if usable else None
+
 
 def gwflow_ligo_only_from_metadata(metadata):
     """
