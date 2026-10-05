@@ -488,6 +488,10 @@ class TestResolveEventIdFor(unittest.TestCase):
         detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": "inf"}]}}
         self.assertIsNone(resolve_event_id_for("S1", detail))
 
+    def test_oversized_integer_gps_returns_none(self):
+        detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": 10**400}]}}
+        self.assertIsNone(resolve_event_id_for("S1", detail))
+
     def test_gpstime_alias_used(self):
         detail = {"gracedb": {"events": [{"uid": "EVT-A", "gpstime": 1234567890.5}]}}
         self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
