@@ -2,6 +2,7 @@ from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
@@ -12,6 +13,7 @@ from bilbyui.types import GWFlowFileType
 User = get_user_model()
 
 
+@override_settings(EMBARGO_START_TIME=100.0)
 class TestGWFlowQueries(BilbyTestCase):
     def setUp(self):
         super().setUp()
@@ -37,7 +39,8 @@ class TestGWFlowQueries(BilbyTestCase):
             user=self.ingest_user,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
-            ligo_only=False,
+            ligo_only=True,
+            trigger_time=99.0,
             is_pruned=False,
             event_id=self.event_id,
         )
@@ -50,13 +53,14 @@ class TestGWFlowQueries(BilbyTestCase):
             uploaded=True,
         )
 
-        # LIGO-only GWFlowJob
+        # Embargoed GWFlowJob. The contradictory legacy flag proves it is ignored.
         self.job_ligo = GWFlowJob.objects.create(
             sname="S230601ah",
             user=self.ingest_user,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
-            ligo_only=True,
+            ligo_only=False,
+            trigger_time=100.0,
             is_pruned=False,
         )
 
@@ -371,11 +375,11 @@ class TestGWFlowQueries(BilbyTestCase):
         """
         job_id = to_global_id("BilbyJobNode", ligo_linked_job.id)
 
-        # Non-LIGO user sees BilbyJob, but gwflowJob resolves to None
+        # Parent taint makes the Bilby job itself unavailable to a non-member.
         self._auth_as(self.normal_user)
         res = self.query(query, variables={"id": job_id})
         self.assertResponseNoErrors(res)
-        self.assertIsNone(res.data["bilbyJob"]["gwflowJob"])
+        self.assertIsNone(res.data["bilbyJob"])
 
         # LIGO user sees gwflowJob
         self._auth_as(self.ligo_user)

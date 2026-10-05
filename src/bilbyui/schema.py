@@ -16,6 +16,7 @@ from graphql_relay.node.node import from_global_id, to_global_id
 
 from .constants import BilbyJobType
 from .models import (
+    UNSET,
     BilbyJob,
     BilbyJobUploadToken,
     BilbyPermissionError,
@@ -46,10 +47,11 @@ from .types import (
     SupportingFileUploadResult,
 )
 from .utils.derive_job_status import derive_job_status
+from .utils.embargo import is_record_public, visible_to_user
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
-from .utils.misc import es_section_dict, is_ligo_user
+from .utils.misc import es_section_dict
 from .utils.time_range import _normalize_time_range
 from .views import (
     _build_result_file_entries,
@@ -118,6 +120,8 @@ class LabelType(DjangoObjectType):
 
 
 class EventIDType(DjangoObjectType):
+    gps_time = graphene.Float(required=False)
+
     class Meta:
         model = EventID
         interfaces = (relay.Node,)
@@ -180,10 +184,11 @@ class GWFlowJobNode(DjangoObjectType):
 
     @classmethod
     def get_queryset(cls, queryset, info):
-        user = info.context.user
-        if not is_ligo_user(user):
-            queryset = queryset.filter(ligo_only=False)
-        return queryset.select_related("user")
+        return visible_to_user(
+            queryset,
+            info.context.user,
+            "GWFlowJob",
+        ).select_related("event_id", "user")
 
     def resolve_user(self, info):
         try:
@@ -222,13 +227,17 @@ class GWFlowJobConnection(relay.Connection):
 
 
 def _visible_gwflow_job(job, user):
-    if not job:
+    if not job or job.is_pruned:
         return None
-    if job.is_pruned:
-        return None
-    if job.ligo_only and not is_ligo_user(user):
-        return None
-    return job
+    return (
+        visible_to_user(
+            GWFlowJob.objects.filter(pk=job.pk, is_pruned=False),
+            user,
+            "GWFlowJob",
+        )
+        .select_related("event_id", "user")
+        .first()
+    )
 
 
 class BilbyJobNode(DjangoObjectType):
@@ -288,7 +297,12 @@ class BilbyJobNode(DjangoObjectType):
         return self.event_id
 
     def resolve_gwflow_job(self, info):
-        return _visible_gwflow_job(self.gwflow_job, info.context.user)
+        gwflow_job = self.gwflow_job
+        if not gwflow_job or gwflow_job.is_pruned:
+            return None
+        if not is_record_public(gwflow_job, info.context.user):
+            return None
+        return gwflow_job
 
     def resolve_gwflow_analysis_uid(self, info):
         return self.gwflow_analysis_uid or None
@@ -397,12 +411,15 @@ class Query:
     )
 
     def resolve_gwflow_job_by_sname(self, info, sname):
-        try:
-            job = GWFlowJob.objects.get(sname=sname)
-        except GWFlowJob.DoesNotExist:
-            return None
-
-        return _visible_gwflow_job(job, info.context.user)
+        return (
+            visible_to_user(
+                GWFlowJob.objects.filter(sname=sname, is_pruned=False),
+                info.context.user,
+                "GWFlowJob",
+            )
+            .select_related("event_id", "user")
+            .first()
+        )
 
     def resolve_gwflow_jobs(self, info, **kwargs):
         user = info.context.user
@@ -597,8 +614,8 @@ class Query:
         try:
             entries = _build_result_file_entries(job)
         except RuntimeError as e:
-            logger.error("Failed to get file list for job %s: %s", job_id, e)
-            raise GraphQLError("Error getting file list. " + str(e)) from e
+            logger.exception("Failed to get result files for Bilby job %s", job_id)
+            raise GraphQLError("Unable to retrieve result files.") from e
 
         result = [
             BilbyResultFile(
@@ -657,7 +674,8 @@ class UpdateEventIDMutation(relay.ClientIDMutation):
         if user.id not in settings.PERMITTED_EVENT_CREATION_USER_IDS:
             raise GraphQLError("User is not permitted to modify EventIDs")
 
-        message = update_event_id(user, **kwargs)
+        gps_time = kwargs.pop("gps_time", UNSET)
+        message = update_event_id(user, gps_time=gps_time, **kwargs)
 
         return UpdateEventIDMutation(result=message)
 

@@ -5,6 +5,7 @@ from unittest import mock
 import elasticsearch
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from graphql_relay.node.node import to_global_id
 from humps import camelize
 
@@ -12,6 +13,7 @@ from bilbyui.models import BilbyJob, EventID, GWFlowJob, Label
 from bilbyui.services.jobs import list_public_jobs, list_user_jobs
 from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.embargo import reset_embargo_start_cache
 
 User = get_user_model()
 
@@ -247,7 +249,10 @@ class TestBilbyJobQueries(BilbyTestCase):
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
     )
+    @override_settings(EMBARGO_START_TIME=1000000000.0)
     def test_bilby_job_query_anonymous_user(self, *args):
+        reset_embargo_start_cache()
+        self.addCleanup(reset_embargo_start_cache)
         """
         bilbyJob node query should return a single job as expected for an anonymous user"
         """
@@ -270,8 +275,9 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         # Anonymous user can't see ligo jobs
         self.job.private = False
-        self.job.is_ligo_job = True
+        self.job.is_ligo_job = False
         self.job.save()
+        BilbyJob.objects.filter(pk=self.job.pk).update(trigger_time=1000000000.0)
 
         response = self.job_request(*request_data)
         self.assertDictEqual(expected_none, response.data, "bilbyJob query returned unexpected data.")
@@ -280,7 +286,10 @@ class TestBilbyJobQueries(BilbyTestCase):
         "bilbyui.schema.request_job_filter",
         side_effect=lambda *args, **kwargs: (True, []),
     )
+    @override_settings(EMBARGO_START_TIME=1000000000.0)
     def test_bilby_job_query_non_ligo_user(self, *args):
+        reset_embargo_start_cache()
+        self.addCleanup(reset_embargo_start_cache)
         """
         bilbyJob node query should return a single job as expected for a user who is not a ligo user"
         """
@@ -324,9 +333,10 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         # Non ligo users should not be able to see ligo jobs
         self.job.private = False
-        self.job.is_ligo_job = True
+        self.job.is_ligo_job = False
         self.job.user_id = self.user.id
         self.job.save()
+        BilbyJob.objects.filter(pk=self.job.pk).update(trigger_time=1000000000.0)
 
         response = self.job_request(*request_data)
         self.assertDictEqual(expected_none, response.data, "bilbyJob query returned unexpected data.")

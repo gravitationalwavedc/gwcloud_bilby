@@ -1,6 +1,7 @@
 import uuid
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.test import override_settings
@@ -10,6 +11,7 @@ from bilbyui.models import GWFlowFile, GWFlowJob
 from bilbyui.tests.testcases import BilbyTestCase
 
 
+@override_settings(EMBARGO_START_TIME=100.0)
 class GWFlowDownloadTestCase(BilbyTestCase):
     def setUp(self):
         super().setUp()
@@ -154,13 +156,14 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             response = self.client.get(f"/file_download/?fileId={gwflow_file.download_token}")
             self.assertEqual(response.status_code, 404)
 
-    def test_file_download_gwflow_file_ligo_only_visibility_matrix(self):
-        """Test ligo_only visibility matrix across user authentication states."""
+    def test_file_download_gwflow_file_visibility_matrix(self):
+        """Test trigger-time visibility across authentication states."""
         with override_settings(GWFLOW_FILE_UPLOAD_DIR=self.temp_dir.name):
             job_ligo = GWFlowJob.objects.create(
                 sname="S230601ag_ligo",
                 user=self.user,
-                ligo_only=True,
+                trigger_time=100.0,
+                ligo_only=False,
             )
             file_ligo = GWFlowFile.objects.create(
                 job=job_ligo,
@@ -176,7 +179,8 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             job_public = GWFlowJob.objects.create(
                 sname="S230601ag_public",
                 user=self.user,
-                ligo_only=False,
+                trigger_time=99.0,
+                ligo_only=True,
             )
             file_public = GWFlowFile.objects.create(
                 job=job_public,
@@ -193,7 +197,7 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             non_ligo_user = self.create_user(id=10, authentication_method=AUTHENTICATION_METHODS["PASSWORD"])
             self.authenticate(user=non_ligo_user)
 
-            # Non-LIGO user downloading ligo_only -> 404
+            # Non-LIGO user downloading embargoed file -> 404
             resp_ligo = self.client.get(f"/file_download/?fileId={file_ligo.download_token}")
             self.assertEqual(resp_ligo.status_code, 404)
 
@@ -205,7 +209,7 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             ligo_user = self.create_user(id=11, authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
             self.authenticate(user=ligo_user)
 
-            # LIGO user downloading ligo_only -> 200
+            # LIGO user downloading embargoed file -> 200
             resp_ligo_ok = self.client.get(f"/file_download/?fileId={file_ligo.download_token}")
             self.assertEqual(resp_ligo_ok.status_code, 200)
             self.assertEqual(b"".join(resp_ligo_ok.streaming_content), b"ligo data")
@@ -232,13 +236,14 @@ class GWFlowDownloadTestCase(BilbyTestCase):
         response = self.client.get(f"/file_download/?fileId={invalid_token}")
         self.assertEqual(response.status_code, 404)
 
-    def test_named_gwflow_file_download_non_ligo_user_ligo_only_returns_404(self):
-        """Defence-in-depth: a non-LIGO user cannot download a LIGO-only job's file via the named route."""
+    def test_named_gwflow_file_download_embargoed_returns_404(self):
+        """The named route denies a currently embargoed GWFlow owner."""
         with override_settings(GWFLOW_FILE_UPLOAD_DIR=self.temp_dir.name):
             job = GWFlowJob.objects.create(
                 sname="S230601ag_ligo_only",
                 user=self.user,
-                ligo_only=True,
+                trigger_time=100.0,
+                ligo_only=False,
             )
             gwflow_file = GWFlowFile.objects.create(
                 job=job,
@@ -257,3 +262,78 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             url = reverse("bilbyui:gwflow_file_download", args=[gwflow_file.download_token])
             response = self.client.get(url)
             self.assertEqual(response.status_code, 404)
+
+    @staticmethod
+    def response_triple(response):
+        return response.status_code, response.content, sorted(response.headers.items())
+
+    def test_stale_gwflow_token_reauthorizes_before_file_work(self):
+        with override_settings(GWFLOW_FILE_UPLOAD_DIR=self.temp_dir.name):
+            job = GWFlowJob.objects.create(
+                sname="S230601ag_stale",
+                user=self.user,
+                trigger_time=99.0,
+                ligo_only=False,
+            )
+            gwflow_file = GWFlowFile.objects.create(
+                job=job,
+                analysis_uid="",
+                path="outdir/known-gwflow.h5",
+                file_name="known-gwflow.h5",
+                uploaded=True,
+            )
+
+            GWFlowJob.objects.filter(pk=job.pk).update(trigger_time=100.0)
+
+            with (
+                patch("bilbyui.views.Path") as path_probe,
+                patch("bilbyui.views._file_response") as file_response,
+            ):
+                denied = self.client.get(
+                    f"/file_download/?fileId={gwflow_file.download_token}"
+                )
+
+            missing = self.client.get(f"/file_download/?fileId={uuid.uuid4()}")
+            self.assertEqual(
+                self.response_triple(denied),
+                self.response_triple(missing),
+            )
+            self.assertNotIn("Content-Disposition", denied.headers)
+            self.assertNotIn(b"known-gwflow.h5", denied.content)
+            path_probe.assert_not_called()
+            file_response.assert_not_called()
+
+    def test_named_stale_gwflow_token_denial_matches_missing(self):
+        job = GWFlowJob.objects.create(
+            sname="S230601ag_named_stale",
+            user=self.user,
+            trigger_time=99.0,
+            ligo_only=False,
+        )
+        gwflow_file = GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="",
+            path="outdir/named-secret.h5",
+            file_name="named-secret.h5",
+            uploaded=True,
+        )
+        GWFlowJob.objects.filter(pk=job.pk).update(trigger_time=100.0)
+
+        with (
+            patch("bilbyui.views.Path") as path_probe,
+            patch("bilbyui.views._file_response") as file_response,
+        ):
+            denied = self.client.get(
+                reverse(
+                    "bilbyui:gwflow_file_download",
+                    args=[gwflow_file.download_token],
+                )
+            )
+            missing = self.client.get(
+                reverse("bilbyui:gwflow_file_download", args=[uuid.uuid4()])
+            )
+
+        self.assertEqual(self.response_triple(denied), self.response_triple(missing))
+        self.assertNotIn("Content-Disposition", denied.headers)
+        path_probe.assert_not_called()
+        file_response.assert_not_called()

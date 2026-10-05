@@ -1,8 +1,10 @@
 from unittest import mock
 
 from django.conf import settings
+from django.test import override_settings
 
 from bilbyui.models import BilbyJob, EventID
+from bilbyui.services.jobs import list_user_jobs
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
@@ -235,6 +237,26 @@ class TestMyJobsView(BilbyTestCase):
         self.assertContains(response, "GW123456_123456")
         self.assertContains(response, "S123456a")
         self.assertContains(response, "GW123456")
+
+    @override_settings(EMBARGO_START_TIME=100.0)
+    def test_total_and_has_next_use_adapter_filtered_queryset(self):
+        self.authenticate()
+
+        for index, trigger_time in enumerate((97.0, 98.0, 99.0, 100.0)):
+            job = BilbyJob.objects.create(
+                user_id=self.user.id,
+                name=f"Visibility page job {index}",
+                private=False,
+                ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            )
+            BilbyJob.objects.filter(pk=job.pk).update(trigger_time=trigger_time)
+
+        result = list_user_jobs(self.user, page=1, page_size=2)
+
+        self.assertEqual(result["total"], 3)
+        self.assertEqual(len(result["jobs"]), 2)
+        self.assertTrue(result["has_next"])
+        self.assertTrue(all(job.trigger_time < 100.0 for job in result["jobs"]))
 
     @mock.patch("bilbyui.services.jobs.request_job_filter", side_effect=request_job_filter_mock)
     def test_renders_no_event_ids_when_missing(self, request_job_filter):

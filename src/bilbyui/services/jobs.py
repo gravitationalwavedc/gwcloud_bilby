@@ -95,7 +95,7 @@ def list_user_jobs(user, *, search="", time_range="all", page=1, page_size=20):
     # reports "ok" (a DB error surfaces as a 500, not a service-down result).
     qs = (
         BilbyJob.user_bilby_job_filter(BilbyJob.objects.all(), user)
-        .select_related("event_id")
+        .select_related("event_id", "gwflow_job__event_id")
         .prefetch_related("labels")
         .order_by("-last_updated")
     )

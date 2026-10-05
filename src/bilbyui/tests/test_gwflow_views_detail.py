@@ -2,7 +2,7 @@ from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.http import Http404
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
@@ -57,7 +57,7 @@ class TestGWFlowJobDetailView(BilbyTestCase):
             self.ligo_user,
             libraries=["lib-a", "lib-b"],
             schema_version="v2",
-            is_pruned=True,
+            is_pruned=False,
             current_history_id="abcdef123456",
             current_history_timestamp="2026-08-10 12:34:56+00:00",
             event_id=event_id,
@@ -70,7 +70,6 @@ class TestGWFlowJobDetailView(BilbyTestCase):
         self.assertContains(response, "lib-a")
         self.assertContains(response, "lib-b")
         self.assertContains(response, "v2")
-        self.assertContains(response, "pruned")
         self.assertContains(response, "abcdef12")
         self.assertContains(response, "2026-08-10 12:34 UTC")
         self.assertContains(response, "Metadata")
@@ -411,6 +410,7 @@ class TestGWFlowSectionRoutes(BilbyTestCase):
         self.assertNotIn("v2", pane_region)
 
 
+@override_settings(EMBARGO_START_TIME=100.0)
 class TestGWFlowJobVisibility(BilbyTestCase):
     def setUp(self):
         self.ligo_user = self.create_user(
@@ -418,8 +418,18 @@ class TestGWFlowJobVisibility(BilbyTestCase):
             authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"],
         )
         self.non_ligo_user = self.create_user(id=11)
-        self.ligo_job = _create_job(self.ligo_user, sname="S230601ag", ligo_only=True)
-        self.public_job = _create_job(self.ligo_user, sname="S230602ag", ligo_only=False)
+        self.embargoed_job = _create_job(
+            self.ligo_user,
+            sname="S230601ag",
+            trigger_time=100.0,
+            ligo_only=False,
+        )
+        self.public_job = _create_job(
+            self.ligo_user,
+            sname="S230602ag",
+            trigger_time=99.0,
+            ligo_only=True,
+        )
         self.authenticate(user=self.ligo_user)
 
     def _section_routes(self, sname):
@@ -429,51 +439,79 @@ class TestGWFlowJobVisibility(BilbyTestCase):
             reverse("bilbyui:gwflow_job_history", args=[sname]),
         ]
 
-    def test_anonymous_404_on_all_routes(self):
+    def _assert_denied_without_portal_calls(self, *, hx=False):
+        with (
+            mock.patch("bilbyui.views.get_superevent") as get_superevent,
+            mock.patch("bilbyui.views.get_versions") as get_versions,
+            mock.patch("bilbyui.views.get_version") as get_version,
+        ):
+            routes = self._section_routes(self.embargoed_job.sname) + [
+                reverse(
+                    "bilbyui:gwflow_job_detail",
+                    args=[self.embargoed_job.sname],
+                )
+            ]
+            for url in routes:
+                kwargs = {"HTTP_HX_REQUEST": "true"} if hx else {}
+                denied = self.client.get(url, **kwargs)
+                missing = self.client.get(
+                    url.replace(self.embargoed_job.sname, "S999999zz"),
+                    **kwargs,
+                )
+                self.assertEqual(denied.status_code, 404)
+                self.assertEqual(
+                    (denied.status_code, denied.content, sorted(denied.headers.items())),
+                    (missing.status_code, missing.content, sorted(missing.headers.items())),
+                )
+            get_superevent.assert_not_called()
+            get_versions.assert_not_called()
+            get_version.assert_not_called()
+
+    def test_anonymous_denied_matches_missing_and_makes_zero_portal_calls(self):
         self.deauthenticate()
-        for url in self._section_routes(self.ligo_job.sname) + [
-            reverse("bilbyui:gwflow_job_detail", args=[self.ligo_job.sname])
-        ]:
-            self.assertEqual(self.client.get(url).status_code, 404)
+        self._assert_denied_without_portal_calls()
 
-    def test_non_ligo_user_404_on_all_routes(self):
+    def test_non_ligo_denied_matches_missing_and_makes_zero_portal_calls(self):
         self.authenticate(user=self.non_ligo_user)
-        for url in self._section_routes(self.ligo_job.sname) + [
-            reverse("bilbyui:gwflow_job_detail", args=[self.ligo_job.sname])
-        ]:
-            self.assertEqual(self.client.get(url).status_code, 404)
+        self._assert_denied_without_portal_calls()
 
-    def test_non_ligo_user_404_on_hx_requests(self):
+    def test_non_ligo_hx_denied_makes_zero_portal_calls(self):
         self.authenticate(user=self.non_ligo_user)
-        for url in self._section_routes(self.ligo_job.sname):
-            self.assertEqual(self.client.get(url, HTTP_HX_REQUEST="true").status_code, 404)
+        self._assert_denied_without_portal_calls(hx=True)
 
     def test_ligo_user_200_on_all_routes(self):
         with mock.patch("bilbyui.views.get_superevent", return_value=({}, "live")):
             with mock.patch("bilbyui.views.get_versions", return_value=([], "live")):
-                for url in self._section_routes(self.ligo_job.sname):
+                for url in self._section_routes(self.embargoed_job.sname):
                     self.assertEqual(self.client.get(url).status_code, 200)
-        # Base URL redirects for an authorised user.
         self.assertEqual(
-            self.client.get(reverse("bilbyui:gwflow_job_detail", args=[self.ligo_job.sname])).status_code,
+            self.client.get(
+                reverse(
+                    "bilbyui:gwflow_job_detail",
+                    args=[self.embargoed_job.sname],
+                )
+            ).status_code,
             302,
         )
 
-    def test_non_ligo_only_job_visible_to_non_ligo_user(self):
+    def test_legacy_flag_does_not_hide_public_job(self):
         self.authenticate(user=self.non_ligo_user)
         with mock.patch("bilbyui.views.get_superevent", return_value=({}, "live")):
             with mock.patch("bilbyui.views.get_versions", return_value=([], "live")):
                 for url in self._section_routes(self.public_job.sname):
                     self.assertEqual(self.client.get(url).status_code, 200)
         self.assertEqual(
-            self.client.get(reverse("bilbyui:gwflow_job_detail", args=[self.public_job.sname])).status_code,
+            self.client.get(
+                reverse("bilbyui:gwflow_job_detail", args=[self.public_job.sname])
+            ).status_code,
             302,
         )
 
     def test_missing_job_404(self):
         self.authenticate(user=self.ligo_user)
-        response = self.client.get(reverse("bilbyui:gwflow_job_detail", args=["S999999zz"]))
-
+        response = self.client.get(
+            reverse("bilbyui:gwflow_job_detail", args=["S999999zz"])
+        )
         self.assertEqual(response.status_code, 404)
 
 

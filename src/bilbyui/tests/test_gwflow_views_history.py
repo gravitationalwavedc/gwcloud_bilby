@@ -288,6 +288,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.assertEqual(response.status_code, 404)
 
 
+@override_settings(EMBARGO_START_TIME=100.0)
 class TestGWFlowHistoryVisibility(BilbyTestCase):
     def setUp(self):
         self.ligo_user = self.create_user(
@@ -295,36 +296,69 @@ class TestGWFlowHistoryVisibility(BilbyTestCase):
             authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"],
         )
         self.non_ligo_user = self.create_user(id=11)
-        self.ligo_job = _create_job(self.ligo_user, sname="S230601ag", ligo_only=True)
-        self.public_job = _create_job(self.ligo_user, sname="S230602ag", ligo_only=False)
+        self.embargoed_job = _create_job(
+            self.ligo_user,
+            sname="S230601ag",
+            trigger_time=100.0,
+            ligo_only=False,
+        )
+        self.public_job = _create_job(
+            self.ligo_user,
+            sname="S230602ag",
+            trigger_time=99.0,
+            ligo_only=True,
+        )
         self.sha = "1111222233334444555566667777888899990000"
 
     def _history_routes(self, sname):
         return [
             reverse("bilbyui:gwflow_job_history", args=[sname]),
-            reverse("bilbyui:gwflow_job_history_version", args=[sname, self.sha]),
+            reverse(
+                "bilbyui:gwflow_job_history_version",
+                args=[sname, self.sha],
+            ),
         ]
 
-    def test_anonymous_404_on_all_history_routes(self):
-        self.deauthenticate()
-        for url in self._history_routes(self.ligo_job.sname):
-            self.assertEqual(self.client.get(url).status_code, 404)
+    def _assert_denied_without_portal_calls(self):
+        with (
+            mock.patch("bilbyui.views.get_versions") as get_versions,
+            mock.patch("bilbyui.views.get_version") as get_version,
+        ):
+            for url in self._history_routes(self.embargoed_job.sname):
+                denied = self.client.get(url)
+                missing = self.client.get(
+                    url.replace(self.embargoed_job.sname, "S999999zz")
+                )
+                self.assertEqual(denied.status_code, 404)
+                self.assertEqual(
+                    (denied.status_code, denied.content, sorted(denied.headers.items())),
+                    (missing.status_code, missing.content, sorted(missing.headers.items())),
+                )
+            get_versions.assert_not_called()
+            get_version.assert_not_called()
 
-    def test_non_ligo_user_404_on_all_history_routes(self):
+    def test_anonymous_denied_matches_missing_and_makes_zero_portal_calls(self):
+        self.deauthenticate()
+        self._assert_denied_without_portal_calls()
+
+    def test_non_ligo_denied_matches_missing_and_makes_zero_portal_calls(self):
         self.authenticate(user=self.non_ligo_user)
-        for url in self._history_routes(self.ligo_job.sname):
-            self.assertEqual(self.client.get(url).status_code, 404)
+        self._assert_denied_without_portal_calls()
 
     @mock.patch("bilbyui.views.get_versions", return_value=([], "live"))
     @mock.patch("bilbyui.views.get_version", return_value=({}, "live"))
-    def test_ligo_user_200_on_all_history_routes(self, mock_get_version, mock_get_versions):
+    def test_ligo_user_200_on_all_history_routes(
+        self,
+        mock_get_version,
+        mock_get_versions,
+    ):
         self.authenticate(user=self.ligo_user)
-        for url in self._history_routes(self.ligo_job.sname):
+        for url in self._history_routes(self.embargoed_job.sname):
             self.assertEqual(self.client.get(url).status_code, 200)
 
     @mock.patch("bilbyui.views.get_versions", return_value=([], "live"))
     @mock.patch("bilbyui.views.get_version", return_value=({}, "live"))
-    def test_public_job_visible_to_non_ligo_user_on_history_routes(
+    def test_legacy_flag_does_not_hide_public_history(
         self,
         mock_get_version,
         mock_get_versions,
