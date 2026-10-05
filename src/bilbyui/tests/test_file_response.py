@@ -67,9 +67,7 @@ class BilbyCapabilityTokenGateTestCase(BilbyTestCase):
         return job
 
     def missing_response(self):
-        return self.client.get(
-            f"{reverse('file_download')}?fileId={uuid.uuid4()}"
-        )
+        return self.client.get(f"{reverse('file_download')}?fileId={uuid.uuid4()}")
 
     def test_file_download_token_reauthorizes_stale_owner_before_path_work(self):
         job = self.create_job()
@@ -87,9 +85,7 @@ class BilbyCapabilityTokenGateTestCase(BilbyTestCase):
             patch("bilbyui.views.Path") as path_probe,
             patch("bilbyui.views._file_response") as file_response,
         ):
-            denied = self.client.get(
-                f"{reverse('file_download')}?fileId={token.token}"
-            )
+            denied = self.client.get(f"{reverse('file_download')}?fileId={token.token}")
 
         missing = self.missing_response()
         self.assertEqual(self.response_triple(denied), self.response_triple(missing))
@@ -110,15 +106,11 @@ class BilbyCapabilityTokenGateTestCase(BilbyTestCase):
         BilbyJob.objects.filter(pk=job.pk).update(trigger_time=100.0)
 
         with (
-            override_settings(
-                SUPPORTING_FILE_UPLOAD_DIR=self.supporting_dir.name
-            ),
+            override_settings(SUPPORTING_FILE_UPLOAD_DIR=self.supporting_dir.name),
             patch("bilbyui.views.Path") as path_probe,
             patch("bilbyui.views._file_response") as file_response,
         ):
-            denied = self.client.get(
-                f"{reverse('file_download')}?fileId={supporting_file.download_token}"
-            )
+            denied = self.client.get(f"{reverse('file_download')}?fileId={supporting_file.download_token}")
 
         missing = self.missing_response()
         self.assertEqual(self.response_triple(denied), self.response_triple(missing))
@@ -131,26 +123,20 @@ class BilbyCapabilityTokenGateTestCase(BilbyTestCase):
         job = self.create_job(private=True)
         token = FileDownloadToken.objects.create(job=job, path="/result.h5")
 
-        anonymous_denied = self.client.get(
-            f"{reverse('file_download')}?fileId={token.token}"
-        )
+        anonymous_denied = self.client.get(f"{reverse('file_download')}?fileId={token.token}")
         self.authenticate(user=self.owner)
         with override_settings(JOB_UPLOAD_DIR=self.job_dir.name):
             upload_directory = job.get_upload_directory()
             upload_directory.mkdir(parents=True)
             (upload_directory / "result.h5").write_bytes(b"result")
-            owner_response = self.client.get(
-                f"{reverse('file_download')}?fileId={token.token}"
-            )
+            owner_response = self.client.get(f"{reverse('file_download')}?fileId={token.token}")
 
         self.assertEqual(anonymous_denied.status_code, 404)
         self.assertEqual(owner_response.status_code, 200)
         self.assertEqual(b"".join(owner_response.streaming_content), b"result")
 
         BilbyJob.objects.filter(pk=job.pk).update(trigger_time=100.0)
-        owner_embargo_denied = self.client.get(
-            f"{reverse('file_download')}?fileId={token.token}"
-        )
+        owner_embargo_denied = self.client.get(f"{reverse('file_download')}?fileId={token.token}")
         self.assertEqual(
             self.response_triple(owner_embargo_denied),
             self.response_triple(self.missing_response()),
@@ -170,9 +156,7 @@ class BilbyCapabilityTokenGateTestCase(BilbyTestCase):
             patch("bilbyui.views.Path") as path_probe,
             patch("bilbyui.views._file_response") as file_response,
         ):
-            denied = self.client.get(
-                f"{reverse('file_download')}?fileId={supporting_file.download_token}"
-            )
+            denied = self.client.get(f"{reverse('file_download')}?fileId={supporting_file.download_token}")
 
         self.assertEqual(
             self.response_triple(denied),

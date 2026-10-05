@@ -38,15 +38,11 @@ class TestEventIdsService(BilbyTestCase):
         self.assertEqual(event_ids, {self.null_event.event_id, self.public_event.event_id})
 
     def test_list_event_ids_for_anonymous_user_uses_gps_visibility(self):
-        event_ids = set(
-            list_event_ids_for_user(ADACSAnonymousUser()).values_list("event_id", flat=True)
-        )
+        event_ids = set(list_event_ids_for_user(ADACSAnonymousUser()).values_list("event_id", flat=True))
         self.assertEqual(event_ids, {self.null_event.event_id, self.public_event.event_id})
 
     def test_list_event_ids_for_member_includes_embargoed_events(self):
-        user = self.create_user(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        user = self.create_user(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
         event_ids = set(list_event_ids_for_user(user).values_list("event_id", flat=True))
         self.assertEqual(
             event_ids,
@@ -81,9 +77,7 @@ class TestEventIdsService(BilbyTestCase):
                     get_event_id(event_id, user)
 
     def test_get_event_id_returns_embargoed_event_for_member(self):
-        user = self.create_user(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        user = self.create_user(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
         self.assertEqual(
             get_event_id(self.embargoed_event.event_id, user),
             self.embargoed_event,

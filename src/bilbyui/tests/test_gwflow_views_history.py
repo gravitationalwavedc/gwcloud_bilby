@@ -326,9 +326,7 @@ class TestGWFlowHistoryVisibility(BilbyTestCase):
         ):
             for url in self._history_routes(self.embargoed_job.sname):
                 denied = self.client.get(url)
-                missing = self.client.get(
-                    url.replace(self.embargoed_job.sname, "S999999zz")
-                )
+                missing = self.client.get(url.replace(self.embargoed_job.sname, "S999999zz"))
                 self.assertEqual(denied.status_code, 404)
                 self.assertEqual(
                     (denied.status_code, denied.content, sorted(denied.headers.items())),

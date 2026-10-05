@@ -77,9 +77,10 @@ class TestViewJob(BilbyTestCase):
             description="ligo only",
             job_controller_id=10003,
             private=False,
-            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "LIGO job", "trigger-time": "100", "n-simulation": "0"}),
+            ini_string=create_test_ini_string(
+                {"detectors": "['H1']", "label": "LIGO job", "trigger-time": "100", "n-simulation": "0"}
+            ),
         )
-
 
         response = self.client.get(f"/job-results/{ligo_job.id}/")
 
@@ -276,7 +277,6 @@ class TestViewJobSections(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']", "label": "Private section job"}),
         )
 
-
         for section in ("parameters", "results"):
             with self.subTest(section=section):
                 response = self.client.get(f"/jobs/{other_job.id}/{section}/")
@@ -292,9 +292,10 @@ class TestViewJobSections(BilbyTestCase):
             description="ligo only",
             job_controller_id=10006,
             private=False,
-            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "LIGO section job", "trigger-time": "100", "n-simulation": "0"}),
+            ini_string=create_test_ini_string(
+                {"detectors": "['H1']", "label": "LIGO section job", "trigger-time": "100", "n-simulation": "0"}
+            ),
         )
-
 
         for section in ("parameters", "results"):
             with self.subTest(section=section):

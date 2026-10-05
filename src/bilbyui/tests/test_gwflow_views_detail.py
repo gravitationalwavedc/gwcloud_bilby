@@ -501,17 +501,13 @@ class TestGWFlowJobVisibility(BilbyTestCase):
                 for url in self._section_routes(self.public_job.sname):
                     self.assertEqual(self.client.get(url).status_code, 200)
         self.assertEqual(
-            self.client.get(
-                reverse("bilbyui:gwflow_job_detail", args=[self.public_job.sname])
-            ).status_code,
+            self.client.get(reverse("bilbyui:gwflow_job_detail", args=[self.public_job.sname])).status_code,
             302,
         )
 
     def test_missing_job_404(self):
         self.authenticate(user=self.ligo_user)
-        response = self.client.get(
-            reverse("bilbyui:gwflow_job_detail", args=["S999999zz"])
-        )
+        response = self.client.get(reverse("bilbyui:gwflow_job_detail", args=["S999999zz"]))
         self.assertEqual(response.status_code, 404)
 
 

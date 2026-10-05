@@ -2065,9 +2065,7 @@ def _render_job_field_labels(request, job, error="", status=200, modifiable=None
 
 def _job_is_public(job):
     raw_n_simulation = (
-        job.inikeyvalue_set.filter(key="n_simulation", processed=False)
-        .values_list("value", flat=True)
-        .first()
+        job.inikeyvalue_set.filter(key="n_simulation", processed=False).values_list("value", flat=True).first()
     )
     return is_record_public(
         job,

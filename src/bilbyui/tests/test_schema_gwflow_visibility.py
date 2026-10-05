@@ -34,9 +34,7 @@ class TestVisibleGWFlowJob(BilbyTestCase):
 
     def test_embargoed_job_visible_to_ligo_user(self):
         job = self._create_job(trigger_time=100.0)
-        ligo = self.create_user(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        ligo = self.create_user(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
         self.assertEqual(_visible_gwflow_job(job, ligo), job)
 
     def test_embargoed_job_hidden_from_anonymous_user(self):

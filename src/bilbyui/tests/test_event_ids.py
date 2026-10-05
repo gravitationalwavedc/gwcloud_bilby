@@ -439,11 +439,7 @@ class TestEventIDUpdating(BilbyTestCase):
             """
         )
         self.assertResponseNoErrors(response)
-        gps_field = next(
-            field
-            for field in response.data["__type"]["fields"]
-            if field["name"] == "gpsTime"
-        )
+        gps_field = next(field for field in response.data["__type"]["fields"] if field["name"] == "gpsTime")
         self.assertEqual(gps_field["type"], {"kind": "SCALAR", "name": "Float"})
 
     @silence_errors
@@ -732,9 +728,7 @@ class TestEventIDGetByEventId(BilbyTestCase):
             EventID.get_by_event_id(self.threshold_event.event_id, user)
 
     def test_get_by_event_id_returns_threshold_event_for_member(self):
-        user = self.create_user(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        user = self.create_user(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
         self.assertEqual(
             EventID.get_by_event_id(self.threshold_event.event_id, user),
             self.threshold_event,
@@ -775,9 +769,7 @@ class TestEventIDVisibleTo(BilbyTestCase):
         )
 
     def test_visible_to_member_returns_all(self):
-        user = self.create_user(
-            authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]
-        )
+        user = self.create_user(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
         self.assertEqual(
             set(EventID.visible_to(user)),
             {self.null_event, self.public_event, self.threshold_event},

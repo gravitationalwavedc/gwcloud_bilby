@@ -587,7 +587,6 @@ class TestResultFileTemplates(BilbyTestCase):
         self.assertIn('<td colspan="3" class="text-muted">No result files found.</td>', html)
 
 
-
 @override_settings(EMBARGO_START_TIME=100.0)
 class TestResultFileEmbargoAuthorization(BilbyTestCase):
     def setUp(self):
@@ -662,11 +661,7 @@ class TestResultFileEmbargoAuthorization(BilbyTestCase):
         build_entries.assert_not_called()
         request_file_list.assert_not_called()
         create_token_map.assert_not_called()
-        self.assertFalse(
-            FileDownloadToken.objects.filter(
-                job_id__in=[self.direct_job.id, self.parent_job.id]
-            ).exists()
-        )
+        self.assertFalse(FileDownloadToken.objects.filter(job_id__in=[self.direct_job.id, self.parent_job.id]).exists())
 
     @silence_errors
     @mock.patch("bilbyui.schema.request_file_download_ids")
@@ -703,10 +698,7 @@ class TestResultFileEmbargoAuthorization(BilbyTestCase):
     ):
         visible_job = self.create_job(name="visible-result-error")
         BilbyJob.objects.filter(pk=visible_job.pk).update(trigger_time=99.0)
-        secret = (
-            f"job {visible_job.id} event S999999z "
-            "/restricted/results/private-posterior.hdf5"
-        )
+        secret = f"job {visible_job.id} event S999999z /restricted/results/private-posterior.hdf5"
         build_entries.side_effect = RuntimeError(secret)
 
         with self.assertLogs("bilbyui.schema", level="ERROR") as captured:

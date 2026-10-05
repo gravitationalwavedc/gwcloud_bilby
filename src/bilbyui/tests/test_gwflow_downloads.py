@@ -289,9 +289,7 @@ class GWFlowDownloadTestCase(BilbyTestCase):
                 patch("bilbyui.views.Path") as path_probe,
                 patch("bilbyui.views._file_response") as file_response,
             ):
-                denied = self.client.get(
-                    f"/file_download/?fileId={gwflow_file.download_token}"
-                )
+                denied = self.client.get(f"/file_download/?fileId={gwflow_file.download_token}")
 
             missing = self.client.get(f"/file_download/?fileId={uuid.uuid4()}")
             self.assertEqual(
@@ -329,9 +327,7 @@ class GWFlowDownloadTestCase(BilbyTestCase):
                     args=[gwflow_file.download_token],
                 )
             )
-            missing = self.client.get(
-                reverse("bilbyui:gwflow_file_download", args=[uuid.uuid4()])
-            )
+            missing = self.client.get(reverse("bilbyui:gwflow_file_download", args=[uuid.uuid4()]))
 
         self.assertEqual(self.response_triple(denied), self.response_triple(missing))
         self.assertNotIn("Content-Disposition", denied.headers)
