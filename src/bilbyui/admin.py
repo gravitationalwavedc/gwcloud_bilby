@@ -37,7 +37,6 @@ class BilbyJobAdmin(admin.ModelAdmin):
         "job_controller_id",
         "labels",
         "ini_string",
-        "is_ligo_job",
     ]
     filter_horizontal = ("labels",)
     readonly_fields = ("creation_time", "last_updated")

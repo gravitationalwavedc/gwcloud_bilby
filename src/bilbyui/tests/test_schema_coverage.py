@@ -113,7 +113,7 @@ class TestSchemaCoverage(BilbyTestCase):
     def test_bilby_result_files_list_failure(self, *_):
         response = self.query(RESULT_FILES_QUERY % self.global_id)
         self.assertIsNone(response.data["bilbyResultFiles"])
-        self.assertIn("Error getting file list", str(response.errors[0]["message"]))
+        self.assertEqual("Unable to retrieve result files.", str(response.errors[0]["message"]))
 
     def test_bilby_result_files_malformed_job_id(self):
         response = self.query(RESULT_FILES_QUERY % "not-a-valid-id")
@@ -189,7 +189,7 @@ class TestSchemaCoverage(BilbyTestCase):
             input_data={"jobId": to_global_id("BilbyJobNode", private_job.id), "downloadTokens": []},
         )
         self.assertIsNone(response.data["generateFileDownloadIds"])
-        self.assertEqual(str(response.errors[0]["message"]), "Permission Denied")
+        self.assertEqual(str(response.errors[0]["message"]), "Job does not exist.")
 
     @silence_errors
     def test_generate_file_download_ids_nonexistent_job(self):

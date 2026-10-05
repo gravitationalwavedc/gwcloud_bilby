@@ -1,14 +1,18 @@
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.http import Http404
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 
 from bilbyui.models import GWFlowJob
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.embargo import reset_embargo_start_cache
 from bilbyui.views import _get_gwflow_job_or_404
 
 
+@override_settings(EMBARGO_START_TIME=100.0)
 class TestGetGWFlowJobOr404(BilbyTestCase):
     def setUp(self):
+        reset_embargo_start_cache()
+        self.addCleanup(reset_embargo_start_cache)
         self.factory = RequestFactory()
         self.ligo_user = self.create_user(
             id=10,
@@ -42,14 +46,14 @@ class TestGetGWFlowJobOr404(BilbyTestCase):
         with self.assertRaises(Http404):
             _get_gwflow_job_or_404(self._request_for(self.non_ligo_user), "missing-sname")
 
-    def test_ligo_only_job_hidden_from_non_ligo_user(self):
-        job = self._create_job(ligo_only=True)
+    def test_embargoed_job_hidden_from_non_ligo_user(self):
+        job = self._create_job(trigger_time=100.0)
 
         with self.assertRaises(Http404):
             _get_gwflow_job_or_404(self._request_for(self.non_ligo_user), job.sname)
 
-    def test_ligo_only_job_visible_to_ligo_user(self):
-        job = self._create_job(ligo_only=True)
+    def test_embargoed_job_visible_to_ligo_user(self):
+        job = self._create_job(trigger_time=100.0)
 
         result = _get_gwflow_job_or_404(self._request_for(self.ligo_user), job.sname)
 

@@ -10,6 +10,7 @@ from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, ExternalBilbyJob, FileDownloadToken, Label
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.embargo import reset_embargo_start_cache
 from bilbyui.views import _render_job_field_labels, _render_job_field_privacy
 
 
@@ -66,15 +67,19 @@ class TestViewJob(BilbyTestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    @override_settings(EMBARGO_START_TIME=100.0)
     def test_embargoed_job_for_non_ligo_user_returns_404(self):
+        reset_embargo_start_cache()
+        self.addCleanup(reset_embargo_start_cache)
         ligo_job = BilbyJob.objects.create(
             user_id=self.user.id,
             name="LIGO job",
             description="ligo only",
             job_controller_id=10003,
             private=False,
-            is_ligo_job=True,
-            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "LIGO job"}),
+            ini_string=create_test_ini_string(
+                {"detectors": "['H1']", "label": "LIGO job", "trigger-time": "100", "n-simulation": "0"}
+            ),
         )
 
         response = self.client.get(f"/job-results/{ligo_job.id}/")
@@ -277,15 +282,19 @@ class TestViewJobSections(BilbyTestCase):
                 response = self.client.get(f"/jobs/{other_job.id}/{section}/")
                 self.assertEqual(response.status_code, 404)
 
+    @override_settings(EMBARGO_START_TIME=100.0)
     def test_embargoed_job_sections_return_404_for_non_ligo_user(self):
+        reset_embargo_start_cache()
+        self.addCleanup(reset_embargo_start_cache)
         ligo_job = BilbyJob.objects.create(
             user_id=self.user.id,
             name="LIGO section job",
             description="ligo only",
             job_controller_id=10006,
             private=False,
-            is_ligo_job=True,
-            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "LIGO section job"}),
+            ini_string=create_test_ini_string(
+                {"detectors": "['H1']", "label": "LIGO section job", "trigger-time": "100", "n-simulation": "0"}
+            ),
         )
 
         for section in ("parameters", "results"):

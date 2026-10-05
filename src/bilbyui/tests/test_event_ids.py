@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import override_settings
 
-from bilbyui.models import BilbyPermissionError, EventID
+from bilbyui.models import EventID
 from bilbyui.tests.test_utils import silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import create_event_id
@@ -336,7 +336,7 @@ class TestEventIDCreation(BilbyTestCase):
             self.assertEqual(msg, f"EventID {event_id} already exists (updated)!")
 
 
-@override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])
+@override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1], EMBARGO_START_TIME=100.0)
 class TestEventIDUpdating(BilbyTestCase):
     def setUp(self):
         self.maxDiff = 9999
@@ -348,7 +348,7 @@ class TestEventIDUpdating(BilbyTestCase):
             trigger_id="S123456a",
             nickname="GW123456",
             is_ligo_event=False,
-            gps_time=1126259462.391,
+            gps_time=99.0,
         )
 
     @silence_errors
@@ -384,6 +384,63 @@ class TestEventIDUpdating(BilbyTestCase):
         self.assertEqual(event.nickname, new_params["input"]["nickname"])
         self.assertEqual(event.is_ligo_event, new_params["input"]["isLigoEvent"])
         self.assertEqual(event.gps_time, new_params["input"]["gpsTime"])
+
+    def test_update_event_id_omitted_gps_time_preserves_value(self):
+        self.authenticate()
+
+        response = self.query(
+            self.query_string,
+            input_data={
+                "eventId": self.original_event.event_id,
+                "nickname": "updated without gps",
+            },
+        )
+        self.assertResponseNoErrors(response)
+
+        self.original_event.refresh_from_db()
+        self.assertEqual(self.original_event.gps_time, 99.0)
+
+    def test_update_event_id_explicit_null_clears_and_query_returns_null(self):
+        self.authenticate()
+
+        response = self.query(
+            self.query_string,
+            input_data={
+                "eventId": self.original_event.event_id,
+                "gpsTime": None,
+            },
+        )
+        self.assertResponseNoErrors(response)
+
+        self.original_event.refresh_from_db()
+        self.assertIsNone(self.original_event.gps_time)
+
+        response = self.query(
+            get_event_id_query,
+            variables={"eventId": self.original_event.event_id},
+        )
+        self.assertResponseNoErrors(response)
+        self.assertIsNone(response.data["eventId"]["gpsTime"])
+
+    def test_event_id_gps_time_output_is_nullable(self):
+        response = self.query(
+            """
+            query {
+                __type(name: "EventIDType") {
+                    fields {
+                        name
+                        type {
+                            kind
+                            name
+                        }
+                    }
+                }
+            }
+            """
+        )
+        self.assertResponseNoErrors(response)
+        gps_field = next(field for field in response.data["__type"]["fields"] if field["name"] == "gpsTime")
+        self.assertEqual(gps_field["type"], {"kind": "SCALAR", "name": "Float"})
 
     @silence_errors
     def test_update_nonexistent_event_id(self):
@@ -489,15 +546,31 @@ class TestEventIDDeletion(BilbyTestCase):
         self.assertTrue(EventID.objects.filter(event_id="GW123456_123456").exists())
 
 
-@override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])
+@override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1], EMBARGO_START_TIME=100.0)
 class TestEventIDPermissions(BilbyTestCase):
     def setUp(self):
         self.maxDiff = 9999
 
-        self.event_id1 = EventID.objects.create(event_id="GW123456_123456", is_ligo_event=False)
-        self.event_id2 = EventID.objects.create(event_id="GW654321_654321", is_ligo_event=False)
-        self.event_id_ligo1 = EventID.objects.create(event_id="GW012345_012345", is_ligo_event=True)
-        self.event_id_ligo2 = EventID.objects.create(event_id="GW543210_543210", is_ligo_event=True)
+        self.event_id1 = EventID.objects.create(
+            event_id="GW123456_123456",
+            gps_time=99.0,
+            is_ligo_event=False,
+        )
+        self.event_id2 = EventID.objects.create(
+            event_id="GW654321_654321",
+            gps_time=None,
+            is_ligo_event=False,
+        )
+        self.event_id_ligo1 = EventID.objects.create(
+            event_id="GW012345_012345",
+            gps_time=100.0,
+            is_ligo_event=True,
+        )
+        self.event_id_ligo2 = EventID.objects.create(
+            event_id="GW543210_543210",
+            gps_time=101.0,
+            is_ligo_event=True,
+        )
 
     @silence_errors
     def test_create_event_id_permissions(self):
@@ -616,36 +689,88 @@ class TestEventIDPermissions(BilbyTestCase):
         self.assertEqual(len(response.data["allEventIds"]), 4)
 
 
+@override_settings(EMBARGO_START_TIME=100.0)
 class TestEventIDGetByEventId(BilbyTestCase):
     def setUp(self):
-        self.ligo_event = EventID.create(event_id="GW123456_123456", gps_time=1234567890.0, is_ligo_event=True)
-        self.public_event = EventID.create(event_id="GW123456_654321", gps_time=1234567890.0, is_ligo_event=False)
+        self.null_event = EventID.create(
+            event_id="GW123456_123456",
+            gps_time=None,
+            is_ligo_event=True,
+        )
+        self.public_event = EventID.create(
+            event_id="GW123456_654321",
+            gps_time=99.0,
+            is_ligo_event=True,
+        )
+        self.threshold_event = EventID.create(
+            event_id="GW654321_123456",
+            gps_time=100.0,
+            is_ligo_event=False,
+        )
 
-    def test_get_by_event_id_returns_event_for_non_ligo_user(self):
+    def test_get_by_event_id_returns_public_event_for_non_member(self):
         user = self.create_user()
-        self.assertEqual(self.get_by_event_id(self.public_event.event_id, user), self.public_event)
+        self.assertEqual(
+            EventID.get_by_event_id(self.public_event.event_id, user),
+            self.public_event,
+        )
 
-    def test_get_by_event_id_raises_for_ligo_event_non_ligo_user(self):
+    def test_get_by_event_id_returns_nullable_event_for_anonymous_user(self):
+        self.deauthenticate()
+        self.assertEqual(
+            EventID.get_by_event_id(self.null_event.event_id, self.user),
+            self.null_event,
+        )
+
+    def test_get_by_event_id_denies_threshold_equality_as_not_found(self):
         user = self.create_user()
-        with self.assertRaises(BilbyPermissionError):
-            self.get_by_event_id(self.ligo_event.event_id, user)
+        with self.assertRaises(EventID.DoesNotExist):
+            EventID.get_by_event_id(self.threshold_event.event_id, user)
 
-    def test_get_by_event_id_returns_ligo_event_for_ligo_user(self):
+    def test_get_by_event_id_returns_threshold_event_for_member(self):
         user = self.create_user(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
-        self.assertEqual(self.get_by_event_id(self.ligo_event.event_id, user), self.ligo_event)
+        self.assertEqual(
+            EventID.get_by_event_id(self.threshold_event.event_id, user),
+            self.threshold_event,
+        )
 
-    def get_by_event_id(self, event_id, user):
-        return EventID.get_by_event_id(event_id, user)
 
-
-class TestEventIDFilterByLigo(BilbyTestCase):
+@override_settings(EMBARGO_START_TIME=100.0)
+class TestEventIDVisibleTo(BilbyTestCase):
     def setUp(self):
-        EventID.create(event_id="GW123456_123456", gps_time=1234567890.0, is_ligo_event=True)
-        EventID.create(event_id="GW123456_654321", gps_time=1234567890.0, is_ligo_event=False)
+        self.null_event = EventID.create(
+            event_id="GW123456_123456",
+            gps_time=None,
+            is_ligo_event=True,
+        )
+        self.public_event = EventID.create(
+            event_id="GW123456_654321",
+            gps_time=99.0,
+            is_ligo_event=True,
+        )
+        self.threshold_event = EventID.create(
+            event_id="GW654321_123456",
+            gps_time=100.0,
+            is_ligo_event=False,
+        )
 
-    def test_filter_by_ligo_true_returns_all(self):
-        self.assertEqual(EventID.filter_by_ligo(True).count(), 2)
+    def test_visible_to_non_member_uses_gps_time(self):
+        user = self.create_user()
+        self.assertEqual(
+            set(EventID.visible_to(user)),
+            {self.null_event, self.public_event},
+        )
 
-    def test_filter_by_ligo_false_excludes_ligo_events(self):
-        self.assertEqual(EventID.filter_by_ligo(False).count(), 1)
-        self.assertFalse(EventID.filter_by_ligo(False).filter(is_ligo_event=True).exists())
+    def test_visible_to_anonymous_user_uses_gps_time(self):
+        self.deauthenticate()
+        self.assertEqual(
+            set(EventID.visible_to(self.user)),
+            {self.null_event, self.public_event},
+        )
+
+    def test_visible_to_member_returns_all(self):
+        user = self.create_user(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+        self.assertEqual(
+            set(EventID.visible_to(user)),
+            {self.null_event, self.public_event, self.threshold_event},
+        )

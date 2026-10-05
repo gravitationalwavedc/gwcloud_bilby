@@ -10,7 +10,7 @@ from django.utils import timezone
 from graphql_relay import to_global_id
 
 from bilbyui.constants import BilbyJobType
-from bilbyui.models import BilbyJob, ExternalBilbyJob, FileDownloadToken
+from bilbyui.models import BilbyJob, EventID, ExternalBilbyJob, FileDownloadToken, GWFlowJob
 from bilbyui.tests.test_utils import (
     create_test_ini_string,
     create_test_upload_data,
@@ -585,3 +585,137 @@ class TestResultFileTemplates(BilbyTestCase):
         html = self.render_results([])
 
         self.assertIn('<td colspan="3" class="text-muted">No result files found.</td>', html)
+
+
+@override_settings(EMBARGO_START_TIME=100.0)
+class TestResultFileEmbargoAuthorization(BilbyTestCase):
+    def setUp(self):
+        self.authenticate()
+        self.owner = self.create_user(id=2)
+        self.direct_event = EventID.objects.create(
+            event_id="GW654321",
+            gps_time=100.0,
+        )
+        self.parent_event = EventID.objects.create(
+            event_id="GW654322",
+            gps_time=101.0,
+        )
+        self.parent = GWFlowJob.objects.create(
+            sname="S654322a",
+            user=self.owner,
+            trigger_time=99.0,
+            event_id=self.parent_event,
+        )
+        self.direct_job = self.create_job(
+            name="direct-embargoed-results",
+            event_id=self.direct_event,
+        )
+        self.parent_job = self.create_job(
+            name="parent-embargoed-results",
+            gwflow_job=self.parent,
+        )
+
+    def create_job(self, **kwargs):
+        return BilbyJob.objects.create(
+            user=self.owner,
+            description="restricted result listing",
+            private=False,
+            job_controller_id=99,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+            **kwargs,
+        )
+
+    def result_query(self, job_id):
+        global_id = to_global_id("BilbyJobNode", job_id)
+        return self.query(
+            f"""
+            query {{
+                bilbyResultFiles(jobId: "{global_id}") {{
+                    files {{
+                        path
+                        downloadToken
+                    }}
+                    jobType
+                }}
+            }}
+            """
+        )
+
+    @silence_errors
+    @mock.patch("bilbyui.schema._build_result_file_entries")
+    @mock.patch("bilbyui.models.request_file_list")
+    @mock.patch("bilbyui.models.FileDownloadToken.create_token_map")
+    def test_direct_and_parent_embargo_denials_match_missing_without_helpers(
+        self,
+        create_token_map,
+        request_file_list,
+        build_entries,
+    ):
+        missing = self.result_query(999999)
+        for job in (self.direct_job, self.parent_job):
+            with self.subTest(job=job.name):
+                denied = self.result_query(job.id)
+                self.assertEqual(denied.data, missing.data)
+                self.assertEqual(denied.errors, missing.errors)
+
+        build_entries.assert_not_called()
+        request_file_list.assert_not_called()
+        create_token_map.assert_not_called()
+        self.assertFalse(FileDownloadToken.objects.filter(job_id__in=[self.direct_job.id, self.parent_job.id]).exists())
+
+    @silence_errors
+    @mock.patch("bilbyui.schema.request_file_download_ids")
+    @mock.patch("bilbyui.models.FileDownloadToken.get_paths")
+    def test_denied_download_id_generation_does_not_resolve_tokens_or_call_backend(
+        self,
+        get_paths,
+        request_download_ids,
+    ):
+        global_id = to_global_id("BilbyJobNode", self.direct_job.id)
+        response = self.query(
+            """
+            mutation ResultFileMutation($input: GenerateFileDownloadIdsInput!) {
+                generateFileDownloadIds(input: $input) {
+                    result
+                }
+            }
+            """,
+            input_data={
+                "jobId": global_id,
+                "downloadTokens": ["denied-token"],
+            },
+        )
+
+        self.assertIsNone(response.data["generateFileDownloadIds"])
+        self.assertEqual(response.errors[0]["message"], "Job does not exist.")
+        get_paths.assert_not_called()
+        request_download_ids.assert_not_called()
+
+    @mock.patch("bilbyui.schema._build_result_file_entries")
+    def test_backend_failure_is_logged_and_returns_constant_identity_free_error(
+        self,
+        build_entries,
+    ):
+        visible_job = self.create_job(name="visible-result-error")
+        BilbyJob.objects.filter(pk=visible_job.pk).update(trigger_time=99.0)
+        secret = f"job {visible_job.id} event S999999z /restricted/results/private-posterior.hdf5"
+        build_entries.side_effect = RuntimeError(secret)
+
+        with self.assertLogs("bilbyui.schema", level="ERROR") as captured:
+            response = self.result_query(visible_job.id)
+
+        self.assertIsNone(response.data["bilbyResultFiles"])
+        self.assertEqual(
+            response.errors[0]["message"],
+            "Unable to retrieve result files.",
+        )
+        response_messages = " ".join(error["message"] for error in response.errors)
+        for identity in (
+            str(visible_job.id),
+            "S999999z",
+            "/restricted/results",
+            "private-posterior.hdf5",
+            secret,
+        ):
+            self.assertNotIn(identity, response_messages)
+        self.assertIn(secret, "\n".join(captured.output))

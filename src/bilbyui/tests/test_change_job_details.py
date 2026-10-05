@@ -1,15 +1,20 @@
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.models import BilbyJob, EventID
 from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.embargo import reset_embargo_start_cache
 
 User = get_user_model()
 
 
+@override_settings(EMBARGO_START_TIME=100.0)
 class TestChangeJobDetails(BilbyTestCase):
     def setUp(self):
+        reset_embargo_start_cache()
+        self.addCleanup(reset_embargo_start_cache)
         self.authenticate()
 
         self.mutation_string = """
@@ -84,10 +89,9 @@ class TestChangeJobDetails(BilbyTestCase):
         """
         EventID.create(
             event_id="GW150914_123456",
-            gps_time=1126259462.391,
+            gps_time=100.0,
             trigger_id="S123456a",
             nickname="GW150914",
-            is_ligo_event=True,
         )
 
         change_job_input = {
@@ -98,7 +102,7 @@ class TestChangeJobDetails(BilbyTestCase):
         response = self.query(self.mutation_string, input_data=change_job_input)
 
         self.assertDictEqual({"updateBilbyJob": None}, response.data)
-        self.assertEqual(response.errors[0]["message"], "Permission Denied.")
+        self.assertEqual(response.errors[0]["message"], "Event ID 'GW150914_123456' not found.")
         self.job.refresh_from_db()
         self.assertIsNone(self.job.event_id)
 
