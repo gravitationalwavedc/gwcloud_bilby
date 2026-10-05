@@ -229,15 +229,7 @@ class GWFlowJobConnection(relay.Connection):
 def _visible_gwflow_job(job, user):
     if not job or job.is_pruned:
         return None
-    return (
-        visible_to_user(
-            GWFlowJob.objects.filter(pk=job.pk, is_pruned=False),
-            user,
-            "GWFlowJob",
-        )
-        .select_related("event_id", "user")
-        .first()
-    )
+    return job if is_record_public(job, user) else None
 
 
 class BilbyJobNode(DjangoObjectType):
@@ -262,7 +254,15 @@ class BilbyJobNode(DjangoObjectType):
         user_id = user.id if user.is_authenticated else 0
 
         qs = BilbyJob.bilby_job_filter(queryset, user)
-        qs = qs.select_related("event_id", "gwflow_job").prefetch_related("labels").select_related("user")
+        qs = (
+            qs.select_related(
+                "event_id",
+                "gwflow_job",
+                "gwflow_job__event_id",
+            )
+            .prefetch_related("labels")
+            .select_related("user")
+        )
 
         _cache_job_controller_jobs(qs, user_id, info.context)
 
@@ -297,12 +297,7 @@ class BilbyJobNode(DjangoObjectType):
         return self.event_id
 
     def resolve_gwflow_job(self, info):
-        gwflow_job = self.gwflow_job
-        if not gwflow_job or gwflow_job.is_pruned:
-            return None
-        if not is_record_public(gwflow_job, info.context.user):
-            return None
-        return gwflow_job
+        return _visible_gwflow_job(self.gwflow_job, info.context.user)
 
     def resolve_gwflow_analysis_uid(self, info):
         return self.gwflow_analysis_uid or None

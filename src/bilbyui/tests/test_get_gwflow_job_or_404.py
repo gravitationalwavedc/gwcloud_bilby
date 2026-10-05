@@ -46,13 +46,13 @@ class TestGetGWFlowJobOr404(BilbyTestCase):
         with self.assertRaises(Http404):
             _get_gwflow_job_or_404(self._request_for(self.non_ligo_user), "missing-sname")
 
-    def test_ligo_only_job_hidden_from_non_ligo_user(self):
+    def test_embargoed_job_hidden_from_non_ligo_user(self):
         job = self._create_job(trigger_time=100.0)
 
         with self.assertRaises(Http404):
             _get_gwflow_job_or_404(self._request_for(self.non_ligo_user), job.sname)
 
-    def test_ligo_only_job_visible_to_ligo_user(self):
+    def test_embargoed_job_visible_to_ligo_user(self):
         job = self._create_job(trigger_time=100.0)
 
         result = _get_gwflow_job_or_404(self._request_for(self.ligo_user), job.sname)

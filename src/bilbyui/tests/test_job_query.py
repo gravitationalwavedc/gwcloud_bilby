@@ -596,7 +596,12 @@ class TestBilbyJobQueries(BilbyTestCase):
         """
         self.authenticate()
 
-        gwflow_job = GWFlowJob.objects.create(sname="S230601test", user=self.user, ligo_only=False)
+        gwflow_job = GWFlowJob.objects.create(
+            sname="S230601test",
+            user=self.user,
+            ligo_only=False,
+            event_id=self.event_id,
+        )
         for i in range(3):
             job = BilbyJob.objects.create(
                 user_id=self.user.id,
