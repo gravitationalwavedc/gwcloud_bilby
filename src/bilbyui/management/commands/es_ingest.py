@@ -104,10 +104,10 @@ class Command(BaseCommand):
                                 try:
                                     val = json.loads(ini_kv.value)
                                     parsed_gps = float(val)
-                                except (ValueError, TypeError, json.JSONDecodeError):
+                                except (ValueError, TypeError, OverflowError, json.JSONDecodeError):
                                     try:
                                         parsed_gps = float(ini_kv.value)
-                                    except (ValueError, TypeError):
+                                    except (ValueError, TypeError, OverflowError):
                                         parsed_gps = None
                                 if parsed_gps is not None and math.isfinite(parsed_gps):
                                     gps = parsed_gps
@@ -312,10 +312,10 @@ class Command(BaseCommand):
                                     try:
                                         val = json.loads(gps_time) if isinstance(gps_time, str) else gps_time
                                         parsed_gps = float(val)
-                                    except (ValueError, TypeError, json.JSONDecodeError):
+                                    except (ValueError, TypeError, OverflowError, json.JSONDecodeError):
                                         try:
                                             parsed_gps = float(gps_time)
-                                        except (ValueError, TypeError):
+                                        except (ValueError, TypeError, OverflowError):
                                             parsed_gps = None
                                     if parsed_gps is not None and math.isfinite(parsed_gps):
                                         gps_val = parsed_gps
