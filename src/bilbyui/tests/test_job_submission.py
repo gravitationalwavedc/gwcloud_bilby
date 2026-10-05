@@ -15,6 +15,7 @@ from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, EventID, IniKeyValue
 from bilbyui.tests.test_utils import compare_ini_kvs, create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.embargo import reset_embargo_start_cache
 from bilbyui.views import create_bilby_job, validate_job_name
 
 User = get_user_model()
@@ -673,16 +674,18 @@ class TestJobSubmission(BilbyTestCase):
             "create bilbyJob mutation returned unexpected data.",
         )
 
+    @override_settings(EMBARGO_START_TIME=100.0)
     @patch("bilbyui.models.submit_job")
     def test_job_submission_ligo_event_denied_for_non_ligo_user(self, mock_api_call):
+        reset_embargo_start_cache()
+        self.addCleanup(reset_embargo_start_cache)
         mock_api_call.return_value = {"jobId": 4321}
 
         EventID.create(
             event_id="GW150914_123456",
-            gps_time=1126259462.391,
+            gps_time=100.0,
             trigger_id="S123456a",
             nickname="GW150914",
-            is_ligo_event=True,
         )
 
         params = {
@@ -745,7 +748,7 @@ class TestJobSubmission(BilbyTestCase):
 
         self.assertDictEqual({"newBilbyJob": None}, response.data)
         self.assertEqual(
-            "Permission Denied.",
+            "Only LIGO users may run real jobs on embargoed LIGO data",
             str(response.errors[0]["message"]),
             "create bilbyJob mutation returned unexpected data.",
         )

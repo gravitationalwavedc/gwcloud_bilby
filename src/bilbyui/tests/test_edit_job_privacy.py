@@ -5,7 +5,8 @@ from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
 from django.test import override_settings
 
-from bilbyui.models import BilbyJob
+from bilbyui.admin import BilbyJobAdmin
+from bilbyui.models import BilbyJob, IniKeyValue
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.test_view_job import request_job_filter_mock
 from bilbyui.tests.testcases import BilbyTestCase
@@ -50,30 +51,85 @@ class TestEditJobPrivacy(BilbyTestCase):
         self.job.refresh_from_db()
         self.assertTrue(self.job.private)
 
-    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
-    def test_label_text_for_ligo_job(self, request_job_filter):
-        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
-        ligo_job = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="ligo_job",
-            description="ligo",
-            job_controller_id=10002,
-            private=False,
-            is_ligo_job=True,
-            ini_string=create_test_ini_string({"detectors": "['H1']", "label": "ligo_job"}),
+    def _set_classification(self, *, trigger_time, simulation):
+        BilbyJob.objects.filter(pk=self.job.pk).update(trigger_time=trigger_time)
+        self.job.trigger_time = trigger_time
+        IniKeyValue.objects.filter(
+            job=self.job,
+            key="n_simulation",
+            processed=False,
+        ).delete()
+        IniKeyValue.objects.create(
+            job=self.job,
+            key="n_simulation",
+            value=simulation,
+            index=0,
+            processed=False,
         )
 
-        response = self.client.get(f"/jobs/{ligo_job.id}/parameters/")
+    def _privacy_responses(self):
+        full_page = self.client.get(self.page_url)
+        with mock.patch("bilbyui.views.update_job") as update_job:
+            htmx = self.client.post(
+                f"{self.base_url}edit/privacy/",
+                {"private": "on"},
+                HTTP_HX_REQUEST="true",
+            )
+        update_job.assert_called_once_with(self.job.id, self.user, private=False)
+        return full_page, htmx
 
+    def _assert_privacy_label(self, response, expected, unexpected):
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Share with LVK collaborators")
+        self.assertContains(response, expected)
+        self.assertNotContains(response, unexpected)
+        self.assertContains(response, f'id="privacy-form-{self.job.id}"')
+        self.assertContains(
+            response,
+            "hx-target=\"closest [data-field='privacy']\"",
+        )
+        self.assertContains(response, 'hx-swap="outerHTML"')
+        self.assertContains(response, f'id="privacy-indicator-{self.job.id}"')
+        self.assertContains(response, "Job privacy")
 
     @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
-    def test_label_text_for_non_ligo_job(self, request_job_filter):
-        response = self.client.get(self.page_url)
+    @override_settings(EMBARGO_START_TIME=100.0)
+    def test_restricted_real_job_label_matches_full_page_and_htmx(self, request_job_filter):
+        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+        self._set_classification(trigger_time=100.0, simulation="0")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Share publicly")
+        for response in self._privacy_responses():
+            self._assert_privacy_label(
+                response,
+                "Share with LVK collaborators",
+                "Share publicly",
+            )
+
+    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    @override_settings(EMBARGO_START_TIME=100.0)
+    def test_public_real_job_label_matches_full_page_and_htmx(self, request_job_filter):
+        self._set_classification(trigger_time=99.0, simulation="0")
+
+        for response in self._privacy_responses():
+            self._assert_privacy_label(
+                response,
+                "Share publicly",
+                "Share with LVK collaborators",
+            )
+
+    @mock.patch("bilbyui.views.request_job_filter", side_effect=request_job_filter_mock)
+    @override_settings(EMBARGO_START_TIME=100.0)
+    def test_simulated_job_label_matches_full_page_and_htmx(self, request_job_filter):
+        self._set_classification(trigger_time=100.0, simulation="+2")
+
+        for response in self._privacy_responses():
+            self._assert_privacy_label(
+                response,
+                "Share publicly",
+                "Share with LVK collaborators",
+            )
+
+    def test_admin_does_not_expose_legacy_policy_field(self):
+        self.assertNotIn("is_ligo_job", BilbyJobAdmin.fields)
 
     def test_other_users_job_returns_404(self):
         other_user = self.create_user(id=2, name="other", primary_email="other@gmail.com")

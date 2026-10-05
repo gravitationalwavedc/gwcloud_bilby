@@ -36,6 +36,7 @@ from graphql_relay.node.node import from_global_id, to_global_id
 
 from .constants import BilbyJobType
 from .models import (
+    UNSET,
     BilbyJob,
     BilbyPermissionError,
     EventID,
@@ -67,7 +68,14 @@ from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs
 from .status import JobStatus
 from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
-from .utils.embargo import _gwflow_trigger_time_from_metadata, resolve_job_trigger, should_embargo_job
+from .utils.embargo import (
+    _gwflow_trigger_time_from_metadata,
+    is_record_public,
+    is_simulated_value,
+    resolve_job_trigger,
+    should_embargo_job,
+    visible_to_user,
+)
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
 from .utils.gwflow_portal import get_superevent, get_version, get_versions
@@ -77,7 +85,7 @@ from .utils.job_ref import resolve_job_ref_view
 from .utils.job_validation import validate_job_name
 from .utils.jobs.request_file_download_id import request_file_download_ids
 from .utils.jobs.request_job_filter import request_job_filter
-from .utils.misc import es_section_dict, is_ligo_user
+from .utils.misc import es_section_dict
 from .utils.reindex import reindex_jobs
 from .utils.time_range import _normalize_time_range
 
@@ -969,7 +977,13 @@ def _file_response(request, file_path, filename):
 
 
 def file_download_job_file(request, fdl):
-    # Get the job path
+    if not BilbyJob.bilby_job_filter(
+        BilbyJob.objects.filter(pk=fdl.job_id),
+        request.user,
+    ).exists():
+        raise Http404
+
+    # Get the job path only after current owner visibility is established.
     job_dir = fdl.job.get_upload_directory()
 
     # Make sure that there is no leading slash on the file path
@@ -989,7 +1003,13 @@ def file_download_job_file(request, fdl):
 
 
 def file_download_supporting_file(request, supporting_file):
-    # Get the supporting file path
+    if not BilbyJob.bilby_job_filter(
+        BilbyJob.objects.filter(pk=supporting_file.job_id),
+        request.user,
+    ).exists():
+        raise Http404
+
+    # Build the supporting file path only after current owner visibility is established.
     job_dir = Path(settings.SUPPORTING_FILE_UPLOAD_DIR) / str(supporting_file.job.id)
 
     # Make sure that there is no leading slash on the file path
@@ -1009,12 +1029,14 @@ def gwflow_file_download(request, token):
 
 
 def file_download_gwflow_file(request, gwflow_file):
-    # 404 unless fully mirrored
-    if not gwflow_file.uploaded:
+    if not visible_to_user(
+        GWFlowJob.objects.filter(pk=gwflow_file.job_id),
+        request.user,
+        "GWFlowJob",
+    ).exists():
         raise Http404
 
-    # LIGO-only visibility
-    if gwflow_file.job.ligo_only and not is_ligo_user(request.user):
+    if not gwflow_file.uploaded:
         raise Http404
 
     file_path = Path(settings.GWFLOW_FILE_UPLOAD_DIR) / str(gwflow_file.job.id) / str(gwflow_file.id)
@@ -1093,7 +1115,7 @@ def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None, i
     return f"EventID {event_id} successfully created!"
 
 
-def update_event_id(user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=None):
+def update_event_id(user, event_id, gps_time=UNSET, trigger_id=None, nickname=None, is_ligo_event=None):
     try:
         event = EventID.get_by_event_id(event_id, user)
     except EventID.DoesNotExist:
@@ -1574,10 +1596,12 @@ def gwflow_jobs_view(request):
 
 
 def _get_gwflow_job_or_404(request, sname):
-    job = get_object_or_404(GWFlowJob, sname=sname)
-    if job.ligo_only and not is_ligo_user(request.user):
-        raise Http404
-    return job
+    queryset = visible_to_user(
+        GWFlowJob.objects.filter(is_pruned=False),
+        request.user,
+        "GWFlowJob",
+    ).select_related("event_id", "user")
+    return get_object_or_404(queryset, sname=sname)
 
 
 def gwflow_job_detail_view(request, sname, section=None):
@@ -2039,11 +2063,23 @@ def _render_job_field_labels(request, job, error="", status=200, modifiable=None
     )
 
 
+def _job_is_public(job):
+    raw_n_simulation = (
+        job.inikeyvalue_set.filter(key="n_simulation", processed=False).values_list("value", flat=True).first()
+    )
+    return is_record_public(
+        job,
+        None,
+        is_simulation=is_simulated_value(raw_n_simulation),
+    )
+
+
 def _build_view_job_context(job, user):
     status = _get_job_status_context(job, user)
     modifiable = user.id == job.user_id
     return {
         "job": job,
+        "job_is_public": _job_is_public(job),
         "status_name": status["status_name"],
         "status_badge_class": status["status_badge_class"],
         "status_date": status["status_date"],
@@ -2209,7 +2245,11 @@ def _render_job_field_privacy(request, job, status=200):
     return TemplateResponse(
         request,
         "bilbyui/_job_field_privacy.html",
-        {"job": job, "modifiable": modifiable},
+        {
+            "job": job,
+            "job_is_public": _job_is_public(job),
+            "modifiable": modifiable,
+        },
         status=status,
     )
 

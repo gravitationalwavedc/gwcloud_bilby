@@ -14,7 +14,7 @@
                id="privacy-{{ job.id }}"
                {% if not job.private %}checked{% endif %} />
         <label class="form-check-label" for="privacy-{{ job.id }}">
-          {% if job.is_ligo_job %}Share with LVK collaborators{% else %}Share publicly{% endif %}
+          {% if job_is_public %}Share publicly{% else %}Share with LVK collaborators{% endif %}
         </label>
       </div>
       <div id="privacy-indicator-{{ job.id }}" class="htmx-indicator" aria-hidden="true">

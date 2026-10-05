@@ -3,14 +3,14 @@ from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
-from bilbyui.models import BilbyJob, BilbyPermissionError
+from bilbyui.models import BilbyJob, BilbyPermissionError, EventID, IniKeyValue
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
 
 
-@override_settings(EMBARGO_START_TIME=None)
+@override_settings(EMBARGO_START_TIME=100.0)
 class TestBilbyJobFilter(BilbyTestCase):
     def setUp(self):
         self.ini_string = create_test_ini_string({"detectors": "['H1']"})
@@ -24,101 +24,124 @@ class TestBilbyJobFilter(BilbyTestCase):
         )
         self.create_user(id=1)
 
-    def _create_job(self, *, user_id=1, private=False, is_ligo_job=False, name=None, ini_string=None):
-        return BilbyJob.objects.create(
+    def create_job(
+        self,
+        *,
+        user_id=1,
+        private=False,
+        trigger_time=None,
+        event_id=None,
+        simulation=None,
+        is_ligo_job=False,
+        name=None,
+    ):
+        job = BilbyJob.objects.create(
             user_id=user_id,
-            name=name or f"job-{user_id}-{private}-{is_ligo_job}",
+            name=name or f"job-{BilbyJob.objects.count()}",
             private=private,
+            trigger_time=trigger_time,
+            event_id=event_id,
             is_ligo_job=is_ligo_job,
-            ini_string=ini_string or self.ini_string,
+            ini_string=self.ini_string,
         )
+        if trigger_time is not None:
+            BilbyJob.objects.filter(pk=job.pk).update(trigger_time=trigger_time)
+            job.trigger_time = trigger_time
+        IniKeyValue.objects.filter(
+            job=job,
+            key="n_simulation",
+            processed=False,
+        ).delete()
+        if simulation is not None:
+            IniKeyValue.objects.create(
+                job=job,
+                key="n_simulation",
+                value=simulation,
+                index=0,
+                processed=False,
+            )
+        return job
 
-    def _filtered_ids(self, user):
-        return set(BilbyJob.bilby_job_filter(BilbyJob.objects.all(), user).values_list("id", flat=True))
+    def ids(self, qs):
+        return set(qs.values_list("id", flat=True))
 
-    def test_user_filter_anonymous_user_raises_permission_error(self):
-        anonymous = ADACSAnonymousUser()
+    def test_user_filter_rejects_anonymous_user(self):
         with self.assertRaises(BilbyPermissionError):
-            BilbyJob.user_bilby_job_filter(BilbyJob.objects.all(), anonymous)
+            BilbyJob.user_bilby_job_filter(
+                BilbyJob.objects.all(),
+                ADACSAnonymousUser(),
+            )
 
-    def test_user_filter_authenticated_user_sees_only_own_jobs(self):
+    def test_user_filter_applies_owner_scope_before_visibility(self):
         self.authenticate()
-        own = self._create_job(private=True, is_ligo_job=False, name="own-private")
-        self._create_job(user_id=4, private=False, is_ligo_job=False, name="other-public")
-        self._create_job(user_id=4, private=True, is_ligo_job=False, name="other-private")
+        visible = self.create_job(private=True, trigger_time=99.0)
+        self.create_job(private=True, trigger_time=100.0, name="embargoed")
+        self.create_job(user_id=4, trigger_time=99.0, name="other-public")
+        result = BilbyJob.user_bilby_job_filter(BilbyJob.objects.all(), self.user)
+        self.assertEqual(self.ids(result), {visible.id})
 
-        filtered = set(BilbyJob.user_bilby_job_filter(BilbyJob.objects.all(), self.user).values_list("id", flat=True))
-        self.assertEqual(filtered, {own.id})
-
-    def _public_filtered_ids(self, user):
-        return set(BilbyJob.public_bilby_job_filter(BilbyJob.objects.all(), user).values_list("id", flat=True))
-
-    def test_public_bilby_job_filter_excludes_private_jobs(self):
-        public_job = self._create_job(private=False, name="public")
-        self._create_job(private=True, name="private")
-        self.assertEqual(self._public_filtered_ids(self.user), {public_job.id})
-
-    @override_settings(EMBARGO_START_TIME=1.5)
-    def test_public_bilby_job_filter_applies_embargo_for_non_ligo_user(self):
+    def test_public_filter_applies_public_scope_before_visibility(self):
         self.authenticate()
-        public_real = self._create_job(
-            private=False,
-            name="public-real",
-            ini_string=create_test_ini_string({"trigger-time": 1.0, "n-simulation": 0, "detectors": "['H1']"}),
-        )
-        self._create_job(
-            private=False,
-            name="public-embargoed",
-            ini_string=create_test_ini_string({"trigger-time": 2.0, "n-simulation": 0, "detectors": "['H1']"}),
-        )
-        self.assertEqual(self._public_filtered_ids(self.user), {public_real.id})
+        visible = self.create_job(trigger_time=99.0)
+        self.create_job(trigger_time=100.0, name="embargoed")
+        self.create_job(private=True, trigger_time=99.0, name="private")
+        result = BilbyJob.public_bilby_job_filter(BilbyJob.objects.all(), self.user)
+        self.assertEqual(self.ids(result), {visible.id})
 
-    @override_settings(EMBARGO_START_TIME=1.5)
-    def test_public_bilby_job_filter_ligo_user_passthrough(self):
+    def test_owner_or_public_scope_is_cumulative_with_visibility(self):
+        self.authenticate()
+        own = self.create_job(private=True, trigger_time=99.0)
+        public = self.create_job(user_id=4, trigger_time=99.0, name="public")
+        self.create_job(private=True, trigger_time=100.0, name="own-embargoed")
+        self.create_job(user_id=4, private=True, trigger_time=99.0, name="other-private")
+        result = BilbyJob.bilby_job_filter(BilbyJob.objects.all(), self.user)
+        self.assertEqual(self.ids(result), {own.id, public.id})
+
+    def test_ligo_member_does_not_bypass_private_scope(self):
         self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
-        public_real = self._create_job(
-            private=False,
-            name="public-real",
-            ini_string=create_test_ini_string({"trigger-time": 1.0, "n-simulation": 0, "detectors": "['H1']"}),
-        )
-        public_embargoed = self._create_job(
-            private=False,
-            name="public-embargoed",
-            ini_string=create_test_ini_string({"trigger-time": 2.0, "n-simulation": 0, "detectors": "['H1']"}),
-        )
-        self.assertEqual(self._public_filtered_ids(self.user), {public_real.id, public_embargoed.id})
+        own = self.create_job(private=True, trigger_time=100.0)
+        public = self.create_job(user_id=4, trigger_time=100.0, name="public")
+        self.create_job(user_id=4, private=True, trigger_time=99.0, name="other-private")
+        result = BilbyJob.bilby_job_filter(BilbyJob.objects.all(), self.user)
+        self.assertEqual(self.ids(result), {own.id, public.id})
 
-    def test_anonymous_user_sees_only_public_non_ligo_jobs(self):
-        visible = self._create_job(private=False, is_ligo_job=False, name="public-non-ligo")
-        self._create_job(private=True, is_ligo_job=False, name="private-non-ligo")
-        self._create_job(private=False, is_ligo_job=True, name="public-ligo")
-        other_public = self._create_job(user_id=4, private=False, is_ligo_job=False, name="other-public")
-
-        anonymous = ADACSAnonymousUser()
-        self.assertEqual(self._filtered_ids(anonymous), {visible.id, other_public.id})
-
-    def test_non_ligo_user_sees_own_and_public_non_ligo_jobs(self):
+    def test_simulation_bypasses_only_embargo(self):
         self.authenticate()
-        own_private = self._create_job(private=True, is_ligo_job=False, name="own-private")
-        own_public = self._create_job(private=False, is_ligo_job=False, name="own-public")
-        other_public = self._create_job(user_id=4, private=False, is_ligo_job=False, name="other-public")
-        self._create_job(user_id=4, private=True, is_ligo_job=False, name="other-private")
-        self._create_job(private=False, is_ligo_job=True, name="public-ligo")
-        self._create_job(private=True, is_ligo_job=True, name="private-ligo")
-
-        self.assertEqual(
-            self._filtered_ids(self.user),
-            {own_private.id, own_public.id, other_public.id},
+        own = self.create_job(private=True, trigger_time=100.0, simulation="+2")
+        public = self.create_job(
+            user_id=4,
+            trigger_time=100.0,
+            simulation="1",
+            name="public",
         )
-
-    def test_ligo_user_sees_own_jobs_and_all_public_jobs(self):
-        self.authenticate(authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
-        own_private_ligo = self._create_job(private=True, is_ligo_job=True, name="own-private-ligo")
-        own_public = self._create_job(private=False, is_ligo_job=False, name="own-public")
-        other_public_ligo = self._create_job(user_id=4, private=False, is_ligo_job=True, name="other-public-ligo")
-        self._create_job(user_id=4, private=True, is_ligo_job=False, name="other-private")
-
-        self.assertEqual(
-            self._filtered_ids(self.user),
-            {own_private_ligo.id, own_public.id, other_public_ligo.id},
+        self.create_job(
+            user_id=4,
+            private=True,
+            trigger_time=100.0,
+            simulation="1",
+            name="other-private",
         )
+        result = BilbyJob.bilby_job_filter(BilbyJob.objects.all(), self.user)
+        self.assertEqual(self.ids(result), {own.id, public.id})
+
+    def test_direct_event_taint_applies_to_all_collection_filters(self):
+        self.authenticate()
+        event = EventID.objects.create(event_id="GW123456", gps_time=100.0)
+        self.create_job(trigger_time=99.0, event_id=event)
+        filters = (
+            BilbyJob.user_bilby_job_filter(BilbyJob.objects.all(), self.user),
+            BilbyJob.public_bilby_job_filter(BilbyJob.objects.all(), self.user),
+            BilbyJob.bilby_job_filter(BilbyJob.objects.all(), self.user),
+        )
+        for result in filters:
+            self.assertEqual(self.ids(result), set())
+
+    def test_anonymous_scope_ignores_legacy_flag(self):
+        visible = self.create_job(trigger_time=99.0, is_ligo_job=True)
+        self.create_job(private=True, trigger_time=99.0, name="private")
+        self.create_job(trigger_time=100.0, name="embargoed")
+        result = BilbyJob.bilby_job_filter(
+            BilbyJob.objects.all(),
+            ADACSAnonymousUser(),
+        )
+        self.assertEqual(self.ids(result), {visible.id})

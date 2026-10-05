@@ -22,6 +22,8 @@ from .constants import BILBY_JOB_TYPE_CHOICES, BilbyJobType
 
 logger = logging.getLogger(__name__)
 
+UNSET = object()
+
 
 def _safe_json_loads(value):
     """
@@ -42,7 +44,7 @@ class BilbyPermissionError(PermissionError):
 
 
 from .utils.auth.lookup_users import request_lookup_users
-from .utils.embargo import embargo_filter
+from .utils.embargo import visible_to_user
 from .utils.gwflow_es import gwflow_elastic_search_remove
 from .utils.jobs.submit_job import submit_job
 from .utils.misc import is_ligo_user
@@ -135,19 +137,11 @@ class EventID(models.Model):
 
     @classmethod
     def get_by_event_id(cls, event_id, user):
-        event = cls.objects.get(event_id=event_id)
-
-        if event.is_ligo_event and not is_ligo_user(user):
-            raise BilbyPermissionError
-
-        return event
+        return visible_to_user(cls.objects.all(), user, "EventID").get(event_id=event_id)
 
     @classmethod
-    def filter_by_ligo(cls, is_ligo):
-        # Users may not view ligo IDs if they are not a ligo user
-        if is_ligo:
-            return cls.objects.all()
-        return cls.objects.exclude(is_ligo_event=True)
+    def visible_to(cls, user):
+        return visible_to_user(cls.objects.all(), user, "EventID")
 
     @classmethod
     def create(cls, event_id, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=False):
@@ -162,8 +156,8 @@ class EventID(models.Model):
         event.save()
         return event
 
-    def update(self, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=None):
-        if gps_time is not None:
+    def update(self, gps_time=UNSET, trigger_id=None, nickname=None, is_ligo_event=None):
+        if gps_time is not UNSET:
             self.gps_time = gps_time
         if trigger_id is not None:
             self.trigger_id = trigger_id
@@ -289,84 +283,47 @@ class BilbyJob(models.Model):
 
     @classmethod
     def get_by_id(cls, bid, user):
-        """
-        Get BilbyJob by the provided id
-
-        This function will raise an exception if:-
-        * the job requested is a ligo job, but the user is not a ligo user
-        * the job requested is private an not owned by the requesting user
-
-        :param bid: The id of the BilbyJob to return
-        :param user: The GWCloudUser instance making the request
-        :return: BilbyJob
-        """
+        """Return an owner-or-public job that is visible to ``user``."""
         try:
-            job = cls.objects.get(id=bid)
+            qs = cls.objects.filter(id=bid)
+            if user.is_anonymous:
+                qs = qs.filter(private=False)
+            else:
+                qs = qs.filter(Q(user_id=user.id) | Q(private=False))
+
+            qs = visible_to_user(qs, user, "BilbyJob").select_related(
+                "event_id",
+                "gwflow_job__event_id",
+                "user",
+            )
+            return qs.get()
         except (ValidationError, ValueError):
-            raise cls.DoesNotExist
-
-        # Users can only access the job if it is public or (the user is authenticated AND the user also owns the job)
-        if job.private and (user.is_anonymous or user.id != job.user.id):
-            raise BilbyPermissionError
-
-        # Users can only access the job if they are a ligo user
-        if job.is_ligo_job and not is_ligo_user(user):
-            raise BilbyPermissionError
-
-        return job
+            raise cls.DoesNotExist from None
 
     @classmethod
     def user_bilby_job_filter(cls, qs, user):
-        """
-        Used by UserBilbyJobFilter to filter only jobs owned by the requesting user
-
-        :param qs: The UserBilbyJobFilter queryset
-        :param user_job_filter: The UserBilbyJobFilter instance
-        :return: The queryset filtered by the requesting user
-        """
+        """Filter to jobs owned by and embargo-visible to ``user``."""
         if user.is_anonymous:
             raise BilbyPermissionError
 
-        return embargo_filter(qs.filter(user_id=user.id), user)
+        owner_scope = qs.filter(user_id=user.id)
+        return visible_to_user(owner_scope, user, "BilbyJob")
 
     @classmethod
     def public_bilby_job_filter(cls, qs, user):
-        """
-        Used by PublicBilbyJobFilter to filter only public jobs
-
-        :param qs: The PublicBilbyJobFilter queryset
-        :param public_job_filter: The PublicBilbyJobFilter instance
-        :return: The queryset filtered by public jobs only
-        """
-        return embargo_filter(qs.filter(private=False), user)
+        """Filter to public jobs that are embargo-visible to ``user``."""
+        public_scope = qs.filter(private=False)
+        return visible_to_user(public_scope, user, "BilbyJob")
 
     @classmethod
     def bilby_job_filter(cls, qs, user):
-        """
-        Used by BilbyJobNode to filter which jobs are visible to the requesting user.
-
-        A user who is not logged in can only see public jobs
-        A user who is logged in can only see their own jobs + public jobs
-        A user who is not a ligo user can not view ligo jobs
-
-        :param qs: The BilbyJobNode qs
-        :param info: The BilbyJobNode qs info object
-        :return: qs filtered by ligo jobs if required
-        """
-
+        """Filter to owner-or-public jobs that are embargo-visible to ``user``."""
         if user.is_anonymous:
-            # User isn't logged in - only allow public jobs
-            return embargo_filter(qs.filter(private=False, is_ligo_job=False), user)
+            private_scope = qs.filter(private=False)
+        else:
+            private_scope = qs.filter(Q(user_id=user.id) | Q(private=False))
 
-        if not is_ligo_user(user):
-            # If the job is not a ligo job and (the job is the current user's job or the job is public)
-            return embargo_filter(
-                qs.filter(Q(is_ligo_job=False) & (Q(user_id=user.id) | Q(private=False))),
-                user,
-            )
-
-        # If the job is the current user's job or the job is public
-        return embargo_filter(qs.filter(Q(user_id=user.id) | Q(private=False)), user)
+        return visible_to_user(private_scope, user, "BilbyJob")
 
     @classmethod
     def prune_supporting_files_jobs(cls):
@@ -769,7 +726,7 @@ class SupportingFile(models.Model):
         exist or the file is not yet uploaded.
         """
         try:
-            return cls.objects.filter(download_token=token, upload_token__isnull=True).first()
+            return cls.objects.filter(download_token=token, upload_token__isnull=True).select_related("job").first()
         except ValidationError:
             return None
 
@@ -813,7 +770,7 @@ class FileDownloadToken(models.Model):
 
         # Next try to find the instance matching the specified token
         try:
-            return cls.objects.filter(token=token).first()
+            return cls.objects.filter(token=token).select_related("job").first()
         except ValidationError:
             return None
 
