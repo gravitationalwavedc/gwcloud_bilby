@@ -61,6 +61,14 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
         )
         self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
 
+    def test_boolean_gps_time_skipped(self):
+        # A boolean GPSTime is malformed (float(True) == 1.0) and must be
+        # skipped like other non-numeric values, not coerced to a GPS time.
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(_metadata_with_events([{"GPSTime": True}])))
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(_metadata_with_events([{"GPSTime": False}])))
+        metadata = _metadata_with_events([{"GPSTime": True}, {"GPSTime": 2000.0}])
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
     def test_lowercase_shape(self):
         # Canonical portal shape (gracedb/events/gps_time, lowercase state)
         # is resolved like the capitalised shape.
@@ -98,6 +106,12 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
         self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": None}])))
         self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{}])))
         self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": [1, 2]}])))
+
+    @override_settings(EMBARGO_START_TIME=1500.0)
+    def test_boolean_gps_time_fail_open(self):
+        # A boolean GPSTime is malformed, not GPS time 1.0/0.0 -> fail-open (False).
+        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": True}])))
+        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": False}])))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_missing_event(self):

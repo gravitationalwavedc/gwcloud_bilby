@@ -389,6 +389,8 @@ def _gwflow_trigger_time_from_metadata(metadata):
             gps = event.get("gpstime")
         if gps is None:
             continue
+        if isinstance(gps, bool):
+            continue
         try:
             gps = float(gps)
         except (TypeError, ValueError):
