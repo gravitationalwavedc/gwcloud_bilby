@@ -72,7 +72,7 @@ class TestRepairEventIDGPSTime(BilbyTestCase):
     @mock.patch(f"{_COMMAND}.reindex_affected_event")
     def test_dry_run_reports_candidates_and_writes_nothing(self, reindex):
         candidate = self._candidate()
-        usable = self._job(candidate, 100.0, "usable")
+        self._job(candidate, 100.0, "usable")
         rejected = self._job(candidate, None, "rejected")
 
         with mock.patch(f"{_COMMAND}._precondition_failures", return_value=[]):
@@ -85,13 +85,12 @@ class TestRepairEventIDGPSTime(BilbyTestCase):
         self.assertIn("child_count=2 usable_count=1", output)
         self.assertIn("action=SET_VALUE value=100.0", output)
         self.assertIn(
-            f"kind=event-repair child_job_id={rejected.id} "
-            "reason=non_finite_child_trigger",
+            f"kind=event-repair child_job_id={rejected.id} reason=non_finite_child_trigger",
             output,
         )
         self.assertNotIn("source_row_id", output)
         self.assertNotIn("raw_value", output)
-        self.assertIn(str(usable.id), str(usable.id))
+        self.assertIn("reason=child_triggers_agree", output)
 
     def test_dry_run_reports_precondition_drift_without_aborting(self):
         self.test_one.delete()
@@ -99,8 +98,7 @@ class TestRepairEventIDGPSTime(BilbyTestCase):
         output = self._run(dry_run=True)
 
         self.assertIn(
-            "precondition_failed check=test_row "
-            "name=GW111111_222222 expected=0.0 observed=missing",
+            "precondition_failed check=test_row name=GW111111_222222 expected=0.0 observed=missing",
             output,
         )
         self.legitimate.refresh_from_db()
@@ -134,7 +132,7 @@ class TestRepairEventIDGPSTime(BilbyTestCase):
         reindex.assert_called_once_with(candidate.id)
 
     @mock.patch(f"{_COMMAND}.reindex_affected_event")
-    def test_conflict_over_two_seconds_sets_null(self, reindex):
+    def test_conflict_over_two_seconds_is_left_unresolved(self, reindex):
         candidate = self._candidate()
         first = self._job(candidate, 200.0, "minimum")
         second = self._job(candidate, 202.000001, "conflict")
@@ -142,11 +140,13 @@ class TestRepairEventIDGPSTime(BilbyTestCase):
         output = self._apply_without_production_guard()
 
         candidate.refresh_from_db()
-        self.assertIsNone(candidate.gps_time)
+        self.assertEqual(candidate.gps_time, _SENTINEL)
+        self.assertIn("action=REPORT_CONFLICT", output)
         self.assertIn("reason=conflicting_child_triggers", output)
         self.assertIn(f"child_ids={second.id}", output)
         self.assertNotIn(f"child_ids={first.id},", output)
-        reindex.assert_called_once_with(candidate.id)
+        self.assertIn("set_null=0 conflicts=1 applied=0 reindexed=0", output)
+        reindex.assert_not_called()
 
     @mock.patch(f"{_COMMAND}.reindex_affected_event")
     def test_no_evidence_sets_null(self, reindex):

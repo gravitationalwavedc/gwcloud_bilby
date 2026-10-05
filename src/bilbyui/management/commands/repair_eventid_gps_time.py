@@ -56,21 +56,11 @@ class RepairProposal:
 
 def _precondition_failures():
     failures = []
-    sentinel_rows = list(
-        EventID.objects.filter(gps_time=_SENTINEL)
-        .order_by("id")
-        .values_list("id", "event_id")
-    )
+    sentinel_rows = list(EventID.objects.filter(gps_time=_SENTINEL).order_by("id").values_list("id", "event_id"))
     if len(sentinel_rows) != 1:
-        failures.append(
-            "check=sole_sentinel "
-            f"expected_count=1 observed_count={len(sentinel_rows)}"
-        )
+        failures.append(f"check=sole_sentinel expected_count=1 observed_count={len(sentinel_rows)}")
     elif sentinel_rows[0][1] != _LEGITIMATE_EVENT:
-        failures.append(
-            "check=sentinel_identity "
-            f"expected={_LEGITIMATE_EVENT} observed={sentinel_rows[0][1]}"
-        )
+        failures.append(f"check=sentinel_identity expected={_LEGITIMATE_EVENT} observed={sentinel_rows[0][1]}")
 
     legitimate = EventID.objects.filter(event_id=_LEGITIMATE_EVENT).values_list(
         "gps_time",
@@ -78,9 +68,7 @@ def _precondition_failures():
     )
     legitimate_values = list(legitimate)
     if not legitimate_values:
-        failures.append(
-            f"check=legitimate_row expected={_LEGITIMATE_EVENT}:{_SENTINEL} observed=missing"
-        )
+        failures.append(f"check=legitimate_row expected={_LEGITIMATE_EVENT}:{_SENTINEL} observed=missing")
     elif legitimate_values[0] != _SENTINEL:
         failures.append(
             "check=legitimate_row "
@@ -89,15 +77,11 @@ def _precondition_failures():
         )
 
     for name in _TEST_EVENTS:
-        values = list(
-            EventID.objects.filter(event_id=name).values_list("gps_time", flat=True)
-        )
+        values = list(EventID.objects.filter(event_id=name).values_list("gps_time", flat=True))
         if not values:
             failures.append(f"check=test_row name={name} expected=0.0 observed=missing")
         elif values[0] != 0.0:
-            failures.append(
-                f"check=test_row name={name} expected=0.0 observed={values[0]}"
-            )
+            failures.append(f"check=test_row name={name} expected=0.0 observed={values[0]}")
     return failures
 
 
@@ -157,9 +141,7 @@ def _resolve_page(events):
 
         representative = min(value for _child_id, value in usable)
         conflicting = tuple(
-            child_id
-            for child_id, value in usable
-            if abs(value - representative) > _AGREEMENT_ABS_TOLERANCE
+            child_id for child_id, value in usable if abs(value - representative) > _AGREEMENT_ABS_TOLERANCE
         )
         if conflicting:
             proposals.append(
@@ -168,8 +150,8 @@ def _resolve_page(events):
                     event.event_id,
                     len(child_rows),
                     len(usable),
-                    "SET_NULL",
-                    None,
+                    "REPORT_CONFLICT",
+                    _SENTINEL,
                     "conflicting_child_triggers",
                     tuple(rejected),
                     conflicting,
@@ -218,16 +200,12 @@ class Command(BaseCommand):
     def _write_proposal(self, proposal):
         for child_id in proposal.rejected_child_ids:
             self.stdout.write(
-                "trigger_source_rejected "
-                f"kind=event-repair child_job_id={child_id} "
-                "reason=non_finite_child_trigger"
+                f"trigger_source_rejected kind=event-repair child_job_id={child_id} reason=non_finite_child_trigger"
             )
         if proposal.conflict_child_ids:
             child_ids = ",".join(map(str, proposal.conflict_child_ids))
             self.stdout.write(
-                "event_repair_conflict "
-                f"id={proposal.event_id} event_id={proposal.event_name} "
-                f"child_ids={child_ids}"
+                f"event_repair_conflict id={proposal.event_id} event_id={proposal.event_name} child_ids={child_ids}"
             )
         value = "none" if proposal.value is None else repr(proposal.value)
         self.stdout.write(
@@ -248,18 +226,13 @@ class Command(BaseCommand):
             f"event_repair_start mode={mode} batch={batch} after_id={cursor} "
             f"agreement_abs_tolerance={_AGREEMENT_ABS_TOLERANCE} rel_tolerance=0"
         )
-        self.stdout.write(
-            f"backup_reminder path={_BACKUP} action=operator_confirm_before_apply"
-        )
+        self.stdout.write(f"backup_reminder path={_BACKUP} action=operator_confirm_before_apply")
 
         failures = _precondition_failures()
         for failure in failures:
             self.stdout.write(f"precondition_failed {failure}")
         if apply and failures:
-            raise CommandError(
-                "EventID repair preconditions failed before writes: "
-                + "; ".join(failures)
-            )
+            raise CommandError("EventID repair preconditions failed before writes: " + "; ".join(failures))
 
         totals = {
             "kept": 0,
@@ -272,10 +245,7 @@ class Command(BaseCommand):
         }
 
         while True:
-            events = list(
-                EventID.objects.filter(gps_time=_SENTINEL, id__gt=cursor)
-                .order_by("id")[:batch]
-            )
+            events = list(EventID.objects.filter(gps_time=_SENTINEL, id__gt=cursor).order_by("id")[:batch])
             if not events:
                 break
 
@@ -286,10 +256,10 @@ class Command(BaseCommand):
                     totals["kept"] += 1
                 elif proposal.action == "SET_VALUE":
                     totals["set_value"] += 1
-                else:
+                elif proposal.action == "SET_NULL":
                     totals["set_null"] += 1
-                    if proposal.reason == "conflicting_child_triggers":
-                        totals["conflicts"] += 1
+                elif proposal.action == "REPORT_CONFLICT":
+                    totals["conflicts"] += 1
 
             changed = [proposal for proposal in proposals if proposal.changed]
             if apply and changed:
@@ -326,9 +296,9 @@ class Command(BaseCommand):
                             f"failed_event_id={proposal.event_id} "
                             f"last_fully_reindexed_id={last_fully_reindexed_id}; "
                             "--after-id resumes DB repair only and does not recover "
-                            "indexing; recovery=\"python manage.py "
-                            "es_reindex_reconcile --kind bilby\" and "
-                            "\"python manage.py es_reindex_reconcile --kind gwflow\", "
+                            'indexing; recovery="python manage.py '
+                            'es_reindex_reconcile --kind bilby" and '
+                            '"python manage.py es_reindex_reconcile --kind gwflow", '
                             "or Issue #112 full-corpus reindex"
                         ) from exc
                     totals["reindexed"] += 1

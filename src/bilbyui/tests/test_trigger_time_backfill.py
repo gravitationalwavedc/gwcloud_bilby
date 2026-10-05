@@ -227,19 +227,21 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         second.refresh_from_db()
         self.assertEqual(second.trigger_time, 2.0)
 
-    def test_write_page_distinguishes_conflict_from_not_updated(self):
+    def test_write_page_classifies_every_resolution(self):
         successful = self.make_bilby("successful")
         conflict = self.make_bilby("conflict", trigger_time=999.0)
+        same_value = self.make_bilby("same-value", trigger_time=20.0)
         deleted = self.make_bilby("deleted")
         deleted_id = deleted.id
         deleted.delete()
 
         command = __import__(COMMAND, fromlist=["Command"]).Command()
-        updated, concurrent_ids, not_updated_ids = command._write_page(
+        updated, concurrent_ids, not_updated_ids, same_value_ids = command._write_page(
             "bilby",
             {
                 successful.id: 10.0,
                 conflict.id: 20.0,
+                same_value.id: 20.0,
                 deleted_id: 30.0,
             },
         )
@@ -249,6 +251,43 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         self.assertEqual(updated, 1)
         self.assertEqual(concurrent_ids, [conflict.id])
         self.assertEqual(not_updated_ids, [deleted_id])
+        self.assertEqual(same_value_ids, [same_value.id])
+        self.assertEqual(
+            updated + len(concurrent_ids) + len(not_updated_ids) + len(same_value_ids),
+            4,
+        )
+
+    def test_same_value_write_race_is_unchanged_not_concurrent(self):
+        job = self.make_bilby("same-value-race")
+        self.source(job, "10", processed=True)
+        output = StringIO()
+
+        with (
+            mock.patch(
+                f"{COMMAND}.Command._write_page",
+                return_value=(0, [], [], [job.id]),
+            ),
+            mock.patch(
+                f"{COMMAND}.reindex_jobs",
+                return_value=ReindexCounts(0, 0, 0),
+            ),
+            mock.patch(f"{COMMAND}.verify_search_trigger_time"),
+        ):
+            call_command(
+                "backfill_trigger_times",
+                "--kind",
+                "bilby",
+                stdout=output,
+                stderr=output,
+            )
+
+        emitted = output.getvalue()
+        self.assertIn(f"same_value kind=bilby job_ids={job.id}", emitted)
+        self.assertNotIn("concurrent_change", emitted)
+        self.assertIn(
+            "scanned=1 resolved=1 unresolved=0 unchanged=1 updated=0",
+            emitted,
+        )
 
     def test_verifier_failure_is_command_error(self):
         job = self.make_bilby("verify")

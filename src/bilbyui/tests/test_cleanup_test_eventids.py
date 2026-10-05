@@ -62,14 +62,10 @@ class TestCleanupTestEventIDs(BilbyTestCase):
         output = io.StringIO()
         call_command("cleanup_test_eventids", stdout=output)
         digest = next(
-            line.split("=", 1)[1]
-            for line in output.getvalue().splitlines()
-            if line.startswith("inventory_sha256=")
+            line.split("=", 1)[1] for line in output.getvalue().splitlines() if line.startswith("inventory_sha256=")
         )
         inventory_line = next(
-            line.split("=", 1)[1]
-            for line in output.getvalue().splitlines()
-            if line.startswith("cleanup_inventory=")
+            line.split("=", 1)[1] for line in output.getvalue().splitlines() if line.startswith("cleanup_inventory=")
         )
         return output.getvalue(), json.loads(inventory_line), digest
 
@@ -192,9 +188,7 @@ class TestCleanupTestEventIDs(BilbyTestCase):
         _output, _inventory, digest = self._dry_run()
         original_delete = EventID.objects.filter(id__in=[self.first.id, self.second.id]).delete
 
-        with mock.patch(
-            "bilbyui.management.commands.cleanup_test_eventids.EventID.objects.filter"
-        ) as filter_mock:
+        with mock.patch("bilbyui.management.commands.cleanup_test_eventids.EventID.objects.filter") as filter_mock:
             filter_mock.return_value.delete.side_effect = RuntimeError("delete failed")
             with self.assertRaisesMessage(RuntimeError, "delete failed"):
                 call_command(

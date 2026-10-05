@@ -27,8 +27,7 @@ def _event_inventory(event):
     direct_bilby = list(BilbyJob.objects.filter(event_id=event).order_by("id"))
     direct_gwflow = list(GWFlowJob.objects.filter(event_id=event).order_by("id"))
     gwflow_children = list(
-        BilbyJob.objects.filter(gwflow_job_id__in=[job.id for job in direct_gwflow])
-        .order_by("gwflow_job_id", "id")
+        BilbyJob.objects.filter(gwflow_job_id__in=[job.id for job in direct_gwflow]).order_by("gwflow_job_id", "id")
     )
 
     return {
@@ -72,9 +71,7 @@ def build_inventory(events):
     by_name = {event.event_id: event for event in events}
     inventory = {
         "targets": [
-            _event_inventory(by_name[name])
-            if name in by_name
-            else {"event": {"event_id": name, "state": "absent"}}
+            _event_inventory(by_name[name]) if name in by_name else {"event": {"event_id": name, "state": "absent"}}
             for name in _TARGET_NAMES
         ],
         "default_action": "delete EventID rows and detach direct child references",
@@ -132,11 +129,7 @@ class Command(BaseCommand):
         deleted_gwflow_ids = []
 
         with transaction.atomic():
-            events = list(
-                EventID.objects.select_for_update()
-                .filter(event_id__in=_TARGET_NAMES)
-                .order_by("id")
-            )
+            events = list(EventID.objects.select_for_update().filter(event_id__in=_TARGET_NAMES).order_by("id"))
             if not events:
                 self.stdout.write("cleanup_applied status=already_complete targets_absent=2")
                 return
@@ -145,42 +138,27 @@ class Command(BaseCommand):
             missing = [name for name in _TARGET_NAMES if name not in found_names]
             if missing:
                 raise CommandError(
-                    "cleanup precondition failed: target set is partially absent "
-                    f"missing={','.join(missing)}"
+                    f"cleanup precondition failed: target set is partially absent missing={','.join(missing)}"
                 )
 
-            invalid_state = [
-                event.event_id
-                for event in events
-                if event.gps_time != 0.0
-            ]
+            invalid_state = [event.event_id for event in events if event.gps_time != 0.0]
             if invalid_state:
                 raise CommandError(
-                    "cleanup precondition failed: targets must have gps_time=0.0 "
-                    f"invalid={','.join(invalid_state)}"
+                    f"cleanup precondition failed: targets must have gps_time=0.0 invalid={','.join(invalid_state)}"
                 )
 
             inventory, _canonical, digest = build_inventory(events)
             if digest != expected_digest:
-                raise CommandError(
-                    "cleanup inventory changed: "
-                    f"expected={expected_digest} actual={digest}"
-                )
+                raise CommandError(f"cleanup inventory changed: expected={expected_digest} actual={digest}")
 
             direct_bilby_ids = sorted(
-                child["id"]
-                for target in inventory["targets"]
-                for child in target["direct_bilby_children"]
+                child["id"] for target in inventory["targets"] for child in target["direct_bilby_children"]
             )
             direct_gwflow_ids = sorted(
-                child["id"]
-                for target in inventory["targets"]
-                for child in target["direct_gwflow_children"]
+                child["id"] for target in inventory["targets"] for child in target["direct_gwflow_children"]
             )
             gwflow_bilby_ids = sorted(
-                child["id"]
-                for target in inventory["targets"]
-                for child in target["gwflow_bilby_children"]
+                child["id"] for target in inventory["targets"] for child in target["gwflow_bilby_children"]
             )
             deleted_event_ids = sorted(event.id for event in events)
 
@@ -191,8 +169,7 @@ class Command(BaseCommand):
                 GWFlowJob.objects.filter(id__in=deleted_gwflow_ids).delete()
 
                 surviving_bilby_ids = sorted(
-                    BilbyJob.objects.filter(id__in=gwflow_bilby_ids)
-                    .values_list("id", flat=True)
+                    BilbyJob.objects.filter(id__in=gwflow_bilby_ids).values_list("id", flat=True)
                 )
             else:
                 surviving_bilby_ids = sorted(set(direct_bilby_ids + gwflow_bilby_ids))

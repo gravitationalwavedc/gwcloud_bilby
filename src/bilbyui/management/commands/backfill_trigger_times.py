@@ -73,13 +73,19 @@ class Command(BaseCommand):
                 updated = 0
                 concurrent_ids = []
                 not_updated_ids = []
+                same_value_ids = []
                 if not dry_run:
-                    updated, concurrent_ids, not_updated_ids = self._write_page(
+                    (
+                        updated,
+                        concurrent_ids,
+                        not_updated_ids,
+                        same_value_ids,
+                    ) = self._write_page(
                         kind,
                         resolutions,
                     )
                     totals["updated"] += updated
-                    totals["unchanged"] += len(concurrent_ids) + len(not_updated_ids)
+                    totals["unchanged"] += len(concurrent_ids) + len(not_updated_ids) + len(same_value_ids)
                     if concurrent_ids:
                         self.stderr.write(
                             "concurrent_change "
@@ -90,6 +96,12 @@ class Command(BaseCommand):
                         self.stderr.write(
                             "not_updated "
                             f"kind={kind} job_ids={self._ids(not_updated_ids)} "
+                            f"expected={len(resolutions)} updated={updated}"
+                        )
+                    if same_value_ids:
+                        self.stderr.write(
+                            "same_value "
+                            f"kind={kind} job_ids={self._ids(same_value_ids)} "
                             f"expected={len(resolutions)} updated={updated}"
                         )
             except Exception as exc:
@@ -282,7 +294,7 @@ class Command(BaseCommand):
     @staticmethod
     def _write_page(kind, resolutions):
         if not resolutions:
-            return 0, [], []
+            return 0, [], [], []
 
         model = BilbyJob if kind == "bilby" else GWFlowJob
         ids = list(resolutions)
@@ -297,20 +309,19 @@ class Command(BaseCommand):
             ).update(trigger_time=expression)
 
         if updated == len(ids):
-            return updated, [], []
+            return updated, [], [], []
 
-        current_values = dict(
-            model.objects.filter(id__in=ids).values_list("id", "trigger_time")
-        )
+        current_values = dict(model.objects.filter(id__in=ids).values_list("id", "trigger_time"))
         concurrently_changed = [
             job_id
             for job_id, expected in resolutions.items()
-            if current_values.get(job_id) is not None
-            and current_values[job_id] != expected
+            if current_values.get(job_id) is not None and current_values[job_id] != expected
         ]
-        not_updated = [
+        not_updated = [job_id for job_id in ids if job_id not in current_values or current_values[job_id] is None]
+        matching_value = [
             job_id
-            for job_id in ids
-            if job_id not in current_values or current_values[job_id] is None
+            for job_id, expected in resolutions.items()
+            if current_values.get(job_id) is not None and current_values[job_id] == expected
         ]
-        return updated, concurrently_changed, not_updated
+        same_value = matching_value[updated:]
+        return updated, concurrently_changed, not_updated, same_value
