@@ -15,7 +15,7 @@ def normalize_trigger(raw) -> float | None:
 
         try:
             candidate = json.loads(stripped)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, RecursionError):
             candidate = stripped
 
         if isinstance(candidate, bool) or not isinstance(candidate, (int, float, str)):

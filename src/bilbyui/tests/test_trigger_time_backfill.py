@@ -74,7 +74,6 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         output, _, reindex, verify = self.run_command(
             "--kind",
             "bilby",
-            "--dry-run",
         )
 
         job.refresh_from_db()
@@ -100,7 +99,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         )
 
         with self.assertLogs(COMMAND, level="WARNING") as captured:
-            _, _, reindex, verify = self.run_command("--kind", "bilby")
+            _, _, reindex, verify = self.run_command("--kind", "bilby", "--apply")
 
         job.refresh_from_db()
         self.assertEqual(job.trigger_time, 222.0)
@@ -119,6 +118,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         _, _, second_reindex, second_verify = self.run_command(
             "--kind",
             "bilby",
+            "--apply",
         )
         second_reindex.assert_not_called()
         second_verify.assert_called_once_with("bilby")
@@ -132,7 +132,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         self.source(fallback, "42.25", processed=False)
         self.source(unresolved, "null", processed=True)
 
-        output, _, reindex, _ = self.run_command("--kind", "bilby")
+        output, _, reindex, _ = self.run_command("--kind", "bilby", "--apply")
 
         fallback.refresh_from_db()
         unresolved.refresh_from_db()
@@ -158,6 +158,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
             "1",
             "--after-id",
             str(first.id),
+            "--apply",
         )
 
         self.assertEqual(
@@ -174,7 +175,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         existing = self.make_bilby("existing", trigger_time=77.0)
         self.source(existing, "999", processed=True)
 
-        _, _, reindex, verify = self.run_command("--kind", "bilby")
+        _, _, reindex, verify = self.run_command("--kind", "bilby", "--apply")
 
         existing.refresh_from_db()
         self.assertEqual(existing.trigger_time, 77.0)
@@ -185,7 +186,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         job = self.make_bilby("stale")
         self.source(job, "malformed", processed=True)
 
-        _, _, reindex, _ = self.run_command("--kind", "bilby")
+        _, _, reindex, _ = self.run_command("--kind", "bilby", "--apply")
 
         reindex.assert_called_once_with([job.id], "bilby")
 
@@ -213,6 +214,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
                     "bilby",
                     "--batch",
                     "1",
+                    "--apply",
                     stdout=output,
                     stderr=output,
                 )
@@ -277,6 +279,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
                 "backfill_trigger_times",
                 "--kind",
                 "bilby",
+                "--apply",
                 stdout=output,
                 stderr=output,
             )
@@ -304,7 +307,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
             ),
         ):
             with self.assertRaises(CommandError) as raised:
-                call_command("backfill_trigger_times", "--kind", "bilby")
+                call_command("backfill_trigger_times", "--kind", "bilby", "--apply")
 
         self.assertIn("status=verification_failed", str(raised.exception))
 
@@ -347,6 +350,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         _, get_version, reindex, verify = self.run_command(
             "--kind",
             "gwflow",
+            "--apply",
             portal=portal,
         )
 
@@ -379,11 +383,29 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         self.run_command(
             "--kind",
             "gwflow",
+            "--apply",
             portal=lambda _sname, _history: (metadata, "live"),
         )
 
         job.refresh_from_db()
         self.assertEqual(job.trigger_time, 41.5)
+
+    def test_gwflow_metadata_markers_remain_unresolved(self):
+        for index, marker in enumerate((0.0, 1126259462.391)):
+            with self.subTest(marker=marker):
+                job = self.make_gwflow(f"S20020{index + 6}a")
+                self.run_command(
+                    "--kind",
+                    "gwflow",
+                    "--apply",
+                    portal=lambda _sname, _history, value=marker: (
+                        self.metadata(value),
+                        "live",
+                    ),
+                )
+
+                job.refresh_from_db()
+                self.assertIsNone(job.trigger_time)
 
     def test_gwflow_portal_failure_makes_page_atomic(self):
         first = self.make_gwflow("S200106a")
@@ -431,7 +453,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         self.source(bilby, "70", processed=True)
 
         with mock.patch.object(BilbyJob, "save", autospec=True) as save:
-            self.run_command("--kind", "bilby")
+            self.run_command("--kind", "bilby", "--apply")
 
         save.assert_not_called()
 

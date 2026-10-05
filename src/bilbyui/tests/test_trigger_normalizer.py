@@ -65,6 +65,11 @@ class NormalizeTriggerTests(SimpleTestCase):
             with self.subTest(raw=raw):
                 self.assertIsNone(normalize_trigger(raw))
 
+    def test_deeply_nested_json_is_rejected_without_raising(self):
+        deeply_nested = "[" * 2000 + "0" + "]" * 2000
+
+        self.assertIsNone(normalize_trigger(deeply_nested))
+
     def test_booleans_are_rejected_before_numeric_handling(self):
         for raw in (True, False, "true", "false"):
             with self.subTest(raw=raw):

@@ -58,9 +58,11 @@ class TestRepairEventIDGPSTime(BilbyTestCase):
         self.assertIn("mode=dry-run", output)
         self.assertIn("agreement_abs_tolerance=2.0 rel_tolerance=0", output)
         self.assertIn(
-            "gwcloud:/home/lewis/eventid_backup_20260929-040906.sql",
+            "backup_reminder action=operator_confirm_current_approved_backup_before_apply",
             output,
         )
+        self.assertNotIn("eventid_backup_", output)
+        self.assertNotIn("path=", output)
         parser = Command().create_parser("manage.py", "repair_eventid_gps_time")
         with self.assertRaises(CommandError):
             parser.parse_args(["--dry-run", "--apply"])

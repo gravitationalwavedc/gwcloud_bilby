@@ -13,7 +13,6 @@ from bilbyui.utils.search_trigger_time import normalize_trigger
 _SENTINEL = 1126259462.391
 _LEGITIMATE_EVENT = "GW150914_000000"
 _TEST_EVENTS = ("GW111111_222222", "GW222222_111111")
-_BACKUP = "gwcloud:/home/lewis/eventid_backup_20260929-040906.sql"
 _AGREEMENT_ABS_TOLERANCE = 2.0
 
 
@@ -226,7 +225,7 @@ class Command(BaseCommand):
             f"event_repair_start mode={mode} batch={batch} after_id={cursor} "
             f"agreement_abs_tolerance={_AGREEMENT_ABS_TOLERANCE} rel_tolerance=0"
         )
-        self.stdout.write(f"backup_reminder path={_BACKUP} action=operator_confirm_before_apply")
+        self.stdout.write("backup_reminder action=operator_confirm_current_approved_backup_before_apply")
 
         failures = _precondition_failures()
         for failure in failures:

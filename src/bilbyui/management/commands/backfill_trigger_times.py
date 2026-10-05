@@ -46,16 +46,22 @@ class Command(BaseCommand):
             default=0,
             help="Exclusively start after this job ID (default: 0).",
         )
-        parser.add_argument(
+        mode = parser.add_mutually_exclusive_group()
+        mode.add_argument(
             "--dry-run",
             action="store_true",
-            help="Resolve and report without database or Elasticsearch writes.",
+            help="Resolve and report without database or Elasticsearch writes (the default).",
+        )
+        mode.add_argument(
+            "--apply",
+            action="store_true",
+            help="Apply database updates and reindex affected jobs.",
         )
 
     def handle(self, *_args, **options):
         kind = options["kind"]
         batch = options["batch"]
-        dry_run = options["dry_run"]
+        dry_run = not options["apply"]
         cursor = options["after_id"]
         totals = defaultdict(int)
 
@@ -270,8 +276,10 @@ class Command(BaseCommand):
                     raise RuntimeError(f"portal fetch failed for GWFlowJob {job.id}") from exc
                 if state == "down" or not isinstance(metadata, Mapping):
                     raise RuntimeError(f"portal metadata unavailable for GWFlowJob {job.id}")
-                selected = normalize_trigger(_gwflow_trigger_time_from_metadata(metadata))
-                source_class = "metadata"
+                metadata_value = normalize_trigger(_gwflow_trigger_time_from_metadata(metadata))
+                if metadata_value not in (None, 0.0, _SENTINEL):
+                    selected = metadata_value
+                    source_class = "metadata"
 
             if selected is None:
                 counts["unresolved"] += 1
