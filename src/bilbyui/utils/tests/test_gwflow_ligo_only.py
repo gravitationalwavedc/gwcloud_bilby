@@ -100,6 +100,13 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
         self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": [1, 2]}])))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
+    def test_non_finite_gps_time(self):
+        # Non-finite GPSTime (inf/nan) is treated as malformed -> no usable
+        # event -> fail-open (False), matching _normalise_trigger's contract.
+        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": "inf"}])))
+        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": "nan"}])))
+
+    @override_settings(EMBARGO_START_TIME=1500.0)
     def test_missing_event(self):
         self.assertFalse(gwflow_ligo_only_from_metadata({}))
         self.assertFalse(gwflow_ligo_only_from_metadata({"GraceDB": {}}))
