@@ -145,7 +145,7 @@ def probability(value: Any, precision: int = 3) -> str:
     except (TypeError, ValueError):
         safe_precision = 3
     rendered = f"{number:.{safe_precision}f}".rstrip("0").rstrip(".")
-    if rendered == "0":
+    if rendered in ("", "0"):
         return scientific(number)
     if rendered == "1":
         sig = safe_precision + 1
