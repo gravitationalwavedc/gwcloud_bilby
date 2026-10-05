@@ -10,7 +10,6 @@ from graphql import GraphQLError
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
-from bilbyui.services.gwflow import _gwflow_public_visibility_clause
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_es import build_gwflow_es_doc
@@ -219,10 +218,8 @@ class TestGWFlowMutations(BilbyTestCase):
 
             job.refresh_from_db()
             self.assertEqual(job.schema_version, "v2")
-            # Metadata is provided on this re-upsert, so ligo_only is derived
-            # from it. With EMBARGO_START_TIME unset (None), the derived
-            # value is False (all public).
-            self.assertFalse(job.ligo_only)
+            self.assertTrue(job.ligo_only)
+            self.assertIsNone(job.trigger_time)
             mock_es_update.assert_called_once_with(job, {"test": "json"})
 
             f_obj = GWFlowFile.objects.get(job=job, path="outdir/data.h5")
@@ -1392,6 +1389,7 @@ class TestExactVersionIngest(BilbyTestCase):
             current_history_id="sha-newer",
             current_history_timestamp=datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC),
             event_id=event,
+            trigger_time=1200.0,
         )
         GWFlowFile.objects.create(
             job=job,
@@ -1410,6 +1408,7 @@ class TestExactVersionIngest(BilbyTestCase):
             is_pruned=True,
             current_history_timestamp="2026-09-01T12:00:00+00:00",
             event_id="GW230601_999999",
+            metadata='{"GraceDB": {"Events": [{"GPSTime": 2200.0}]}}',
             files=[
                 SimpleNamespace(
                     analysis_uid="pe_2",
@@ -1442,6 +1441,7 @@ class TestExactVersionIngest(BilbyTestCase):
             datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC),
         )
         self.assertEqual(job.event_id, event)
+        self.assertEqual(job.trigger_time, 1200.0)
         self.assertFalse(GWFlowFile.objects.filter(job=job, analysis_uid="pe_2").exists())
         self.assertTrue(GWFlowFile.objects.filter(job=job, path="outdir/a.h5").exists())
 
@@ -1474,6 +1474,7 @@ class TestExactVersionIngest(BilbyTestCase):
             current_history_id="sha-old",
             current_history_timestamp=datetime.datetime(2026, 9, 1, 12, 0, 0, tzinfo=datetime.UTC),
             event_id=event,
+            trigger_time=1200.0,
         )
         GWFlowFile.objects.create(
             job=job,
@@ -1494,6 +1495,7 @@ class TestExactVersionIngest(BilbyTestCase):
             current_history_id="sha-001",
             current_history_timestamp="2026-09-03T12:00:00+00:00",
             event_id="GW230601_999999",
+            metadata='{"GraceDB": {"Events": [{"GPSTime": 2200.0}]}}',
             files=[
                 SimpleNamespace(
                     analysis_uid="pe_2",
@@ -1521,6 +1523,7 @@ class TestExactVersionIngest(BilbyTestCase):
         self.assertTrue(job.is_pruned)
         self.assertEqual(job.current_history_id, "sha-001")
         self.assertEqual(job.event_id, other_event)
+        self.assertEqual(job.trigger_time, 2200.0)
         self.assertTrue(GWFlowFile.objects.filter(job=job, analysis_uid="pe_2").exists())
         self.assertFalse(GWFlowFile.objects.filter(job=job, path="outdir/a.h5").exists())
 
@@ -1692,108 +1695,401 @@ class TestCheckGwflowIngestUser(BilbyTestCase):
             _check_gwflow_ingest_user(self.ingest_user)
 
 
-class TestGWFlowLigoOnlyDerivation(BilbyTestCase):
-    """Integration tests for ligo_only derivation in upsert_gwflow_job (issue #83)."""
+class TestGWFlowTriggerTimePersistence(BilbyTestCase):
+    """Integration coverage for metadata-derived GWFlow trigger persistence."""
 
     def setUp(self):
         super().setUp()
-        self.ingest_user = self.create_user(id=99, name="ingest user", primary_email="ingest@gwflow.org")
-        self.non_ligo_user = self.create_user(
-            id=101,
-            name="Public User",
-            primary_email="public@example.com",
-            authentication_method="password",
+        self.ingest_user = self.create_user(
+            id=99,
+            name="ingest user",
+            primary_email="ingest@gwflow.org",
         )
 
-    def _params(self, sname, metadata):
+    def _params(self, sname, metadata=None, **overrides):
         from types import SimpleNamespace
 
-        return SimpleNamespace(
-            sname=sname,
-            ligo_only=None,
-            schema_version="v1",
-            libraries=["cbc-workflow-o4a"],
-            is_pruned=False,
-            current_history_id=None,
-            current_history_timestamp=None,
-            event_id=None,
-            files=[],
-            metadata=metadata,
-        )
+        values = {
+            "sname": sname,
+            "ligo_only": None,
+            "schema_version": "v1",
+            "libraries": ["cbc-workflow-o4a"],
+            "is_pruned": False,
+            "current_history_id": None,
+            "current_history_timestamp": None,
+            "event_id": None,
+            "files": [],
+            "metadata": metadata,
+        }
+        values.update(overrides)
+        return SimpleNamespace(**values)
 
-    @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
-    def test_upsert_trigger_after_embargo_sets_ligo_only_true(self):
+    def _upsert(self, params):
         from bilbyui.views import upsert_gwflow_job
 
-        metadata = '{"GraceDB": {"Events": [{"GPSTime": 2000.0}]}}'
-        with mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es:
-            upsert_gwflow_job(self.ingest_user, self._params("S230801after", metadata))
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+            return upsert_gwflow_job(self.ingest_user, params)
 
-        job = GWFlowJob.objects.get(sname="S230801after")
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_create_stores_preferred_finite_gps_without_deriving_ligo_only(self):
+        metadata = '{"GraceDB": {"Events": [{"GPSTime": 1000.0}, {"State": "preferred", "GPSTime": 2000.0}]}}'
+        self._upsert(self._params("S230801preferred", metadata))
+
+        job = GWFlowJob.objects.get(sname="S230801preferred")
+        self.assertEqual(job.trigger_time, 2000.0)
         self.assertTrue(job.ligo_only)
 
-        # GWFlowJob.trigger_time is populated by issue #107 (EMB-5); this exercises the #110 canonical builder contract.
-        GWFlowJob.objects.filter(pk=job.pk).update(trigger_time=2000.0)
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_update_stores_first_usable_fallback_without_deriving_ligo_only(self):
+        job = GWFlowJob.objects.create(
+            sname="S230801update",
+            user=self.ingest_user,
+            trigger_time=900.0,
+            ligo_only=True,
+        )
+        metadata = (
+            '{"GraceDB": {"Events": ['
+            '{"State": "preferred", "GPSTime": "bad"}, '
+            '{"GPSTime": 1100.0}, {"GPSTime": 1200.0}]}}'
+        )
+        self._upsert(self._params(job.sname, metadata))
+
         job.refresh_from_db()
-        doc = build_gwflow_es_doc(job, {"GraceDB": {"Events": [{"GPSTime": 2000.0}]}})
-        self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], 2000.0)
-        self.assertNotIn("ligoOnly", doc["_gwcloud"])
-        mock_es.assert_called_once()
+        self.assertEqual(job.trigger_time, 1100.0)
+        self.assertTrue(job.ligo_only)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_nested_raw_payload_gracedb_is_persisted(self):
+        metadata = '{"raw_payload": {"GraceDB": {"Events": [{"GPSTime": 1300.0}]}}}'
+        self._upsert(self._params("S230801nested", metadata))
+
+        job = GWFlowJob.objects.get(sname="S230801nested")
+        self.assertEqual(job.trigger_time, 1300.0)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_top_level_gracedb_wins_over_conflicting_nested_payload(self):
+        metadata = (
+            '{"GraceDB": {"Events": [{"GPSTime": 1400.0}]}, '
+            '"raw_payload": {"GraceDB": {"Events": [{"GPSTime": 2400.0}]}}}'
+        )
+        self._upsert(self._params("S230801precedence", metadata))
+
+        job = GWFlowJob.objects.get(sname="S230801precedence")
+        self.assertEqual(job.trigger_time, 1400.0)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_present_malformed_or_missing_metadata_clears_trigger(self):
+        malformed = GWFlowJob.objects.create(
+            sname="S230801malformed",
+            user=self.ingest_user,
+            trigger_time=1500.0,
+        )
+        missing = GWFlowJob.objects.create(
+            sname="S230801missing",
+            user=self.ingest_user,
+            trigger_time=1600.0,
+        )
+
+        self._upsert(
+            self._params(
+                malformed.sname,
+                '{"GraceDB": {"Events": [{"GPSTime": "bad"}]}}',
+            )
+        )
+        self._upsert(self._params(missing.sname, '{"unrelated": true}'))
+
+        malformed.refresh_from_db()
+        missing.refresh_from_db()
+        self.assertIsNone(malformed.trigger_time)
+        self.assertIsNone(missing.trigger_time)
 
     @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
-    def test_upsert_trigger_before_embargo_sets_ligo_only_false(self):
-        from bilbyui.views import upsert_gwflow_job
+    def test_threshold_values_are_stored_unchanged(self):
+        for suffix, gps in (
+            ("below", 1499.0),
+            ("equal", 1500.0),
+            ("above", 1501.0),
+        ):
+            with self.subTest(gps=gps):
+                metadata = f'{{"GraceDB": {{"Events": [{{"GPSTime": {gps}}}]}}}}'
+                self._upsert(self._params(f"S230801{suffix}", metadata))
+                job = GWFlowJob.objects.get(sname=f"S230801{suffix}")
+                self.assertEqual(job.trigger_time, gps)
 
-        metadata = '{"GraceDB": {"Events": [{"GPSTime": 1000.0}]}}'
-        with mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es:
-            upsert_gwflow_job(self.ingest_user, self._params("S230801before", metadata))
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_prune_only_preserves_trigger_time(self):
+        job = GWFlowJob.objects.create(
+            sname="S230801pruned",
+            user=self.ingest_user,
+            trigger_time=1700.0,
+        )
 
-        job = GWFlowJob.objects.get(sname="S230801before")
-        self.assertFalse(job.ligo_only)
+        self._upsert(
+            self._params(
+                job.sname,
+                metadata=None,
+                is_pruned=True,
+                files=None,
+            )
+        )
 
-        # GWFlowJob.trigger_time is populated by issue #107 (EMB-5); this exercises the #110 canonical builder contract.
-        GWFlowJob.objects.filter(pk=job.pk).update(trigger_time=1000.0)
         job.refresh_from_db()
-        doc = build_gwflow_es_doc(job, {"GraceDB": {"Events": [{"GPSTime": 1000.0}]}})
-        self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], 1000.0)
-        self.assertNotIn("ligoOnly", doc["_gwcloud"])
-        mock_es.assert_called_once()
+        self.assertTrue(job.is_pruned)
+        self.assertEqual(job.trigger_time, 1700.0)
 
-    @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
-    def test_upsert_missing_trigger_fail_open_public(self):
-        from bilbyui.views import upsert_gwflow_job
-
-        metadata = '{"GraceDB": {"Events": [{"GPSTime": "bad"}]}}'
-        with mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es:
-            upsert_gwflow_job(self.ingest_user, self._params("S230801missing", metadata))
-
-        job = GWFlowJob.objects.get(sname="S230801missing")
-        self.assertFalse(job.ligo_only)
-        doc = build_gwflow_es_doc(job, {"GraceDB": {"Events": [{"GPSTime": "bad"}]}})
-        self.assertNotIn("searchTriggerTime", doc["_gwcloud"])
-        self.assertNotIn("ligoOnly", doc["_gwcloud"])
-        mock_es.assert_called_once()
-
-    @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
-    def test_public_filter_returns_derived_public_job(self):
-        from bilbyui.services.gwflow import list_gwflow_jobs
-        from bilbyui.views import upsert_gwflow_job
-
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_explicit_ligo_only_is_still_applied(self):
+        job = GWFlowJob.objects.create(
+            sname="S230801explicit",
+            user=self.ingest_user,
+            ligo_only=True,
+        )
         metadata = '{"GraceDB": {"Events": [{"GPSTime": 1000.0}]}}'
-        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
-            upsert_gwflow_job(self.ingest_user, self._params("S230801pub", metadata))
 
-        job = GWFlowJob.objects.get(sname="S230801pub")
+        self._upsert(self._params(job.sname, metadata, ligo_only=False))
+
+        job.refresh_from_db()
         self.assertFalse(job.ligo_only)
+        self.assertEqual(job.trigger_time, 1000.0)
 
-        with mock.patch("bilbyui.services.gwflow.get_es_client") as mock_get_es_client:
-            mock_client = mock.MagicMock()
-            mock_get_es_client.return_value = mock_client
-            mock_client.search.return_value = {"hits": {"hits": [{"_id": job.id}], "total": {"value": 1}}}
-            res = list_gwflow_jobs(self.non_ligo_user, search="GW150914", time_range="1d")
 
-        self.assertIn(job.id, res["jobs"])
-        filters = mock_client.search.call_args[1]["query"]["bool"]["filter"]
-        self.assertIn(_gwflow_public_visibility_clause(1500.0), filters)
-        self.assertIn({"term": {"_gwcloud.isPruned": False}}, filters)
-        self.assertNotIn({"term": {"_gwcloud.ligoOnly": False}}, filters)
+class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
+    """Writer-owned callback scheduling for trigger and event-link changes."""
+
+    def setUp(self):
+        super().setUp()
+        self.ingest_user = self.create_user(
+            id=99,
+            name="ingest user",
+            primary_email="ingest@gwflow.org",
+        )
+
+    def _params(self, sname, **overrides):
+        from types import SimpleNamespace
+
+        values = {
+            "sname": sname,
+            "ligo_only": None,
+            "schema_version": None,
+            "libraries": None,
+            "is_pruned": None,
+            "current_history_id": None,
+            "current_history_timestamp": None,
+            "event_id": None,
+            "files": None,
+            "metadata": None,
+        }
+        values.update(overrides)
+        return SimpleNamespace(**values)
+
+    def _invoke_and_run_callbacks(self, params):
+        from bilbyui.views import upsert_gwflow_job
+
+        callbacks = []
+        with (
+            mock.patch(
+                "bilbyui.views.transaction.on_commit",
+                side_effect=callbacks.append,
+            ),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+            mock.patch("bilbyui.views.reindex_jobs") as reindex,
+            mock.patch("bilbyui.views.cache.delete") as cache_delete,
+        ):
+            upsert_gwflow_job(self.ingest_user, params)
+            for callback in callbacks:
+                callback()
+
+        return callbacks, reindex, cache_delete
+
+    def _assert_one_reindex_callback(self, callbacks, reindex, cache_delete, job):
+        self.assertEqual(len(callbacks), 3)
+        reindex.assert_called_once_with([job.id], "gwflow")
+        self.assertEqual(cache_delete.call_count, 2)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_trigger_change_registers_one_reindex_callback_with_stable_args(self):
+        job = GWFlowJob.objects.create(
+            sname="S230801callback",
+            user=self.ingest_user,
+            trigger_time=1000.0,
+        )
+        callbacks, reindex, cache_delete = self._invoke_and_run_callbacks(
+            self._params(
+                job.sname,
+                metadata='{"GraceDB": {"Events": [{"GPSTime": 1100.0}]}}',
+            )
+        )
+
+        self._assert_one_reindex_callback(callbacks, reindex, cache_delete, job)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_finite_to_none_registers_one_reindex_callback(self):
+        job = GWFlowJob.objects.create(
+            sname="S230801clear",
+            user=self.ingest_user,
+            trigger_time=1000.0,
+        )
+        callbacks, reindex, cache_delete = self._invoke_and_run_callbacks(
+            self._params(job.sname, metadata='{"GraceDB": {"Events": []}}')
+        )
+
+        self._assert_one_reindex_callback(callbacks, reindex, cache_delete, job)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_event_link_change_registers_one_reindex_callback(self):
+        event = EventID.create(
+            event_id="GW230801_123456",
+            trigger_id="S230801a",
+            gps_time=123.0,
+            is_ligo_event=True,
+        )
+        job = GWFlowJob.objects.create(
+            sname="S230801eventlink",
+            user=self.ingest_user,
+            trigger_time=1000.0,
+        )
+        callbacks, reindex, cache_delete = self._invoke_and_run_callbacks(
+            self._params(job.sname, event_id=event.trigger_id)
+        )
+
+        self._assert_one_reindex_callback(callbacks, reindex, cache_delete, job)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_combined_trigger_and_link_change_registers_exactly_one_reindex(self):
+        event = EventID.create(
+            event_id="GW230801_654321",
+            trigger_id="S230801b",
+            gps_time=456.0,
+            is_ligo_event=True,
+        )
+        job = GWFlowJob.objects.create(
+            sname="S230801combinedjob",
+            user=self.ingest_user,
+            trigger_time=1000.0,
+        )
+        callbacks, reindex, cache_delete = self._invoke_and_run_callbacks(
+            self._params(
+                job.sname,
+                event_id=event.trigger_id,
+                metadata='{"GraceDB": {"Events": [{"GPSTime": 1200.0}]}}',
+            )
+        )
+
+        self._assert_one_reindex_callback(callbacks, reindex, cache_delete, job)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_unchanged_trigger_and_link_register_no_reindex_callback(self):
+        event = EventID.create(
+            event_id="GW230801_111111",
+            trigger_id="S230801c",
+            gps_time=789.0,
+            is_ligo_event=True,
+        )
+        job = GWFlowJob.objects.create(
+            sname="S230801unchangedjob",
+            user=self.ingest_user,
+            trigger_time=1000.0,
+            event_id=event,
+        )
+        callbacks, reindex, cache_delete = self._invoke_and_run_callbacks(
+            self._params(
+                job.sname,
+                event_id=event.trigger_id,
+                metadata='{"GraceDB": {"Events": [{"GPSTime": 1000.0}]}}',
+            )
+        )
+
+        self.assertEqual(len(callbacks), 2)
+        reindex.assert_not_called()
+        self.assertEqual(cache_delete.call_count, 2)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_prune_only_registers_no_reindex_callback(self):
+        job = GWFlowJob.objects.create(
+            sname="S230801prunecallback",
+            user=self.ingest_user,
+            trigger_time=1000.0,
+        )
+        callbacks, reindex, cache_delete = self._invoke_and_run_callbacks(self._params(job.sname, is_pruned=True))
+
+        self.assertEqual(len(callbacks), 2)
+        reindex.assert_not_called()
+        self.assertEqual(cache_delete.call_count, 2)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_older_delivery_registers_no_callbacks_and_preserves_state(self):
+        import datetime
+
+        event = EventID.create(
+            event_id="GW230801_222222",
+            trigger_id="S230801d",
+            gps_time=321.0,
+            is_ligo_event=True,
+        )
+        replacement = EventID.create(
+            event_id="GW230801_333333",
+            trigger_id="S230801e",
+            gps_time=654.0,
+            is_ligo_event=True,
+        )
+        job = GWFlowJob.objects.create(
+            sname="S230801oldercallback",
+            user=self.ingest_user,
+            trigger_time=1000.0,
+            event_id=event,
+            current_history_id="new",
+            current_history_timestamp=datetime.datetime(
+                2026,
+                9,
+                2,
+                tzinfo=datetime.UTC,
+            ),
+        )
+        callbacks, reindex, cache_delete = self._invoke_and_run_callbacks(
+            self._params(
+                job.sname,
+                event_id=replacement.trigger_id,
+                metadata='{"GraceDB": {"Events": [{"GPSTime": 2000.0}]}}',
+                current_history_id="old",
+                current_history_timestamp="2026-09-01T00:00:00+00:00",
+            )
+        )
+
+        self.assertEqual(callbacks, [])
+        reindex.assert_not_called()
+        cache_delete.assert_not_called()
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 1000.0)
+        self.assertEqual(job.event_id, event)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    @mock.patch("bilbyui.views.reindex_jobs")
+    def test_rollback_discards_reindex_callback(self, reindex):
+        from bilbyui.views import upsert_gwflow_job
+
+        job = GWFlowJob.objects.create(
+            sname="S230801rollback",
+            user=self.ingest_user,
+            trigger_time=1000.0,
+        )
+        with (
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+            mock.patch(
+                "bilbyui.views._reconcile_gwflow_files",
+                side_effect=RuntimeError("rollback"),
+            ),
+            self.captureOnCommitCallbacks(execute=True) as callbacks,
+            self.assertRaises(RuntimeError),
+        ):
+            upsert_gwflow_job(
+                self.ingest_user,
+                self._params(
+                    job.sname,
+                    metadata='{"GraceDB": {"Events": [{"GPSTime": 2000.0}]}}',
+                ),
+            )
+
+        self.assertEqual(callbacks, [])
+        reindex.assert_not_called()
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 1000.0)

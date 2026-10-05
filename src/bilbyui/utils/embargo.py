@@ -1,6 +1,7 @@
 import logging
 import math
 import re
+from collections.abc import Mapping
 
 import requests
 import tenacity
@@ -348,28 +349,36 @@ def resolve_job_trigger(processed_args=None, args=None) -> float | None:
     return None
 
 
-def _gwflow_trigger_time_from_metadata(metadata):
-    """
-    Extract the trigger GPS time from portal metadata (issue #83).
+def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
+    """Return a finite trigger time from GraceDB metadata, or ``None``.
 
-    Selects the preferred event (``State == "preferred"``) if present, else
-    the first entry with a usable numeric GPS time, skipping malformed
-    entries (missing or non-numeric GPS time). Returns ``None`` when no
-    usable event exists. Defensive: never raises on malformed metadata.
-    Accepts both the capitalised portal shape (``GraceDB`` / ``Events`` /
-    ``GPSTime``) and the canonical lowercase shape (``gracedb`` / ``events``
-    / ``gps_time`` / ``gpstime``), matching ``resolve_event_id_for``.
+    A valid top-level ``GraceDB``/``gracedb`` mapping takes precedence over
+    the corresponding mapping under ``raw_payload``; once a mapping source is
+    selected it is not abandoned even if its event list is unusable. Within
+    the selected mapping, scan ``Events``/``events`` in source order, reject
+    non-finite/boolean/malformed GPS values, and return the first usable
+    preferred event (``State``/``state`` == "preferred"), otherwise the first
+    usable event.
     """
-    try:
-        gracedb = metadata["GraceDB"]
-    except (TypeError, KeyError):
-        gracedb = None
-    if not isinstance(gracedb, dict):
-        try:
-            gracedb = metadata["gracedb"]
-        except (TypeError, KeyError):
-            return None
-    if not isinstance(gracedb, dict):
+    if not isinstance(metadata, Mapping):
+        return None
+
+    raw_payload = metadata.get("raw_payload")
+    locations = (metadata, raw_payload if isinstance(raw_payload, Mapping) else None)
+
+    gracedb = None
+    for key in ("GraceDB", "gracedb"):
+        for location in locations:
+            if location is None:
+                continue
+            candidate = location.get(key)
+            if isinstance(candidate, Mapping):
+                gracedb = candidate
+                break
+        if gracedb is not None:
+            break
+
+    if gracedb is None:
         return None
 
     events = gracedb.get("Events")
@@ -380,29 +389,34 @@ def _gwflow_trigger_time_from_metadata(metadata):
 
     usable = []
     for event in events:
-        if not isinstance(event, dict):
+        if not isinstance(event, Mapping):
             continue
-        gps = event.get("GPSTime")
-        if gps is None:
-            gps = event.get("gps_time")
-        if gps is None:
-            gps = event.get("gpstime")
+
+        gps = None
+        for key in ("GPSTime", "gps_time", "gpstime"):
+            value = event.get(key)
+            if value is not None:
+                gps = value
+                break
         if gps is None:
             continue
+        if isinstance(gps, bool):
+            continue
+
         try:
             gps = float(gps)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             continue
-        usable.append((event, gps))
+        if not math.isfinite(gps):
+            continue
 
-    if not usable:
-        return None
+        usable.append((event, gps))
 
     for event, gps in usable:
         if event.get("State") == "preferred" or event.get("state") == "preferred":
             return gps
 
-    return usable[0][1]
+    return usable[0][1] if usable else None
 
 
 def gwflow_ligo_only_from_metadata(metadata):
