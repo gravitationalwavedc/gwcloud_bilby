@@ -222,6 +222,38 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             resp_anon_pub = self.client.get(f"/file_download/?fileId={file_public.download_token}")
             self.assertEqual(resp_anon_pub.status_code, 200)
 
+    @override_settings(EMBARGO_START_TIME=1234.0)
+    def test_file_download_gwflow_file_embargoed_by_trigger_time(self):
+        """A non-LIGO user cannot download a file whose job is embargoed by trigger time even when ligo_only is False."""
+        with override_settings(GWFLOW_FILE_UPLOAD_DIR=self.temp_dir.name):
+            job = GWFlowJob.objects.create(
+                sname="S230601ag_embargoed",
+                user=self.user,
+                ligo_only=False,
+                trigger_time=1234.0,
+            )
+            gwflow_file = GWFlowFile.objects.create(
+                job=job,
+                analysis_uid="",
+                path="outdir/data.h5",
+                file_name="data.h5",
+                uploaded=True,
+            )
+            job_file_dir = Path(self.temp_dir.name) / str(job.id)
+            job_file_dir.mkdir(parents=True, exist_ok=True)
+            (job_file_dir / str(gwflow_file.id)).write_bytes(b"embargoed data")
+
+            non_ligo_user = self.create_user(id=20, authentication_method=AUTHENTICATION_METHODS["PASSWORD"])
+            self.authenticate(user=non_ligo_user)
+            resp = self.client.get(f"/file_download/?fileId={gwflow_file.download_token}")
+            self.assertEqual(resp.status_code, 404)
+
+            ligo_user = self.create_user(id=21, authentication_method=AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"])
+            self.authenticate(user=ligo_user)
+            resp = self.client.get(f"/file_download/?fileId={gwflow_file.download_token}")
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(b"".join(resp.streaming_content), b"embargoed data")
+
     def test_file_download_invalid_token_returns_404(self):
         """Test non-existent or invalid UUID token returns 404 fallthrough."""
         random_token = uuid.uuid4()

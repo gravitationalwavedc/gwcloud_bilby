@@ -67,7 +67,7 @@ from .services.jobs import _fetch_job_controller_jobs, get_job, list_public_jobs
 from .status import JobStatus
 from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
-from .utils.embargo import _gwflow_trigger_time_from_metadata, resolve_job_trigger, should_embargo_job
+from .utils.embargo import _gwflow_trigger_time_from_metadata, is_record_public, resolve_job_trigger, should_embargo_job
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
 from .utils.gwflow_portal import get_superevent, get_version, get_versions
@@ -1015,6 +1015,10 @@ def file_download_gwflow_file(request, gwflow_file):
 
     # LIGO-only visibility
     if gwflow_file.job.ligo_only and not is_ligo_user(request.user):
+        raise Http404
+
+    # Trigger-time embargo visibility (canonical policy shared with list/detail/GraphQL)
+    if not is_record_public(gwflow_file.job, request.user):
         raise Http404
 
     file_path = Path(settings.GWFLOW_FILE_UPLOAD_DIR) / str(gwflow_file.job.id) / str(gwflow_file.id)

@@ -652,7 +652,7 @@ class GWFlowFile(models.Model):
         exist.
         """
         try:
-            return cls.objects.filter(download_token=token).select_related("job").first()
+            return cls.objects.filter(download_token=token).select_related("job", "job__event_id").first()
         except ValidationError:
             return None
 
