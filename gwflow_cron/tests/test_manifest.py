@@ -199,9 +199,7 @@ class TestBuildFileEntry(unittest.TestCase):
         self.assertEqual(entry["md5_sum"], "")
 
     def test_null_md5_sum_is_normalised_to_empty_string(self):
-        entry = _build_file_entry(
-            "uid-null-md5", {"path": "/data/x.dat", "file_size": 100, "md5_sum": None}
-        )
+        entry = _build_file_entry("uid-null-md5", {"path": "/data/x.dat", "file_size": 100, "md5_sum": None})
         self.assertEqual(entry["md5_sum"], "")
 
     def test_integral_string_file_size_is_coerced_to_int(self):
