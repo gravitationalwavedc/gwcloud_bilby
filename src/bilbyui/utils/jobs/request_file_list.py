@@ -58,13 +58,27 @@ def request_file_list(job, path, recursive, user_id=None):
         # Get the list of files requested
         file_list = []
         if recursive:
-            # This is a recursive search
-            for root, dirnames, filenames in os.walk(dir_path):
+            # This is a recursive search. Follow symlinked subdirectories so the
+            # listing is complete and consistent with the non-recursive branch,
+            # but track visited real paths so a symlink cycle cannot recurse
+            # forever.
+            visited = {os.path.realpath(dir_path)}
+            for root, dirnames, filenames in os.walk(dir_path, followlinks=True):
                 # Iterate over the directories
                 for item in dirnames:
                     entry = _make_file_entry(Path(root, item), True, job_dir)
                     if entry is not None:
                         file_list.append(entry)
+
+                # Only descend into subdirectories whose real path we have not
+                # already visited (this breaks symlink cycles).
+                kept = []
+                for name in dirnames:
+                    real = os.path.realpath(os.path.join(root, name))
+                    if real not in visited:
+                        visited.add(real)
+                        kept.append(name)
+                dirnames[:] = kept
 
                 for item in filenames:
                     entry = _make_file_entry(Path(root, item), False, job_dir)
