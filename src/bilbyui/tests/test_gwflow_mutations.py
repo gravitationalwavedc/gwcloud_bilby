@@ -1067,6 +1067,64 @@ class TestGWFlowMutations(BilbyTestCase):
             self.assertNotIn(to_global_id("GWFlowFileNode", f_obj.id), removed_ids)
 
     @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upsert_md5_change_without_file_size_preserves_known_size(self):
+        """Re-ingest that changes md5 but reports no file_size must preserve the known size."""
+        self._auth_as(self.ingest_user)
+
+        query = """
+            mutation Upsert($input: UpsertGwflowJobMutationInput!) {
+                upsertGwflowJob(input: $input) {
+                    result {
+                        sname
+                    }
+                }
+            }
+        """
+
+        create_input = {
+            "params": {
+                "sname": "S230801recon_size",
+                "files": [
+                    {
+                        "analysisUid": "pe_1",
+                        "path": "outdir/a.h5",
+                        "fileName": "a.h5",
+                        "fileSize": 100,
+                        "md5Sum": "oldmd5",
+                    },
+                ],
+            }
+        }
+
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+            res_create = self.query(query, input_data=create_input)
+            self.assertIsNone(res_create.errors)
+
+            f_obj = GWFlowFile.objects.get(job__sname="S230801recon_size", path="outdir/a.h5")
+            self.assertEqual(f_obj.file_size, 100)
+
+            # Re-upsert same path with a different md5 but no file_size
+            update_input = {
+                "params": {
+                    "sname": "S230801recon_size",
+                    "files": [
+                        {
+                            "analysisUid": "pe_1",
+                            "path": "outdir/a.h5",
+                            "fileName": "a.h5",
+                            "md5Sum": "newmd5",
+                        },
+                    ],
+                }
+            }
+            res_update = self.query(query, input_data=update_input)
+            self.assertIsNone(res_update.errors)
+
+            f_obj.refresh_from_db()
+            self.assertEqual(f_obj.md5_sum, "newmd5")
+            self.assertEqual(f_obj.file_size, 100)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
     def test_upsert_reconciliation_deletes_mirrored_file_from_disk(self):
         """Dropping a file from the manifest must delete its mirrored file and .part sibling from disk."""
         self._auth_as(self.ingest_user)
