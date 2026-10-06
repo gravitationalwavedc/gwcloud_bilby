@@ -27,7 +27,7 @@ def _build_file_entry(analysis_uid: str, file_obj: dict | None) -> dict | None:
 
     file_name = Path(path).name
     file_size = _normalise_file_size(file_obj.get("file_size"))
-    md5_sum = file_obj.get("md5_sum", "")
+    md5_sum = file_obj.get("md5_sum") or ""
 
     return {
         "analysis_uid": analysis_uid,
