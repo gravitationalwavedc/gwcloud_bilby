@@ -125,11 +125,7 @@ class Command(BaseCommand):
 
         overall = (
             "pass"
-            if all(
-                check["status"] == "pass"
-                for checks in kind_results.values()
-                for check in checks.values()
-            )
+            if all(check["status"] == "pass" for checks in kind_results.values() for check in checks.values())
             else "fail"
         )
         result = {

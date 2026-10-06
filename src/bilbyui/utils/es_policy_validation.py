@@ -72,11 +72,7 @@ def _applicable_times(record, kind: str) -> list[float]:
             record.trigger_time,
             record.event_id.gps_time if record.event_id_id else None,
             record.gwflow_job.trigger_time if record.gwflow_job_id else None,
-            (
-                record.gwflow_job.event_id.gps_time
-                if record.gwflow_job_id and record.gwflow_job.event_id_id
-                else None
-            ),
+            (record.gwflow_job.event_id.gps_time if record.gwflow_job_id and record.gwflow_job.event_id_id else None),
         ]
     else:
         values = [

@@ -387,6 +387,4 @@ def verify_search_trigger_time(kind: str) -> None:
     """Independently compare raw model fields with stored Elasticsearch values."""
     report = collect_search_trigger_time_parity(kind)
     if report.failures:
-        raise ReindexError(
-            f"verification failed kind={kind} checked={report.checked} failures={report.failures}"
-        )
+        raise ReindexError(f"verification failed kind={kind} checked={report.checked} failures={report.failures}")

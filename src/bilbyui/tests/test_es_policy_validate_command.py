@@ -153,7 +153,6 @@ class EsPolicyValidateCommandTestCase(BilbyTestCase):
                     call_command("es_policy_validate", "--batch", str(batch))
                 self.assertEqual(caught.exception.returncode, 2)
 
-
     def test_non_finite_explicit_threshold_exits_two(self):
         for threshold in ("nan", "inf", "-inf"):
             with self.subTest(threshold=threshold):

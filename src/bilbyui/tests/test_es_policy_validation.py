@@ -191,7 +191,6 @@ class TestESPolicyValidation(BilbyTestCase):
 
         self.assertEqual(report.threshold_boundary, 1)
 
-
     @override_settings(EMBARGO_START_TIME=200.0)
     def test_visibility_uses_explicit_threshold_instead_of_setting(self):
         self.bilby(trigger_time=150.0)
