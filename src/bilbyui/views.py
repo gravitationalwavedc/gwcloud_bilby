@@ -138,15 +138,14 @@ def _parse_embargo_args(args):
     # resolution, per issue #106 protocol 1).
     trigger_time = resolve_job_trigger(args=args)
 
-    # Parse n_simulation from INI args - determines if job uses simulated data
-    n_simulation = args.n_simulation
-    # Convert to boolean for embargo checking (0 = False, non-zero = True)
-    if n_simulation is not None:
-        try:
-            n_simulation = bool(int(n_simulation))
-        except (TypeError, ValueError):
-            # Malformed n_simulation value - treat as not simulated (embargo-safe)
-            n_simulation = False
+    # Parse n_simulation from INI args - determines if job uses simulated data.
+    # Route through the shared canonical grammar (is_simulated_value) so the
+    # upload-permission decision agrees with the visibility decision for the
+    # same n_simulation value.
+    if args.n_simulation is None:
+        n_simulation = None
+    else:
+        n_simulation = is_simulated_value(str(args.n_simulation))
 
     return trigger_time, n_simulation
 
