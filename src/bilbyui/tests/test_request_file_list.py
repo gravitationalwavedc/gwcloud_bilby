@@ -119,6 +119,35 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertIn("/data/sub/b.txt", paths)
 
     @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_recursive_listing_follows_symlinked_subdir(self):
+        job_dir = self.job.get_upload_directory()
+        (job_dir / "data").mkdir(parents=True, exist_ok=True)
+        # Target only reachable through the symlink, so the recursive listing
+        # must follow the link to include its contents.
+        (job_dir / "real_sub").mkdir(parents=True, exist_ok=True)
+        (job_dir / "real_sub" / "b.txt").write_text("b")
+        (job_dir / "data" / "link").symlink_to(job_dir / "real_sub", target_is_directory=True)
+
+        success, file_list = request_file_list(self.job, "data", True)
+        self.assertTrue(success)
+        paths = sorted(entry["path"] for entry in file_list)
+        self.assertIn("/data/link", paths)
+        self.assertIn("/data/link/b.txt", paths)
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_recursive_listing_symlink_cycle_terminates(self):
+        job_dir = self.job.get_upload_directory()
+        (job_dir / "data").mkdir(parents=True, exist_ok=True)
+        (job_dir / "data" / "a.txt").write_text("a")
+        (job_dir / "data" / "loop").symlink_to(job_dir / "data", target_is_directory=True)
+
+        success, file_list = request_file_list(self.job, "data", True)
+        self.assertTrue(success)
+        paths = sorted(entry["path"] for entry in file_list)
+        self.assertIn("/data/a.txt", paths)
+        self.assertIn("/data/loop", paths)
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_non_recursive_listing_skips_broken_symlink(self):
         job_dir = self.job.get_upload_directory()
         (job_dir / "data").mkdir(parents=True, exist_ok=True)
