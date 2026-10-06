@@ -67,8 +67,9 @@ def get_embargo_start() -> float | None:
     return parsed
 
 
-def user_subject_to_embargo(user):
-    if get_embargo_start() is None:
+def user_subject_to_embargo(user, *, threshold=None):
+    effective = threshold if threshold is not None else get_embargo_start()
+    if effective is None:
         return False
 
     return not is_ligo_user(user)
@@ -83,12 +84,12 @@ def is_simulated_value(text):
     return int(text) > 0
 
 
-def is_public(trigger_times, is_simulation, user):
+def is_public(trigger_times, is_simulation, user, *, threshold=None):
     """Return public visibility using strictest-wins trigger-time semantics."""
-    embargo_start = get_embargo_start()
-    if embargo_start is None:
+    effective = threshold if threshold is not None else get_embargo_start()
+    if effective is None:
         return True
-    if not user_subject_to_embargo(user):
+    if not user_subject_to_embargo(user, threshold=effective):
         return True
     if is_simulation:
         return True
@@ -104,7 +105,7 @@ def is_public(trigger_times, is_simulation, user):
             raise TypeError("Trigger times must be numeric or None") from exc
         if not finite:
             raise ValueError("Trigger times must be finite")
-        if trigger_time >= embargo_start:
+        if trigger_time >= effective:
             return False
     return True
 
@@ -132,7 +133,7 @@ def annotate_simulation(qs):
     )
 
 
-def is_record_public(record, user, *, is_simulation=None) -> bool:
+def is_record_public(record, user, *, is_simulation=None, threshold=None) -> bool:
     """Evaluate visibility for a record whose required relations are preloaded.
 
     GWFlowJob callers must use ``select_related("event_id")``. BilbyJob
@@ -140,7 +141,7 @@ def is_record_public(record, user, *, is_simulation=None) -> bool:
     ``select_related("event_id", "gwflow_job__event_id")``.
     """
     if isinstance(record, models.EventID):
-        return is_public([record.gps_time], False, user)
+        return is_public([record.gps_time], False, user, threshold=threshold)
 
     if isinstance(record, models.GWFlowJob):
         return is_public(
@@ -150,6 +151,7 @@ def is_record_public(record, user, *, is_simulation=None) -> bool:
             ],
             False,
             user,
+            threshold=threshold,
         )
 
     if isinstance(record, models.BilbyJob):
@@ -173,26 +175,27 @@ def is_record_public(record, user, *, is_simulation=None) -> bool:
             ],
             is_simulation,
             user,
+            threshold=threshold,
         )
 
     raise TypeError(f"Unsupported visibility record type: {type(record).__name__}")
 
 
-def visible_to_user(qs, user, model_kind):
+def visible_to_user(qs, user, model_kind, *, threshold=None):
     """Return the public-visible subset for a supported model kind."""
-    embargo_start = get_embargo_start()
-    if embargo_start is None:
+    effective = threshold if threshold is not None else get_embargo_start()
+    if effective is None:
         return qs
-    if not user_subject_to_embargo(user):
+    if not user_subject_to_embargo(user, threshold=effective):
         return qs
 
     if model_kind == "EventID":
-        return qs.filter(Q(gps_time__lt=embargo_start) | Q(gps_time__isnull=True))
+        return qs.filter(Q(gps_time__lt=effective) | Q(gps_time__isnull=True))
 
     if model_kind == "GWFlowJob":
         return qs.filter(
-            (Q(trigger_time__lt=embargo_start) | Q(trigger_time__isnull=True))
-            & (Q(event_id__gps_time__lt=embargo_start) | Q(event_id__gps_time__isnull=True))
+            (Q(trigger_time__lt=effective) | Q(trigger_time__isnull=True))
+            & (Q(event_id__gps_time__lt=effective) | Q(event_id__gps_time__isnull=True))
         )
 
     if model_kind == "BilbyJob":
@@ -200,10 +203,10 @@ def visible_to_user(qs, user, model_kind):
         return qs.filter(
             Q(simulated__gt=0)
             | (
-                (Q(trigger_time__lt=embargo_start) | Q(trigger_time__isnull=True))
-                & (Q(event_id__gps_time__lt=embargo_start) | Q(event_id__gps_time__isnull=True))
-                & (Q(gwflow_job__trigger_time__lt=embargo_start) | Q(gwflow_job__trigger_time__isnull=True))
-                & (Q(gwflow_job__event_id__gps_time__lt=embargo_start) | Q(gwflow_job__event_id__gps_time__isnull=True))
+                (Q(trigger_time__lt=effective) | Q(trigger_time__isnull=True))
+                & (Q(event_id__gps_time__lt=effective) | Q(event_id__gps_time__isnull=True))
+                & (Q(gwflow_job__trigger_time__lt=effective) | Q(gwflow_job__trigger_time__isnull=True))
+                & (Q(gwflow_job__event_id__gps_time__lt=effective) | Q(gwflow_job__event_id__gps_time__isnull=True))
             )
         )
 

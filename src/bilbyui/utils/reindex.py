@@ -26,6 +26,12 @@ class ReindexCounts(NamedTuple):
     failed: int
 
 
+class ParityReport(NamedTuple):
+    checked: int
+    failures: int
+    details: list
+
+
 class ReindexError(RuntimeError):
     """Raised when one or more requested records cannot be reindexed."""
 
@@ -300,13 +306,13 @@ def _stored_trigger_time(source, kind):
     return ("searchTriggerTime" in envelope), envelope.get("searchTriggerTime")
 
 
-def verify_search_trigger_time(kind: str) -> None:
+def collect_search_trigger_time_parity(kind: str, *, batch: int = _CHUNK_SIZE) -> ParityReport:
     """Independently compare raw model fields with stored Elasticsearch values."""
     if kind not in {"bilby", "gwflow"}:
         raise ValueError("kind must be 'bilby' or 'gwflow'")
 
     if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
-        return
+        return ParityReport(0, 0, [])
 
     if kind == "bilby":
         queryset = BilbyJob.objects.select_related(
@@ -322,9 +328,10 @@ def verify_search_trigger_time(kind: str) -> None:
     cursor = 0
     failures = 0
     checked = 0
+    details = []
 
     while True:
-        rows = list(queryset.filter(id__gt=cursor)[:_CHUNK_SIZE])
+        rows = list(queryset.filter(id__gt=cursor)[:batch])
         if not rows:
             break
 
@@ -356,6 +363,8 @@ def verify_search_trigger_time(kind: str) -> None:
 
             if reason:
                 failures += 1
+                if len(details) < 100:
+                    details.append((job.id, reason))
                 logger.error(
                     "reindex operation=verify kind=%s stable_id=%s reason=%s",
                     kind,
@@ -371,5 +380,11 @@ def verify_search_trigger_time(kind: str) -> None:
         checked,
         failures,
     )
-    if failures:
-        raise ReindexError(f"verification failed kind={kind} checked={checked} failures={failures}")
+    return ParityReport(checked, failures, details)
+
+
+def verify_search_trigger_time(kind: str) -> None:
+    """Independently compare raw model fields with stored Elasticsearch values."""
+    report = collect_search_trigger_time_parity(kind)
+    if report.failures:
+        raise ReindexError(f"verification failed kind={kind} checked={report.checked} failures={report.failures}")
