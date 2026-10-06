@@ -81,27 +81,39 @@ class EsPolicyValidateCommandTestCase(BilbyTestCase):
         self.assertIn("bilby: field_parity=pass visibility_parity=pass shadow=pass", output)
         self.assertIn("gwflow: field_parity=pass visibility_parity=pass shadow=pass", output)
 
-    def test_failed_check_exits_one(self):
-        stdout = io.StringIO()
-        with (
-            mock.patch(
-                f"{COMMAND}.collect_search_trigger_time_parity",
-                return_value=self._field(failures=1),
-            ),
-            mock.patch(f"{COMMAND}.collect_visibility_parity", return_value=self._visibility()),
-            mock.patch(f"{COMMAND}.collect_shadow_comparison", return_value=self._shadow()),
-        ):
-            with self.assertRaises(CommandError) as caught:
-                call_command(
-                    "es_policy_validate",
-                    "--kind",
-                    "bilby",
-                    "--threshold",
-                    "100",
-                    stdout=stdout,
-                )
+    def test_failed_check_sets_overall_fail_and_exits_one(self):
+        with TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            stdout = io.StringIO()
+            with (
+                mock.patch(
+                    f"{COMMAND}.collect_search_trigger_time_parity",
+                    return_value=self._field(failures=1),
+                ),
+                mock.patch(
+                    f"{COMMAND}.collect_visibility_parity",
+                    return_value=self._visibility(),
+                ),
+                mock.patch(
+                    f"{COMMAND}.collect_shadow_comparison",
+                    return_value=self._shadow(),
+                ),
+            ):
+                with self.assertRaises(CommandError) as caught:
+                    call_command(
+                        "es_policy_validate",
+                        "--kind",
+                        "bilby",
+                        "--threshold",
+                        "100",
+                        "--report",
+                        str(report_path),
+                        stdout=stdout,
+                    )
+            report = json.loads(report_path.read_text())
 
         self.assertEqual(caught.exception.returncode, 1)
+        self.assertEqual(report["overall"], "fail")
         self.assertIn("field_parity=fail", stdout.getvalue())
 
     def test_check_exception_is_reported_and_exits_one(self):
@@ -162,24 +174,6 @@ class EsPolicyValidateCommandTestCase(BilbyTestCase):
         visibility.assert_called_once_with("bilby", 100.0, batch=25)
         shadow.assert_called_once_with("bilby", 100.0, batch=25)
 
-    def test_skip_shadow_still_runs_visibility(self):
-        with TemporaryDirectory() as directory:
-            report_path = Path(directory) / "report.json"
-            code, _, _, visibility, shadow, _ = self._run(
-                "--kind",
-                "bilby",
-                "--skip-shadow",
-                "--report",
-                str(report_path),
-            )
-
-            report = json.loads(report_path.read_text())
-
-        self.assertEqual(code, 0)
-        visibility.assert_called_once_with("bilby", 100.0, batch=200)
-        shadow.assert_not_called()
-        self.assertEqual(report["kinds"]["bilby"]["shadow"], {"status": "skipped"})
-
     def test_explicit_threshold_is_used_without_fallback(self):
         code, _, _, visibility, shadow, embargo = self._run(
             "--kind",
@@ -205,25 +199,18 @@ class EsPolicyValidateCommandTestCase(BilbyTestCase):
         visibility.assert_called_once_with("bilby", 456.0, batch=200)
         shadow.assert_called_once_with("bilby", 456.0, batch=200)
 
-    def test_unset_threshold_skips_visibility_and_shadow(self):
-        with TemporaryDirectory() as directory:
-            report_path = Path(directory) / "report.json"
-            code, _, field, visibility, shadow, _ = self._run(
-                "--kind",
-                "bilby",
-                "--report",
-                str(report_path),
-                threshold=None,
-            )
-            report = json.loads(report_path.read_text())
+    def test_unset_threshold_exits_two_without_running_checks(self):
+        code, _, field, visibility, shadow, embargo = self._run(
+            "--kind",
+            "bilby",
+            threshold=None,
+        )
 
-        self.assertEqual(code, 0)
-        field.assert_called_once_with("bilby", batch=200)
+        self.assertEqual(code, 2)
+        embargo.assert_called_once_with()
+        field.assert_not_called()
         visibility.assert_not_called()
         shadow.assert_not_called()
-        self.assertIsNone(report["threshold"])
-        self.assertEqual(report["kinds"]["bilby"]["visibility_parity"]["status"], "skipped")
-        self.assertEqual(report["kinds"]["bilby"]["shadow"]["status"], "skipped")
 
     def test_report_writes_required_json_shape(self):
         with TemporaryDirectory() as directory:
@@ -274,12 +261,19 @@ class EsPolicyValidateCommandTestCase(BilbyTestCase):
         self.assertEqual(set(report["kinds"]), {"bilby"})
 
     @override_settings(IGNORE_ELASTIC_SEARCH=True)
-    def test_ignore_elastic_search_is_noop(self):
+    def test_ignore_elastic_search_fails_without_running_checks(self):
         code, output, field, visibility, shadow, embargo = self._run("--kind", "all")
 
-        self.assertEqual(code, 0)
-        self.assertIn("IGNORE_ELASTIC_SEARCH is set; es_policy_validate is a no-op.", output)
+        self.assertEqual(code, 1)
+        self.assertEqual(output, "")
         field.assert_not_called()
         visibility.assert_not_called()
         shadow.assert_not_called()
         embargo.assert_not_called()
+
+    def test_help_does_not_offer_skip_shadow(self):
+        stdout = io.StringIO()
+        with self.assertRaisesRegex(SystemExit, "0"):
+            call_command("es_policy_validate", "--help", stdout=stdout)
+
+        self.assertNotIn("--skip-shadow", stdout.getvalue())
