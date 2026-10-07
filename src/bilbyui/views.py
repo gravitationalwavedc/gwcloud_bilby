@@ -1700,6 +1700,8 @@ def _render_gwflow_files_section(request, sname):
     if state in ("live", "stale") and isinstance(data, dict):
         analyses = {}
         for a in parse_analyses(data):
+            if not a["uid"]:
+                continue
             analyses[a["uid"]] = {
                 "software": a["software"],
                 "waveform": a["waveform"],
