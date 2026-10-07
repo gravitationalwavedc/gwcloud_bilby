@@ -8,7 +8,7 @@ package-mode = false
 [tool.poetry.dependencies]
 python = "^3.12"
 gwosc = "*"
-gwcloud-python = "2.0.0"
+gwcloud-python = { git = "https://gitlab.com/CAS-eResearch/GWDC/gwcloud_python.git", rev = "04bf95ecd88818d88d4de98f7ec75c64619c5302" }  # 3.0.0 field-free; pinned to git rev until the PyPI release is unblocked
 requests = "*"
 urllib3 = "<2"  # requests_toolbelt <1.0 (via gwcloud-python) needs urllib3 1.x (appengine)
 h5py = "*"
