@@ -731,6 +731,7 @@ class TestEventIDVisibleTo(BilbyTestCase):
             {self.null_event, self.public_event, self.threshold_event},
         )
 
+
 class TestEventIDSchemaIntrospection(BilbyTestCase):
     """EventID GraphQL output contract under the trigger-time visibility policy."""
 

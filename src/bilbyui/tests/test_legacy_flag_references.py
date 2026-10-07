@@ -71,8 +71,8 @@ class LegacyFlagTokensAbsentTest(SimpleTestCase):
         # Determine repo root (two levels up from this file: tests/ -> bilbyui/ -> src/ -> repo)
         this_file = os.path.abspath(__file__)
         repo_root = os.path.dirname(  # gwcloud_bilby-113
-            os.path.dirname(          # src
-                os.path.dirname(      # bilbyui
+            os.path.dirname(  # src
+                os.path.dirname(  # bilbyui
                     os.path.dirname(  # tests
                         this_file
                     )

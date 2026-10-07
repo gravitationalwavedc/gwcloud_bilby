@@ -30,11 +30,7 @@ def gwflow_job(test_case: BilbyTestCase) -> RequestFixture:
     sname = "S240101a"
     GWFlowJob.objects.get_or_create(
         sname=sname,
-        defaults={
-            "user": test_case.user,
-            "libraries": ["cbc-workflow-o4a"],
-            "schema_version": "v3"
-        },
+        defaults={"user": test_case.user, "libraries": ["cbc-workflow-o4a"], "schema_version": "v3"},
     )
     return RequestFixture({"sname": sname}, {}, {})
 
