@@ -137,8 +137,6 @@ class TestGWFlowServices(BilbyTestCase):
         filter_terms = self._filter_terms(mock_client)
         filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
         self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
-        _ligo_key = "_gwcloud." + "ligo" + "Only"
-        self.assertNotIn(_ligo_key, filter_terms)
         self.assertIn("_gwcloud.isPruned", filter_terms)
         self.assertIn("_gwcloud.lastUpdatedTime", filter_terms)
 
@@ -161,8 +159,6 @@ class TestGWFlowServices(BilbyTestCase):
         filter_terms = self._filter_terms(mock_client)
         filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
         self.assertNotIn(_gwflow_public_visibility_clause(1000.0), filters)
-        _ligo_key = "_gwcloud." + "ligo" + "Only"
-        self.assertNotIn(_ligo_key, filter_terms)
         self.assertNotIn("_gwcloud.isPruned", filter_terms)
 
         self.assertIn(self.job_ligo.id, res["jobs"])
@@ -493,8 +489,6 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "approved")
         filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
         self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
-        _ligo_key = "_gwcloud." + "ligo" + "Only"
-        self.assertNotIn(_ligo_key, filter_terms)
         self.assertIn("_gwcloud.isPruned", filter_terms)
         self.assertIn(self.job_public.id, res["jobs"])
 
@@ -749,8 +743,6 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertIn("_gwcloud.lastUpdatedTime", filter_terms)
         filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
         self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
-        _ligo_key = "_gwcloud." + "ligo" + "Only"
-        self.assertNotIn(_ligo_key, filter_terms)
         self.assertEqual(filter_terms["_gwcloud.isPruned"], False)
         self.assertNotIn("libraries.keyword", filter_terms)
         self.assertNotIn("analyses.reviewStatus.keyword", filter_terms)

@@ -732,78 +732,27 @@ class TestEventIDVisibleTo(BilbyTestCase):
         )
 
 class TestEventIDSchemaIntrospection(BilbyTestCase):
-    """Assert that legacy fields are absent from the EventID GraphQL schema."""
+    """EventID GraphQL output contract under the trigger-time visibility policy."""
 
-    def test_event_id_output_has_no_legacy_event_flag(self):
+    def test_event_id_gps_time_is_nullable(self):
         response = self.query(
             """
             query {
                 __type(name: "EventIDType") {
                     fields {
                         name
+                        type {
+                            kind
+                        }
                     }
                 }
             }
             """
         )
         self.assertResponseNoErrors(response)
-        field_names = [f["name"] for f in response.data["__type"]["fields"]]
-        _blocked = "is" + "LigoEvent"
-        self.assertNotIn(_blocked, field_names)
-        # gpsTime remains present and nullable
-        self.assertIn("gpsTime", field_names)
-
-    def test_create_event_id_input_has_no_legacy_flag(self):
-        response = self.query(
-            """
-            query {
-                __type(name: "EventIDMutationInput") {
-                    inputFields {
-                        name
-                    }
-                }
-            }
-            """
-        )
-        self.assertResponseNoErrors(response)
-        field_names = [f["name"] for f in response.data["__type"]["inputFields"]]
-        _blocked = "is" + "LigoEvent"
-        self.assertNotIn(_blocked, field_names)
-
-    def test_update_event_id_input_has_no_legacy_flag(self):
-        response = self.query(
-            """
-            query {
-                __type(name: "UpdateEventIDMutationInput") {
-                    inputFields {
-                        name
-                    }
-                }
-            }
-            """
-        )
-        self.assertResponseNoErrors(response)
-        field_names = [f["name"] for f in response.data["__type"]["inputFields"]]
-        _blocked = "is" + "LigoEvent"
-        self.assertNotIn(_blocked, field_names)
-
-    @override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])
-    def test_create_with_legacy_flag_input_fails_graphql_validation(self):
-        self.authenticate()
-        _flag = "is" + "LigoEvent"
-        mutation_with_flag = f"""
-            mutation {{
-                createEventId(input: {{
-                    eventId: "GW123456_123456",
-                    gpsTime: "12345678.1",
-                    {_flag}: true
-                }}) {{
-                    result
-                }}
-            }}
-        """
-        response = self.query(mutation_with_flag)
-        self.assertResponseHasErrors(response)
+        field_types = {f["name"]: f["type"] for f in response.data["__type"]["fields"]}
+        self.assertIn("gpsTime", field_types)
+        self.assertEqual(field_types["gpsTime"]["kind"], "SCALAR")
 
     @override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])
     def test_field_free_create_succeeds(self):

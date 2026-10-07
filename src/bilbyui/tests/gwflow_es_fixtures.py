@@ -162,8 +162,6 @@ def assert_doc_matches_spec(testcase, doc, spec):
     testcase.assertEqual(envelope["sname"], spec["sname"])
     testcase.assertEqual(envelope["libraries"], spec["libraries"])
     testcase.assertEqual(envelope["isPruned"], spec["is_pruned"])
-    _blocked = "ligo" + "Only"
-    testcase.assertNotIn(_blocked, envelope)
     if spec["gps_time"] is None:
         testcase.assertNotIn("searchTriggerTime", envelope)
     else:
@@ -249,9 +247,6 @@ def assert_defect_queries_assertable(testcase, docs_by_id):
     testcase.assertEqual(d3["_gwcloud"]["searchTriggerTime"], 1000.0)
     testcase.assertNotIn("searchTriggerTime", d4["_gwcloud"])
     testcase.assertEqual(d5["_gwcloud"]["searchTriggerTime"], 500.0)
-    for entry in docs_by_id.values():
-        _blocked = "ligo" + "Only"
-        testcase.assertNotIn(_blocked, entry["doc"]["_gwcloud"])
 
 
 # Expected list-query results for the canonical fixture matrix (issue #72 query

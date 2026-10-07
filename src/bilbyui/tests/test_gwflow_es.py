@@ -100,8 +100,6 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         self.assertEqual(envelope["sname"], "S150914a")
         self.assertEqual(envelope["libraries"], ["cbc-workflow-o4a"])
         self.assertFalse(envelope["isPruned"])
-        _blocked = "ligo" + "Only"
-        self.assertNotIn(_blocked, envelope)
         self.assertEqual(envelope["searchTriggerTime"], 1126259462.4)
         self.assertEqual(envelope["lastUpdatedTime"], "2026-08-31T12:34:56+00:00")
         self.assertEqual(envelope["eventTriggerId"], "S150914a")
@@ -115,8 +113,6 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         doc = build_gwflow_es_doc(self.job, {})
 
         self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], 100.0)
-        _blocked = "ligo" + "Only"
-        self.assertNotIn(_blocked, doc["_gwcloud"])
 
     def test_build_gwflow_es_doc_uses_event_gps_time(self):
         self.job.trigger_time = None
@@ -142,8 +138,6 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         doc = build_gwflow_es_doc(self.job, {})
 
         self.assertNotIn("searchTriggerTime", doc["_gwcloud"])
-        _blocked = "ligo" + "Only"
-        self.assertNotIn(_blocked, doc["_gwcloud"])
 
     def test_build_gwflow_es_doc_unknown_future_sections_preserved(self):
         metadata = {

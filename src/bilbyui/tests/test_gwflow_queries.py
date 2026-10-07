@@ -52,7 +52,7 @@ class TestGWFlowQueries(BilbyTestCase):
             uploaded=True,
         )
 
-        # Embargoed GWFlowJob. The contradictory legacy flag proves it is ignored.
+        # Embargoed GWFlowJob under the trigger-time visibility policy.
         self.job_ligo = GWFlowJob.objects.create(
             sname="S230601ah",
             user=self.ingest_user,

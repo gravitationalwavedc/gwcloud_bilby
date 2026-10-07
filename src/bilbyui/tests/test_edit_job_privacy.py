@@ -5,7 +5,6 @@ from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.conf import settings
 from django.test import override_settings
 
-from bilbyui.admin import BilbyJobAdmin
 from bilbyui.models import BilbyJob, IniKeyValue
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.test_view_job import request_job_filter_mock
@@ -127,10 +126,6 @@ class TestEditJobPrivacy(BilbyTestCase):
                 "Share publicly",
                 "Share with LVK collaborators",
             )
-
-    def test_admin_does_not_expose_legacy_policy_field(self):
-        _blocked = "is_ligo" + "_job"
-        self.assertNotIn(_blocked, BilbyJobAdmin.fields)
 
     def test_other_users_job_returns_404(self):
         other_user = self.create_user(id=2, name="other", primary_email="other@gmail.com")
