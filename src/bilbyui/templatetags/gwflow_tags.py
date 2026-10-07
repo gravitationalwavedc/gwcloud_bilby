@@ -167,7 +167,7 @@ def scientific(value: Any, unit: str = "", precision: int = 3) -> str:
         value = value["value"]
     try:
         number = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return _with_unit(text(value), unit)
     if not math.isfinite(number):
         return _with_unit(text(value), unit)

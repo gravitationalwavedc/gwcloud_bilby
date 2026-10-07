@@ -190,6 +190,9 @@ class GwflowFormatterTests(SimpleTestCase):
             "not-a-number Hz",
         )
 
+    def test_scientific_oversized_integer_falls_back_to_text(self):
+        self.assertEqual(scientific(10**400), text(10**400))
+
     def test_scientific_normalises_when_rounded_coefficient_reaches_ten(self):
         self.assertEqual(scientific(9.999, "", 3), "1×10¹")
         self.assertEqual(scientific(99.99, "", 3), "1×10²")
