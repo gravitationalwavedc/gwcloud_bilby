@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+import numpy as np
+
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gen_parameter_output import to_dec
 
@@ -40,3 +42,8 @@ class TestToDec(BilbyTestCase):
         self.assertEqual(to_dec(float("inf")), Decimal("Infinity"))
         self.assertEqual(to_dec(float("-inf")), Decimal("-Infinity"))
         self.assertTrue(to_dec(float("nan")).is_nan())
+
+    def test_converts_numpy_scalars(self):
+        self.assertEqual(to_dec(np.bool_(True)), Decimal(1))
+        self.assertEqual(to_dec(np.int64(5)), Decimal(5))
+        self.assertEqual(to_dec(np.float64(1.5)), Decimal("1.5"))
