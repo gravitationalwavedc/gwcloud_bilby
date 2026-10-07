@@ -39,6 +39,28 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
 
         self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 1000.0)
 
+    def test_top_level_wins_over_raw_payload_across_key_case(self):
+        cases = (
+            (
+                {
+                    "gracedb": {"Events": [{"GPSTime": 100.0}]},
+                    "raw_payload": {"GraceDB": {"Events": [{"GPSTime": 200.0}]}},
+                },
+                100.0,
+            ),
+            (
+                {
+                    "GraceDB": {"Events": [{"GPSTime": 100.0}]},
+                    "raw_payload": {"gracedb": {"Events": [{"GPSTime": 200.0}]}},
+                },
+                100.0,
+            ),
+        )
+
+        for metadata, expected in cases:
+            with self.subTest(metadata=metadata):
+                self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), expected)
+
     def test_top_level_mapping_does_not_fall_through_for_bad_events(self):
         cases = (
             {
