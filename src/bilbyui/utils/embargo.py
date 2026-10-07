@@ -365,7 +365,8 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
     the selected mapping, scan ``Events``/``events`` in source order, reject
     non-finite/boolean/malformed GPS values, and return the first usable
     preferred event (``State``/``state`` == "preferred"), otherwise the first
-    usable event.
+    usable event. When no event has a usable GPS time, falls back to the
+    gracedb-level ``preferred_event_gps`` then ``gps_time`` fields.
     """
     if not isinstance(metadata, Mapping):
         return None
@@ -418,6 +419,20 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
             continue
 
         usable.append((event, gps))
+
+    if not usable:
+        gps = gracedb.get("preferred_event_gps")
+        if gps is None:
+            gps = gracedb.get("gps_time")
+        if gps is None:
+            return None
+        try:
+            gps = float(gps)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(gps):
+            return None
+        return gps
 
     for event, gps in usable:
         if event.get("State") == "preferred" or event.get("state") == "preferred":
