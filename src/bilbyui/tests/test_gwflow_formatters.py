@@ -134,7 +134,7 @@ class GwflowFormatterTests(SimpleTestCase):
         self.assertEqual(probability(0.125), "0.125")
 
     def test_probability_clamps_negative_precision(self):
-        self.assertEqual(probability(0.5, -1), "")
+        self.assertEqual(probability(0.5, -1), "5×10⁻¹")
         self.assertEqual(probability(0.5, 3), "0.5")
 
     def test_probability_falls_back_to_text_for_out_of_range_and_non_numeric(self):
