@@ -13,8 +13,8 @@ class TestQsEmbargoFilter(BilbyTestCase):
     def setUp(self):
         self.user = self.create_user(id=1, name="test user", primary_email="test@test.com")
 
-    def _create_job(self, name, trigger_time=None, n_simulation=None):
-        """Create a BilbyJob with optional IniKeyValue entries."""
+    def _create_job(self, name, trigger_time=None, n_simulation=None, event=None, gwflow=None):
+        """Create a BilbyJob with optional IniKeyValue entries and relations."""
         ini_config = {"detectors": "['H1']"}
         if trigger_time is not None:
             ini_config["trigger-time"] = trigger_time
@@ -26,6 +26,26 @@ class TestQsEmbargoFilter(BilbyTestCase):
             name=name,
             description=name,
             ini_string=create_test_ini_string(ini_config),
+            event_id=event,
+            gwflow_job=gwflow,
+        )
+
+    def _create_event(self, suffix, gps_time):
+        from bilbyui.models import EventID
+
+        return EventID.objects.create(
+            event_id=f"G{900000 + suffix}",
+            gps_time=gps_time,
+        )
+
+    def _create_gwflow(self, suffix, trigger_time=None, event=None):
+        from bilbyui.models import GWFlowJob
+
+        return GWFlowJob.objects.create(
+            sname=f"S{suffix:06d}a",
+            user=self.user,
+            trigger_time=trigger_time,
+            event_id=event,
         )
 
     @override_settings(EMBARGO_START_TIME=5.0)
@@ -146,6 +166,92 @@ class TestQsEmbargoFilter(BilbyTestCase):
 
         self.assertEqual(result.count(), 1)
         self.assertEqual(result.first().name, "processed trigger")
+
+
+class TestQsEmbargoFilterTaintedParity(BilbyTestCase):
+    def setUp(self):
+        self.user = self.create_user(id=1, name="test user", primary_email="test@test.com")
+
+    def _create_event(self, suffix, gps_time):
+        from bilbyui.models import EventID
+
+        return EventID.objects.create(
+            event_id=f"G{900000 + suffix}",
+            gps_time=gps_time,
+        )
+
+    def _create_gwflow(self, suffix, trigger_time=None, event=None):
+        from bilbyui.models import GWFlowJob
+
+        return GWFlowJob.objects.create(
+            sname=f"S{suffix:06d}a",
+            user=self.user,
+            trigger_time=trigger_time,
+            event_id=event,
+        )
+
+    def _create_job(self, name, trigger_time=None, n_simulation=None, event=None, gwflow=None):
+        from bilbyui.tests.test_utils import create_test_ini_string
+
+        ini_config = {"detectors": "['H1']"}
+        if trigger_time is not None:
+            ini_config["trigger-time"] = trigger_time
+        if n_simulation is not None:
+            ini_config["n-simulation"] = n_simulation
+
+        return BilbyJob.objects.create(
+            user_id=self.user.id,
+            name=name,
+            description=name,
+            ini_string=create_test_ini_string(ini_config),
+            event_id=event,
+            gwflow_job=gwflow,
+        )
+
+    @override_settings(EMBARGO_START_TIME=100.0)
+    def test_parity_with_visible_to_user_for_tainted_jobs(self):
+        from bilbyui.utils.embargo import visible_to_user
+
+        early_event = self._create_event(1, 99.0)
+        equal_event = self._create_event(2, 100.0)
+        early_parent = self._create_gwflow(1, 99.0, early_event)
+        late_parent = self._create_gwflow(2, 100.0, early_event)
+        tainted_parent_event = self._create_gwflow(3, 99.0, equal_event)
+
+        self._create_job("all early", trigger_time=99.0, n_simulation=0, event=early_event, gwflow=early_parent)
+        self._create_job("event gps taint", trigger_time=99.0, n_simulation=0, event=equal_event, gwflow=early_parent)
+        self._create_job(
+            "gwflow trigger taint",
+            trigger_time=99.0,
+            n_simulation=0,
+            event=early_event,
+            gwflow=late_parent,
+        )
+        self._create_job(
+            "gwflow event taint",
+            trigger_time=99.0,
+            n_simulation=0,
+            event=early_event,
+            gwflow=tainted_parent_event,
+        )
+        self._create_job(
+            "simulated",
+            trigger_time=100.0,
+            n_simulation=1,
+            event=equal_event,
+            gwflow=late_parent,
+        )
+
+        qs = BilbyJob.objects.all()
+        filtered = set(qs_embargo_filter(qs).values_list("pk", flat=True))
+        visible = set(visible_to_user(qs, self.user, "BilbyJob").values_list("pk", flat=True))
+
+        self.assertEqual(filtered, visible)
+        self.assertIn("all early", set(BilbyJob.objects.filter(pk__in=filtered).values_list("name", flat=True)))
+        self.assertEqual(
+            set(BilbyJob.objects.filter(pk__in=filtered).values_list("name", flat=True)),
+            {"all early", "simulated"},
+        )
 
 
 class TestVisibleToUser(BilbyTestCase):
