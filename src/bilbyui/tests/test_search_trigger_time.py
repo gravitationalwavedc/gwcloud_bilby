@@ -1,5 +1,7 @@
 import unittest
 
+import numpy as np
+
 from bilbyui.utils.search_trigger_time import max_finite_time
 
 
@@ -44,3 +46,12 @@ class TestMaxFiniteTime(unittest.TestCase):
         ]
 
         self.assertEqual(max_finite_time(values), 12.5)
+
+    def test_accepts_numpy_finite_scalars(self):
+        self.assertEqual(max_finite_time([np.float64(9.5)]), 9.5)
+        self.assertEqual(max_finite_time([np.int64(7)]), 7.0)
+        self.assertEqual(max_finite_time([np.float32(3.25)]), 3.25)
+
+    def test_rejects_numpy_bool(self):
+        self.assertIsNone(max_finite_time([np.bool_(True), np.bool_(False)]))
+        self.assertEqual(max_finite_time([np.bool_(True), 4.0]), 4.0)
