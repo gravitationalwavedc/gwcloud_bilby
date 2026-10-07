@@ -3,6 +3,7 @@ import math
 import re
 from collections.abc import Mapping
 
+import numpy as np
 import requests
 import tenacity
 from django.conf import settings
@@ -295,6 +296,9 @@ def _normalise_trigger(value):
     values. Returns None on resolution/conversion failure (same
     network-failure behaviour as admission). Never raises.
     """
+    if isinstance(value, np.generic):
+        value = value.item()
+
     if isinstance(value, bool):
         return None
 

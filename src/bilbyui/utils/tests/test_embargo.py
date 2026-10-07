@@ -2,6 +2,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest import mock
 
+import numpy as np
 from adacs_sso_plugin.anonymous_user import ADACSAnonymousUser
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.apps import apps
@@ -656,6 +657,17 @@ class TestResolveJobTrigger(BilbyTestCase):
     def test_boolean_rejected(self):
         self.assertIsNone(resolve_job_trigger(None, SimpleNamespace(trigger_time=True)))
         self.assertIsNone(resolve_job_trigger(SimpleNamespace(trigger_time=False), None))
+
+    def test_numpy_bool_rejected(self):
+        # numpy.bool_ is not a Python bool subclass; it must be routed through
+        # value.item() so it is rejected like a Python bool rather than
+        # coerced to a finite GPS time (float(np.bool_(True)) == 1.0).
+        self.assertIsNone(resolve_job_trigger(None, SimpleNamespace(trigger_time=np.bool_(True))))
+        self.assertIsNone(resolve_job_trigger(SimpleNamespace(trigger_time=np.bool_(False)), None))
+
+    def test_numpy_float64_normalised(self):
+        self.assertEqual(resolve_job_trigger(None, SimpleNamespace(trigger_time=np.float64(2.5))), 2.5)
+        self.assertIsNone(resolve_job_trigger(None, SimpleNamespace(trigger_time=np.float64("nan"))))
 
     def test_non_finite_rejected(self):
         for value in (float("nan"), float("inf"), float("-inf"), "nan", "inf"):
