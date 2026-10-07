@@ -10,7 +10,7 @@ python = "^3.12"
 requests = "*"
 pyjwt = "*"
 urllib3 = "<2"
-gwcloud-python = "2.1.0"
+gwcloud-python = { git = "https://gitlab.com/CAS-eResearch/GWDC/gwcloud_python.git", rev = "04bf95ecd88818d88d4de98f7ec75c64619c5302" }  # 3.0.0 field-free; pinned to git rev until the PyPI release is unblocked
 gwdc-python = "1.0.1"
 
 [tool.ruff]

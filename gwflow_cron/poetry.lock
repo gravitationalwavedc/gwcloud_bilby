@@ -542,25 +542,29 @@ tests = ["coverage", "pytest", "pytest-cov", "pytest-django"]
 
 [[package]]
 name = "gwcloud-python"
-version = "2.1.0"
+version = "3.0.0"
 description = "Wrapper of GWDC API, used for interacting with the GWCloud endpoints"
 optional = false
-python-versions = "<4.0,>=3.7"
-files = [
-    {file = "gwcloud_python-2.1.0-py3-none-any.whl", hash = "sha256:b35ccdb0119ea3803ead98b0d5fb2183114b639bdb7e29d1dda47081e892e717"},
-    {file = "gwcloud_python-2.1.0.tar.gz", hash = "sha256:3acec90f8d569d9d7fdd968bb0121f656e41fe10ab4b3bf2ce817b539b7d4d50"},
-]
+python-versions = "^3.7"
+files = []
+develop = false
 
 [package.dependencies]
-graphene-file-upload = ">=1.3.0,<2.0.0"
-gwdc-python = ">=1.0,<2.0"
-importlib-metadata = ">=4.12.0,<5.0.0"
-jwt = ">=1.3.1,<2.0.0"
-requests = ">=2.28.1,<3.0.0"
-tqdm = ">=4.64.0,<5.0.0"
+graphene-file-upload = "^1.3.0"
+gwdc-python = "^1.0"
+importlib-metadata = "^4.12.0"
+jwt = "^1.3.1"
+requests = "^2.28.1"
+tqdm = "^4.64.0"
 
 [package.extras]
 docs = ["Sphinx (>=5.1.1,<6.0.0)", "sphinx-rtd-theme (>=1.0.0,<2.0.0)"]
+
+[package.source]
+type = "git"
+url = "https://gitlab.com/CAS-eResearch/GWDC/gwcloud_python.git"
+reference = "04bf95ecd88818d88d4de98f7ec75c64619c5302"
+resolved_reference = "04bf95ecd88818d88d4de98f7ec75c64619c5302"
 
 [[package]]
 name = "gwdc-python"
@@ -1124,4 +1128,4 @@ type = ["pytest-mypy (>=1.0.1)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "31475ba23709e82b5c9611ee77995d58d3f0dc616d1ffd9ff5eeb452730fa416"
+content-hash = "013ea2720094c10a32948a71d55d0faafbf780ac6818e517877a51cfd6b56d71"
