@@ -49,6 +49,14 @@ class DiffOutcome:
     reason: str | None = None
 
 
+def _parse_portal_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes")
+    return bool(value)
+
+
 def _timestamp(value: Any) -> datetime | None:
     if isinstance(value, datetime):
         parsed = value
@@ -89,7 +97,7 @@ def prepare_version_snapshots(
             schema_version=str(row.get("schema_version") or ""),
             recorded_at=_timestamp(row.get("commit_timestamp") or row.get("timestamp")),
             payload=payload,
-            is_current=bool(current_sha and sha == current_sha) or bool(row.get("is_current")),
+            is_current=bool(current_sha and sha == current_sha) or _parse_portal_bool(row.get("is_current")),
         )
         prepared.append((index, snapshot))
 

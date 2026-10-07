@@ -285,6 +285,20 @@ class GWFlowSnapshotTimestampTestCase(BilbyTestCase):
         )
         self.assertEqual([s.full_sha for s in snapshots], ["a" * 40, "z" * 40, "m" * 40])
 
+    def test_string_boolean_is_current_normalised(self):
+        snapshots = self._snapshots(
+            [
+                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC", "is_current": "false"},
+                {"commit_sha": "b" * 40, "commit_timestamp": "2026-08-09 10:00:00 UTC", "is_current": "0"},
+                {"commit_sha": "c" * 40, "commit_timestamp": "2026-08-10 10:00:00 UTC", "is_current": "true"},
+                {"commit_sha": "d" * 40, "commit_timestamp": "2026-08-11 10:00:00 UTC", "is_current": "1"},
+            ]
+        )
+        self.assertEqual(
+            [s.is_current for s in snapshots],
+            [False, False, True, True],
+        )
+
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class GWFlowHistorySelectionTestCase(BilbyTestCase):
