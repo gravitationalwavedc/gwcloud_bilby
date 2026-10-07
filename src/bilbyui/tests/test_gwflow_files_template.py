@@ -249,6 +249,49 @@ class TestGWFlowFilesTemplateStates(BilbyTestCase):
         self.assertContains(response, "completed")
         self.assertContains(response, "approved")
 
+    def test_empty_uid_analysis_does_not_attach_metadata_to_superevent(self):
+        """An analysis record with neither uid nor id is assigned uid == ""
+        by parse_analyses. It must not attach its metadata to the superevent
+        block, and multiple such records must not collapse onto it."""
+        from unittest import mock
+
+        _make_file(self.job, "", "super/root.h5", uploaded=True)
+        _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=True)
+        payload = {
+            "ParameterEstimation": {
+                "results": [
+                    {
+                        "inference_software": "malformed-empty-uid-one",
+                        "waveform_approximant": "W1",
+                        "run_status": "running",
+                        "review_status": "",
+                    },
+                    {
+                        "inference_software": "malformed-empty-uid-two",
+                        "waveform_approximant": "W2",
+                        "run_status": "running",
+                        "review_status": "",
+                    },
+                    {
+                        "uid": "analysis-1",
+                        "inference_software": "bilby",
+                        "waveform_approximant": "IMRPhenomXPHM",
+                        "run_status": "completed",
+                        "review_status": "approved",
+                    },
+                ]
+            }
+        }
+        with mock.patch("bilbyui.views.get_superevent", return_value=(payload, "live")):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Superevent-level files")
+        self.assertContains(response, "bilby")
+        self.assertContains(response, "IMRPhenomXPHM")
+        self.assertNotContains(response, "malformed-empty-uid-one")
+        self.assertNotContains(response, "malformed-empty-uid-two")
+
     def test_down_state_renders_blocks_without_metadata(self):
         """When get_superevent returns (None, "down"), analyses stays None and
         the files template still renders analysis blocks built from files alone,
