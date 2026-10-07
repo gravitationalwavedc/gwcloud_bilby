@@ -14,6 +14,22 @@ class InvalidGWFlowMetadata(Exception):
     """Raised when portal metadata is not a valid strict-JSON top-level object."""
 
 
+def _parse_portal_bool(value) -> bool:
+    """Normalise a portal boolean-like value to a real bool.
+
+    Portal payloads may carry boolean fields as strings (e.g. ``"true"`` /
+    ``"false"``), so a bare ``bool()`` would misclassify any non-empty string
+    as truthy. Treat ``"true"/"1"/"yes"`` (case-insensitive) as true and
+    everything else as false, mirroring the ``_TRUTHY_PREFERRED`` convention
+    used for sibling portal fields.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes")
+    return bool(value)
+
+
 def _collect_review_statuses(metadata, job, path="", out=None):
     """
     Recursively collect scalar values under exact 'review_status' keys anywhere in
@@ -130,7 +146,7 @@ def parse_analyses(metadata: dict) -> list:
                             "waveform": str(item.get("waveform_approximant") or item.get("waveform") or ""),
                             "runStatus": str(item.get("run_status") or ""),
                             "reviewStatus": str(item.get("review_status") or ""),
-                            "deprecated": bool(item.get("deprecated", False)),
+                            "deprecated": _parse_portal_bool(item.get("deprecated", False)),
                             "analysts": analysts,
                             "reviewers": reviewers,
                         },

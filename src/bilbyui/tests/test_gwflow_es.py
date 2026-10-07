@@ -311,6 +311,32 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         self.assertEqual(parse_analyses(None), [])
         self.assertEqual(parse_analyses("not-a-dict"), [])
 
+    def test_parse_analyses_deprecated_string_booleans(self):
+        """Portal string booleans for 'deprecated' are normalised, not bool()'d."""
+        metadata = {
+            "ParameterEstimation": {
+                "results": [
+                    {"uid": "pe-false", "deprecated": "false"},
+                    {"uid": "pe-zero", "deprecated": "0"},
+                    {"uid": "pe-true", "deprecated": "true"},
+                    {"uid": "pe-one", "deprecated": "1"},
+                    {"uid": "pe-bool-true", "deprecated": True},
+                    {"uid": "pe-bool-false", "deprecated": False},
+                    {"uid": "pe-absent"},
+                ]
+            }
+        }
+
+        analyses = {a["uid"]: a["deprecated"] for a in parse_analyses(metadata)}
+
+        self.assertFalse(analyses["pe-false"])
+        self.assertFalse(analyses["pe-zero"])
+        self.assertTrue(analyses["pe-true"])
+        self.assertTrue(analyses["pe-one"])
+        self.assertTrue(analyses["pe-bool-true"])
+        self.assertFalse(analyses["pe-bool-false"])
+        self.assertFalse(analyses["pe-absent"])
+
     def test_parse_analyses_scalar_analysts_reviewers_wrapped_in_list(self):
         """A non-list scalar analysts/reviewers value is wrapped as a single string."""
         metadata = {
