@@ -16,7 +16,6 @@ class TestModelStrAndIniGuards(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=1126259462.391,
         )
         cls.job = BilbyJob.objects.create(
@@ -105,7 +104,6 @@ class TestLabelAndEventIdReindexSignals(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=1126259462.391,
         )
 
@@ -149,7 +147,6 @@ class TestLabelAndEventIdReindexSignals(BilbyTestCase):
             event_id="GW654321_654321",
             trigger_id="S654321a",
             nickname="GW654321",
-            is_ligo_event=False,
             gps_time=1126259462.391,
         )
         with (

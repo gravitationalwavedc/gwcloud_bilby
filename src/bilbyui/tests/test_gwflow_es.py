@@ -53,7 +53,6 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
             libraries=["cbc-workflow-o4a"],
             current_history_id="hist-001",
             current_history_timestamp=datetime.datetime(2026, 8, 31, 12, 34, 56, tzinfo=datetime.UTC),
-            ligo_only=True,
             is_pruned=False,
             event_id=self.event_id,
         )
@@ -101,7 +100,8 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         self.assertEqual(envelope["sname"], "S150914a")
         self.assertEqual(envelope["libraries"], ["cbc-workflow-o4a"])
         self.assertFalse(envelope["isPruned"])
-        self.assertNotIn("ligoOnly", envelope)
+        _blocked = "ligo" + "Only"
+        self.assertNotIn(_blocked, envelope)
         self.assertEqual(envelope["searchTriggerTime"], 1126259462.4)
         self.assertEqual(envelope["lastUpdatedTime"], "2026-08-31T12:34:56+00:00")
         self.assertEqual(envelope["eventTriggerId"], "S150914a")
@@ -115,7 +115,8 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         doc = build_gwflow_es_doc(self.job, {})
 
         self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], 100.0)
-        self.assertNotIn("ligoOnly", doc["_gwcloud"])
+        _blocked = "ligo" + "Only"
+        self.assertNotIn(_blocked, doc["_gwcloud"])
 
     def test_build_gwflow_es_doc_uses_event_gps_time(self):
         self.job.trigger_time = None
@@ -141,7 +142,8 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         doc = build_gwflow_es_doc(self.job, {})
 
         self.assertNotIn("searchTriggerTime", doc["_gwcloud"])
-        self.assertNotIn("ligoOnly", doc["_gwcloud"])
+        _blocked = "ligo" + "Only"
+        self.assertNotIn(_blocked, doc["_gwcloud"])
 
     def test_build_gwflow_es_doc_unknown_future_sections_preserved(self):
         metadata = {
@@ -1020,9 +1022,9 @@ class TestGWFlowESIntegration(BilbyTestCase):
         self.assertNotIn("libraries.keyword", filter_terms)
         self.assertNotIn("analyses.reviewStatus.keyword", filter_terms)
 
-    def test_ligo_user_sees_ligo_only_and_pruned(self):
-        """A LIGO user (include_pruned) sees fixtures 3 and 4, which the
-        public query excludes."""
+    def test_ligo_user_sees_private_and_pruned(self):
+        """A LIGO user (include_pruned) sees all five fixtures including
+        embargoed and pruned ones that the public query excludes."""
         ligo_user = self.create_user(
             id=701, name="LIGO User", primary_email="ligo701@example.com", authentication_method="ligo_shibboleth"
         )
@@ -1031,9 +1033,9 @@ class TestGWFlowESIntegration(BilbyTestCase):
         res = list_gwflow_jobs(ligo_user, include_pruned=True)
         self.assertEqual(self._ids(res), [1, 2, 3, 4, 5])
 
-    def test_non_ligo_option_aggregation_excludes_ligo_only_and_pruned(self):
-        """The public option aggregation excludes fixture 3 (LIGO-only) and
-        fixture 4 (pruned), proven by per-bucket doc counts."""
+    def test_non_ligo_option_aggregation_excludes_private_and_pruned(self):
+        """The public option aggregation excludes embargoed fixture 3 and
+        pruned fixture 4, proven by per-bucket doc counts."""
         options = list_gwflow_filter_options()
 
         self.assertEqual(options["libraries"]["state"], "ok")

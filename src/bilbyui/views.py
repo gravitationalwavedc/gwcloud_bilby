@@ -1080,7 +1080,7 @@ def file_download(request):
         raise Http404 from e
 
 
-def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None, is_ligo_event=False):
+def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None):
     event = EventID.objects.filter(event_id=event_id).first()
     if event:
         changed = False
@@ -1089,9 +1089,6 @@ def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None, i
             changed = True
         if not event.nickname and nickname:
             event.nickname = nickname
-            changed = True
-        if is_ligo_event and not event.is_ligo_event:
-            event.is_ligo_event = True
             changed = True
         if changed:
             event.clean_fields()
@@ -1102,7 +1099,6 @@ def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None, i
         event_id=event_id,
         trigger_id=trigger_id,
         nickname=nickname,
-        is_ligo_event=is_ligo_event,
         gps_time=gps_time,
     )
     event.clean_fields()
@@ -1115,7 +1111,7 @@ def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None, i
     return f"EventID {event_id} successfully created!"
 
 
-def update_event_id(user, event_id, gps_time=UNSET, trigger_id=None, nickname=None, is_ligo_event=None):
+def update_event_id(user, event_id, gps_time=UNSET, trigger_id=None, nickname=None):
     try:
         event = EventID.get_by_event_id(event_id, user)
     except EventID.DoesNotExist:
@@ -1123,7 +1119,6 @@ def update_event_id(user, event_id, gps_time=UNSET, trigger_id=None, nickname=No
     event.update(
         trigger_id=trigger_id,
         nickname=nickname,
-        is_ligo_event=is_ligo_event,
         gps_time=gps_time,
     )
 
@@ -2677,7 +2672,7 @@ def upsert_gwflow_job(user, params):
 
         if not delivery_older:
             # Update current-state fields if provided
-            for attr in ("ligo_only", "schema_version", "libraries", "is_pruned"):
+            for attr in ("schema_version", "libraries", "is_pruned"):
                 param = getattr(params, attr, None)
                 if param is not None:
                     setattr(job, attr, param)
@@ -2706,7 +2701,7 @@ def upsert_gwflow_job(user, params):
                 job_id = job.id
                 transaction.on_commit(lambda job_id=job_id: reindex_jobs([job_id], "gwflow"))
 
-            # Facet-relevant fields (libraries, ligo_only, is_pruned, review
+            # Facet-relevant fields (libraries, is_pruned, review
             # statuses) may have changed — invalidate the cached filter options
             # only after the transaction commits so a concurrent refill cannot
             # cache old values and a rollback does not invalidate a cache for

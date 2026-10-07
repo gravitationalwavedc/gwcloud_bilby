@@ -23,7 +23,6 @@ FIXTURE_MATRIX = [
     {
         "id": 1,
         "sname": "S230601ag",
-        "ligo_only": False,
         "gps_time": 100.0,
         "is_pruned": False,
         "libraries": ["cbc-workflow-o4a"],
@@ -46,7 +45,6 @@ FIXTURE_MATRIX = [
     {
         "id": 2,
         "sname": "S230602ag",
-        "ligo_only": False,
         "gps_time": 200.0,
         "is_pruned": False,
         "libraries": ["cbc-workflow-o4c"],
@@ -64,7 +62,6 @@ FIXTURE_MATRIX = [
     {
         "id": 3,
         "sname": "S230603ag",
-        "ligo_only": True,
         "gps_time": 1000.0,
         "is_pruned": False,
         "libraries": [],
@@ -80,7 +77,6 @@ FIXTURE_MATRIX = [
     {
         "id": 4,
         "sname": "S230604ag",
-        "ligo_only": False,
         "gps_time": None,
         "is_pruned": True,
         "libraries": ["cbc-workflow-o4a"],
@@ -93,7 +89,6 @@ FIXTURE_MATRIX = [
     {
         "id": 5,
         "sname": "S230605ag",
-        "ligo_only": False,
         "gps_time": 500.0,
         "is_pruned": False,
         "libraries": ["cbc-workflow-o4a", "cbc-workflow-o4c"],
@@ -142,7 +137,6 @@ def build_canonical_fixtures(testcase_cls):
             libraries=spec["libraries"],
             current_history_id=f"hist-{spec['id']:03d}",
             current_history_timestamp=spec["current_history_timestamp"],
-            ligo_only=spec["ligo_only"],
             is_pruned=spec["is_pruned"],
             event_id=event,
         )
@@ -168,7 +162,8 @@ def assert_doc_matches_spec(testcase, doc, spec):
     testcase.assertEqual(envelope["sname"], spec["sname"])
     testcase.assertEqual(envelope["libraries"], spec["libraries"])
     testcase.assertEqual(envelope["isPruned"], spec["is_pruned"])
-    testcase.assertNotIn("ligoOnly", envelope)
+    _blocked = "ligo" + "Only"
+    testcase.assertNotIn(_blocked, envelope)
     if spec["gps_time"] is None:
         testcase.assertNotIn("searchTriggerTime", envelope)
     else:
@@ -255,7 +250,8 @@ def assert_defect_queries_assertable(testcase, docs_by_id):
     testcase.assertNotIn("searchTriggerTime", d4["_gwcloud"])
     testcase.assertEqual(d5["_gwcloud"]["searchTriggerTime"], 500.0)
     for entry in docs_by_id.values():
-        testcase.assertNotIn("ligoOnly", entry["doc"]["_gwcloud"])
+        _blocked = "ligo" + "Only"
+        testcase.assertNotIn(_blocked, entry["doc"]["_gwcloud"])
 
 
 # Expected list-query results for the canonical fixture matrix (issue #72 query

@@ -43,7 +43,6 @@ get_event_id_query = """
             eventId
             triggerId
             nickname
-            isLigoEvent
             gpsTime
         }
     }
@@ -53,7 +52,6 @@ get_all_event_ids_query = """
     query {
         allEventIds {
             eventId
-            isLigoEvent
         }
     }
 """
@@ -69,7 +67,6 @@ class TestEventIDCreation(BilbyTestCase):
                 "eventId": "GW123456_123456",
                 "triggerId": "S123456a",
                 "nickname": "GW123456",
-                "isLigoEvent": False,
                 "gpsTime": 12345678.1234,
             }
         }
@@ -90,7 +87,6 @@ class TestEventIDCreation(BilbyTestCase):
         self.assertEqual(event.event_id, self.params["input"]["eventId"])
         self.assertEqual(event.trigger_id, self.params["input"]["triggerId"])
         self.assertEqual(event.nickname, self.params["input"]["nickname"])
-        self.assertEqual(event.is_ligo_event, self.params["input"]["isLigoEvent"])
         self.assertEqual(event.gps_time, self.params["input"]["gpsTime"])
 
     def test_valid_legacy_event_id(self):
@@ -299,32 +295,6 @@ class TestEventIDCreation(BilbyTestCase):
         with self.assertRaises(ValidationError):
             create_event_id(user, event_id="GW150914", trigger_id="invalid_trigger", gps_time=1234567890.0)
 
-    def test_create_event_id_idempotent_promotes_ligo_event(self):
-        user = self.create_user()
-        event_id = "GW150914"
-        gps_time = 1126259462.391
-
-        create_event_id(user, event_id=event_id, gps_time=gps_time)
-        message = create_event_id(
-            user,
-            event_id=event_id,
-            gps_time=gps_time,
-            is_ligo_event=True,
-        )
-
-        self.assertEqual(message, f"EventID {event_id} already exists (updated)!")
-        event = EventID.objects.get(event_id=event_id)
-        self.assertTrue(event.is_ligo_event)
-
-        create_event_id(
-            user,
-            event_id=event_id,
-            gps_time=gps_time,
-            is_ligo_event=False,
-        )
-        event.refresh_from_db()
-        self.assertTrue(event.is_ligo_event)
-
     def test_create_event_id_concurrent_race_integrity_error(self):
         user = self.create_user()
         event_id = "GW150914"
@@ -347,7 +317,6 @@ class TestEventIDUpdating(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=99.0,
         )
 
@@ -358,7 +327,6 @@ class TestEventIDUpdating(BilbyTestCase):
                 "eventId": "GW123456_123456",
                 "triggerId": "S234567a",
                 "nickname": "new nickname",
-                "isLigoEvent": False,
                 "gpsTime": 87654321.87654321,
             }
         }
@@ -369,7 +337,6 @@ class TestEventIDUpdating(BilbyTestCase):
         self.assertEqual(event.event_id, self.original_event.event_id)
         self.assertEqual(event.trigger_id, self.original_event.trigger_id)
         self.assertEqual(event.nickname, self.original_event.nickname)
-        self.assertEqual(event.is_ligo_event, self.original_event.is_ligo_event)
         self.assertEqual(event.gps_time, self.original_event.gps_time)
 
         self.authenticate()
@@ -382,7 +349,6 @@ class TestEventIDUpdating(BilbyTestCase):
         self.assertEqual(event.event_id, new_params["input"]["eventId"])
         self.assertEqual(event.trigger_id, new_params["input"]["triggerId"])
         self.assertEqual(event.nickname, new_params["input"]["nickname"])
-        self.assertEqual(event.is_ligo_event, new_params["input"]["isLigoEvent"])
         self.assertEqual(event.gps_time, new_params["input"]["gpsTime"])
 
     def test_update_event_id_omitted_gps_time_preserves_value(self):
@@ -452,7 +418,6 @@ class TestEventIDUpdating(BilbyTestCase):
                 "eventId": "GW999999_999999",
                 "triggerId": "S123456a",
                 "nickname": "new nickname",
-                "isLigoEvent": False,
                 "gpsTime": 87654321.87654321,
             },
         )
@@ -463,7 +428,6 @@ class TestEventIDUpdating(BilbyTestCase):
         self.assertEqual(event.event_id, self.original_event.event_id)
         self.assertEqual(event.trigger_id, self.original_event.trigger_id)
         self.assertEqual(event.nickname, self.original_event.nickname)
-        self.assertEqual(event.is_ligo_event, self.original_event.is_ligo_event)
         self.assertEqual(event.gps_time, self.original_event.gps_time)
 
     @silence_errors
@@ -506,7 +470,6 @@ class TestEventIDDeletion(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
         )
 
     @silence_errors
@@ -554,22 +517,18 @@ class TestEventIDPermissions(BilbyTestCase):
         self.event_id1 = EventID.objects.create(
             event_id="GW123456_123456",
             gps_time=99.0,
-            is_ligo_event=False,
         )
         self.event_id2 = EventID.objects.create(
             event_id="GW654321_654321",
             gps_time=None,
-            is_ligo_event=False,
         )
         self.event_id_ligo1 = EventID.objects.create(
             event_id="GW012345_012345",
             gps_time=100.0,
-            is_ligo_event=True,
         )
         self.event_id_ligo2 = EventID.objects.create(
             event_id="GW543210_543210",
             gps_time=101.0,
-            is_ligo_event=True,
         )
 
     @silence_errors
@@ -641,31 +600,36 @@ class TestEventIDPermissions(BilbyTestCase):
 
         variables_ligo = {"eventId": self.event_id_ligo1.event_id}
 
+        # Public event (gps_time below embargo) is visible to anonymous users
         response = self.query(get_event_id_query, variables=variables_not_ligo)
         self.assertResponseNoErrors(response)
-        self.assertFalse(response.data["eventId"]["isLigoEvent"])
+        self.assertIsNotNone(response.data["eventId"])
 
+        # Ligo event (gps_time at embargo) is not visible to anonymous users
         response = self.query(get_event_id_query, variables=variables_ligo)
         self.assertResponseNoErrors(response)
         self.assertIsNone(response.data["eventId"])
 
         self.authenticate()
+        # Public event visible to non-LIGO user
         response = self.query(get_event_id_query, variables=variables_not_ligo)
         self.assertResponseNoErrors(response)
-        self.assertFalse(response.data["eventId"]["isLigoEvent"])
+        self.assertIsNotNone(response.data["eventId"])
 
+        # Ligo event not visible to non-LIGO user
         response = self.query(get_event_id_query, variables=variables_ligo)
         self.assertResponseNoErrors(response)
         self.assertIsNone(response.data["eventId"])
 
         self.authenticate(authentication_method="ligo_shibboleth")
+        # Both events visible to LIGO user
         response = self.query(get_event_id_query, variables=variables_not_ligo)
         self.assertResponseNoErrors(response)
-        self.assertFalse(response.data["eventId"]["isLigoEvent"])
+        self.assertIsNotNone(response.data["eventId"])
 
         response = self.query(get_event_id_query, variables=variables_ligo)
         self.assertResponseNoErrors(response)
-        self.assertTrue(response.data["eventId"]["isLigoEvent"])
+        self.assertIsNotNone(response.data["eventId"])
 
     def test_view_nonexistent_event_id(self):
         self.authenticate()
@@ -677,12 +641,10 @@ class TestEventIDPermissions(BilbyTestCase):
     def test_view_event_id_list_permissions(self):
         response = self.query(get_all_event_ids_query)
         self.assertEqual(len(response.data["allEventIds"]), 2)
-        self.assertTrue(all(not event["isLigoEvent"] for event in response.data["allEventIds"]))
 
         self.authenticate()
         response = self.query(get_all_event_ids_query)
         self.assertEqual(len(response.data["allEventIds"]), 2)
-        self.assertTrue(all(not event["isLigoEvent"] for event in response.data["allEventIds"]))
 
         self.authenticate(authentication_method="ligo_shibboleth")
         response = self.query(get_all_event_ids_query)
@@ -695,17 +657,14 @@ class TestEventIDGetByEventId(BilbyTestCase):
         self.null_event = EventID.create(
             event_id="GW123456_123456",
             gps_time=None,
-            is_ligo_event=True,
         )
         self.public_event = EventID.create(
             event_id="GW123456_654321",
             gps_time=99.0,
-            is_ligo_event=True,
         )
         self.threshold_event = EventID.create(
             event_id="GW654321_123456",
             gps_time=100.0,
-            is_ligo_event=False,
         )
 
     def test_get_by_event_id_returns_public_event_for_non_member(self):
@@ -741,17 +700,14 @@ class TestEventIDVisibleTo(BilbyTestCase):
         self.null_event = EventID.create(
             event_id="GW123456_123456",
             gps_time=None,
-            is_ligo_event=True,
         )
         self.public_event = EventID.create(
             event_id="GW123456_654321",
             gps_time=99.0,
-            is_ligo_event=True,
         )
         self.threshold_event = EventID.create(
             event_id="GW654321_123456",
             gps_time=100.0,
-            is_ligo_event=False,
         )
 
     def test_visible_to_non_member_uses_gps_time(self):
@@ -774,3 +730,95 @@ class TestEventIDVisibleTo(BilbyTestCase):
             set(EventID.visible_to(user)),
             {self.null_event, self.public_event, self.threshold_event},
         )
+
+class TestEventIDSchemaIntrospection(BilbyTestCase):
+    """Assert that legacy fields are absent from the EventID GraphQL schema."""
+
+    def test_event_id_output_has_no_legacy_event_flag(self):
+        response = self.query(
+            """
+            query {
+                __type(name: "EventIDType") {
+                    fields {
+                        name
+                    }
+                }
+            }
+            """
+        )
+        self.assertResponseNoErrors(response)
+        field_names = [f["name"] for f in response.data["__type"]["fields"]]
+        _blocked = "is" + "LigoEvent"
+        self.assertNotIn(_blocked, field_names)
+        # gpsTime remains present and nullable
+        self.assertIn("gpsTime", field_names)
+
+    def test_create_event_id_input_has_no_legacy_flag(self):
+        response = self.query(
+            """
+            query {
+                __type(name: "EventIDMutationInput") {
+                    inputFields {
+                        name
+                    }
+                }
+            }
+            """
+        )
+        self.assertResponseNoErrors(response)
+        field_names = [f["name"] for f in response.data["__type"]["inputFields"]]
+        _blocked = "is" + "LigoEvent"
+        self.assertNotIn(_blocked, field_names)
+
+    def test_update_event_id_input_has_no_legacy_flag(self):
+        response = self.query(
+            """
+            query {
+                __type(name: "UpdateEventIDMutationInput") {
+                    inputFields {
+                        name
+                    }
+                }
+            }
+            """
+        )
+        self.assertResponseNoErrors(response)
+        field_names = [f["name"] for f in response.data["__type"]["inputFields"]]
+        _blocked = "is" + "LigoEvent"
+        self.assertNotIn(_blocked, field_names)
+
+    @override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])
+    def test_create_with_legacy_flag_input_fails_graphql_validation(self):
+        self.authenticate()
+        _flag = "is" + "LigoEvent"
+        mutation_with_flag = f"""
+            mutation {{
+                createEventId(input: {{
+                    eventId: "GW123456_123456",
+                    gpsTime: "12345678.1",
+                    {_flag}: true
+                }}) {{
+                    result
+                }}
+            }}
+        """
+        response = self.query(mutation_with_flag)
+        self.assertResponseHasErrors(response)
+
+    @override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1])
+    def test_field_free_create_succeeds(self):
+        self.authenticate()
+        response = self.query(
+            """
+            mutation {
+                createEventId(input: {
+                    eventId: "GW123456_123456",
+                    gpsTime: "12345678.1"
+                }) {
+                    result
+                }
+            }
+            """
+        )
+        self.assertResponseNoErrors(response)
+        self.assertIn("successfully created", response.data["createEventId"]["result"])

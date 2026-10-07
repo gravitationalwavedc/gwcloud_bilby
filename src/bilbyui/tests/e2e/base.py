@@ -158,7 +158,7 @@ class GWFlowFilesPageBase(AsyncE2ETestCase):
     """
     A logged-in browser page open on the GWFlow job detail files region.
 
-    ``asetUp`` creates a LIGO user (GWFlow jobs default to ``ligo_only``) plus
+    ``asetUp`` creates a LIGO user plus
     a GWFlowJob with mirrored and pending files, logs in via the cookie
     helper, opens the job detail page and clicks the "Analyses & Files" tab so
     the files partial is loaded into the page via HTMX (with the app shell's
@@ -323,7 +323,7 @@ class GWFlowListToDetailBase(GWFlowJobsPageBase):
 
     The list services come from :class:`GWFlowJobsPageBase`; this base adds the
     detail services (``get_superevent`` / ``get_versions``). The fixture job is
-    ``ligo_only=False`` because the shared e2e user is not a LIGO user: the list
+    ```` because the shared e2e user is not a LIGO user: the list
     requires no membership, and the detail visibility check must not 404.
     """
 
@@ -360,7 +360,6 @@ class GWFlowListToDetailBase(GWFlowJobsPageBase):
             sname=self.sname,
             user=self.user,
             libraries=["lib1"],
-            ligo_only=False,
         )
         GWFlowFile.objects.create(
             job=job,

@@ -431,7 +431,6 @@ class TestPublicJobsView(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=12345678.1234,
         )
         BilbyJob.objects.create(

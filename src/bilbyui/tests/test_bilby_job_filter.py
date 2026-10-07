@@ -32,7 +32,6 @@ class TestBilbyJobFilter(BilbyTestCase):
         trigger_time=None,
         event_id=None,
         simulation=None,
-        is_ligo_job=False,
         name=None,
     ):
         job = BilbyJob.objects.create(
@@ -41,7 +40,6 @@ class TestBilbyJobFilter(BilbyTestCase):
             private=private,
             trigger_time=trigger_time,
             event_id=event_id,
-            is_ligo_job=is_ligo_job,
             ini_string=self.ini_string,
         )
         if trigger_time is not None:
@@ -137,7 +135,7 @@ class TestBilbyJobFilter(BilbyTestCase):
             self.assertEqual(self.ids(result), set())
 
     def test_anonymous_scope_ignores_legacy_flag(self):
-        visible = self.create_job(trigger_time=99.0, is_ligo_job=True)
+        visible = self.create_job(trigger_time=99.0)
         self.create_job(private=True, trigger_time=99.0, name="private")
         self.create_job(trigger_time=100.0, name="embargoed")
         result = BilbyJob.bilby_job_filter(

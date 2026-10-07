@@ -91,7 +91,6 @@ class TestElasticSearch(BilbyTestCase):
             12345678,
             trigger_id="S123456a",
             nickname="Test Nick",
-            is_ligo_event=True,
         )
         label = Label.objects.create(name="label 1", description="my label 1")
 
@@ -308,7 +307,6 @@ class TestElasticSearch(BilbyTestCase):
             12345678,
             trigger_id="S123456a",
             nickname="Test Nick",
-            is_ligo_event=True,
         )
 
         with self.captureOnCommitCallbacks(execute=True):
@@ -473,7 +471,6 @@ class TestElasticSearch(BilbyTestCase):
             12345678,
             trigger_id="S123456a",
             nickname="Test Nick",
-            is_ligo_event=True,
         )
 
         with self.captureOnCommitCallbacks(execute=True):
@@ -491,7 +488,6 @@ class TestElasticSearch(BilbyTestCase):
             mock.patch("bilbyui.utils.reindex.reindex_affected_event") as reindex_event,
             self.captureOnCommitCallbacks(execute=True),
         ):
-            event_id.is_ligo_event = False
             event_id.save()
 
         reindex_event.assert_called_once_with(event_id.id)
@@ -740,7 +736,6 @@ class TestElasticSearch(BilbyTestCase):
             12345678,
             trigger_id="S123456a",
             nickname="Test Nick",
-            is_ligo_event=True,
         )
 
         with self.captureOnCommitCallbacks(execute=True):
@@ -753,8 +748,6 @@ class TestElasticSearch(BilbyTestCase):
                 event_id=event_id,
                 ini_string=create_test_ini_string({"detectors": "['H1']"}),
             )
-
-            event_id.is_ligo_event = False
             event_id.save()
 
         # On commit the EventID signal fans out through the reindex boundary, while the BilbyJob
@@ -766,7 +759,6 @@ class TestElasticSearch(BilbyTestCase):
         elasticsearch_update_mock.reset_mock()
 
         with transaction.atomic():
-            event_id.is_ligo_event = True
             event_id.save()
             transaction.set_rollback(True)
 

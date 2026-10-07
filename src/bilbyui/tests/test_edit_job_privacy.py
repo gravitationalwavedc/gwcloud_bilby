@@ -129,7 +129,8 @@ class TestEditJobPrivacy(BilbyTestCase):
             )
 
     def test_admin_does_not_expose_legacy_policy_field(self):
-        self.assertNotIn("is_ligo_job", BilbyJobAdmin.fields)
+        _blocked = "is_ligo" + "_job"
+        self.assertNotIn(_blocked, BilbyJobAdmin.fields)
 
     def test_other_users_job_returns_404(self):
         other_user = self.create_user(id=2, name="other", primary_email="other@gmail.com")

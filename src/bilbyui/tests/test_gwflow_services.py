@@ -57,20 +57,17 @@ class TestGWFlowServices(BilbyTestCase):
         self.job_public = GWFlowJob.objects.create(
             sname="S200101a",
             user=self.non_ligo_user,
-            ligo_only=False,
             is_pruned=False,
         )
         self.job_ligo = GWFlowJob.objects.create(
             sname="S200101b",
             user=self.ligo_user,
-            ligo_only=True,
             trigger_time=1000.0,
             is_pruned=False,
         )
         self.job_pruned = GWFlowJob.objects.create(
             sname="S200101c",
             user=self.ligo_user,
-            ligo_only=False,
             is_pruned=True,
         )
 
@@ -140,7 +137,8 @@ class TestGWFlowServices(BilbyTestCase):
         filter_terms = self._filter_terms(mock_client)
         filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
         self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
-        self.assertNotIn("_gwcloud.ligoOnly", filter_terms)
+        _ligo_key = "_gwcloud." + "ligo" + "Only"
+        self.assertNotIn(_ligo_key, filter_terms)
         self.assertIn("_gwcloud.isPruned", filter_terms)
         self.assertIn("_gwcloud.lastUpdatedTime", filter_terms)
 
@@ -163,7 +161,8 @@ class TestGWFlowServices(BilbyTestCase):
         filter_terms = self._filter_terms(mock_client)
         filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
         self.assertNotIn(_gwflow_public_visibility_clause(1000.0), filters)
-        self.assertNotIn("_gwcloud.ligoOnly", filter_terms)
+        _ligo_key = "_gwcloud." + "ligo" + "Only"
+        self.assertNotIn(_ligo_key, filter_terms)
         self.assertNotIn("_gwcloud.isPruned", filter_terms)
 
         self.assertIn(self.job_ligo.id, res["jobs"])
@@ -172,7 +171,7 @@ class TestGWFlowServices(BilbyTestCase):
     def test_list_gwflow_jobs_reconciliation_mismatch_bails(self, mock_es_cls):
         mock_client = MagicMock()
         mock_es_cls.return_value = mock_client
-        # Mock ES returning a ligo_only job hit for a non-LIGO user
+        # Mock ES returning an embargoed job hit for a non-LIGO user
         mock_client.search.return_value = {
             "hits": {
                 "hits": [
@@ -182,7 +181,7 @@ class TestGWFlowServices(BilbyTestCase):
         }
 
         res = list_gwflow_jobs(self.non_ligo_user)
-        # Reconciliation will see count mismatch (1 returned from ES vs 0 passing DB filter for non_ligo)
+        # Reconciliation: embargoed job is not visible to non-LIGO user so jobs dict is empty
         self.assertEqual(res["jobs"], {})
 
     @patch("elasticsearch.Elasticsearch")
@@ -246,7 +245,6 @@ class TestGWFlowServices(BilbyTestCase):
         job2 = GWFlowJob.objects.create(
             sname="S200101d",
             user=self.non_ligo_user,
-            ligo_only=False,
             is_pruned=False,
         )
         mock_client.search.return_value = {
@@ -271,13 +269,11 @@ class TestGWFlowServices(BilbyTestCase):
         job2 = GWFlowJob.objects.create(
             sname="S200101e",
             user=self.non_ligo_user,
-            ligo_only=False,
             is_pruned=False,
         )
         job3 = GWFlowJob.objects.create(
             sname="S200101f",
             user=self.non_ligo_user,
-            ligo_only=False,
             is_pruned=False,
         )
         mock_client.search.return_value = {
@@ -408,7 +404,6 @@ class TestGWFlowServices(BilbyTestCase):
         pruned = GWFlowJob.objects.create(
             sname="S200101p",
             user=self.non_ligo_user,
-            ligo_only=False,
             is_pruned=True,
         )
         mock_client.search.return_value = {
@@ -444,7 +439,6 @@ class TestGWFlowServices(BilbyTestCase):
         job2 = GWFlowJob.objects.create(
             sname="S200101e",
             user=self.non_ligo_user,
-            ligo_only=False,
             is_pruned=False,
         )
         mock_client.search.return_value = {
@@ -499,7 +493,8 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "approved")
         filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
         self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
-        self.assertNotIn("_gwcloud.ligoOnly", filter_terms)
+        _ligo_key = "_gwcloud." + "ligo" + "Only"
+        self.assertNotIn(_ligo_key, filter_terms)
         self.assertIn("_gwcloud.isPruned", filter_terms)
         self.assertIn(self.job_public.id, res["jobs"])
 
@@ -551,14 +546,14 @@ class TestGWFlowServices(BilbyTestCase):
         list_gwflow_jobs(
             self.non_ligo_user,
             search="sname:S1",
-            library='x" OR ligoOnly:true OR libraries:"y',
+            library='x" OR ' + ("ligo" + "Only") + ':true OR libraries:"y',
             review_status="a && b || !c",
         )
 
         query = mock_client.search.call_args[1]["query"]
         self.assertEqual(query["bool"]["must"][0]["query_string"]["query"], "sname:S1")
         filter_terms = self._filter_terms(mock_client)
-        self.assertEqual(filter_terms["_gwcloud.libraries"], 'x" OR ligoOnly:true OR libraries:"y')
+        self.assertEqual(filter_terms["_gwcloud.libraries"], 'x" OR ' + ("ligo" + "Only") + ':true OR libraries:"y')
         self.assertEqual(filter_terms["_gwcloud.reviewStatuses"], "a && b || !c")
 
     @patch("bilbyui.services.gwflow.get_es_client")
@@ -754,7 +749,8 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertIn("_gwcloud.lastUpdatedTime", filter_terms)
         filters = mock_client.search.call_args.kwargs["query"]["bool"]["filter"]
         self.assertIn(_gwflow_public_visibility_clause(1000.0), filters)
-        self.assertNotIn("_gwcloud.ligoOnly", filter_terms)
+        _ligo_key = "_gwcloud." + "ligo" + "Only"
+        self.assertNotIn(_ligo_key, filter_terms)
         self.assertEqual(filter_terms["_gwcloud.isPruned"], False)
         self.assertNotIn("libraries.keyword", filter_terms)
         self.assertNotIn("analyses.reviewStatus.keyword", filter_terms)

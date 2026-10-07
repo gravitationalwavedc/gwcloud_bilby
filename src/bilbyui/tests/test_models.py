@@ -42,7 +42,6 @@ class TestBilbyJobModel(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=1126259462.391,
         )
 
@@ -213,7 +212,6 @@ class TestEventIDUpdate(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=1126259462.391,
         )
 
@@ -224,20 +222,17 @@ class TestEventIDUpdate(BilbyTestCase):
         self.assertEqual(self.event.gps_time, 87654321.87654321)
         self.assertEqual(self.event.trigger_id, "S123456a")
         self.assertEqual(self.event.nickname, "GW123456")
-        self.assertFalse(self.event.is_ligo_event)
 
     def test_update_all_fields(self):
         self.event.update(
             gps_time=87654321.87654321,
             trigger_id="S234567a",
             nickname="new nickname",
-            is_ligo_event=True,
         )
         self.event.refresh_from_db()
         self.assertEqual(self.event.gps_time, 87654321.87654321)
         self.assertEqual(self.event.trigger_id, "S234567a")
         self.assertEqual(self.event.nickname, "new nickname")
-        self.assertTrue(self.event.is_ligo_event)
 
     def test_update_with_all_none_is_noop(self):
         # Calling update with no arguments must not change any field
@@ -246,7 +241,6 @@ class TestEventIDUpdate(BilbyTestCase):
         self.assertEqual(self.event.gps_time, 1126259462.391)
         self.assertEqual(self.event.trigger_id, "S123456a")
         self.assertEqual(self.event.nickname, "GW123456")
-        self.assertFalse(self.event.is_ligo_event)
 
     def test_update_raises_on_invalid_event_id(self):
         # clean_fields must raise on an invalid event_id and nothing should be persisted

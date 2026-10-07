@@ -27,7 +27,6 @@ class TestBilbyJobQueries(BilbyTestCase):
             "private": False,
             "ini_string": "detectors=['H1']",
             "job_controller_id": 1,
-            "is_ligo_job": False,
             "job_type": 0,
             "cluster": "TestCluster",
         }
@@ -42,7 +41,6 @@ class TestBilbyJobQueries(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=12345678.1234,
         )
         self.job = BilbyJob.objects.create(**self.job_data)
@@ -174,14 +172,13 @@ class TestBilbyJobQueries(BilbyTestCase):
         """
         bilbyJob node query should allow querying of labels field"
         """
-        response = self.job_request("eventId {eventId \n triggerId \n nickname \n isLigoEvent \n gpsTime}")
+        response = self.job_request("eventId {eventId \n triggerId \n nickname \n gpsTime}")
         expected = {
             "bilbyJob": {
                 "eventId": {
                     "eventId": self.event_id.event_id,
                     "triggerId": self.event_id.trigger_id,
                     "nickname": self.event_id.nickname,
-                    "isLigoEvent": self.event_id.is_ligo_event,
                     "gpsTime": self.event_id.gps_time,
                 }
             }
@@ -275,7 +272,6 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         # Anonymous user can't see ligo jobs
         self.job.private = False
-        self.job.is_ligo_job = False
         self.job.save()
         BilbyJob.objects.filter(pk=self.job.pk).update(trigger_time=1000000000.0)
 
@@ -333,7 +329,6 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         # Non ligo users should not be able to see ligo jobs
         self.job.private = False
-        self.job.is_ligo_job = False
         self.job.user_id = self.user.id
         self.job.save()
         BilbyJob.objects.filter(pk=self.job.pk).update(trigger_time=1000000000.0)
@@ -389,9 +384,7 @@ class TestBilbyJobQueries(BilbyTestCase):
 
         # ligo users should be able to see public ligo jobs from other users
         self.job_data["private"] = False
-        self.job_data["is_ligo_job"] = True
         self.job.private = False
-        self.job.is_ligo_job = True
         self.job.save()
 
         response = self.job_request(*request_data)
@@ -422,7 +415,6 @@ class TestBilbyJobQueries(BilbyTestCase):
             user_id=self.user.id,
             name="Test1",
             job_controller_id=2,
-            is_ligo_job=False,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         BilbyJob.objects.create(
@@ -430,7 +422,6 @@ class TestBilbyJobQueries(BilbyTestCase):
             name="Test2",
             job_controller_id=1,
             description="A test job",
-            is_ligo_job=False,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         BilbyJob.objects.create(
@@ -438,7 +429,6 @@ class TestBilbyJobQueries(BilbyTestCase):
             name="aaafirst",
             job_controller_id=None,
             description="A test job",
-            is_ligo_job=False,
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
 
@@ -561,7 +551,6 @@ class TestBilbyJobQueries(BilbyTestCase):
                 user_id=self.user.id,
                 name=f"Job {i}",
                 job_controller_id=None,
-                is_ligo_job=False,
                 ini_string=create_test_ini_string({"detectors": "['H1']"}),
             )
             job.labels.set([self.label])
@@ -599,7 +588,6 @@ class TestBilbyJobQueries(BilbyTestCase):
         gwflow_job = GWFlowJob.objects.create(
             sname="S230601test",
             user=self.user,
-            ligo_only=False,
             event_id=self.event_id,
         )
         for i in range(3):
@@ -607,7 +595,6 @@ class TestBilbyJobQueries(BilbyTestCase):
                 user_id=self.user.id,
                 name=f"Job {i}",
                 job_controller_id=None,
-                is_ligo_job=False,
                 ini_string=create_test_ini_string({"detectors": "['H1']"}),
             )
             job.gwflow_job = gwflow_job
