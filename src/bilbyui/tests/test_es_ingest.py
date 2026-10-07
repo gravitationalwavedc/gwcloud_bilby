@@ -363,6 +363,75 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1262272821.5)
         self.assertFalse(gwflow_job.event_id.is_ligo_event)
 
+    def test_handle_gwflow_selects_is_preferred_flag(self):
+        gwflow_job = GWFlowJob.objects.create(
+            sname="S200116b",
+            user=self.user,
+            event_id=None,
+            ligo_only=False,
+        )
+
+        detail_payload = {
+            "GraceDB": {
+                "Events": [
+                    {"UID": "G000020", "state": "neighbor", "GPSTime": 1262272818.0},
+                    {"UID": "G000021", "state": "neighbor", "GPSTime": 1262272819.0},
+                    {"UID": "G000022", "is_preferred": True, "GPSTime": 1262272821.5},
+                ]
+            }
+        }
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S200116b"}])
+            if url.endswith("/api/v1/superevents/S200116b/"):
+                return _MockResponse(detail_payload, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
+
+        gwflow_job.refresh_from_db()
+        self.assertIsNotNone(gwflow_job.event_id)
+        self.assertEqual(gwflow_job.event_id.event_id, "G000022")
+        self.assertEqual(gwflow_job.event_id.trigger_id, "S200116b")
+        self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1262272821.5)
+        self.assertFalse(gwflow_job.event_id.is_ligo_event)
+
+    def test_handle_gwflow_selects_preferred_flag(self):
+        gwflow_job = GWFlowJob.objects.create(
+            sname="S200116c",
+            user=self.user,
+            event_id=None,
+            ligo_only=False,
+        )
+
+        detail_payload = {
+            "GraceDB": {
+                "Events": [
+                    {"UID": "G000023", "state": "neighbor", "GPSTime": 1262272818.0},
+                    {"UID": "G000024", "preferred": "true", "GPSTime": 1262272821.5},
+                ]
+            }
+        }
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S200116c"}])
+            if url.endswith("/api/v1/superevents/S200116c/"):
+                return _MockResponse(detail_payload, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
+
+        gwflow_job.refresh_from_db()
+        self.assertIsNotNone(gwflow_job.event_id)
+        self.assertEqual(gwflow_job.event_id.event_id, "G000024")
+        self.assertEqual(gwflow_job.event_id.trigger_id, "S200116c")
+        self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1262272821.5)
+        self.assertFalse(gwflow_job.event_id.is_ligo_event)
+
     def test_handle_gwflow_inspects_raw_payload_for_gracedb(self):
         gwflow_job = GWFlowJob.objects.create(
             sname="S200115j",
