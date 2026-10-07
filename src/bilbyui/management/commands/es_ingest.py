@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 HTTP_OK = 200
 
+_TRUTHY_PREFERRED = (True, "true", "True", "yes")
+
 
 def build_bilby_es_mapping():
     """Return the Bilby index mapping body.
@@ -288,6 +290,16 @@ class Command(BaseCommand):
                                             if isinstance(st, str) and st.lower() == "preferred":
                                                 chosen = ev
                                                 break
+                                if chosen is None:
+                                    for ev in events:
+                                        if isinstance(ev, dict) and ev.get("is_preferred") in _TRUTHY_PREFERRED:
+                                            chosen = ev
+                                            break
+                                if chosen is None:
+                                    for ev in events:
+                                        if isinstance(ev, dict) and ev.get("preferred") in _TRUTHY_PREFERRED:
+                                            chosen = ev
+                                            break
                                 if chosen is None and events:
                                     if isinstance(events[0], dict):
                                         chosen = events[0]
