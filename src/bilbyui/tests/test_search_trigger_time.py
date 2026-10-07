@@ -55,3 +55,7 @@ class TestMaxFiniteTime(unittest.TestCase):
     def test_rejects_numpy_bool(self):
         self.assertIsNone(max_finite_time([np.bool_(True), np.bool_(False)]))
         self.assertEqual(max_finite_time([np.bool_(True), 4.0]), 4.0)
+
+    def test_skips_overflowing_values(self):
+        self.assertIsNone(max_finite_time([10**400]))
+        self.assertEqual(max_finite_time([10**400, 12.5]), 12.5)
