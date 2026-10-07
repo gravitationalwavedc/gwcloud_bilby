@@ -172,6 +172,32 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(row["common_name"], "GW000001_123456")
 
     @responses.activate
+    def test_scalar_config_dataset_ingests(self, gwc):
+        """A config value stored as a scalar h5py dataset (shape ()) must be read
+        instead of raising ValueError and failing the whole event's ingest."""
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response("scalar_config.h5")
+
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW000001_123456--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "VALID=good",
+            "https://test.org/GW000001.h5",
+        )
+
+        sqlite_rows = self.get_completed_jobs()
+        self.assertEqual(len(sqlite_rows), 1)
+        row = sqlite_rows[0]
+        self.assertEqual(row["job_id"], "GW000001_123456")
+        self.assertEqual(row["success"], 1)
+        self.assertEqual(row["reason"], "completed_submit")
+
+    @responses.activate
     def test_none_found(self, gwc):
         """Assuming a valid h5 file with no valid configs (ini parameters), it should not create a bilby job"""
         self.add_allevents_response()
