@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from typing import NamedTuple
 
 import elasticsearch
+import numpy as np
 from django.conf import settings
 from elasticsearch import helpers
 
@@ -272,6 +273,8 @@ def reindex_affected_event(event_id) -> ReindexCounts:
 
 
 def _finite_numeric(value):
+    if isinstance(value, np.generic):
+        value = value.item()
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     numeric = float(value)

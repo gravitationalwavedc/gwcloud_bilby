@@ -1,6 +1,8 @@
 import json
 import math
 
+import numpy as np
+
 
 def normalize_trigger(raw) -> float | None:
     if isinstance(raw, bool):
@@ -35,6 +37,8 @@ def max_finite_time(values) -> float | None:
     maximum = None
 
     for value in values:
+        if isinstance(value, np.generic):
+            value = value.item()
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             continue
 
