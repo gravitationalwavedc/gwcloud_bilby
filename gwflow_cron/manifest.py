@@ -14,6 +14,12 @@ def _normalise_file_size(value):
         try:
             return int(value)
         except ValueError:
+            try:
+                f = float(value)
+            except ValueError:
+                return None
+            if f.is_integer():
+                return int(f)
             return None
     return None
 
