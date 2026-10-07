@@ -2737,7 +2737,8 @@ def upsert_gwflow_job(user, params):
                     if md5_sum and f_obj.md5_sum != md5_sum:
                         f_obj.md5_sum = md5_sum
                         f_obj.file_name = file_name
-                        f_obj.file_size = file_size
+                        if file_size is not None:
+                            f_obj.file_size = file_size
                         f_obj.uploaded = False
                         f_obj.save()
                     else:
