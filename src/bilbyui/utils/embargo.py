@@ -375,10 +375,10 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
     locations = (metadata, raw_payload if isinstance(raw_payload, Mapping) else None)
 
     gracedb = None
-    for key in ("GraceDB", "gracedb"):
-        for location in locations:
-            if location is None:
-                continue
+    for location in locations:
+        if location is None:
+            continue
+        for key in ("GraceDB", "gracedb"):
             candidate = location.get(key)
             if isinstance(candidate, Mapping):
                 gracedb = candidate
