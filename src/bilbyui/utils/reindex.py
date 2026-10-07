@@ -14,6 +14,7 @@ from elasticsearch import helpers
 from bilbyui.models import BilbyJob, GWFlowJob, build_bilby_es_doc
 from bilbyui.utils.gwflow_es import build_gwflow_es_doc, get_es_client
 from bilbyui.utils.gwflow_portal import get_version
+from bilbyui.utils.search_trigger_time import max_finite_time
 
 logger = logging.getLogger(__name__)
 
@@ -294,8 +295,7 @@ def _expected_trigger_time(job, kind):
             job.trigger_time,
             job.event_id.gps_time if job.event_id else None,
         ]
-    finite = [value for value in (_finite_numeric(value) for value in values) if value is not None]
-    return max(finite) if finite else None
+    return max_finite_time(values)
 
 
 def _stored_trigger_time(source, kind):
