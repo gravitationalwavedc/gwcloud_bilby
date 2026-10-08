@@ -2,7 +2,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
 
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.embargo import _gwflow_trigger_time_from_metadata, gwflow_ligo_only_from_metadata
+from bilbyui.utils.embargo import _gwflow_trigger_time_from_metadata, gwflow_embargoed_from_metadata
 
 
 def _metadata_with_events(events):
@@ -285,45 +285,45 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
     @override_settings(EMBARGO_START_TIME=None)
     def test_no_embargo_start_time(self):
         # EMBARGO_START_TIME is None -> always public (False), regardless of trigger.
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 2000.0}])))
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 100.0}])))
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([])))
-        self.assertFalse(gwflow_ligo_only_from_metadata({}))
-        self.assertFalse(gwflow_ligo_only_from_metadata(None))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": 2000.0}])))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": 100.0}])))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([])))
+        self.assertFalse(gwflow_embargoed_from_metadata({}))
+        self.assertFalse(gwflow_embargoed_from_metadata(None))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_trigger_below_threshold(self):
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 1000.0}])))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": 1000.0}])))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_trigger_equal_threshold(self):
         # Equality is LIGO-only.
-        self.assertTrue(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 1500.0}])))
+        self.assertTrue(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": 1500.0}])))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_trigger_above_threshold(self):
-        self.assertTrue(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 2000.0}])))
+        self.assertTrue(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": 2000.0}])))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_malformed_gps_time(self):
         # Non-numeric or missing GPSTime -> no usable event -> fail-open (False).
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": "not-a-number"}])))
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": None}])))
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{}])))
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": [1, 2]}])))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": "not-a-number"}])))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": None}])))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([{}])))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": [1, 2]}])))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_boolean_gps_time_fail_open(self):
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": True}])))
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": False}])))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": True}])))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": False}])))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_missing_event(self):
-        self.assertFalse(gwflow_ligo_only_from_metadata({}))
-        self.assertFalse(gwflow_ligo_only_from_metadata({"GraceDB": {}}))
-        self.assertFalse(gwflow_ligo_only_from_metadata({"GraceDB": {"Events": []}}))
-        self.assertFalse(gwflow_ligo_only_from_metadata({"GraceDB": {"Events": "not-a-list"}}))
-        self.assertFalse(gwflow_ligo_only_from_metadata(None))
+        self.assertFalse(gwflow_embargoed_from_metadata({}))
+        self.assertFalse(gwflow_embargoed_from_metadata({"GraceDB": {}}))
+        self.assertFalse(gwflow_embargoed_from_metadata({"GraceDB": {"Events": []}}))
+        self.assertFalse(gwflow_embargoed_from_metadata({"GraceDB": {"Events": "not-a-list"}}))
+        self.assertFalse(gwflow_embargoed_from_metadata(None))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_preferred_event_selected(self):
@@ -334,7 +334,7 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
                 {"GPSTime": 2000.0, "State": "preferred"},
             ]
         )
-        self.assertTrue(gwflow_ligo_only_from_metadata(metadata))
+        self.assertTrue(gwflow_embargoed_from_metadata(metadata))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_no_preferred_uses_first_usable(self):
@@ -345,7 +345,7 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
                 {"GPSTime": 2000.0},
             ]
         )
-        self.assertFalse(gwflow_ligo_only_from_metadata(metadata))
+        self.assertFalse(gwflow_embargoed_from_metadata(metadata))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_malformed_entries_skipped(self):
@@ -358,7 +358,7 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
                 {"GPSTime": 2000.0},
             ]
         )
-        self.assertTrue(gwflow_ligo_only_from_metadata(metadata))
+        self.assertTrue(gwflow_embargoed_from_metadata(metadata))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_none_usable_fail_open(self):
@@ -370,48 +370,48 @@ class TestGWFlowLigoOnlyFromMetadata(BilbyTestCase):
                 "not-a-dict",
             ]
         )
-        self.assertFalse(gwflow_ligo_only_from_metadata(metadata))
+        self.assertFalse(gwflow_embargoed_from_metadata(metadata))
 
     @override_settings(EMBARGO_START_TIME="1500.0")
     def test_embargo_start_time_as_string(self):
         # EMBARGO_START_TIME arrives as a string from the environment; it is
         # cast to a numeric threshold. Equality is LIGO-only.
-        self.assertTrue(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 1500.0}])))
-        self.assertFalse(gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 1000.0}])))
+        self.assertTrue(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": 1500.0}])))
+        self.assertFalse(gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": 1000.0}])))
 
     @override_settings(EMBARGO_START_TIME="not-a-number")
     def test_malformed_embargo_start_time_fail_closed(self):
         # Malformed non-null EMBARGO_START_TIME is a deployment error.
         with self.assertRaises(ImproperlyConfigured):
-            gwflow_ligo_only_from_metadata(_metadata_with_events([{"GPSTime": 2000.0}]))
+            gwflow_embargoed_from_metadata(_metadata_with_events([{"GPSTime": 2000.0}]))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_lowercase_shape(self):
         # Canonical lowercase portal shape (gracedb/events/gps_time) yields
-        # the correct ligo_only value instead of always public.
+        # the correct embargoed value instead of always public.
         metadata = {"gracedb": {"events": [{"state": "preferred", "gps_time": 2000.0}]}}
-        self.assertTrue(gwflow_ligo_only_from_metadata(metadata))
+        self.assertTrue(gwflow_embargoed_from_metadata(metadata))
         metadata_below = {"gracedb": {"events": [{"state": "preferred", "gps_time": 1000.0}]}}
-        self.assertFalse(gwflow_ligo_only_from_metadata(metadata_below))
+        self.assertFalse(gwflow_embargoed_from_metadata(metadata_below))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_preferred_event_gps_fallback(self):
         # No usable per-event GPS time -> gracedb-level preferred_event_gps
-        # drives ligo_only instead of failing open.
+        # drives the embargo decision instead of failing open.
         metadata = {"gracedb": {"events": [{"gps_time": None}], "preferred_event_gps": 2000.0}}
-        self.assertTrue(gwflow_ligo_only_from_metadata(metadata))
+        self.assertTrue(gwflow_embargoed_from_metadata(metadata))
         metadata_below = {"gracedb": {"events": [], "preferred_event_gps": 1000.0}}
-        self.assertFalse(gwflow_ligo_only_from_metadata(metadata_below))
+        self.assertFalse(gwflow_embargoed_from_metadata(metadata_below))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_gps_time_fallback(self):
         # No usable per-event GPS time and no preferred_event_gps ->
-        # gracedb-level gps_time drives ligo_only.
+        # gracedb-level gps_time drives the embargo decision.
         metadata = {"gracedb": {"events": [], "gps_time": 2000.0}}
-        self.assertTrue(gwflow_ligo_only_from_metadata(metadata))
+        self.assertTrue(gwflow_embargoed_from_metadata(metadata))
 
     @override_settings(EMBARGO_START_TIME=1500.0)
     def test_no_gracedb_gps_fallback_fails_open(self):
         # No usable event GPS and no gracedb-level fallback -> fail-open (False).
         metadata = {"gracedb": {"events": [{"gps_time": "bad"}], "preferred_event_gps": None, "gps_time": None}}
-        self.assertFalse(gwflow_ligo_only_from_metadata(metadata))
+        self.assertFalse(gwflow_embargoed_from_metadata(metadata))
