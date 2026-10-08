@@ -13,7 +13,6 @@ class TestEditJobEventId(BilbyTestCase):
             gps_time=1126259462.391,
             trigger_id="S123456a",
             nickname="GW150914",
-            is_ligo_event=False,
         )
         self.job = BilbyJob.objects.create(
             user_id=self.user.id,

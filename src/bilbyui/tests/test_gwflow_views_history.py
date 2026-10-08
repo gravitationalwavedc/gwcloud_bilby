@@ -300,13 +300,11 @@ class TestGWFlowHistoryVisibility(BilbyTestCase):
             self.ligo_user,
             sname="S230601ag",
             trigger_time=100.0,
-            ligo_only=False,
         )
         self.public_job = _create_job(
             self.ligo_user,
             sname="S230602ag",
             trigger_time=99.0,
-            ligo_only=True,
         )
         self.sha = "1111222233334444555566667777888899990000"
 

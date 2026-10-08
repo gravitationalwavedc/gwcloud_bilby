@@ -309,7 +309,7 @@ def _stored_trigger_time(source, kind):
     return ("searchTriggerTime" in envelope), envelope.get("searchTriggerTime")
 
 
-def collect_search_trigger_time_parity(kind: str, *, batch: int = _CHUNK_SIZE) -> ParityReport:
+def _collect_search_trigger_time_parity(kind: str, *, batch: int = _CHUNK_SIZE) -> ParityReport:
     """Independently compare raw model fields with stored Elasticsearch values."""
     if kind not in {"bilby", "gwflow"}:
         raise ValueError("kind must be 'bilby' or 'gwflow'")
@@ -388,6 +388,6 @@ def collect_search_trigger_time_parity(kind: str, *, batch: int = _CHUNK_SIZE) -
 
 def verify_search_trigger_time(kind: str) -> None:
     """Independently compare raw model fields with stored Elasticsearch values."""
-    report = collect_search_trigger_time_parity(kind)
+    report = _collect_search_trigger_time_parity(kind)
     if report.failures:
         raise ReindexError(f"verification failed kind={kind} checked={report.checked} failures={report.failures}")

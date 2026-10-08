@@ -36,7 +36,7 @@ class TestGetGWFlowJobOr404(BilbyTestCase):
         return GWFlowJob.objects.create(**defaults)
 
     def test_returns_job_when_visible(self):
-        job = self._create_job(ligo_only=False)
+        job = self._create_job()
 
         result = _get_gwflow_job_or_404(self._request_for(self.non_ligo_user), job.sname)
 

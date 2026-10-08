@@ -25,7 +25,6 @@ class TestListGWFlowJobsStateFlag(BilbyTestCase):
         self.job = GWFlowJob.objects.create(
             sname="S200101a",
             user=self.user,
-            ligo_only=False,
             is_pruned=False,
         )
 
@@ -69,7 +68,6 @@ class TestListGWFlowJobsStateFlag(BilbyTestCase):
         ligo_job = GWFlowJob.objects.create(
             sname="S200101b",
             user=self.user,
-            ligo_only=True,
             trigger_time=1500.0,
             is_pruned=False,
         )

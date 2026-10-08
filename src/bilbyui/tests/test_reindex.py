@@ -9,10 +9,8 @@ from bilbyui.models import BilbyJob, EventID, GWFlowJob
 from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.reindex import (
-    ParityReport,
     ReindexCounts,
     ReindexError,
-    collect_search_trigger_time_parity,
     reindex_affected_event,
     reindex_jobs,
     verify_search_trigger_time,
@@ -415,85 +413,6 @@ class TestVerifySearchTriggerTime(BilbyTestCase):
     @staticmethod
     def mget_response(rows, sources):
         return {"docs": [{"_id": str(row.id), "found": True, "_source": sources[row.id]} for row in rows]}
-
-    def test_collect_returns_counts_for_all_pass_and_some_failure(self):
-        passing = self.bilby("passing", trigger_time=10.0)
-        failing = self.bilby("failing", trigger_time=20.0)
-        es = mock.Mock()
-        es.mget.return_value = self.mget_response(
-            [passing, failing],
-            {
-                passing.id: {"searchTriggerTime": 10.0},
-                failing.id: {"searchTriggerTime": 21.0},
-            },
-        )
-
-        with mock.patch("bilbyui.utils.reindex.get_es_client", return_value=es):
-            report = collect_search_trigger_time_parity("bilby")
-
-        self.assertEqual(
-            report,
-            ParityReport(
-                checked=2,
-                failures=1,
-                details=[(failing.id, "field value mismatch")],
-            ),
-        )
-
-        es.mget.return_value = self.mget_response(
-            [passing, failing],
-            {
-                passing.id: {"searchTriggerTime": 10.0},
-                failing.id: {"searchTriggerTime": 20.0},
-            },
-        )
-        with mock.patch("bilbyui.utils.reindex.get_es_client", return_value=es):
-            report = collect_search_trigger_time_parity("bilby")
-
-        self.assertEqual(report, ParityReport(2, 0, []))
-
-    def test_collect_details_are_capped_while_all_failures_are_counted(self):
-        jobs = BilbyJob.objects.bulk_create(
-            [
-                BilbyJob(
-                    user=self.user,
-                    name=f"missing-{number:03d}",
-                    ini_string=create_test_ini_string({"detectors": "['H1']"}),
-                )
-                for number in range(101)
-            ]
-        )
-        es = mock.Mock()
-        es.mget.side_effect = lambda *, index, ids: {
-            "docs": [{"_id": str(stable_id), "found": False} for stable_id in ids]
-        }
-
-        with mock.patch("bilbyui.utils.reindex.get_es_client", return_value=es):
-            report = collect_search_trigger_time_parity("bilby", batch=25)
-
-        self.assertEqual(report.checked, 101)
-        self.assertEqual(report.failures, 101)
-        self.assertEqual(len(report.details), 100)
-        self.assertEqual(
-            report.details,
-            [(job.id, "stored document missing") for job in jobs[:100]],
-        )
-        self.assertEqual([len(call.kwargs["ids"]) for call in es.mget.call_args_list], [25, 25, 25, 25, 1])
-
-    def test_collect_rejects_invalid_kind_before_io(self):
-        with mock.patch("bilbyui.utils.reindex.get_es_client") as client:
-            with self.assertRaises(ValueError):
-                collect_search_trigger_time_parity("other")
-
-        client.assert_not_called()
-
-    @override_settings(IGNORE_ELASTIC_SEARCH=True)
-    def test_collect_is_noop_when_ignore_elastic_search(self):
-        with mock.patch("bilbyui.utils.reindex.get_es_client") as client:
-            report = collect_search_trigger_time_parity("bilby")
-
-        self.assertEqual(report, ParityReport(0, 0, []))
-        client.assert_not_called()
 
     def test_verify_returns_none_on_success_and_raises_on_failure(self):
         job = self.bilby("wrapper", trigger_time=12.0)

@@ -39,9 +39,7 @@ class TestGetViewJobOr404(BilbyTestCase):
         with self.assertRaises(Http404):
             _get_view_job_or_404(self.job.id, self.user)
 
-    def test_legacy_flag_does_not_deny_view(self):
-        self.job.is_ligo_job = True
-        self.job.save(update_fields=["is_ligo_job"])
+    def test_public_job_accessible_to_owner(self):
         self.assertEqual(_get_view_job_or_404(self.job.id, self.user), self.job)
 
     @mock.patch("bilbyui.views.get_job")

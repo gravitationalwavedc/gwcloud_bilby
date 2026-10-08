@@ -135,7 +135,6 @@ class TestGWFlowMutations(BilbyTestCase):
             event_id="GW230601_123456",
             gps_time=123456789.0,
             trigger_id="S230601ag",
-            is_ligo_event=True,
         )
 
         query = """
@@ -187,11 +186,10 @@ class TestGWFlowMutations(BilbyTestCase):
             self.assertEqual(data["filesPending"][0]["path"], "outdir/data.h5")
 
             job = GWFlowJob.objects.get(sname="S230601ag")
-            self.assertTrue(job.ligo_only)  # Default on creation
             self.assertEqual(job.event_id, event)
             self.assertEqual(job.schema_version, "v1")
 
-        # 2. Re-upsert (Update) without modifying ligo_only (omitted on update)
+        # 2. Re-upsert (Update)
         input_data_update = {
             "params": {
                 "sname": "S230601ag",
@@ -218,7 +216,6 @@ class TestGWFlowMutations(BilbyTestCase):
 
             job.refresh_from_db()
             self.assertEqual(job.schema_version, "v2")
-            self.assertTrue(job.ligo_only)
             self.assertIsNone(job.trigger_time)
             mock_es_update.assert_called_once_with(job, {"test": "json"})
 
@@ -241,7 +238,6 @@ class TestGWFlowMutations(BilbyTestCase):
 
         params = SimpleNamespace(
             sname="S230601zz",
-            ligo_only=False,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
@@ -274,7 +270,6 @@ class TestGWFlowMutations(BilbyTestCase):
 
         params = SimpleNamespace(
             sname="S230601zz",
-            ligo_only=False,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
@@ -336,13 +331,11 @@ class TestGWFlowMutations(BilbyTestCase):
             trigger_id="S230601ag",
             nickname="The First",
             gps_time=123456789.0,
-            is_ligo_event=True,
         )
 
         params = SimpleNamespace(
             sname="S230601ag",
             event_id="S230601ag",
-            ligo_only=False,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
@@ -376,13 +369,11 @@ class TestGWFlowMutations(BilbyTestCase):
             event_id="GW230601_123456",
             trigger_id="S230601ag",
             gps_time=123456789.0,
-            is_ligo_event=True,
         )
 
         params = SimpleNamespace(
             sname="S230601ag",
             event_id="G409107",
-            ligo_only=False,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
@@ -412,14 +403,12 @@ class TestGWFlowMutations(BilbyTestCase):
             event_id="GW230601_123456",
             trigger_id="S230601ag",
             gps_time=123456789.0,
-            is_ligo_event=True,
         )
         job = GWFlowJob.objects.create(sname="S230601ag", user=self.ingest_user, event_id=existing)
 
         params = SimpleNamespace(
             sname="S230601ag",
             event_id="S999999zz",
-            ligo_only=False,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
@@ -1285,7 +1274,6 @@ class TestExactVersionIngest(BilbyTestCase):
 
         base = {
             "sname": "S230601exact",
-            "ligo_only": False,
             "schema_version": "v1",
             "libraries": ["cbc-workflow-o4a"],
             "is_pruned": False,
@@ -1429,18 +1417,15 @@ class TestExactVersionIngest(BilbyTestCase):
             event_id="GW230601_123456",
             gps_time=123456789.0,
             trigger_id="S230601a",
-            is_ligo_event=True,
         )
         EventID.create(
             event_id="GW230601_999999",
             gps_time=123456999.0,
             trigger_id="S230601b",
-            is_ligo_event=True,
         )
         job = GWFlowJob.objects.create(
             sname="S230601exact",
             user=self.ingest_user,
-            ligo_only=True,
             schema_version="v2",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
@@ -1460,7 +1445,6 @@ class TestExactVersionIngest(BilbyTestCase):
         )
 
         params = self._params(
-            ligo_only=False,
             schema_version="v1",
             libraries=["cbc-workflow-o4b"],
             is_pruned=True,
@@ -1489,7 +1473,6 @@ class TestExactVersionIngest(BilbyTestCase):
         mock_es.assert_not_called()
         self.assertEqual(result["removed_files"], [])
         job.refresh_from_db()
-        self.assertTrue(job.ligo_only)
         self.assertEqual(job.schema_version, "v2")
         self.assertEqual(job.libraries, ["cbc-workflow-o4a"])
         self.assertFalse(job.is_pruned)
@@ -1514,18 +1497,15 @@ class TestExactVersionIngest(BilbyTestCase):
             event_id="GW230601_123456",
             gps_time=123456789.0,
             trigger_id="S230601a",
-            is_ligo_event=True,
         )
         other_event = EventID.create(
             event_id="GW230601_999999",
             gps_time=123456999.0,
             trigger_id="S230601b",
-            is_ligo_event=True,
         )
         job = GWFlowJob.objects.create(
             sname="S230601exact",
             user=self.ingest_user,
-            ligo_only=True,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
@@ -1546,7 +1526,6 @@ class TestExactVersionIngest(BilbyTestCase):
 
         payload = {"superevent": "S230601exact", "version": "sha-001"}
         params = self._params(
-            ligo_only=False,
             schema_version="v2",
             libraries=["cbc-workflow-o4b"],
             is_pruned=True,
@@ -1575,7 +1554,6 @@ class TestExactVersionIngest(BilbyTestCase):
         mock_gv.assert_called_once_with("S230601exact", "sha-001")
         mock_es.assert_called_once()
         job.refresh_from_db()
-        self.assertFalse(job.ligo_only)
         self.assertEqual(job.schema_version, "v2")
         self.assertEqual(job.libraries, ["cbc-workflow-o4b"])
         self.assertTrue(job.is_pruned)
@@ -1622,14 +1600,12 @@ class TestExactVersionIngest(BilbyTestCase):
         GWFlowJob.objects.create(
             sname="S230601exact",
             user=self.ingest_user,
-            ligo_only=True,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
         )
 
         params = self._params(
-            ligo_only=False,
             is_pruned=True,
             current_history_id=None,
             current_history_timestamp=None,
@@ -1646,7 +1622,6 @@ class TestExactVersionIngest(BilbyTestCase):
         mock_es.assert_not_called()
         job = GWFlowJob.objects.get(sname="S230601exact")
         self.assertTrue(job.is_pruned)
-        self.assertFalse(job.ligo_only)
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_equal_timestamp_different_id_conflict_leaves_db_and_es_untouched(self):
@@ -1769,7 +1744,6 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
 
         values = {
             "sname": sname,
-            "ligo_only": None,
             "schema_version": "v1",
             "libraries": ["cbc-workflow-o4a"],
             "is_pruned": False,
@@ -1789,21 +1763,19 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
             return upsert_gwflow_job(self.ingest_user, params)
 
     @override_settings(GWFLOW_INGEST_USER=99)
-    def test_create_stores_preferred_finite_gps_without_deriving_ligo_only(self):
+    def test_create_stores_preferred_finite_gps(self):
         metadata = '{"GraceDB": {"Events": [{"GPSTime": 1000.0}, {"State": "preferred", "GPSTime": 2000.0}]}}'
         self._upsert(self._params("S230801preferred", metadata))
 
         job = GWFlowJob.objects.get(sname="S230801preferred")
         self.assertEqual(job.trigger_time, 2000.0)
-        self.assertTrue(job.ligo_only)
 
     @override_settings(GWFLOW_INGEST_USER=99)
-    def test_update_stores_first_usable_fallback_without_deriving_ligo_only(self):
+    def test_update_stores_first_usable_fallback(self):
         job = GWFlowJob.objects.create(
             sname="S230801update",
             user=self.ingest_user,
             trigger_time=900.0,
-            ligo_only=True,
         )
         metadata = (
             '{"GraceDB": {"Events": ['
@@ -1814,7 +1786,6 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
 
         job.refresh_from_db()
         self.assertEqual(job.trigger_time, 1100.0)
-        self.assertTrue(job.ligo_only)
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_nested_raw_payload_gracedb_is_persisted(self):
@@ -1896,18 +1867,16 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
         self.assertEqual(job.trigger_time, 1700.0)
 
     @override_settings(GWFLOW_INGEST_USER=99)
-    def test_explicit_ligo_only_is_still_applied(self):
+    def test_trigger_time_extracted_from_metadata(self):
         job = GWFlowJob.objects.create(
             sname="S230801explicit",
             user=self.ingest_user,
-            ligo_only=True,
         )
         metadata = '{"GraceDB": {"Events": [{"GPSTime": 1000.0}]}}'
 
-        self._upsert(self._params(job.sname, metadata, ligo_only=False))
+        self._upsert(self._params(job.sname, metadata))
 
         job.refresh_from_db()
-        self.assertFalse(job.ligo_only)
         self.assertEqual(job.trigger_time, 1000.0)
 
 
@@ -1927,7 +1896,6 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
 
         values = {
             "sname": sname,
-            "ligo_only": None,
             "schema_version": None,
             "libraries": None,
             "is_pruned": None,
@@ -1999,7 +1967,6 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
             event_id="GW230801_123456",
             trigger_id="S230801a",
             gps_time=123.0,
-            is_ligo_event=True,
         )
         job = GWFlowJob.objects.create(
             sname="S230801eventlink",
@@ -2018,7 +1985,6 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
             event_id="GW230801_654321",
             trigger_id="S230801b",
             gps_time=456.0,
-            is_ligo_event=True,
         )
         job = GWFlowJob.objects.create(
             sname="S230801combinedjob",
@@ -2041,7 +2007,6 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
             event_id="GW230801_111111",
             trigger_id="S230801c",
             gps_time=789.0,
-            is_ligo_event=True,
         )
         job = GWFlowJob.objects.create(
             sname="S230801unchangedjob",
@@ -2082,13 +2047,11 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
             event_id="GW230801_222222",
             trigger_id="S230801d",
             gps_time=321.0,
-            is_ligo_event=True,
         )
         replacement = EventID.create(
             event_id="GW230801_333333",
             trigger_id="S230801e",
             gps_time=654.0,
-            is_ligo_event=True,
         )
         job = GWFlowJob.objects.create(
             sname="S230801oldercallback",

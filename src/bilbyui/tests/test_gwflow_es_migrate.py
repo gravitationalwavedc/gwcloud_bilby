@@ -349,10 +349,6 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
         self.assertEqual(len(FIXTURE_MATRIX), 5)
         self.assertEqual([spec["id"] for spec in FIXTURE_MATRIX], [1, 2, 3, 4, 5])
         self.assertEqual(
-            [spec["ligo_only"] for spec in FIXTURE_MATRIX],
-            [False, False, True, False, False],
-        )
-        self.assertEqual(
             [spec["is_pruned"] for spec in FIXTURE_MATRIX],
             [False, False, False, True, False],
         )

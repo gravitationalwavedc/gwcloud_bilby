@@ -9,9 +9,8 @@ from django.db.models import Q
 
 from bilbyui.models import EventID, GWFlowJob
 from bilbyui.services.gwflow import LIBRARIES_CACHE_KEY, REVIEW_STATUSES_CACHE_KEY
-from bilbyui.utils.embargo import gwflow_ligo_only_from_metadata
 from bilbyui.utils.gwflow_es import _parse_portal_bool
-from bilbyui.utils.gwflow_portal import get_superevent, get_versions
+from bilbyui.utils.gwflow_portal import get_versions
 from bilbyui.utils.gwflow_version import (
     normalise_current_history_timestamp,
     normalise_libraries,
@@ -35,8 +34,8 @@ class PortalUnavailable(Exception):
 
 class Command(BaseCommand):
     help = (
-        "Backfill GWFlowJob libraries, current_history_timestamp, ligo_only, and "
-        "event links from the cbcflow portal's authoritative current state."
+        "Backfill GWFlowJob libraries, current-history metadata, and event links "
+        "from the cbcflow portal's authoritative current state."
     )
 
     def add_arguments(self, parser):
@@ -130,7 +129,7 @@ class Command(BaseCommand):
         total_failures = 0
         batch_count = 0
         any_failure = False
-        repaired = {"libraries": 0, "ligo_only": 0, "event_id": 0}
+        repaired = {"libraries": 0, "event_id": 0}
         before_counts = self._state_counts(qs)
 
         for start in range(0, total, batch_size):
@@ -149,7 +148,7 @@ class Command(BaseCommand):
                     try:
                         fields = self._resolve_job(job)
                         updated.append((job, fields))
-                        for name in ("libraries", "ligo_only", "event_id"):
+                        for name in ("libraries", "event_id"):
                             if name in fields and fields[name] != getattr(job, name):
                                 repaired[name] += 1
                     except PortalUnavailable:
@@ -187,21 +186,17 @@ class Command(BaseCommand):
         after_counts = self._state_counts(qs)
         self.stdout.write(
             f"Backfill complete: {total} processed, {total_failures} failure(s). "
-            f"{label}: {repaired['libraries']} libraries, {repaired['ligo_only']} ligo_only, "
-            f"{repaired['event_id']} event links."
+            f"{label}: {repaired['libraries']} libraries, {repaired['event_id']} event links."
         )
         self.stdout.write(
-            f"State before: {before_counts['ligo_only']} ligo_only, "
-            f"{before_counts['event_linked']} event links, {before_counts['with_libraries']} with libraries. "
-            f"State after: {after_counts['ligo_only']} ligo_only, "
-            f"{after_counts['event_linked']} event links, {after_counts['with_libraries']} with libraries."
+            f"State before: {before_counts['event_linked']} event links, {before_counts['with_libraries']} with libraries. "
+            f"State after: {after_counts['event_linked']} event links, {after_counts['with_libraries']} with libraries."
         )
         self._exit_code = EXIT_FAILURES if any_failure else EXIT_OK
 
     def _state_counts(self, qs):
         """Return comparable state totals for the repaired fields over a queryset."""
         return {
-            "ligo_only": qs.filter(ligo_only=True).count(),
             "event_linked": qs.exclude(event_id=None).count(),
             "with_libraries": qs.exclude(libraries=[]).count(),
         }
@@ -227,14 +222,6 @@ class Command(BaseCommand):
                 fields["libraries"] = normalise_libraries(current.get("libraries"))
             fields["current_history_id"] = current.get("commit_sha") or ""
             fields["current_history_timestamp"] = normalise_current_history_timestamp(current.get("commit_timestamp"))
-
-        # LIGO-only flag from the superevent's portal metadata (B-2), matching
-        # the cron's phase_metadata which uses detail.get("raw_payload", {}).
-        detail, state = get_superevent(job.sname)
-        if state == "down" or detail is None or not isinstance(detail, dict):
-            raise PortalUnavailable(job)
-        metadata = detail.get("raw_payload", {})
-        fields["ligo_only"] = gwflow_ligo_only_from_metadata(metadata)
 
         # Authoritative event link (B-3): write the resolved EventID, or None
         # on a no-match so stale links are cleared and reruns converge. A lookup

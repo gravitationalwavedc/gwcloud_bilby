@@ -17,7 +17,7 @@ class GWFlowReconcileTestCase(BilbyTestCase):
         self.addCleanup(self.temp_dir.cleanup)
 
     def _make_job_and_files(self, sname, paths):
-        job = GWFlowJob.objects.create(sname=sname, user=self.user, ligo_only=False)
+        job = GWFlowJob.objects.create(sname=sname, user=self.user)
         files = []
         job_file_dir = Path(self.temp_dir.name) / str(job.id)
         for path in paths:

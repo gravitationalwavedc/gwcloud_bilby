@@ -50,7 +50,6 @@ class TestGWFlowJobDetailView(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=12345678.1234,
         )
         job = _create_job(
@@ -97,7 +96,6 @@ class TestGWFlowJobDetailView(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=12345678.1234,
         )
         job = _create_job(self.ligo_user, event_id=event_id)
@@ -422,13 +420,11 @@ class TestGWFlowJobVisibility(BilbyTestCase):
             self.ligo_user,
             sname="S230601ag",
             trigger_time=100.0,
-            ligo_only=False,
         )
         self.public_job = _create_job(
             self.ligo_user,
             sname="S230602ag",
             trigger_time=99.0,
-            ligo_only=True,
         )
         self.authenticate(user=self.ligo_user)
 

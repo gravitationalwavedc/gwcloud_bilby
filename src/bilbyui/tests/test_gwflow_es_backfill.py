@@ -68,13 +68,10 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         with mock.patch("bilbyui.management.commands.gwflow_es_backfill.get_versions") as m:
             m.side_effect = kwargs.pop("get_versions_side_effect", None)
             m.return_value = kwargs.pop("get_versions_return", (versions(current_version()), "live"))
-            with mock.patch("bilbyui.management.commands.gwflow_es_backfill.get_superevent") as sm:
-                sm.side_effect = kwargs.pop("get_superevent_side_effect", None)
-                sm.return_value = kwargs.pop("get_superevent_return", (superevent(), "live"))
-                try:
-                    exit_code = call_command("gwflow_es_backfill", *args, stdout=out, stderr=err, **kwargs)
-                except CommandError as e:
-                    exit_code = e.returncode
+            try:
+                exit_code = call_command("gwflow_es_backfill", *args, stdout=out, stderr=err, **kwargs)
+            except CommandError as e:
+                exit_code = e.returncode
         return exit_code, out.getvalue(), err.getvalue()
 
     def test_populated_libraries_persisted(self):
@@ -283,27 +280,6 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         _, out, _ = self._run()
         self.assertIn("Last completed job ID:", out)
 
-    @override_settings(EMBARGO_START_TIME=1000.0)
-    def test_ligo_only_true_when_trigger_after_embargo_start(self):
-        job = make_job()
-        self._run(get_superevent_return=(superevent(gps_time=2000.0), "live"))
-        job.refresh_from_db()
-        self.assertTrue(job.ligo_only)
-
-    @override_settings(EMBARGO_START_TIME=1000.0)
-    def test_ligo_only_false_when_trigger_before_embargo_start(self):
-        job = make_job()
-        self._run(get_superevent_return=(superevent(gps_time=100.0), "live"))
-        job.refresh_from_db()
-        self.assertFalse(job.ligo_only)
-
-    @override_settings(EMBARGO_START_TIME=None)
-    def test_ligo_only_false_when_no_embargo(self):
-        job = make_job()
-        self._run(get_superevent_return=(superevent(gps_time=2000.0), "live"))
-        job.refresh_from_db()
-        self.assertFalse(job.ligo_only)
-
     def test_event_id_linked_when_trigger_id_matches_sname(self):
         job = make_job(sname="S230601ag")
         EventID.objects.create(event_id="GW123456_123456", trigger_id="S230601ag")
@@ -325,15 +301,6 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         self._run()
         job.refresh_from_db()
         self.assertIsNone(job.event_id)
-
-    def test_superevent_down_records_failure_and_returns_1(self):
-        job = make_job()
-        exit_code, _, err = self._run(
-            get_superevent_return=(None, "down"),
-        )
-        job.refresh_from_db()
-        self.assertEqual(exit_code, 1)
-        self.assertIn("Permanent failure", err)
 
     def test_stale_event_link_cleared_on_no_match(self):
         stale = EventID.objects.create(event_id="GW999999_999999", trigger_id="S999999zz")
@@ -364,10 +331,9 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
 
     def test_dry_run_does_not_persist_new_fields(self):
         stale = EventID.objects.create(event_id="GW999999_999999", trigger_id="S999999zz")
-        job = make_job(sname="S230601ag", ligo_only=True, event_id=stale)
-        self._run("--dry-run", get_superevent_return=(superevent(gps_time=100.0), "live"))
+        job = make_job(sname="S230601ag", event_id=stale)
+        self._run("--dry-run")
         job.refresh_from_db()
-        self.assertTrue(job.ligo_only)
         self.assertEqual(job.event_id, stale)
 
     def test_reports_before_after_state_counts(self):

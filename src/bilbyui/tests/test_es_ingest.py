@@ -304,7 +304,6 @@ class TestEsIngestCommand(BilbyTestCase):
         event = EventID.objects.create(
             event_id="GW190425",
             gps_time=1239082262.22,
-            is_ligo_event=False,
         )
         parent_gwflow = GWFlowJob.objects.create(
             sname="S190425z",
@@ -332,7 +331,6 @@ class TestEsIngestCommand(BilbyTestCase):
             sname="S200105ae",
             user=self.user,
             event_id=None,
-            ligo_only=False,
         )
 
         detail_payload = {
@@ -361,14 +359,12 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(gwflow_job.event_id.event_id, "G000004")
         self.assertEqual(gwflow_job.event_id.trigger_id, "S200105ae")
         self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1262272821.5)
-        self.assertFalse(gwflow_job.event_id.is_ligo_event)
 
     def test_handle_gwflow_selects_is_preferred_flag(self):
         gwflow_job = GWFlowJob.objects.create(
             sname="S200116b",
             user=self.user,
             event_id=None,
-            ligo_only=False,
         )
 
         detail_payload = {
@@ -396,14 +392,12 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(gwflow_job.event_id.event_id, "G000022")
         self.assertEqual(gwflow_job.event_id.trigger_id, "S200116b")
         self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1262272821.5)
-        self.assertFalse(gwflow_job.event_id.is_ligo_event)
 
     def test_handle_gwflow_selects_preferred_flag(self):
         gwflow_job = GWFlowJob.objects.create(
             sname="S200116c",
             user=self.user,
             event_id=None,
-            ligo_only=False,
         )
 
         detail_payload = {
@@ -430,14 +424,12 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(gwflow_job.event_id.event_id, "G000024")
         self.assertEqual(gwflow_job.event_id.trigger_id, "S200116c")
         self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1262272821.5)
-        self.assertFalse(gwflow_job.event_id.is_ligo_event)
 
     def test_handle_gwflow_inspects_raw_payload_for_gracedb(self):
         gwflow_job = GWFlowJob.objects.create(
             sname="S200115j",
             user=self.user,
             event_id=None,
-            ligo_only=True,
         )
 
         detail_payload = {
@@ -466,7 +458,6 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(gwflow_job.event_id.event_id, "G000005")
         self.assertEqual(gwflow_job.event_id.trigger_id, "S200115j")
         self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1263172181.28)
-        self.assertFalse(gwflow_job.event_id.is_ligo_event)
 
     def test_handle_gwflow_cascades_to_children_via_bilby_jobs(self):
         # 1. Unlinked parent that gets resolved during ingestion
@@ -556,7 +547,6 @@ class TestEsIngestCommand(BilbyTestCase):
             event_id="GW190426",
             trigger_id="S190426c",
             gps_time=1239082262.22,
-            is_ligo_event=False,
         )
         parent_gwflow = GWFlowJob.objects.create(
             sname="S190426c",
@@ -697,14 +687,12 @@ class TestEsIngestCommand(BilbyTestCase):
         existing_event = EventID.objects.create(
             event_id="G000007",
             gps_time=1262272821.5,
-            is_ligo_event=False,
             trigger_id=None,
         )
         gwflow_job = GWFlowJob.objects.create(
             sname="S200116a",
             user=self.user,
             event_id=None,
-            ligo_only=True,
         )
 
         detail_payload = {
@@ -727,7 +715,6 @@ class TestEsIngestCommand(BilbyTestCase):
         gwflow_job.refresh_from_db()
         existing_event.refresh_from_db()
         self.assertEqual(gwflow_job.event_id, existing_event)
-        self.assertFalse(existing_event.is_ligo_event)
         self.assertEqual(existing_event.trigger_id, "S200116a")
 
     def test_handle_gwflow_ignores_malformed_chosen_uid(self):
@@ -758,7 +745,7 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertIsNone(gwflow_job.event_id)
         self.assertFalse(EventID.objects.filter(event_id="INVALID-UID-12345").exists())
 
-    def test_es_ingest_source_has_no_is_ligo_event_or_sentinel(self):
+    def test_es_ingest_source_has_no_legacy_flag_or_sentinel(self):
         import inspect
 
         from bilbyui.management.commands import es_ingest as es_ingest_module

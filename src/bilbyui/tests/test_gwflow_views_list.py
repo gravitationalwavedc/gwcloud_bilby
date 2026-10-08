@@ -47,7 +47,6 @@ class TestGWFlowJobsListView(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=12345678.1234,
         )
         job = GWFlowJob.objects.create(
@@ -376,7 +375,6 @@ class TestGWFlowJobsListView(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=12345678.1234,
         )
         GWFlowJob.objects.create(sname="S230601ag", user=self.user, event_id=event_id)
@@ -857,7 +855,6 @@ class TestGWFlowPresentationFields(BilbyTestCase):
             event_id="GW123456_123456",
             trigger_id="S123456a",
             nickname="GW123456",
-            is_ligo_event=False,
             gps_time=12345678.1234,
         )
         job = GWFlowJob.objects.create(sname="S230601ag", user=self.user, event_id=event_id)
@@ -883,7 +880,6 @@ class TestGWFlowPresentationFields(BilbyTestCase):
             event_id="GW1",
             trigger_id="S2",
             nickname="N3",
-            is_ligo_event=False,
             gps_time=12345678.1234,
         )
         GWFlowJob.objects.create(sname="S230601ag", user=self.user, event_id=event_id)
@@ -1075,7 +1071,6 @@ class TestGWFlowResultsSemantics(BilbyTestCase):
                 event_id=f"GW{i}_a",
                 trigger_id=f"S{i}b",
                 nickname=f"N{i}c",
-                is_ligo_event=False,
                 gps_time=12345678.1234,
             )
             GWFlowJob.objects.create(sname=f"S2306{i:02d}ag", user=self.user, event_id=event_id)

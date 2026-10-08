@@ -33,7 +33,6 @@ class TestGetById(BilbyTestCase):
         event_id=None,
         gwflow_job=None,
         simulation=None,
-        is_ligo_job=False,
         name=None,
     ):
         job = BilbyJob.objects.create(
@@ -43,7 +42,6 @@ class TestGetById(BilbyTestCase):
             trigger_time=trigger_time,
             event_id=event_id,
             gwflow_job=gwflow_job,
-            is_ligo_job=is_ligo_job,
             ini_string=self.ini_string,
         )
         if trigger_time is not None:
@@ -70,7 +68,7 @@ class TestGetById(BilbyTestCase):
 
     def test_legacy_flag_is_not_an_access_decision(self):
         self.authenticate()
-        job = self.create_job(is_ligo_job=True)
+        job = self.create_job()
         self.assertEqual(BilbyJob.get_by_id(job.id, self.user), job)
 
     def test_non_ligo_owner_cannot_access_private_embargoed_job(self):
