@@ -21,6 +21,10 @@ def _normalise_file_size(value):
             if f.is_integer():
                 return int(f)
             return None
+    if isinstance(value, float):
+        if value.is_integer():
+            return int(value)
+        return None
     return None
 
 
