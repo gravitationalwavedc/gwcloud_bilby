@@ -148,6 +148,22 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertIn("/data/loop", paths)
 
     @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_recursive_listing_does_not_descend_symlink_outside_root(self):
+        job_dir = self.job.get_upload_directory()
+        (job_dir / "data").mkdir(parents=True, exist_ok=True)
+        # A directory OUTSIDE the job root, reachable only through a symlink.
+        outside = job_dir.parent / "outside"
+        outside.mkdir(parents=True, exist_ok=True)
+        (outside / "secret.txt").write_text("secret")
+        (job_dir / "data" / "link").symlink_to(outside, target_is_directory=True)
+
+        success, file_list = request_file_list(self.job, "data", True)
+        self.assertTrue(success)
+        paths = sorted(entry["path"] for entry in file_list)
+        self.assertIn("/data/link", paths)
+        self.assertNotIn("/data/link/secret.txt", paths)
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
     def test_non_recursive_listing_skips_broken_symlink(self):
         job_dir = self.job.get_upload_directory()
         (job_dir / "data").mkdir(parents=True, exist_ok=True)

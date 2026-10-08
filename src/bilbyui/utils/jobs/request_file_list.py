@@ -70,12 +70,13 @@ def request_file_list(job, path, recursive, user_id=None):
                     if entry is not None:
                         file_list.append(entry)
 
-                # Only descend into subdirectories whose real path we have not
-                # already visited (this breaks symlink cycles).
+                # Only descend into subdirectories whose real path is within the
+                # job root and that we have not already visited (this breaks
+                # symlink cycles and prevents traversal outside the job root).
                 kept = []
                 for name in dirnames:
                     real = os.path.realpath(os.path.join(root, name))
-                    if real not in visited:
+                    if real not in visited and Path(real).is_relative_to(job_dir):
                         visited.add(real)
                         kept.append(name)
                 dirnames[:] = kept
