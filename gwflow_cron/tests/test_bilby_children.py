@@ -191,6 +191,20 @@ class TestSetIniLabel(unittest.TestCase):
         self.assertIn("label = new\n", out)
         self.assertNotIn("label = old", out)
 
+    def test_label_in_non_default_section_ignored(self):
+        text = "[default]\nfoo = bar\n\n[data]\nlabel = old\n"
+        out = _set_ini_label(text, "new")
+        self.assertIn("[default]\nfoo = bar\n", out)
+        self.assertIn("[data]\nlabel = old\n", out)
+        self.assertTrue(out.startswith("label = new\n"))
+
+    def test_default_section_label_still_replaced(self):
+        text = "[default]\nlabel = old\nfoo = bar\n\n[data]\nlabel = other\n"
+        out = _set_ini_label(text, "new")
+        self.assertIn("label = new\n", out)
+        self.assertNotIn("label = old", out)
+        self.assertIn("[data]\nlabel = other\n", out)
+
 
 class TestIniOutdir(unittest.TestCase):
     def test_empty_ini_returns_none(self):
