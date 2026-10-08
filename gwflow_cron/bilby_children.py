@@ -83,13 +83,25 @@ def find_bilby_pe_analyses(detail: dict) -> list[dict]:
 
 
 def _set_ini_label(ini_text: str, name: str) -> str:
-    """Override the ini label to name. Replaces the first existing label line (case-insensitive,
-    whitespace tolerant); otherwise prepends "label = {name}\\n".
+    """Override the ini label to name.
+
+    Replaces the label in the default section only — the headerless top part
+    plus any `[default]` section — so a `label` key inside a named section
+    (e.g. `[data]`) is left untouched. Case-insensitive, whitespace
+    tolerant; otherwise prepends "label = {name}\\n".
     """
     pattern = re.compile(r"^label\s*=[^\n]*", re.MULTILINE | re.IGNORECASE)
     replacement = f"label = {name}"
-    if pattern.search(ini_text):
-        return pattern.sub(replacement, ini_text, count=1)
+    region_end = len(ini_text)
+    for m in re.finditer(r"^\[", ini_text, re.MULTILINE):
+        line = ini_text[m.start() :].splitlines()[0]
+        if not re.match(r"^\[default\]", line, re.IGNORECASE):
+            region_end = m.start()
+            break
+    region = ini_text[:region_end]
+    rest = ini_text[region_end:]
+    if pattern.search(region):
+        return pattern.sub(replacement, region, count=1) + rest
     return f"{replacement}\n{ini_text}"
 
 
