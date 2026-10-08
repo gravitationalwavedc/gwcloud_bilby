@@ -450,12 +450,43 @@ class TestResolveEventIdFor(unittest.TestCase):
         }
         self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
 
+    def test_is_preferred_string_upper(self):
+        detail = {
+            "gracedb": {
+                "events": [
+                    {"uid": "EVT-A", "gps_time": 1234567890.5, "is_preferred": "TRUE"},
+                ]
+            }
+        }
+        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
+
+    def test_is_preferred_numeric_one(self):
+        detail = {
+            "gracedb": {
+                "events": [
+                    {"uid": "EVT-A", "gps_time": 1234567890.5, "is_preferred": "1"},
+                ]
+            }
+        }
+        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
+
     def test_preferred_field_used(self):
         detail = {
             "gracedb": {
                 "events": [
                     {"uid": "EVT-A", "gps_time": 1234567890.5},
                     {"uid": "EVT-B", "gps_time": 1111111111.0, "preferred": "yes"},
+                ]
+            }
+        }
+        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-B", 1111111111.0))
+
+    def test_preferred_field_yes_upper(self):
+        detail = {
+            "gracedb": {
+                "events": [
+                    {"uid": "EVT-A", "gps_time": 1234567890.5},
+                    {"uid": "EVT-B", "gps_time": 1111111111.0, "preferred": "Yes"},
                 ]
             }
         }
