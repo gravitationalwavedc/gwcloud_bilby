@@ -15,9 +15,9 @@ from gwdc_python.exceptions import GWDCUnknownException
 import settings
 import state
 from bilby_children import (
-    _TRUTHY_PREFERRED,
     Rejection,
     StageError,
+    _is_truthy_preferred,
     _tree_relative_target,
     make_archive,
     resolve_event_id_for,
@@ -96,7 +96,7 @@ def resolve_libraries(portal_client: Any, sname: str, detail: Any = None) -> lis
         logger.warning("Non-list versions payload for %s", sname)
         return None
 
-    current = [v for v in versions if isinstance(v, dict) and v.get("is_current") in _TRUTHY_PREFERRED]
+    current = [v for v in versions if isinstance(v, dict) and _is_truthy_preferred(v.get("is_current"))]
     if len(current) > 1:
         logger.warning("Multiple current versions for %s; using first", sname)
 
