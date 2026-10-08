@@ -311,6 +311,12 @@ class Command(BaseCommand):
             output_field=FloatField(),
         )
         with transaction.atomic():
+            updatable_ids = set(
+                model.objects.filter(
+                    id__in=ids,
+                    trigger_time__isnull=True,
+                ).values_list("id", flat=True)
+            )
             updated = model.objects.filter(
                 id__in=ids,
                 trigger_time__isnull=True,
@@ -331,5 +337,5 @@ class Command(BaseCommand):
             for job_id, expected in resolutions.items()
             if current_values.get(job_id) is not None and current_values[job_id] == expected
         ]
-        same_value = matching_value[updated:]
+        same_value = [job_id for job_id in matching_value if job_id not in updatable_ids]
         return updated, concurrently_changed, not_updated, same_value

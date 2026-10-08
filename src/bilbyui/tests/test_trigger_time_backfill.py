@@ -259,6 +259,27 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
             4,
         )
 
+    def test_write_page_same_value_keeps_pre_existing_lower_id_job(self):
+        pre_existing = self.make_bilby("pre-existing", trigger_time=20.0)
+        updated = self.make_bilby("updated", trigger_time=None)
+
+        command = __import__(COMMAND, fromlist=["Command"]).Command()
+        updated_count, concurrent_ids, not_updated_ids, same_value_ids = command._write_page(
+            "bilby",
+            {
+                pre_existing.id: 20.0,
+                updated.id: 20.0,
+            },
+        )
+
+        updated.refresh_from_db()
+        self.assertEqual(updated.trigger_time, 20.0)
+        self.assertEqual(updated_count, 1)
+        self.assertEqual(concurrent_ids, [])
+        self.assertEqual(not_updated_ids, [])
+        self.assertEqual(same_value_ids, [pre_existing.id])
+        self.assertNotIn(updated.id, same_value_ids)
+
     def test_same_value_write_race_is_unchanged_not_concurrent(self):
         job = self.make_bilby("same-value-race")
         self.source(job, "10", processed=True)
