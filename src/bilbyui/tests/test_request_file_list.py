@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
@@ -156,6 +157,27 @@ class TestRequestFileListUploaded(BilbyTestCase):
         outside.mkdir(parents=True, exist_ok=True)
         (outside / "secret.txt").write_text("secret")
         (job_dir / "data" / "link").symlink_to(outside, target_is_directory=True)
+
+        success, file_list = request_file_list(self.job, "data", True)
+        self.assertTrue(success)
+        paths = sorted(entry["path"] for entry in file_list)
+        self.assertIn("/data/link", paths)
+        self.assertNotIn("/data/link/secret.txt", paths)
+
+    @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_recursive_listing_does_not_descend_relative_symlink_outside_root(self):
+        job_dir = self.job.get_upload_directory()
+        (job_dir / "data").mkdir(parents=True, exist_ok=True)
+        # A directory OUTSIDE the job root, reached through a RELATIVE symlink
+        # target (e.g. "../../outside"). realpath resolves the relative target
+        # to its absolute real path before the is_relative_to(job_dir) check, so
+        # it must still be excluded.
+        outside = job_dir.parent / "outside"
+        outside.mkdir(parents=True, exist_ok=True)
+        (outside / "secret.txt").write_text("secret")
+        link_dir = job_dir / "data"
+        rel_target = os.path.relpath(outside, link_dir)
+        (link_dir / "link").symlink_to(rel_target, target_is_directory=True)
 
         success, file_list = request_file_list(self.job, "data", True)
         self.assertTrue(success)
