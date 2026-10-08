@@ -437,7 +437,7 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
             return None
         try:
             gps = float(gps)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return None
         if not math.isfinite(gps):
             return None

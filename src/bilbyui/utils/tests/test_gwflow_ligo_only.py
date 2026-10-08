@@ -205,3 +205,10 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
         self.assertEqual(_gwflow_trigger_time_from_metadata(metadata_cap), 2000.0)
         metadata_lower_shape = {"gracedb": {"events": [{"state": "Preferred", "gps_time": 2000.0}]}}
         self.assertEqual(_gwflow_trigger_time_from_metadata(metadata_lower_shape), 2000.0)
+
+    def test_overflowing_gracedb_gps_fallback_returns_none(self):
+        # No usable event GPS and an overflowing gracedb-level fallback -> None.
+        for key in ("preferred_event_gps", "gps_time"):
+            with self.subTest(key=key):
+                metadata = {"gracedb": {"events": [{"gps_time": "bad"}], key: 10**400}}
+                self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
