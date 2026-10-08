@@ -197,6 +197,15 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(row["success"], 1)
         self.assertEqual(row["reason"], "completed_submit")
 
+    def test_read_config_value_stringifies_numeric_scalar(self, gwc):
+        """A numeric scalar config dataset (e.g. ``duration = 4``) must be read as
+        its string form instead of raising AttributeError on ``.decode()``."""
+        dataset = MagicMock()
+        dataset.shape = ()
+        dataset.__getitem__.return_value = 4
+
+        self.assertEqual(gwosc_ingest._read_config_value(dataset), "4")
+
     @responses.activate
     def test_none_found(self, gwc):
         """Assuming a valid h5 file with no valid configs (ini parameters), it should not create a bilby job"""
