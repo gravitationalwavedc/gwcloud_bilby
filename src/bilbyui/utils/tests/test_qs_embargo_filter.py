@@ -435,17 +435,8 @@ class TestVisibleToUser(BilbyTestCase):
         )
 
         public_event = self._event(30, 99.0)
-        public_event.is_ligo_event = True
-        EventID.objects.filter(pk=public_event.pk).update(is_ligo_event=True)
-
         equal_event = self._event(31, 100.0)
-        equal_event.is_ligo_event = False
-        EventID.objects.filter(pk=equal_event.pk).update(is_ligo_event=False)
-
         null_event = self._event(32, None)
-        null_event.is_ligo_event = True
-        EventID.objects.filter(pk=null_event.pk).update(is_ligo_event=True)
-
         event_cases = (
             (public_event, True),
             (equal_event, False),
@@ -470,25 +461,10 @@ class TestVisibleToUser(BilbyTestCase):
                 )
 
         public_parent = self._gwflow(30, 99.0, public_event)
-        public_parent.ligo_only = True
-        GWFlowJob.objects.filter(pk=public_parent.pk).update(ligo_only=True)
-
         event_tainted_parent = self._gwflow(31, 99.0, equal_event)
-        event_tainted_parent.ligo_only = False
-        GWFlowJob.objects.filter(pk=event_tainted_parent.pk).update(ligo_only=False)
-
         trigger_tainted_parent = self._gwflow(32, 100.0, public_event)
-        trigger_tainted_parent.ligo_only = False
-        GWFlowJob.objects.filter(pk=trigger_tainted_parent.pk).update(ligo_only=False)
-
         unlinked_parent = self._gwflow(33, 99.0)
-        unlinked_parent.ligo_only = True
-        GWFlowJob.objects.filter(pk=unlinked_parent.pk).update(ligo_only=True)
-
         all_null_parent = self._gwflow(34)
-        all_null_parent.ligo_only = True
-        GWFlowJob.objects.filter(pk=all_null_parent.pk).update(ligo_only=True)
-
         gwflow_cases = (
             (public_parent, True),
             (event_tainted_parent, False),
@@ -635,10 +611,6 @@ class TestVisibleToUser(BilbyTestCase):
                 False,
             ),
         )
-        for record, _, expected in bilby_cases:
-            record.is_ligo_job = not expected
-            BilbyJob.objects.filter(pk=record.pk).update(is_ligo_job=record.is_ligo_job)
-
         bilby_pks = [record.pk for record, _, _ in bilby_cases]
         visible_bilby_ids = set(
             visible_to_user(

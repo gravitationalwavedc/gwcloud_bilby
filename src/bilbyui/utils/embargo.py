@@ -449,31 +449,3 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
             return gps
 
     return usable[0][1] if usable else None
-
-
-def gwflow_ligo_only_from_metadata(metadata):
-    """
-    Determine the ``ligo_only`` flag for a GWFlow job from its portal metadata.
-
-    Extracts the trigger GPS time from ``metadata["GraceDB"]["Events"]`` and
-    computes ``ligo_only`` per the embargo rule (matching
-    ``should_embargo_job`` semantics):
-
-    - ``EMBARGO_START_TIME is None`` -> ``False`` (all public).
-    - Valid trigger GPS time -> ``trigger_time >= EMBARGO_START_TIME``
-      (equality is LIGO-only).
-    - Missing / malformed trigger -> ``False`` (fail-open, public).
-
-    Args:
-        metadata: The raw portal payload dict (may be malformed).
-
-    Returns:
-        bool: True if the job should be LIGO-only, False otherwise.
-    """
-    trigger_time = _gwflow_trigger_time_from_metadata(metadata)
-
-    embargo_start = get_embargo_start()
-    if embargo_start is None or trigger_time is None:
-        return False
-
-    return trigger_time >= embargo_start

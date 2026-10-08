@@ -27,7 +27,6 @@ def create_pathological_job(testcase_cls):
         libraries=["cbc-workflow-pathological"],
         schema_version="v3",
         current_history_id="0" * 40,
-        ligo_only=False,
     )
 
 

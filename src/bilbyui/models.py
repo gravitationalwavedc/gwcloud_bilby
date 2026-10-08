@@ -132,7 +132,6 @@ class EventID(models.Model):
         ],
     )
     nickname = models.CharField(max_length=20, blank=True, null=True)
-    is_ligo_event = models.BooleanField(default=False)
     gps_time = models.FloatField(null=True, blank=True)
 
     @classmethod
@@ -144,27 +143,24 @@ class EventID(models.Model):
         return visible_to_user(cls.objects.all(), user, "EventID")
 
     @classmethod
-    def create(cls, event_id, gps_time=None, trigger_id=None, nickname=None, is_ligo_event=False):
+    def create(cls, event_id, gps_time=None, trigger_id=None, nickname=None):
         event = cls(
             event_id=event_id,
             trigger_id=trigger_id,
             nickname=nickname,
-            is_ligo_event=is_ligo_event,
             gps_time=gps_time,
         )
         event.clean_fields()  # Validate IDs
         event.save()
         return event
 
-    def update(self, gps_time=UNSET, trigger_id=None, nickname=None, is_ligo_event=None):
+    def update(self, gps_time=UNSET, trigger_id=None, nickname=None):
         if gps_time is not UNSET:
             self.gps_time = gps_time
         if trigger_id is not None:
             self.trigger_id = trigger_id
         if nickname is not None:
             self.nickname = nickname
-        if is_ligo_event is not None:
-            self.is_ligo_event = is_ligo_event
         self.clean_fields()  # Validate IDs
         self.save()
 
@@ -269,10 +265,6 @@ class BilbyJob(models.Model):
     )
     # The uid of the analysis within the parent's metadata
     gwflow_analysis_uid = models.CharField(max_length=128, blank=True, default="")
-
-    # is_ligo_job indicates if the job has been run using proprietary data. If running a real job with GWOSC, this will
-    # be set to False, otherwise a real data job using channels other than GWOSC will result in this value being True
-    is_ligo_job = models.BooleanField(default=False)
 
     # The type of job
     job_type = models.IntegerField(default=BilbyJobType.NORMAL, choices=BILBY_JOB_TYPE_CHOICES)
@@ -562,9 +554,6 @@ class GWFlowJob(models.Model):
     # stay in the cbcflow-portal and are fetched on demand)
     current_history_id = models.CharField(max_length=64, blank=True, default="")
     current_history_timestamp = models.DateTimeField(null=True, blank=True)
-
-    # Visibility: LIGO-only by default; toggleable per-record later (UX deferred)
-    ligo_only = models.BooleanField(default=True)
 
     # Mirrored soft-delete: superevent no longer current in any source library
     is_pruned = models.BooleanField(default=False, db_index=True)

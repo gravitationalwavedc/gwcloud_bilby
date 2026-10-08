@@ -20,7 +20,6 @@ class GWFlowModelsTestCase(BilbyTestCase):
 
         self.assertEqual(job.sname, "S230601ag")
         self.assertEqual(job.user, self.user)
-        self.assertTrue(job.ligo_only)
         self.assertFalse(job.is_pruned)
         self.assertEqual(job.libraries, [])
         self.assertEqual(job.schema_version, "")

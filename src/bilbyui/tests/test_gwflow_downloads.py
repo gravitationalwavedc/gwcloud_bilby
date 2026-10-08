@@ -25,7 +25,6 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             job = GWFlowJob.objects.create(
                 sname="S230601ag_success",
                 user=self.user,
-                ligo_only=False,
             )
             gwflow_file = GWFlowFile.objects.create(
                 job=job,
@@ -53,7 +52,6 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             job = GWFlowJob.objects.create(
                 sname="S230601ag_named",
                 user=self.user,
-                ligo_only=False,
             )
             gwflow_file = GWFlowFile.objects.create(
                 job=job,
@@ -77,7 +75,6 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             job = GWFlowJob.objects.create(
                 sname="S230601ag_named_pending",
                 user=self.user,
-                ligo_only=False,
             )
             gwflow_file = GWFlowFile.objects.create(
                 job=job,
@@ -96,7 +93,6 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             job = GWFlowJob.objects.create(
                 sname="S230601ag_unuploaded",
                 user=self.user,
-                ligo_only=False,
             )
             gwflow_file = GWFlowFile.objects.create(
                 job=job,
@@ -120,7 +116,6 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             job = GWFlowJob.objects.create(
                 sname="S230601ag_missing_disk",
                 user=self.user,
-                ligo_only=False,
             )
             gwflow_file = GWFlowFile.objects.create(
                 job=job,
@@ -139,7 +134,6 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             job = GWFlowJob.objects.create(
                 sname="S230601ag_directory",
                 user=self.user,
-                ligo_only=False,
             )
             gwflow_file = GWFlowFile.objects.create(
                 job=job,
@@ -163,7 +157,6 @@ class GWFlowDownloadTestCase(BilbyTestCase):
                 sname="S230601ag_ligo",
                 user=self.user,
                 trigger_time=100.0,
-                ligo_only=False,
             )
             file_ligo = GWFlowFile.objects.create(
                 job=job_ligo,
@@ -180,7 +173,6 @@ class GWFlowDownloadTestCase(BilbyTestCase):
                 sname="S230601ag_public",
                 user=self.user,
                 trigger_time=99.0,
-                ligo_only=True,
             )
             file_public = GWFlowFile.objects.create(
                 job=job_public,
@@ -240,10 +232,9 @@ class GWFlowDownloadTestCase(BilbyTestCase):
         """The named route denies a currently embargoed GWFlow owner."""
         with override_settings(GWFLOW_FILE_UPLOAD_DIR=self.temp_dir.name):
             job = GWFlowJob.objects.create(
-                sname="S230601ag_ligo_only",
+                sname="S230601ag_embargoed",
                 user=self.user,
                 trigger_time=100.0,
-                ligo_only=False,
             )
             gwflow_file = GWFlowFile.objects.create(
                 job=job,
@@ -273,7 +264,6 @@ class GWFlowDownloadTestCase(BilbyTestCase):
                 sname="S230601ag_stale",
                 user=self.user,
                 trigger_time=99.0,
-                ligo_only=False,
             )
             gwflow_file = GWFlowFile.objects.create(
                 job=job,
@@ -306,7 +296,6 @@ class GWFlowDownloadTestCase(BilbyTestCase):
             sname="S230601ag_named_stale",
             user=self.user,
             trigger_time=99.0,
-            ligo_only=False,
         )
         gwflow_file = GWFlowFile.objects.create(
             job=job,

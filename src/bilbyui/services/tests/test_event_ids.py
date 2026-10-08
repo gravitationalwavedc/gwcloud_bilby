@@ -14,22 +14,18 @@ class TestEventIdsService(BilbyTestCase):
         cls.null_event = EventID.objects.create(
             event_id="GW123456_123456",
             gps_time=None,
-            is_ligo_event=True,
         )
         cls.public_event = EventID.objects.create(
             event_id="GW654321_654321",
             gps_time=99.0,
-            is_ligo_event=True,
         )
         cls.threshold_event = EventID.objects.create(
             event_id="GW012345_012345",
             gps_time=100.0,
-            is_ligo_event=False,
         )
         cls.embargoed_event = EventID.objects.create(
             event_id="GW543210_543210",
             gps_time=101.0,
-            is_ligo_event=False,
         )
 
     def test_list_event_ids_for_non_member_uses_gps_visibility(self):

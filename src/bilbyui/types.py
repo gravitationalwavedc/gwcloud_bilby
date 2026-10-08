@@ -233,7 +233,6 @@ class GWFlowUpsertInput(graphene.InputObjectType):
     metadata = graphene.String(required=False)
     libraries = graphene.List(graphene.String, required=False)
     is_pruned = graphene.Boolean(required=False)
-    ligo_only = graphene.Boolean(required=False)
     event_id = graphene.String(required=False)
     current_history_id = graphene.String(required=False)
     current_history_timestamp = graphene.DateTime(required=False)

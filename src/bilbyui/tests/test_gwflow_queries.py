@@ -39,7 +39,6 @@ class TestGWFlowQueries(BilbyTestCase):
             user=self.ingest_user,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
-            ligo_only=True,
             trigger_time=99.0,
             is_pruned=False,
             event_id=self.event_id,
@@ -53,13 +52,12 @@ class TestGWFlowQueries(BilbyTestCase):
             uploaded=True,
         )
 
-        # Embargoed GWFlowJob. The contradictory legacy flag proves it is ignored.
+        # Embargoed GWFlowJob under the trigger-time visibility policy.
         self.job_ligo = GWFlowJob.objects.create(
             sname="S230601ah",
             user=self.ingest_user,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
-            ligo_only=False,
             trigger_time=100.0,
             is_pruned=False,
         )
@@ -70,7 +68,6 @@ class TestGWFlowQueries(BilbyTestCase):
             user=self.ingest_user,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
-            ligo_only=False,
             is_pruned=True,
         )
 
@@ -89,7 +86,6 @@ class TestGWFlowQueries(BilbyTestCase):
                     schemaVersion
                     libraries
                     isPruned
-                    ligoOnly
                     files {
                         id
                         analysisUid
@@ -103,7 +99,7 @@ class TestGWFlowQueries(BilbyTestCase):
             }
         """
 
-        # 1. Anonymous user: sees public job, cannot see ligo_only or pruned
+        # 1. Anonymous user: sees public job, cannot see pruned jobs
         self._auth_as(None)
         res = self.query(query, variables={"sname": "S230601ag"})
         self.assertResponseNoErrors(res)
@@ -122,13 +118,13 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertResponseNoErrors(res_pruned)
         self.assertIsNone(res_pruned.data["gwflowJobBySname"])
 
-        # 2. Non-LIGO user: sees public job, cannot see ligo_only or pruned
+        # 2. Non-LIGO user: sees public job, cannot see pruned jobs
         self._auth_as(self.normal_user)
         res_ligo = self.query(query, variables={"sname": "S230601ah"})
         self.assertResponseNoErrors(res_ligo)
         self.assertIsNone(res_ligo.data["gwflowJobBySname"])
 
-        # 3. LIGO user: sees ligo_only job
+        # 3. LIGO user: sees job with gps_time at/above embargo threshold
         self._auth_as(self.ligo_user)
         res_ligo = self.query(query, variables={"sname": "S230601ah"})
         self.assertResponseNoErrors(res_ligo)
@@ -156,19 +152,18 @@ class TestGWFlowQueries(BilbyTestCase):
                 gwflowJob(id: $id) {
                     id
                     sname
-                    ligoOnly
                 }
             }
         """
         node_id_ligo = to_global_id("GWFlowJob", self.job_ligo.id)
 
-        # Non-LIGO user cannot retrieve ligo_only node
+        # Non-LIGO user cannot retrieve embargo-gated node
         self._auth_as(self.normal_user)
         res = self.query(query, variables={"id": node_id_ligo})
         self.assertResponseNoErrors(res)
         self.assertIsNone(res.data["gwflowJob"])
 
-        # LIGO user can retrieve ligo_only node
+        # LIGO user can retrieve embargo-gated node
         self._auth_as(self.ligo_user)
         res = self.query(query, variables={"id": node_id_ligo})
         self.assertResponseNoErrors(res)
@@ -262,7 +257,6 @@ class TestGWFlowQueries(BilbyTestCase):
                 user=self.ingest_user,
                 schema_version="v1",
                 libraries=["cbc-workflow-o4a"],
-                ligo_only=False,
                 is_pruned=False,
             )
             GWFlowFile.objects.create(
@@ -361,7 +355,6 @@ class TestGWFlowQueries(BilbyTestCase):
             gwflow_job=self.job_ligo,
             gwflow_analysis_uid="c01:bilby_ligo",
             private=False,
-            is_ligo_job=False,
         )
         query = """
             query GetBilbyJob($id: ID!) {
