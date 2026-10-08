@@ -14,12 +14,25 @@ class StageError(Exception):
     """Raised when a supporting file cannot be safely staged into the job tree."""
 
 
-_TRUTHY_PREFERRED = (True, "true", "True", "yes")
 _HDF5_SUFFIXES = {".hdf5", ".h5"}
 
 
 SUPPORTED_BILBY_SOFTWARE = {"bilby", "BILBY", "bilby_pipe"}
 _SUPPORTED_STATUSES = {"complete", "running", "stuck", "unstarted", "cancelled"}
+
+
+def _is_truthy_preferred(value) -> bool:
+    """True when value denotes a portal 'preferred'/'current' boolean.
+
+    Portal payloads may carry these fields as strings ("true"/"1"/"yes" in any
+    case). Mirror _parse_portal_bool: treat True and case-insensitive
+    "true"/"1"/"yes" as truthy, everything else as falsy.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes")
+    return bool(value)
 
 
 @dataclass(frozen=True)
