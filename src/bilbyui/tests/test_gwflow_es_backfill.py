@@ -155,6 +155,19 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         self.assertEqual(job.current_history_id, "")
         self.assertEqual(job.libraries, [])
 
+    def test_string_false_current_flag_does_not_select(self):
+        job = make_job(libraries=["old"])
+        self._run(
+            get_versions_return=(
+                versions(current_version(is_current="false", commit_timestamp=TS)),
+                "live",
+            )
+        )
+        job.refresh_from_db()
+        self.assertIsNone(job.current_history_timestamp)
+        self.assertEqual(job.current_history_id, "")
+        self.assertEqual(job.libraries, [])
+
     def test_valid_timestamp_persisted(self):
         job = make_job()
         self._run(

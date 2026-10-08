@@ -10,6 +10,7 @@ from django.db.models import Q
 from bilbyui.models import EventID, GWFlowJob
 from bilbyui.services.gwflow import LIBRARIES_CACHE_KEY, REVIEW_STATUSES_CACHE_KEY
 from bilbyui.utils.embargo import gwflow_ligo_only_from_metadata
+from bilbyui.utils.gwflow_es import _parse_portal_bool
 from bilbyui.utils.gwflow_portal import get_superevent, get_versions
 from bilbyui.utils.gwflow_version import (
     normalise_current_history_timestamp,
@@ -211,7 +212,7 @@ class Command(BaseCommand):
         if state == "down" or data is None:
             raise PortalUnavailable(job)
 
-        current = next((v for v in data if v.get("is_current")), None)
+        current = next((v for v in data if _parse_portal_bool(v.get("is_current"))), None)
         fields = {}
         if current is None:
             # No current version: leave current_history_timestamp null (no substitute).
