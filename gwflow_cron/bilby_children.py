@@ -312,7 +312,7 @@ def resolve_event_id_for(sname: str, detail: dict) -> tuple[str, float] | None:
 
     try:
         parsed = float(gps_time)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     if not math.isfinite(parsed):
         return None
