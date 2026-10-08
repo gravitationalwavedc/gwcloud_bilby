@@ -16,7 +16,19 @@ logger = logging.getLogger(__name__)
 
 HTTP_OK = 200
 
-_TRUTHY_PREFERRED = (True, "true", "True", "yes")
+
+def _is_truthy_preferred(value) -> bool:
+    """True when value denotes a portal 'preferred'/'current' boolean.
+
+    Portal payloads may carry these fields as strings ("true"/"1"/"yes" in any
+    case). Mirror _parse_portal_bool: treat True and case-insensitive
+    "true"/"1"/"yes" as truthy, everything else as falsy.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes")
+    return bool(value)
 
 
 def build_bilby_es_mapping():
@@ -292,12 +304,12 @@ class Command(BaseCommand):
                                                 break
                                 if chosen is None:
                                     for ev in events:
-                                        if isinstance(ev, dict) and ev.get("is_preferred") in _TRUTHY_PREFERRED:
+                                        if isinstance(ev, dict) and _is_truthy_preferred(ev.get("is_preferred")):
                                             chosen = ev
                                             break
                                 if chosen is None:
                                     for ev in events:
-                                        if isinstance(ev, dict) and ev.get("preferred") in _TRUTHY_PREFERRED:
+                                        if isinstance(ev, dict) and _is_truthy_preferred(ev.get("preferred")):
                                             chosen = ev
                                             break
                                 if chosen is None and events:

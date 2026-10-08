@@ -13,8 +13,21 @@ class StageError(Exception):
     """Raised when a supporting file cannot be safely staged into the job tree."""
 
 
-_TRUTHY_PREFERRED = (True, "true", "True", "yes")
 _HDF5_SUFFIXES = {".hdf5", ".h5"}
+
+
+def _is_truthy_preferred(value) -> bool:
+    """True when value denotes a portal 'preferred'/'current' boolean.
+
+    Portal payloads may carry these fields as strings ("true"/"1"/"yes" in any
+    case). Mirror _parse_portal_bool: treat True and case-insensitive
+    "true"/"1"/"yes" as truthy, everything else as falsy.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes")
+    return bool(value)
 
 
 def _valid_file_ref(file_ref) -> bool:
@@ -282,12 +295,12 @@ def resolve_event_id_for(sname: str, detail: dict) -> tuple[str, float] | None:
                     break
     if chosen is None:
         for ev in events:
-            if isinstance(ev, dict) and ev.get("is_preferred") in _TRUTHY_PREFERRED:
+            if isinstance(ev, dict) and _is_truthy_preferred(ev.get("is_preferred")):
                 chosen = ev
                 break
     if chosen is None:
         for ev in events:
-            if isinstance(ev, dict) and ev.get("preferred") in _TRUTHY_PREFERRED:
+            if isinstance(ev, dict) and _is_truthy_preferred(ev.get("preferred")):
                 chosen = ev
                 break
     if chosen is None:
