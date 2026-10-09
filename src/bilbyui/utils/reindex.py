@@ -278,7 +278,10 @@ def _finite_numeric(value):
         value = value.item()
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    numeric = float(value)
+    try:
+        numeric = float(value)
+    except OverflowError:
+        return None
     return numeric if math.isfinite(numeric) else None
 
 

@@ -11,6 +11,7 @@ from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.reindex import (
     ReindexCounts,
     ReindexError,
+    _finite_numeric,
     reindex_affected_event,
     reindex_jobs,
     verify_search_trigger_time,
@@ -388,6 +389,11 @@ class TestReindexAffectedEvent(BilbyTestCase):
         self.assertNotIn(unrelated_gwflow.id, gwflow_ids)
         self.assertTrue(all(len(ids) <= 200 for ids, _kind in calls))
         self.assertEqual(counts, ReindexCounts(4, 4, 0))
+
+
+class TestFiniteNumeric(BilbyTestCase):
+    def test_oversized_int_returns_none_without_raising(self):
+        self.assertIsNone(_finite_numeric(10**400))
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=False)
