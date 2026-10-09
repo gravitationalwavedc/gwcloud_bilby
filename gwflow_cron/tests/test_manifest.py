@@ -230,23 +230,25 @@ class TestBuildFileEntry(unittest.TestCase):
         self.assertIsInstance(entry["file_size"], int)
 
 
+class _NumpyLike:
+    def __init__(self, value):
+        self._value = value
+
+    def item(self):
+        return self._value
+
+
 class TestNormaliseFileSize(unittest.TestCase):
     def test_numpy_integer_file_size_is_coerced_to_int(self):
-        import numpy as np
-
-        self.assertEqual(_normalise_file_size(np.int64(1024)), 1024)
-        self.assertIsInstance(_normalise_file_size(np.int64(1024)), int)
+        self.assertEqual(_normalise_file_size(_NumpyLike(1024)), 1024)
+        self.assertIsInstance(_normalise_file_size(_NumpyLike(1024)), int)
 
     def test_numpy_float_file_size_is_coerced_to_int(self):
-        import numpy as np
-
-        self.assertEqual(_normalise_file_size(np.float64(2048.0)), 2048)
-        self.assertIsInstance(_normalise_file_size(np.float64(2048.0)), int)
+        self.assertEqual(_normalise_file_size(_NumpyLike(2048.0)), 2048)
+        self.assertIsInstance(_normalise_file_size(_NumpyLike(2048.0)), int)
 
     def test_numpy_bool_file_size_is_none(self):
-        import numpy as np
-
-        self.assertIsNone(_normalise_file_size(np.bool_(True)))
+        self.assertIsNone(_normalise_file_size(_NumpyLike(True)))
 
 
 if __name__ == "__main__":
