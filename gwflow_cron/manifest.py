@@ -6,6 +6,8 @@ logger = logging.getLogger("gwflow_ingest.manifest")
 
 
 def _normalise_file_size(value):
+    if hasattr(value, "item"):
+        value = value.item()
     if isinstance(value, bool):
         return None
     if isinstance(value, int):

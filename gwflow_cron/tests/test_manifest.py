@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from manifest import _build_file_entry, extract_file_manifest
+from manifest import _build_file_entry, _normalise_file_size, extract_file_manifest
 
 
 class TestManifestExtraction(unittest.TestCase):
@@ -228,6 +228,25 @@ class TestBuildFileEntry(unittest.TestCase):
         entry = _build_file_entry("uid-8", {"path": "/data/x.dat", "file_size": 100.0})
         self.assertEqual(entry["file_size"], 100)
         self.assertIsInstance(entry["file_size"], int)
+
+
+class TestNormaliseFileSize(unittest.TestCase):
+    def test_numpy_integer_file_size_is_coerced_to_int(self):
+        import numpy as np
+
+        self.assertEqual(_normalise_file_size(np.int64(1024)), 1024)
+        self.assertIsInstance(_normalise_file_size(np.int64(1024)), int)
+
+    def test_numpy_float_file_size_is_coerced_to_int(self):
+        import numpy as np
+
+        self.assertEqual(_normalise_file_size(np.float64(2048.0)), 2048)
+        self.assertIsInstance(_normalise_file_size(np.float64(2048.0)), int)
+
+    def test_numpy_bool_file_size_is_none(self):
+        import numpy as np
+
+        self.assertIsNone(_normalise_file_size(np.bool_(True)))
 
 
 if __name__ == "__main__":
