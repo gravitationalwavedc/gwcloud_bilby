@@ -38,6 +38,9 @@ class TestToDec(BilbyTestCase):
     def test_converts_whole_int(self):
         self.assertEqual(to_dec(42), Decimal(42))
 
+    def test_returns_huge_integer_without_overflow(self):
+        self.assertEqual(to_dec(10**400), Decimal(10**400))
+
     def test_converts_non_finite_float(self):
         self.assertEqual(to_dec(float("inf")), Decimal("Infinity"))
         self.assertEqual(to_dec(float("-inf")), Decimal("-Infinity"))

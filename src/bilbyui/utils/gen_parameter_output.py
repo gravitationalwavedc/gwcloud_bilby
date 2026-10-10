@@ -62,8 +62,10 @@ def to_dec(val):
     if not isinstance(val, Number):
         return val
 
-    # Non-finite floats (inf/-inf/nan) cannot be passed to floor() — parse them directly
-    if math.isinf(val) or math.isnan(val):
+    # Non-finite floats (inf/-inf/nan) cannot be passed to floor() — parse them directly.
+    # ints are always finite, so skip the guard for them: math.isinf would raise
+    # OverflowError converting a huge int to float.
+    if isinstance(val, float) and (math.isinf(val) or math.isnan(val)):
         return Decimal(str(val))
 
     # It's a numeric type, if there is a remainder, convert the value to a string and parse it with Decimal
