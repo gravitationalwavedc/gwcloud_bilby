@@ -101,7 +101,13 @@ def _read_config_value(dataset):
     h5py stores a single string written via ``create_dataset(key, data="value")``
     as a scalar dataset (shape ``()``), where ``ds[0]`` raises ValueError.
     Array-shaped datasets (shape ``(1,)``) are read with ``ds[0]``.
+
+    Returns ``None`` when *dataset* is a nested :class:`h5py.Group` (which has
+    no ``shape``), so callers can skip malformed config members without failing
+    the whole event's ingest.
     """
+    if isinstance(dataset, h5py.Group):
+        return None
     value = dataset[()] if dataset.shape == () else dataset[0]
     return value.decode("utf-8")
 
@@ -412,7 +418,11 @@ def _check_and_download_inner(con, cur):
 
                         logger.info("config_file found: %s", toplevel_key)
                         config = h5[toplevel_key]["config_file"]["config"]
-                        ini_str = "\n".join(f"{k}={_read_config_value(config[k])}" for k in config.keys())
+                        ini_str = "\n".join(
+                            f"{k}={value}"
+                            for k in config.keys()
+                            if (value := _read_config_value(config[k])) is not None
+                        )
                     except (KeyError, OSError, IndexError, AttributeError, ValueError):
                         error_msg = f"Failed to read H5 config data for key {toplevel_key!r} in {h5url}"
                         logger.exception(error_msg)
