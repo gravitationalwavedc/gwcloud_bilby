@@ -47,3 +47,7 @@ class TestToDec(BilbyTestCase):
         self.assertEqual(to_dec(np.bool_(True)), Decimal(1))
         self.assertEqual(to_dec(np.int64(5)), Decimal(5))
         self.assertEqual(to_dec(np.float64(1.5)), Decimal("1.5"))
+
+    def test_returns_complex_unchanged(self):
+        value = complex(1, 2)
+        self.assertIs(to_dec(value), value)
