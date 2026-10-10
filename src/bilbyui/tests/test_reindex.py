@@ -253,6 +253,30 @@ class TestReindexJobs(BilbyTestCase):
         self.assertEqual(bulk.call_count, 1)
         sleep.assert_not_called()
 
+    def test_malformed_response_counts_successes_and_real_failures(self):
+        jobs = [self.make_bilby(number) for number in range(3)]
+        errors = [
+            bulk_error(jobs[1].id, 400),
+            {"index": {"_id": "999", "status": 400, "error": {"type": "x", "reason": "spurious"}}},
+        ]
+        with (
+            mock.patch("bilbyui.utils.reindex.get_es_client"),
+            mock.patch(
+                "bilbyui.utils.reindex.build_bilby_es_doc",
+                side_effect=lambda job: {"id": job.id},
+            ),
+            mock.patch(
+                "bilbyui.utils.reindex.helpers.bulk",
+                return_value=(0, errors),
+            ) as bulk,
+            mock.patch("bilbyui.utils.reindex.time.sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(ReindexError, r"scanned=3 succeeded=2 failed=1"):
+                reindex_jobs([job.id for job in jobs], "bilby")
+
+        self.assertEqual(bulk.call_count, 1)
+        sleep.assert_not_called()
+
     def test_retry_exhaustion_is_exactly_three_calls_and_two_sleeps(self):
         job = self.make_bilby(1)
         response = (0, [bulk_error(job.id, 429)])
