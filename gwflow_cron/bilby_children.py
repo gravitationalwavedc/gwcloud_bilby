@@ -310,6 +310,9 @@ def resolve_event_id_for(sname: str, detail: dict) -> tuple[str, float] | None:
     if gps_time is None:
         gps_time = gracedb.get("gps_time")
 
+    if isinstance(gps_time, bool):
+        return None
+
     try:
         parsed = float(gps_time)
     except (TypeError, ValueError, OverflowError):
