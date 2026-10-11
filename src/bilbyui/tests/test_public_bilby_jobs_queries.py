@@ -806,7 +806,19 @@ class TestPublicBilbyJobsQueries(BilbyTestCase):
         )
 
         query = elasticsearch_search.mock_calls[-1].kwargs["query"]
-        self.assertEqual(query["bool"]["must"], [{"query_string": {"query": "test", "default_operator": "AND"}}])
+        self.assertEqual(
+            query["bool"]["must"],
+            [
+                {
+                    "query_string": {
+                        "query": "test",
+                        "default_operator": "AND",
+                        "allow_leading_wildcard": False,
+                        "analyze_wildcard": False,
+                    }
+                }
+            ],
+        )
         self.assertEqual(
             query["bool"]["filter"][0],
             {"term": {"_private_info_.private": False}},
