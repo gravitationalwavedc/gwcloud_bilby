@@ -162,6 +162,11 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         "state": "ok",
     }
 
+    if len(search) > 256:
+        logger.warning("Rejected overlong public jobs search expression")
+        empty_result["state"] = "invalid"
+        return empty_result
+
     try:
         es = get_es_client()
     except elasticsearch.exceptions.ConnectionError:
@@ -177,7 +182,20 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
 
     # default_operator AND: multi-term queries narrow rather than widen (the
     # query_string default is OR), with OR still available explicitly.
-    must = [{"query_string": {"query": search, "default_operator": "AND"}}] if search else [{"match_all": {}}]
+    must = (
+        [
+            {
+                "query_string": {
+                    "query": search,
+                    "default_operator": "AND",
+                    "allow_leading_wildcard": False,
+                    "analyze_wildcard": False,
+                }
+            }
+        ]
+        if search
+        else [{"match_all": {}}]
+    )
     filters = [{"term": {"_private_info_.private": False}}]
 
     if time_range != "all":
