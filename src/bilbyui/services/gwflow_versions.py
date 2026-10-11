@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
 
+from bilbyui.utils.gwflow_es import _parse_portal_bool
+
 DiffStatus = Literal[
     "semantic",
     "no_baseline",
@@ -47,14 +49,6 @@ class DiffOutcome:
     baseline_schema: str | None = None
     selected_schema: str | None = None
     reason: str | None = None
-
-
-def _parse_portal_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() in ("true", "1", "yes")
-    return bool(value)
 
 
 def _timestamp(value: Any) -> datetime | None:
