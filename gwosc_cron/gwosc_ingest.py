@@ -100,9 +100,14 @@ def _read_config_value(dataset):
 
     h5py stores a single string written via ``create_dataset(key, data="value")``
     as a scalar dataset (shape ``()``), where ``ds[0]`` raises ValueError.
-    Array-shaped datasets (shape ``(1,)``) are read with ``ds[0]``.
+    Array-shaped datasets are read element by element; a single-element array
+    (shape ``(1,)``) yields that element, while a multi-element array is joined
+    with ``", "`` so list-valued configs survive the round-trip into the ini.
     """
-    value = dataset[()] if dataset.shape == () else dataset[0]
+    if dataset.shape == ():
+        value = dataset[()]
+    else:
+        value = b", ".join(dataset[i] for i in range(dataset.shape[0]))
     return value.decode("utf-8")
 
 

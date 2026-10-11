@@ -40,6 +40,27 @@ class TestComputeIsLatestVersion(unittest.TestCase):
         self.assertTrue(gwosc_ingest.compute_is_latest_version("GW150914_alt", names))
 
 
+class TestReadConfigValue(unittest.TestCase):
+    """Unit tests for _read_config_value."""
+
+    def _dataset(self, value):
+        f = h5py.File("config.h5", "w", driver="core", backing_store=False)
+        self.addCleanup(f.close)
+        return f.create_dataset("key", data=value)
+
+    def test_scalar_dataset_returns_value(self):
+        ds = self._dataset("value")
+        self.assertEqual(gwosc_ingest._read_config_value(ds), "value")
+
+    def test_single_element_array_returns_value(self):
+        ds = self._dataset(["value"])
+        self.assertEqual(gwosc_ingest._read_config_value(ds), "value")
+
+    def test_multi_element_array_is_joined(self):
+        ds = self._dataset(["H1", "L1", "V1"])
+        self.assertEqual(gwosc_ingest._read_config_value(ds), "H1, L1, V1")
+
+
 class TestCreateJobErrorsTable(unittest.TestCase):
     """Unit tests for create_job_errors_table."""
 
