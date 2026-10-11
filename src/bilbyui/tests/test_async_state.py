@@ -148,6 +148,15 @@ class TestListPublicJobsStateFlag(BilbyTestCase):
         mock_client.search.assert_not_called()
 
     @patch("elasticsearch.Elasticsearch")
+    def test_overlong_search_returns_state_invalid(self, mock_es_cls):
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+        res = list_public_jobs(self.user, search="x" * 300)
+        self.assertEqual(res["state"], "invalid")
+        self.assertEqual(res["jobs"], {})
+        mock_client.search.assert_not_called()
+
+    @patch("elasticsearch.Elasticsearch")
     def test_reconciliation_mismatch_returns_state_ok(self, mock_es_cls):
         private_job = BilbyJob.objects.create(
             user_id=self.user.id,
