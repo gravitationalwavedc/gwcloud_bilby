@@ -32,7 +32,7 @@ def _safe_json_loads(value):
     """
     try:
         return json.loads(value)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, RecursionError):
         return None
 
 
