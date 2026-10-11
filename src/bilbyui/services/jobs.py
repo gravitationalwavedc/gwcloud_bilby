@@ -162,6 +162,11 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         "state": "ok",
     }
 
+    if len(search) > 256:
+        logger.warning("Rejected overlong public jobs search expression")
+        empty_result["state"] = "invalid"
+        return empty_result
+
     try:
         es = get_es_client()
     except elasticsearch.exceptions.ConnectionError:
