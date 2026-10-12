@@ -178,11 +178,10 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
     # payloads follow the controlled failure path rather than escaping.
     try:
         serialized = json.dumps(metadata, allow_nan=False)
+        # The validated serialization round-trip is what is indexed.
+        validated = json.loads(serialized)
     except (TypeError, ValueError, RecursionError) as exc:
         raise InvalidGWFlowMetadata(f"metadata is not strict-JSON serializable: {exc}") from exc
-
-    # The validated serialization round-trip is what is indexed.
-    validated = json.loads(serialized)
 
     # Reject lossy round-trips (e.g. tuples -> lists, non-string dict keys ->
     # strings) so the indexed metadata is deeply equal to the input.
