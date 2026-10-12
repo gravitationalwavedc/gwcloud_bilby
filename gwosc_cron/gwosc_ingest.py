@@ -190,7 +190,7 @@ def _check_and_download_inner(con, cur):
 
     try:
         allevents_payload = r.json()
-    except ValueError:
+    except (ValueError, RecursionError):
         logger.critical("Unable to fetch allevents json (invalid JSON body)")
         sys.exit(1)
     if not isinstance(allevents_payload, dict):
@@ -275,7 +275,7 @@ def _check_and_download_inner(con, cur):
 
         try:
             event_json = r.json()
-        except ValueError:
+        except (ValueError, RecursionError):
             error_msg = f"Unable to parse event json (event: {event_name}, url: {jsonurl})"
             logger.exception(error_msg)
             record_job_failure(con, cur, event_name, error_msg)
