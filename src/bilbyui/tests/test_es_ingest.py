@@ -253,6 +253,30 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(job.event_id.event_id, "GW150914")
         self.assertIsNone(job.event_id.gps_time)
 
+    def test_handle_bilby_deeply_nested_gps_creates_null_gps_link(self):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="GW150914-v4--IMRPhenomD",
+            description="Historical GWOSC job",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        IniKeyValue.objects.create(
+            job=job,
+            key="trigger_time",
+            value="[" * 10000 + "]" * 10000,
+            index=0,
+            processed=True,
+        )
+
+        out = StringIO()
+        call_command("es_ingest", stdout=out)
+
+        job.refresh_from_db()
+        self.assertIsNotNone(job.event_id)
+        self.assertEqual(job.event_id.event_id, "GW150914")
+        self.assertIsNone(job.event_id.gps_time)
+
     def test_handle_bilby_unparseable_gps_creates_null_gps_link(self):
         job = BilbyJob.objects.create(
             user_id=self.user.id,
