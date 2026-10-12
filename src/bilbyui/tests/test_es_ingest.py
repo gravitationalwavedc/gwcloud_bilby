@@ -819,6 +819,59 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(gwflow_job.event_id.event_id, "G000009")
         self.assertIsNone(gwflow_job.event_id.gps_time)
 
+    def test_handle_bilby_deeply_nested_gps_creates_null_gps_link(self):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="GW150914-v4--IMRPhenomD",
+            description="Historical GWOSC job",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        IniKeyValue.objects.create(
+            job=job,
+            key="trigger_time",
+            value="[" * 10000 + "]" * 10000,
+            index=0,
+            processed=True,
+        )
+
+        out = StringIO()
+        call_command("es_ingest", stdout=out)
+
+        job.refresh_from_db()
+        self.assertIsNotNone(job.event_id)
+        self.assertEqual(job.event_id.event_id, "GW150914")
+        self.assertIsNone(job.event_id.gps_time)
+
+    def test_handle_gwflow_deeply_nested_gps_creates_null_gps_link(self):
+        gwflow_job = GWFlowJob.objects.create(
+            sname="S200118c",
+            user=self.user,
+            event_id=None,
+        )
+
+        detail_payload = {
+            "GraceDB": {
+                "preferred_event": "G000025",
+                "Events": [{"UID": "G000025", "GPSTime": "[" * 10000 + "]" * 10000}],
+            }
+        }
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S200118c"}])
+            if url.endswith("/api/v1/superevents/S200118c/"):
+                return _MockResponse(detail_payload, 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
+
+        gwflow_job.refresh_from_db()
+        self.assertIsNotNone(gwflow_job.event_id)
+        self.assertEqual(gwflow_job.event_id.event_id, "G000025")
+        self.assertIsNone(gwflow_job.event_id.gps_time)
+
     def test_handle_bilby_unparseable_gps_creates_null_gps_link(self):
         job = BilbyJob.objects.create(
             user_id=self.user.id,

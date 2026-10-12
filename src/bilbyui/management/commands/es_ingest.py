@@ -125,7 +125,7 @@ class Command(BaseCommand):
                                 try:
                                     val = json.loads(ini_kv.value)
                                     parsed_gps = float(val)
-                                except (ValueError, TypeError, OverflowError, json.JSONDecodeError):
+                                except (ValueError, TypeError, OverflowError, json.JSONDecodeError, RecursionError):
                                     try:
                                         parsed_gps = float(ini_kv.value)
                                     except (ValueError, TypeError, OverflowError):
@@ -340,7 +340,7 @@ class Command(BaseCommand):
                                 try:
                                     val = json.loads(gps_time) if isinstance(gps_time, str) else gps_time
                                     parsed_gps = float(val)
-                                except (ValueError, TypeError, OverflowError, json.JSONDecodeError):
+                                except (ValueError, TypeError, OverflowError, json.JSONDecodeError, RecursionError):
                                     try:
                                         parsed_gps = float(gps_time)
                                     except (ValueError, TypeError, OverflowError):
