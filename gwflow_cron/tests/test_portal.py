@@ -7,6 +7,11 @@ import responses
 from portal import PortalClient
 
 
+def _deeply_nested_body() -> str:
+    depth = 20000
+    return "[" * depth + "]" * depth
+
+
 class TestPortalClient(unittest.TestCase):
     def setUp(self):
         self.base_url = "https://cbcflow.example.com"
@@ -107,6 +112,20 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(rows, [])
 
     @responses.activate
+    def test_iter_changed_skips_deeply_nested_body(self):
+        url = f"{self.base_url}/api/v1/superevents/?ordering=commit_timestamp%2Csname&page_size=50"
+        responses.add(
+            responses.GET,
+            url,
+            body=_deeply_nested_body(),
+            status=200,
+            content_type="application/json",
+        )
+
+        rows = list(self.client.iter_changed())
+        self.assertEqual(rows, [])
+
+    @responses.activate
     def test_get_superevent(self):
         sname = "S260101a"
         url = f"{self.base_url}/api/v1/superevents/{sname}/"
@@ -137,6 +156,21 @@ class TestPortalClient(unittest.TestCase):
         self.assertIsNone(detail)
 
     @responses.activate
+    def test_get_superevent_deeply_nested_returns_none(self):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/"
+        responses.add(
+            responses.GET,
+            url,
+            body=_deeply_nested_body(),
+            status=200,
+            content_type="application/json",
+        )
+
+        detail = self.client.get_superevent(sname)
+        self.assertIsNone(detail)
+
+    @responses.activate
     def test_get_versions_non_json_200_returns_none(self):
         sname = "S260101a"
         url = f"{self.base_url}/api/v1/superevents/{sname}/versions/"
@@ -146,6 +180,21 @@ class TestPortalClient(unittest.TestCase):
             body="<html><body>proxy error</body></html>",
             status=200,
             content_type="text/html",
+        )
+
+        versions = self.client.get_versions(sname)
+        self.assertIsNone(versions)
+
+    @responses.activate
+    def test_get_versions_deeply_nested_returns_none(self):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/versions/"
+        responses.add(
+            responses.GET,
+            url,
+            body=_deeply_nested_body(),
+            status=200,
+            content_type="application/json",
         )
 
         versions = self.client.get_versions(sname)

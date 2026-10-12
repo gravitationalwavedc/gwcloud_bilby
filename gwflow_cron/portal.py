@@ -42,7 +42,7 @@ class PortalClient:
             resp = self._request_with_retry("GET", url, params=params)
             try:
                 data = resp.json()
-            except ValueError as exc:
+            except (ValueError, RecursionError) as exc:
                 logger.warning("Skipping portal page with non-JSON body: %s", exc)
                 break
             if isinstance(data, dict):
@@ -87,7 +87,7 @@ class PortalClient:
         resp = self._request_with_retry("GET", url)
         try:
             return resp.json()
-        except ValueError as exc:
+        except (ValueError, RecursionError) as exc:
             logger.warning("Skipping superevent %s with non-JSON body: %s", sname, exc)
             return None
 
@@ -105,7 +105,7 @@ class PortalClient:
         resp = self._request_with_retry("GET", url)
         try:
             return resp.json()
-        except ValueError as exc:
+        except (ValueError, RecursionError) as exc:
             logger.warning("Skipping versions for %s with non-JSON body: %s", sname, exc)
             return None
 
