@@ -204,7 +204,7 @@ class Command(BaseCommand):
 
                 try:
                     data = response.json()
-                except ValueError:
+                except (ValueError, RecursionError):
                     msg = "Portal returned invalid JSON for superevents list"
                     self.stdout.write(self.style.WARNING(msg))
                     logger.warning(msg)
@@ -240,7 +240,7 @@ class Command(BaseCommand):
 
                     try:
                         metadata = detail_resp.json()
-                    except ValueError:
+                    except (ValueError, RecursionError):
                         self.stdout.write(self.style.WARNING(f"Skipping {sname}: portal detail returned invalid JSON"))
                         error_count += 1
                         continue

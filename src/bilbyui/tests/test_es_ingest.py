@@ -142,6 +142,29 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertIn("invalid JSON", output)
         self.assertNotIn("Error during gwflow ingestion loop", output)
 
+    def test_es_ingest_gwflow_recursion_error_list_json_stops_cleanly(self):
+        class MockResponse:
+            def __init__(self, status_code):
+                self.status_code = status_code
+
+            def json(self):
+                raise RecursionError("maximum recursion depth exceeded")
+
+        def fake_get(url, headers=None, timeout=None):
+            return MockResponse(200)
+
+        out = StringIO()
+        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
+            with override_settings(
+                CBCFLOW_PORTAL_URL="https://portal.example.com",
+                CBCFLOW_PORTAL_TOKEN="token",
+            ):
+                call_command("es_ingest", "--gwflow", stdout=out)
+
+        output = out.getvalue()
+        self.assertIn("invalid JSON", output)
+        self.assertNotIn("Error during gwflow ingestion loop", output)
+
     def test_es_ingest_gwflow_missing_settings_returns_cleanly(self):
         out = StringIO()
         with mock.patch("bilbyui.management.commands.es_ingest.requests.get") as mock_get:
@@ -230,6 +253,20 @@ class TestEsIngestCommand(BilbyTestCase):
                 return self._list_page([{"sname": "S230601ag"}])
             if url.endswith("/api/v1/superevents/S230601ag/"):
                 return _MockResponse(ValueError("No JSON object could be decoded"), 200)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        output = self._run_gwflow(fake_get)
+        self.assertIn("portal detail returned invalid JSON", output)
+        self.assertIn("GWFlow ingestion complete: 0 succeeded, 0 skipped, 1 failed", output)
+
+    def test_es_ingest_gwflow_detail_recursion_error_skips(self):
+        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
+
+        def fake_get(url, headers=None, timeout=None):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self._list_page([{"sname": "S230601ag"}])
+            if url.endswith("/api/v1/superevents/S230601ag/"):
+                return _MockResponse(RecursionError("maximum recursion depth exceeded"), 200)
             raise AssertionError(f"Unexpected URL: {url}")
 
         output = self._run_gwflow(fake_get)
