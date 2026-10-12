@@ -150,7 +150,7 @@ class Command(BaseCommand):
                                     parsed_gps = float(val)
                                     if isinstance(val, bool):
                                         parsed_gps = None
-                                except (ValueError, TypeError, OverflowError, json.JSONDecodeError):
+                                except (ValueError, TypeError, OverflowError, json.JSONDecodeError, RecursionError):
                                     try:
                                         parsed_gps = float(ini_kv.value)
                                     except (ValueError, TypeError, OverflowError):
