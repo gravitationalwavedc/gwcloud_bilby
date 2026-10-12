@@ -51,7 +51,7 @@ def _make_job_controller_request(method, url, user_id, data=None, jwt_expiry=Non
 
     try:
         return json.loads(result.content)
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, RecursionError) as e:
         msg = f"Job controller returned invalid JSON: {result.content}"
         logger.error(msg)
         raise requests.RequestException(msg) from e
