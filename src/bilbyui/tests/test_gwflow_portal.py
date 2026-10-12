@@ -226,3 +226,13 @@ class TestPortalGetDirect(TestCase):
 
         self.assertEqual(state, "down")
         self.assertIsNone(data)
+
+    @responses.activate
+    def test_recursion_error_without_cache_returns_down(self):
+        deeply_nested = "[" * 20000 + "]" * 20000
+        responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", body=deeply_nested, status=200)
+
+        data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
+
+        self.assertEqual(state, "down")
+        self.assertIsNone(data)
