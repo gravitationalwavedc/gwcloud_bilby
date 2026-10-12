@@ -83,6 +83,34 @@ class TestRetryLogic(GWOSCTestBase):
         self.assertEqual(error_rows[0]["failure_count"], 1)
         self.assertIn("Unable to parse event json", error_rows[0]["last_error"])
 
+    @responses.activate
+    def test_event_json_deeply_nested_records_job_error(self, gwc):
+        """Event JSON returns 200 OK but with a deeply nested body → json.loads
+        raises RecursionError, which must follow the controlled failure path
+        (job_errors row) instead of crashing the command."""
+        self.add_allevents_response()
+        depth = 50000
+        deeply_nested = b'{"a":' * depth + b"1" + b"}" * depth
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001_123456.json",
+            body=deeply_nested,
+            status=200,
+            content_type="application/json",
+        )
+
+        with self.con_patch, self.assertLogs(level=logging.ERROR):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_not_called()
+        self.assertEqual(len(self.get_completed_jobs()), 0)
+
+        error_rows = self.get_job_errors()
+        self.assertEqual(len(error_rows), 1)
+        self.assertEqual(error_rows[0]["job_id"], "GW000001_123456")
+        self.assertEqual(error_rows[0]["failure_count"], 1)
+        self.assertIn("Unable to parse event json", error_rows[0]["last_error"])
+
     # ---- failure count increments ------------------------------------------
 
     @responses.activate
