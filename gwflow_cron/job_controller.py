@@ -43,7 +43,7 @@ class JobControllerClient:
             raise FetchError(f"create_file_downloads failed with status {resp.status_code}: {resp.text}")
         try:
             data = resp.json()
-        except ValueError as exc:
+        except (ValueError, RecursionError) as exc:
             raise FetchError(f"create_file_downloads returned malformed response: {resp.text}") from exc
         if not isinstance(data, dict) or not isinstance(data.get("fileIds"), list) or not data["fileIds"]:
             raise FetchError(f"create_file_downloads returned malformed response: {resp.text}")
