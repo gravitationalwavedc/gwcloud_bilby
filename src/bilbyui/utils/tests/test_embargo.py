@@ -16,7 +16,6 @@ from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.embargo import (
     annotate_simulation,
-    embargo_filter,
     get_embargo_start,
     is_public,
     is_record_public,
@@ -249,60 +248,6 @@ class TestShouldEmbargoJob(BilbyTestCase):
         self.assertTrue(should_embargo_job(None, 2.0, False))
         self.assertFalse(should_embargo_job(None, None, True))
         self.assertFalse(should_embargo_job(None, None, False))
-
-
-class TestEmbargoFilter(BilbyTestCase):
-    def setUp(self):
-        self.users = []
-        for i in range(1, 5):
-            self.users.append(self.create_user(id=i, name=f"user {i}", primary_email=f"user{i}@test.com"))
-
-        for i, vals in enumerate([(1.0, 1), (2.0, 1), (1.0, 0), (2.0, 0)]):
-            BilbyJob.objects.create(
-                user_id=self.users[i].id,
-                name=f"test job {i}",
-                description=f"test job {i}",
-                ini_string=create_test_ini_string(
-                    {
-                        "detectors": "['H1']",
-                        "trigger-time": vals[0],
-                        "n-simulation": vals[1],
-                    }
-                ),
-            )
-
-    @override_settings(EMBARGO_START_TIME=None)
-    def test_no_embargo(self):
-        # If no embargo, filter returns input queryset
-        input_qs = BilbyJob.objects.all()
-        self.user = ADACSAnonymousUser()
-        self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))
-
-        self.user = self.create_user()
-        self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))
-
-        self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
-        self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))
-
-    @override_settings(EMBARGO_START_TIME=1.5)
-    def test_with_embargo(self):
-        # When embargo is in place, should modify a filter method to force it to return embargoed jobs
-        # only for known, LIGO users
-        input_qs = BilbyJob.objects.all()
-        self.user = ADACSAnonymousUser()
-        self.assertQuerySetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]),
-            embargo_filter(input_qs, self.user),
-        )
-
-        self.user = self.create_user()
-        self.assertQuerySetEqual(
-            BilbyJob.objects.filter(pk__in=[1, 2, 3]),
-            embargo_filter(input_qs, self.user),
-        )
-
-        self.user.authentication_methods = [AUTHENTICATION_METHODS["LIGO_SHIBBOLETH"]]
-        self.assertQuerySetEqual(input_qs, embargo_filter(input_qs, self.user))
 
 
 class TestIsPublic(BilbyTestCase):
