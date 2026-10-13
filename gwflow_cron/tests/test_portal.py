@@ -92,6 +92,14 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["sname"], "S260101a")
 
+    def test_iter_changed_stops_on_recursion_error(self):
+        resp = Mock()
+        resp.status_code = 200
+        resp.json.side_effect = RecursionError("maximum recursion depth exceeded")
+        with patch.object(self.client.session, "request", return_value=resp):
+            rows = list(self.client.iter_changed())
+        self.assertEqual(rows, [])
+
     @responses.activate
     def test_iter_changed_stops_on_non_json_200_response(self):
         url = f"{self.base_url}/api/v1/superevents/?ordering=commit_timestamp%2Csname&page_size=50"
@@ -121,6 +129,15 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(detail["sname"], sname)
         self.assertEqual(detail["raw_payload"]["test"], 123)
 
+    def test_get_superevent_recursion_error_returns_none(self):
+        sname = "S260101a"
+        resp = Mock()
+        resp.status_code = 200
+        resp.json.side_effect = RecursionError("maximum recursion depth exceeded")
+        with patch.object(self.client.session, "request", return_value=resp):
+            detail = self.client.get_superevent(sname)
+        self.assertIsNone(detail)
+
     @responses.activate
     def test_get_superevent_non_json_200_returns_none(self):
         sname = "S260101a"
@@ -135,6 +152,15 @@ class TestPortalClient(unittest.TestCase):
 
         detail = self.client.get_superevent(sname)
         self.assertIsNone(detail)
+
+    def test_get_versions_recursion_error_returns_none(self):
+        sname = "S260101a"
+        resp = Mock()
+        resp.status_code = 200
+        resp.json.side_effect = RecursionError("maximum recursion depth exceeded")
+        with patch.object(self.client.session, "request", return_value=resp):
+            versions = self.client.get_versions(sname)
+        self.assertIsNone(versions)
 
     @responses.activate
     def test_get_versions_non_json_200_returns_none(self):
