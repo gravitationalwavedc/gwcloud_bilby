@@ -1,5 +1,6 @@
 import decimal
 import logging
+import math
 from decimal import Decimal
 
 import graphene
@@ -343,6 +344,12 @@ class BilbyResultFiles(graphene.ObjectType):
 
 
 def _parse_file_size(value):
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(numeric):
+        return None
     try:
         return Decimal(str(value))
     except (decimal.InvalidOperation, TypeError, ValueError):

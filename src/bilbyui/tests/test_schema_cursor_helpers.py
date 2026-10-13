@@ -89,3 +89,8 @@ class TestParseFileSize(BilbyTestCase):
                 raise TypeError("boom")
 
         self.assertIsNone(_parse_file_size(RaisingObject()))
+
+    def test_parse_file_size_non_finite_returns_none(self):
+        self.assertIsNone(_parse_file_size(float("nan")))
+        self.assertIsNone(_parse_file_size(float("inf")))
+        self.assertIsNone(_parse_file_size(float("-inf")))
