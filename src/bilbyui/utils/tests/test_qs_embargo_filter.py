@@ -1,8 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
-from bilbyui.models import BilbyJob, IniKeyValue
-from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 
 User = get_user_model()
