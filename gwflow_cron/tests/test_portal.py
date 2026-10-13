@@ -296,6 +296,14 @@ class TestPortalClient(unittest.TestCase):
         self.assertIn("correlation_context", log_text)
         self.assertIn("'list'", log_text)
 
+    def test_iter_changed_raises_on_recursion_error(self):
+        resp = Mock()
+        resp.status_code = 200
+        resp.json.side_effect = RecursionError("maximum recursion depth exceeded")
+        with patch.object(self.client.session, "request", return_value=resp):
+            with self.assertRaises(PortalMalformedResponseError):
+                list(self.client.iter_changed())
+
     @responses.activate
     def test_get_superevent_accepts_empty_arrays_and_null_raw_payload(self):
         sname = "S260101a"
@@ -437,6 +445,15 @@ class TestPortalClient(unittest.TestCase):
         self.assertIn(url, "\n".join(logs.output))
         self.assertIn(sname, "\n".join(logs.output))
 
+    def test_get_superevent_raises_on_recursion_error(self):
+        sname = "S260101a"
+        resp = Mock()
+        resp.status_code = 200
+        resp.json.side_effect = RecursionError("maximum recursion depth exceeded")
+        with patch.object(self.client.session, "request", return_value=resp):
+            with self.assertRaises(PortalMalformedResponseError):
+                self.client.get_superevent(sname)
+
     @responses.activate
     def test_get_versions_canonical_one_page_preserves_server_order(self):
         sname = "S260101a"
@@ -568,6 +585,15 @@ class TestPortalClient(unittest.TestCase):
         )
         self.assertIn(url, "\n".join(logs.output))
         self.assertIn(sname, "\n".join(logs.output))
+
+    def test_get_versions_raises_on_recursion_error(self):
+        sname = "S260101a"
+        resp = Mock()
+        resp.status_code = 200
+        resp.json.side_effect = RecursionError("maximum recursion depth exceeded")
+        with patch.object(self.client.session, "request", return_value=resp):
+            with self.assertRaises(PortalMalformedResponseError):
+                self.client.get_versions(sname)
 
     @responses.activate
     def test_iter_changed_rejects_row_missing_record_timestamp_with_context(self):
