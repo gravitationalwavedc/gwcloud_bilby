@@ -139,7 +139,6 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
                 "metadata.pe.results.review_status",
                 "metadata.pe.status",
                 "metadata.gracedb.events.pipeline",
-                "metadata.gracedb.events.source_classification",
                 "metadata.gracedb.events.state",
                 "metadata.gracedb.instruments",
             ],
@@ -182,6 +181,21 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
     def test_build_gwflow_es_mapping_no_nested_fields(self):
         body = build_gwflow_es_mapping()
         self.assertNotIn("index.mapping.nested_fields.limit", body["settings"])
+
+    def test_build_gwflow_es_mapping_lowercase_normalizer(self):
+        """The keyword _gwcloud.* fields are lowercased index-side so fielded
+        searches (and wildcards) are case-insensitive; query_string itself
+        rejects a case_insensitive flag, so this is the only lever."""
+        body = build_gwflow_es_mapping()
+        self.assertEqual(
+            body["settings"]["analysis"]["normalizer"]["lowercase"],
+            {"type": "custom", "filter": ["lowercase"]},
+        )
+        properties = body["mappings"]["properties"]["_gwcloud"]["properties"]
+        for field in ("sname", "libraries", "reviewStatuses", "eventTriggerId"):
+            self.assertEqual(properties[field].get("normalizer"), "lowercase", field)
+        for field in ("isPruned", "searchTriggerTime", "lastUpdatedTime"):
+            self.assertNotIn("normalizer", properties[field], field)
 
     def test_measure_doc_counts_fields_and_depth(self):
         from bilbyui.management.commands.gwflow_es_migrate import measure_doc

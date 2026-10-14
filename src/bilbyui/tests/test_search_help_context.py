@@ -4,11 +4,11 @@ from bilbyui.services.search_help import build_search_help, casing_hint_eligible
 
 
 class TestSearchHelpContext(SimpleTestCase):
-    def test_builder_returns_five_common_fields_and_grouped_fields(self):
+    def test_builder_returns_four_common_fields_and_grouped_fields(self):
         for surface in ("gwflow", "bilby"):
             with self.subTest(surface=surface):
                 context = build_search_help(surface)
-                self.assertEqual(len(context["common"]), 5)
+                self.assertEqual(len(context["common"]), 4)
                 self.assertIsInstance(context["groups"], list)
                 self.assertTrue(context["groups"])
 
@@ -19,7 +19,7 @@ class TestSearchHelpContext(SimpleTestCase):
         )
         self.assertEqual(
             build_search_help("bilby")["placeholder"],
-            "Try eventId.nickname:GW150914",
+            "Try job.name:GW150914*",
         )
 
     def test_builder_returns_locked_surface_examples(self):
@@ -27,14 +27,16 @@ class TestSearchHelpContext(SimpleTestCase):
             build_search_help("gwflow")["examples"],
             [
                 "sname:S2306*",
-                "metadata.pe.results.waveform_approximant:IMRPhenomXPHM",
+                "review_statuses:pass",
+                "metadata.gracedb.events.network_snr:>10",
             ],
         )
         self.assertEqual(
             build_search_help("bilby")["examples"],
             [
-                "eventId.nickname:GW150914",
+                "job.name:GW150914*",
                 "params.waveform_approximant:IMRPhenomXPHM",
+                "eventId.eventId:GW150914*",
             ],
         )
 
