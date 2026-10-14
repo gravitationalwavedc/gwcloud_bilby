@@ -73,7 +73,13 @@
           type="search"
           id="advanced-search"
           class="form-control"
-          placeholder="e.g. sname:S2306*"
+          {% if search_help %}
+          placeholder="{{ search_help.placeholder }}"
+          {% elif jobs_list_url_name == "bilbyui:gwflow_jobs" %}
+          placeholder="Try sname:S2306*"
+          {% else %}
+          placeholder="Try eventId.nickname:GW150914"
+          {% endif %}
           value="{{ search }}"
           autocomplete="off"
         >

@@ -15,6 +15,16 @@ logger = logging.getLogger("bilbyui.gwflow_es")
 EXIT_OK = 0
 EXIT_FAILURES = 1
 
+GWFLOW_ALIASES: dict[str, str] = {
+    "sname": "_gwcloud.sname",
+    "libraries": "_gwcloud.libraries",
+    "review_statuses": "_gwcloud.reviewStatuses",
+    "event_trigger_id": "_gwcloud.eventTriggerId",
+    "search_trigger_time": "_gwcloud.searchTriggerTime",
+    "last_updated_time": "_gwcloud.lastUpdatedTime",
+    "is_pruned": "_gwcloud.isPruned",
+}
+
 _GWCLOUD_STRICT_FIELDS = {
     "sname": {"type": "keyword"},
     "libraries": {"type": "keyword"},
@@ -27,9 +37,20 @@ _GWCLOUD_STRICT_FIELDS = {
 
 _DEFAULT_FIELD = [
     "_gwcloud.sname",
+    "_gwcloud.eventTriggerId",
     "_gwcloud.libraries",
     "_gwcloud.reviewStatuses",
-    "_gwcloud.eventTriggerId",
+    "metadata.gracedb.events.uid",
+    "metadata.pe.results.uid",
+    "metadata.pe.results.inference_software",
+    "metadata.pe.results.waveform_approximant",
+    "metadata.pe.results.run_status",
+    "metadata.pe.results.review_status",
+    "metadata.pe.status",
+    "metadata.gracedb.events.pipeline",
+    "metadata.gracedb.events.source_classification",
+    "metadata.gracedb.events.state",
+    "metadata.gracedb.instruments",
 ]
 
 _DEPTH_LIMIT = 100
@@ -66,6 +87,7 @@ def build_gwflow_es_mapping():
                     "properties": dict(_GWCLOUD_STRICT_FIELDS),
                 },
                 "metadata": {"type": "object", "dynamic": True},
+                **{alias: {"type": "alias", "path": target} for alias, target in GWFLOW_ALIASES.items()},
             },
         },
     }

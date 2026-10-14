@@ -1,24 +1,44 @@
-{# In-place search help panel for bilby job surfaces (my/public jobs) (issue #51, task-3). #}
-{# Included by _search_form.html via search_help_template and toggled by the #}
-{# "(?)" button (data-target="#search-help"). Same structure/position as the #}
-{# GWFlow help panel (WCAG 3.2.6). #}
+{# Generic in-place search help panel for Bilby job surfaces. #}
 <div class="collapse mt-2" id="search-help">
   <div class="card card-body">
-    <p class="mb-2">Searchable fields:</p>
+    <p class="mb-2">{{ search_help.syntax_hint }}</p>
+
+    <p class="mb-1"><strong>Common fields</strong></p>
     <ul class="mb-2">
-      <li><code>job.name</code> — job name</li>
-      <li><code>job.description</code> — job description</li>
-      <li><code>labels.name</code> — label</li>
-      <li><code>eventId.eventId</code> — event ID</li>
-      <li><code>eventId.triggerId</code> — trigger ID</li>
-      <li><code>eventId.nickname</code> — event nickname</li>
-      <li><code>params.*</code> — job parameters</li>
-      <li><code>ini.*</code> — INI file settings</li>
+      {% for entry in search_help.common %}
+      <li><code>{{ entry.advertised }}</code> — {{ entry.description }}</li>
+      {% endfor %}
     </ul>
-    <p class="mb-2">Examples:</p>
-    <ul class="mb-0">
-      <li><code>job.name:GW150914*</code></li>
-      <li><code>labels.name:o4a AND eventId.nickname:GW150914</code></li>
+
+    <p class="mb-1">Examples:</p>
+    <ul class="mb-2">
+      {% for example in search_help.examples %}
+      <li><code>{{ example }}</code></li>
+      {% endfor %}
     </ul>
+
+    <p class="mb-2 text-muted">{{ search_help.typed_note }}</p>
+
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      data-toggle="collapse"
+      data-target="#search-help-full"
+      aria-expanded="false"
+      aria-controls="search-help-full"
+    >
+      Full supported field reference
+    </button>
+
+    <div class="collapse mt-2" id="search-help-full">
+      {% for group in search_help.groups %}
+      <h6>{{ group.name }}</h6>
+      <ul>
+        {% for entry in group.fields %}
+        <li><code>{{ entry.advertised }}</code> — {{ entry.description }}</li>
+        {% endfor %}
+      </ul>
+      {% endfor %}
+    </div>
   </div>
 </div>
