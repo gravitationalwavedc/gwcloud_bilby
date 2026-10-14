@@ -195,6 +195,11 @@ def list_gwflow_jobs(
             {
                 "query_string": {
                     "query": search,
+                    # Multi-term queries must narrow, not widen: Elasticsearch's
+                    # query_string default is OR, so `sname:S2306* review_statuses:pass`
+                    # would return the union. Users expect AND (the intersection),
+                    # with OR still available explicitly.
+                    "default_operator": "AND",
                     "allow_leading_wildcard": False,
                     "analyze_wildcard": False,
                 }

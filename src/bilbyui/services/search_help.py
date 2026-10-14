@@ -6,7 +6,7 @@ import re
 
 from bilbyui.services import search_registry
 
-SYNTAX_HINT = "Search by field with field:value. Add * for a prefix."
+SYNTAX_HINT = "Search by field with field:value. Add * for a prefix. Combine terms with AND, OR, or NOT."
 PLACEHOLDERS = {
     "gwflow": "Try sname:S2306*",
     "bilby": "Try job.name:GW150914*",

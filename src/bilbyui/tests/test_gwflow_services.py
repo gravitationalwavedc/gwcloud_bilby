@@ -693,6 +693,24 @@ class TestGWFlowServices(BilbyTestCase):
         qs = query["bool"]["must"][0]["query_string"]
         self.assertNotIn("default_field", qs)
         self.assertEqual(qs["query"], "GW150914")
+        # Multi-term queries must narrow (AND), not widen (ES default OR).
+        self.assertEqual(qs["default_operator"], "AND")
+
+    @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_structured_filters_use_and_default_operator(self, mock_get_es_client):
+        """A multi-term search narrows: the query_string carries
+        default_operator AND so `sname:S1 review_statuses:pass` is the
+        intersection, not the union."""
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.return_value = {"hits": {"hits": [{"_id": self.job_public.id}], "total": {"value": 1}}}
+
+        list_gwflow_jobs(self.non_ligo_user, search="sname:S1 review_statuses:pass")
+
+        query = mock_client.search.call_args[1]["query"]
+        qs = query["bool"]["must"][0]["query_string"]
+        self.assertEqual(qs["default_operator"], "AND")
+        self.assertEqual(qs["query"], "sname:S1 review_statuses:pass")
 
     @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_fielded_expert_query_to_metadata_still_works(self, mock_get_es_client):
