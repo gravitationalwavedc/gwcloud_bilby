@@ -477,7 +477,7 @@ class TestPublicJobsView(BilbyTestCase):
         }
         search_query = {
             "bool": {
-                "must": [{"query_string": {"query": "GW150914"}}],
+                "must": [{"query_string": {"query": "GW150914", "default_operator": "AND"}}],
                 "filter": [{"term": {"_private_info_.private": False}}],
             }
         }
