@@ -1,44 +1,44 @@
-{# In-place search help panel for GWFlow surfaces (issue #51, task-3). #}
-{# Included by _search_form.html via search_help_template and toggled by the #}
-{# "(?)" button (data-target="#search-help"). Same position/label on every #}
-{# surface (WCAG 3.2.6). #}
+{# Generic in-place search help panel for GWFlow surfaces. #}
 <div class="collapse mt-2" id="search-help">
   <div class="card card-body">
-    <p class="mb-2">Search stable GWCloud operational fields or detailed metadata returned by cbcflow-portal.</p>
-    <p class="mb-1"><strong>Operational fields (<code>_gwcloud</code>)</strong></p>
-    <p class="mb-1">Stable fields maintained by GWCloud:</p>
+    <p class="mb-2">{{ search_help.syntax_hint }}</p>
+
+    <p class="mb-1"><strong>Common fields</strong></p>
     <ul class="mb-2">
-      <li><code>_gwcloud.sname</code> — superevent name</li>
-      <li><code>_gwcloud.libraries</code> — workflow libraries</li>
-      <li><code>_gwcloud.reviewStatuses</code> — collected review statuses</li>
-      <li><code>_gwcloud.eventTriggerId</code> — event trigger identifier</li>
+      {% for entry in search_help.common %}
+      <li><code>{{ entry.advertised }}</code> — {{ entry.description }}</li>
+      {% endfor %}
     </ul>
-    <p class="mb-1"><strong>Portal metadata (<code>metadata</code>)</strong></p>
-    <p class="mb-1 text-muted">Detailed portal data is available under <code>metadata</code>. Its field names and paths follow the cbcflow-portal response and may change as that response evolves.</p>
-    <p class="mb-1">Common current paths:</p>
-    <ul class="mb-2">
-      <li><code>metadata.ParameterEstimation.results.inference_software</code></li>
-      <li><code>metadata.ParameterEstimation.results.waveform_approximant</code></li>
-      <li><code>metadata.GraceDB.Events.uid</code></li>
-      <li><code>metadata.GraceDB.instruments</code></li>
-      <li>not an exhaustive schema</li>
-    </ul>
+
     <p class="mb-1">Examples:</p>
     <ul class="mb-2">
-      <li><code>_gwcloud.libraries:*</code></li>
-      <li><code>_gwcloud.eventTriggerId:*</code></li>
-      <li><code>_gwcloud.sname:S2306*</code></li>
-      <li><code>metadata.ParameterEstimation.results.inference_software:bilby</code></li>
-      <li><code>metadata.ParameterEstimation.results.waveform_approximant:IMRPhenomXPHM</code></li>
-      <li><code>metadata.GraceDB.Events.uid:*</code></li>
-      <li><code>metadata.GraceDB.instruments:*</code></li>
+      {% for example in search_help.examples %}
+      <li><code>{{ example }}</code></li>
+      {% endfor %}
     </ul>
-    <p class="mb-2 text-muted">When combining conditions on different fields inside metadata arrays, matches are not guaranteed to come from the same array item.</p>
-    <p class="mb-1">Terms:</p>
-    <ul class="mb-0">
-      <li><code>UID</code> — unique identifier</li>
-      <li><code>GraceDB</code> — Gravitational-Wave Candidate Event Database</li>
-      <li><code>CBC</code> — compact binary coalescence</li>
-    </ul>
+
+    <p class="mb-2 text-muted">{{ search_help.typed_note }}</p>
+
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      data-toggle="collapse"
+      data-target="#search-help-full"
+      aria-expanded="false"
+      aria-controls="search-help-full"
+    >
+      Full supported field reference
+    </button>
+
+    <div class="collapse mt-2" id="search-help-full">
+      {% for group in search_help.groups %}
+      <h6>{{ group.name }}</h6>
+      <ul>
+        {% for entry in group.fields %}
+        <li><code>{{ entry.advertised }}</code> — {{ entry.description }}</li>
+        {% endfor %}
+      </ul>
+      {% endfor %}
+    </div>
   </div>
 </div>

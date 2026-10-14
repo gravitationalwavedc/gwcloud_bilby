@@ -34,6 +34,8 @@ from django.views.decorators.http import require_GET, require_POST
 from graphql import GraphQLError
 from graphql_relay.node.node import from_global_id, to_global_id
 
+from bilbyui.services import search_help
+
 from .constants import BilbyJobType
 from .models import (
     UNSET,
@@ -1477,6 +1479,9 @@ def _render_job_list(
         "pagination_label": pagination_label,
         "shown_count": shown_count,
     }
+    _help_surface = "gwflow" if jobs_list_url_name == "bilbyui:gwflow_jobs" else "bilby"
+    context["search_help"] = search_help.build_search_help(_help_surface)
+    context["casing_hint_eligible"] = service_state == "ok" and search_help.casing_hint_eligible(search, total)
     if list_target_id is not None:
         context["list_target_id"] = list_target_id
 
