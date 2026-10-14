@@ -295,4 +295,3 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
             }
         }
         self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 1000.0)
-
