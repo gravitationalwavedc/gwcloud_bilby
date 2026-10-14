@@ -175,7 +175,9 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         logger.warning(msg)
         return empty_result
 
-    must = [{"query_string": {"query": search}}] if search else [{"match_all": {}}]
+    # default_operator AND: multi-term queries narrow rather than widen (the
+    # query_string default is OR), with OR still available explicitly.
+    must = [{"query_string": {"query": search, "default_operator": "AND"}}] if search else [{"match_all": {}}]
     filters = [{"term": {"_private_info_.private": False}}]
 
     if time_range != "all":
