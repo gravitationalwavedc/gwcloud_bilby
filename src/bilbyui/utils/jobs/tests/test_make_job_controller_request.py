@@ -93,3 +93,16 @@ class TestMakeJobControllerRequest(BilbyTestCase):
             _make_job_controller_request("GET", f"{BASE_URL}/status/", USER_ID)
 
         self.assertIn("Job controller returned invalid JSON", str(ctx.exception))
+
+    def test_non_utf8_200_response_raises_request_exception(self):
+        self.responses.add(
+            responses.GET,
+            f"{BASE_URL}/status/",
+            body=b"\xff",
+            status=200,
+        )
+
+        with self.assertRaises(requests.RequestException) as ctx:
+            _make_job_controller_request("GET", f"{BASE_URL}/status/", USER_ID)
+
+        self.assertIn("Job controller returned invalid JSON", str(ctx.exception))
