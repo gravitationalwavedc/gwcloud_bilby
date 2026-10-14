@@ -365,3 +365,34 @@ class VerifySearchFieldsTests(BilbyTestCase):
             vsf._live_default_fields(_Client(), "gwcloud-bilbyjob"),
             ("a", "b"),
         )
+
+    def test_live_default_fields_handles_non_mapping_response(self):
+        # elastic_transport.ObjectApiResponse is dict-like but is NOT a
+        # collections.abc.Mapping; parsing must not rely on isinstance.
+        from bilbyui.management.commands import verify_search_fields as vsf
+
+        class _Resp:
+            def __init__(self, data):
+                self._data = data
+
+            def get(self, key, default=None):
+                return self._data.get(key, default)
+
+            def values(self):
+                return self._data.values()
+
+            def __len__(self):
+                return len(self._data)
+
+        class _Indices:
+            def get_settings(self, *, index):
+                return _Resp({"gwcloud-bilbyjob": {"settings": {"index": {"query": {"default_field": ["x", "y"]}}}}})
+
+        class _Client:
+            indices = _Indices()
+
+        self.assertFalse(isinstance(_Resp({}), __import__("collections.abc", fromlist=["Mapping"]).Mapping))
+        self.assertEqual(
+            vsf._live_default_fields(_Client(), "gwcloud-bilbyjob"),
+            ("x", "y"),
+        )
