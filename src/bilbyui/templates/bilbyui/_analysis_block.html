@@ -47,15 +47,15 @@
             <thead>
               <tr>
                 <th scope="col">File</th>
-                <th scope="col">Size</th>
-                <th scope="col">Status</th>
-                <th scope="col">Actions</th>
+                <th scope="col" class="gw-file-size">Size</th>
+                <th scope="col" class="gw-file-status">Status</th>
+                <th scope="col" class="gw-file-actions-cell">Actions</th>
               </tr>
             </thead>
             <tbody>
               {% for f in block.files %}
               {% with fid=f.id|stringformat:"d" %}
-              <tr class="gw-file-row">
+              <tr class="gw-file-row{% if not f.uploaded %} gw-file-row--has-why{% endif %}">
                 <td class="gw-file-cell">
                   {% include "bilbyui/_tech_value.html" with value=f.path kind="path" truncated=True disclosure_id="gw-file-tech-"|add:fid %}
                 </td>
@@ -89,13 +89,19 @@
                               onclick="var el = document.getElementById('gw-file-why-{{ fid }}'); el.hidden = !el.hidden; this.setAttribute('aria-expanded', el.hidden ? 'false' : 'true');">
                         Why can't I download? <span aria-hidden="true">ⓘ</span>
                       </button>
-                      <div id="gw-file-why-{{ fid }}" class="gw-file-why-body" hidden>
-                        This file is still being mirrored from the portal. Once mirroring finishes, the download will be available here.
-                      </div>
                     {% endif %}
                   </div>
                 </td>
               </tr>
+              {% if not f.uploaded %}
+              {# Pending explanation: a full-width row so the prose gets the whole #}
+              {# table measure instead of the narrow Actions column (review 2026-10-14). #}
+              <tr id="gw-file-why-{{ fid }}" class="gw-file-why-row" hidden>
+                <td colspan="4" class="gw-file-why-cell">
+                  <div class="gw-file-why-body">This file is still being mirrored from the portal. Once mirroring finishes, the download will be available here.</div>
+                </td>
+              </tr>
+              {% endif %}
               {% endwith %}
               {% endfor %}
             </tbody>

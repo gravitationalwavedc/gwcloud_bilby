@@ -102,6 +102,15 @@
 .gw-files-table {
     margin-bottom: 0;
     min-width: 0;
+    // Each analysis renders its own <table>. Auto layout sizes columns from
+    // that table's content, so the Size/Status/Actions columns drift out of
+    // vertical alignment from one analysis block to the next. Fixed layout
+    // takes the widths from the header row below, giving every analysis table
+    // identical column widths (and a shared File column that takes the
+    // remainder), so the columns line up down the page. The labelled scroll
+    // wrapper absorbs the overflow on narrow desktops.
+    table-layout: fixed;
+    width: 100%;
 }
 
 .gw-file-cell {
@@ -109,11 +118,23 @@
     max-width: 100%;
 }
 
+// Metadata columns: fixed widths (identical across analysis tables) and
+// right-aligned so the numeric sizes, status chips and row actions share a
+// common trailing edge (numeric alignment, Frontend Bible §2).
 .gw-file-size {
+    width: 5rem;
+    text-align: right;
     white-space: nowrap;
 }
 
+.gw-file-status {
+    width: 7rem;
+    text-align: right;
+}
+
 .gw-file-actions-cell {
+    width: 8rem;
+    text-align: right;
     white-space: nowrap;
     min-width: 0;
 }
@@ -126,6 +147,12 @@
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
+    // Trailing edge alignment: for a row whose actions wrap to more than one
+    // line the container fills the (fixed-width) cell, so the cell's
+    // text-align: right can no longer position the items — flex-end keeps the
+    // icons/buttons on the same right edge as the single-control (mirrored)
+    // rows.
+    justify-content: flex-end;
     gap: $spacer * 0.25;
     min-width: 0;
     max-width: 100%;
@@ -163,10 +190,13 @@
     display: inline-flex;
     align-items: center;
     gap: $spacer * 0.25;
-    padding: $spacer * 0.375 $spacer * 0.75;
+    // Match the real .btn-sm geometry so the disabled and enabled download
+    // controls are the same size (was 6px/12px padding + 4px radius, which made
+    // the placeholder ~8px wider and ~4px taller than the working button).
+    padding: $btn-padding-y-sm $btn-padding-x-sm;
     font-size: $font-size-sm;
     line-height: 1.5;
-    border-radius: $border-radius;
+    border-radius: $border-radius-sm;
     border: $border-width dashed $gray-400;
     color: $gray-500;
     background-color: $gray-100;
@@ -191,6 +221,10 @@
     line-height: 1;
     font-size: $font-size-sm;
     color: $text-muted;
+    // The parent cell is nowrap (keeps the Download action on one line); the
+    // longer explanatory control must still wrap inside a narrow Actions column
+    // rather than overflow it.
+    white-space: normal;
 
     &:hover,
     &:focus {
@@ -203,21 +237,29 @@
     }
 }
 
-// Pending explanation body: small, subdued, full-width so it never widens
-// the row. Collapse is handled purely by the hidden attribute.
+// Pending explanation: its own full-width row beneath the file row, so the
+// prose gets the table's measure instead of the narrow Actions column. The
+// <tr> carries the disclosure id and is toggled via the hidden attribute.
+.gw-file-why-row[hidden] {
+    // Beats .gw-files-table tr { display: block } in the <768px transform, so a
+    // collapsed explanation can never render.
+    display: none;
+}
+
+.gw-file-why-cell {
+    // Full-width, left-aligned prose — never inherits the Actions column's
+    // right alignment or nowrap.
+    text-align: left;
+    white-space: normal;
+}
+
 .gw-file-why-body {
-    width: 100%;
-    margin-top: $spacer * 0.25;
     padding: $spacer * 0.5;
     font-size: $font-size-sm;
     color: $gray-900;
     background-color: lighten($warning, 30%);
     border: $border-width solid darken($warning, 15%);
     border-radius: $border-radius;
-}
-
-.gw-file-why-body:not([hidden]) {
-    display: block;
 }
 
 // ---------------------------------------------------------------------------
@@ -268,6 +310,7 @@
         margin-right: $spacer;
         font-size: $font-size-sm;
         color: $text-muted;
+        text-align: left;
     }
 
     .gw-file-size::before {
@@ -286,9 +329,31 @@
         padding: 0;
         margin-top: $spacer * 0.5;
         white-space: normal;
+        text-align: left;
     }
 
     .gw-file-actions {
         width: 100%;
+        justify-content: flex-start;
+    }
+
+    // Join the full-width explanation to its file card so the pair reads as one
+    // record (shared border, no seam), not two independent cards.
+    .gw-file-row--has-why {
+        margin-bottom: 0;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .gw-file-why-row {
+        margin-bottom: $spacer * 0.5;
+        border: $border-width solid $border-color;
+        border-top: none;
+        border-radius: 0 0 $border-radius $border-radius;
+        background-color: $body-bg;
+    }
+
+    .gw-file-why-cell {
+        padding: 0 $spacer * 0.5 $spacer * 0.5;
     }
 }
