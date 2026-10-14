@@ -25,14 +25,23 @@ GWFLOW_ALIASES: dict[str, str] = {
     "is_pruned": "_gwcloud.isPruned",
 }
 
+# The string _gwcloud.* fields are `keyword`: exact-match/facet fields. They are
+# indexed with a lowercase normalizer so fielded searches (and wildcards) are
+# case-insensitive, matching the analysed text fields under metadata.* — without
+# it `sname:s2306*` or `review_statuses:PASS` silently return nothing. The
+# normalizer changes only the indexed term, and the GWFlow UI renders
+# snames/libraries from the DB, so displayed values and facet keys (already
+# lower-case for libraries/review statuses) are unchanged.
+_LOWERCASE_NORMALIZER = "lowercase"
+
 _GWCLOUD_STRICT_FIELDS = {
-    "sname": {"type": "keyword"},
-    "libraries": {"type": "keyword"},
+    "sname": {"type": "keyword", "normalizer": _LOWERCASE_NORMALIZER},
+    "libraries": {"type": "keyword", "normalizer": _LOWERCASE_NORMALIZER},
     "isPruned": {"type": "boolean"},
     "searchTriggerTime": {"type": "double"},
     "lastUpdatedTime": {"type": "date", "format": "strict_date_optional_time||epoch_millis"},
-    "reviewStatuses": {"type": "keyword"},
-    "eventTriggerId": {"type": "keyword"},
+    "reviewStatuses": {"type": "keyword", "normalizer": _LOWERCASE_NORMALIZER},
+    "eventTriggerId": {"type": "keyword", "normalizer": _LOWERCASE_NORMALIZER},
 }
 
 _DEFAULT_FIELD = [
@@ -63,6 +72,13 @@ def build_gwflow_es_mapping():
             "index.mapping.total_fields.limit": 10000,
             "index.mapping.depth.limit": _DEPTH_LIMIT,
             "index.query.default_field": list(_DEFAULT_FIELD),
+            # Case-insensitive matching for the lowercased keyword _gwcloud.*
+            # fields (see _GWCLOUD_STRICT_FIELDS).
+            "analysis": {
+                "normalizer": {
+                    _LOWERCASE_NORMALIZER: {"type": "custom", "filter": ["lowercase"]},
+                }
+            },
         },
         "mappings": {
             "dynamic": "strict",
