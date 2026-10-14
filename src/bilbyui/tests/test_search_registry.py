@@ -5,6 +5,7 @@ from bilbyui.services.search_registry import (
     GWFLOW_GROUPS,
     SEARCH_FIELDS,
     common_fields,
+    documented_alias_path,
     grouped_fields,
     is_denied,
     typed_note,
@@ -38,7 +39,7 @@ class TestSearchRegistry(SimpleTestCase):
                 "sname",
                 "review_statuses",
                 "metadata.pe.results.waveform_approximant",
-                "metadata.gracedb.events.network_snr",
+                "snr",
             ],
         )
         self.assertEqual(
@@ -60,6 +61,24 @@ class TestSearchRegistry(SimpleTestCase):
             [group["name"] for group in grouped_fields("bilby")],
             list(BILBY_GROUPS),
         )
+
+    def test_grace_db_aliases_are_documented_and_envelope_aliases_are_not(self):
+        """User-facing GraceDB aliases surface their full path in help; internal
+        `_gwcloud.*` envelope aliases and non-alias fields do not."""
+        by_advertised = {str(e["advertised"]): e for e in SEARCH_FIELDS if e["surface"] == "gwflow"}
+        for alias, path in (
+            ("snr", "metadata.gracedb.events.network_snr"),
+            ("instruments", "metadata.gracedb.instruments"),
+            ("far", "metadata.gracedb.events.far"),
+            ("pipeline", "metadata.gracedb.events.pipeline"),
+            ("pastro", "metadata.gracedb.events.pastro"),
+        ):
+            with self.subTest(alias=alias):
+                self.assertEqual(documented_alias_path(by_advertised[alias]), path)
+        for internal in ("sname", "libraries", "review_statuses", "is_pruned"):
+            with self.subTest(internal=internal):
+                self.assertIsNone(documented_alias_path(by_advertised[internal]))
+        self.assertIsNone(documented_alias_path(by_advertised["metadata.pe.results.waveform_approximant"]))
 
     def test_seven_gwflow_aliases_map_to_canonical_envelope_paths(self):
         expected = {

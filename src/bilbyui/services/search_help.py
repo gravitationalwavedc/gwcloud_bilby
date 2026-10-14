@@ -6,7 +6,12 @@ import re
 
 from bilbyui.services import search_registry
 
-SYNTAX_HINT = "Search by field with field:value. Add * for a prefix. Combine terms with AND, OR, or NOT."
+SYNTAX_HINT = "Search by `field:value`. Add `*` for a prefix. Combine terms with `AND`, `OR`, or `NOT`."
+# Shown on the gwflow surface (which has short aliases); empty elsewhere.
+ALIAS_NOTE = (
+    "Short names are provided for common fields. Their full field paths are "
+    "also accepted and are shown in the full reference."
+)
 PLACEHOLDERS = {
     "gwflow": "Try sname:S2306*",
     "bilby": "Try job.name:GW150914*",
@@ -15,7 +20,7 @@ EXAMPLES = {
     "gwflow": [
         "sname:S2306*",
         "review_statuses:pass",
-        "metadata.gracedb.events.network_snr:>10",
+        "snr:>10",
     ],
     "bilby": [
         "job.name:GW150914*",
@@ -33,6 +38,7 @@ def build_search_help(surface: str) -> dict:
         "common": search_registry.common_fields(surface),
         "groups": search_registry.grouped_fields(surface),
         "typed_note": search_registry.typed_note(surface),
+        "alias_note": ALIAS_NOTE if surface == "gwflow" else "",
         "placeholder": PLACEHOLDERS[surface],
         "examples": EXAMPLES[surface],
     }
