@@ -124,12 +124,15 @@ def _normalise_default_field(value) -> tuple[str, ...]:
 
 def _live_default_fields(client, index) -> tuple[str, ...]:
     response = client.indices.get_settings(index=index)
-    index_data = response.get(index) if isinstance(response, Mapping) else None
+    # elastic_transport.ObjectApiResponse is dict-like but is NOT a
+    # collections.abc.Mapping, so use duck-typed access rather than isinstance.
+    index_data = response.get(index)
     if not isinstance(index_data, Mapping):
-        # Mirror _mapping_body: a single-index response may be keyed by a
-        # resolved concrete index name rather than the requested name.
-        if isinstance(response, Mapping) and len(response) == 1:
-            index_data = next(iter(response.values()))
+        # A single-index response may be keyed by a resolved concrete index
+        # name rather than the requested name.
+        values = list(response.values()) if hasattr(response, "values") else []
+        if len(values) == 1:
+            index_data = values[0]
         else:
             return ()
     if not isinstance(index_data, Mapping):
