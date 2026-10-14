@@ -140,6 +140,16 @@
     }
 }
 
+// The identity heading renders the sname at $h1-font-size while the copy and
+// disclosure controls are pinned to $font-size-sm (see _tech_value.scss).
+// Baseline-align the controls to the title so the small affordances anchor to
+// the identifier's baseline instead of floating at the centre of the 48px line
+// box — this keeps them reading as part of the same text line and lines the
+// whole group up with the sibling identity items.
+.context-identity .tech-value {
+    align-items: baseline;
+}
+
 .context-identity-item {
     // Event refs, instruments, etc. Wraps naturally with the group.
     overflow-wrap: anywhere;

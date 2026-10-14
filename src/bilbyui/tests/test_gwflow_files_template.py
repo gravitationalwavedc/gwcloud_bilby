@@ -326,3 +326,50 @@ class TestGWFlowFilesTemplateStates(BilbyTestCase):
         self.assertContains(response, "analysis-1")
         self.assertNotContains(response, "IMRPhenomXPHM")
         self.assertNotContains(response, "run_status")
+
+    def test_pending_explanation_is_a_full_width_row(self):
+        """The mirroring explanation renders in its own colspan row beneath the
+        file row, never inside the narrow Actions column (design review
+        2026-10-14): the prose needs the table measure, not an 8rem cell."""
+        file = _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=False)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'id="gw-file-why-{file.id}" class="gw-file-why-row"')
+        self.assertContains(response, 'colspan="4"')
+        self.assertContains(response, 'class="gw-file-why-cell"')
+        self.assertContains(response, 'class="gw-file-why-body"')
+        self.assertContains(
+            response,
+            "This file is still being mirrored from the portal. Once mirroring finishes, "
+            "the download will be available here.",
+        )
+
+    def test_pending_disclosure_aria_controls_matches_its_row_id(self):
+        """The disclosure button controls the full-width row; the id is unique."""
+        file = _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=False)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, f'aria-controls="gw-file-why-{file.id}"')
+        self.assertEqual(response.content.count(f'id="gw-file-why-{file.id}"'.encode()), 1)
+
+    def test_pending_file_row_is_marked_for_mobile_join(self):
+        """The pending file row carries the modifier that joins it to its
+        explanation on the <768px stacked layout."""
+        _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=False)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'class="gw-file-row gw-file-row--has-why"')
+
+    def test_mirrored_row_has_no_explanation_row(self):
+        """A mirrored (downloadable) file has no pending explanation row."""
+        _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=True)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, "gw-file-why-row")
+        self.assertNotContains(response, "gw-file-row--has-why")
+        self.assertNotContains(response, "Why can't I download?")
