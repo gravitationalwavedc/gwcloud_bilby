@@ -46,6 +46,26 @@ class TestElasticSearch(BilbyTestCase):
         mapping = build_bilby_es_mapping()
 
         self.assertEqual(
+            mapping["settings"]["index"]["query"]["default_field"],
+            [
+                "job.name",
+                "job.description",
+                "labels.name",
+                "labels.description",
+                "eventId.eventId",
+                "eventId.triggerId",
+                "eventId.nickname",
+                "params.label",
+                "params.waveform_approximant",
+                "params.likelihood_type",
+                "params.detectors",
+                "params.frequency_domain_source_model",
+                "params.meta_data.bilby_version",
+                "params.meta_data.bilby_pipe_version",
+                "ini.sampler",
+            ],
+        )
+        self.assertEqual(
             mapping["mappings"]["properties"]["searchTriggerTime"]["type"],
             "double",
         )

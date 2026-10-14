@@ -126,8 +126,57 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
         self.assertEqual(settings_body["index.mapping.depth.limit"], 100)
         self.assertEqual(
             settings_body["index.query.default_field"],
-            ["_gwcloud.sname", "_gwcloud.libraries", "_gwcloud.reviewStatuses", "_gwcloud.eventTriggerId"],
+            [
+                "_gwcloud.sname",
+                "_gwcloud.eventTriggerId",
+                "_gwcloud.libraries",
+                "_gwcloud.reviewStatuses",
+                "metadata.gracedb.events.uid",
+                "metadata.pe.results.uid",
+                "metadata.pe.results.inference_software",
+                "metadata.pe.results.waveform_approximant",
+                "metadata.pe.results.run_status",
+                "metadata.pe.results.review_status",
+                "metadata.pe.status",
+                "metadata.gracedb.events.pipeline",
+                "metadata.gracedb.events.source_classification",
+                "metadata.gracedb.events.state",
+                "metadata.gracedb.instruments",
+            ],
         )
+        aliases = {name: field for name, field in mappings["properties"].items() if field.get("type") == "alias"}
+        self.assertEqual(
+            aliases,
+            {
+                "sname": {"type": "alias", "path": "_gwcloud.sname"},
+                "libraries": {"type": "alias", "path": "_gwcloud.libraries"},
+                "review_statuses": {
+                    "type": "alias",
+                    "path": "_gwcloud.reviewStatuses",
+                },
+                "event_trigger_id": {
+                    "type": "alias",
+                    "path": "_gwcloud.eventTriggerId",
+                },
+                "search_trigger_time": {
+                    "type": "alias",
+                    "path": "_gwcloud.searchTriggerTime",
+                },
+                "last_updated_time": {
+                    "type": "alias",
+                    "path": "_gwcloud.lastUpdatedTime",
+                },
+                "is_pruned": {"type": "alias", "path": "_gwcloud.isPruned"},
+            },
+        )
+        for camel_case_alias in (
+            "reviewStatuses",
+            "eventTriggerId",
+            "searchTriggerTime",
+            "lastUpdatedTime",
+            "isPruned",
+        ):
+            self.assertNotIn(camel_case_alias, mappings["properties"])
         self.assertNotIn("index.mapping.nested_fields.limit", settings_body)
 
     def test_build_gwflow_es_mapping_no_nested_fields(self):

@@ -14,11 +14,14 @@ job-list views, asserting the coordinated-form contract:
 """
 
 import re
+from html import escape
+from pathlib import Path
 from unittest import mock
 
 from django.template.loader import get_template
 from django.urls import reverse
 
+from bilbyui.services.search_help import build_search_help
 from bilbyui.tests.testcases import BilbyTestCase
 
 
@@ -28,6 +31,7 @@ def _render_search_form(**overrides):
         "jobs_list_url_name": "bilbyui:gwflow_jobs",
         "list_target_id": "gwflow-job-list",
         "search_help_template": "bilbyui/_gwflow_search_help.html",
+        "search_help": build_search_help("gwflow"),
         "filter_options": {
             "libraries": {
                 "values": ["cbc-workflow-o4a", "cbc-workflow-o4c"],
@@ -160,6 +164,25 @@ class TestSearchFormStructure(BilbyTestCase):
         self.assertIn('<label for="advanced-search">Advanced syntax:</label>', html)
         self.assertIn('id="advanced-search"', html)
         self.assertEqual(html.count('<label for="search"'), 1, "search input must have exactly one label (WCAG 3.3.2)")
+
+    def test_advanced_syntax_placeholder_is_surface_specific(self):
+        gwflow_html = _render_search_form()
+        bilby_html = _render_search_form(
+            jobs_list_url_name="bilbyui:my_jobs",
+            list_target_id="job-list",
+            search_help_template="bilbyui/_bilby_search_help.html",
+            search_help=build_search_help("bilby"),
+            show_gwflow_filters=False,
+        )
+
+        self.assertIn('placeholder="Try sname:S2306*"', gwflow_html)
+        self.assertNotIn('placeholder="Try eventId.nickname:GW150914"', gwflow_html)
+        self.assertIn('placeholder="Try eventId.nickname:GW150914"', bilby_html)
+        self.assertNotIn('placeholder="Try sname:S2306*"', bilby_html)
+        for html in (gwflow_html, bilby_html):
+            self.assertIn('placeholder="Find a superevent..."', html)
+            self.assertIn('<label for="advanced-search">Advanced syntax:</label>', html)
+            self.assertIn("(?)", html)
 
     def test_gwflow_selects_rendered_when_show_gwflow_filters(self):
         html = _render_search_form(show_gwflow_filters=True)
@@ -390,81 +413,120 @@ class TestSearchFormPerFacetStates(BilbyTestCase):
 
 
 class TestSearchHelpPartials(BilbyTestCase):
-    """The help partials render as in-place collapsible panels."""
+    """The help partials render generic registry data in nested collapses."""
 
-    def test_gwflow_help_lists_all_searchable_fields(self):
-        html = get_template("bilbyui/_gwflow_search_help.html").render({})
-        self.assertIn('id="search-help"', html)
-        self.assertIn('class="collapse mt-2"', html)
-        for field in (
-            "_gwcloud.sname",
-            "_gwcloud.libraries",
-            "_gwcloud.reviewStatuses",
-            "_gwcloud.eventTriggerId",
-            "metadata.ParameterEstimation.results.inference_software",
-            "metadata.ParameterEstimation.results.waveform_approximant",
-            "metadata.GraceDB.Events.uid",
-            "metadata.GraceDB.instruments",
+    def _render_help(self, template_name, surface):
+        return get_template(template_name).render({"search_help": build_search_help(surface)})
+
+    def _assert_nested_disclosure(self, html):
+        self.assertIn('class="collapse mt-2" id="search-help"', html)
+        self.assertIn("Full supported field reference", html)
+        self.assertIn('type="button"', html)
+        self.assertIn('data-toggle="collapse"', html)
+        self.assertIn('data-target="#search-help-full"', html)
+        self.assertIn('aria-expanded="false"', html)
+        self.assertIn('aria-controls="search-help-full"', html)
+        self.assertIn('class="collapse mt-2" id="search-help-full"', html)
+        self.assertNotIn("data-bs-toggle", html)
+        self.assertNotIn("data-bs-target", html)
+        self.assertNotIn("aria-live=", html)
+        self.assertNotIn('role="status"', html)
+
+    def test_gwflow_help_renders_five_common_fields_from_registry(self):
+        help_context = build_search_help("gwflow")
+        html = self._render_help("bilbyui/_gwflow_search_help.html", "gwflow")
+
+        self.assertIn(help_context["syntax_hint"], html)
+        self.assertIn("<strong>Common fields</strong>", html)
+        self.assertEqual(len(help_context["common"]), 5)
+        for entry in help_context["common"]:
+            self.assertIn(f"<code>{entry['advertised']}</code>", html)
+            self.assertIn(entry["description"], html)
+        self.assertEqual(
+            sum(f"<code>{entry['advertised']}</code>" in html for entry in help_context["common"]),
+            5,
+        )
+        examples_html = html.split("Examples:</p>", 1)[1].split("</ul>", 1)[0]
+        self.assertEqual(
+            re.findall(r"<code>(.*?)</code>", examples_html),
+            [escape(example) for example in help_context["examples"]],
+        )
+        self.assertIn(escape(help_context["typed_note"]), html)
+        self.assertNotIn("metadata.ParameterEstimation", html)
+        self.assertNotIn("metadata.GraceDB", html)
+        self._assert_nested_disclosure(html)
+
+    def test_bilby_help_renders_five_common_fields_from_registry(self):
+        help_context = build_search_help("bilby")
+        html = self._render_help("bilbyui/_bilby_search_help.html", "bilby")
+
+        self.assertIn(help_context["syntax_hint"], html)
+        self.assertIn("<strong>Common fields</strong>", html)
+        self.assertEqual(len(help_context["common"]), 5)
+        for entry in help_context["common"]:
+            self.assertIn(f"<code>{entry['advertised']}</code>", html)
+            self.assertIn(entry["description"], html)
+        self.assertEqual(
+            sum(f"<code>{entry['advertised']}</code>" in html for entry in help_context["common"]),
+            5,
+        )
+        examples_html = html.split("Examples:</p>", 1)[1].split("</ul>", 1)[0]
+        self.assertEqual(
+            re.findall(r"<code>(.*?)</code>", examples_html),
+            [escape(example) for example in help_context["examples"]],
+        )
+        self.assertIn(escape(help_context["typed_note"]), html)
+        self._assert_nested_disclosure(html)
+
+    def test_help_templates_contain_no_literal_registry_field_names(self):
+        advertised_fields = {
+            str(entry["advertised"])
+            for surface in ("gwflow", "bilby")
+            for entry in (
+                build_search_help(surface)["common"]
+                + [field for group in build_search_help(surface)["groups"] for field in group["fields"]]
+            )
+        }
+        for template_name in (
+            "_gwflow_search_help.html",
+            "_bilby_search_help.html",
         ):
-            self.assertIn(f"<code>{field}</code>", html)
-        self.assertIn("<code>_gwcloud.sname:S2306*</code>", html)
-        for abbreviation in ("UID", "GraceDB", "CBC"):
-            self.assertIn(f"<code>{abbreviation}</code>", html)
-        for alias in (
-            "analyses.software",
-            "analyses.waveform",
-            "gracedb.uids",
-            "eventId.triggerId",
-            "schemaVersion",
-        ):
-            self.assertNotIn(alias, html)
+            source = (Path(__file__).parents[1] / "templates" / "bilbyui" / template_name).read_text()
+            for field in advertised_fields:
+                self.assertNotIn(field, source)
+
+    def test_form_includes_selected_help_template(self):
+        html = _render_search_form(
+            search_help_template="bilbyui/_bilby_search_help.html",
+            search_help=build_search_help("bilby"),
+        )
+        self.assertIn("<code>job.name</code>", html)
+        self.assertIn("Full supported field reference", html)
+        self.assertNotIn("metadata.ParameterEstimation", html)
+        self.assertNotIn("metadata.GraceDB", html)
 
     def test_sync_script_defaults_time_range_to_all(self):
         html = get_template("bilbyui/_search_state_sync.html").render({})
         self.assertIn('name === "time_range" ? "all" : ""', html)
-        self.assertNotIn('"page"', html.split("forEach")[1].split(";")[0], "page must not be restored from the URL")
+        self.assertNotIn(
+            '"page"',
+            html.split("forEach")[1].split(";")[0],
+            "page must not be restored from the URL",
+        )
 
     def test_sync_script_does_not_restore_page(self):
         html = get_template("bilbyui/_search_state_sync.html").render({})
-        # The hidden page control must keep its form default of 1 so a filter
-        # change after history restoration resets to page 1 (GOV.UK rule).
         self.assertNotIn('"search", "library", "review", "time_range", "page"', html)
         self.assertIn('["search", "library", "review", "time_range"]', html)
 
     def test_sync_script_no_longer_listens_to_pushed_into_history(self):
-        """Issue #75 / UX-17: the ``htmx:pushedIntoHistory`` write-back is
-        removed so a settled history push can never clobber the live input."""
         html = get_template("bilbyui/_search_state_sync.html").render({})
         self.assertNotIn("pushedIntoHistory", html)
 
     def test_sync_script_still_listens_to_popstate_and_history_restore(self):
-        """URL -> form sync is retained only for genuine back/forward and
-        htmx history restoration."""
         html = get_template("bilbyui/_search_state_sync.html").render({})
         self.assertIn("popstate", html)
         self.assertIn("htmx:historyRestore", html)
-
-    def test_bilby_help_lists_all_searchable_fields(self):
-        html = get_template("bilbyui/_bilby_search_help.html").render({})
-        self.assertIn('id="search-help"', html)
-        self.assertIn('class="collapse mt-2"', html)
-        for field in (
-            "job.name",
-            "job.description",
-            "labels.name",
-            "eventId.eventId",
-            "eventId.triggerId",
-            "eventId.nickname",
-            "params.*",
-            "ini.*",
-        ):
-            self.assertIn(f"<code>{field}</code>", html)
-        self.assertIn("job.name:GW150914*", html)
-
-    def test_form_includes_selected_help_template(self):
-        html = _render_search_form(search_help_template="bilbyui/_bilby_search_help.html")
-        self.assertIn("<code>job.name</code>", html)
-        self.assertNotIn("<code>analyses.waveform</code>", html)
 
 
 class TestHelpOnAllSurfaces(BilbyTestCase):
@@ -485,7 +547,7 @@ class TestHelpOnAllSurfaces(BilbyTestCase):
         response = self.client.get(reverse("bilbyui:gwflow_jobs"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="search-help"')
-        self.assertContains(response, "<code>_gwcloud.sname</code>")
+        self.assertContains(response, "<code>sname</code>")
         self.assertContains(response, 'hx-sync="#jobs-search-region:replace"')
 
     @mock.patch("bilbyui.views.list_user_jobs", return_value=_user_jobs_ok_result())

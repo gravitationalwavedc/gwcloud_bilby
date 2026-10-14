@@ -103,8 +103,18 @@ class TestGWFlowJobsListView(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Search help")
-        self.assertContains(response, "_gwcloud.sname")
+        self.assertContains(response, 'placeholder="Try sname:S2306*"')
+        self.assertContains(response, "<strong>Common fields</strong>")
+        self.assertContains(response, "<code>sname</code>")
         self.assertContains(response, "sname:S2306*")
+        self.assertContains(response, "Full supported field reference")
+        self.assertContains(response, 'data-toggle="collapse"')
+        self.assertContains(response, 'data-target="#search-help-full"')
+        self.assertContains(response, 'aria-expanded="false"')
+        self.assertContains(response, 'aria-controls="search-help-full"')
+        self.assertContains(response, 'id="search-help-full"')
+        self.assertNotContains(response, "metadata.ParameterEstimation")
+        self.assertNotContains(response, "metadata.GraceDB")
 
     def test_pagination_renders_when_has_next(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user)

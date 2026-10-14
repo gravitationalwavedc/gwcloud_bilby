@@ -46,6 +46,7 @@
 <div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="empty" data-settled-message="No superevents match your search.">
   {% include "bilbyui/_active_filters.html" with indicator_id=indicator_id %}
   {% include "bilbyui/_async_state.html" with state="empty" thing="superevents" empty_hint="Try clearing your filters or resetting the search." suppress_live=True %}
+  {% if casing_hint_eligible %}<p class="text-muted mt-2">Field names are case-sensitive. Check the supported field reference.</p>{% endif %}
   <a
     class="filter-reset"
     href="{{ reset_url }}"
