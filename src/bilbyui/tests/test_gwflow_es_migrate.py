@@ -144,11 +144,7 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
                 "metadata.gracedb.instruments",
             ],
         )
-        aliases = {
-            name: field
-            for name, field in mappings["properties"].items()
-            if field.get("type") == "alias"
-        }
+        aliases = {name: field for name, field in mappings["properties"].items() if field.get("type") == "alias"}
         self.assertEqual(
             aliases,
             {

@@ -76,8 +76,7 @@ class TestSearchRegistry(SimpleTestCase):
         actual = {
             entry["advertised"]: entry["path"]
             for entry in SEARCH_FIELDS
-            if entry["surface"] == "gwflow"
-            and str(entry["path"]).startswith("_gwcloud.")
+            if entry["surface"] == "gwflow" and str(entry["path"]).startswith("_gwcloud.")
         }
         self.assertEqual(actual, expected)
 

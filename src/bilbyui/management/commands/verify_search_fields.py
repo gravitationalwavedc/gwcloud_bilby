@@ -164,10 +164,7 @@ def _verify_registry_entries(registry_entries, live):
             str(type_hint) if type_hint else None,
             live_type,
         ):
-            failures.append(
-                "syntax-relevant type changed: "
-                f"{field_path} expects {type_hint}, live type is {live_type}"
-            )
+            failures.append(f"syntax-relevant type changed: {field_path} expects {type_hint}, live type is {live_type}")
     return failures
 
 
@@ -182,18 +179,13 @@ def _verify_gwflow_aliases(live):
         elif definition.get("type") != "alias":
             failures.append(f"required GWFlow alias is not an alias: {alias}")
         elif definition.get("path") != target:
-            failures.append(
-                "GWFlow alias target changed: "
-                f"{alias} expected {target}, live {definition.get('path')}"
-            )
+            failures.append(f"GWFlow alias target changed: {alias} expected {target}, live {definition.get('path')}")
         elif target not in live:
             failures.append(f"GWFlow alias target missing: {alias} -> {target}")
 
     for alias in sorted(UNEXPECTED_CAMELCASE_ALIASES & live.keys()):
         if live[alias].get("type") == "alias":
-            failures.append(
-                f"unexpected bare camelCase compatibility alias: {alias}"
-            )
+            failures.append(f"unexpected bare camelCase compatibility alias: {alias}")
     return failures
 
 
@@ -250,43 +242,23 @@ class Command(BaseCommand):
             for message in failures:
                 self.stdout.write(self.style.ERROR(f"FAIL {message}"))
             for path in triage:
-                self.stdout.write(
-                    self.style.WARNING(
-                        f"TRIAGE eligible live field is not in the registry: {path}"
-                    )
-                )
+                self.stdout.write(self.style.WARNING(f"TRIAGE eligible live field is not in the registry: {path}"))
             if not failures and not triage:
                 self.stdout.write(self.style.SUCCESS("OK no search-field drift found"))
             elif not failures:
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"OK {len(triage)} triage item(s); no deployment-gate failures"
-                    )
-                )
+                self.stdout.write(self.style.SUCCESS(f"OK {len(triage)} triage item(s); no deployment-gate failures"))
 
-        self.stdout.write(
-            f"Summary: failures={total_failures}, triage={total_triage}"
-        )
+        self.stdout.write(f"Summary: failures={total_failures}, triage={total_triage}")
         self._exit_code = EXIT_FAILURES if total_failures else EXIT_OK
 
     def _verify_surface(self, client, surface):
-        index = (
-            settings.ELASTIC_SEARCH_GWFLOW_INDEX
-            if surface == "gwflow"
-            else settings.ELASTIC_SEARCH_INDEX
-        )
+        index = settings.ELASTIC_SEARCH_GWFLOW_INDEX if surface == "gwflow" else settings.ELASTIC_SEARCH_INDEX
         response = client.indices.get_mapping(index=index)
         mappings = _mapping_body(response, index)
         properties = mappings.get("properties", {})
-        live = (
-            _flatten_properties(properties)
-            if isinstance(properties, Mapping)
-            else {}
-        )
+        live = _flatten_properties(properties) if isinstance(properties, Mapping) else {}
 
-        registry_entries = [
-            entry for entry in SEARCH_FIELDS if entry["surface"] == surface
-        ]
+        registry_entries = [entry for entry in SEARCH_FIELDS if entry["surface"] == surface]
         registry_paths = {str(entry["path"]) for entry in registry_entries}
         failures = _verify_registry_entries(registry_entries, live)
 
@@ -295,16 +267,11 @@ class Command(BaseCommand):
 
         for field_path in _default_fields(surface):
             if field_path not in live:
-                failures.append(
-                    f"configured default_field missing: {field_path}"
-                )
+                failures.append(f"configured default_field missing: {field_path}")
 
         live_defaults = _live_default_fields(client, index)
         configured = _default_fields(surface)
         if set(live_defaults) != set(configured):
-            failures.append(
-                "live default_field mismatch: expected "
-                f"{sorted(configured)}, live {sorted(live_defaults)}"
-            )
+            failures.append(f"live default_field mismatch: expected {sorted(configured)}, live {sorted(live_defaults)}")
 
         return failures, _triage_paths(surface, live, registry_paths)

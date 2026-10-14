@@ -87,10 +87,7 @@ def build_gwflow_es_mapping():
                     "properties": dict(_GWCLOUD_STRICT_FIELDS),
                 },
                 "metadata": {"type": "object", "dynamic": True},
-                **{
-                    alias: {"type": "alias", "path": target}
-                    for alias, target in GWFLOW_ALIASES.items()
-                },
+                **{alias: {"type": "alias", "path": target} for alias, target in GWFLOW_ALIASES.items()},
             },
         },
     }

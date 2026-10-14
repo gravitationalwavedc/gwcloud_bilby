@@ -416,9 +416,7 @@ class TestSearchHelpPartials(BilbyTestCase):
     """The help partials render generic registry data in nested collapses."""
 
     def _render_help(self, template_name, surface):
-        return get_template(template_name).render(
-            {"search_help": build_search_help(surface)}
-        )
+        return get_template(template_name).render({"search_help": build_search_help(surface)})
 
     def _assert_nested_disclosure(self, html):
         self.assertIn('class="collapse mt-2" id="search-help"', html)
@@ -431,14 +429,12 @@ class TestSearchHelpPartials(BilbyTestCase):
         self.assertIn('class="collapse mt-2" id="search-help-full"', html)
         self.assertNotIn("data-bs-toggle", html)
         self.assertNotIn("data-bs-target", html)
-        self.assertNotIn('aria-live=', html)
+        self.assertNotIn("aria-live=", html)
         self.assertNotIn('role="status"', html)
 
     def test_gwflow_help_renders_five_common_fields_from_registry(self):
         help_context = build_search_help("gwflow")
-        html = self._render_help(
-            "bilbyui/_gwflow_search_help.html", "gwflow"
-        )
+        html = self._render_help("bilbyui/_gwflow_search_help.html", "gwflow")
 
         self.assertIn(help_context["syntax_hint"], html)
         self.assertIn("<strong>Common fields</strong>", html)
@@ -447,10 +443,7 @@ class TestSearchHelpPartials(BilbyTestCase):
             self.assertIn(f"<code>{entry['advertised']}</code>", html)
             self.assertIn(entry["description"], html)
         self.assertEqual(
-            sum(
-                f"<code>{entry['advertised']}</code>" in html
-                for entry in help_context["common"]
-            ),
+            sum(f"<code>{entry['advertised']}</code>" in html for entry in help_context["common"]),
             5,
         )
         examples_html = html.split("Examples:</p>", 1)[1].split("</ul>", 1)[0]
@@ -465,9 +458,7 @@ class TestSearchHelpPartials(BilbyTestCase):
 
     def test_bilby_help_renders_five_common_fields_from_registry(self):
         help_context = build_search_help("bilby")
-        html = self._render_help(
-            "bilbyui/_bilby_search_help.html", "bilby"
-        )
+        html = self._render_help("bilbyui/_bilby_search_help.html", "bilby")
 
         self.assertIn(help_context["syntax_hint"], html)
         self.assertIn("<strong>Common fields</strong>", html)
@@ -476,10 +467,7 @@ class TestSearchHelpPartials(BilbyTestCase):
             self.assertIn(f"<code>{entry['advertised']}</code>", html)
             self.assertIn(entry["description"], html)
         self.assertEqual(
-            sum(
-                f"<code>{entry['advertised']}</code>" in html
-                for entry in help_context["common"]
-            ),
+            sum(f"<code>{entry['advertised']}</code>" in html for entry in help_context["common"]),
             5,
         )
         examples_html = html.split("Examples:</p>", 1)[1].split("</ul>", 1)[0]
@@ -496,23 +484,14 @@ class TestSearchHelpPartials(BilbyTestCase):
             for surface in ("gwflow", "bilby")
             for entry in (
                 build_search_help(surface)["common"]
-                + [
-                    field
-                    for group in build_search_help(surface)["groups"]
-                    for field in group["fields"]
-                ]
+                + [field for group in build_search_help(surface)["groups"] for field in group["fields"]]
             )
         }
         for template_name in (
             "_gwflow_search_help.html",
             "_bilby_search_help.html",
         ):
-            source = (
-                Path(__file__).parents[1]
-                / "templates"
-                / "bilbyui"
-                / template_name
-            ).read_text()
+            source = (Path(__file__).parents[1] / "templates" / "bilbyui" / template_name).read_text()
             for field in advertised_fields:
                 self.assertNotIn(field, source)
 
@@ -537,12 +516,8 @@ class TestSearchHelpPartials(BilbyTestCase):
 
     def test_sync_script_does_not_restore_page(self):
         html = get_template("bilbyui/_search_state_sync.html").render({})
-        self.assertNotIn(
-            '"search", "library", "review", "time_range", "page"', html
-        )
-        self.assertIn(
-            '["search", "library", "review", "time_range"]', html
-        )
+        self.assertNotIn('"search", "library", "review", "time_range", "page"', html)
+        self.assertIn('["search", "library", "review", "time_range"]', html)
 
     def test_sync_script_no_longer_listens_to_pushed_into_history(self):
         html = get_template("bilbyui/_search_state_sync.html").render({})

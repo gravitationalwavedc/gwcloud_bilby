@@ -107,16 +107,8 @@ class VerifySearchFieldsTests(BilbyTestCase):
         omit_live_defaults=False,
     ):
         mappings = {
-            settings.ELASTIC_SEARCH_GWFLOW_INDEX: {
-                "mappings": {
-                    "properties": gwflow or _surface_properties("gwflow")
-                }
-            },
-            settings.ELASTIC_SEARCH_INDEX: {
-                "mappings": {
-                    "properties": bilby or _surface_properties("bilby")
-                }
-            },
+            settings.ELASTIC_SEARCH_GWFLOW_INDEX: {"mappings": {"properties": gwflow or _surface_properties("gwflow")}},
+            settings.ELASTIC_SEARCH_INDEX: {"mappings": {"properties": bilby or _surface_properties("bilby")}},
         }
         configured_defaults = {
             settings.ELASTIC_SEARCH_GWFLOW_INDEX: [
@@ -155,25 +147,13 @@ class VerifySearchFieldsTests(BilbyTestCase):
             ],
         }
         es = mock.MagicMock()
-        es.indices.get_mapping.side_effect = (
-            lambda *, index: {index: mappings[index]}
-        )
+        es.indices.get_mapping.side_effect = lambda *, index: {index: mappings[index]}
 
         def get_settings(*, index):
             if omit_live_defaults:
                 return {index: {"settings": {}}}
-            defaults = (
-                live_defaults
-                if live_defaults is not None
-                else configured_defaults[index]
-            )
-            return {
-                index: {
-                    "settings": {
-                        "index": {"query": {"default_field": defaults}}
-                    }
-                }
-            }
+            defaults = live_defaults if live_defaults is not None else configured_defaults[index]
+            return {index: {"settings": {"index": {"query": {"default_field": defaults}}}}}
 
         es.indices.get_settings.side_effect = get_settings
         output = StringIO()
@@ -200,18 +180,14 @@ class VerifySearchFieldsTests(BilbyTestCase):
         code, _, es = self._run(surface="bilby")
 
         self.assertEqual(code, 0)
-        es.indices.get_mapping.assert_called_once_with(
-            index=settings.ELASTIC_SEARCH_INDEX
-        )
+        es.indices.get_mapping.assert_called_once_with(index=settings.ELASTIC_SEARCH_INDEX)
 
     def test_matching_live_default_fields_do_not_fail(self):
         code, output, es = self._run(surface="bilby")
 
         self.assertEqual(code, 0)
         self.assertNotIn("live default_field mismatch", output)
-        es.indices.get_settings.assert_called_once_with(
-            index=settings.ELASTIC_SEARCH_INDEX
-        )
+        es.indices.get_settings.assert_called_once_with(index=settings.ELASTIC_SEARCH_INDEX)
 
     def test_extra_live_default_field_fails(self):
         defaults = [
@@ -345,8 +321,7 @@ class VerifySearchFieldsTests(BilbyTestCase):
 
         self.assertEqual(code, 1)
         self.assertIn(
-            "FAIL syntax-relevant type changed: "
-            "params.sampling_frequency expects number, live type is keyword",
+            "FAIL syntax-relevant type changed: params.sampling_frequency expects number, live type is keyword",
             output,
         )
         self.assertIn("double", NUMERIC_TYPES)
@@ -359,8 +334,7 @@ class VerifySearchFieldsTests(BilbyTestCase):
 
         self.assertEqual(code, 0)
         self.assertIn(
-            "TRIAGE eligible live field is not in the registry: "
-            "params.new_public_metric",
+            "TRIAGE eligible live field is not in the registry: params.new_public_metric",
             output,
         )
         self.assertIn("Summary: failures=0, triage=1", output)
@@ -382,13 +356,7 @@ class VerifySearchFieldsTests(BilbyTestCase):
 
         class _Indices:
             def get_settings(self, *, index):
-                return {
-                    "resolved-concrete-index": {
-                        "settings": {
-                            "index": {"query": {"default_field": ["a", "b"]}}
-                        }
-                    }
-                }
+                return {"resolved-concrete-index": {"settings": {"index": {"query": {"default_field": ["a", "b"]}}}}}
 
         class _Client:
             indices = _Indices()

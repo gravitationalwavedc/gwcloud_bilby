@@ -92,8 +92,6 @@ DENIED_GLOBS = (
 )
 
 
-
-
 def is_denied(path: str) -> bool:
     """Return whether a mapped path is intentionally excluded from help."""
 
@@ -109,31 +107,19 @@ def is_denied(path: str) -> bool:
 def _surface_fields(surface: str) -> list[dict[str, object]]:
     if surface not in SURFACES:
         raise ValueError(f"Unknown search surface: {surface}")
-    return [
-        dict(entry)
-        for entry in SEARCH_FIELDS
-        if entry["surface"] == surface and not is_denied(str(entry["path"]))
-    ]
+    return [dict(entry) for entry in SEARCH_FIELDS if entry["surface"] == surface and not is_denied(str(entry["path"]))]
 
 
 def common_fields(surface: str) -> list[dict[str, object]]:
     """Return display-ordered common fields for a surface."""
 
-    return [
-        entry
-        for entry in _surface_fields(surface)
-        if entry["visibility"] == "common"
-    ]
+    return [entry for entry in _surface_fields(surface) if entry["visibility"] == "common"]
 
 
 def grouped_fields(surface: str) -> list[dict[str, object]]:
     """Return full-reference fields grouped in the approved heading order."""
 
-    entries = [
-        entry
-        for entry in _surface_fields(surface)
-        if entry["visibility"] == "full"
-    ]
+    entries = [entry for entry in _surface_fields(surface) if entry["visibility"] == "full"]
     groups = []
     for group_name in GROUPS[surface]:
         fields = sorted(

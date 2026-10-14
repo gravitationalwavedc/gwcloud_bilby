@@ -27,23 +27,17 @@ class CasingHintTemplateTests(BilbyTestCase):
     def test_hint_present_for_eligible_zero_result_fielded_search(self):
         for template_name in FRAGMENTS:
             with self.subTest(template_name=template_name):
-                rendered = self.render_fragment(
-                    template_name, eligible=True, total=0, search="status:complete"
-                )
+                rendered = self.render_fragment(template_name, eligible=True, total=0, search="status:complete")
                 self.assertIn(HINT_TEXT, rendered)
 
     def test_hint_absent_for_empty_search(self):
         for template_name in FRAGMENTS:
             with self.subTest(template_name=template_name):
-                rendered = self.render_fragment(
-                    template_name, eligible=False, total=0, search=""
-                )
+                rendered = self.render_fragment(template_name, eligible=False, total=0, search="")
                 self.assertNotIn(HINT_TEXT, rendered)
 
     def test_hint_absent_for_non_zero_result_set(self):
         for template_name in FRAGMENTS:
             with self.subTest(template_name=template_name):
-                rendered = self.render_fragment(
-                    template_name, eligible=False, total=1, search="status:complete"
-                )
+                rendered = self.render_fragment(template_name, eligible=False, total=1, search="status:complete")
                 self.assertNotIn(HINT_TEXT, rendered)

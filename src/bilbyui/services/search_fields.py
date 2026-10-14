@@ -459,10 +459,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     _field(
         "bilby",
         "ini.psd_dict",
-        (
-            "Power spectral density configuration recorded in the "
-            "initialisation (INI) configuration."
-        ),
+        ("Power spectral density configuration recorded in the initialisation (INI) configuration."),
         "Scheduler and INI configuration",
         2,
         type_hint="text",
