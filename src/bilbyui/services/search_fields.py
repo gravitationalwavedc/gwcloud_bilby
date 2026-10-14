@@ -167,25 +167,9 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     ),
     _field(
         "gwflow",
-        "metadata.catalog_tracking.catalogue",
-        "Catalogue associated with the candidate.",
-        "Catalogue and detector characterisation",
-        2,
-        type_hint="term",
-    ),
-    _field(
-        "gwflow",
         "metadata.detchar.status",
         "Detector-characterisation status.",
         "Catalogue and detector characterisation",
-        2,
-        type_hint="term",
-    ),
-    _field(
-        "gwflow",
-        "metadata.tgr.results.analysis_software",
-        "Software used for tests of general relativity.",
-        "Specialist analyses, provenance, and notes",
         2,
         type_hint="term",
     ),
@@ -287,14 +271,6 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
         type_hint="term",
     ),
     # Bilby curated full reference.
-    _field(
-        "bilby",
-        "job.status",
-        "Current job status.",
-        "Job, event, and labels",
-        2,
-        type_hint="term",
-    ),
     _field(
         "bilby",
         "job.description",
@@ -410,7 +386,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     ),
     _field(
         "bilby",
-        "params.cosmology",
+        "params.cosmology.name",
         "Cosmological model used to relate distance and redshift.",
         "Cosmology and software provenance",
         2,
@@ -418,7 +394,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     ),
     _field(
         "bilby",
-        "params.bilby_version",
+        "params.meta_data.bilby_version",
         "Bilby software version used by the analysis.",
         "Cosmology and software provenance",
         2,
@@ -426,27 +402,11 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     ),
     _field(
         "bilby",
-        "params.bilby_pipe_version",
+        "params.meta_data.bilby_pipe_version",
         "Bilby Pipe software version used by the analysis.",
         "Cosmology and software provenance",
         2,
         type_hint="term",
-    ),
-    _field(
-        "bilby",
-        "params.scheduler",
-        "Scheduler selected for the analysis jobs.",
-        "Scheduler and INI configuration",
-        2,
-        type_hint="term",
-    ),
-    _field(
-        "bilby",
-        "params.scheduler_args",
-        "Non-sensitive scheduler options for the analysis.",
-        "Scheduler and INI configuration",
-        3,
-        type_hint="text",
     ),
     _field(
         "bilby",
