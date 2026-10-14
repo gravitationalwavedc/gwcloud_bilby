@@ -28,7 +28,7 @@ class TestSearchHelpContext(SimpleTestCase):
             [
                 "sname:S2306*",
                 "review_statuses:pass",
-                "metadata.gracedb.events.network_snr:>10",
+                "snr:>10",
             ],
         )
         self.assertEqual(

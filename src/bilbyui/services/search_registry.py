@@ -40,13 +40,10 @@ GROUPS: Mapping[str, tuple[str, ...]] = {
 }
 
 TYPED_NOTES: Mapping[str, str] = {
-    "gwflow": (
-        "Numeric, date, and boolean fields support exact values and ranges, "
-        "for example metadata.gracedb.events.network_snr:>10."
-    ),
+    "gwflow": ("Numeric, date, and boolean fields support exact values and ranges, for example `snr:>10`."),
     "bilby": (
         "Numeric, date, and boolean fields support exact values and ranges, "
-        "for example params.sampling_frequency:>=4096."
+        "for example `params.sampling_frequency:>=4096`."
     ),
 }
 
@@ -107,7 +104,29 @@ def is_denied(path: str) -> bool:
 def _surface_fields(surface: str) -> list[dict[str, object]]:
     if surface not in SURFACES:
         raise ValueError(f"Unknown search surface: {surface}")
-    return [dict(entry) for entry in SEARCH_FIELDS if entry["surface"] == surface and not is_denied(str(entry["path"]))]
+    records = []
+    for entry in SEARCH_FIELDS:
+        if entry["surface"] != surface or is_denied(str(entry["path"])):
+            continue
+        record = dict(entry)
+        record["alias_path"] = documented_alias_path(entry)
+        records.append(record)
+    return records
+
+
+def documented_alias_path(entry: Mapping[str, object]) -> str | None:
+    """Return the underlying field path for a user-facing alias, else None.
+
+    Only aliases whose target is a researcher-meaningful field are surfaced in
+    the help (e.g. `snr` → `metadata.gracedb.events.network_snr`). The internal
+    `_gwcloud.*` stable-envelope aliases are never exposed, and non-alias fields
+    return None.
+    """
+    advertised = str(entry["advertised"])
+    path = str(entry["path"])
+    if advertised == path or path.startswith("_gwcloud."):
+        return None
+    return path
 
 
 def common_fields(surface: str) -> list[dict[str, object]]:
@@ -117,9 +136,13 @@ def common_fields(surface: str) -> list[dict[str, object]]:
 
 
 def grouped_fields(surface: str) -> list[dict[str, object]]:
-    """Return full-reference fields grouped in the approved heading order."""
+    """Return the complete field reference, grouped in the approved heading order.
 
-    entries = [entry for entry in _surface_fields(surface) if entry["visibility"] == "full"]
+    Includes the common fields as well, so the reference is literally complete
+    and every alias mapping — including common ones such as `snr` — is visible.
+    """
+
+    entries = _surface_fields(surface)
     groups = []
     for group_name in GROUPS[surface]:
         fields = sorted(
