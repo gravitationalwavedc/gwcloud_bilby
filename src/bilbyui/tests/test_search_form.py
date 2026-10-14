@@ -176,8 +176,8 @@ class TestSearchFormStructure(BilbyTestCase):
         )
 
         self.assertIn('placeholder="Try sname:S2306*"', gwflow_html)
-        self.assertNotIn('placeholder="Try eventId.nickname:GW150914"', gwflow_html)
-        self.assertIn('placeholder="Try eventId.nickname:GW150914"', bilby_html)
+        self.assertNotIn('placeholder="Try job.name:GW150914*"', gwflow_html)
+        self.assertIn('placeholder="Try job.name:GW150914*"', bilby_html)
         self.assertNotIn('placeholder="Try sname:S2306*"', bilby_html)
         for html in (gwflow_html, bilby_html):
             self.assertIn('placeholder="Find a superevent..."', html)
@@ -432,19 +432,19 @@ class TestSearchHelpPartials(BilbyTestCase):
         self.assertNotIn("aria-live=", html)
         self.assertNotIn('role="status"', html)
 
-    def test_gwflow_help_renders_five_common_fields_from_registry(self):
+    def test_gwflow_help_renders_four_common_fields_from_registry(self):
         help_context = build_search_help("gwflow")
         html = self._render_help("bilbyui/_gwflow_search_help.html", "gwflow")
 
         self.assertIn(help_context["syntax_hint"], html)
         self.assertIn("<strong>Common fields</strong>", html)
-        self.assertEqual(len(help_context["common"]), 5)
+        self.assertEqual(len(help_context["common"]), 4)
         for entry in help_context["common"]:
             self.assertIn(f"<code>{entry['advertised']}</code>", html)
             self.assertIn(entry["description"], html)
         self.assertEqual(
             sum(f"<code>{entry['advertised']}</code>" in html for entry in help_context["common"]),
-            5,
+            4,
         )
         examples_html = html.split("Examples:</p>", 1)[1].split("</ul>", 1)[0]
         self.assertEqual(
@@ -456,19 +456,19 @@ class TestSearchHelpPartials(BilbyTestCase):
         self.assertNotIn("metadata.GraceDB", html)
         self._assert_nested_disclosure(html)
 
-    def test_bilby_help_renders_five_common_fields_from_registry(self):
+    def test_bilby_help_renders_four_common_fields_from_registry(self):
         help_context = build_search_help("bilby")
         html = self._render_help("bilbyui/_bilby_search_help.html", "bilby")
 
         self.assertIn(help_context["syntax_hint"], html)
         self.assertIn("<strong>Common fields</strong>", html)
-        self.assertEqual(len(help_context["common"]), 5)
+        self.assertEqual(len(help_context["common"]), 4)
         for entry in help_context["common"]:
             self.assertIn(f"<code>{entry['advertised']}</code>", html)
             self.assertIn(entry["description"], html)
         self.assertEqual(
             sum(f"<code>{entry['advertised']}</code>" in html for entry in help_context["common"]),
-            5,
+            4,
         )
         examples_html = html.split("Examples:</p>", 1)[1].split("</ul>", 1)[0]
         self.assertEqual(
