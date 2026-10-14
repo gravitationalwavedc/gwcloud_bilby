@@ -31,23 +31,21 @@ class TestSearchRegistry(SimpleTestCase):
             self.assertIn(entry["visibility"], {"common", "full"})
             self.assertIsInstance(entry["tier"], int)
 
-    def test_exactly_five_common_fields_per_surface(self):
+    def test_exactly_four_common_fields_per_surface(self):
         self.assertEqual(
             [entry["advertised"] for entry in common_fields("gwflow")],
             [
                 "sname",
-                "event_trigger_id",
                 "review_statuses",
                 "metadata.pe.results.waveform_approximant",
-                "metadata.gracedb.events.source_classification",
+                "metadata.gracedb.events.network_snr",
             ],
         )
         self.assertEqual(
             [entry["advertised"] for entry in common_fields("bilby")],
             [
                 "job.name",
-                "eventId.nickname",
-                "eventId.triggerId",
+                "eventId.eventId",
                 "params.waveform_approximant",
                 "labels.name",
             ],
@@ -113,14 +111,14 @@ class TestSearchRegistry(SimpleTestCase):
         advertised_paths = {entry["path"] for entry in SEARCH_FIELDS}
         self.assertFalse(any(is_denied(str(path)) for path in advertised_paths))
 
-    def test_only_two_bilby_ini_fields_are_listed(self):
+    def test_bilby_ini_fields_are_listed(self):
         ini_paths = {
             entry["path"]
             for entry in SEARCH_FIELDS
             if entry["surface"] == "bilby" and str(entry["path"]).startswith("ini.")
         }
-        self.assertEqual(ini_paths, {"ini.conda_env", "ini.psd_dict"})
-        self.assertNotIn("ini.sampler", ini_paths)
+        self.assertEqual(ini_paths, {"ini.conda_env", "ini.psd_dict", "ini.sampler"})
+        self.assertIn("ini.sampler", ini_paths)
 
     def test_accessors_return_plain_independent_values(self):
         common = common_fields("gwflow")

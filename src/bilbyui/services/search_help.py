@@ -9,16 +9,18 @@ from bilbyui.services import search_registry
 SYNTAX_HINT = "Search by field with field:value. Add * for a prefix."
 PLACEHOLDERS = {
     "gwflow": "Try sname:S2306*",
-    "bilby": "Try eventId.nickname:GW150914",
+    "bilby": "Try job.name:GW150914*",
 }
 EXAMPLES = {
     "gwflow": [
         "sname:S2306*",
-        "metadata.pe.results.waveform_approximant:IMRPhenomXPHM",
+        "review_statuses:pass",
+        "metadata.gracedb.events.network_snr:>10",
     ],
     "bilby": [
-        "eventId.nickname:GW150914",
+        "job.name:GW150914*",
         "params.waveform_approximant:IMRPhenomXPHM",
+        "eventId.eventId:GW150914*",
     ],
 }
 _FIELD_TERM = re.compile(r"[A-Za-z_][A-Za-z0-9_.]*:\S")

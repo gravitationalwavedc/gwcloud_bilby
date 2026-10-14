@@ -139,7 +139,6 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
                 "metadata.pe.results.review_status",
                 "metadata.pe.status",
                 "metadata.gracedb.events.pipeline",
-                "metadata.gracedb.events.source_classification",
                 "metadata.gracedb.events.state",
                 "metadata.gracedb.instruments",
             ],
