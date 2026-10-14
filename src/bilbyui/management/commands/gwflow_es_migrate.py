@@ -23,6 +23,13 @@ GWFLOW_ALIASES: dict[str, str] = {
     "search_trigger_time": "_gwcloud.searchTriggerTime",
     "last_updated_time": "_gwcloud.lastUpdatedTime",
     "is_pruned": "_gwcloud.isPruned",
+    # Short aliases for the GraceDB event fields, so fielded queries read
+    # compactly (e.g. `instruments:(L1 V1) snr:[40 TO 60]`).
+    "instruments": "metadata.gracedb.instruments",
+    "snr": "metadata.gracedb.events.network_snr",
+    "far": "metadata.gracedb.events.far",
+    "pipeline": "metadata.gracedb.events.pipeline",
+    "pastro": "metadata.gracedb.events.pastro",
 }
 
 # The string _gwcloud.* fields are `keyword`: exact-match/facet fields. They are
@@ -63,6 +70,29 @@ _DEFAULT_FIELD = [
 
 _DEPTH_LIMIT = 100
 
+# Explicit declarations for the five GraceDB fields exposed as short aliases.
+# Elasticsearch requires an alias target to exist in the mapping at CREATE time,
+# and these metadata.* paths are otherwise dynamic, so they must be declared
+# here for the aliases to resolve. Every other metadata.* field stays dynamic.
+_METADATA_KEYWORD = {"type": "keyword", "ignore_above": 1024}
+_GRACEDB_METADATA_PROPERTIES: dict[str, object] = {
+    "gracedb": {
+        "type": "object",
+        "properties": {
+            "instruments": {"type": "text", "fields": {"keyword": dict(_METADATA_KEYWORD)}},
+            "events": {
+                "type": "object",
+                "properties": {
+                    "network_snr": {"type": "double"},
+                    "far": {"type": "double"},
+                    "pipeline": {"type": "text", "fields": {"keyword": dict(_METADATA_KEYWORD)}},
+                    "pastro": {"type": "double"},
+                },
+            },
+        },
+    },
+}
+
 
 def build_gwflow_es_mapping():
     """Return the strict mapping body used to (re)create the GWFlow index."""
@@ -101,7 +131,7 @@ def build_gwflow_es_mapping():
                     "dynamic": "strict",
                     "properties": dict(_GWCLOUD_STRICT_FIELDS),
                 },
-                "metadata": {"type": "object", "dynamic": True},
+                "metadata": {"type": "object", "dynamic": True, "properties": dict(_GRACEDB_METADATA_PROPERTIES)},
                 **{alias: {"type": "alias", "path": target} for alias, target in GWFLOW_ALIASES.items()},
             },
         },

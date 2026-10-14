@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from bilbyui.templatetags.frontend_tags import (
     basename,
+    code_spans,
     mirrored_count,
     parent_dir,
     pending_count,
@@ -146,3 +147,34 @@ class TestMirroredAndPendingCountFilters(BilbyTestCase):
         files = [self._file(True), self._file(False)]
         rendered = template.render(Context({"files": files}))
         self.assertEqual(rendered, "1|1")
+
+
+class TestCodeSpansFilter(BilbyTestCase):
+    """`code_spans` renders `backticked` spans as inline <code> for help prose."""
+
+    def test_wraps_single_span(self):
+        self.assertEqual(str(code_spans("such as `snr:>10`.")), "such as <code>snr:&gt;10</code>.")
+
+    def test_wraps_multiple_spans(self):
+        self.assertEqual(
+            str(code_spans("`unstarted`, `ongoing`, or `fail`")),
+            "<code>unstarted</code>, <code>ongoing</code>, or <code>fail</code>",
+        )
+
+    def test_escapes_html_before_wrapping(self):
+        # Markup in the value can never survive: it is escaped first, then the
+        # span is wrapped — no injection.
+        self.assertEqual(
+            str(code_spans("x `<script>alert(1)</script>` y")),
+            "x <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> y",
+        )
+
+    def test_plain_text_unchanged(self):
+        self.assertEqual(str(code_spans("Superevent name.")), "Superevent name.")
+
+    def test_none_is_empty(self):
+        self.assertEqual(code_spans(None), "")
+
+    def test_registered_in_template_engine(self):
+        rendered = Template("{% load frontend_tags %}{{ note|code_spans }}").render(Context({"note": "`a:b`"}))
+        self.assertEqual(rendered, "<code>a:b</code>")

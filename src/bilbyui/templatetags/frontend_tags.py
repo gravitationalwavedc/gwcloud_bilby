@@ -1,17 +1,36 @@
+import re
 from datetime import UTC, datetime
 
 from django import template
 from django.utils.dateparse import parse_datetime
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
 TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M UTC"
+
+_CODE_SPAN = re.compile(r"`([^`]+)`")
 
 
 def _to_utc(value):
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+
+
+@register.filter
+def code_spans(value):
+    """Render `backticked` spans in a string as inline <code> elements.
+
+    The text is HTML-escaped first, so a value can never inject markup; only the
+    matched span is wrapped. Use for help prose that embeds field:value examples
+    and identifiers alongside plain wording (rendered in the panel's blue
+    monospace chip). None renders as "".
+    """
+    if value is None:
+        return ""
+    return mark_safe(_CODE_SPAN.sub(r"<code>\1</code>", escape(str(value))))
 
 
 @register.filter

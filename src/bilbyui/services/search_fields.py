@@ -48,7 +48,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     _field(
         "gwflow",
         "_gwcloud.eventTriggerId",
-        "GraceDB superevent identifier associated with the record, such as S230529ay.",
+        "GraceDB superevent identifier associated with the record, such as `S230529ay`.",
         "Identifiers and collections",
         1,
         advertised="event_trigger_id",
@@ -58,7 +58,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     _field(
         "gwflow",
         "_gwcloud.reviewStatuses",
-        "Current aggregate review status: unstarted, ongoing, pass, or fail.",
+        "Current aggregate review status: `unstarted`, `ongoing`, `pass`, or `fail`.",
         "Parameter estimation and review",
         1,
         advertised="review_statuses",
@@ -113,7 +113,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     _field(
         "gwflow",
         "metadata.pe.results.inference_software",
-        "Inference software used for a parameter-estimation result, such as bilby, rapidpe, or bayeswave.",
+        "Inference software used for a parameter-estimation result, such as `bilby`, `rapidpe`, or `bayeswave`.",
         "Parameter estimation and review",
         2,
         type_hint="term",
@@ -121,7 +121,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     _field(
         "gwflow",
         "metadata.pe.status",
-        "Aggregate parameter-estimation status, such as unstarted, ongoing, or complete.",
+        "Aggregate parameter-estimation status, such as `unstarted`, `ongoing`, or `complete`.",
         "Parameter estimation and review",
         2,
         type_hint="term",
@@ -132,8 +132,9 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
         "Detector-network signal-to-noise ratio (SNR).",
         "GraceDB event and significance",
         1,
+        advertised="snr",
         visibility="common",
-        example="metadata.gracedb.events.network_snr:>10",
+        example="snr:>10",
         type_hint="number",
     ),
     _field(
@@ -142,6 +143,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
         "False-alarm rate (FAR) reported for the event.",
         "GraceDB event and significance",
         2,
+        advertised="far",
         type_hint="number",
     ),
     _field(
@@ -150,14 +152,16 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
         "Probability that the candidate is astrophysical.",
         "GraceDB event and significance",
         3,
+        advertised="pastro",
         type_hint="number",
     ),
     _field(
         "gwflow",
         "metadata.gracedb.instruments",
-        "Comma-separated detector network associated with the candidate, such as H1,L1.",
+        "Comma-separated detector network associated with the candidate, such as `H1,L1`.",
         "Source classification and detector network",
         2,
+        advertised="instruments",
         type_hint="term",
     ),
     _field(
@@ -166,6 +170,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
         "Search pipeline that produced the event.",
         "Source classification and detector network",
         3,
+        advertised="pipeline",
         type_hint="term",
     ),
     _field(
@@ -236,7 +241,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     _field(
         "bilby",
         "eventId.eventId",
-        "GraceDB event identifier associated with the job, such as GW150914_000000.",
+        "GraceDB event identifier associated with the job, such as `GW150914_000000`.",
         "Job, event, and labels",
         1,
         visibility="common",
@@ -246,7 +251,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     _field(
         "bilby",
         "eventId.triggerId",
-        "GraceDB superevent identifier associated with the Bilby job, such as S230529ay.",
+        "GraceDB superevent identifier associated with the Bilby job, such as `S230529ay`.",
         "Job, event, and labels",
         1,
         example="eventId.triggerId:S230529ay",
@@ -429,7 +434,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     _field(
         "bilby",
         "ini.sampler",
-        "Sampler used for the analysis, such as dynesty.",
+        "Sampler used for the analysis, such as `dynesty`.",
         "Scheduler and INI configuration",
         2,
         type_hint="term",

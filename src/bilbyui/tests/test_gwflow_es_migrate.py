@@ -166,6 +166,11 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
                     "path": "_gwcloud.lastUpdatedTime",
                 },
                 "is_pruned": {"type": "alias", "path": "_gwcloud.isPruned"},
+                "instruments": {"type": "alias", "path": "metadata.gracedb.instruments"},
+                "snr": {"type": "alias", "path": "metadata.gracedb.events.network_snr"},
+                "far": {"type": "alias", "path": "metadata.gracedb.events.far"},
+                "pipeline": {"type": "alias", "path": "metadata.gracedb.events.pipeline"},
+                "pastro": {"type": "alias", "path": "metadata.gracedb.events.pastro"},
             },
         )
         for camel_case_alias in (
@@ -196,6 +201,17 @@ class GwflowEsMigrateCommandTestCase(BilbyTestCase):
             self.assertEqual(properties[field].get("normalizer"), "lowercase", field)
         for field in ("isPruned", "searchTriggerTime", "lastUpdatedTime"):
             self.assertNotIn("normalizer", properties[field], field)
+
+    def test_build_gwflow_es_mapping_declares_grace_db_alias_targets(self):
+        """The aliased metadata.* fields must be declared explicitly: ES rejects
+        an alias whose target is not already in the mapping at create time."""
+        props = build_gwflow_es_mapping()["mappings"]["properties"]["metadata"]["properties"]
+        events = props["gracedb"]["properties"]["events"]["properties"]
+        self.assertEqual(events["network_snr"], {"type": "double"})
+        self.assertEqual(events["far"], {"type": "double"})
+        self.assertEqual(events["pastro"], {"type": "double"})
+        self.assertEqual(events["pipeline"]["type"], "text")
+        self.assertEqual(props["gracedb"]["properties"]["instruments"]["type"], "text")
 
     def test_measure_doc_counts_fields_and_depth(self):
         from bilbyui.management.commands.gwflow_es_migrate import measure_doc

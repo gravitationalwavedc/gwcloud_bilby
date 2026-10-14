@@ -22,6 +22,7 @@ from django.template.loader import get_template
 from django.urls import reverse
 
 from bilbyui.services.search_help import build_search_help
+from bilbyui.templatetags.frontend_tags import code_spans
 from bilbyui.tests.testcases import BilbyTestCase
 
 
@@ -436,12 +437,12 @@ class TestSearchHelpPartials(BilbyTestCase):
         help_context = build_search_help("gwflow")
         html = self._render_help("bilbyui/_gwflow_search_help.html", "gwflow")
 
-        self.assertIn(help_context["syntax_hint"], html)
+        self.assertIn(str(code_spans(help_context["syntax_hint"])), html)
         self.assertIn("<strong>Common fields</strong>", html)
         self.assertEqual(len(help_context["common"]), 4)
         for entry in help_context["common"]:
             self.assertIn(f"<code>{entry['advertised']}</code>", html)
-            self.assertIn(entry["description"], html)
+            self.assertIn(str(code_spans(entry["description"])), html)
         self.assertEqual(
             sum(f"<code>{entry['advertised']}</code>" in html for entry in help_context["common"]),
             4,
@@ -451,7 +452,8 @@ class TestSearchHelpPartials(BilbyTestCase):
             re.findall(r"<code>(.*?)</code>", examples_html),
             [escape(example) for example in help_context["examples"]],
         )
-        self.assertIn(escape(help_context["typed_note"]), html)
+        self.assertIn(str(code_spans(help_context["typed_note"])), html)
+        self.assertIn(str(code_spans(help_context["alias_note"])), html)
         self.assertNotIn("metadata.ParameterEstimation", html)
         self.assertNotIn("metadata.GraceDB", html)
         self._assert_nested_disclosure(html)
@@ -460,12 +462,12 @@ class TestSearchHelpPartials(BilbyTestCase):
         help_context = build_search_help("bilby")
         html = self._render_help("bilbyui/_bilby_search_help.html", "bilby")
 
-        self.assertIn(help_context["syntax_hint"], html)
+        self.assertIn(str(code_spans(help_context["syntax_hint"])), html)
         self.assertIn("<strong>Common fields</strong>", html)
         self.assertEqual(len(help_context["common"]), 4)
         for entry in help_context["common"]:
             self.assertIn(f"<code>{entry['advertised']}</code>", html)
-            self.assertIn(entry["description"], html)
+            self.assertIn(str(code_spans(entry["description"])), html)
         self.assertEqual(
             sum(f"<code>{entry['advertised']}</code>" in html for entry in help_context["common"]),
             4,
@@ -475,7 +477,7 @@ class TestSearchHelpPartials(BilbyTestCase):
             re.findall(r"<code>(.*?)</code>", examples_html),
             [escape(example) for example in help_context["examples"]],
         )
-        self.assertIn(escape(help_context["typed_note"]), html)
+        self.assertIn(str(code_spans(help_context["typed_note"])), html)
         self._assert_nested_disclosure(html)
 
     def test_help_templates_contain_no_literal_registry_field_names(self):

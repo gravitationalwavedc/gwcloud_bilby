@@ -1,12 +1,13 @@
+{% load frontend_tags %}
 {# Generic in-place search help panel for Bilby job surfaces. #}
 <div class="collapse mt-2" id="search-help">
   <div class="card card-body">
-    <p class="mb-2">{{ search_help.syntax_hint }}</p>
+    <p class="mb-2">{{ search_help.syntax_hint|code_spans }}</p>
 
     <p class="mb-1"><strong>Common fields</strong></p>
     <ul class="mb-2">
       {% for entry in search_help.common %}
-      <li><code>{{ entry.advertised }}</code> — {{ entry.description }}</li>
+      <li><code>{{ entry.advertised }}</code> — {{ entry.description|code_spans }}</li>
       {% endfor %}
     </ul>
 
@@ -17,7 +18,7 @@
       {% endfor %}
     </ul>
 
-    <p class="mb-2 text-muted">{{ search_help.typed_note }}</p>
+    <p class="mb-2 text-muted">{{ search_help.typed_note|code_spans }}</p>
 
     <button
       type="button"
@@ -35,7 +36,7 @@
       <h6>{{ group.name }}</h6>
       <ul>
         {% for entry in group.fields %}
-        <li><code>{{ entry.advertised }}</code> — {{ entry.description }}</li>
+        <li><code>{{ entry.advertised }}</code>{% if entry.alias_path %} <span class="text-muted">alias for <code>{{ entry.alias_path }}</code></span>{% endif %} — {{ entry.description|code_spans }}</li>
         {% endfor %}
       </ul>
       {% endfor %}
