@@ -321,6 +321,21 @@ class TestGWFlowServices(BilbyTestCase):
         self.assertEqual(res["jobs"], {})
 
     @patch("bilbyui.services.gwflow.get_es_client")
+    def test_list_gwflow_jobs_leading_wildcard_error_returns_distinct_state(self, mock_get_es_client):
+        mock_client = MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.side_effect = elasticsearch.exceptions.BadRequestError(
+            400,
+            "bad request",
+            {"error": {"reason": "Failed to parse query [sname:*2306*]: leading wildcard is not allowed."}},
+        )
+
+        res = list_gwflow_jobs(self.non_ligo_user, search="sname:*2306*")
+
+        self.assertEqual(res["state"], "invalid_leading_wildcard")
+        self.assertEqual(res["jobs"], {})
+
+    @patch("bilbyui.services.gwflow.get_es_client")
     def test_list_gwflow_jobs_rejects_overlong_search(self, mock_get_es_client):
         mock_client = MagicMock()
         mock_get_es_client.return_value = mock_client
