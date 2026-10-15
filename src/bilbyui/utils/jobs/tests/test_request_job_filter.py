@@ -5,7 +5,7 @@ import responses
 from django.conf import settings
 from django.test import SimpleTestCase, override_settings
 
-from bilbyui.utils.jobs.request_job_filter import request_job_filter
+from bilbyui.utils.jobs.request_job_filter import JOB_FILTER_BATCH_SIZE, request_job_filter
 
 
 @override_settings(ALLOW_HTTP_LEAKS=True)
@@ -86,3 +86,39 @@ class TestRequestJobFilter(SimpleTestCase):
         status, result = request_job_filter(123, ids=[10, 20])
         self.assertEqual(status, "OK")
         self.assertEqual(result, jobs)
+
+    def test_large_id_set_batches_requests(self):
+        ids = list(range(JOB_FILTER_BATCH_SIZE * 2 + 1))
+        chunks = [ids[i : i + JOB_FILTER_BATCH_SIZE] for i in range(0, len(ids), JOB_FILTER_BATCH_SIZE)]
+
+        expected = []
+        for chunk in chunks:
+            chunk_jobs = [{"id": job_id} for job_id in chunk]
+            expected.extend(chunk_jobs)
+            self.responses.add(
+                responses.GET,
+                f"{self.base_url}?jobIds={','.join(map(str, chunk))}",
+                body=json.dumps(chunk_jobs),
+                status=200,
+            )
+
+        status, result = request_job_filter(123, ids=ids)
+
+        self.assertEqual(status, "OK")
+        self.assertEqual(result, expected)
+        self.assertEqual(len(self.responses.calls), len(chunks))
+
+    def test_small_id_set_single_request(self):
+        jobs = [{"id": 1}, {"id": 2}]
+        self.responses.add(
+            responses.GET,
+            f"{self.base_url}?jobIds=1,2",
+            body=json.dumps(jobs),
+            status=200,
+        )
+
+        status, result = request_job_filter(123, ids=[1, 2])
+
+        self.assertEqual(status, "OK")
+        self.assertEqual(result, jobs)
+        self.assertEqual(len(self.responses.calls), 1)
