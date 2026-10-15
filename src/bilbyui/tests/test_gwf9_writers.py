@@ -1,0 +1,554 @@
+import datetime
+from types import SimpleNamespace
+from unittest import mock
+
+from django.core.management import call_command
+from django.db import IntegrityError
+from django.test import override_settings
+
+from bilbyui.management.commands.es_ingest import Command
+from bilbyui.models import BilbyJob, EventID, GWFlowJob
+from bilbyui.tests.test_utils import create_test_ini_string
+from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.gwflow_portal import (
+    GWFlowCurrentVersion,
+    resolve_current_version,
+    resolve_event_id_for_superevent,
+)
+from bilbyui.views import _create_event_id_guarded, create_event_id, upsert_gwflow_job
+
+
+class TestGWFlowCurrentVersionResolver(BilbyTestCase):
+    def test_resolves_one_current_summary_as_coherent_unit(self):
+        summaries = [
+            {
+                "commit_sha": "old-sha",
+                "commit_timestamp": "2026-09-01T01:00:00+00:00",
+                "is_current": False,
+            },
+            {
+                "commit_sha": "current-sha",
+                "commit_timestamp": "2026-09-02T03:04:05+10:00",
+                "record_timestamp": "1999-01-01T00:00:00+00:00",
+                "is_current": True,
+            },
+        ]
+        detail = {
+            "raw_payload": {
+                "GraceDB": {
+                    "Events": [
+                        {"GPSTime": 1000.0},
+                        {"State": "preferred", "GPSTime": 1438044067.054443},
+                    ]
+                }
+            }
+        }
+
+        with (
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_versions",
+                return_value=(summaries, "live"),
+            ) as get_versions,
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_version",
+                return_value=(detail, "stale"),
+            ) as get_version,
+        ):
+            result = resolve_current_version("S250801h")
+
+        self.assertTrue(result.available)
+        self.assertEqual(result.trigger_time, 1438044067.054443)
+        self.assertEqual(result.current_history_id, "current-sha")
+        self.assertEqual(
+            result.current_history_timestamp,
+            datetime.datetime(
+                2026,
+                9,
+                1,
+                17,
+                4,
+                5,
+                tzinfo=datetime.UTC,
+            ),
+        )
+        self.assertEqual(result.versions_state, "live")
+        self.assertEqual(result.detail_state, "stale")
+        get_versions.assert_called_once_with("S250801h")
+        get_version.assert_called_once_with("S250801h", "current-sha")
+
+    def test_zero_and_multiple_current_summaries_are_unavailable(self):
+        cases = (
+            [],
+            [
+                {"is_current": True, "commit_sha": "one"},
+                {"is_current": True, "commit_sha": "two"},
+            ],
+        )
+        for summaries in cases:
+            with self.subTest(summaries=summaries):
+                with (
+                    mock.patch(
+                        "bilbyui.utils.gwflow_portal.get_versions",
+                        return_value=(summaries, "live"),
+                    ),
+                    mock.patch("bilbyui.utils.gwflow_portal.get_version") as get_version,
+                ):
+                    result = resolve_current_version("S250801h")
+                self.assertFalse(result.available)
+                get_version.assert_not_called()
+
+    def test_detail_fetch_exception_is_unavailable(self):
+        summary = [
+            {
+                "is_current": True,
+                "commit_sha": "current-sha",
+                "commit_timestamp": "2026-09-01T00:00:00+00:00",
+            }
+        ]
+        with (
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_versions",
+                return_value=(summary, "live"),
+            ),
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_version",
+                side_effect=RuntimeError("portal failure"),
+            ),
+        ):
+            result = resolve_current_version("S250801h")
+
+        self.assertFalse(result.available)
+        self.assertEqual(result.reason, "detail fetch failed")
+        self.assertIsNone(result.trigger_time)
+
+    def test_detail_failures_and_unusable_payloads_are_unavailable(self):
+        summary = [
+            {
+                "is_current": True,
+                "commit_sha": "current-sha",
+                "commit_timestamp": "2026-09-01T00:00:00+00:00",
+            }
+        ]
+        cases = (
+            (None, "down"),
+            ([], "live"),
+            ({}, "live"),
+            ({"raw_payload": []}, "live"),
+            (
+                {"raw_payload": {"GraceDB": {"Events": [{"State": "preferred", "GPSTime": "nan"}]}}},
+                "live",
+            ),
+        )
+        for detail_result in cases:
+            with self.subTest(detail=detail_result):
+                with (
+                    mock.patch(
+                        "bilbyui.utils.gwflow_portal.get_versions",
+                        return_value=(summary, "live"),
+                    ),
+                    mock.patch(
+                        "bilbyui.utils.gwflow_portal.get_version",
+                        return_value=detail_result,
+                    ),
+                ):
+                    result = resolve_current_version("S250801h")
+                self.assertFalse(result.available)
+                self.assertIsNone(result.trigger_time)
+
+
+class TestSupereventEventIDResolver(BilbyTestCase):
+    def test_cardinality_zero_one_and_many(self):
+        self.assertIsNone(resolve_event_id_for_superevent("S250801h"))
+
+        owned = EventID.objects.create(
+            event_id="G700001",
+            trigger_id="S250801h",
+            gps_time=1438044067.0,
+        )
+        self.assertEqual(
+            resolve_event_id_for_superevent("S250801h"),
+            owned,
+        )
+
+        EventID.objects.create(
+            event_id="G700002",
+            trigger_id="S250801h",
+            gps_time=1438044068.0,
+        )
+        with self.assertLogs(
+            "bilbyui.utils.gwflow_portal",
+            level="WARNING",
+        ) as logs:
+            result = resolve_event_id_for_superevent("S250801h")
+        self.assertIsNone(result)
+        self.assertIn("Ambiguous EventID ownership", " ".join(logs.output))
+
+    def test_does_not_fall_back_to_event_identifier(self):
+        EventID.objects.create(
+            event_id="S250801h",
+            trigger_id="S231013ab",
+            gps_time=1381222535.0,
+        )
+        self.assertIsNone(resolve_event_id_for_superevent("S250801h"))
+
+
+class TestEventIDCollisionGuard(BilbyTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = self.create_user(
+            id=301,
+            name="GWF-9 test user",
+            primary_email="gwf9@example.com",
+        )
+
+    def test_foreign_owner_collision_is_non_destructive(self):
+        existing = EventID.objects.create(
+            event_id="G585653",
+            trigger_id="S231013ab",
+            gps_time=1381222535.0,
+            nickname="original",
+        )
+
+        message = create_event_id(
+            self.user,
+            event_id="G585653",
+            gps_time=1438044067.054443,
+            trigger_id="S250801h",
+            nickname="replacement",
+        )
+
+        self.assertIn("conflict", message)
+        self.assertIn("S231013ab", message)
+        self.assertIn("S250801h", message)
+        self.assertIn("no changes made", message)
+        self.assertEqual(EventID.objects.filter(event_id="G585653").count(), 1)
+        existing.refresh_from_db()
+        self.assertEqual(existing.trigger_id, "S231013ab")
+        self.assertEqual(existing.gps_time, 1381222535.0)
+        self.assertEqual(existing.nickname, "original")
+
+    def test_uniqueness_race_reloads_and_reapplies_foreign_owner_policy(self):
+        existing = EventID.objects.create(
+            event_id="G700011",
+            trigger_id="S231013ab",
+            gps_time=1000.0,
+            nickname="original",
+        )
+        with (
+            mock.patch(
+                "bilbyui.views.EventID.objects.get",
+                side_effect=[EventID.DoesNotExist, existing],
+            ),
+            mock.patch.object(
+                EventID,
+                "save",
+                side_effect=IntegrityError("duplicate key"),
+            ),
+        ):
+            resolved, message = _create_event_id_guarded(
+                "G700011",
+                2000.0,
+                trigger_id="S250801h",
+                nickname="replacement",
+            )
+
+        self.assertEqual(resolved, existing)
+        self.assertIn("conflict", message)
+        existing.refresh_from_db()
+        self.assertEqual(existing.trigger_id, "S231013ab")
+        self.assertEqual(existing.gps_time, 1000.0)
+        self.assertEqual(existing.nickname, "original")
+        self.assertEqual(EventID.objects.filter(event_id="G700011").count(), 1)
+
+    def test_same_owner_is_idempotent_and_empty_fields_backfill(self):
+        existing = EventID.objects.create(
+            event_id="G700010",
+            trigger_id=None,
+            gps_time=1000.0,
+            nickname=None,
+        )
+
+        create_event_id(
+            self.user,
+            event_id="G700010",
+            gps_time=2000.0,
+            trigger_id="S250801h",
+            nickname="backfilled",
+        )
+        create_event_id(
+            self.user,
+            event_id="G700010",
+            gps_time=3000.0,
+            trigger_id="S250801h",
+            nickname="ignored",
+        )
+
+        existing.refresh_from_db()
+        self.assertEqual(existing.trigger_id, "S250801h")
+        self.assertEqual(existing.nickname, "backfilled")
+        self.assertEqual(existing.gps_time, 1000.0)
+        self.assertEqual(EventID.objects.filter(event_id="G700010").count(), 1)
+
+
+@override_settings(
+    GWFLOW_INGEST_USER=302,
+    EMBARGO_START_TIME=1421884818.0,
+)
+class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = self.create_user(
+            id=302,
+            name="GWF-9 ingest user",
+            primary_email="gwf9-ingest@example.com",
+        )
+
+    def params(self, sname, **overrides):
+        values = {
+            "sname": sname,
+            "schema_version": "v1",
+            "libraries": ["cbc-workflow-o4c"],
+            "is_pruned": False,
+            "current_history_id": "caller-sha",
+            "current_history_timestamp": "2026-08-01T00:00:00+00:00",
+            "event_id": "G585653",
+            "metadata": '{"GraceDB": {"Events": [{"GPSTime": 1.0}]}}',
+            "files": [],
+        }
+        values.update(overrides)
+        return SimpleNamespace(**values)
+
+    def test_recomputes_trigger_pointer_and_scoped_link_together(self):
+        foreign = EventID.objects.create(
+            event_id="G585653",
+            trigger_id="S231013ab",
+            gps_time=1381222535.0,
+        )
+        owned = EventID.objects.create(
+            event_id="G700020",
+            trigger_id="S250801h",
+            gps_time=1438044067.0,
+        )
+        resolved = GWFlowCurrentVersion(
+            available=True,
+            trigger_time=1438044067.054443,
+            current_history_id="portal-sha",
+            current_history_timestamp=datetime.datetime(
+                2026,
+                9,
+                1,
+                tzinfo=datetime.UTC,
+            ),
+            versions_state="live",
+            detail_state="live",
+        )
+
+        with (
+            mock.patch(
+                "bilbyui.views.resolve_current_version",
+                return_value=resolved,
+            ),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+            mock.patch(
+                "bilbyui.views.get_version",
+                return_value=({"raw_payload": {}}, "live"),
+            ),
+        ):
+            upsert_gwflow_job(self.user, self.params("S250801h"))
+
+        job = GWFlowJob.objects.get(sname="S250801h")
+        self.assertEqual(job.trigger_time, 1438044067.054443)
+        self.assertEqual(job.current_history_id, "portal-sha")
+        self.assertEqual(
+            job.current_history_timestamp,
+            resolved.current_history_timestamp,
+        )
+        self.assertEqual(job.event_id, owned)
+        self.assertNotEqual(job.event_id, foreign)
+
+    def test_unavailable_preserves_trigger_and_pointer_but_clears_foreign_link(self):
+        foreign = EventID.objects.create(
+            event_id="G585653",
+            trigger_id="S231013ab",
+            gps_time=1381222535.0,
+        )
+        stored_timestamp = datetime.datetime(
+            2026,
+            7,
+            1,
+            tzinfo=datetime.UTC,
+        )
+        job = GWFlowJob.objects.create(
+            sname="S250801h",
+            user=self.user,
+            trigger_time=1400.0,
+            current_history_id="stored-sha",
+            current_history_timestamp=stored_timestamp,
+            event_id=foreign,
+        )
+
+        with (
+            mock.patch(
+                "bilbyui.views.resolve_current_version",
+                return_value=GWFlowCurrentVersion(
+                    available=False,
+                    reason="detail has no usable finite trigger time",
+                ),
+            ),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+        ):
+            upsert_gwflow_job(self.user, self.params(job.sname))
+
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 1400.0)
+        self.assertEqual(job.current_history_id, "stored-sha")
+        self.assertEqual(job.current_history_timestamp, stored_timestamp)
+        self.assertIsNone(job.event_id)
+
+
+@override_settings(IGNORE_ELASTIC_SEARCH=True)
+class TestGWFlowChildrenFollowParent(BilbyTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = self.create_user(
+            id=303,
+            name="GWF-9 child user",
+            primary_email="gwf9-child@example.com",
+        )
+
+    def test_handle_bilby_clears_stale_child_when_parent_link_is_none(self):
+        stale = EventID.objects.create(
+            event_id="G700030",
+            trigger_id="S231013ab",
+            gps_time=1000.0,
+        )
+        parent = GWFlowJob.objects.create(
+            sname="S250801h",
+            user=self.user,
+            event_id=None,
+        )
+        child = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="GWF9-child-clear",
+            gwflow_job=parent,
+            event_id=stale,
+            ini_string="[data]\ndetectors = ['H1']\n",
+        )
+
+        call_command("es_ingest")
+
+        child.refresh_from_db()
+        self.assertIsNone(child.event_id)
+
+    def test_reconcile_children_propagates_none(self):
+        stale = EventID.objects.create(
+            event_id="G700031",
+            trigger_id="S231013ab",
+            gps_time=1000.0,
+        )
+        parent = GWFlowJob.objects.create(
+            sname="S250802a",
+            user=self.user,
+            event_id=None,
+        )
+        child = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="GWF9-child-reconcile",
+            gwflow_job=parent,
+            event_id=stale,
+            ini_string="[data]\ndetectors = ['H1']\n",
+        )
+
+        processed, failed = Command()._reconcile_gwflow_children(parent)
+
+        self.assertEqual((processed, failed), (1, 0))
+        child.refresh_from_db()
+        self.assertIsNone(child.event_id)
+
+
+@override_settings(
+    CBCFLOW_PORTAL_URL="https://portal.example",
+    CBCFLOW_PORTAL_TOKEN="token",
+    IGNORE_ELASTIC_SEARCH=True,
+)
+class TestGWFlowChosenUIDCollisionPath(BilbyTestCase):
+    class Response:
+        def __init__(self, payload, status_code=200):
+            self.payload = payload
+            self.status_code = status_code
+
+        def json(self):
+            return self.payload
+
+    def setUp(self):
+        super().setUp()
+        self.user = self.create_user(
+            id=304,
+            name="GWF-9 chosen UID user",
+            primary_email="gwf9-chosen@example.com",
+        )
+
+    def test_foreign_chosen_uid_does_not_mutate_owner_or_link_parent(self):
+        foreign = EventID.objects.create(
+            event_id="G585653",
+            trigger_id="S231013ab",
+            gps_time=1381222535.0,
+            nickname="original",
+        )
+        parent = GWFlowJob.objects.create(
+            sname="S250801h",
+            user=self.user,
+            event_id=foreign,
+        )
+        child = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="GWF9-chosen-child",
+            gwflow_job=parent,
+            event_id=foreign,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        detail = {
+            "raw_payload": {
+                "GraceDB": {
+                    "preferred_event": "G585653",
+                    "Events": [
+                        {
+                            "UID": "G585653",
+                            "State": "preferred",
+                            "GPSTime": 1438044067.054443,
+                        }
+                    ],
+                }
+            }
+        }
+
+        def fake_get(url, **_kwargs):
+            if url.endswith("/api/v1/superevents/?page=1"):
+                return self.Response(
+                    {
+                        "results": [{"sname": "S250801h"}],
+                        "next": None,
+                    }
+                )
+            if url.endswith("/api/v1/superevents/S250801h/"):
+                return self.Response(detail)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        with (
+            mock.patch(
+                "bilbyui.management.commands.es_ingest.requests.get",
+                side_effect=fake_get,
+            ),
+            mock.patch("bilbyui.management.commands.es_ingest.gwflow_elastic_search_update"),
+        ):
+            call_command("es_ingest", gwflow=True)
+
+        parent.refresh_from_db()
+        child.refresh_from_db()
+        foreign.refresh_from_db()
+        self.assertIsNone(parent.event_id)
+        self.assertIsNone(child.event_id)
+        self.assertEqual(foreign.trigger_id, "S231013ab")
+        self.assertEqual(foreign.gps_time, 1381222535.0)
+        self.assertEqual(foreign.nickname, "original")
+        self.assertEqual(EventID.objects.filter(event_id="G585653").count(), 1)

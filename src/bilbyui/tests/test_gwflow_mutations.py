@@ -358,7 +358,8 @@ class TestGWFlowMutations(BilbyTestCase):
         self.assertEqual(doc["_gwcloud"]["eventTriggerId"], "S230601ag")
 
     @override_settings(GWFLOW_INGEST_USER=99)
-    def test_upsert_event_link_non_matching_identifier_no_link_no_crash(self):
+    def test_upsert_event_link_ignores_identifier_and_uses_superevent_owner(self):
+        """GWF-9 rule 2: resolve by exact superevent owner, not caller identifier."""
         from types import SimpleNamespace
 
         from bilbyui.views import upsert_gwflow_job
@@ -389,7 +390,9 @@ class TestGWFlowMutations(BilbyTestCase):
             upsert_gwflow_job(self.ingest_user, params)
 
         job = GWFlowJob.objects.get(sname="S230601ag")
-        self.assertIsNone(job.event_id)
+        # GWF-9 rule 2: caller eventId is not an identity selector.
+        self.assertEqual(job.event_id.trigger_id, job.sname)
+        self.assertEqual(job.event_id.event_id, "GW230601_123456")
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_upsert_event_link_missing_target_preserves_existing_link(self):
@@ -1488,6 +1491,7 @@ class TestExactVersionIngest(BilbyTestCase):
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_newer_delivery_updates_current_state(self):
+        """GWF-9 rule 1: persist trigger and pointer from one portal current version."""
         import datetime
         from types import SimpleNamespace
 
@@ -1501,10 +1505,10 @@ class TestExactVersionIngest(BilbyTestCase):
         other_event = EventID.create(
             event_id="GW230601_999999",
             gps_time=123456999.0,
-            trigger_id="S230601b",
+            trigger_id="S230601c",
         )
         job = GWFlowJob.objects.create(
-            sname="S230601exact",
+            sname="S230601c",
             user=self.ingest_user,
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
@@ -1524,8 +1528,9 @@ class TestExactVersionIngest(BilbyTestCase):
             uploaded=True,
         )
 
-        payload = {"superevent": "S230601exact", "version": "sha-001"}
+        payload = {"superevent": "S230601c", "version": "sha-001"}
         params = self._params(
+            sname="S230601c",
             schema_version="v2",
             libraries=["cbc-workflow-o4b"],
             is_pruned=True,
@@ -1544,14 +1549,37 @@ class TestExactVersionIngest(BilbyTestCase):
             ],
         )
 
+        summaries = [
+            {
+                "is_current": True,
+                "commit_sha": "sha-001",
+                "commit_timestamp": "2026-09-03T12:00:00+00:00",
+            }
+        ]
+        detail = {
+            "raw_payload": {
+                "GraceDB": {"Events": [{"GPSTime": 2200.0}]},
+            }
+        }
         with TemporaryDirectory() as tmpdir, override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
             with (
+                # GWF-9 rule 1: current trigger and pointer come from one portal version.
+                mock.patch(
+                    "bilbyui.utils.gwflow_portal.get_versions",
+                    return_value=(summaries, "live"),
+                ) as mock_versions,
+                mock.patch(
+                    "bilbyui.utils.gwflow_portal.get_version",
+                    return_value=(detail, "live"),
+                ) as mock_portal_version,
                 mock.patch("bilbyui.views.get_version", return_value=(payload, "live")) as mock_gv,
                 mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
             ):
                 upsert_gwflow_job(self.ingest_user, params)
 
-        mock_gv.assert_called_once_with("S230601exact", "sha-001")
+        mock_versions.assert_called_once_with("S230601c")
+        mock_portal_version.assert_called_once_with("S230601c", "sha-001")
+        mock_gv.assert_called_once_with("S230601c", "sha-001")
         mock_es.assert_called_once()
         job.refresh_from_db()
         self.assertEqual(job.schema_version, "v2")
@@ -1757,13 +1785,35 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
         return SimpleNamespace(**values)
 
     def _upsert(self, params):
+        import json
+
         from bilbyui.views import upsert_gwflow_job
 
-        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+        raw_payload = json.loads(params.metadata) if params.metadata else {}
+        summaries = [
+            {
+                "is_current": True,
+                "commit_sha": f"{params.sname}-current",
+                "commit_timestamp": "2026-09-03T12:00:00+00:00",
+            }
+        ]
+        with (
+            # GWF-9 rule 1: exercise authoritative current-summary/detail resolution.
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_versions",
+                return_value=(summaries, "live"),
+            ),
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_version",
+                return_value=({"raw_payload": raw_payload}, "live"),
+            ),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+        ):
             return upsert_gwflow_job(self.ingest_user, params)
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_create_stores_preferred_finite_gps(self):
+        """GWF-9 rule 1: persist preferred GPS from authoritative current metadata."""
         metadata = '{"GraceDB": {"Events": [{"GPSTime": 1000.0}, {"State": "preferred", "GPSTime": 2000.0}]}}'
         self._upsert(self._params("S230801preferred", metadata))
 
@@ -1772,6 +1822,7 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_update_stores_first_usable_fallback(self):
+        """GWF-9 rule 1: persist the extractor fallback from current portal metadata."""
         job = GWFlowJob.objects.create(
             sname="S230801update",
             user=self.ingest_user,
@@ -1789,6 +1840,7 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_nested_raw_payload_gracedb_is_persisted(self):
+        """GWF-9 rule 1: resolve trigger time through the portal current-version detail."""
         metadata = '{"raw_payload": {"GraceDB": {"Events": [{"GPSTime": 1300.0}]}}}'
         self._upsert(self._params("S230801nested", metadata))
 
@@ -1797,6 +1849,7 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_top_level_gracedb_wins_over_conflicting_nested_payload(self):
+        """GWF-9 rule 1: retain authoritative extractor precedence on portal metadata."""
         metadata = (
             '{"GraceDB": {"Events": [{"GPSTime": 1400.0}]}, '
             '"raw_payload": {"GraceDB": {"Events": [{"GPSTime": 2400.0}]}}}'
@@ -1807,7 +1860,8 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
         self.assertEqual(job.trigger_time, 1400.0)
 
     @override_settings(GWFLOW_INGEST_USER=99)
-    def test_present_malformed_or_missing_metadata_clears_trigger(self):
+    def test_unavailable_metadata_preserves_existing_trigger(self):
+        """GWF-9 rule 1: unavailable current metadata preserves stored trigger values."""
         malformed = GWFlowJob.objects.create(
             sname="S230801malformed",
             user=self.ingest_user,
@@ -1829,11 +1883,13 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
 
         malformed.refresh_from_db()
         missing.refresh_from_db()
-        self.assertIsNone(malformed.trigger_time)
-        self.assertIsNone(missing.trigger_time)
+        # GWF-9 rule 1: unavailable portal metadata preserves stored trigger values.
+        self.assertEqual(malformed.trigger_time, 1500.0)
+        self.assertEqual(missing.trigger_time, 1600.0)
 
     @override_settings(GWFLOW_INGEST_USER=99, EMBARGO_START_TIME=1500.0)
     def test_threshold_values_are_stored_unchanged(self):
+        """GWF-9 rule 1: persist finite resolved GPS values across embargo boundaries."""
         for suffix, gps in (
             ("below", 1499.0),
             ("equal", 1500.0),
@@ -1868,6 +1924,7 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_trigger_time_extracted_from_metadata(self):
+        """GWF-9 rule 1: trigger time comes from resolved current-version metadata."""
         job = GWFlowJob.objects.create(
             sname="S230801explicit",
             user=self.ingest_user,
@@ -1908,11 +1965,27 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
         values.update(overrides)
         return SimpleNamespace(**values)
 
-    def _invoke_and_run_callbacks(self, params):
+    def _invoke_and_run_callbacks(self, params, *, resolved_trigger=None, available=True):
+        import datetime
+
+        from bilbyui.utils.gwflow_portal import GWFlowCurrentVersion
         from bilbyui.views import upsert_gwflow_job
 
         callbacks = []
+        resolved = GWFlowCurrentVersion(
+            available=available,
+            trigger_time=resolved_trigger if available else None,
+            current_history_id=f"{params.sname}-current" if available else None,
+            current_history_timestamp=(
+                datetime.datetime(2026, 9, 3, 12, 0, tzinfo=datetime.UTC)
+                if available
+                else None
+            ),
+            reason=None if available else "detail has no usable finite trigger time",
+        )
         with (
+            # GWF-9 rule 1: callback decisions use authoritative resolved state.
+            mock.patch("bilbyui.views.resolve_current_version", return_value=resolved),
             mock.patch(
                 "bilbyui.views.transaction.on_commit",
                 side_effect=callbacks.append,
@@ -1934,6 +2007,7 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_trigger_change_registers_one_reindex_callback_with_stable_args(self):
+        """GWF-9 rule 1: a resolved trigger change schedules exactly one reindex."""
         job = GWFlowJob.objects.create(
             sname="S230801callback",
             user=self.ingest_user,
@@ -1943,33 +2017,42 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
             self._params(
                 job.sname,
                 metadata='{"GraceDB": {"Events": [{"GPSTime": 1100.0}]}}',
-            )
+            ),
+            resolved_trigger=1100.0,
         )
 
         self._assert_one_reindex_callback(callbacks, reindex, cache_delete, job)
 
     @override_settings(GWFLOW_INGEST_USER=99)
-    def test_finite_to_none_registers_one_reindex_callback(self):
+    def test_unavailable_resolution_preserves_trigger_and_registers_no_reindex(self):
+        """GWF-9 rule 1: unavailable resolution preserves state and avoids reindex."""
         job = GWFlowJob.objects.create(
             sname="S230801clear",
             user=self.ingest_user,
             trigger_time=1000.0,
         )
         callbacks, reindex, cache_delete = self._invoke_and_run_callbacks(
-            self._params(job.sname, metadata='{"GraceDB": {"Events": []}}')
+            self._params(job.sname, metadata='{"GraceDB": {"Events": []}}'),
+            available=False,
         )
 
-        self._assert_one_reindex_callback(callbacks, reindex, cache_delete, job)
+        # GWF-9 rule 1: unavailable resolution preserves the stored trigger.
+        job.refresh_from_db()
+        self.assertEqual(job.trigger_time, 1000.0)
+        self.assertEqual(len(callbacks), 2)
+        reindex.assert_not_called()
+        self.assertEqual(cache_delete.call_count, 2)
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_event_link_change_registers_one_reindex_callback(self):
+        """GWF-9 rule 2: an exact-owner link change schedules one reindex."""
         event = EventID.create(
             event_id="GW230801_123456",
-            trigger_id="S230801a",
+            trigger_id="S230801d",
             gps_time=123.0,
         )
         job = GWFlowJob.objects.create(
-            sname="S230801eventlink",
+            sname="S230801d",
             user=self.ingest_user,
             trigger_time=1000.0,
         )
@@ -1981,13 +2064,14 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_combined_trigger_and_link_change_registers_exactly_one_reindex(self):
+        """GWF-9 rules 1–2: coherent trigger and owner-link changes reindex once."""
         event = EventID.create(
             event_id="GW230801_654321",
-            trigger_id="S230801b",
+            trigger_id="S230801e",
             gps_time=456.0,
         )
         job = GWFlowJob.objects.create(
-            sname="S230801combinedjob",
+            sname="S230801e",
             user=self.ingest_user,
             trigger_time=1000.0,
         )
@@ -1996,20 +2080,22 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
                 job.sname,
                 event_id=event.trigger_id,
                 metadata='{"GraceDB": {"Events": [{"GPSTime": 1200.0}]}}',
-            )
+            ),
+            resolved_trigger=1200.0,
         )
 
         self._assert_one_reindex_callback(callbacks, reindex, cache_delete, job)
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_unchanged_trigger_and_link_register_no_reindex_callback(self):
+        """GWF-9 rules 1–2: unchanged resolved trigger and owner link do not reindex."""
         event = EventID.create(
             event_id="GW230801_111111",
-            trigger_id="S230801c",
+            trigger_id="S230801f",
             gps_time=789.0,
         )
         job = GWFlowJob.objects.create(
-            sname="S230801unchangedjob",
+            sname="S230801f",
             user=self.ingest_user,
             trigger_time=1000.0,
             event_id=event,
@@ -2019,7 +2105,8 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
                 job.sname,
                 event_id=event.trigger_id,
                 metadata='{"GraceDB": {"Events": [{"GPSTime": 1000.0}]}}',
-            )
+            ),
+            resolved_trigger=1000.0,
         )
 
         self.assertEqual(len(callbacks), 2)

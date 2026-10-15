@@ -3,7 +3,7 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 try:
     from tests.base import GWFlowTestBase
@@ -718,7 +718,7 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
                 self.assertFalse((Path(staging) / sname / "uid1").exists())
                 self.assertFalse((Path(staging) / sname / "uid1.tar.gz").exists())
 
-    def test_event_id_best_effort_called(self):
+    def test_event_id_created_after_structural_parent_link_without_identifier_child_link(self):
         sname = "S_EV"
         analysis = _bilby_analysis(uid="uid1", config_path="/data/pe/config.ini", result_path="/data/pe/result.h5")
         gracedb = {
@@ -744,8 +744,17 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
                 ):
                     phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
 
+        gwc.link_bilby_job_to_gwflow.assert_called_once_with(uploaded.id, sname, "uid1")
         gwc.create_event_id.assert_called_once_with("EVT-A", 1234567890.5, trigger_id=sname)
-        uploaded.set_event_id.assert_called_once_with("EVT-A")
+        self.assertLess(
+            gwc.mock_calls.index(
+                call.link_bilby_job_to_gwflow(uploaded.id, sname, "uid1")
+            ),
+            gwc.mock_calls.index(
+                call.create_event_id("EVT-A", 1234567890.5, trigger_id=sname)
+            ),
+        )
+        uploaded.set_event_id.assert_not_called()
 
     def test_event_id_failure_logged_not_fatal(self):
         sname = "S_EVFAIL"
@@ -760,7 +769,9 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         portal = MagicMock()
         portal.get_superevent.return_value = detail
         gwc, uploaded = _make_gwc()
-        gwc.create_event_id.side_effect = RuntimeError("event id error")
+        gwc.create_event_id.side_effect = RuntimeError(
+            "conflict: EVT-A belongs to another superevent"
+        )
         jc = MagicMock()
 
         with tempfile.TemporaryDirectory() as staging:
@@ -771,11 +782,16 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
                 with (
                     patch("gwflow_ingest.fetch_to_staging", side_effect=[ini, result]),
                     patch.object(settings, "STAGING_DIR", staging),
+                    self.assertLogs("gwflow_ingest", level="WARNING") as logs,
                 ):
                     phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
 
         self.assertEqual(gwc.upload_job_archive.call_count, 1)
-        gwc.link_bilby_job_to_gwflow.assert_called_once()
+        gwc.link_bilby_job_to_gwflow.assert_called_once_with(uploaded.id, sname, "uid1")
+        gwc.create_event_id.assert_called_once_with("EVT-A", 1234567890.5, trigger_id=sname)
+        uploaded.set_event_id.assert_not_called()
+        self.assertIn("event id creation failed", "\n".join(logs.output))
+        self.assertIn("conflict: EVT-A belongs to another superevent", "\n".join(logs.output))
 
     def test_idempotent_rerun_skips_linked(self):
         sname = "S_IDEMP"
