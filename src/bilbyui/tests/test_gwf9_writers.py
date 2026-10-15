@@ -76,6 +76,72 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
         get_versions.assert_called_once_with("S250801h")
         get_version.assert_called_once_with("S250801h", "current-sha")
 
+    def test_portal_boolean_semantics_select_only_canonical_true_values(self):
+        rejected = ("false", "0", 0)
+        accepted = ("true", 1)
+
+        for is_current in rejected:
+            with self.subTest(is_current=is_current):
+                summaries = [
+                    {
+                        "is_current": is_current,
+                        "commit_sha": "current-sha",
+                        "commit_timestamp": "2026-09-01T00:00:00+00:00",
+                    }
+                ]
+                with (
+                    mock.patch(
+                        "bilbyui.utils.gwflow_portal.get_versions",
+                        return_value=(summaries, "live"),
+                    ),
+                    mock.patch(
+                        "bilbyui.utils.gwflow_portal.get_version"
+                    ) as get_version,
+                ):
+                    result = resolve_current_version("S250801h")
+
+                self.assertFalse(result.available)
+                get_version.assert_not_called()
+
+        detail = {
+            "raw_payload": {
+                "GraceDB": {
+                    "Events": [
+                        {
+                            "State": "preferred",
+                            "GPSTime": 1438044067.054443,
+                        }
+                    ]
+                }
+            }
+        }
+        for is_current in accepted:
+            with self.subTest(is_current=is_current):
+                summaries = [
+                    {
+                        "is_current": is_current,
+                        "commit_sha": "current-sha",
+                        "commit_timestamp": "2026-09-01T00:00:00+00:00",
+                    }
+                ]
+                with (
+                    mock.patch(
+                        "bilbyui.utils.gwflow_portal.get_versions",
+                        return_value=(summaries, "live"),
+                    ),
+                    mock.patch(
+                        "bilbyui.utils.gwflow_portal.get_version",
+                        return_value=(detail, "live"),
+                    ) as get_version,
+                ):
+                    result = resolve_current_version("S250801h")
+
+                self.assertTrue(result.available)
+                get_version.assert_called_once_with(
+                    "S250801h",
+                    "current-sha",
+                )
+
     def test_zero_and_multiple_current_summaries_are_unavailable(self):
         cases = (
             [],
@@ -366,11 +432,65 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
         self.assertEqual(job.event_id, owned)
         self.assertNotEqual(job.event_id, foreign)
 
-    def test_unavailable_preserves_trigger_and_pointer_but_clears_foreign_link(self):
+    def test_unavailable_retains_foreign_link_when_stored_time_unresolved(self):
+        stored_timestamp = datetime.datetime(
+            2026,
+            7,
+            1,
+            tzinfo=datetime.UTC,
+        )
+
+        for index, trigger_time in enumerate((None, 1400.0)):
+            with self.subTest(trigger_time=trigger_time):
+                foreign = EventID.objects.create(
+                    event_id=f"G58565{index}",
+                    trigger_id=f"S23101{index}ab",
+                    gps_time=1438044067.0,
+                )
+                job = GWFlowJob.objects.create(
+                    sname=f"S25080{index + 1}h",
+                    user=self.user,
+                    trigger_time=trigger_time,
+                    current_history_id="stored-sha",
+                    current_history_timestamp=stored_timestamp,
+                    event_id=foreign,
+                )
+
+                with (
+                    mock.patch(
+                        "bilbyui.views.resolve_current_version",
+                        return_value=GWFlowCurrentVersion(
+                            available=False,
+                            reason="detail has no usable finite trigger time",
+                        ),
+                    ),
+                    mock.patch(
+                        "bilbyui.views.resolve_event_id_for_superevent",
+                        return_value=None,
+                    ),
+                    mock.patch(
+                        "bilbyui.views.gwflow_elastic_search_update"
+                    ),
+                ):
+                    upsert_gwflow_job(
+                        self.user,
+                        self.params(job.sname),
+                    )
+
+                job.refresh_from_db()
+                self.assertEqual(job.trigger_time, trigger_time)
+                self.assertEqual(job.current_history_id, "stored-sha")
+                self.assertEqual(
+                    job.current_history_timestamp,
+                    stored_timestamp,
+                )
+                self.assertEqual(job.event_id, foreign)
+
+    def test_unavailable_clears_foreign_link_when_own_time_is_embargoed(self):
         foreign = EventID.objects.create(
-            event_id="G585653",
-            trigger_id="S231013ab",
-            gps_time=1381222535.0,
+            event_id="G585659",
+            trigger_id="S231019ab",
+            gps_time=1438044067.0,
         )
         stored_timestamp = datetime.datetime(
             2026,
@@ -379,9 +499,9 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
             tzinfo=datetime.UTC,
         )
         job = GWFlowJob.objects.create(
-            sname="S250801h",
+            sname="S250809h",
             user=self.user,
-            trigger_time=1400.0,
+            trigger_time=1438044067.0,
             current_history_id="stored-sha",
             current_history_timestamp=stored_timestamp,
             event_id=foreign,
@@ -395,12 +515,16 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
                     reason="detail has no usable finite trigger time",
                 ),
             ),
+            mock.patch(
+                "bilbyui.views.resolve_event_id_for_superevent",
+                return_value=None,
+            ),
             mock.patch("bilbyui.views.gwflow_elastic_search_update"),
         ):
             upsert_gwflow_job(self.user, self.params(job.sname))
 
         job.refresh_from_db()
-        self.assertEqual(job.trigger_time, 1400.0)
+        self.assertEqual(job.trigger_time, 1438044067.0)
         self.assertEqual(job.current_history_id, "stored-sha")
         self.assertEqual(job.current_history_timestamp, stored_timestamp)
         self.assertIsNone(job.event_id)

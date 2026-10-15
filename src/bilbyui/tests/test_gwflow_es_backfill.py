@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from io import StringIO
 from unittest import mock
 
+from django.contrib.auth.models import AnonymousUser
 from django.core.cache import cache
 from django.core.management import CommandError, call_command
 from django.test import override_settings
@@ -9,6 +10,7 @@ from django.test import override_settings
 from bilbyui.models import BilbyJob, EventID, GWFlowJob
 from bilbyui.services.gwflow import LIBRARIES_CACHE_KEY, REVIEW_STATUSES_CACHE_KEY
 from bilbyui.tests.testcases import BilbyTestCase
+from bilbyui.utils.embargo import visible_to_user
 from bilbyui.utils.gwflow_portal import GWFlowCurrentVersion
 
 PORTAL_SETTINGS = {
@@ -282,6 +284,66 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         self.assertEqual(parent.current_history_timestamp, OLD_TS)
         self.assertEqual(parent.event_id, owned)
         self.assertEqual(child.event_id, owned)
+
+    def test_unavailable_retains_protective_link_and_reports_gap(self):
+        for index, trigger_time in enumerate((None, OLD_GPS)):
+            with self.subTest(trigger_time=trigger_time):
+                foreign = EventID.objects.create(
+                    event_id=f"G70010{index}",
+                    trigger_id=f"S23101{index}ab",
+                    gps_time=CURRENT_GPS,
+                )
+                parent = self.make_parent(
+                    sname=f"S25081{index}h",
+                    trigger_time=trigger_time,
+                    current_history_id="sha-stored",
+                    current_history_timestamp=OLD_TS,
+                    event_id=foreign,
+                )
+
+                with mock.patch(
+                    "bilbyui.management.commands.gwflow_es_backfill."
+                    "GWFlowJob.objects.bulk_update"
+                ) as bulk_update:
+                    dry_code, dry_out, dry_err = self.run_command(
+                        "--dry-run",
+                        current=unavailable_current(),
+                        event_side_effect=lambda _sname: None,
+                    )
+
+                self.assertEqual(dry_code, 1)
+                self.assertIn("unavailable=1", dry_out)
+                self.assertIn(
+                    f"Containment gap for GWFlowJob {parent.id}",
+                    dry_err,
+                )
+                bulk_update.assert_not_called()
+                parent.refresh_from_db()
+                self.assertEqual(parent.event_id, foreign)
+
+                apply_code, apply_out, apply_err = self.run_command(
+                    current=unavailable_current(),
+                    event_side_effect=lambda _sname: None,
+                )
+
+                self.assertEqual(apply_code, 1)
+                self.assertIn("unavailable=1", apply_out)
+                self.assertIn(
+                    f"Containment gap for GWFlowJob {parent.id}",
+                    apply_err,
+                )
+                parent.refresh_from_db()
+                self.assertEqual(parent.event_id, foreign)
+                self.assertFalse(
+                    visible_to_user(
+                        GWFlowJob.objects.filter(pk=parent.pk),
+                        AnonymousUser(),
+                        "GWFlowJob",
+                    ).exists()
+                )
+
+                parent.delete()
+                foreign.delete()
 
     def test_unavailable_below_threshold_is_reported_and_exits_nonzero(self):
         parent = self.make_parent(

@@ -9,6 +9,7 @@ from django.core.cache import caches
 
 from bilbyui.models import EventID
 from bilbyui.utils.embargo import _gwflow_trigger_time_from_metadata
+from bilbyui.utils.gwflow_es import _parse_portal_bool
 from bilbyui.utils.gwflow_version import normalise_current_history_timestamp
 
 logger = logging.getLogger(__name__)
@@ -103,7 +104,12 @@ def resolve_current_version(sname):
             reason="versions response is not a list",
         )
 
-    current = [summary for summary in versions if isinstance(summary, dict) and summary.get("is_current")]
+    current = [
+        summary
+        for summary in versions
+        if isinstance(summary, dict)
+        and _parse_portal_bool(summary.get("is_current"))
+    ]
     if len(current) != 1:
         logger.warning(
             "Current-version summaries unavailable for %s: found %d current summaries",

@@ -71,6 +71,7 @@ from .status import JobStatus
 from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
 from .utils.embargo import (
+    get_embargo_start,
     is_record_public,
     is_simulated_value,
     resolve_job_trigger,
@@ -2750,13 +2751,39 @@ def upsert_gwflow_job(user, params):
 
             if refresh_requested or getattr(params, "event_id", None):
                 try:
-                    job.event_id = resolve_event_id_for_superevent(sname)
+                    resolved_event = resolve_event_id_for_superevent(sname)
                 except Exception as exc:
                     logger.warning(
                         "Superevent EventID lookup failed for %s: %s",
                         sname,
                         exc,
                     )
+                else:
+                    metadata_unavailable = bool(
+                        refresh_requested
+                        and resolved_version is not None
+                        and not resolved_version.available
+                    )
+                    threshold = get_embargo_start()
+                    stored_time_unresolved = threshold is not None and (
+                        job.trigger_time is None or job.trigger_time < threshold
+                    )
+                    if (
+                        metadata_unavailable
+                        and stored_time_unresolved
+                        and resolved_event is None
+                        and job.event_id_id is not None
+                    ):
+                        # Fail closed (docs/SECURITY.md P0 rule 6): retain the
+                        # existing link rather than clearing a possibly
+                        # embargo-relevant attachment while metadata is unresolved.
+                        logger.warning(
+                            "GWFlow metadata unavailable for %s; retaining existing "
+                            "EventID link for fail-closed containment",
+                            sname,
+                        )
+                    else:
+                        job.event_id = resolved_event
 
             job.save()
 

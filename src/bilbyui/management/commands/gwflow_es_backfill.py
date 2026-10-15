@@ -285,7 +285,21 @@ class Command(BaseCommand):
             if libraries != job.libraries:
                 fields["libraries"] = libraries
 
-        event = resolve_event_id_for_superevent(job.sname)
+        threshold = get_embargo_start()
+        stored_time_unresolved = threshold is not None and (
+            job.trigger_time is None or job.trigger_time < threshold
+        )
+        resolved_event = resolve_event_id_for_superevent(job.sname)
+        # Fail closed (docs/SECURITY.md P0 rule 6): when authoritative metadata is
+        # unavailable we cannot prove an existing embargo-relevant link is safe to
+        # clear, so retain it and force the row to be reported as a containment gap.
+        retains_protective_link = (
+            not current.available
+            and stored_time_unresolved
+            and resolved_event is None
+            and job.event_id_id is not None
+        )
+        event = job.event_id if retains_protective_link else resolved_event
         if job.event_id_id != (event.pk if event else None):
             fields["event_id"] = event
 
@@ -311,13 +325,12 @@ class Command(BaseCommand):
             .values_list("pk", flat=True)
         )
 
-        threshold = get_embargo_start()
         containment_gap = (
             not current.available
             and threshold is not None
             and job.trigger_time is not None
             and job.trigger_time < threshold
-        )
+        ) or retains_protective_link
 
         if pointer_disagreement:
             self.stderr.write(
