@@ -22,6 +22,10 @@ def request_job_filter(user_id, ids=None):
     :return: A tuple of (status, result) where status is "OK" on success or "UNKNOWN" on error
     """
 
+    # Coerce to a list so any iterable (e.g. a dict_keys view) is subscriptable
+    # for batching below.
+    ids = list(ids) if ids else []
+
     # Batch the ids so a large set is split into bounded requests rather than one
     # oversized URL. An empty set still issues a single request with no query.
     if ids:
