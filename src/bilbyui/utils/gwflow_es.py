@@ -66,6 +66,33 @@ def _collect_review_statuses(metadata, job, path="", out=None):
     return out
 
 
+def _normalise_gracedb_event_far(metadata: dict) -> dict:
+    """Normalise ``metadata.gracedb.events[].far`` to its numeric value.
+
+    The portal payload can represent ``far`` either as a plain number or as a
+    value/unit dict (``{"value": ..., "unit": "Hz"}``). The gwflow ES mapping
+    declares ``far`` as ``double`` and the ``far`` search alias targets it, so
+    indexing a dict would raise a ``mapper_parsing_exception``. Extract the
+    numeric ``value`` when present, leaving already-numeric values untouched.
+    Mutates and returns ``metadata``.
+    """
+    gracedb = metadata.get("gracedb")
+    if not isinstance(gracedb, dict):
+        return metadata
+    events = gracedb.get("events")
+    if isinstance(events, dict):
+        events = [events]
+    if not isinstance(events, list):
+        return metadata
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        far = event.get("far")
+        if isinstance(far, dict) and "value" in far:
+            event["far"] = far["value"]
+    return metadata
+
+
 def parse_analyses(metadata: dict) -> list:
     """Return the canonical analyses of a portal detail payload.
 
@@ -243,6 +270,10 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
     # strings) so the indexed metadata is deeply equal to the input.
     if validated != metadata:
         raise InvalidGWFlowMetadata("metadata must contain only losslessly JSON-serialisable values")
+
+    # Normalise gracedb event far to its numeric value so the `double` mapping
+    # and the `far` range alias work regardless of the raw (dict) shape.
+    _normalise_gracedb_event_far(validated)
 
     last_updated_time = (
         job.current_history_timestamp.isoformat() if getattr(job, "current_history_timestamp", None) else None
