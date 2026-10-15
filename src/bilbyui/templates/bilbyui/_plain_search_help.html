@@ -1,0 +1,10 @@
+{% load frontend_tags %}
+{# Generic in-place search help panel for plain DB-backed job surfaces (My Jobs). #}
+{# This surface does a literal substring match on job name/description, so it #}
+{# shows only a plain hint and omits fielded syntax, examples, and the full #}
+{# field reference. #}
+<div class="collapse mt-2" id="search-help">
+  <div class="card card-body">
+    <p class="mb-2">{{ search_help.syntax_hint|code_spans }}</p>
+  </div>
+</div>

@@ -1479,7 +1479,12 @@ def _render_job_list(
         "pagination_label": pagination_label,
         "shown_count": shown_count,
     }
-    _help_surface = "gwflow" if jobs_list_url_name == "bilbyui:gwflow_jobs" else "bilby"
+    if jobs_list_url_name == "bilbyui:gwflow_jobs":
+        _help_surface = "gwflow"
+    elif jobs_list_url_name == "bilbyui:my_jobs":
+        _help_surface = "plain"
+    else:
+        _help_surface = "bilby"
     context["search_help"] = search_help.build_search_help(_help_surface)
     context["casing_hint_eligible"] = service_state == "ok" and search_help.casing_hint_eligible(search, total)
     if list_target_id is not None:

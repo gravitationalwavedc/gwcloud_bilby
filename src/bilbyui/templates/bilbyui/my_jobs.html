@@ -16,7 +16,7 @@
     <div class="card gw-form-card">
       <div class="card-body">
         <div id="jobs-search-region">
-          {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_bilby_search_help.html" show_gwflow_filters=False list_target_id="job-list" indicator_id="my-jobs-loading-indicator" %}
+          {% include "bilbyui/_search_form.html" with search_help_template="bilbyui/_plain_search_help.html" show_gwflow_filters=False list_target_id="job-list" indicator_id="my-jobs-loading-indicator" %}
           {% include "bilbyui/_search_state_sync.html" %}
           <div
             id="my-jobs-results-region"
