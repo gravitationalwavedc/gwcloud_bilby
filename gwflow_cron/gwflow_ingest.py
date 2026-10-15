@@ -391,9 +391,8 @@ def phase_bilby_children(
                             ev = resolve_event_id_for(sname, detail)
                             if ev:
                                 gwc_client.create_event_id(ev[0], ev[1], trigger_id=sname)
-                                job.set_event_id(ev[0])
-                        except Exception:
-                            logger.warning("event id link failed for %s", key)
+                        except Exception as e:
+                            logger.warning("event id creation failed for %s: %s", key, e)
 
                         bytes_done += ini_path.stat().st_size + sum(r.stat().st_size for r in results)
                         files_done += 1

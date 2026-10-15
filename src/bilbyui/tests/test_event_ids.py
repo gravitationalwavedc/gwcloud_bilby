@@ -241,6 +241,7 @@ class TestEventIDCreation(BilbyTestCase):
         self.assertEqual(EventID.objects.filter(event_id=event_id).count(), 1)
 
     def test_create_event_id_idempotent_backfills_trigger_id(self):
+        """GWF-9 rule 3: reject reuse by a different non-empty owner without mutation."""
         user = self.create_user()
         event_id = "GW123456_123456"
         gps_time = 1234567890.0
@@ -255,11 +256,16 @@ class TestEventIDCreation(BilbyTestCase):
         event.refresh_from_db()
         self.assertEqual(event.trigger_id, "S230601ag")
 
-        # Calling again does not clobber existing trigger_id even if a different one is passed
+        # GWF-9 rule 3: a non-empty foreign owner is a conflict, not an idempotent update.
         msg3 = create_event_id(user, event_id=event_id, gps_time=gps_time, trigger_id="S230602ab")
-        self.assertEqual(msg3, f"EventID {event_id} already exists (updated)!")
+        self.assertEqual(
+            msg3,
+            f"EventID {event_id} conflict: existing owner 'S230601ag' differs "
+            "from requested owner 'S230602ab'; no changes made.",
+        )
         event.refresh_from_db()
         self.assertEqual(event.trigger_id, "S230601ag")
+        self.assertEqual(EventID.objects.filter(event_id=event_id).count(), 1)
 
     def test_create_event_id_idempotent_backfills_nickname(self):
         user = self.create_user()
