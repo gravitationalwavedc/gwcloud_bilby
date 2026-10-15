@@ -460,6 +460,8 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1263172181.28)
 
     def test_handle_gwflow_cascades_to_children_via_bilby_jobs(self):
+        """GWF-9 rule 2: children copy the resolved parent link, including None."""
+        # GWF-9 rule 2: every child follows its parent's resolved link, including None.
         # 1. Unlinked parent that gets resolved during ingestion
         parent1 = GWFlowJob.objects.create(sname="S200219ac", user=self.user, event_id=None)
         child1 = BilbyJob.objects.create(
@@ -509,7 +511,10 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertIsNotNone(parent1.event_id)
         self.assertEqual(parent1.event_id.event_id, "G000010")
         self.assertEqual(child1.event_id, parent1.event_id)
-        self.assertEqual(child2.event_id, existing_event)
+        parent2.refresh_from_db()
+        self.assertIsNone(parent2.event_id)
+        self.assertIsNone(child2.event_id)
+        self.assertTrue(EventID.objects.filter(pk=existing_event.pk).exists())
 
     def test_handle_gwflow_individual_error_does_not_abort_loop(self):
         GWFlowJob.objects.create(sname="S230601ag", user=self.user)
@@ -542,7 +547,9 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertIn("✓ GWFlowJob", output)
         self.assertIn("Failed to update ES for S230601ag", output)
 
-    def test_handle_bilby_backfills_gwflow_child_via_trigger_id_fallback(self):
+    def test_handle_bilby_child_follows_unlinked_gwflow_parent(self):
+        """GWF-9 rule 2: an unlinked parent leaves its child unlinked without fallback."""
+        # GWF-9 rule 2: identifier fallback is removed; the child copies parent None.
         event = EventID.objects.create(
             event_id="GW190426",
             trigger_id="S190426c",
@@ -566,8 +573,11 @@ class TestEsIngestCommand(BilbyTestCase):
         out = StringIO()
         call_command("es_ingest", stdout=out)
 
+        parent_gwflow.refresh_from_db()
         child.refresh_from_db()
-        self.assertEqual(child.event_id, event)
+        self.assertIsNone(parent_gwflow.event_id)
+        self.assertIsNone(child.event_id)
+        self.assertEqual(EventID.objects.get(pk=event.pk).trigger_id, "S190426c")
 
     def test_handle_bilby_backfills_gwosc_job_raw_float_string(self):
         job = BilbyJob.objects.create(

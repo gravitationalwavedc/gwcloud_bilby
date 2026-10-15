@@ -7,10 +7,11 @@ import urllib.parse
 import requests
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import Q
 
 from bilbyui.models import BilbyJob, EventID, GWFlowJob
 from bilbyui.utils.gwflow_es import get_es_client, gwflow_elastic_search_update
+from bilbyui.utils.gwflow_portal import resolve_event_id_for_superevent
+from bilbyui.views import _create_event_id_guarded
 
 logger = logging.getLogger(__name__)
 
@@ -98,19 +99,12 @@ class Command(BaseCommand):
 
         for job in BilbyJob.objects.select_related("gwflow_job__event_id", "event_id").all():
             try:
-                if job.event_id is None:
-                    # GWFlow Child Jobs: inherit parent superevent EventID if available
-                    if getattr(job, "gwflow_job", None) is not None:
-                        if job.gwflow_job.event_id is not None:
-                            job.event_id = job.gwflow_job.event_id
-                        else:
-                            event = EventID.objects.filter(
-                                Q(trigger_id=job.gwflow_job.sname) | Q(event_id=job.gwflow_job.sname)
-                            ).first()
-                            if event:
-                                job.event_id = event
+                if getattr(job, "gwflow_job", None) is not None:
+                    # GWFlow children always follow the parent link, including None.
+                    job.event_id = job.gwflow_job.event_id
+                elif job.event_id is None:
                     # GWOSC Jobs: strip version suffix, decode trigger_time, link/create EventID
-                    elif str(job.user_id) == str(getattr(settings, "GWOSC_INGEST_USER", "") or "") or "--" in job.name:
+                    if str(job.user_id) == str(getattr(settings, "GWOSC_INGEST_USER", "") or "") or "--" in job.name:
                         parts = job.name.split("--", 1)
                         raw_prefix = parts[0]
                         clean_prefix = re.sub(r"-v\d+$", "", raw_prefix)
@@ -280,116 +274,106 @@ class Command(BaseCommand):
                         continue
 
                     try:
-                        if job.event_id is None:
-                            event = EventID.objects.filter(Q(trigger_id=sname) | Q(event_id=sname)).first()
-                            if event is None and isinstance(metadata, dict):
-                                raw = (
-                                    metadata.get("raw_payload") if isinstance(metadata.get("raw_payload"), dict) else {}
+                        event = resolve_event_id_for_superevent(sname)
+                        if event is None and isinstance(metadata, dict):
+                            raw = metadata.get("raw_payload") if isinstance(metadata.get("raw_payload"), dict) else {}
+                            gracedb = (
+                                metadata.get("GraceDB")
+                                or metadata.get("gracedb")
+                                or raw.get("GraceDB")
+                                or raw.get("gracedb")
+                                or {}
+                            )
+                            if not isinstance(gracedb, dict):
+                                gracedb = {}
+                            preferred_uid = gracedb.get("preferred_event") or gracedb.get("preferred_event_uid")
+                            events = gracedb.get("Events") or gracedb.get("events") or []
+                            if not isinstance(events, list):
+                                events = []
+
+                            chosen = None
+                            if preferred_uid:
+                                for ev in events:
+                                    if isinstance(ev, dict) and (
+                                        ev.get("UID") == preferred_uid or ev.get("uid") == preferred_uid
+                                    ):
+                                        chosen = ev
+                                        break
+                            if chosen is None:
+                                for ev in events:
+                                    if isinstance(ev, dict):
+                                        st = ev.get("state") or ev.get("State")
+                                        if isinstance(st, str) and st.lower() == "preferred":
+                                            chosen = ev
+                                            break
+                            if chosen is None:
+                                for ev in events:
+                                    if isinstance(ev, dict) and ev.get("is_preferred") in _TRUTHY_PREFERRED:
+                                        chosen = ev
+                                        break
+                            if chosen is None:
+                                for ev in events:
+                                    if isinstance(ev, dict) and ev.get("preferred") in _TRUTHY_PREFERRED:
+                                        chosen = ev
+                                        break
+                            if chosen is None and events:
+                                if isinstance(events[0], dict):
+                                    chosen = events[0]
+
+                            chosen_uid = None
+                            gps_time = None
+                            if chosen:
+                                chosen_uid = chosen.get("UID") or chosen.get("uid") or preferred_uid
+                                gps_time = (
+                                    chosen.get("GPSTime")
+                                    or chosen.get("gps_time")
+                                    or chosen.get("gpstime")
+                                    or gracedb.get("preferred_event_gps")
+                                    or gracedb.get("gps_time")
                                 )
-                                gracedb = (
-                                    metadata.get("GraceDB")
-                                    or metadata.get("gracedb")
-                                    or raw.get("GraceDB")
-                                    or raw.get("gracedb")
-                                    or {}
-                                )
-                                if not isinstance(gracedb, dict):
-                                    gracedb = {}
-                                preferred_uid = gracedb.get("preferred_event") or gracedb.get("preferred_event_uid")
-                                events = gracedb.get("Events") or gracedb.get("events") or []
-                                if not isinstance(events, list):
-                                    events = []
+                            elif preferred_uid:
+                                chosen_uid = preferred_uid
+                                gps_time = gracedb.get("preferred_event_gps") or gracedb.get("gps_time")
 
-                                chosen = None
-                                if preferred_uid:
-                                    for ev in events:
-                                        if isinstance(ev, dict) and (
-                                            ev.get("UID") == preferred_uid or ev.get("uid") == preferred_uid
-                                        ):
-                                            chosen = ev
-                                            break
-                                if chosen is None:
-                                    for ev in events:
-                                        if isinstance(ev, dict):
-                                            st = ev.get("state") or ev.get("State")
-                                            if isinstance(st, str) and st.lower() == "preferred":
-                                                chosen = ev
-                                                break
-                                if chosen is None:
-                                    for ev in events:
-                                        if isinstance(ev, dict) and ev.get("is_preferred") in _TRUTHY_PREFERRED:
-                                            chosen = ev
-                                            break
-                                if chosen is None:
-                                    for ev in events:
-                                        if isinstance(ev, dict) and ev.get("preferred") in _TRUTHY_PREFERRED:
-                                            chosen = ev
-                                            break
-                                if chosen is None and events:
-                                    if isinstance(events[0], dict):
-                                        chosen = events[0]
-
-                                chosen_uid = None
-                                gps_time = None
-                                if chosen:
-                                    chosen_uid = chosen.get("UID") or chosen.get("uid") or preferred_uid
-                                    gps_time = (
-                                        chosen.get("GPSTime")
-                                        or chosen.get("gps_time")
-                                        or chosen.get("gpstime")
-                                        or gracedb.get("preferred_event_gps")
-                                        or gracedb.get("gps_time")
-                                    )
-                                elif preferred_uid:
-                                    chosen_uid = preferred_uid
-                                    gps_time = gracedb.get("preferred_event_gps") or gracedb.get("gps_time")
-
-                                gps_val = None
-                                if gps_time is not None:
+                            gps_val = None
+                            if gps_time is not None:
+                                try:
+                                    val = json.loads(gps_time) if isinstance(gps_time, str) else gps_time
+                                    parsed_gps = float(val)
+                                except (ValueError, TypeError, OverflowError, json.JSONDecodeError):
                                     try:
-                                        val = json.loads(gps_time) if isinstance(gps_time, str) else gps_time
-                                        parsed_gps = float(val)
-                                    except (ValueError, TypeError, OverflowError, json.JSONDecodeError):
-                                        try:
-                                            parsed_gps = float(gps_time)
-                                        except (ValueError, TypeError, OverflowError):
-                                            parsed_gps = None
-                                    if parsed_gps is not None and math.isfinite(parsed_gps):
-                                        gps_val = parsed_gps
+                                        parsed_gps = float(gps_time)
+                                    except (ValueError, TypeError, OverflowError):
+                                        parsed_gps = None
+                                if parsed_gps is not None and math.isfinite(parsed_gps):
+                                    gps_val = parsed_gps
 
-                                if chosen_uid and re.match(r"^(GW\d{6}(_\d{6})?|G\d+)$", str(chosen_uid)):
-                                    if gps_val is None:
-                                        logger.warning(
-                                            "No finite GPS value for GWFlowJob %s (%s); "
-                                            "creating EventID %s with gps_time=None",
-                                            job.id,
-                                            sname,
-                                            chosen_uid,
-                                        )
-                                    event, _ = EventID.objects.get_or_create(
-                                        event_id=chosen_uid,
-                                        defaults={"trigger_id": sname, "gps_time": gps_val},
+                            if chosen_uid and re.match(r"^(GW\d{6}(_\d{6})?|G\d+)$", str(chosen_uid)):
+                                if gps_val is None:
+                                    logger.warning(
+                                        "No finite GPS value for GWFlowJob %s (%s); "
+                                        "creating EventID %s with gps_time=None",
+                                        job.id,
+                                        sname,
+                                        chosen_uid,
                                     )
+                                _create_event_id_guarded(
+                                    str(chosen_uid),
+                                    gps_val,
+                                    trigger_id=sname,
+                                )
 
-                            if event is not None:
-                                update_fields = []
-                                if (
-                                    not event.trigger_id
-                                    and sname
-                                    and re.match(r"^(S\d{6}[a-z]{1,2}|G\d+)$", str(sname))
-                                ):
-                                    event.trigger_id = sname
-                                    update_fields.append("trigger_id")
-                                if update_fields:
-                                    event.save(update_fields=update_fields)
+                        # Creation may conflict with a foreign owner. Resolve
+                        # again strictly by superevent ownership and assign the
+                        # result even when None, clearing any stale foreign link.
+                        event = resolve_event_id_for_superevent(sname)
+                        if job.event_id_id != getattr(event, "id", None):
+                            job.event_id = event
+                            job.save(update_fields=["event_id"])
 
-                                job.event_id = event
-                                job.save()
-
-                        if job.event_id is not None:
-                            processed, failed = self._reconcile_gwflow_children(job)
-                            child_processed += processed
-                            child_failed += failed
+                        processed, failed = self._reconcile_gwflow_children(job)
+                        child_processed += processed
+                        child_failed += failed
 
                         gwflow_elastic_search_update(job, metadata)
                         success_count += 1

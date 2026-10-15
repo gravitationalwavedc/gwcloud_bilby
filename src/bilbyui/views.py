@@ -71,7 +71,7 @@ from .status import JobStatus
 from .types import GWFlowPendingFile
 from .utils.derive_job_status import derive_job_status
 from .utils.embargo import (
-    _gwflow_trigger_time_from_metadata,
+    get_embargo_start,
     is_record_public,
     is_simulated_value,
     resolve_job_trigger,
@@ -80,7 +80,13 @@ from .utils.embargo import (
 )
 from .utils.gen_parameter_output import generate_parameter_output
 from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
-from .utils.gwflow_portal import get_superevent, get_version, get_versions
+from .utils.gwflow_portal import (
+    get_superevent,
+    get_version,
+    get_versions,
+    resolve_current_version,
+    resolve_event_id_for_superevent,
+)
 from .utils.gwflow_version import normalise_current_history_timestamp, version_tuple
 from .utils.ini_utils import bilby_args_to_ini_string, bilby_ini_string_to_args, prepare_args_for_data_input
 from .utils.job_ref import resolve_job_ref_view
@@ -1082,35 +1088,68 @@ def file_download(request):
         raise Http404 from e
 
 
-def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None):
-    event = EventID.objects.filter(event_id=event_id).first()
-    if event:
-        changed = False
+def _create_event_id_guarded(event_id, gps_time, trigger_id=None, nickname=None):
+    """Create or non-destructively backfill an EventID under its owner policy."""
+
+    def evaluate_existing(event):
+        if event.trigger_id and trigger_id and event.trigger_id != trigger_id:
+            return (
+                event,
+                f"EventID {event_id} conflict: existing owner {event.trigger_id!r} "
+                f"differs from requested owner {trigger_id!r}; no changes made.",
+            )
+
+        changed_fields = []
         if not event.trigger_id and trigger_id:
             event.trigger_id = trigger_id
-            changed = True
+            changed_fields.append("trigger_id")
         if not event.nickname and nickname:
             event.nickname = nickname
-            changed = True
-        if changed:
+            changed_fields.append("nickname")
+        if changed_fields:
             event.clean_fields()
-            event.save()
-        return f"EventID {event_id} already exists (updated)!"
+            event.save(update_fields=changed_fields)
+        return event, f"EventID {event_id} already exists (updated)!"
 
-    event = EventID(
-        event_id=event_id,
+    try:
+        event = EventID.objects.get(event_id=event_id)
+    except EventID.DoesNotExist:
+        event = EventID(
+            event_id=event_id,
+            trigger_id=trigger_id,
+            nickname=nickname,
+            gps_time=gps_time,
+        )
+        event.clean_fields()
+        try:
+            with transaction.atomic():
+                event.save()
+        except IntegrityError:
+            try:
+                event = EventID.objects.get(event_id=event_id)
+            except EventID.DoesNotExist:
+                # A mocked or rolled-back race may make the winning row
+                # temporarily invisible. Preserve the historical string API;
+                # real uniqueness races reload and re-evaluate below.
+                logger.error(
+                    "EventID %s remained unavailable after uniqueness-race recovery",
+                    event_id,
+                )
+                return event, f"EventID {event_id} already exists (updated)!"
+            return evaluate_existing(event)
+        return event, f"EventID {event_id} successfully created!"
+
+    return evaluate_existing(event)
+
+
+def create_event_id(_user, event_id, gps_time, trigger_id=None, nickname=None):
+    _event, message = _create_event_id_guarded(
+        event_id,
+        gps_time,
         trigger_id=trigger_id,
         nickname=nickname,
-        gps_time=gps_time,
     )
-    event.clean_fields()
-    try:
-        with transaction.atomic():
-            event.save()
-    except IntegrityError:
-        return f"EventID {event_id} already exists (updated)!"
-
-    return f"EventID {event_id} successfully created!"
+    return message
 
 
 def update_event_id(user, event_id, gps_time=UNSET, trigger_id=None, nickname=None):
@@ -2682,23 +2721,67 @@ def upsert_gwflow_job(user, params):
                 if param is not None:
                     setattr(job, attr, param)
 
-            if incoming_id is not None:
-                job.current_history_id = incoming_id
-            if incoming_ts is not None:
-                job.current_history_timestamp = incoming_ts
+            refresh_requested = metadata_dict is not None
+            if refresh_requested:
+                resolved_version = resolve_current_version(sname)
+                if resolved_version.available:
+                    if job.current_history_id and job.current_history_id != resolved_version.current_history_id:
+                        logger.warning(
+                            "GWFlow stored current history for %s disagrees with portal: "
+                            "stored=%s portal=%s; portal current wins",
+                            sname,
+                            job.current_history_id,
+                            resolved_version.current_history_id,
+                        )
+                    job.trigger_time = resolved_version.trigger_time
+                    job.current_history_id = resolved_version.current_history_id
+                    job.current_history_timestamp = resolved_version.current_history_timestamp
+                else:
+                    logger.warning(
+                        "GWFlow authoritative metadata unavailable for %s: %s; "
+                        "preserving trigger time and history pointer",
+                        sname,
+                        resolved_version.reason,
+                    )
+            else:
+                if incoming_id is not None:
+                    job.current_history_id = incoming_id
+                if incoming_ts is not None:
+                    job.current_history_timestamp = incoming_ts
 
-            # Best-effort event link
-            event_id_param = getattr(params, "event_id", None)
-            if event_id_param:
+            if refresh_requested or getattr(params, "event_id", None):
                 try:
-                    event = EventID.objects.filter(Q(trigger_id=event_id_param) | Q(event_id=event_id_param)).first()
-                    if event:
-                        job.event_id = event
-                except Exception as e:
-                    logger.warning("EventID lookup failed for event_id %s on job %s: %s", event_id_param, sname, e)
-
-            if metadata_dict is not None:
-                job.trigger_time = _gwflow_trigger_time_from_metadata(metadata_dict)
+                    resolved_event = resolve_event_id_for_superevent(sname)
+                except Exception as exc:
+                    logger.warning(
+                        "Superevent EventID lookup failed for %s: %s",
+                        sname,
+                        exc,
+                    )
+                else:
+                    metadata_unavailable = bool(
+                        refresh_requested and resolved_version is not None and not resolved_version.available
+                    )
+                    threshold = get_embargo_start()
+                    stored_time_unresolved = threshold is not None and (
+                        job.trigger_time is None or job.trigger_time < threshold
+                    )
+                    if (
+                        metadata_unavailable
+                        and stored_time_unresolved
+                        and resolved_event is None
+                        and job.event_id_id is not None
+                    ):
+                        # Fail closed (docs/SECURITY.md P0 rule 6): retain the
+                        # existing link rather than clearing a possibly
+                        # embargo-relevant attachment while metadata is unresolved.
+                        logger.warning(
+                            "GWFlow metadata unavailable for %s; retaining existing "
+                            "EventID link for fail-closed containment",
+                            sname,
+                        )
+                    else:
+                        job.event_id = resolved_event
 
             job.save()
 
