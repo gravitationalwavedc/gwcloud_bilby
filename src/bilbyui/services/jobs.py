@@ -177,7 +177,22 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
 
     # default_operator AND: multi-term queries narrow rather than widen (the
     # query_string default is OR), with OR still available explicitly.
-    must = [{"query_string": {"query": search, "default_operator": "AND"}}] if search else [{"match_all": {}}]
+    # allow_leading_wildcard / analyze_wildcard: leading-wildcard and
+    # wildcard-analysis expansion is disabled (matches list_gwflow_jobs).
+    must = (
+        [
+            {
+                "query_string": {
+                    "query": search,
+                    "default_operator": "AND",
+                    "allow_leading_wildcard": False,
+                    "analyze_wildcard": False,
+                }
+            }
+        ]
+        if search
+        else [{"match_all": {}}]
+    )
     filters = [{"term": {"_private_info_.private": False}}]
 
     if time_range != "all":
