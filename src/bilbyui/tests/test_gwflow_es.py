@@ -1,4 +1,7 @@
 import datetime
+import json
+import math
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import elasticsearch
@@ -16,6 +19,7 @@ from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_es import (
     InvalidGWFlowMetadata,
     _collect_review_statuses,
+    _normalise_gracedb_event_far,
     build_gwflow_es_doc,
     get_es_client,
     gwflow_elastic_search_remove,
@@ -32,6 +36,8 @@ _GWCLOUD_FIELDS = {
     "reviewStatuses",
     "eventTriggerId",
 }
+
+_METADATA_CORPUS_DIR = Path(__file__).parent / "fixtures" / "metadata_corpus"
 
 
 class TestGWFlowESDocBuilder(BilbyTestCase):
@@ -285,6 +291,34 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         doc = build_gwflow_es_doc(self.job, metadata)
 
         self.assertEqual(doc["metadata"], metadata)
+
+    def test_build_gwflow_es_doc_normalises_gracedb_event_far(self):
+        """A value/unit dict far is normalised to a finite number for the
+        double mapping and far range alias (regression for the canonical
+        complete_curated fixture)."""
+        fixture_path = _METADATA_CORPUS_DIR / "complete_curated.json"
+        metadata = json.loads(fixture_path.read_text(encoding="utf-8"))
+
+        doc = build_gwflow_es_doc(self.job, metadata)
+
+        events = doc["metadata"]["gracedb"]["events"]
+        self.assertTrue(events)
+        for event in events:
+            far = event.get("far")
+            self.assertIsInstance(far, (int, float))
+            self.assertTrue(math.isfinite(far))
+
+    def test_normalise_gracedb_event_far_handles_shapes(self):
+        """Numeric far is untouched; dict far is unwrapped; absent paths are safe."""
+        numeric = {"gracedb": {"events": [{"far": 0}]}}
+        self.assertEqual(_normalise_gracedb_event_far(numeric), numeric)
+
+        dict_far = {"gracedb": {"events": [{"far": {"value": 1.1e-10, "unit": "Hz"}}]}}
+        result = _normalise_gracedb_event_far(dict_far)
+        self.assertEqual(result["gracedb"]["events"][0]["far"], 1.1e-10)
+
+        for empty in ({}, {"gracedb": {}}, {"gracedb": {"events": None}}, {"gracedb": "x"}):
+            self.assertEqual(_normalise_gracedb_event_far(empty), empty)
 
 
 class TestCollectReviewStatuses(BilbyTestCase):
