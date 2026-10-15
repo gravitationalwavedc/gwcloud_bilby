@@ -94,9 +94,7 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
                         "bilbyui.utils.gwflow_portal.get_versions",
                         return_value=(summaries, "live"),
                     ),
-                    mock.patch(
-                        "bilbyui.utils.gwflow_portal.get_version"
-                    ) as get_version,
+                    mock.patch("bilbyui.utils.gwflow_portal.get_version") as get_version,
                 ):
                     result = resolve_current_version("S250801h")
 
@@ -468,9 +466,7 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
                         "bilbyui.views.resolve_event_id_for_superevent",
                         return_value=None,
                     ),
-                    mock.patch(
-                        "bilbyui.views.gwflow_elastic_search_update"
-                    ),
+                    mock.patch("bilbyui.views.gwflow_elastic_search_update"),
                 ):
                     upsert_gwflow_job(
                         self.user,

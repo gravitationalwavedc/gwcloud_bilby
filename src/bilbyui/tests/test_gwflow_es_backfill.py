@@ -127,9 +127,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
             ) as resolve_event,
         ):
             if event_side_effect is None:
-                resolve_event.side_effect = lambda sname: EventID.objects.filter(
-                    trigger_id=sname
-                ).first()
+                resolve_event.side_effect = lambda sname: EventID.objects.filter(trigger_id=sname).first()
             try:
                 result = call_command(
                     "gwflow_es_backfill",
@@ -201,12 +199,8 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         cache.set(REVIEW_STATUSES_CACHE_KEY, ["old"])
 
         with (
-            mock.patch(
-                "bilbyui.management.commands.gwflow_es_backfill.GWFlowJob.objects.bulk_update"
-            ) as bulk_update,
-            mock.patch(
-                "bilbyui.management.commands.gwflow_es_backfill.cache.delete"
-            ) as cache_delete,
+            mock.patch("bilbyui.management.commands.gwflow_es_backfill.GWFlowJob.objects.bulk_update") as bulk_update,
+            mock.patch("bilbyui.management.commands.gwflow_es_backfill.cache.delete") as cache_delete,
         ):
             code, out, _ = self.run_command("--dry-run")
 
@@ -302,8 +296,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
                 )
 
                 with mock.patch(
-                    "bilbyui.management.commands.gwflow_es_backfill."
-                    "GWFlowJob.objects.bulk_update"
+                    "bilbyui.management.commands.gwflow_es_backfill.GWFlowJob.objects.bulk_update"
                 ) as bulk_update:
                     dry_code, dry_out, dry_err = self.run_command(
                         "--dry-run",
@@ -379,9 +372,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         self.assertEqual(first_code, 0)
         self.assertIn("changed=1", first_out)
 
-        with mock.patch(
-            "bilbyui.management.commands.gwflow_es_backfill.GWFlowJob.objects.bulk_update"
-        ) as bulk_update:
+        with mock.patch("bilbyui.management.commands.gwflow_es_backfill.GWFlowJob.objects.bulk_update") as bulk_update:
             second_code, second_out, _ = self.run_command()
 
         self.assertEqual(second_code, 0)
@@ -442,14 +433,10 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         )
         self.make_child(parent, event_id=foreign)
 
-        original_apply = (
-            __import__(
-                "bilbyui.management.commands.gwflow_es_backfill",
-                fromlist=["Command"],
-            )
-            .Command
-            ._apply_proposals
-        )
+        original_apply = __import__(
+            "bilbyui.management.commands.gwflow_es_backfill",
+            fromlist=["Command"],
+        ).Command._apply_proposals
 
         def failing_apply(command, proposals):
             from django.db import transaction
@@ -575,11 +562,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
 
         def versions_for(sname):
             if sname == normal.sname:
-                return [
-                    current_summary(
-                        libraries=[" lib ", "", "   ", 123, None, "second"]
-                    )
-                ], "live"
+                return [current_summary(libraries=[" lib ", "", "   ", 123, None, "second"])], "live"
             return [current_summary(libraries=["new"])], "live"
 
         code, _, _ = self.run_command(versions_side_effect=versions_for)
@@ -663,9 +646,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
 
     def test_pacing_sleeps_between_rows(self):
         self.make_parent(trigger_time=CURRENT_GPS)
-        with mock.patch(
-            "bilbyui.management.commands.gwflow_es_backfill.time.sleep"
-        ) as sleep:
+        with mock.patch("bilbyui.management.commands.gwflow_es_backfill.time.sleep") as sleep:
             self.run_command(pacing=0.1)
         sleep.assert_any_call(0.1)
 

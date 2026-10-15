@@ -230,8 +230,7 @@ class Command(BaseCommand):
             f"{label}: {repaired['libraries']} libraries, {repaired['event_id']} event links."
         )
         self.stdout.write(
-            f"Summary: scanned={counts['scanned']} changed={counts['changed']} "
-            f"unavailable={counts['unavailable']}"
+            f"Summary: scanned={counts['scanned']} changed={counts['changed']} unavailable={counts['unavailable']}"
         )
         self.stdout.write(
             f"State before: {before_counts['event_linked']} event links, "
@@ -255,11 +254,7 @@ class Command(BaseCommand):
             "versions fetch failed",
             "detail fetch failed",
         }
-        if (
-            current.versions_state == "down"
-            or current.detail_state == "down"
-            or transport_failure
-        ):
+        if current.versions_state == "down" or current.detail_state == "down" or transport_failure:
             raise PortalUnavailable(job)
 
         # Library membership remains a separately repaired field. portal_get's
@@ -286,18 +281,13 @@ class Command(BaseCommand):
                 fields["libraries"] = libraries
 
         threshold = get_embargo_start()
-        stored_time_unresolved = threshold is not None and (
-            job.trigger_time is None or job.trigger_time < threshold
-        )
+        stored_time_unresolved = threshold is not None and (job.trigger_time is None or job.trigger_time < threshold)
         resolved_event = resolve_event_id_for_superevent(job.sname)
         # Fail closed (docs/SECURITY.md P0 rule 6): when authoritative metadata is
         # unavailable we cannot prove an existing embargo-relevant link is safe to
         # clear, so retain it and force the row to be reported as a containment gap.
         retains_protective_link = (
-            not current.available
-            and stored_time_unresolved
-            and resolved_event is None
-            and job.event_id_id is not None
+            not current.available and stored_time_unresolved and resolved_event is None and job.event_id_id is not None
         )
         event = job.event_id if retains_protective_link else resolved_event
         if job.event_id_id != (event.pk if event else None):
@@ -320,9 +310,7 @@ class Command(BaseCommand):
 
         event_id = event.pk if event else None
         child_ids = list(
-            BilbyJob.objects.filter(gwflow_job=job)
-            .exclude(event_id_id=event_id)
-            .values_list("pk", flat=True)
+            BilbyJob.objects.filter(gwflow_job=job).exclude(event_id_id=event_id).values_list("pk", flat=True)
         )
 
         containment_gap = (
@@ -346,13 +334,9 @@ class Command(BaseCommand):
             available=current.available,
             reason=current.reason,
             trigger_time=current.trigger_time if current.available else job.trigger_time,
-            current_history_id=(
-                current.current_history_id if current.available else job.current_history_id
-            ),
+            current_history_id=(current.current_history_id if current.available else job.current_history_id),
             current_history_timestamp=(
-                current.current_history_timestamp
-                if current.available
-                else job.current_history_timestamp
+                current.current_history_timestamp if current.available else job.current_history_timestamp
             ),
             event_id=event,
             parent_fields=fields,
@@ -366,13 +350,7 @@ class Command(BaseCommand):
         dirty = [proposal for proposal in proposals if proposal.parent_fields]
         with transaction.atomic():
             if dirty:
-                field_names = sorted(
-                    {
-                        name
-                        for proposal in dirty
-                        for name in proposal.parent_fields
-                    }
-                )
+                field_names = sorted({name for proposal in dirty for name in proposal.parent_fields})
                 for proposal in dirty:
                     for name, value in proposal.parent_fields.items():
                         setattr(proposal.job, name, value)
@@ -383,9 +361,7 @@ class Command(BaseCommand):
 
             for proposal in proposals:
                 if proposal.child_ids:
-                    BilbyJob.objects.filter(pk__in=proposal.child_ids).update(
-                        event_id=proposal.event_id
-                    )
+                    BilbyJob.objects.filter(pk__in=proposal.child_ids).update(event_id=proposal.event_id)
 
     def _backoff(self, attempt):
         return min(2**attempt, 10)
@@ -396,8 +372,4 @@ class Command(BaseCommand):
             job.id,
             job.sname,
         )
-        self.stderr.write(
-            self.style.ERROR(
-                f"Permanent failure for GWFlowJob {job.id} ({job.sname})"
-            )
-        )
+        self.stderr.write(self.style.ERROR(f"Permanent failure for GWFlowJob {job.id} ({job.sname})"))

@@ -105,10 +105,7 @@ def resolve_current_version(sname):
         )
 
     current = [
-        summary
-        for summary in versions
-        if isinstance(summary, dict)
-        and _parse_portal_bool(summary.get("is_current"))
+        summary for summary in versions if isinstance(summary, dict) and _parse_portal_bool(summary.get("is_current"))
     ]
     if len(current) != 1:
         logger.warning(

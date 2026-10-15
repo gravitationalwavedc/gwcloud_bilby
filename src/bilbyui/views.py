@@ -2760,9 +2760,7 @@ def upsert_gwflow_job(user, params):
                     )
                 else:
                     metadata_unavailable = bool(
-                        refresh_requested
-                        and resolved_version is not None
-                        and not resolved_version.available
+                        refresh_requested and resolved_version is not None and not resolved_version.available
                     )
                     threshold = get_embargo_start()
                     stored_time_unresolved = threshold is not None and (

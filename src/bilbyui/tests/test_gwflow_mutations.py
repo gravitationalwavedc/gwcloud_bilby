@@ -1977,9 +1977,7 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
             trigger_time=resolved_trigger if available else None,
             current_history_id=f"{params.sname}-current" if available else None,
             current_history_timestamp=(
-                datetime.datetime(2026, 9, 3, 12, 0, tzinfo=datetime.UTC)
-                if available
-                else None
+                datetime.datetime(2026, 9, 3, 12, 0, tzinfo=datetime.UTC) if available else None
             ),
             reason=None if available else "detail has no usable finite trigger time",
         )

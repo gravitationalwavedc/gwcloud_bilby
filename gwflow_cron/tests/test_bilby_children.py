@@ -747,12 +747,8 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         gwc.link_bilby_job_to_gwflow.assert_called_once_with(uploaded.id, sname, "uid1")
         gwc.create_event_id.assert_called_once_with("EVT-A", 1234567890.5, trigger_id=sname)
         self.assertLess(
-            gwc.mock_calls.index(
-                call.link_bilby_job_to_gwflow(uploaded.id, sname, "uid1")
-            ),
-            gwc.mock_calls.index(
-                call.create_event_id("EVT-A", 1234567890.5, trigger_id=sname)
-            ),
+            gwc.mock_calls.index(call.link_bilby_job_to_gwflow(uploaded.id, sname, "uid1")),
+            gwc.mock_calls.index(call.create_event_id("EVT-A", 1234567890.5, trigger_id=sname)),
         )
         uploaded.set_event_id.assert_not_called()
 
@@ -769,9 +765,7 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         portal = MagicMock()
         portal.get_superevent.return_value = detail
         gwc, uploaded = _make_gwc()
-        gwc.create_event_id.side_effect = RuntimeError(
-            "conflict: EVT-A belongs to another superevent"
-        )
+        gwc.create_event_id.side_effect = RuntimeError("conflict: EVT-A belongs to another superevent")
         jc = MagicMock()
 
         with tempfile.TemporaryDirectory() as staging:
