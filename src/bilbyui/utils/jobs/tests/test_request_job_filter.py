@@ -122,3 +122,18 @@ class TestRequestJobFilter(SimpleTestCase):
         self.assertEqual(status, "OK")
         self.assertEqual(result, jobs)
         self.assertEqual(len(self.responses.calls), 1)
+
+    def test_dict_keys_view_input(self):
+        jobs = [{"id": 1}, {"id": 2}]
+        self.responses.add(
+            responses.GET,
+            f"{self.base_url}?jobIds=1,2",
+            body=json.dumps(jobs),
+            status=200,
+        )
+
+        status, result = request_job_filter(123, ids={"1": "a", "2": "b"}.keys())
+
+        self.assertEqual(status, "OK")
+        self.assertEqual(result, jobs)
+        self.assertEqual(len(self.responses.calls), 1)
