@@ -146,6 +146,37 @@ class InfoCompletenessTests(SimpleTestCase):
         self.assertIn("info.upstream.nested", warned_paths)
 
 
+class RecursionErrorGuardTests(SimpleTestCase):
+    def tearDown(self):
+        _reset_unmapped_warning_cache()
+        super().tearDown()
+
+    @staticmethod
+    def _deep_payload(depth):
+        payload = {}
+        node = payload
+        for _ in range(depth):
+            node["nested"] = {}
+            node = node["nested"]
+        node["leaf"] = 1
+        return payload
+
+    def test_build_metadata_presentation_degrades_on_deeply_nested_payload(self):
+        payload = self._deep_payload(5000)
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
+            presentation = build_metadata_presentation(payload)
+        self.assertEqual(presentation.summary, ())
+        self.assertEqual(presentation.sections, ())
+        self.assertTrue(any("too deeply nested" in record.getMessage() for record in captured.records))
+
+    def test_warn_unmapped_metadata_leaves_returns_without_warning_on_deeply_nested_payload(self):
+        payload = self._deep_payload(5000)
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
+            warn_unmapped_metadata_leaves(payload, sname="S-DEEP")
+        self.assertEqual(len(captured.records), 1)
+        self.assertIn("truncated", captured.records[0].getMessage())
+
+
 class MetadataWarningViewIntegrationTests(BilbyTestCase):
     def setUp(self):
         super().setUp()

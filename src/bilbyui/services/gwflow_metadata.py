@@ -315,8 +315,14 @@ def warn_unmapped_metadata_leaves(payload: Mapping[str, Any], *, sname: Any) -> 
 
     normalised_sname = str(sname).strip() if sname is not None else ""
     normalised_sname = normalised_sname or "unknown"
-    for path in _unmapped_paths(payload):
-        _emit_unmapped_metadata_warning(normalised_sname, path)
+    try:
+        for path in _unmapped_paths(payload):
+            _emit_unmapped_metadata_warning(normalised_sname, path)
+    except RecursionError:
+        logger.warning(
+            "unmapped metadata leaf walk truncated: payload too deeply nested",
+            extra={"sname": normalised_sname},
+        )
 
 
 _MISSING = object()
@@ -582,6 +588,17 @@ def build_metadata_presentation(payload: Mapping[str, Any], *, historical: bool 
     if not isinstance(payload, Mapping):
         raise TypeError("payload must be a mapping")
 
+    try:
+        return _build_presentation(payload, historical=historical)
+    except RecursionError:
+        logger.warning(
+            "metadata presentation truncated: payload too deeply nested",
+            extra={"payload_keys": list(payload.keys()) if isinstance(payload, Mapping) else None},
+        )
+        return MetadataPresentation(bool(historical), (), ())
+
+
+def _build_presentation(payload: Mapping[str, Any], *, historical: bool) -> MetadataPresentation:
     sections: list[MetadataSection] = []
     root_summary: list[PresentationField] = []
     recognised_sources: set[str] = set()
