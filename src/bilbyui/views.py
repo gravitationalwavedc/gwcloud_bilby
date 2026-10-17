@@ -1134,13 +1134,13 @@ def _create_event_id_guarded(event_id, gps_time, trigger_id=None, nickname=None)
                 event = EventID.objects.get(event_id=event_id)
             except EventID.DoesNotExist:
                 # A mocked or rolled-back race may make the winning row
-                # temporarily invisible. Preserve the historical string API;
-                # real uniqueness races reload and re-evaluate below.
+                # temporarily invisible. Nothing was persisted, so report
+                # creation failure rather than claiming the row exists.
                 logger.error(
                     "EventID %s remained unavailable after uniqueness-race recovery",
                     event_id,
                 )
-                return event, f"EventID {event_id} already exists (updated)!"
+                return None, f"EventID {event_id} creation failed"
             return evaluate_existing(event)
         return event, f"EventID {event_id} successfully created!"
 

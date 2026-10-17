@@ -328,6 +328,30 @@ class TestEventIDCollisionGuard(BilbyTestCase):
         self.assertEqual(existing.nickname, "original")
         self.assertEqual(EventID.objects.filter(event_id="G700011").count(), 1)
 
+    def test_uniqueness_race_with_invisible_winner_reports_creation_failure(self):
+        with (
+            mock.patch(
+                "bilbyui.views.EventID.objects.get",
+                side_effect=EventID.DoesNotExist,
+            ),
+            mock.patch.object(
+                EventID,
+                "save",
+                side_effect=IntegrityError("duplicate key"),
+            ),
+        ):
+            resolved, message = _create_event_id_guarded(
+                "G700012",
+                2000.0,
+                trigger_id="S250801h",
+                nickname="replacement",
+            )
+
+        self.assertIsNone(resolved)
+        self.assertIn("creation failed", message)
+        self.assertNotIn("already exists", message)
+        self.assertEqual(EventID.objects.filter(event_id="G700012").count(), 0)
+
     def test_same_owner_is_idempotent_and_empty_fields_backfill(self):
         existing = EventID.objects.create(
             event_id="G700010",
