@@ -306,10 +306,12 @@ class TestEventIDCreation(BilbyTestCase):
         event_id = "GW150914"
         gps_time = 1126259462.391
 
-        # Simulate IntegrityError on save due to concurrent insertion race
+        # Simulate IntegrityError on save due to concurrent insertion race. The
+        # winning row is invisible after the race (never persisted here), so the
+        # guard must report creation failure rather than claim the row exists.
         with patch.object(EventID, "save", side_effect=IntegrityError("duplicate key")):
             msg = create_event_id(user, event_id=event_id, gps_time=gps_time)
-            self.assertEqual(msg, f"EventID {event_id} already exists (updated)!")
+            self.assertEqual(msg, f"EventID {event_id} creation failed")
 
 
 @override_settings(PERMITTED_EVENT_CREATION_USER_IDS=[1], EMBARGO_START_TIME=100.0)
