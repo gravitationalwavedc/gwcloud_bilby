@@ -573,6 +573,17 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         self.assertEqual(normal.libraries, ["lib", "second"])
         self.assertEqual(pruned.libraries, ["last-known"])
 
+    def test_string_false_current_flag_does_not_select(self):
+        parent = self.make_parent(sname="S250801h", libraries=["old"])
+
+        code, _, _ = self.run_command(
+            versions_return=([current_summary(is_current="false")], "live"),
+        )
+
+        self.assertEqual(code, 0)
+        parent.refresh_from_db()
+        self.assertEqual(parent.libraries, [])
+
     def test_pointer_disagreement_is_reported(self):
         parent = self.make_parent(
             trigger_time=CURRENT_GPS,
