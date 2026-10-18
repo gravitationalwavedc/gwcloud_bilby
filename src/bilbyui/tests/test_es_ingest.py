@@ -112,6 +112,35 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(job.event_id.event_id, "GW150914")
         self.assertAlmostEqual(job.event_id.gps_time, 1126259462.42)
 
+    def test_handle_bilby_does_not_link_gwosc_job_to_foreign_owned_event(self):
+        foreign_event = EventID.objects.create(
+            event_id="GW150914",
+            gps_time=1126259462.42,
+            trigger_id="S190425z",
+        )
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="GW150914-v4--IMRPhenomD",
+            description="Historical GWOSC job",
+            private=False,
+            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+        )
+        IniKeyValue.objects.create(
+            job=job,
+            key="trigger_time",
+            value=json.dumps("1126259462.42"),
+            index=0,
+            processed=True,
+        )
+
+        out = StringIO()
+        call_command("es_ingest", stdout=out)
+
+        job.refresh_from_db()
+        self.assertIsNone(job.event_id)
+        foreign_event.refresh_from_db()
+        self.assertEqual(foreign_event.trigger_id, "S190425z")
+
     def test_handle_bilby_backfills_gwflow_child_via_bilby_jobs(self):
         event = EventID.objects.create(
             event_id="GW190425",

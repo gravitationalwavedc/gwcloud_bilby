@@ -173,6 +173,11 @@ class Command(BaseCommand):
                                 event_id=clean_prefix,
                                 defaults={"gps_time": gps},
                             )
+                            # If the EventID is already owned by a superevent, do
+                            # not attach the standalone GWOSC job to that foreign
+                            # row (mirrors the GWFlow ownership policy).
+                            if event.trigger_id:
+                                event = None
                             job.event_id = event
 
                 job.save()
