@@ -12,24 +12,28 @@ from typing import Any
 from gwcloud_python import GWCloud
 from gwdc_python.exceptions import GWDCUnknownException
 
-import manifest
 import settings
 import state
 from bilby_children import (
     _TRUTHY_PREFERRED,
+    Rejection,
     StageError,
     _tree_relative_target,
-    find_bilby_pe_analyses,
     make_archive,
     resolve_event_id_for,
     resolve_missing_path,
+    select_bilby_analyses,
     stage_supporting_files,
     synthesize_job_tree,
+    validate_supported_software,
 )
 from fetch import _get, fetch_to_staging
 from job_controller import ClusterOffline, JobControllerClient
 from libraries import normalise_libraries
-from portal import PortalClient
+from portal import PortalClient, PortalMalformedResponseError
+
+_LINKED_JOBS_QUERY = "{ gwflowLinkedBilbyJobs(sname: $sname) { id gwflowAnalysisUid } }"
+
 
 logger = logging.getLogger("gwflow_ingest")
 logger.setLevel(logging.DEBUG)
@@ -115,19 +119,13 @@ def resolve_libraries(portal_client: Any, sname: str, detail: Any = None) -> lis
     return normalise_libraries(raw_libraries)
 
 
-def gwc_known_unpruned_snames(gwc_client: Any) -> set[str]:
-    """Query GWCloud for active (unpruned) superevent snames."""
-    jobs = gwc_client.get_gwflow_job_list(include_pruned=False)
-    snames = set()
-    for j in jobs:
-        sname = j.get("sname") if isinstance(j, dict) else getattr(j, "sname", None)
-        if sname:
-            snames.add(sname)
-    return snames
-
-
-def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlite3.Connection | None = None):
+def phase_metadata(
+    portal_client: Any = None,
+    gwc_client: Any = None,
+    con: sqlite3.Connection | None = None,
+) -> list[Rejection]:
     logger.info("Starting phase_metadata")
+    rejections: list[Rejection] = []
 
     close_con = False
     if con is None:
@@ -168,9 +166,22 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                 try:
                     detail = portal_client.get_superevent(row_sname)
                     if not isinstance(detail, dict):
-                        logger.warning("Skipping %s: non-dict superevent detail", row_sname)
+                        rejection = Rejection(
+                            sname=row_sname,
+                            analysis_uid=None,
+                            role=None,
+                            available_file_systems=(),
+                            reason="non-dict superevent detail",
+                        )
+                        rejections.append(rejection)
+                        logger.error(
+                            "Rejected superevent detail sname=%s reason=%s",
+                            row_sname,
+                            rejection.reason,
+                        )
+                        state.record_failure(con, cur, row_sname, rejection.reason)
+                        has_failure_in_run = True
                         continue
-                    files = manifest.extract_file_manifest(detail)
                     libraries = resolve_libraries(portal_client, row_sname, detail)
                     metadata = detail.get("raw_payload", {})
                     if not isinstance(metadata, dict):
@@ -193,7 +204,6 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                             is_pruned=False,
                             current_history_id=row_commit_sha,
                             current_history_timestamp=row_ts,
-                            files=files,
                         )
 
                     state.clear_failure(con, cur, row_sname)
@@ -203,6 +213,26 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                         state.set_watermark(con, cur, row_ts)
                         state.set_last_sname(con, cur, row_sname)
 
+                except PortalMalformedResponseError as e:
+                    rejection = Rejection(
+                        sname=row_sname,
+                        analysis_uid=None,
+                        role=None,
+                        available_file_systems=(),
+                        reason=str(e),
+                    )
+                    rejections.append(rejection)
+                    logger.error(
+                        "Malformed superevent detail sname=%s reason=%s",
+                        row_sname,
+                        rejection.reason,
+                    )
+                    state.record_failure(con, cur, row_sname, rejection.reason)
+                    if state.get_failure_count(cur, row_sname) >= settings.MAX_RETRY_ATTEMPTS:
+                        logger.exception("giving up on %s", row_sname)
+                    else:
+                        has_failure_in_run = True
+                    continue
                 except Exception as e:
                     logger.warning("Error processing %s: %s", row_sname, e)
                     state.record_failure(con, cur, row_sname, repr(e))
@@ -214,25 +244,23 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
         except Exception as e:
             logger.exception("Failed during portal superevent sync: %s", e)
 
-        # Prune diffing: check for snames present in GWCloud but missing upstream
-        try:
-            current_snames = set(portal_client.iter_current_snames())
-        except Exception as e:
-            logger.exception("Failed to fetch current snames from portal for prune diff: %s", e)
-            current_snames = None
-
-        if gwc_client is not None and current_snames is not None:
-            known_unpruned = gwc_known_unpruned_snames(gwc_client)
-            pruned_snames = known_unpruned - current_snames
-
-            for p_sname in pruned_snames:
-                gwc_client.upsert_gwflow_job(sname=p_sname, is_pruned=True)
-
     finally:
         if close_con and con:
             con.close()
 
     logger.info("Completed phase_metadata")
+    return rejections
+
+
+def linked_analysis_uids(gwc_client, sname):
+    """Return the set of analysis uids already linked to sname.
+
+    Uses the ingest-only, unscoped gwflowLinkedBilbyJobs lookup so a child the
+    ingest user cannot see through the visibility-filtered gwflowJobBySname
+    query is still matched, preventing a duplicate child upload.
+    """
+    data = gwc_client.request(query=_LINKED_JOBS_QUERY, variables={"sname": sname})
+    return {row["gwflow_analysis_uid"] for row in data["gwflow_linked_bilby_jobs"]}
 
 
 def phase_bilby_children(
@@ -240,11 +268,12 @@ def phase_bilby_children(
     gwc_client: Any = None,
     jc: Any = None,
     con: sqlite3.Connection | None = None,
-):
+) -> list[Rejection]:
     if gwc_client is None or jc is None:
         logger.info("phase_bilby_children: clients not wired - skipping")
-        return
+        return []
     logger.info("Starting phase_bilby_children")
+    rejections: list[Rejection] = []
 
     close_con = False
     if con is None:
@@ -276,18 +305,29 @@ def phase_bilby_children(
         for sname in processing:
             try:
                 detail = portal_client.get_superevent(sname)
+            except PortalMalformedResponseError as e:
+                rejection = Rejection(
+                    sname=sname,
+                    analysis_uid=None,
+                    role=None,
+                    available_file_systems=(),
+                    reason=str(e),
+                )
+                rejections.append(rejection)
+                logger.error(
+                    "Malformed superevent detail sname=%s reason=%s",
+                    sname,
+                    rejection.reason,
+                )
+                state.record_failure(con, cur, rejection.fail_key, rejection.reason)
+                continue
             except Exception as e:
                 logger.warning("failed to fetch detail for %s: %s", sname, e)
                 state.record_failure(con, cur, f"bilby:{sname}", repr(e))
                 continue
 
-            linked: set[str] = set()
             try:
-                job = gwc_client.get_gwflow_job(sname)
-                if job is not None:
-                    bilby_jobs = getattr(job, "bilby_jobs", None) or []
-                    linked = {getattr(j, "gwflow_analysis_uid", "") for j in bilby_jobs}
-                    linked.discard("")
+                linked = linked_analysis_uids(gwc_client, sname)
             except Exception as e:
                 logger.warning("failed to fetch linked jobs for %s: %s", sname, e)
                 state.record_failure(con, cur, f"bilby:{sname}", repr(e))
@@ -295,7 +335,29 @@ def phase_bilby_children(
 
             cluster_offline = False
             cap_reached = False
-            for analysis in find_bilby_pe_analyses(detail):
+            analyses, selection_rejections = select_bilby_analyses(
+                sname,
+                detail,
+                settings.ACCESSIBLE_FILE_SYSTEMS,
+            )
+            rejections.extend(selection_rejections)
+            for rejection in selection_rejections:
+                logger.error(
+                    "Rejected Bilby analysis sname=%s uid=%s role=%s available_file_systems=%s reason=%s",
+                    rejection.sname,
+                    rejection.analysis_uid,
+                    rejection.role,
+                    rejection.available_file_systems,
+                    rejection.reason,
+                )
+                state.record_failure(
+                    con,
+                    cur,
+                    rejection.fail_key,
+                    rejection.reason,
+                )
+
+            for analysis in analyses:
                 uid = analysis["uid"]
                 key = f"{sname}/{uid}"
                 fail_key = f"bilby:{sname}/{uid}"
@@ -427,6 +489,8 @@ def phase_bilby_children(
         if close_con and con:
             con.close()
 
+    return rejections
+
 
 def phase_file_mirror(jc: Any = None, gwc_client: Any = None, con: sqlite3.Connection | None = None):
     if jc is None or gwc_client is None:
@@ -492,6 +556,7 @@ def run(args=None):
     settings.BACKFILL = parsed.backfill
 
     settings.validate_settings()
+    validate_supported_software()
 
     lock_path = Path(settings.LOCK_PATH) if settings.LOCK_PATH else Path(settings.DB_PATH).with_suffix(".lock")
     lock_file = None
@@ -519,13 +584,14 @@ def run(args=None):
         con.row_factory = sqlite3.Row
         state.init_db(con)
 
-        phase_metadata(gwc_client=gwc, con=con)
-        phase_file_mirror(jc=jc, gwc_client=gwc, con=con)
-        phase_bilby_children(gwc_client=gwc, jc=jc, con=con)
+        rejections = []
+        rejections.extend(phase_metadata(gwc_client=gwc, con=con))
+        rejections.extend(phase_file_mirror(jc=jc, gwc_client=gwc, con=con) or [])
+        rejections.extend(phase_bilby_children(gwc_client=gwc, jc=jc, con=con))
 
         con.close()
         logger.info("Completed gwflow_ingest run")
-        return 0
+        return 1 if rejections else 0
     finally:
         if lock_file:
             with contextlib.suppress(OSError):

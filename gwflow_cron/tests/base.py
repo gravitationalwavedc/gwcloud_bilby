@@ -39,6 +39,7 @@ class GWFlowTestBase(unittest.TestCase):
         settings.GWCLOUD_ENDPOINT = "https://gwcloud.org.au/graphql"
         settings.JOB_CONTROLLER_JWT_SECRET = "VALID_SECRET"
         settings.JOB_CONTROLLER_BUNDLE = "VALID_BUNDLE"
+        settings.ACCESSIBLE_FILE_SYSTEMS = ("fs_a", "fs_b")
 
         self.con_patch = patch("sqlite3.connect", lambda x: _NonClosingConnection(self.con))
         self.con_patch.start()

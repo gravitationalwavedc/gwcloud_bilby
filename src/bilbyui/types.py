@@ -248,6 +248,11 @@ class GWFlowPendingFile(graphene.ObjectType):
     md5_sum = graphene.String()
 
 
+class GWFlowLinkedBilbyJob(graphene.ObjectType):
+    id = graphene.ID(required=True)
+    gwflow_analysis_uid = graphene.String(required=True)
+
+
 class GWFlowUpsertResult(graphene.ObjectType):
     gwflow_job_id = graphene.ID(required=True)
     sname = graphene.String(required=True)

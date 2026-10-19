@@ -10,13 +10,44 @@ import state
 from tests.base import GWFlowTestBase
 
 
+def _file_relationship(role, path, *, direction):
+    return {
+        "direction": direction,
+        "role": role,
+        "file": {
+            "name": Path(path).name,
+            "description": role,
+            "md5sum": "",
+            "last_modified": None,
+            "locations": [
+                {
+                    "file_system": "fs_a",
+                    "path": path,
+                    "url": None,
+                }
+            ],
+        },
+    }
+
+
 def _bilby_pe_analysis(uid="uid1", config_path="/data/pe/config.ini", result_path="/data/pe/result.h5"):
+    input_files = []
+    if config_path:
+        input_files.append(_file_relationship("config", config_path, direction="input"))
+
+    output_files = []
+    if result_path:
+        output_files.append(_file_relationship("result", result_path, direction="output"))
+
     return {
         "uid": uid,
-        "inference_software": "BILBY",
-        "config_file": {"path": config_path, "file_size": 100},
-        "result_file": {"path": result_path, "file_size": 1000},
-        "pesummary_result_file": None,
+        "type": "pe",
+        "status": "complete",
+        "deprecated": False,
+        "software": {"name": "bilby_pipe", "version": "1.0.0"},
+        "configurations": [{"uid": f"{uid}:configuration", "type": "pe"}],
+        "input_files": input_files,
+        "output_files": output_files,
     }
 
 
@@ -27,7 +58,7 @@ def _superevent_detail(sname="S260101a", analyses=None, files=None):
         "sname": sname,
         "raw_payload": {"sname": sname, "event": "GW260101"},
         "libraries": [{"name": "bilby"}],
-        "pe": {"results": analyses},
+        "analyses": analyses,
         "files": files or [],
     }
 
@@ -60,10 +91,8 @@ class TestKillStateRecovery(GWFlowTestBase):
         uploaded_job.id = "bilby-job-123"
         mock_gwc.upload_job_archive.return_value = uploaded_job
 
-        # Initially no linked jobs in GWCloud
-        gwc_gwflow_job = MagicMock()
-        gwc_gwflow_job.bilby_jobs = []
-        mock_gwc.get_gwflow_job.return_value = gwc_gwflow_job
+        # Initially no linked jobs in GWCloud.
+        mock_gwc.request.return_value = {"gwflow_linked_bilby_jobs": []}
         mock_gwc.get_gwflow_job_list.return_value = []
         mock_gwc.get_gwflow_pending_files.return_value = []
 
@@ -155,9 +184,7 @@ class TestKillStateRecovery(GWFlowTestBase):
         uploaded_job.id = "bilby-job-123"
         mock_gwc.upload_job_archive.return_value = uploaded_job
 
-        gwc_gwflow_job = MagicMock()
-        gwc_gwflow_job.bilby_jobs = []
-        mock_gwc.get_gwflow_job.return_value = gwc_gwflow_job
+        mock_gwc.request.return_value = {"gwflow_linked_bilby_jobs": []}
         mock_gwc.get_gwflow_job_list.return_value = []
 
         pending_f1 = SimpleNamespace(
@@ -255,9 +282,7 @@ class TestKillStateRecovery(GWFlowTestBase):
         uploaded_job.id = "bilby-job-orphan-999"
         mock_gwc.upload_job_archive.return_value = uploaded_job
 
-        gwc_gwflow_job = MagicMock()
-        gwc_gwflow_job.bilby_jobs = []
-        mock_gwc.get_gwflow_job.return_value = gwc_gwflow_job
+        mock_gwc.request.return_value = {"gwflow_linked_bilby_jobs": []}
         mock_gwc.get_gwflow_job_list.return_value = []
         mock_gwc.get_gwflow_pending_files.return_value = []
 
@@ -336,7 +361,7 @@ class TestKillStateRecovery(GWFlowTestBase):
         uploaded_job_b = MagicMock(id="job-b")
         mock_gwc.upload_job_archive.side_effect = [uploaded_job_a, uploaded_job_b]
 
-        mock_gwc.get_gwflow_job.return_value = MagicMock(bilby_jobs=[])
+        mock_gwc.request.return_value = {"gwflow_linked_bilby_jobs": []}
         mock_gwc.get_gwflow_job_list.return_value = []
         mock_gwc.get_gwflow_pending_files.return_value = []
 
@@ -411,7 +436,7 @@ class TestKillStateRecovery(GWFlowTestBase):
         mock_jc_cls.return_value = mock_jc
         mock_portal_cls.return_value = mock_portal
 
-        mock_gwc.get_gwflow_job.return_value = MagicMock(bilby_jobs=[])
+        mock_gwc.request.return_value = {"gwflow_linked_bilby_jobs": []}
         mock_gwc.get_gwflow_job_list.return_value = []
         mock_gwc.get_gwflow_pending_files.return_value = []
 

@@ -35,6 +35,7 @@ from .types import (
     BilbyJobCreationResult,
     BilbyJobSupportingFile,
     GWFlowFileType,
+    GWFlowLinkedBilbyJob,
     GWFlowPendingFile,
     GWFlowUpsertInput,
     GWFlowUpsertResult,
@@ -59,6 +60,7 @@ from .views import (
     create_bilby_job_from_ini_string,
     create_event_id,
     delete_event_id,
+    get_gwflow_linked_bilby_jobs,
     get_gwflow_pending_files,
     link_bilby_job_to_gwflow,
     update_event_id,
@@ -394,6 +396,10 @@ class Query:
 
     generate_bilby_job_upload_token = graphene.Field(GenerateBilbyJobUploadToken)
     gwflow_pending_files = graphene.List(GWFlowPendingFile)
+    gwflow_linked_bilby_jobs = graphene.List(
+        GWFlowLinkedBilbyJob,
+        sname=graphene.String(required=True),
+    )
     gwflow_job = relay.Node.Field(GWFlowJobNode)
     gwflow_job_by_sname = graphene.Field(GWFlowJobNode, sname=graphene.String(required=True))
     gwflow_jobs = relay.ConnectionField(
@@ -463,6 +469,10 @@ class Query:
     def resolve_gwflow_pending_files(self, info, **kwargs):
         user = info.context.user
         return get_gwflow_pending_files(user)
+
+    @login_required
+    def resolve_gwflow_linked_bilby_jobs(self, info, sname):
+        return get_gwflow_linked_bilby_jobs(info.context.user, sname)
 
     @login_required
     def resolve_generate_bilby_job_upload_token(self, info, **kwargs):

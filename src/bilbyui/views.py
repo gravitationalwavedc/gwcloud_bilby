@@ -3001,6 +3001,17 @@ def get_gwflow_pending_files(user):
     return [_gwflow_pending_file(f) for f in pending_files]
 
 
+def get_gwflow_linked_bilby_jobs(user, sname):
+    _check_gwflow_ingest_user(user)
+    rows = (
+        BilbyJob.objects.filter(gwflow_job__sname=sname)
+        .exclude(gwflow_analysis_uid="")
+        .order_by("gwflow_analysis_uid", "id")
+        .values_list("id", "gwflow_analysis_uid")
+    )
+    return [{"id": to_global_id("BilbyJobNode", pk), "gwflow_analysis_uid": uid} for pk, uid in rows]
+
+
 @login_required
 def tech_value_demo(request):
     """Demo/audit surface rendering every technical-value component variant (issue #49)."""
