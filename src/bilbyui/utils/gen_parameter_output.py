@@ -1,6 +1,7 @@
 import decimal
 import math
 from decimal import Decimal
+from fractions import Fraction
 from functools import lru_cache
 from math import floor
 from numbers import Number
@@ -65,6 +66,11 @@ def to_dec(val):
     # Complex numbers are numbers.Number but cannot be passed to math.isinf/isnan or floor()
     # — return them unchanged
     if isinstance(val, complex):
+        return val
+
+    # Non-integer Fractions (e.g. Fraction(1, 2)) stringify as "1/2", which is not a valid
+    # decimal literal — return them unchanged
+    if isinstance(val, Fraction) and val.denominator != 1:
         return val
 
     # Non-finite floats (inf/-inf/nan) cannot be passed to floor() — parse them directly
