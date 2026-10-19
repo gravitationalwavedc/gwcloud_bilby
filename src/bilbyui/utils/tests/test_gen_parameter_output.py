@@ -1,4 +1,5 @@
 from decimal import Decimal
+from fractions import Fraction
 
 import numpy as np
 
@@ -51,3 +52,10 @@ class TestToDec(BilbyTestCase):
     def test_returns_complex_unchanged(self):
         value = complex(1, 2)
         self.assertIs(to_dec(value), value)
+
+    def test_returns_non_integer_fraction_unchanged(self):
+        value = Fraction(1, 2)
+        self.assertIs(to_dec(value), value)
+
+    def test_converts_integer_fraction(self):
+        self.assertEqual(to_dec(Fraction(3)), Decimal(3))
