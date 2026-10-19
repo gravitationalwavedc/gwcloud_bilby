@@ -236,29 +236,31 @@ class GWFlowSnapshotTimestampTestCase(BilbyTestCase):
         return prepare_version_snapshots(rows)
 
     def test_naive_datetime_treated_as_utc(self):
-        snapshots = self._snapshots([{"commit_sha": "a" * 40, "commit_timestamp": datetime(2024, 1, 1, 12, 0, 0)}])
+        snapshots = self._snapshots(
+            [{"commit_sha": "a" * 40, "record_timestamp": datetime(2024, 1, 1, 12, 0, 0), "version_number": 1}]
+        )
         self.assertEqual(snapshots[0].recorded_at, datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC))
         self.assertEqual(snapshots[0].recorded_at.tzinfo, UTC)
 
     def test_aware_datetime_converted_to_utc(self):
         raw = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone(timedelta(hours=5)))
-        snapshots = self._snapshots([{"commit_sha": "a" * 40, "commit_timestamp": raw}])
+        snapshots = self._snapshots([{"commit_sha": "a" * 40, "record_timestamp": raw, "version_number": 2}])
         self.assertEqual(snapshots[0].recorded_at, datetime(2024, 1, 1, 7, 0, 0, tzinfo=UTC))
 
     def test_non_string_timestamp_returns_none(self):
-        snapshots = self._snapshots([{"commit_sha": "a" * 40, "commit_timestamp": 12345}])
+        snapshots = self._snapshots([{"commit_sha": "a" * 40, "record_timestamp": 12345, "version_number": 3}])
         self.assertIsNone(snapshots[0].recorded_at)
 
     def test_malformed_timestamp_returns_none(self):
-        snapshots = self._snapshots([{"commit_sha": "a" * 40, "commit_timestamp": "not-a-date"}])
+        snapshots = self._snapshots([{"commit_sha": "a" * 40, "record_timestamp": "not-a-date", "version_number": 4}])
         self.assertIsNone(snapshots[0].recorded_at)
 
     def test_row_without_sha_is_skipped(self):
         snapshots = self._snapshots(
             [
-                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC"},
-                {"commit_timestamp": "2026-08-09 10:00:00 UTC"},
-                {"commit_sha": "b" * 40, "commit_timestamp": "2026-08-10 10:00:00 UTC"},
+                {"commit_sha": "a" * 40, "record_timestamp": "2026-08-08 10:00:00 UTC", "version_number": 5},
+                {"record_timestamp": "2026-08-09 10:00:00 UTC"},
+                {"commit_sha": "b" * 40, "record_timestamp": "2026-08-10 10:00:00 UTC", "version_number": 6},
             ]
         )
         self.assertEqual([s.full_sha for s in snapshots], ["a" * 40, "b" * 40])
@@ -266,11 +268,11 @@ class GWFlowSnapshotTimestampTestCase(BilbyTestCase):
     def test_undated_rows_retained_after_dated_in_source_order(self):
         snapshots = self._snapshots(
             [
-                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-10 10:00:00 UTC"},
-                {"commit_sha": "b" * 40, "commit_timestamp": "not-a-date"},
-                {"commit_sha": "c" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC"},
-                {"commit_sha": "d" * 40},
-                {"commit_sha": "e" * 40, "commit_timestamp": "not-a-date"},
+                {"commit_sha": "a" * 40, "record_timestamp": "2026-08-10 10:00:00 UTC", "version_number": 7},
+                {"commit_sha": "b" * 40, "record_timestamp": "not-a-date", "version_number": 8},
+                {"commit_sha": "c" * 40, "record_timestamp": "2026-08-08 10:00:00 UTC", "version_number": 9},
+                {"commit_sha": "d" * 40, "version_number": 10},
+                {"commit_sha": "e" * 40, "record_timestamp": "not-a-date", "version_number": 11},
             ]
         )
         self.assertEqual([s.full_sha for s in snapshots], ["c" * 40, "a" * 40, "b" * 40, "d" * 40, "e" * 40])
@@ -278,9 +280,9 @@ class GWFlowSnapshotTimestampTestCase(BilbyTestCase):
     def test_dated_rows_sort_by_timestamp_then_sha(self):
         snapshots = self._snapshots(
             [
-                {"commit_sha": "z" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC"},
-                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC"},
-                {"commit_sha": "m" * 40, "commit_timestamp": "2026-08-09 10:00:00 UTC"},
+                {"commit_sha": "z" * 40, "record_timestamp": "2026-08-08 10:00:00 UTC", "version_number": 12},
+                {"commit_sha": "a" * 40, "record_timestamp": "2026-08-08 10:00:00 UTC", "version_number": 13},
+                {"commit_sha": "m" * 40, "record_timestamp": "2026-08-09 10:00:00 UTC", "version_number": 14},
             ]
         )
         self.assertEqual([s.full_sha for s in snapshots], ["a" * 40, "z" * 40, "m" * 40])
@@ -288,10 +290,30 @@ class GWFlowSnapshotTimestampTestCase(BilbyTestCase):
     def test_string_boolean_is_current_normalised(self):
         snapshots = self._snapshots(
             [
-                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC", "is_current": "false"},
-                {"commit_sha": "b" * 40, "commit_timestamp": "2026-08-09 10:00:00 UTC", "is_current": "0"},
-                {"commit_sha": "c" * 40, "commit_timestamp": "2026-08-10 10:00:00 UTC", "is_current": "true"},
-                {"commit_sha": "d" * 40, "commit_timestamp": "2026-08-11 10:00:00 UTC", "is_current": "1"},
+                {
+                    "commit_sha": "a" * 40,
+                    "record_timestamp": "2026-08-08 10:00:00 UTC",
+                    "is_current": "false",
+                    "version_number": 15,
+                },
+                {
+                    "commit_sha": "b" * 40,
+                    "record_timestamp": "2026-08-09 10:00:00 UTC",
+                    "is_current": "0",
+                    "version_number": 16,
+                },
+                {
+                    "commit_sha": "c" * 40,
+                    "record_timestamp": "2026-08-10 10:00:00 UTC",
+                    "is_current": "true",
+                    "version_number": 17,
+                },
+                {
+                    "commit_sha": "d" * 40,
+                    "record_timestamp": "2026-08-11 10:00:00 UTC",
+                    "is_current": "1",
+                    "version_number": 18,
+                },
             ]
         )
         self.assertEqual(
@@ -305,9 +327,24 @@ class GWFlowHistorySelectionTestCase(BilbyTestCase):
     def _snapshots(self):
         return prepare_version_snapshots(
             [
-                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC", "is_current": False},
-                {"commit_sha": "b" * 40, "commit_timestamp": "2026-08-09 10:00:00 UTC", "is_current": False},
-                {"commit_sha": "c" * 40, "commit_timestamp": "2026-08-10 10:00:00 UTC", "is_current": True},
+                {
+                    "commit_sha": "a" * 40,
+                    "record_timestamp": "2026-08-08 10:00:00 UTC",
+                    "is_current": False,
+                    "version_number": 19,
+                },
+                {
+                    "commit_sha": "b" * 40,
+                    "record_timestamp": "2026-08-09 10:00:00 UTC",
+                    "is_current": False,
+                    "version_number": 20,
+                },
+                {
+                    "commit_sha": "c" * 40,
+                    "record_timestamp": "2026-08-10 10:00:00 UTC",
+                    "is_current": True,
+                    "version_number": 21,
+                },
             ],
             current_sha="c" * 40,
         )
@@ -336,8 +373,18 @@ class GWFlowHistorySelectionTestCase(BilbyTestCase):
     def test_no_current_row_falls_back_to_latest_snapshot(self):
         snapshots = prepare_version_snapshots(
             [
-                {"commit_sha": "a" * 40, "commit_timestamp": "2026-08-08 10:00:00 UTC", "is_current": False},
-                {"commit_sha": "b" * 40, "commit_timestamp": "2026-08-09 10:00:00 UTC", "is_current": False},
+                {
+                    "commit_sha": "a" * 40,
+                    "record_timestamp": "2026-08-08 10:00:00 UTC",
+                    "is_current": False,
+                    "version_number": 22,
+                },
+                {
+                    "commit_sha": "b" * 40,
+                    "record_timestamp": "2026-08-09 10:00:00 UTC",
+                    "is_current": False,
+                    "version_number": 23,
+                },
             ],
             current_sha="",
         )

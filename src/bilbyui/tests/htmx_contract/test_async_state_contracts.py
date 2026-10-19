@@ -347,6 +347,15 @@ class TestGWFlowHistoryVersionFailureBranch(BilbyTestCase):
         self.job = GWFlowJob.objects.create(sname="S230601ag", user=self.ligo_user)
         self.sha = "1111222233334444555566667777888899990000"
         self.url = reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.sha])
+        self.get_versions_patcher = patch(
+            "bilbyui.views.get_versions",
+            return_value=(
+                [{"commit_sha": self.sha, "version_number": 1}],
+                "live",
+            ),
+        )
+        self.get_versions_patcher.start()
+        self.addCleanup(self.get_versions_patcher.stop)
 
     @patch("bilbyui.views.get_version", return_value=(None, "down"))
     def test_down_renders_error_state_with_version_retry(self, mock_get_version):

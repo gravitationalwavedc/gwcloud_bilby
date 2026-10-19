@@ -23,13 +23,15 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
         summaries = [
             {
                 "commit_sha": "old-sha",
-                "commit_timestamp": "2026-09-01T01:00:00+00:00",
+                "version_number": 1,
+                "record_timestamp": "2026-09-01T01:00:00+00:00",
                 "is_current": False,
             },
             {
                 "commit_sha": "current-sha",
-                "commit_timestamp": "2026-09-02T03:04:05+10:00",
-                "record_timestamp": "1999-01-01T00:00:00+00:00",
+                "version_number": 2,
+                "commit_timestamp": "1999-01-01T00:00:00+00:00",
+                "record_timestamp": "2026-09-02T03:04:05+10:00",
                 "is_current": True,
             },
         ]
@@ -74,7 +76,7 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
         self.assertEqual(result.versions_state, "live")
         self.assertEqual(result.detail_state, "stale")
         get_versions.assert_called_once_with("S250801h")
-        get_version.assert_called_once_with("S250801h", "current-sha")
+        get_version.assert_called_once_with("S250801h", 2)
 
     def test_portal_boolean_semantics_select_only_canonical_true_values(self):
         rejected = ("false", "0", 0)
@@ -86,7 +88,8 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
                     {
                         "is_current": is_current,
                         "commit_sha": "current-sha",
-                        "commit_timestamp": "2026-09-01T00:00:00+00:00",
+                        "version_number": 7,
+                        "record_timestamp": "2026-09-01T00:00:00+00:00",
                     }
                 ]
                 with (
@@ -119,7 +122,8 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
                     {
                         "is_current": is_current,
                         "commit_sha": "current-sha",
-                        "commit_timestamp": "2026-09-01T00:00:00+00:00",
+                        "version_number": 8,
+                        "record_timestamp": "2026-09-01T00:00:00+00:00",
                     }
                 ]
                 with (
@@ -137,15 +141,15 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
                 self.assertTrue(result.available)
                 get_version.assert_called_once_with(
                     "S250801h",
-                    "current-sha",
+                    8,
                 )
 
     def test_zero_and_multiple_current_summaries_are_unavailable(self):
         cases = (
             [],
             [
-                {"is_current": True, "commit_sha": "one"},
-                {"is_current": True, "commit_sha": "two"},
+                {"is_current": True, "commit_sha": "one", "version_number": 5},
+                {"is_current": True, "commit_sha": "two", "version_number": 6},
             ],
         )
         for summaries in cases:
@@ -166,7 +170,8 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
             {
                 "is_current": True,
                 "commit_sha": "current-sha",
-                "commit_timestamp": "2026-09-01T00:00:00+00:00",
+                "version_number": 3,
+                "record_timestamp": "2026-09-01T00:00:00+00:00",
             }
         ]
         with (
@@ -190,7 +195,8 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
             {
                 "is_current": True,
                 "commit_sha": "current-sha",
-                "commit_timestamp": "2026-09-01T00:00:00+00:00",
+                "version_number": 4,
+                "record_timestamp": "2026-09-01T00:00:00+00:00",
             }
         ]
         cases = (

@@ -173,8 +173,22 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
     @mock.patch("bilbyui.views.build_metadata_presentation")
     @mock.patch("bilbyui.views.warn_unmapped_metadata_leaves")
     @mock.patch("bilbyui.views.get_version")
+    @mock.patch(
+        "bilbyui.views.get_versions",
+        return_value=(
+            [{"commit_sha": "version-1", "version_number": 1}],
+            "live",
+        ),
+    )
     @mock.patch("bilbyui.views._get_gwflow_job_or_404")
-    def test_historical_path_warns_after_build(self, get_job, get_version, warn, build):
+    def test_historical_path_warns_after_build(
+        self,
+        get_job,
+        get_versions,
+        get_version,
+        warn,
+        build,
+    ):
         payload = {"info": {"upstream": "visible"}}
         get_job.return_value = mock.Mock()
         get_version.return_value = (payload, "live")

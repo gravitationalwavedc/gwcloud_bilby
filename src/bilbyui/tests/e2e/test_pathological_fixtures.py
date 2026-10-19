@@ -45,7 +45,7 @@ class PathologicalFixturesTests(BilbyTestCase):
         self.assertEqual(sum(version["is_current"] for version in versions), 1)
         self.assertTrue(
             all(
-                {"commit_sha", "commit_timestamp", "schema_version", "is_current", "payload"} <= version.keys()
+                {"commit_sha", "record_timestamp", "schema_version", "is_current", "payload"} <= version.keys()
                 for version in versions
             )
         )
