@@ -52,6 +52,7 @@ Populate `.env` with production values for:
 - `HOST_DB_PATH` and `HOST_STAGING_PATH`: host paths for sqlite state and staging storage.
 - `LOCK_PATH` and `HOST_LOCK_PATH`: container and host paths for the ingest lock file. `run_cron.sh` bind-mounts the host lock into the container so a single lock serialises every run; the container exits early (without doing work) if the lock is already held.
 - `MAX_FILES_PER_RUN` and `MAX_BYTES_PER_RUN`: caps from the production capacity decision.
+- `ACCESSIBLE_FILE_SYSTEMS`: comma-separated, ordered list of file systems the cron may stage files from, highest precedence first (for example `CIT,LDAS`). No default; the cron exits before doing any work if this is unset, blank, has an empty entry, or has a duplicate entry.
 
 `run_cron.sh` uses `set -euo pipefail`; missing `DB_PATH`, `HOST_DB_PATH`, `STAGING_DIR`, `HOST_STAGING_PATH`, `LOCK_PATH`, or `HOST_LOCK_PATH` values will stop the wrapper before Docker runs. This is intentional so broken environment provisioning fails early.
 

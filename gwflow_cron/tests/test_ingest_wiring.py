@@ -109,11 +109,12 @@ class TestIngestWiring(GWFlowTestBase):
                     gwflow_ingest.run([])
                 self.assertEqual(cm.exception.code, 1)
 
+    @patch("gwflow_ingest.phase_bilby_children")
     @patch("gwflow_ingest.fetch_to_staging")
     @patch("gwflow_ingest.PortalClient")
     @patch("gwflow_ingest.JobControllerClient")
     @patch("gwflow_ingest.GWCloud")
-    def test_end_to_end_mocked_run(self, mock_gwc_cls, mock_jc_cls, mock_portal_cls, mock_fetch):
+    def test_end_to_end_mocked_run(self, mock_gwc_cls, mock_jc_cls, mock_portal_cls, mock_fetch, mock_phase_bilby):
         mock_gwc = MagicMock()
         mock_jc = MagicMock()
         mock_portal = MagicMock()
@@ -121,6 +122,24 @@ class TestIngestWiring(GWFlowTestBase):
         mock_gwc_cls.return_value = mock_gwc
         mock_jc_cls.return_value = mock_jc
         mock_portal_cls.return_value = mock_portal
+
+        phase_order = []
+        real_phase_metadata = gwflow_ingest.phase_metadata
+        real_phase_file_mirror = gwflow_ingest.phase_file_mirror
+
+        def ordered_metadata(**kwargs):
+            phase_order.append("metadata")
+            return real_phase_metadata(**kwargs)
+
+        def ordered_file_mirror(**kwargs):
+            phase_order.append("file_mirror")
+            return real_phase_file_mirror(**kwargs)
+
+        def ordered_bilby_children(**kwargs):
+            phase_order.append("bilby_children")
+            return []
+
+        mock_phase_bilby.side_effect = ordered_bilby_children
 
         # Portal returns 1 changed superevent
         mock_portal.iter_changed.return_value = [
@@ -161,6 +180,8 @@ class TestIngestWiring(GWFlowTestBase):
                 patch.object(settings, "GWCLOUD_TOKEN", "token"),
                 patch.object(settings, "JOB_CONTROLLER_JWT_SECRET", "secret"),
                 patch.object(settings, "JOB_CONTROLLER_BUNDLE", "bundle"),
+                patch.object(gwflow_ingest, "phase_metadata", side_effect=ordered_metadata),
+                patch.object(gwflow_ingest, "phase_file_mirror", side_effect=ordered_file_mirror),
             ):
                 with self.assertLogs("gwflow_ingest", level="INFO") as log_cm:
                     result = gwflow_ingest.run([])
@@ -173,13 +194,11 @@ class TestIngestWiring(GWFlowTestBase):
                 self.assertIn("Completed phase_metadata", log_output)
                 self.assertIn("Starting phase_file_mirror", log_output)
                 self.assertIn("Completed phase_file_mirror", log_output)
-                # Phase order: metadata -> file_mirror -> bilby_children (bilby is secondary)
-                self.assertLess(
-                    log_output.index("Starting phase_metadata"), log_output.index("Starting phase_file_mirror")
+                self.assertEqual(
+                    phase_order,
+                    ["metadata", "file_mirror", "bilby_children"],
                 )
-                self.assertLess(
-                    log_output.index("Starting phase_file_mirror"), log_output.index("Starting phase_bilby_children")
-                )
+                mock_phase_bilby.assert_called_once()
 
         # Verify metadata upsert
         mock_gwc.upsert_gwflow_job.assert_called_once_with(
@@ -191,7 +210,6 @@ class TestIngestWiring(GWFlowTestBase):
             is_pruned=False,
             current_history_id="sha-test-123",
             current_history_timestamp="2026-01-01T12:00:00Z",
-            files=[],
         )
 
         # Verify file upload
@@ -204,21 +222,29 @@ class TestIngestWiring(GWFlowTestBase):
         except TypeError as e:
             self.fail(f"phase_bilby_children raised TypeError: {e}")
 
-    @patch("gwflow_ingest.fetch_to_staging")
+    @patch("gwflow_ingest.phase_file_mirror")
+    @patch("gwflow_ingest.phase_bilby_children")
+    @patch("gwflow_ingest.phase_metadata")
     @patch("gwflow_ingest.PortalClient")
     @patch("gwflow_ingest.JobControllerClient")
     @patch("gwflow_ingest.GWCloud")
-    def test_end_to_end_prunes_deleted_superevents(self, mock_gwc_cls, mock_jc_cls, mock_portal_cls, mock_fetch):
+    def test_run_never_prunes_or_consults_current_snames(
+        self,
+        mock_gwc_cls,
+        mock_jc_cls,
+        mock_portal_cls,
+        mock_phase_metadata,
+        mock_phase_bilby,
+        mock_phase_file_mirror,
+    ):
         mock_gwc = MagicMock()
         mock_portal = MagicMock()
         mock_gwc_cls.return_value = mock_gwc
         mock_jc_cls.return_value = MagicMock()
         mock_portal_cls.return_value = mock_portal
-
-        mock_portal.iter_changed.return_value = []
-        mock_portal.iter_current_snames.return_value = ["S_ACTIVE"]
-        mock_gwc.get_gwflow_job_list.return_value = [{"sname": "S_ACTIVE"}, {"sname": "S_DELETED"}]
-        mock_gwc.get_gwflow_pending_files.return_value = []
+        mock_phase_metadata.return_value = []
+        mock_phase_bilby.return_value = []
+        mock_phase_file_mirror.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             db_file = Path(tmpdir) / "gwflow.db"
@@ -228,10 +254,41 @@ class TestIngestWiring(GWFlowTestBase):
                 patch.object(settings, "JOB_CONTROLLER_JWT_SECRET", "secret"),
                 patch.object(settings, "JOB_CONTROLLER_BUNDLE", "bundle"),
             ):
-                result = gwflow_ingest.run([])
-                self.assertEqual(result, 0)
+                self.assertEqual(gwflow_ingest.run([]), 0)
 
-        mock_gwc.upsert_gwflow_job.assert_called_once_with(sname="S_DELETED", is_pruned=True)
+        mock_portal.iter_current_snames.assert_not_called()
+        self.assertFalse(
+            any(call.kwargs.get("is_pruned") is True for call in mock_gwc.upsert_gwflow_job.call_args_list)
+        )
+
+    @patch("gwflow_ingest.phase_file_mirror")
+    @patch("gwflow_ingest.phase_bilby_children")
+    @patch("gwflow_ingest.phase_metadata")
+    @patch("gwflow_ingest.JobControllerClient")
+    @patch("gwflow_ingest.GWCloud")
+    def test_run_returns_one_when_phase_rejects(
+        self,
+        mock_gwc_cls,
+        mock_jc_cls,
+        mock_phase_metadata,
+        mock_phase_bilby,
+        mock_phase_file_mirror,
+    ):
+        mock_gwc_cls.return_value = MagicMock()
+        mock_jc_cls.return_value = MagicMock()
+        mock_phase_metadata.return_value = [MagicMock()]
+        mock_phase_bilby.return_value = []
+        mock_phase_file_mirror.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_file = Path(tmpdir) / "gwflow.db"
+            with (
+                patch.object(settings, "DB_PATH", str(db_file)),
+                patch.object(settings, "GWCLOUD_TOKEN", "token"),
+                patch.object(settings, "JOB_CONTROLLER_JWT_SECRET", "secret"),
+                patch.object(settings, "JOB_CONTROLLER_BUNDLE", "bundle"),
+            ):
+                self.assertEqual(gwflow_ingest.run([]), 1)
 
 
 if __name__ == "__main__":

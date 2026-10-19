@@ -150,3 +150,72 @@ class GWFlowModelsTestCase(BilbyTestCase):
 
         self.assertEqual(result.id, gwflow_file.id)
         self.assertEqual(result.job, job)
+
+
+class TestProtectedIdentityManifest(BilbyTestCase):
+    """SM-1 and design §9.5 manifest-comparator coverage."""
+
+    def test_sm1_manifest_shape_covers_all_protected_models(self):
+        from bilbyui.models import (
+            BilbyJob,
+            EventID,
+            ExternalBilbyJob,
+            GWFlowJob,
+        )
+        from bilbyui.tests.gwflow_manifests import protected_identity_manifest
+
+        owner = self.create_user(id=701, name="manifest owner")
+        event = EventID.objects.create(
+            event_id="G-MANIFEST-1",
+            trigger_id="S-MANIFEST-1",
+        )
+        parent = GWFlowJob.objects.create(
+            sname="S-MANIFEST-1",
+            user=owner,
+            event_id=event,
+        )
+        child = BilbyJob.objects.create(
+            user=owner,
+            name="manifest-child",
+            ini_string="",
+            event_id=event,
+            gwflow_job=parent,
+        )
+        external = ExternalBilbyJob.objects.create(job=child)
+
+        self.assertEqual(
+            protected_identity_manifest(),
+            sorted(
+                [
+                    ("GWFlowJob", parent.pk, owner.pk, event.pk),
+                    (
+                        "BilbyJob",
+                        child.pk,
+                        owner.pk,
+                        event.pk,
+                        parent.pk,
+                    ),
+                    (
+                        "ExternalBilbyJob",
+                        external.pk,
+                        owner.pk,
+                        child.pk,
+                    ),
+                    ("EventID", event.pk, event.trigger_id),
+                ],
+                key=repr,
+            ),
+        )
+
+    def test_manifest_comparator_detects_deleted_owner_and_fk_changes(self):
+        from bilbyui.tests.gwflow_manifests import assert_manifest_can_fail
+
+        evidence = assert_manifest_can_fail()
+
+        self.assertEqual(
+            set(evidence),
+            {"deleted row", "changed owner", "changed FK"},
+        )
+        for message in evidence.values():
+            self.assertIn("deleted_or_changed=", message)
+            self.assertIn("created_or_changed=", message)
