@@ -1,7 +1,10 @@
+import copy
+import random
 import subprocess
 import tarfile
 import tempfile
 import unittest
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
@@ -13,140 +16,500 @@ except ImportError:
 import settings
 import state
 from bilby_children import (
+    SUPPORTED_BILBY_SOFTWARE,
+    Rejection,
     StageError,
     _ini_outdir,
     _set_ini_label,
     _tree_relative_target,
-    _valid_file_ref,
-    find_bilby_pe_analyses,
     make_archive,
     resolve_event_id_for,
+    select_bilby_analyses,
     synthesize_job_tree,
+    validate_supported_software,
 )
-from gwflow_ingest import phase_bilby_children, phase_metadata, rec_for
+from gwflow_ingest import linked_analysis_uids, phase_bilby_children, phase_metadata, rec_for
 from job_controller import ClusterOffline, FetchError
 
+try:
+    from tests.golden import build_superevent
+except ImportError:
+    from golden import build_superevent
 
-class TestFindBilbyPeAnalyses(unittest.TestCase):
-    def _good_result(self, **overrides):
-        result = {
-            "uid": "uid-1",
-            "inference_software": "BILBY",
-            "config_file": {"path": "/data/cfg.ini", "file_size": 10},
-            "result_file": {"path": "/data/result.hdf5"},
-            "pesummary_result_file": {"path": "/data/summary.html"},
+
+class TestLinkedAnalysisUids(unittest.TestCase):
+    def test_sc_1_builds_expected_uid_set(self):
+        gwc = MagicMock()
+        gwc.request.return_value = {
+            "gwflow_linked_bilby_jobs": [
+                {"id": "job-1", "gwflow_analysis_uid": "uid-a"},
+                {"id": "job-2", "gwflow_analysis_uid": "uid-b"},
+                {"id": "job-3", "gwflow_analysis_uid": "uid-a"},
+            ]
         }
-        result.update(overrides)
-        return result
 
-    def test_bilby_with_config_file_kept(self):
-        detail = {"pe": {"results": [self._good_result()]}}
-        analyses = find_bilby_pe_analyses(detail)
-        self.assertEqual(len(analyses), 1)
-        a = analyses[0]
-        self.assertEqual(a["uid"], "uid-1")
-        self.assertEqual(a["config_file"], {"path": "/data/cfg.ini", "file_size": 10})
-        self.assertEqual(a["result_file"], {"path": "/data/result.hdf5"})
-        self.assertEqual(a["pesummary_result_file"], {"path": "/data/summary.html"})
-        self.assertEqual(a["software"], "BILBY")
+        self.assertEqual(linked_analysis_uids(gwc, "S_SC1"), {"uid-a", "uid-b"})
+        gwc.get_gwflow_job.assert_not_called()
 
-    def test_non_bilby_software_skipped(self):
-        detail = {"pe": {"results": [self._good_result(inference_software="lalinf")]}}
-        self.assertEqual(find_bilby_pe_analyses(detail), [])
+    def test_sc_2_absent_or_malformed_rows_raise(self):
+        cases = [
+            ({}, KeyError),
+            ({"gwflow_linked_bilby_jobs": [{}]}, KeyError),
+            ({"gwflow_linked_bilby_jobs": None}, TypeError),
+        ]
+        for response, exception in cases:
+            with self.subTest(response=response):
+                gwc = MagicMock()
+                gwc.request.return_value = response
+                with self.assertRaises(exception):
+                    linked_analysis_uids(gwc, "S_SC2")
 
-    def test_bilby_case_insensitive_software_kept(self):
-        detail = {"pe": {"results": [self._good_result(inference_software="bilby_pipe")]}}
-        self.assertEqual(len(find_bilby_pe_analyses(detail)), 1)
+    def test_sc_3_uses_ingest_query_and_sname_variables(self):
+        gwc = MagicMock()
+        gwc.request.return_value = {"gwflow_linked_bilby_jobs": []}
 
-    def test_missing_config_file_skipped(self):
-        detail = {"pe": {"results": [self._good_result(config_file=None)]}}
-        self.assertEqual(find_bilby_pe_analyses(detail), [])
+        self.assertEqual(linked_analysis_uids(gwc, "S_SC3"), set())
 
-    def test_config_file_without_path_skipped(self):
-        detail = {"pe": {"results": [self._good_result(config_file={"file_size": 10})]}}
-        self.assertEqual(find_bilby_pe_analyses(detail), [])
+        gwc.request.assert_called_once()
+        kwargs = gwc.request.call_args.kwargs
+        self.assertEqual(kwargs["variables"], {"sname": "S_SC3"})
+        self.assertIn("gwflowLinkedBilbyJobs(sname: $sname)", kwargs["query"])
+        self.assertIn("gwflowAnalysisUid", kwargs["query"])
+        gwc.get_gwflow_job.assert_not_called()
 
-    def test_malformed_result_file_skipped(self):
-        detail = {"pe": {"results": [self._good_result(result_file="not-a-dict")]}}
-        self.assertEqual(find_bilby_pe_analyses(detail), [])
 
-    def test_result_file_without_path_skipped(self):
-        detail = {"pe": {"results": [self._good_result(result_file={"file_size": 10})]}}
-        self.assertEqual(find_bilby_pe_analyses(detail), [])
+class TestSelectBilbyAnalyses(unittest.TestCase):
+    file_systems = ("OzStar", "CIT", "LDAS")
 
-    def test_malformed_pesummary_result_file_skipped(self):
-        detail = {"pe": {"results": [self._good_result(pesummary_result_file="nope")]}}
-        self.assertEqual(find_bilby_pe_analyses(detail), [])
+    def detail(self):
+        detail = build_superevent("S000001a")
+        detail["analyses"] = [detail["analyses"][0]]
+        return detail
 
-    def test_pesummary_result_file_without_path_skipped(self):
-        detail = {"pe": {"results": [self._good_result(pesummary_result_file={})]}}
-        self.assertEqual(find_bilby_pe_analyses(detail), [])
+    def analysis(self):
+        return self.detail()["analyses"][0]
 
-    def test_none_result_files_kept(self):
-        detail = {"pe": {"results": [self._good_result(result_file=None, pesummary_result_file=None)]}}
-        self.assertEqual(len(find_bilby_pe_analyses(detail)), 1)
+    def select(self, detail=None, file_systems=None):
+        return select_bilby_analyses(
+            "S000001a",
+            detail if detail is not None else self.detail(),
+            self.file_systems if file_systems is None else file_systems,
+        )
 
-    def test_missing_uid_skipped(self):
-        detail = {"pe": {"results": [self._good_result(uid="")]}}
-        self.assertEqual(find_bilby_pe_analyses(detail), [])
-
-    def test_non_string_uid_skipped(self):
-        detail = {"pe": {"results": [self._good_result(uid=None)]}}
-        self.assertEqual(find_bilby_pe_analyses(detail), [])
-
-    def test_missing_pe_section_returns_empty(self):
-        self.assertEqual(find_bilby_pe_analyses({"foo": "bar"}), [])
-
-    def test_non_dict_detail_returns_empty(self):
-        self.assertEqual(find_bilby_pe_analyses(None), [])
-        self.assertEqual(find_bilby_pe_analyses(["not a dict"]), [])
-        self.assertEqual(find_bilby_pe_analyses("string"), [])
-
-    def test_non_dict_pe_returns_empty(self):
-        self.assertEqual(find_bilby_pe_analyses({"pe": "nope"}), [])
-        self.assertEqual(find_bilby_pe_analyses({"pe": ["list"]}), [])
-        self.assertEqual(find_bilby_pe_analyses({"pe": None}), [])
-
-    def test_non_list_results_returns_empty(self):
-        self.assertEqual(find_bilby_pe_analyses({"pe": {"results": "nope"}}), [])
-        self.assertEqual(find_bilby_pe_analyses({"pe": {"results": {"0": "thing"}}}), [])
-
-    def test_non_dict_result_entries_skipped(self):
-        detail = {"pe": {"results": ["string", None, self._good_result()]}}
-        self.assertEqual(len(find_bilby_pe_analyses(detail)), 1)
-
-    def test_multiple_results_filtered(self):
-        detail = {
-            "pe": {
-                "results": [
-                    self._good_result(uid="uid-a", inference_software="bilby"),
-                    self._good_result(uid="uid-b", inference_software="lalinf"),
-                    self._good_result(uid="uid-c", inference_software="BILBY"),
-                    self._good_result(uid="uid-d", config_file=None),
-                ]
-            }
+    def relationship(self, role, path, *, file_system="OzStar", md5sum="abc", url=None):
+        return {
+            "direction": "output",
+            "role": role,
+            "file": {
+                "name": Path(path).name,
+                "description": role,
+                "md5sum": md5sum,
+                "last_modified": None,
+                "locations": [
+                    {
+                        "file_system": file_system,
+                        "path": path,
+                        "url": url,
+                    }
+                ],
+            },
         }
-        kept_uids = [a["uid"] for a in find_bilby_pe_analyses(detail)]
-        self.assertEqual(kept_uids, ["uid-a", "uid-c"])
 
+    def test_te_1_eligible_golden_analysis(self):
+        selected, rejected = self.select()
+        self.assertEqual(rejected, [])
+        self.assertEqual(len(selected), 1)
+        self.assertEqual(
+            selected[0],
+            {
+                "uid": "pe_1",
+                "config_file": {
+                    "path": "/ozstar/S000001a/pe_1.ini",
+                    "md5_sum": "0123456789abcdef0123456789abcdef",
+                },
+                "result_file": {
+                    "path": "/ozstar/S000001a/pe_1_result.hdf5",
+                    "md5_sum": None,
+                },
+                "pesummary_result_file": None,
+                "software": "bilby_pipe",
+            },
+        )
 
-class TestValidFileRef(unittest.TestCase):
-    def test_none_is_valid(self):
-        self.assertTrue(_valid_file_ref(None))
+    def test_te_2_to_5_configuration_and_config_role_counts(self):
+        cases = []
 
-    def test_non_dict_is_invalid(self):
-        self.assertFalse(_valid_file_ref("not-a-dict"))
-        self.assertFalse(_valid_file_ref(42))
-        self.assertFalse(_valid_file_ref(["list"]))
+        zero_config = self.detail()
+        zero_config["analyses"][0]["configurations"] = []
+        cases.append(("TE-2 zero configuration", zero_config, 0, 0, None))
 
-    def test_dict_with_empty_path_is_invalid(self):
-        self.assertFalse(_valid_file_ref({}))
-        self.assertFalse(_valid_file_ref({"path": ""}))
-        self.assertFalse(_valid_file_ref({"file_size": 10}))
+        multiple_config = self.detail()
+        multiple_config["analyses"][0]["configurations"] *= 2
+        cases.append(("TE-3 multiple configurations", multiple_config, 0, 1, "multiple pe configurations"))
 
-    def test_dict_with_truthy_path_is_valid(self):
-        self.assertTrue(_valid_file_ref({"path": "/data/result.hdf5"}))
-        self.assertTrue(_valid_file_ref({"path": "/data/result.hdf5", "file_size": 10}))
+        zero_role = self.detail()
+        zero_role["analyses"][0]["input_files"] = []
+        cases.append(("TE-4 zero config roles", zero_role, 0, 0, None))
+
+        multiple_role = self.detail()
+        multiple_role["analyses"][0]["input_files"] *= 2
+        cases.append(("TE-5 multiple config roles", multiple_role, 0, 1, "multiple config relationships"))
+
+        precedence_zero = self.detail()
+        precedence_zero["analyses"][0]["configurations"] = []
+        precedence_zero["analyses"][0]["input_files"] *= 2
+        cases.append(("TE-2 precedence", precedence_zero, 0, 0, None))
+
+        precedence_multiple = self.detail()
+        precedence_multiple["analyses"][0]["configurations"] *= 2
+        precedence_multiple["analyses"][0]["input_files"] = []
+        cases.append(("TE-3 precedence", precedence_multiple, 0, 1, "multiple pe configurations"))
+
+        for name, detail, selected_count, rejection_count, reason in cases:
+            with self.subTest(name=name):
+                selected, rejected = self.select(detail)
+                self.assertEqual(len(selected), selected_count)
+                self.assertEqual(len(rejected), rejection_count)
+                if reason:
+                    self.assertEqual(rejected[0].reason, reason)
+
+    def test_te_6_7_8_9_10_software_truth_table(self):
+        cases = [
+            ("TE-6 unsupported", {"name": "pycbc"}, 0),
+            ("TE-7 null", None, 0),
+            ("TE-8 absent", Ellipsis, 1),
+            ("TE-9 string", "bilby", 1),
+            ("TE-9 list", [], 1),
+            ("TE-9 integer", 1, 1),
+            ("TE-9 boolean", True, 1),
+            ("TE-10 missing name", {}, 1),
+            ("TE-10 non-string name", {"name": 1}, 1),
+        ]
+        for name, software, rejection_count in cases:
+            with self.subTest(name=name):
+                detail = self.detail()
+                analysis = detail["analyses"][0]
+                if software is Ellipsis:
+                    del analysis["software"]
+                else:
+                    analysis["software"] = software
+                selected, rejected = self.select(detail)
+                self.assertEqual(selected, [])
+                self.assertEqual(len(rejected), rejection_count)
+
+    def test_te_11_required_fields(self):
+        mutations = [
+            ("uid", None),
+            ("status", None),
+            ("status", "unknown"),
+            ("deprecated", None),
+            ("deprecated", 1),
+            ("input_files", None),
+            ("output_files", None),
+            ("configurations", None),
+        ]
+        for field, value in mutations:
+            with self.subTest(field=field, value=value):
+                detail = self.detail()
+                detail["analyses"][0][field] = value
+                selected, rejected = self.select(detail)
+                self.assertEqual(selected, [])
+                self.assertEqual(len(rejected), 1)
+                self.assertIn(field, rejected[0].reason)
+
+    def test_te_12_event_validation_is_ignored(self):
+        detail = build_superevent("S000001a")
+        detail["analyses"] = [detail["analyses"][1]]
+        self.assertEqual(self.select(detail), ([], []))
+
+    def test_te_13_14_malformed_analysis_rows(self):
+        cases = [
+            {},
+            {"type": 1},
+            {"type": "unknown"},
+            None,
+            "analysis",
+            [],
+        ]
+        for row in cases:
+            with self.subTest(row=row):
+                detail = self.detail()
+                detail["analyses"] = [row]
+                selected, rejected = self.select(detail)
+                self.assertEqual(selected, [])
+                self.assertEqual(len(rejected), 1)
+                self.assertEqual(rejected[0].reason, "malformed analysis type")
+
+    def test_te_15_duplicate_eligible_uid_rejects_whole_update(self):
+        detail = self.detail()
+        detail["analyses"].append(copy.deepcopy(detail["analyses"][0]))
+        selected, rejected = self.select(detail)
+        self.assertEqual(selected, [])
+        self.assertEqual(len(rejected), 1)
+        self.assertEqual(rejected[0].analysis_uid, "pe_1")
+        self.assertEqual(rejected[0].reason, "duplicate eligible uid")
+
+    def test_te_16_exact_case_sensitive_allowlist(self):
+        unsupported = [
+            "Bilby",
+            "bilby_PIPE",
+            "pybilby",
+            "bilby-pipe",
+            "bilby ",
+            "bilby_pipe2",
+            "",
+        ]
+        for name in unsupported:
+            with self.subTest(name=name):
+                detail = self.detail()
+                detail["analyses"][0]["software"]["name"] = name
+                self.assertEqual(self.select(detail), ([], []))
+
+        for name in ("bilby", "BILBY", "bilby_pipe"):
+            with self.subTest(name=name):
+                detail = self.detail()
+                detail["analyses"][0]["software"]["name"] = name
+                selected, rejected = self.select(detail)
+                self.assertEqual(len(selected), 1)
+                self.assertEqual(rejected, [])
+
+    def test_te_17_allowlist_constant_and_validation(self):
+        self.assertEqual(SUPPORTED_BILBY_SOFTWARE, {"bilby", "BILBY", "bilby_pipe"})
+        validate_supported_software()
+
+        invalid_values = [set(), frozenset({"bilby"}), {"bilby", ""}, {"bilby", 1}]
+        for value in invalid_values:
+            with self.subTest(value=value):
+                with patch("bilby_children.SUPPORTED_BILBY_SOFTWARE", value):
+                    with self.assertRaises(SystemExit) as raised:
+                        validate_supported_software()
+                    self.assertEqual(raised.exception.code, 1)
+
+    def test_tf_1_to_9_role_selection_matrix(self):
+        for role, array_name, output_name, required in (
+            ("config", "input_files", "config_file", True),
+            ("result", "output_files", "result_file", False),
+            ("pesummary", "output_files", "pesummary_result_file", False),
+        ):
+            with self.subTest(role=role, count=0):
+                detail = self.detail()
+                analysis = detail["analyses"][0]
+                analysis[array_name] = [item for item in analysis[array_name] if item["role"] != role]
+                selected, rejected = self.select(detail)
+                if required:
+                    self.assertEqual((selected, rejected), ([], []))
+                else:
+                    self.assertEqual(rejected, [])
+                    self.assertIsNone(selected[0][output_name])
+
+            with self.subTest(role=role, count=1):
+                detail = self.detail()
+                analysis = detail["analyses"][0]
+                relationship = self.relationship(role, f"/ozstar/{role}.dat")
+                relationship["direction"] = "input" if required else "output"
+                analysis[array_name] = [item for item in analysis[array_name] if item["role"] != role] + [relationship]
+                selected, rejected = self.select(detail)
+                self.assertEqual(rejected, [])
+                self.assertEqual(selected[0][output_name]["path"], f"/ozstar/{role}.dat")
+
+            with self.subTest(role=role, count=2):
+                detail = self.detail()
+                analysis = detail["analyses"][0]
+                relationship = self.relationship(role, f"/ozstar/{role}.dat")
+                relationship["direction"] = "input" if required else "output"
+                analysis[array_name] = [copy.deepcopy(relationship), copy.deepcopy(relationship)]
+                selected, rejected = self.select(detail)
+                self.assertEqual(selected, [])
+                self.assertEqual(len(rejected), 1)
+                self.assertEqual(rejected[0].role, role)
+
+    def test_tf_wrong_case_and_filename_do_not_match(self):
+        for role in ("Config", "RESULT"):
+            with self.subTest(role=role):
+                detail = self.detail()
+                analysis = detail["analyses"][0]
+                analysis["input_files"][0]["role"] = role
+                analysis["input_files"][0]["file"]["name"] = "config.ini"
+                self.assertEqual(self.select(detail), ([], []))
+
+    def test_tf_optional_inaccessible_is_null_and_warned(self):
+        detail = self.detail()
+        analysis = detail["analyses"][0]
+        analysis["output_files"] = [self.relationship("result", "/remote/result.h5", file_system="REMOTE")]
+        with self.assertLogs("gwflow_ingest.bilby_children", level="WARNING") as logs:
+            selected, rejected = self.select(detail)
+        self.assertEqual(rejected, [])
+        self.assertIsNone(selected[0]["result_file"])
+        self.assertIn("role=result", "\n".join(logs.output))
+        self.assertIn("REMOTE", "\n".join(logs.output))
+
+    def test_tl_1_to_7_accessible_location_ordering(self):
+        cases = [
+            (
+                "TL-1 rank beats path",
+                [
+                    {"file_system": "CIT", "path": "/a", "url": None},
+                    {"file_system": "OzStar", "path": "/z", "url": None},
+                ],
+                self.file_systems,
+                "/z",
+                False,
+            ),
+            (
+                "TL-2 path tie-break",
+                [
+                    {"file_system": "OzStar", "path": "/m/2", "url": None},
+                    {"file_system": "OzStar", "path": "/m/1", "url": None},
+                ],
+                self.file_systems,
+                "/m/1",
+                False,
+            ),
+            (
+                "TL-3 url tie-break",
+                [
+                    {"file_system": "OzStar", "path": "/m/1", "url": "https://h/2"},
+                    {"file_system": "OzStar", "path": "/m/1", "url": "https://h/1"},
+                ],
+                self.file_systems,
+                "/m/1",
+                False,
+            ),
+            (
+                "TL-4 unconfigured",
+                [{"file_system": "REMOTE", "path": "/remote", "url": None}],
+                self.file_systems,
+                None,
+                True,
+            ),
+            (
+                "TL-5 empty path",
+                [
+                    {"file_system": "OzStar", "path": "", "url": None},
+                    {"file_system": "CIT", "path": "/cit", "url": None},
+                ],
+                self.file_systems,
+                "/cit",
+                False,
+            ),
+            (
+                "TL-6 whitespace path",
+                [
+                    {"file_system": "OzStar", "path": "   ", "url": None},
+                    {"file_system": "CIT", "path": "/cit", "url": None},
+                ],
+                self.file_systems,
+                "/cit",
+                False,
+            ),
+            (
+                "TL-7 empty configured tuple",
+                [{"file_system": "OzStar", "path": "/ozstar", "url": None}],
+                (),
+                None,
+                True,
+            ),
+        ]
+        for name, locations, file_systems, expected, rejected_expected in cases:
+            with self.subTest(name=name):
+                detail = self.detail()
+                detail["analyses"][0]["input_files"][0]["file"]["locations"] = locations
+                selected, rejected = self.select(detail, file_systems)
+                self.assertEqual(bool(rejected), rejected_expected)
+                if expected is not None:
+                    self.assertEqual(selected[0]["config_file"]["path"], expected)
+
+        detail = self.detail()
+        locations = detail["analyses"][0]["input_files"][0]["file"]["locations"]
+        first = self.select(detail)
+        locations.reverse()
+        second = self.select(detail)
+        self.assertEqual(first, second)
+
+    def test_tc_1_to_4_checksum_translation(self):
+        for checksum in ("abc", None):
+            with self.subTest(checksum=checksum):
+                detail = self.detail()
+                detail["analyses"][0]["input_files"][0]["file"]["md5sum"] = checksum
+                selected, rejected = self.select(detail)
+                self.assertEqual(rejected, [])
+                self.assertEqual(selected[0]["config_file"]["md5_sum"], checksum)
+                self.assertNotIn("md5sum", selected[0]["config_file"])
+
+        for wrong_key in ("md5_sum", "checksum"):
+            with self.subTest(wrong_key=wrong_key):
+                detail = self.detail()
+                file_data = detail["analyses"][0]["input_files"][0]["file"]
+                checksum = file_data.pop("md5sum")
+                file_data[wrong_key] = checksum
+                selected, rejected = self.select(detail)
+                self.assertEqual(selected, [])
+                self.assertEqual(len(rejected), 1)
+                self.assertIn("md5sum", rejected[0].reason)
+
+    def test_td_1_to_3_deterministic_rerun_and_ordering(self):
+        detail = self.detail()
+        analysis = detail["analyses"][0]
+        analysis["output_files"].append(self.relationship("pesummary", "/ozstar/summary.html", md5sum=None))
+        first = self.select(detail)
+        second = self.select(copy.deepcopy(detail))
+        self.assertEqual(first, second)
+
+        shuffled = copy.deepcopy(detail)
+        random.Random(117).shuffle(shuffled["analyses"][0]["input_files"][0]["file"]["locations"])
+        random.Random(118).shuffle(shuffled["analyses"][0]["output_files"])
+        self.assertEqual(first, self.select(shuffled))
+
+        selected, rejected = first
+        self.assertEqual(rejected, [])
+        self.assertEqual(selected[0]["result_file"]["path"], "/ozstar/S000001a/pe_1_result.hdf5")
+        self.assertEqual(selected[0]["pesummary_result_file"]["path"], "/ozstar/summary.html")
+
+    def test_tr_1_rejection_fields(self):
+        detail = self.detail()
+        detail["analyses"][0]["input_files"][0]["file"]["locations"] = [
+            {"file_system": "REMOTE_B", "path": "/b", "url": None},
+            {"file_system": "REMOTE_A", "path": "/a", "url": None},
+        ]
+        selected, rejected = self.select(detail)
+        self.assertEqual(selected, [])
+        self.assertEqual(
+            rejected,
+            [
+                Rejection(
+                    sname="S000001a",
+                    analysis_uid="pe_1",
+                    role="config",
+                    available_file_systems=("REMOTE_A", "REMOTE_B"),
+                    reason="no accessible location",
+                    index=0,
+                )
+            ],
+        )
+
+    def test_tr_2_uidless_row_fail_key(self):
+        detail = self.detail()
+        detail["analyses"] = [{"type": "pe"}]
+        selected, rejected = self.select(detail)
+        self.assertEqual(selected, [])
+        self.assertEqual(rejected[0].fail_key, "bilby:S000001a/analyses[0]")
+
+    def test_tr_3_rejection_is_frozen(self):
+        rejection = Rejection("S1", "pe_1", "config", (), "reason")
+        with self.assertRaises(FrozenInstanceError):
+            rejection.reason = "changed"
+
+    def test_detail_shape_safety_net(self):
+        for detail in (None, {}, {"analyses": None}):
+            with self.subTest(detail=detail):
+                selected, rejected = select_bilby_analyses(
+                    "S000001a",
+                    detail,
+                    self.file_systems,
+                )
+                self.assertEqual(selected, [])
+                self.assertEqual(len(rejected), 1)
+                self.assertEqual(rejected[0].reason, "detail analyses must be an array")
 
 
 class TestSetIniLabel(unittest.TestCase):
@@ -606,6 +969,26 @@ class TestResolveEventIdFor(unittest.TestCase):
         self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
 
 
+def _canonical_file_relationship(role, path, *, direction, md5sum=""):
+    return {
+        "direction": direction,
+        "role": role,
+        "file": {
+            "name": Path(path).name,
+            "description": role,
+            "md5sum": md5sum,
+            "last_modified": None,
+            "locations": [
+                {
+                    "file_system": "fs_a",
+                    "path": path,
+                    "url": None,
+                }
+            ],
+        },
+    }
+
+
 def _bilby_analysis(
     uid="uid1",
     config_path="/data/pe/config.ini",
@@ -613,12 +996,48 @@ def _bilby_analysis(
     summary_path=None,
     software="bilby",
 ):
+    input_files = []
+    if config_path:
+        input_files.append(
+            _canonical_file_relationship(
+                "config",
+                config_path,
+                direction="input",
+            )
+        )
+
+    output_files = []
+    if result_path:
+        output_files.append(
+            _canonical_file_relationship(
+                "result",
+                result_path,
+                direction="output",
+            )
+        )
+    if summary_path:
+        output_files.append(
+            _canonical_file_relationship(
+                "pesummary",
+                summary_path,
+                direction="output",
+            )
+        )
+
     return {
         "uid": uid,
-        "inference_software": software,
-        "config_file": {"path": config_path, "file_size": 100, "md5_sum": ""},
-        "result_file": {"path": result_path, "file_size": 200, "md5_sum": ""} if result_path else None,
-        "pesummary_result_file": ({"path": summary_path, "file_size": 50, "md5_sum": ""} if summary_path else None),
+        "type": "pe",
+        "status": "complete",
+        "deprecated": False,
+        "software": {"name": software},
+        "configurations": [
+            {
+                "uid": f"{uid}:configuration",
+                "type": "pe",
+            }
+        ],
+        "input_files": input_files,
+        "output_files": output_files,
     }
 
 
@@ -626,19 +1045,21 @@ def _bilby_detail(sname="S1", analyses=None, gracedb=None):
     detail = {
         "sname": sname,
         "raw_payload": {"sname": sname},
-        "pe": {"results": analyses if analyses is not None else []},
+        "analyses": analyses if analyses is not None else [],
     }
     if gracedb is not None:
+        # Deferred resolve_event_id_for residue still consumes this legacy key.
         detail["gracedb"] = gracedb
     return detail
 
 
-def _make_gwc(job=None, uploaded_id="job-id-1"):
+def _make_gwc(linked_uids=(), uploaded_id="job-id-1"):
     gwc = MagicMock()
-    if job is None:
-        job = MagicMock()
-        job.bilby_jobs = None
-    gwc.get_gwflow_job.return_value = job
+    gwc.request.return_value = {
+        "gwflow_linked_bilby_jobs": [
+            {"id": f"linked-{index}", "gwflow_analysis_uid": uid} for index, uid in enumerate(linked_uids, start=1)
+        ]
+    }
     uploaded = MagicMock()
     uploaded.id = uploaded_id
     gwc.upload_job_archive.return_value = uploaded
@@ -787,19 +1208,15 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         self.assertIn("event id creation failed", "\n".join(logs.output))
         self.assertIn("conflict: EVT-A belongs to another superevent", "\n".join(logs.output))
 
-    def test_idempotent_rerun_skips_linked(self):
-        sname = "S_IDEMP"
-        analysis = _bilby_analysis(uid="uid1")
-        detail = _bilby_detail(sname=sname, analyses=[analysis])
-
+    def test_si_4a_unscoped_linked_read_prevents_duplicate_upload(self):
+        sname = "S_HIDDEN_LINKED"
+        detail = _bilby_detail(sname=sname, analyses=[_bilby_analysis(uid="uid-hidden")])
         self._seed_changed_sname(sname)
+
         portal = MagicMock()
         portal.get_superevent.return_value = detail
-
-        job = MagicMock()
-        bilby = MagicMock(gwflow_analysis_uid="uid1")
-        job.bilby_jobs = [bilby]
-        gwc, _ = _make_gwc(job=job)
+        gwc, _ = _make_gwc(linked_uids=("uid-hidden",))
+        gwc.get_gwflow_job.return_value = MagicMock(bilby_jobs=[])
         jc = MagicMock()
 
         with patch.object(settings, "STAGING_DIR", tempfile.mkdtemp()):
@@ -809,6 +1226,29 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         mock_fetch.assert_not_called()
         gwc.upload_job_archive.assert_not_called()
         gwc.link_bilby_job_to_gwflow.assert_not_called()
+        gwc.get_gwflow_job.assert_not_called()
+        gwc.request.assert_called_once()
+
+    def test_idempotent_rerun_skips_linked(self):
+        sname = "S_IDEMP"
+        analysis = _bilby_analysis(uid="uid1")
+        detail = _bilby_detail(sname=sname, analyses=[analysis])
+
+        self._seed_changed_sname(sname)
+        portal = MagicMock()
+        portal.get_superevent.return_value = detail
+
+        gwc, _ = _make_gwc(linked_uids=("uid1",))
+        jc = MagicMock()
+
+        with patch.object(settings, "STAGING_DIR", tempfile.mkdtemp()):
+            with patch("gwflow_ingest.fetch_to_staging") as mock_fetch:
+                phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
+
+        mock_fetch.assert_not_called()
+        gwc.upload_job_archive.assert_not_called()
+        gwc.link_bilby_job_to_gwflow.assert_not_called()
+        gwc.get_gwflow_job.assert_not_called()
 
     def test_stale_linked_child_row_cleared(self):
         sname = "S_STALE"
@@ -822,10 +1262,7 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         portal = MagicMock()
         portal.get_superevent.return_value = detail
 
-        job = MagicMock()
-        bilby = MagicMock(gwflow_analysis_uid="uid1")
-        job.bilby_jobs = [bilby]
-        gwc, _ = _make_gwc(job=job)
+        gwc, _ = _make_gwc(linked_uids=("uid1",))
         jc = MagicMock()
 
         with patch.object(settings, "STAGING_DIR", tempfile.mkdtemp()):
@@ -839,6 +1276,7 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         mock_fetch.assert_not_called()
         gwc.upload_job_archive.assert_not_called()
         gwc.link_bilby_job_to_gwflow.assert_not_called()
+        gwc.get_gwflow_job.assert_not_called()
 
     def test_non_bilby_ignored(self):
         sname = "S_NONBILBY"
@@ -861,7 +1299,7 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
     def test_missing_config_file_ignored(self):
         sname = "S_NOCFG"
         analysis = _bilby_analysis(uid="uid1")
-        analysis["config_file"] = None
+        analysis["input_files"] = []
         detail = _bilby_detail(sname=sname, analyses=[analysis])
 
         self._seed_changed_sname(sname)
@@ -877,23 +1315,21 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
         mock_fetch.assert_not_called()
         gwc.upload_job_archive.assert_not_called()
 
-    def test_missing_uid_ignored(self):
+    def test_missing_uid_rejected(self):
         sname = "S_NOUID"
         analysis = _bilby_analysis(uid="")
         detail = _bilby_detail(sname=sname, analyses=[analysis])
 
-        self._seed_changed_sname(sname)
-        portal = MagicMock()
-        portal.get_superevent.return_value = detail
-        gwc, _ = _make_gwc()
-        jc = MagicMock()
+        selected, rejected = select_bilby_analyses(
+            sname,
+            detail,
+            settings.ACCESSIBLE_FILE_SYSTEMS,
+        )
 
-        with patch.object(settings, "STAGING_DIR", tempfile.mkdtemp()):
-            with patch("gwflow_ingest.fetch_to_staging") as mock_fetch:
-                phase_bilby_children(portal_client=portal, gwc_client=gwc, jc=jc, con=self.con)
-
-        mock_fetch.assert_not_called()
-        gwc.upload_job_archive.assert_not_called()
+        self.assertEqual(selected, [])
+        self.assertTrue(rejected)
+        self.assertIsNone(rejected[0].analysis_uid)
+        self.assertIn("uid", rejected[0].reason)
 
     def test_per_analysis_failure_continues(self):
         sname = "S_PERF"
@@ -1152,6 +1588,10 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
             "sname": sname,
             "raw_payload": {"sname": sname, "event": "GW260101"},
             "libraries": [{"name": "bilby"}],
+            "analyses": [],
+            "input_files": [],
+            "output_files": [],
+            "configurations": [],
         }
         self._seed_changed_sname(sname)
         portal = MagicMock()

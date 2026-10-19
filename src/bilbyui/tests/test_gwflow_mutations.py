@@ -2201,3 +2201,288 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
         reindex.assert_not_called()
         job.refresh_from_db()
         self.assertEqual(job.trigger_time, 1000.0)
+
+
+class TestGWFlowPreservationManifest(BilbyTestCase):
+    """SM-2 through SM-7 protected-identity reconciliation proofs."""
+
+    def setUp(self):
+        super().setUp()
+        self.ingest_user = self.create_user(
+            id=799,
+            name="preservation ingest",
+            primary_email="preservation@example.test",
+        )
+
+    def _params(self, sname, **overrides):
+        from types import SimpleNamespace
+
+        values = {
+            "sname": sname,
+            "schema_version": "v1",
+            "libraries": ["cbc-workflow-o4a"],
+            "is_pruned": False,
+            "current_history_id": None,
+            "current_history_timestamp": None,
+            "event_id": None,
+            "files": [],
+            "metadata": None,
+        }
+        values.update(overrides)
+        return SimpleNamespace(**values)
+
+    def _upsert(self, params):
+        from unittest import mock
+
+        from bilbyui.views import upsert_gwflow_job
+
+        with mock.patch("bilbyui.views.gwflow_elastic_search_update"):
+            return upsert_gwflow_job(self.ingest_user, params)
+
+    @override_settings(GWFLOW_INGEST_USER=799)
+    def test_sm2_existing_sname_updates_without_rekey_or_owner_change(self):
+        from bilbyui.models import GWFlowJob
+        from bilbyui.tests.gwflow_manifests import (
+            assert_preserved,
+            protected_identity_manifest,
+        )
+
+        job = GWFlowJob.objects.create(
+            sname="S-PRESERVE-2",
+            user=self.ingest_user,
+            schema_version="old",
+        )
+        before = protected_identity_manifest()
+
+        self._upsert(self._params(job.sname, schema_version="new"))
+        after = protected_identity_manifest()
+
+        assert_preserved(before, after)
+        job.refresh_from_db()
+        self.assertEqual(job.schema_version, "new")
+
+    @override_settings(GWFLOW_INGEST_USER=799)
+    def test_sm3_first_run_creation_matches_expected_once(self):
+        from bilbyui.models import GWFlowJob
+        from bilbyui.tests.gwflow_manifests import protected_identity_manifest
+
+        # Issue #117 requires the expected creation manifest to be derived from the
+        # accepted source corpus BEFORE reconciliation. Deriving it from the row the
+        # code under test produced would put a wrong owner or critical FK on both
+        # sides of the assertion and pass vacuously.
+        expected_creation = ("GWFlowJob", "S-PRESERVE-3", self.ingest_user.pk, None)
+
+        before = protected_identity_manifest()
+        self._upsert(self._params("S-PRESERVE-3"))
+        created = sorted(set(protected_identity_manifest()) - set(before), key=repr)
+
+        self.assertEqual(len(created), 1)
+        model, pk, owner_id, event_id = created[0]
+        self.assertEqual(model, expected_creation[0])
+        self.assertEqual(owner_id, expected_creation[2])
+        self.assertEqual(event_id, expected_creation[3])
+        self.assertEqual(GWFlowJob.objects.get(pk=pk).sname, expected_creation[1])
+        self.assertEqual(GWFlowJob.objects.filter(sname="S-PRESERVE-3").count(), 1)
+
+    @override_settings(GWFLOW_INGEST_USER=799)
+    def test_sm4_second_identical_run_creates_nothing(self):
+        from bilbyui.models import GWFlowJob
+        from bilbyui.tests.gwflow_manifests import (
+            assert_preserved,
+            protected_identity_manifest,
+        )
+
+        params = self._params("S-PRESERVE-4")
+        self._upsert(params)
+        before_second = protected_identity_manifest()
+
+        self._upsert(params)
+
+        assert_preserved(before_second, protected_identity_manifest())
+        self.assertEqual(
+            GWFlowJob.objects.filter(sname="S-PRESERVE-4").count(),
+            1,
+        )
+
+    @override_settings(GWFLOW_INGEST_USER=799)
+    def test_sm5_linking_api_preserves_child_identity_and_other_protected_rows(self):
+        from bilbyui.models import BilbyJob, GWFlowJob
+        from bilbyui.tests.gwflow_manifests import (
+            assert_preserved,
+            protected_identity_manifest,
+        )
+        from bilbyui.views import link_bilby_job_to_gwflow
+
+        old_parent = GWFlowJob.objects.create(
+            sname="S-PRESERVE-5-OLD",
+            user=self.ingest_user,
+        )
+        new_parent = GWFlowJob.objects.create(
+            sname="S-PRESERVE-5-NEW",
+            user=self.ingest_user,
+        )
+        child = BilbyJob.objects.create(
+            user=self.ingest_user,
+            name="preserve-link-child",
+            ini_string="",
+            gwflow_job=old_parent,
+            gwflow_analysis_uid="old-analysis",
+        )
+        original_pk = child.pk
+        original_owner = child.user_id
+
+        def other_protected_rows():
+            return [row for row in protected_identity_manifest() if not (row[0] == "BilbyJob" and row[1] == child.pk)]
+
+        before_other_rows = other_protected_rows()
+
+        from graphql_relay.node.node import to_global_id
+
+        # link_bilby_job_to_gwflow is the pre-existing linking API. Reconciliation
+        # does not invoke it for re-parenting, and issue #117 forbids
+        # reconciliation from re-keying.
+        link_bilby_job_to_gwflow(
+            self.ingest_user,
+            to_global_id("BilbyJobNode", child.pk),
+            new_parent.sname,
+            "new-analysis",
+        )
+        child.refresh_from_db()
+
+        self.assertEqual(child.pk, original_pk)
+        self.assertEqual(child.user_id, original_owner)
+        assert_preserved(before_other_rows, other_protected_rows())
+
+    @override_settings(GWFLOW_INGEST_USER=799)
+    def test_sm6_external_job_and_event_rows_are_untouched(self):
+        from bilbyui.models import (
+            BilbyJob,
+            EventID,
+            ExternalBilbyJob,
+            GWFlowJob,
+        )
+        from bilbyui.tests.gwflow_manifests import (
+            assert_preserved,
+            protected_identity_manifest,
+        )
+
+        event = EventID.objects.create(
+            event_id="G-PRESERVE-6",
+            trigger_id="S-PRESERVE-6",
+        )
+        parent = GWFlowJob.objects.create(
+            sname="S-PRESERVE-6",
+            user=self.ingest_user,
+            event_id=event,
+        )
+        child = BilbyJob.objects.create(
+            user=self.ingest_user,
+            name="preserve-external-child",
+            ini_string="",
+            event_id=event,
+            gwflow_job=parent,
+        )
+        external = ExternalBilbyJob.objects.create(job=child)
+        before = protected_identity_manifest()
+
+        self._upsert(self._params(parent.sname, files=None))
+
+        assert_preserved(before, protected_identity_manifest())
+        self.assertTrue(EventID.objects.filter(pk=event.pk).exists())
+        self.assertTrue(ExternalBilbyJob.objects.filter(pk=external.pk).exists())
+
+    @override_settings(GWFLOW_INGEST_USER=799)
+    def test_sm7_omitted_files_preserves_rows_and_mirrored_bytes(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        from bilbyui.models import GWFlowFile, GWFlowJob
+
+        parent = GWFlowJob.objects.create(
+            sname="S-PRESERVE-7",
+            user=self.ingest_user,
+        )
+        mirrored = GWFlowFile.objects.create(
+            job=parent,
+            analysis_uid="pe-preserved",
+            path="result/preserved.h5",
+            file_name="preserved.h5",
+            file_size=17,
+            md5_sum="preserved",
+            uploaded=True,
+        )
+        payload = b"already copied bytes"
+
+        with TemporaryDirectory() as directory:
+            disk_path = Path(directory) / str(parent.pk) / str(mirrored.pk)
+            disk_path.parent.mkdir(parents=True)
+            disk_path.write_bytes(payload)
+            with override_settings(GWFLOW_FILE_UPLOAD_DIR=directory):
+                self._upsert(self._params(parent.sname, files=None))
+
+            self.assertTrue(GWFlowFile.objects.filter(pk=mirrored.pk).exists())
+            self.assertTrue(disk_path.exists())
+            self.assertEqual(disk_path.read_bytes(), payload)
+
+    @override_settings(GWFLOW_INGEST_USER=799)
+    def test_sm8_two_run_lifecycle_over_all_four_protected_classes(self):
+        """AC6: seed all four protected classes, reconcile twice.
+
+        The expected creation manifest is derived from the accepted source corpus
+        before the first run; nothing is read back from a produced row.
+        """
+        from bilbyui.models import BilbyJob, EventID, ExternalBilbyJob, GWFlowJob
+        from bilbyui.tests.gwflow_manifests import (
+            assert_preserved,
+            protected_identity_manifest,
+        )
+
+        event = EventID.objects.create(event_id="G-PRESERVE-8", trigger_id="S-PRESERVE-8-EXISTING")
+        existing_parent = GWFlowJob.objects.create(
+            sname="S-PRESERVE-8-EXISTING",
+            user=self.ingest_user,
+            event_id=event,
+        )
+        existing_child = BilbyJob.objects.create(
+            user=self.ingest_user,
+            name="preserve-8-child",
+            ini_string="",
+            event_id=event,
+            gwflow_job=existing_parent,
+            gwflow_analysis_uid="pe-existing",
+        )
+        existing_external = ExternalBilbyJob.objects.create(job=existing_child)
+
+        pre_existing = protected_identity_manifest()
+        expected_creation = ("GWFlowJob", "S-PRESERVE-8-NEW", self.ingest_user.pk, None)
+
+        existing_params = self._params(existing_parent.sname, files=None)
+        new_params = self._params("S-PRESERVE-8-NEW")
+
+        # --- first run ---
+        self._upsert(existing_params)
+        self._upsert(new_params)
+        combined = protected_identity_manifest()
+
+        # (1) every pre-existing tuple survives untouched
+        for row in pre_existing:
+            self.assertIn(row, combined)
+
+        # (2) the authorised creation happened exactly once and matches the
+        #     pre-run expectation for model, owner and critical FK
+        created = sorted(set(combined) - set(pre_existing), key=repr)
+        self.assertEqual(len(created), 1)
+        model, pk, owner_id, event_id = created[0]
+        self.assertEqual(model, expected_creation[0])
+        self.assertEqual(owner_id, expected_creation[2])
+        self.assertEqual(event_id, expected_creation[3])
+        self.assertEqual(GWFlowJob.objects.get(pk=pk).sname, expected_creation[1])
+
+        # --- second identical run ---
+        self._upsert(existing_params)
+        self._upsert(new_params)
+
+        assert_preserved(combined, protected_identity_manifest())
+        self.assertEqual(GWFlowJob.objects.filter(sname="S-PRESERVE-8-NEW").count(), 1)
+        self.assertEqual(EventID.objects.filter(pk=event.pk).count(), 1)
+        self.assertEqual(ExternalBilbyJob.objects.filter(pk=existing_external.pk).count(), 1)

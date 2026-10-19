@@ -1,0 +1,122 @@
+{
+  "S000001a": {
+    "sname": "S000001a",
+    "libraries": [
+      "o4a"
+    ],
+    "version_number": 1,
+    "record_timestamp": "2026-01-01T00:00:00Z",
+    "commit_sha": "1111111111111111111111111111111111111111",
+    "is_current": true,
+    "analyses": [
+      {
+        "uid": "pe_1",
+        "type": "pe",
+        "status": "complete",
+        "deprecated": false,
+        "software": {
+          "name": "bilby_pipe",
+          "version": "1.0.0"
+        },
+        "configurations": [
+          {
+            "uid": "pe_1:configuration",
+            "type": "pe"
+          }
+        ],
+        "input_files": [
+          {
+            "direction": "input",
+            "role": "config",
+            "file": {
+              "name": "pe_1.ini",
+              "description": "Bilby configuration for pe_1",
+              "md5sum": "0123456789abcdef0123456789abcdef",
+              "last_modified": "2026-01-01T00:00:00Z",
+              "locations": [
+                {
+                  "file_system": "LDAS",
+                  "path": "/ldas/S000001a/pe_1.ini",
+                  "url": "https://ldas.example/S000001a/pe_1.ini"
+                },
+                {
+                  "file_system": "CIT",
+                  "path": "/cit/S000001a/pe_1.ini",
+                  "url": null
+                },
+                {
+                  "file_system": "OzStar",
+                  "path": "/ozstar/S000001a/pe_1.ini",
+                  "url": "https://ozstar.example/S000001a/pe_1.ini"
+                }
+              ]
+            }
+          }
+        ],
+        "output_files": [
+          {
+            "direction": "output",
+            "role": "result",
+            "file": {
+              "name": "pe_1_result.hdf5",
+              "description": "Bilby posterior result for pe_1",
+              "md5sum": null,
+              "last_modified": "2026-01-01T01:00:00Z",
+              "locations": [
+                {
+                  "file_system": "OzStar",
+                  "path": "/ozstar/S000001a/pe_1_result.hdf5",
+                  "url": null
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "uid": "S000001a-validation-report",
+        "type": "event_validation",
+        "status": "complete",
+        "deprecated": false,
+        "software": null,
+        "configurations": [],
+        "input_files": [],
+        "output_files": []
+      }
+    ],
+    "detector_configurations": [
+      {
+        "uid": "H1"
+      }
+    ],
+    "gracedb_events": [
+      {
+        "event_name": "G000001"
+      }
+    ],
+    "catalog_connections": [
+      {
+        "catalog_number": 4,
+        "catalog_version": 1
+      }
+    ],
+    "raw_payload": {
+      "source": "golden-corpus"
+    }
+  },
+  "S000002b": {
+    "sname": "S000002b",
+    "libraries": [
+      "o4b"
+    ],
+    "version_number": 1,
+    "record_timestamp": "2026-01-02T00:00:00Z",
+    "commit_sha": "2222222222222222222222222222222222222222",
+    "is_current": true,
+    "analyses": [],
+    "detector_configurations": [],
+    "gracedb_events": [],
+    "catalog_connections": [],
+    "raw_payload": null
+  }
+}

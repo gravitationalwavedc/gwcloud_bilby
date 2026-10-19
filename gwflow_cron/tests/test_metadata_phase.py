@@ -1,5 +1,4 @@
 import unittest
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 try:
@@ -9,7 +8,8 @@ except ImportError:
 
 import settings
 import state
-from gwflow_ingest import gwc_known_unpruned_snames, phase_metadata
+from gwflow_ingest import phase_metadata
+from portal import PortalMalformedResponseError
 
 
 class TestMetadataPhase(GWFlowTestBase):
@@ -42,7 +42,8 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_gwc.get_gwflow_job_list.return_value = []
 
         cur = self.con.cursor()
-        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+        result = phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+        self.assertEqual(result, [])
 
         # Assert upserts
         self.assertEqual(mock_gwc.upsert_gwflow_job.call_count, 2)
@@ -55,7 +56,6 @@ class TestMetadataPhase(GWFlowTestBase):
             is_pruned=False,
             current_history_id="sha1",
             current_history_timestamp="2026-01-01T10:00:00Z",
-            files=[],
         )
 
         # Assert state updated to latest row
@@ -95,10 +95,9 @@ class TestMetadataPhase(GWFlowTestBase):
             is_pruned=False,
             current_history_id="sha1",
             current_history_timestamp="2026-01-01T10:00:00Z",
-            files=[],
         )
 
-    def test_non_dict_superevent_detail_is_skipped_with_warning(self):
+    def test_non_dict_superevent_detail_is_rejected_and_records_failure(self):
         mock_portal = MagicMock()
         mock_portal.iter_changed.return_value = [
             {
@@ -114,12 +113,41 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_gwc.get_gwflow_job_list.return_value = []
 
         cur = self.con.cursor()
-        with self.assertLogs("gwflow_ingest", level="WARNING") as logs:
-            phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+        with self.assertLogs("gwflow_ingest", level="ERROR") as logs:
+            rejections = phase_metadata(
+                portal_client=mock_portal,
+                gwc_client=mock_gwc,
+                con=self.con,
+            )
 
         mock_gwc.upsert_gwflow_job.assert_not_called()
-        self.assertEqual(state.get_failure_count(cur, "S_BAD_DETAIL"), 0)
+        self.assertEqual(state.get_failure_count(cur, "S_BAD_DETAIL"), 1)
+        self.assertEqual(len(rejections), 1)
+        self.assertEqual(rejections[0].sname, "S_BAD_DETAIL")
+        self.assertEqual(rejections[0].reason, "non-dict superevent detail")
         self.assertIn("non-dict superevent detail", " ".join(logs.output))
+
+    def test_malformed_detail_response_returns_rejection(self):
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = [
+            {
+                "sname": "S_MALFORMED",
+                "record_timestamp": "2026-01-01T10:00:00Z",
+                "schema_version": "1.0",
+            },
+        ]
+        malformed_error = PortalMalformedResponseError.__new__(PortalMalformedResponseError)
+        Exception.__init__(malformed_error, "invalid detail payload")
+        mock_portal.get_superevent.side_effect = malformed_error
+        mock_gwc = MagicMock()
+
+        result = phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].sname, "S_MALFORMED")
+        self.assertIn("invalid detail payload", result[0].reason)
+        mock_gwc.upsert_gwflow_job.assert_not_called()
 
     def test_tie_resume(self):
         cur = self.con.cursor()
@@ -196,40 +224,6 @@ class TestMetadataPhase(GWFlowTestBase):
         self.assertEqual(state.get_watermark(cur), "2026-01-01T09:00:00Z")
         self.assertEqual(state.get_last_sname(cur), "S_OK1")
 
-    def test_prune_diffing(self):
-        mock_portal = MagicMock()
-        mock_portal.iter_changed.return_value = []
-        # Upstream only has S_KEEP
-        mock_portal.iter_current_snames.return_value = ["S_KEEP"]
-
-        mock_gwc = MagicMock()
-        # GWCloud currently has S_KEEP and S_DELETED as object with .sname attribute
-        mock_gwc.get_gwflow_job_list.return_value = [
-            {"sname": "S_KEEP"},
-            SimpleNamespace(sname="S_DELETED"),
-        ]
-
-        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
-
-        # S_DELETED should be marked is_pruned=True
-        mock_gwc.upsert_gwflow_job.assert_called_once_with(sname="S_DELETED", is_pruned=True)
-
-    def test_gwc_known_unpruned_snames_helpers(self):
-        with self.assertRaises(AttributeError):
-            gwc_known_unpruned_snames(object())
-
-    def test_gwc_known_unpruned_snames_skips_entries_without_sname(self):
-        mock_gwc = MagicMock()
-        mock_gwc.get_gwflow_job_list.return_value = [
-            {"sname": "S_OK"},
-            {},
-            SimpleNamespace(sname="S_OBJ"),
-            SimpleNamespace(),
-            "S_STR",
-        ]
-
-        self.assertEqual(gwc_known_unpruned_snames(mock_gwc), {"S_OK", "S_OBJ"})
-
     @patch("portal.PortalClient")
     def test_phase_metadata_creates_connection_when_con_is_none(self, mock_portal_cls):
         mock_portal = MagicMock()
@@ -270,7 +264,6 @@ class TestMetadataPhase(GWFlowTestBase):
             is_pruned=False,
             current_history_id="sha1",
             current_history_timestamp="2026-01-01T10:00:00Z",
-            files=[],
         )
 
     def test_max_retry_attempts_reached_logs_error(self):
@@ -288,49 +281,6 @@ class TestMetadataPhase(GWFlowTestBase):
 
         phase_metadata(portal_client=mock_portal, gwc_client=MagicMock(), con=self.con)
         self.assertEqual(state.get_failure_count(cur, "S_CAP"), settings.MAX_RETRY_ATTEMPTS)
-
-    def test_iter_current_snames_initial_failure_no_prune(self):
-        mock_portal = MagicMock()
-        mock_portal.iter_changed.return_value = []
-        mock_portal.iter_current_snames.side_effect = Exception("Prune API Error")
-
-        mock_gwc = MagicMock()
-        # GWCloud currently has S_KEEP and S_DELETED; upstream enumeration failed
-        mock_gwc.get_gwflow_job_list.return_value = [
-            {"sname": "S_KEEP"},
-            SimpleNamespace(sname="S_DELETED"),
-        ]
-
-        with self.assertLogs("gwflow_ingest", level="ERROR") as logs:
-            phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
-
-        # Failure must be logged (acceptance criterion)
-        self.assertIn("Failed to fetch current snames from portal for prune diff", " ".join(logs.output))
-        # Reconciliation must be skipped entirely: known-unpruned query is never made, nothing pruned
-        mock_gwc.get_gwflow_job_list.assert_not_called()
-        mock_gwc.upsert_gwflow_job.assert_not_called()
-
-    def test_iter_current_snames_mid_pagination_failure_no_prune(self):
-        mock_portal = MagicMock()
-        mock_portal.iter_changed.return_value = []
-
-        def iter_current_snames_side_effect():
-            yield "S_KEEP"
-            raise Exception("Prune API Error mid-pagination")
-
-        mock_portal.iter_current_snames.side_effect = iter_current_snames_side_effect
-
-        mock_gwc = MagicMock()
-        mock_gwc.get_gwflow_job_list.return_value = [
-            {"sname": "S_KEEP"},
-            SimpleNamespace(sname="S_DELETED"),
-        ]
-
-        phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
-
-        # Reconciliation must be skipped entirely: known-unpruned query is never made, nothing pruned
-        mock_gwc.get_gwflow_job_list.assert_not_called()
-        mock_gwc.upsert_gwflow_job.assert_not_called()
 
     def _changed_row(self, sname="S_LIB"):
         return {

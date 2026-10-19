@@ -4,6 +4,7 @@ import math
 import re
 import shutil
 import tarfile
+from dataclasses import dataclass
 from pathlib import Path
 
 logger = logging.getLogger("gwflow_ingest.bilby_children")
@@ -17,69 +18,299 @@ _TRUTHY_PREFERRED = (True, "true", "True", "yes")
 _HDF5_SUFFIXES = {".hdf5", ".h5"}
 
 
-def _valid_file_ref(file_ref) -> bool:
-    """True when file_ref is absent/None or a dict with a truthy path."""
-    if file_ref is None:
-        return True
-    return isinstance(file_ref, dict) and bool(file_ref.get("path"))
+SUPPORTED_BILBY_SOFTWARE = {"bilby", "BILBY", "bilby_pipe"}
+_SUPPORTED_STATUSES = {"complete", "running", "stuck", "unstarted", "cancelled"}
 
 
-def find_bilby_pe_analyses(detail: dict) -> list[dict]:
-    """Walk detail["pe"]["results"] and return bilby-PE analyses with config_file.
+@dataclass(frozen=True)
+class Rejection:
+    sname: str | None
+    analysis_uid: str | None
+    role: str | None
+    available_file_systems: tuple[str, ...]
+    reason: str
+    index: int | None = None
 
-    A result is kept when:
-      - re.search(r"bilby", inference_software, re.IGNORECASE) matches, AND
-      - config_file is a dict with a truthy path, AND
-      - result_file / pesummary_result_file are absent/None or dicts with a truthy path, AND
-      - uid is a non-empty string.
+    @property
+    def fail_key(self) -> str:
+        identity = self.analysis_uid
+        if not identity:
+            identity = f"analyses[{self.index}]" if self.index is not None else "detail"
+        return f"bilby:{self.sname}/{identity}" if self.sname else f"bilby:{identity}"
 
-    Returns [{uid, config_file, result_file, pesummary_result_file, software}].
-    Unknown / malformed shapes are skipped, never raised.
-    """
-    if not isinstance(detail, dict):
-        return []
 
-    pe_section = detail.get("pe")
-    if not isinstance(pe_section, dict):
-        return []
+def validate_supported_software():
+    """Fail closed unless the checked-in software allowlist is usable."""
+    valid = (
+        isinstance(SUPPORTED_BILBY_SOFTWARE, set)
+        and bool(SUPPORTED_BILBY_SOFTWARE)
+        and all(isinstance(name, str) and bool(name) for name in SUPPORTED_BILBY_SOFTWARE)
+    )
+    if not valid:
+        logger.critical("SUPPORTED_BILBY_SOFTWARE must be a non-empty set of non-empty strings")
+        raise SystemExit(1)
 
-    results = pe_section.get("results")
-    if not isinstance(results, list):
-        return []
 
-    analyses: list[dict] = []
-    for res in results:
-        if not isinstance(res, dict):
-            continue
+def _rejection(sname, uid, reason, *, role=None, file_systems=(), index=None):
+    return Rejection(
+        sname=sname,
+        analysis_uid=uid if isinstance(uid, str) and uid else None,
+        role=role,
+        available_file_systems=tuple(file_systems),
+        reason=reason,
+        index=index,
+    )
 
-        uid = res.get("uid", "")
-        if not isinstance(uid, str) or not uid:
-            continue
 
-        inference_software = res.get("inference_software", "")
-        if not re.search(r"bilby", str(inference_software), re.IGNORECASE):
-            continue
+def _check_pe_fields(sname, analysis, index):
+    uid = analysis.get("uid")
+    if not isinstance(uid, str) or not uid:
+        return _rejection(sname, uid, "uid missing or not a non-empty string", index=index)
 
-        config_file = res.get("config_file")
-        if not isinstance(config_file, dict) or not config_file.get("path"):
-            continue
+    status = analysis.get("status")
+    if status not in _SUPPORTED_STATUSES:
+        return _rejection(sname, uid, "status missing or unsupported", index=index)
 
-        result_file = res.get("result_file")
-        pesummary_result_file = res.get("pesummary_result_file")
-        if not _valid_file_ref(result_file) or not _valid_file_ref(pesummary_result_file):
-            continue
+    if not isinstance(analysis.get("deprecated"), bool):
+        return _rejection(sname, uid, "deprecated missing or not a boolean", index=index)
 
-        analyses.append(
-            {
-                "uid": uid,
-                "config_file": config_file,
-                "result_file": result_file,
-                "pesummary_result_file": pesummary_result_file,
-                "software": inference_software,
-            }
+    if "software" not in analysis:
+        return _rejection(sname, uid, "software missing", index=index)
+    if analysis["software"] is not None and not isinstance(analysis["software"], dict):
+        return _rejection(sname, uid, "software malformed", index=index)
+
+    for field in ("input_files", "output_files", "configurations"):
+        if not isinstance(analysis.get(field), list):
+            return _rejection(sname, uid, f"{field} missing or not an array", index=index)
+
+    return None
+
+
+def _relationships_with_role(sname, uid, relationships, role, index):
+    matches = []
+    for relationship in relationships:
+        if (
+            not isinstance(relationship, dict)
+            or not isinstance(relationship.get("role"), str)
+            or not isinstance(relationship.get("file"), dict)
+        ):
+            return None, _rejection(
+                sname,
+                uid,
+                "file relationship malformed",
+                role=role,
+                index=index,
+            )
+        if relationship["role"] == role:
+            matches.append(relationship)
+    return matches, None
+
+
+def _select_location(sname, uid, role, file_data, file_systems, index):
+    locations = file_data.get("locations")
+    if not isinstance(locations, list):
+        return None, _rejection(
+            sname,
+            uid,
+            "file locations missing or not an array",
+            role=role,
+            index=index,
         )
 
-    return analyses
+    available = set()
+    ranked = []
+    ranks = {file_system: rank for rank, file_system in enumerate(file_systems)}
+    for location in locations:
+        if not isinstance(location, dict):
+            return None, _rejection(sname, uid, "file location malformed", role=role, index=index)
+        file_system = location.get("file_system")
+        path = location.get("path")
+        url = location.get("url")
+        if (
+            not isinstance(file_system, str)
+            or not isinstance(path, str)
+            or (url is not None and not isinstance(url, str))
+        ):
+            return None, _rejection(sname, uid, "file location malformed", role=role, index=index)
+        available.add(file_system)
+        if file_system in ranks and path.strip():
+            ranked.append((ranks[file_system], path, (0, "") if url is None else (1, url), path))
+
+    if not ranked:
+        return None, _rejection(
+            sname,
+            uid,
+            "no accessible location",
+            role=role,
+            file_systems=sorted(available),
+            index=index,
+        )
+    return min(ranked)[3], None
+
+
+def _select_file(sname, uid, role, relationship, file_systems, index):
+    file_data = relationship["file"]
+    path, rejection = _select_location(sname, uid, role, file_data, file_systems, index)
+    if rejection:
+        return None, rejection
+
+    if "md5sum" not in file_data or (file_data["md5sum"] is not None and not isinstance(file_data["md5sum"], str)):
+        return None, _rejection(
+            sname,
+            uid,
+            "file md5sum missing or malformed",
+            role=role,
+            index=index,
+        )
+
+    return {"path": path, "md5_sum": file_data["md5sum"]}, None
+
+
+def _select_analysis(sname, analysis, file_systems, index):
+    """Select one eligible Bilby PE analysis and report any rejection."""
+    uid = analysis.get("uid") if isinstance(analysis, dict) else None
+    if (
+        not isinstance(analysis, dict)
+        or not isinstance(analysis.get("type"), str)
+        or analysis["type"] not in {"pe", "event_validation"}
+    ):
+        return None, [_rejection(sname, uid, "malformed analysis type", index=index)]
+
+    if analysis["type"] == "event_validation":
+        return None, []
+
+    rejection = _check_pe_fields(sname, analysis, index)
+    if rejection:
+        return None, [rejection]
+
+    uid = analysis["uid"]
+    software = analysis["software"]
+    if software is None:
+        return None, []
+    if not isinstance(software.get("name"), str):
+        return None, [
+            _rejection(
+                sname,
+                uid,
+                "software.name missing or not a string",
+                index=index,
+            )
+        ]
+    software_name = software["name"]
+    if software_name not in SUPPORTED_BILBY_SOFTWARE:
+        return None, []
+
+    malformed_configuration = any(not isinstance(configuration, dict) for configuration in analysis["configurations"])
+    if malformed_configuration:
+        return None, [_rejection(sname, uid, "configuration malformed", index=index)]
+
+    configurations = [
+        configuration
+        for configuration in analysis["configurations"]
+        if configuration.get("type") == "pe" and configuration.get("uid") == f"{uid}:configuration"
+    ]
+    if not configurations:
+        return None, []
+    if len(configurations) > 1:
+        return None, [_rejection(sname, uid, "multiple pe configurations", index=index)]
+
+    config_relationships, rejection = _relationships_with_role(sname, uid, analysis["input_files"], "config", index)
+    if rejection:
+        return None, [rejection]
+    if not config_relationships:
+        return None, []
+    if len(config_relationships) > 1:
+        return None, [
+            _rejection(
+                sname,
+                uid,
+                "multiple config relationships",
+                role="config",
+                index=index,
+            )
+        ]
+
+    config_file, rejection = _select_file(
+        sname,
+        uid,
+        "config",
+        config_relationships[0],
+        file_systems,
+        index,
+    )
+    if rejection:
+        return None, [rejection]
+
+    optional_files = {}
+    for role, output_name in (
+        ("result", "result_file"),
+        ("pesummary", "pesummary_result_file"),
+    ):
+        relationships, rejection = _relationships_with_role(sname, uid, analysis["output_files"], role, index)
+        if rejection:
+            return None, [rejection]
+        if len(relationships) > 1:
+            return None, [
+                _rejection(
+                    sname,
+                    uid,
+                    f"multiple {role} relationships",
+                    role=role,
+                    index=index,
+                )
+            ]
+        if not relationships:
+            optional_files[output_name] = None
+            continue
+
+        file_ref, rejection = _select_file(sname, uid, role, relationships[0], file_systems, index)
+        if rejection and rejection.reason == "no accessible location":
+            logger.warning(
+                "optional file unavailable: sname=%s analysis_uid=%s role=%s available_file_systems=%s reason=%s",
+                rejection.sname,
+                rejection.analysis_uid,
+                rejection.role,
+                rejection.available_file_systems,
+                rejection.reason,
+            )
+            optional_files[output_name] = None
+            continue
+        if rejection:
+            return None, [rejection]
+        optional_files[output_name] = file_ref
+
+    return {
+        "uid": uid,
+        "config_file": config_file,
+        "result_file": optional_files["result_file"],
+        "pesummary_result_file": optional_files["pesummary_result_file"],
+        "software": software_name,
+    }, []
+
+
+def select_bilby_analyses(sname, detail, file_systems):
+    """Select canonical Bilby PE analyses and report malformed candidates."""
+    if not isinstance(detail, dict) or not isinstance(detail.get("analyses"), list):
+        return [], [_rejection(sname, None, "detail analyses must be an array")]
+
+    selected = []
+    rejections = []
+    for index, analysis in enumerate(detail["analyses"]):
+        selection, analysis_rejections = _select_analysis(sname, analysis, file_systems, index)
+        if selection is not None:
+            selected.append(selection)
+        rejections.extend(analysis_rejections)
+
+    counts = {}
+    for item in selected:
+        counts[item["uid"]] = counts.get(item["uid"], 0) + 1
+    duplicates = sorted(uid for uid, count in counts.items() if count > 1)
+    if duplicates:
+        for uid in duplicates:
+            rejections.append(_rejection(sname, uid, "duplicate eligible uid"))
+        return [], rejections
+
+    return selected, rejections
 
 
 def _set_ini_label(ini_text: str, name: str) -> str:
