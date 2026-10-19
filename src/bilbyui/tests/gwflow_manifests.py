@@ -36,11 +36,6 @@ def protected_identity_manifest():
     return sorted(rows, key=repr)
 
 
-def expected_creation_manifest(accepted_sources):
-    """Return exactly the protected tuples an accepted first run may create."""
-    return sorted((_identity_tuple(row) for row in accepted_sources), key=repr)
-
-
 def assert_preserved(before, after):
     """Raise an actionable assertion when any protected tuple differs."""
     before_set = set(before)
