@@ -93,6 +93,7 @@ def build_long_version_list():
         versions.append(
             {
                 "commit_sha": f"{index:040x}",
+                "version_number": 1021,
                 "record_timestamp": (origin + timedelta(hours=index)).isoformat(),
                 "schema_version": "3",
                 "is_current": index == VERSION_COUNT - 1,

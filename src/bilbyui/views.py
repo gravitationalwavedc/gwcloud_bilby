@@ -1736,6 +1736,8 @@ def _render_gwflow_files_section(request, sname):
     analyses = None
     data, state = get_superevent(sname)
     stale = state == "stale"
+    if state == "failed":
+        raise Http404("Files metadata not found")
     if state in ("live", "stale") and isinstance(data, dict):
         analyses = {}
         for a in parse_analyses(data):
@@ -1764,6 +1766,8 @@ def _render_gwflow_metadata_section(request, sname):
     _get_gwflow_job_or_404(request, sname)  # noqa: F841 - visibility check only
     data, state = get_superevent(sname)
     stale = state == "stale"
+    if state == "failed":
+        raise Http404("Metadata not found")
     if state == "down":
         return (
             TemplateResponse(
@@ -1802,6 +1806,8 @@ def _render_gwflow_history_section(request, sname):
     job = _get_gwflow_job_or_404(request, sname)
     versions, state = get_versions(sname)
     stale = state == "stale"
+    if state == "failed":
+        raise Http404("History not found")
     if state == "down" or versions is None:
         return (
             TemplateResponse(
@@ -1896,6 +1902,8 @@ def _render_gwflow_history_section(request, sname):
 def gwflow_job_history_version_partial(request, sname, history_id):
     job = _get_gwflow_job_or_404(request, sname)
     data, state = get_version(sname, history_id)
+    if state == "failed":
+        raise Http404("Version not found")
     if state == "down":
         return TemplateResponse(
             request,

@@ -13,7 +13,7 @@ PORTAL_URL = "https://portal.example.com"
 PORTAL_TOKEN = "test-token-uuid"
 SNAME = "S230601ag"
 SUPEREVENT_PATH = f"/api/v1/superevents/{SNAME}/"
-VERSION_PATH = f"/api/v1/superevents/{SNAME}/versions/abc123/"
+VERSION_PATH = f"/api/v1/superevents/{SNAME}/versions/7/"
 DIFF_PATH = f"/api/v1/superevents/{SNAME}/diff/?baseline=3&selected=7"
 
 
@@ -39,6 +39,75 @@ def canonical_detail(**overrides):
 class TestGWFlowPortalClient(BilbyTestCase):
     def setUp(self):
         caches["default"].clear()
+
+    @responses.activate
+    def test_get_version_integer_uses_canonical_route(self):
+        payload = canonical_detail()
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/7/",
+            json=payload,
+            status=200,
+        )
+
+        self.assertEqual(gwflow_portal.get_version(SNAME, 7), (payload, "live"))
+        self.assertEqual(
+            responses.calls[0].request.url,
+            f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/7/",
+        )
+
+    @responses.activate
+    def test_get_version_sha_resolves_to_summary_version_number(self):
+        sha = "0123456789abcdef"
+        payload = canonical_detail(commit_sha=sha, version_number=12)
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1",
+            json={
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": [{"commit_sha": sha, "version_number": 12}],
+            },
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/12/",
+            json=payload,
+            status=200,
+        )
+
+        self.assertEqual(gwflow_portal.get_version(SNAME, sha), (payload, "live"))
+        self.assertEqual(
+            [call.request.url for call in responses.calls],
+            [
+                f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1",
+                f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/12/",
+            ],
+        )
+
+    @responses.activate
+    def test_get_version_unknown_sha_fails_without_sha_detail_request(self):
+        sha = "unknown-sha"
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1",
+            json={
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": [{"commit_sha": "known-sha", "version_number": 13}],
+            },
+            status=200,
+        )
+
+        self.assertEqual(gwflow_portal.get_version(SNAME, sha), (None, "failed"))
+        self.assertEqual(len(responses.calls), 1)
+        self.assertNotIn(
+            f"/versions/{sha}/",
+            responses.calls[0].request.url,
+        )
 
     @responses.activate
     def test_live_response_cached(self):
@@ -89,8 +158,8 @@ class TestGWFlowPortalClient(BilbyTestCase):
         payload = canonical_detail(raw_payload=None)
         responses.add(responses.GET, f"{PORTAL_URL}{VERSION_PATH}", json=payload, status=200)
 
-        gwflow_portal.get_version(SNAME, "abc123")
-        data, state = gwflow_portal.get_version(SNAME, "abc123")
+        gwflow_portal.get_version(SNAME, 7)
+        data, state = gwflow_portal.get_version(SNAME, 7)
 
         self.assertEqual(state, "stale")
         self.assertIsNone(data["raw_payload"])
@@ -101,7 +170,7 @@ class TestGWFlowPortalClient(BilbyTestCase):
         payload = canonical_detail()
         responses.add(responses.GET, f"{PORTAL_URL}{VERSION_PATH}", json=payload, status=200)
 
-        data, state = gwflow_portal.get_version(SNAME, "abc123")
+        data, state = gwflow_portal.get_version(SNAME, 7)
 
         self.assertEqual((data, state), (payload, "live"))
 
@@ -131,7 +200,7 @@ class TestGWFlowPortalClient(BilbyTestCase):
                 "bilbyui.utils.gwflow_portal",
                 level="ERROR",
             ) as logs:
-                data, state = gwflow_portal.get_version(SNAME, "abc123")
+                data, state = gwflow_portal.get_version(SNAME, 7)
 
         self.assertEqual((data, state), (None, "malformed"))
         self.assertIn(VERSION_PATH, "\n".join(logs.output))
@@ -179,6 +248,55 @@ class TestGWFlowPortalClient(BilbyTestCase):
             {"unexpected": "object"},
         )
 
+    def test_new_detail_root_types_are_validated(self):
+        invalid_values = (
+            ("sname", ""),
+            ("sname", 123),
+            ("record_timestamp", ""),
+            ("record_timestamp", None),
+            ("commit_sha", "   "),
+            ("commit_sha", []),
+            ("libraries", {}),
+            ("version_number", "7"),
+            ("version_number", True),
+            ("is_current", 1),
+            ("raw_payload", []),
+        )
+        for field, value in invalid_values:
+            with self.subTest(field=field, value=value):
+                self._assert_version_collection_is_malformed(field, value)
+
+    @responses.activate
+    def test_string_is_current_is_accepted(self):
+        payload = canonical_detail(is_current="true")
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}{VERSION_PATH}",
+            json=payload,
+            status=200,
+        )
+
+        self.assertEqual(
+            gwflow_portal.get_version(SNAME, 7),
+            (payload, "live"),
+        )
+
+    @responses.activate
+    def test_absent_raw_payload_is_accepted(self):
+        payload = canonical_detail()
+        del payload["raw_payload"]
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}{VERSION_PATH}",
+            json=payload,
+            status=200,
+        )
+
+        self.assertEqual(
+            gwflow_portal.get_version(SNAME, 7),
+            (payload, "live"),
+        )
+
     @responses.activate
     def test_missing_required_root_field_rejected_with_context(self):
         payload = canonical_detail()
@@ -211,6 +329,12 @@ class TestGWFlowPortalClient(BilbyTestCase):
 
     @responses.activate
     def test_wrapper_urls_and_cache_keys(self):
+        versions_path = f"/api/v1/superevents/{SNAME}/versions/"
+        page_1_url = f"{PORTAL_URL}{versions_path}?page=1"
+        page_2_url = f"{PORTAL_URL}{versions_path}?page=2"
+        first = {"commit_sha": "first", "version_number": 1}
+        second = {"commit_sha": "second", "version_number": 2}
+        third = {"commit_sha": "third", "version_number": 3}
         responses.add(
             responses.GET,
             f"{PORTAL_URL}{SUPEREVENT_PATH}",
@@ -219,8 +343,24 @@ class TestGWFlowPortalClient(BilbyTestCase):
         )
         responses.add(
             responses.GET,
-            f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/",
-            json=[],
+            page_1_url,
+            json={
+                "count": 3,
+                "next": page_2_url,
+                "previous": None,
+                "results": [first, second],
+            },
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            page_2_url,
+            json={
+                "count": 3,
+                "next": None,
+                "previous": page_1_url,
+                "results": [third],
+            },
             status=200,
         )
         responses.add(
@@ -231,25 +371,39 @@ class TestGWFlowPortalClient(BilbyTestCase):
         )
 
         gwflow_portal.get_superevent(SNAME)
-        gwflow_portal.get_versions(SNAME)
-        gwflow_portal.get_version(SNAME, "abc123")
+        versions, state = gwflow_portal.get_versions(SNAME)
+        gwflow_portal.get_version(SNAME, 7)
 
+        self.assertEqual((versions, state), ([first, second, third], "live"))
         self.assertEqual(
             [call.request.url for call in responses.calls],
             [
                 f"{PORTAL_URL}{SUPEREVENT_PATH}",
-                f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/",
+                page_1_url,
+                page_2_url,
                 f"{PORTAL_URL}{VERSION_PATH}",
             ],
         )
+        self.assertEqual(
+            sum(call.request.url == page_1_url for call in responses.calls),
+            1,
+        )
+        self.assertEqual(
+            sum(call.request.url == page_2_url for call in responses.calls),
+            1,
+        )
         self.assertIn(f"gwflow:se:{SNAME}", caches["default"])
-        self.assertIn(f"gwflow:versions:{SNAME}", caches["default"])
-        self.assertIn(f"gwflow:version:{SNAME}:abc123", caches["default"])
+        self.assertEqual(
+            caches["default"].get(f"gwflow:versions:{SNAME}"),
+            [first, second, third],
+        )
+        self.assertIn(f"gwflow:version:{SNAME}:7", caches["default"])
 
     def test_resolve_current_version_uses_record_timestamp(self):
         summary = {
             "is_current": True,
             "commit_sha": "abc123",
+            "version_number": 4,
             "record_timestamp": "2026-08-10T12:00:00Z",
             "commit_timestamp": "1999-01-01T00:00:00Z",
         }
@@ -276,6 +430,7 @@ class TestGWFlowPortalClient(BilbyTestCase):
         summary = {
             "is_current": True,
             "commit_sha": "abc123",
+            "version_number": 5,
             "commit_timestamp": "2026-08-10 12:00:00 UTC",
         }
 
@@ -288,6 +443,105 @@ class TestGWFlowPortalClient(BilbyTestCase):
 
         self.assertFalse(result.available)
         self.assertEqual(result.reason, "current summary has no usable record_timestamp")
+
+    @responses.activate
+    def test_versions_rejects_cross_origin_next(self):
+        page_1_url = f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1"
+        responses.add(
+            responses.GET,
+            page_1_url,
+            json={
+                "count": 2,
+                "next": "https://attacker.example/versions/?page=2",
+                "previous": None,
+                "results": [{"commit_sha": "first", "version_number": 9}],
+            },
+            status=200,
+        )
+
+        self.assertEqual(
+            gwflow_portal.get_versions(SNAME),
+            (None, "malformed"),
+        )
+        self.assertEqual(len(responses.calls), 1)
+
+    @responses.activate
+    def test_versions_rejects_cyclic_next(self):
+        page_1_url = f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1"
+        responses.add(
+            responses.GET,
+            page_1_url,
+            json={
+                "count": 1,
+                "next": page_1_url,
+                "previous": None,
+                "results": [{"commit_sha": "first", "version_number": 10}],
+            },
+            status=200,
+        )
+
+        self.assertEqual(
+            gwflow_portal.get_versions(SNAME),
+            (None, "malformed"),
+        )
+        self.assertEqual(len(responses.calls), 1)
+
+    def test_versions_envelope_requires_exact_keys_and_types(self):
+        valid = {
+            "count": 0,
+            "next": None,
+            "previous": None,
+            "results": [],
+        }
+        invalid_envelopes = []
+        for field in valid:
+            missing = valid.copy()
+            del missing[field]
+            invalid_envelopes.append(missing)
+        unexpected = valid.copy()
+        unexpected["extra"] = True
+        invalid_envelopes.extend(
+            [
+                unexpected,
+                {**valid, "count": True},
+                {**valid, "count": "0"},
+                {**valid, "next": 2},
+                {**valid, "previous": False},
+                {**valid, "results": {}},
+            ]
+        )
+
+        for envelope in invalid_envelopes:
+            with self.subTest(envelope=envelope), responses.RequestsMock() as mocked:
+                mocked.add(
+                    responses.GET,
+                    f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1",
+                    json=envelope,
+                    status=200,
+                )
+                self.assertEqual(
+                    gwflow_portal.get_versions(SNAME),
+                    (None, "malformed"),
+                )
+                caches["default"].clear()
+
+    def test_versions_cache_hit_returns_flattened_list_as_stale(self):
+        flattened = [
+            {"commit_sha": "first", "version_number": 6},
+            {"commit_sha": "second", "version_number": 7},
+        ]
+        caches["default"].set(
+            f"gwflow:versions:{SNAME}",
+            flattened,
+            gwflow_portal.CACHE_TTL,
+        )
+
+        with responses.RequestsMock() as mocked:
+            self.assertEqual(
+                gwflow_portal.get_versions(SNAME),
+                (flattened, "stale"),
+            )
+            self.assertEqual(len(mocked.calls), 0)
 
 
 @override_settings(CBCFLOW_PORTAL_URL=PORTAL_URL, CBCFLOW_PORTAL_TOKEN=PORTAL_TOKEN)
@@ -448,12 +702,76 @@ class TestPortalRetryAndDiff(BilbyTestCase):
 
     @responses.activate
     @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
-    def test_4xx_is_not_retried(self, mock_sleep):
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", status=404)
+    def test_4xx_with_cold_cache_is_failed_and_not_retried(self, mock_sleep):
+        for status_code in (400, 401, 403, 404):
+            with self.subTest(status_code=status_code):
+                responses.reset()
+                caches["default"].clear()
+                responses.add(
+                    responses.GET,
+                    f"{PORTAL_URL}{SUPEREVENT_PATH}",
+                    status=status_code,
+                )
 
-        data, state = gwflow_portal.get_superevent(SNAME)
+                data, state = gwflow_portal.get_superevent(SNAME)
 
-        self.assertEqual((data, state), (None, "down"))
+                self.assertEqual((data, state), (None, "failed"))
+                self.assertEqual(len(responses.calls), 1)
+        mock_sleep.assert_not_called()
+
+    @responses.activate
+    @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
+    def test_4xx_with_late_warm_cache_is_stale_and_not_retried(
+        self,
+        mock_sleep,
+    ):
+        payload = canonical_detail()
+        cache = caches["default"]
+
+        for status_code in (400, 401, 403, 404):
+            with self.subTest(status_code=status_code):
+                responses.reset()
+                cache.clear()
+                responses.add(
+                    responses.GET,
+                    f"{PORTAL_URL}{SUPEREVENT_PATH}",
+                    status=status_code,
+                )
+                cache_reads = 0
+
+                def cache_get(key, *args, **kwargs):
+                    nonlocal cache_reads
+                    cache_reads += 1
+                    return None if cache_reads == 1 else payload
+
+                with mock.patch.object(cache, "get", side_effect=cache_get):
+                    data, state = gwflow_portal.get_superevent(SNAME)
+
+                self.assertEqual((data, state), (payload, "stale"))
+                self.assertEqual(len(responses.calls), 1)
+        mock_sleep.assert_not_called()
+
+    @responses.activate
+    @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
+    def test_versions_4xx_with_late_warm_cache_is_stale_and_not_retried(
+        self,
+        mock_sleep,
+    ):
+        flattened = [{"commit_sha": "cached", "version_number": 8}]
+        cache = caches["default"]
+        page_1_url = f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1"
+        responses.add(responses.GET, page_1_url, status=404)
+        cache_reads = 0
+
+        def cache_get(key, *args, **kwargs):
+            nonlocal cache_reads
+            cache_reads += 1
+            return None if cache_reads == 1 else flattened
+
+        with mock.patch.object(cache, "get", side_effect=cache_get):
+            data, state = gwflow_portal.get_versions(SNAME)
+
+        self.assertEqual((data, state), (flattened, "stale"))
         self.assertEqual(len(responses.calls), 1)
         mock_sleep.assert_not_called()
 

@@ -38,11 +38,13 @@ PORTAL_CONTRACTS = {
 LIVE_METADATA = {
     "schema_version": "v3",
     "commit_sha": "contract-history",
+    "version_number": 1001,
     "gracedb": {"events": [{"uid": "E-CONTRACT", "pipeline": "gstlal"}]},
 }
 CONTENT_METADATA = {
     "schema_version": "v3",
     "commit_sha": "contract-history",
+    "version_number": 1002,
     "gracedb": {"events": [{"uid": "E-CONTRACT", "pipeline": "gstlal"}]},
     "ParameterEstimation": [
         {
@@ -56,6 +58,7 @@ CONTENT_METADATA = {
 LIVE_VERSIONS = [
     {
         "commit_sha": "contract-history",
+        "version_number": 1004,
         "record_timestamp": "2026-09-18 00:00:00 UTC",
         "schema_version": "v3",
         "is_current": True,
@@ -64,6 +67,7 @@ LIVE_VERSIONS = [
 LIVE_VERSION = {
     "schema_version": "v3",
     "commit_sha": "contract-history",
+    "version_number": 1003,
     "record_timestamp": "2026-09-18 00:00:00 UTC",
     "gracedb": {"events": [{"uid": "E-CONTRACT", "pipeline": "gstlal"}]},
     "raw_payload": CONTENT_METADATA,

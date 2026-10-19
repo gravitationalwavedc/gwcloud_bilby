@@ -143,6 +143,41 @@ class TestPortalClient(unittest.TestCase):
         self.assertNotIn("timestamp", responses.calls[0].request.url)
 
     @responses.activate
+    def test_collection_rejects_self_referential_next_url(self):
+        url = f"{self.base_url}/api/v1/superevents/"
+        responses.add(
+            responses.GET,
+            url,
+            json=self.envelope([], next_url=url),
+            status=200,
+        )
+
+        with self.assertRaises(PortalMalformedResponseError) as caught:
+            list(self.client._iter_pages(url))
+
+        self.assertIn("cycle", caught.exception.reason)
+        self.assertEqual(len(responses.calls), 1)
+
+    @responses.activate
+    def test_collection_rejects_cross_origin_next_url(self):
+        url = f"{self.base_url}/api/v1/superevents/"
+        responses.add(
+            responses.GET,
+            url,
+            json=self.envelope(
+                [],
+                next_url="https://attacker.example/api/v1/superevents/?page=2",
+            ),
+            status=200,
+        )
+
+        with self.assertRaises(PortalMalformedResponseError) as caught:
+            list(self.client._iter_pages(url))
+
+        self.assertIn("portal origin", caught.exception.reason)
+        self.assertEqual(len(responses.calls), 1)
+
+    @responses.activate
     def test_collection_rejects_legacy_bare_list(self):
         url = f"{self.base_url}/api/v1/superevents/"
         responses.add(
@@ -285,6 +320,42 @@ class TestPortalClient(unittest.TestCase):
         actual = self.client.get_superevent(sname)
 
         self.assertEqual(actual["raw_payload"], payload)
+
+    @responses.activate
+    def test_get_superevent_accepts_string_is_current(self):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/"
+        body = self.detail(sname)
+        body["is_current"] = "true"
+        responses.add(responses.GET, url, json=body, status=200)
+
+        self.assertEqual(self.client.get_superevent(sname)["is_current"], "true")
+
+    @responses.activate
+    def test_get_superevent_rejects_invalid_required_detail_roots(self):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/"
+        malformed_fields = (
+            ("sname", ""),
+            ("record_timestamp", None),
+            ("commit_sha", 123),
+            ("libraries", None),
+            ("version_number", "4"),
+            ("version_number", True),
+            ("is_current", 1),
+        )
+
+        for field, value in malformed_fields:
+            with self.subTest(field=field, value=value):
+                responses.reset()
+                body = self.detail(sname)
+                body[field] = value
+                responses.add(responses.GET, url, json=body, status=200)
+
+                with self.assertRaises(PortalMalformedResponseError) as caught:
+                    self.client.get_superevent(sname)
+
+                self.assertIn(field, caught.exception.reason)
 
     @responses.activate
     def test_get_superevent_rejects_null_or_non_array_collections(self):
@@ -514,8 +585,24 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(caught.exception.endpoint, endpoint)
         self.assertEqual(
             caught.exception.correlation_context,
-            (endpoint, None, "changed"),
+            (endpoint, "S260101a", "changed"),
         )
+
+    @responses.activate
+    def test_iter_changed_rejects_non_dict_row(self):
+        endpoint = f"{self.base_url}/api/v1/superevents/"
+        responses.add(
+            responses.GET,
+            endpoint,
+            json=self.envelope(["not-an-object"]),
+            status=200,
+        )
+
+        with self.assertRaises(PortalMalformedResponseError) as caught:
+            list(self.client.iter_changed())
+
+        self.assertEqual(caught.exception.endpoint, endpoint)
+        self.assertEqual(caught.exception.reason, "result row must be an object")
 
     @responses.activate
     def test_iter_current_snames_skips_and_logs_malformed_rows(self):

@@ -1,6 +1,6 @@
 import logging
 import time
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -164,28 +164,57 @@ class PortalClient:
         sname: str | None = None,
         operation: str = "list",
     ):
+        visited = set()
+        base_origin = urlparse(self.base_url)[:2]
         while url:
             endpoint = url
+            if endpoint in visited:
+                raise self._malformed(
+                    endpoint,
+                    sname,
+                    operation,
+                    "pagination next URL forms a cycle",
+                )
+            visited.add(endpoint)
+
             resp = self._request_with_retry("GET", endpoint, params=params)
             data = self._parse_json(resp, endpoint, sname, operation)
             envelope = self._validate_envelope(data, endpoint, sname, operation)
 
             yield envelope["results"], envelope["next"]
 
-            url = envelope["next"]
+            next_url = envelope["next"]
+            if next_url is not None:
+                next_url = urljoin(endpoint, next_url)
+                if urlparse(next_url)[:2] != base_origin:
+                    raise self._malformed(
+                        next_url,
+                        sname,
+                        operation,
+                        "pagination next URL must have the portal origin",
+                    )
+            url = next_url
             params = None  # Subsequent page URLs include query parameters
 
     def iter_changed(self, since: str | None = None):
         url = urljoin(self.base_url, "api/v1/superevents/")
         for results, _ in self._iter_pages(url, {"page": 1}):
             for row in results:
-                record_timestamp = row.get("record_timestamp")
-                if record_timestamp is None:
+                if not isinstance(row, dict):
                     raise self._malformed(
                         url,
                         None,
                         "changed",
-                        "result row is missing record_timestamp",
+                        "result row must be an object",
+                    )
+                record_timestamp = row.get("record_timestamp")
+                row_sname = row.get("sname")
+                if not isinstance(record_timestamp, str) or not record_timestamp:
+                    raise self._malformed(
+                        url,
+                        row_sname if isinstance(row_sname, str) else None,
+                        "changed",
+                        "result row must have a non-empty string record_timestamp",
                     )
                 if since is None or record_timestamp >= since:
                     yield row
@@ -203,6 +232,41 @@ class PortalClient:
                 sname,
                 operation,
                 "detail response must be an object",
+            )
+
+        for field in ("sname", "record_timestamp", "commit_sha"):
+            if not isinstance(data.get(field), str) or not data[field]:
+                raise self._malformed(
+                    endpoint,
+                    sname,
+                    operation,
+                    f"detail response field {field!r} must be a non-empty string",
+                )
+
+        if not isinstance(data.get("libraries"), list):
+            raise self._malformed(
+                endpoint,
+                sname,
+                operation,
+                "detail response field 'libraries' must be an array",
+            )
+
+        version_number = data.get("version_number")
+        if isinstance(version_number, bool) or not isinstance(version_number, int):
+            raise self._malformed(
+                endpoint,
+                sname,
+                operation,
+                "detail response field 'version_number' must be an integer",
+            )
+
+        # Portal booleans may be strings such as "true", "1", or "yes".
+        if not isinstance(data.get("is_current"), (bool, str)):
+            raise self._malformed(
+                endpoint,
+                sname,
+                operation,
+                "detail response field 'is_current' must be a boolean or string",
             )
 
         for field in _DETAIL_COLLECTION_FIELDS:

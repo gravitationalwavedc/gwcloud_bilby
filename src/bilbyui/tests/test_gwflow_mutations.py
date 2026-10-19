@@ -1553,6 +1553,7 @@ class TestExactVersionIngest(BilbyTestCase):
             {
                 "is_current": True,
                 "commit_sha": "sha-001",
+                "version_number": 1,
                 "record_timestamp": "2026-09-03T12:00:00+00:00",
             }
         ]
@@ -1578,7 +1579,7 @@ class TestExactVersionIngest(BilbyTestCase):
                 upsert_gwflow_job(self.ingest_user, params)
 
         mock_versions.assert_called_once_with("S230601c")
-        mock_portal_version.assert_called_once_with("S230601c", "sha-001")
+        mock_portal_version.assert_called_once_with("S230601c", 1)
         mock_gv.assert_called_once_with("S230601c", "sha-001")
         mock_es.assert_called_once()
         job.refresh_from_db()
@@ -1794,6 +1795,7 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
             {
                 "is_current": True,
                 "commit_sha": f"{params.sname}-current",
+                "version_number": 2,
                 "record_timestamp": "2026-09-03T12:00:00+00:00",
             }
         ]

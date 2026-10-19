@@ -340,9 +340,9 @@ class TestMetadataPhase(GWFlowTestBase):
             "commit_sha": "sha1",
         }
 
-    def _run_phase(self, mock_portal, sname="S_LIB"):
+    def _run_phase(self, mock_portal, sname="S_LIB", detail=None):
         mock_portal.iter_changed.return_value = [self._changed_row(sname)]
-        mock_portal.get_superevent.return_value = {"sname": sname, "raw_payload": {}}
+        mock_portal.get_superevent.return_value = {"sname": sname, "raw_payload": {}} if detail is None else detail
         mock_portal.iter_current_snames.return_value = [sname]
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -356,6 +356,37 @@ class TestMetadataPhase(GWFlowTestBase):
 
         mock_gwc.upsert_gwflow_job.assert_called_once()
         self.assertEqual(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"], ["bilby", "gwpy"])
+
+    def test_missing_version_libraries_uses_detail_libraries(self):
+        mock_portal = MagicMock()
+        mock_portal.get_versions.return_value = [{"is_current": True}]
+        detail = {
+            "sname": "S_LIB",
+            "raw_payload": {},
+            "libraries": ["bilby", "gwpy"],
+        }
+
+        mock_gwc = self._run_phase(mock_portal, detail=detail)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+        self.assertEqual(
+            mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"],
+            ["bilby", "gwpy"],
+        )
+
+    def test_malformed_version_and_detail_libraries_preserves_libraries(self):
+        mock_portal = MagicMock()
+        mock_portal.get_versions.return_value = [{"is_current": True, "libraries": "bilby"}]
+        detail = {
+            "sname": "S_LIB",
+            "raw_payload": {},
+            "libraries": {"name": "gwpy"},
+        }
+
+        mock_gwc = self._run_phase(mock_portal, detail=detail)
+
+        mock_gwc.upsert_gwflow_job.assert_called_once()
+        self.assertIsNone(mock_gwc.upsert_gwflow_job.call_args.kwargs["libraries"])
 
     def test_get_versions_failure_preserves_libraries(self):
         mock_portal = MagicMock()

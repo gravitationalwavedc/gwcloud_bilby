@@ -31,18 +31,21 @@ def _versions():
         [
             {
                 "commit_sha": SHA_V1,
+                "version_number": 1023,
                 "record_timestamp": "2026-08-08 10:00:00 UTC",
                 "schema_version": "v1",
                 "is_current": False,
             },
             {
                 "commit_sha": SHA_V2,
+                "version_number": 1024,
                 "record_timestamp": "2026-08-09 10:00:00 UTC",
                 "schema_version": "v1",
                 "is_current": False,
             },
             {
                 "commit_sha": SHA_V3,
+                "version_number": 1025,
                 "record_timestamp": "2026-08-10 10:00:00 UTC",
                 "schema_version": "v1",
                 "is_current": True,
@@ -52,14 +55,21 @@ def _versions():
     )
 
 
-def _version_detail(sname, sha):
-    payloads = {
-        SHA_V1: {"info": {"status": "draft"}},
-        SHA_V2: {"info": {"status": "ready"}, "extra": "v2-only"},
-        SHA_V3: {"info": {"status": "ready"}, "extra": "v3-only"},
+def _version_detail(sname, version_ref):
+    versions = {
+        SHA_V1: (1023, {"info": {"status": "draft"}}),
+        SHA_V2: (1024, {"info": {"status": "ready"}, "extra": "v2-only"}),
+        SHA_V3: (1025, {"info": {"status": "ready"}, "extra": "v3-only"}),
     }
+    version_number, payload = versions[version_ref]
+    sha = version_ref
     return (
-        {"sname": sname, "commit_sha": sha, "raw_payload": payloads[sha]},
+        {
+            "sname": sname,
+            "commit_sha": sha,
+            "raw_payload": payload,
+            "version_number": version_number,
+        },
         "live",
     )
 

@@ -74,7 +74,7 @@ def rec_for(file_ref: dict, sname: str, uid: str) -> dict:
     }
 
 
-def resolve_libraries(portal_client: Any, sname: str) -> list | None:
+def resolve_libraries(portal_client: Any, sname: str, detail: Any = None) -> list | None:
     """Resolve library names for a superevent from the portal /versions/ endpoint.
 
     Returns:
@@ -107,8 +107,11 @@ def resolve_libraries(portal_client: Any, sname: str) -> list | None:
     # generic iterable into a corrupt or empty authoritative value.
     raw_libraries = current[0].get("libraries")
     if not isinstance(raw_libraries, list):
-        logger.warning("Malformed libraries payload for %s", sname)
-        return None
+        detail_libraries = detail.get("libraries") if isinstance(detail, dict) else None
+        if not isinstance(detail_libraries, list):
+            logger.warning("Malformed libraries payload for %s", sname)
+            return None
+        raw_libraries = detail_libraries
     return normalise_libraries(raw_libraries)
 
 
@@ -168,7 +171,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
                         logger.warning("Skipping %s: non-dict superevent detail", row_sname)
                         continue
                     files = manifest.extract_file_manifest(detail)
-                    libraries = resolve_libraries(portal_client, row_sname)
+                    libraries = resolve_libraries(portal_client, row_sname, detail)
                     metadata = detail.get("raw_payload", {})
                     if not isinstance(metadata, dict):
                         metadata = {}
