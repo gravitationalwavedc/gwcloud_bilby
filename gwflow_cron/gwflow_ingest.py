@@ -150,7 +150,7 @@ def phase_metadata(portal_client: Any = None, gwc_client: Any = None, con: sqlit
             for row in changed_stream:
                 if not isinstance(row, dict):
                     continue
-                row_ts = row.get("commit_timestamp")
+                row_ts = row.get("record_timestamp")
                 row_sname = row.get("sname")
                 row_schema_ver = row.get("schema_version")
                 row_commit_sha = row.get("commit_sha")

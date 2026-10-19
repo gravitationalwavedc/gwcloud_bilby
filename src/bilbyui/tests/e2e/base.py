@@ -256,7 +256,7 @@ class GWFlowDetailShellBase(AsyncE2ETestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "record_timestamp": "2026-08-10 12:00:00 UTC",
                     "schema_version": "3",
                     "is_current": True,
                 }
@@ -337,7 +337,7 @@ class GWFlowListToDetailBase(GWFlowJobsPageBase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "record_timestamp": "2026-08-10 12:00:00 UTC",
                     "schema_version": "3",
                     "is_current": True,
                 }

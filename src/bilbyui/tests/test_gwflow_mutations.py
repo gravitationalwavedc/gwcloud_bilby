@@ -1553,7 +1553,7 @@ class TestExactVersionIngest(BilbyTestCase):
             {
                 "is_current": True,
                 "commit_sha": "sha-001",
-                "commit_timestamp": "2026-09-03T12:00:00+00:00",
+                "record_timestamp": "2026-09-03T12:00:00+00:00",
             }
         ]
         detail = {
@@ -1794,7 +1794,7 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
             {
                 "is_current": True,
                 "commit_sha": f"{params.sname}-current",
-                "commit_timestamp": "2026-09-03T12:00:00+00:00",
+                "record_timestamp": "2026-09-03T12:00:00+00:00",
             }
         ]
         with (

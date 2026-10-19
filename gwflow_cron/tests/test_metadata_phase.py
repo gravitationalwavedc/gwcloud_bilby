@@ -20,13 +20,13 @@ class TestMetadataPhase(GWFlowTestBase):
             {"sname": "S_MISSING_TS"},
             {
                 "sname": "S260101a",
-                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "record_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
                 "commit_sha": "sha1",
             },
             {
                 "sname": "S260102b",
-                "commit_timestamp": "2026-01-02T12:00:00Z",
+                "record_timestamp": "2026-01-02T12:00:00Z",
                 "schema_version": "1.0",
                 "commit_sha": "sha2",
             },
@@ -67,7 +67,7 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.iter_changed.return_value = [
             {
                 "sname": "S_LIBS",
-                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "record_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
                 "commit_sha": "sha1",
             },
@@ -103,7 +103,7 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.iter_changed.return_value = [
             {
                 "sname": "S_BAD_DETAIL",
-                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "record_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
             },
         ]
@@ -132,13 +132,13 @@ class TestMetadataPhase(GWFlowTestBase):
             # Earlier tie: should be skipped
             {
                 "sname": "S260101a",
-                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "record_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
             },
             # Same timestamp, later sname: should be processed
             {
                 "sname": "S260101b",
-                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "record_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
             },
         ]
@@ -159,17 +159,17 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.iter_changed.return_value = [
             {
                 "sname": "S_OK1",
-                "commit_timestamp": "2026-01-01T09:00:00Z",
+                "record_timestamp": "2026-01-01T09:00:00Z",
                 "schema_version": "1.0",
             },
             {
                 "sname": "S_FAIL",
-                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "record_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
             },
             {
                 "sname": "S_OK2",
-                "commit_timestamp": "2026-01-01T11:00:00Z",
+                "record_timestamp": "2026-01-01T11:00:00Z",
                 "schema_version": "1.0",
             },
         ]
@@ -244,7 +244,7 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.iter_changed.return_value = [
             {
                 "sname": "S_RAW",
-                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "record_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
                 "commit_sha": "sha1",
             },
@@ -276,7 +276,7 @@ class TestMetadataPhase(GWFlowTestBase):
     def test_max_retry_attempts_reached_logs_error(self):
         mock_portal = MagicMock()
         mock_portal.iter_changed.return_value = [
-            {"sname": "S_CAP", "commit_timestamp": "2026-01-01T10:00:00Z", "schema_version": "1.0"},
+            {"sname": "S_CAP", "record_timestamp": "2026-01-01T10:00:00Z", "schema_version": "1.0"},
         ]
         mock_portal.get_superevent.side_effect = ValueError("Persistent Failure")
         mock_portal.iter_current_snames.return_value = ["S_CAP"]
@@ -335,7 +335,7 @@ class TestMetadataPhase(GWFlowTestBase):
     def _changed_row(self, sname="S_LIB"):
         return {
             "sname": sname,
-            "commit_timestamp": "2026-01-01T10:00:00Z",
+            "record_timestamp": "2026-01-01T10:00:00Z",
             "schema_version": "1.0",
             "commit_sha": "sha1",
         }
@@ -440,7 +440,7 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.iter_changed.return_value = [
             {
                 "sname": "S_EV",
-                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "record_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
                 "commit_sha": "sha1",
             },
@@ -469,7 +469,7 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.iter_changed.return_value = [
             {
                 "sname": "S_NOGDB",
-                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "record_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
                 "commit_sha": "sha1",
             },
@@ -494,7 +494,7 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.iter_changed.return_value = [
             {
                 "sname": "S_EVFAIL",
-                "commit_timestamp": "2026-01-01T10:00:00Z",
+                "record_timestamp": "2026-01-01T10:00:00Z",
                 "schema_version": "1.0",
                 "commit_sha": "sha1",
             },

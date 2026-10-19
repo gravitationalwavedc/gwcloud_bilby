@@ -81,13 +81,13 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "record_timestamp": "2026-08-10 12:00:00 UTC",
                     "schema_version": "v3",
                     "is_current": True,
                 },
                 {
                     "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
-                    "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                    "record_timestamp": "2026-08-09 10:00:00 UTC",
                     "schema_version": "v2",
                     "is_current": False,
                 },
@@ -133,7 +133,7 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
             [
                 {
                     "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
-                    "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                    "record_timestamp": "2026-08-09 10:00:00 UTC",
                     "is_current": True,
                 }
             ],
@@ -156,7 +156,7 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "record_timestamp": "2026-08-10 12:00:00 UTC",
                 }
             ],
             "stale",
@@ -217,7 +217,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
             {
                 "schema_version": "v3",
                 "commit_sha": "1111222233334444555566667777888899990000",
-                "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                "record_timestamp": "2026-08-10 12:00:00 UTC",
                 "gracedb": {"events": [{"uid": "E99", "pipeline": "pycbc"}]},
             },
             "live",
@@ -424,7 +424,7 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "record_timestamp": "2026-08-10 12:00:00 UTC",
                     "is_current": True,
                 }
             ],
@@ -448,7 +448,7 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "record_timestamp": "2026-08-10 12:00:00 UTC",
                     "is_current": True,
                 }
             ],
@@ -470,13 +470,13 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                    "record_timestamp": "2026-08-09 10:00:00 UTC",
                     "schema_version": "v1",
                     "is_current": False,
                 },
                 {
                     "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
-                    "commit_timestamp": "2026-08-10 10:00:00 UTC",
+                    "record_timestamp": "2026-08-10 10:00:00 UTC",
                     "schema_version": "v2",
                     "is_current": True,
                 },
@@ -509,7 +509,7 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 10:00:00 UTC",
+                    "record_timestamp": "2026-08-10 10:00:00 UTC",
                     "schema_version": "v1",
                     "is_current": True,
                 }
@@ -545,19 +545,19 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         return [
             {
                 "commit_sha": "0000000000000000000000000000000000000000",
-                "commit_timestamp": "2026-08-08 10:00:00 UTC",
+                "record_timestamp": "2026-08-08 10:00:00 UTC",
                 "schema_version": "v2",
                 "is_current": False,
             },
             {
                 "commit_sha": "1111222233334444555566667777888899990000",
-                "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                "record_timestamp": "2026-08-09 10:00:00 UTC",
                 "schema_version": "v2",
                 "is_current": False,
             },
             {
                 "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
-                "commit_timestamp": "2026-08-10 10:00:00 UTC",
+                "record_timestamp": "2026-08-10 10:00:00 UTC",
                 "schema_version": "v2",
                 "is_current": True,
             },

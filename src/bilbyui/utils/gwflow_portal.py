@@ -1,5 +1,6 @@
 import logging
 import math
+import time
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -16,51 +17,188 @@ logger = logging.getLogger(__name__)
 
 PORTAL_TIMEOUT = 10  # seconds
 CACHE_TTL = 60 * 10  # 10 minutes
+PORTAL_MAX_ATTEMPTS = 3
+PORTAL_INITIAL_BACKOFF = 1.0
 
 
-def portal_get(path: str, *, cache_key: str):
-    """GET {CBCFLOW_PORTAL_URL}{path} with header
-    Authorization: <CBCFLOW_PORTAL_TOKEN> (raw UUID, no prefix).
-    Serve a cached copy as (data, "stale") when present within TTL, avoiding a
-    portal round-trip. Otherwise GET the portal; on 200 store response.json()
-    in django cache under cache_key (TTL) and return (data, "live"). On any
-    requests exception / non-200 with no cache: (None, "down").
-    If CBCFLOW_PORTAL_URL/TOKEN are None: (None, "down") with a logged warning."""
+DETAIL_REQUIRED_FIELDS = (
+    "sname",
+    "libraries",
+    "version_number",
+    "record_timestamp",
+    "commit_sha",
+    "is_current",
+    "analyses",
+    "detector_configurations",
+    "gracedb_events",
+    "catalog_connections",
+)
+DETAIL_COLLECTION_FIELDS = (
+    "analyses",
+    "detector_configurations",
+    "gracedb_events",
+    "catalog_connections",
+)
+
+
+def _is_canonical_detail(data):
+    return (
+        isinstance(data, dict)
+        and all(field in data for field in DETAIL_REQUIRED_FIELDS)
+        and all(isinstance(data[field], list) for field in DETAIL_COLLECTION_FIELDS)
+    )
+
+
+DIFF_REQUIRED_FIELDS = (
+    "sname",
+    "baseline_version",
+    "selected_version",
+    "baseline_timestamp",
+    "selected_timestamp",
+    "changes",
+)
+
+
+def _is_canonical_diff(data):
+    return (
+        isinstance(data, dict)
+        and all(field in data for field in DIFF_REQUIRED_FIELDS)
+        and isinstance(data["sname"], str)
+        and not isinstance(data["baseline_version"], bool)
+        and isinstance(data["baseline_version"], int)
+        and not isinstance(data["selected_version"], bool)
+        and isinstance(data["selected_version"], int)
+        and isinstance(data["baseline_timestamp"], str)
+        and isinstance(data["selected_timestamp"], str)
+        and isinstance(data["changes"], list)
+    )
+
+
+def portal_get(path: str, *, cache_key: str, validator=None, sname=None):
+    """Fetch and cache a portal response.
+
+    The return state is ``"live"``, ``"stale"``, ``"down"``, or
+    ``"malformed"``. Cached values retain the established stale semantics but
+    are still checked by an endpoint-specific validator when one is supplied.
+    """
     url = settings.CBCFLOW_PORTAL_URL
     token = settings.CBCFLOW_PORTAL_TOKEN
     if not url or not token:
         logger.warning("CBCFLOW_PORTAL_URL/TOKEN not configured; portal unavailable")
         return None, "down"
+
     cache = caches["default"]
     cached = cache.get(cache_key)
     if cached is not None:
+        if validator is not None and not validator(cached):
+            logger.error(
+                "Malformed portal response for %s (sname=%s)",
+                path,
+                sname,
+            )
+            return None, "malformed"
         return cached, "stale"
-    try:
-        resp = requests.get(
-            f"{url}{path}",
-            headers={"Authorization": token},
-            timeout=PORTAL_TIMEOUT,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            cache.set(cache_key, data, CACHE_TTL)
-            return data, "live"
-        logger.warning("Portal request failed for %s: unexpected status %s", path, resp.status_code)
-    except (requests.RequestException, ValueError) as exc:
-        logger.warning("Portal request failed for %s: %s", path, exc)
-    return None, "down"
+
+    backoff = PORTAL_INITIAL_BACKOFF
+    response_data = None
+    request_failed = False
+    for attempt in range(1, PORTAL_MAX_ATTEMPTS + 1):
+        try:
+            resp = requests.get(
+                f"{url}{path}",
+                headers={"Authorization": token},
+                timeout=PORTAL_TIMEOUT,
+            )
+            if resp.status_code < 500:
+                if resp.status_code != 200:
+                    logger.warning(
+                        "Portal request failed for %s: unexpected status %s",
+                        path,
+                        resp.status_code,
+                    )
+                    request_failed = True
+                    break
+                try:
+                    response_data = resp.json()
+                except ValueError as exc:
+                    logger.error(
+                        "Malformed portal response for %s (sname=%s): %s",
+                        path,
+                        sname,
+                        exc,
+                    )
+                    return None, "malformed"
+                break
+            logger.warning(
+                "Portal request attempt %s failed for %s with status %s",
+                attempt,
+                path,
+                resp.status_code,
+            )
+            request_failed = True
+        except requests.RequestException as exc:
+            logger.warning(
+                "Portal request attempt %s failed for %s: %s",
+                attempt,
+                path,
+                exc,
+            )
+            request_failed = True
+
+        if attempt < PORTAL_MAX_ATTEMPTS:
+            time.sleep(backoff)
+            backoff *= 2.0
+
+    if request_failed and response_data is None:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            if validator is not None and not validator(cached):
+                logger.error("Malformed portal response for %s (sname=%s)", path, sname)
+                return None, "malformed"
+            return cached, "stale"
+        return None, "down"
+
+    if validator is not None and not validator(response_data):
+        logger.error("Malformed portal response for %s (sname=%s)", path, sname)
+        return None, "malformed"
+
+    cache.set(cache_key, response_data, CACHE_TTL)
+    return response_data, "live"
 
 
 def get_superevent(sname):
-    return portal_get(f"/api/v1/superevents/{sname}/", cache_key=f"gwflow:se:{sname}")
+    return portal_get(
+        f"/api/v1/superevents/{sname}/",
+        cache_key=f"gwflow:se:{sname}",
+        validator=_is_canonical_detail,
+        sname=sname,
+    )
 
 
 def get_versions(sname):
-    return portal_get(f"/api/v1/superevents/{sname}/versions/", cache_key=f"gwflow:versions:{sname}")
+    return portal_get(
+        f"/api/v1/superevents/{sname}/versions/",
+        cache_key=f"gwflow:versions:{sname}",
+        sname=sname,
+    )
 
 
 def get_version(sname, sha):
-    return portal_get(f"/api/v1/superevents/{sname}/versions/{sha}/", cache_key=f"gwflow:version:{sname}:{sha}")
+    return portal_get(
+        f"/api/v1/superevents/{sname}/versions/{sha}/",
+        cache_key=f"gwflow:version:{sname}:{sha}",
+        validator=_is_canonical_detail,
+        sname=sname,
+    )
+
+
+def get_diff(sname, baseline, selected):
+    return portal_get(
+        f"/api/v1/superevents/{sname}/diff/?baseline={baseline}&selected={selected}",
+        cache_key=f"gwflow:diff:{sname}:{baseline}:{selected}",
+        validator=_is_canonical_diff,
+        sname=sname,
+    )
 
 
 @dataclass(frozen=True)
@@ -130,17 +268,17 @@ def resolve_current_version(sname):
         )
     commit_sha = commit_sha.strip()
 
-    timestamp = normalise_current_history_timestamp(summary.get("commit_timestamp"))
+    timestamp = normalise_current_history_timestamp(summary.get("record_timestamp"))
     if timestamp is None:
         logger.warning(
-            "Current-version summary for %s (%s) has no usable commit_timestamp",
+            "Current-version summary for %s (%s) has no usable record_timestamp",
             sname,
             commit_sha,
         )
         return GWFlowCurrentVersion(
             available=False,
             versions_state=versions_state,
-            reason="current summary has no usable commit_timestamp",
+            reason="current summary has no usable record_timestamp",
         )
 
     try:

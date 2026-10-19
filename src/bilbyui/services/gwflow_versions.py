@@ -95,7 +95,7 @@ def prepare_version_snapshots(
             full_sha=sha,
             short_sha=sha[:8],
             schema_version=str(row.get("schema_version") or ""),
-            recorded_at=_timestamp(row.get("commit_timestamp") or row.get("timestamp")),
+            recorded_at=_timestamp(row.get("record_timestamp") or row.get("timestamp")),
             payload=payload,
             is_current=bool(current_sha and sha == current_sha) or _parse_portal_bool(row.get("is_current")),
         )

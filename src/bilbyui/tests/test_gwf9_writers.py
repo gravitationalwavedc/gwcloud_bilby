@@ -23,13 +23,13 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
         summaries = [
             {
                 "commit_sha": "old-sha",
-                "commit_timestamp": "2026-09-01T01:00:00+00:00",
+                "record_timestamp": "2026-09-01T01:00:00+00:00",
                 "is_current": False,
             },
             {
                 "commit_sha": "current-sha",
-                "commit_timestamp": "2026-09-02T03:04:05+10:00",
-                "record_timestamp": "1999-01-01T00:00:00+00:00",
+                "commit_timestamp": "1999-01-01T00:00:00+00:00",
+                "record_timestamp": "2026-09-02T03:04:05+10:00",
                 "is_current": True,
             },
         ]
@@ -86,7 +86,7 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
                     {
                         "is_current": is_current,
                         "commit_sha": "current-sha",
-                        "commit_timestamp": "2026-09-01T00:00:00+00:00",
+                        "record_timestamp": "2026-09-01T00:00:00+00:00",
                     }
                 ]
                 with (
@@ -119,7 +119,7 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
                     {
                         "is_current": is_current,
                         "commit_sha": "current-sha",
-                        "commit_timestamp": "2026-09-01T00:00:00+00:00",
+                        "record_timestamp": "2026-09-01T00:00:00+00:00",
                     }
                 ]
                 with (
@@ -166,7 +166,7 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
             {
                 "is_current": True,
                 "commit_sha": "current-sha",
-                "commit_timestamp": "2026-09-01T00:00:00+00:00",
+                "record_timestamp": "2026-09-01T00:00:00+00:00",
             }
         ]
         with (
@@ -190,7 +190,7 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
             {
                 "is_current": True,
                 "commit_sha": "current-sha",
-                "commit_timestamp": "2026-09-01T00:00:00+00:00",
+                "record_timestamp": "2026-09-01T00:00:00+00:00",
             }
         ]
         cases = (

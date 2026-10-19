@@ -28,7 +28,7 @@ def current_summary(libraries=None, *, commit_sha="sha-current", is_current=True
     return {
         "libraries": ["cbc-workflow-o4c"] if libraries is None else libraries,
         "commit_sha": commit_sha,
-        "commit_timestamp": TS,
+        "record_timestamp": TS,
         "is_current": is_current,
     }
 

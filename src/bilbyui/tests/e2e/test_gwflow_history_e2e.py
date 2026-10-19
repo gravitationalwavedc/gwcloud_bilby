@@ -31,19 +31,19 @@ def _versions():
         [
             {
                 "commit_sha": SHA_V1,
-                "commit_timestamp": "2026-08-08 10:00:00 UTC",
+                "record_timestamp": "2026-08-08 10:00:00 UTC",
                 "schema_version": "v1",
                 "is_current": False,
             },
             {
                 "commit_sha": SHA_V2,
-                "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                "record_timestamp": "2026-08-09 10:00:00 UTC",
                 "schema_version": "v1",
                 "is_current": False,
             },
             {
                 "commit_sha": SHA_V3,
-                "commit_timestamp": "2026-08-10 10:00:00 UTC",
+                "record_timestamp": "2026-08-10 10:00:00 UTC",
                 "schema_version": "v1",
                 "is_current": True,
             },

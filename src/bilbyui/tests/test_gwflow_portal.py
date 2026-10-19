@@ -1,167 +1,298 @@
+from datetime import UTC, datetime
+from unittest import mock
+
 import requests
 import responses
 from django.core.cache import caches
-from django.test import TestCase, override_settings
+from django.test import override_settings
 
+from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils import gwflow_portal
 
 PORTAL_URL = "https://portal.example.com"
 PORTAL_TOKEN = "test-token-uuid"
+SNAME = "S230601ag"
+SUPEREVENT_PATH = f"/api/v1/superevents/{SNAME}/"
+VERSION_PATH = f"/api/v1/superevents/{SNAME}/versions/abc123/"
+DIFF_PATH = f"/api/v1/superevents/{SNAME}/diff/?baseline=3&selected=7"
 
-SUPEREVENT_PATH = "/api/v1/superevents/S230601ag/"
+
+def canonical_detail(**overrides):
+    payload = {
+        "sname": SNAME,
+        "libraries": ["cbc-workflow-o4a"],
+        "version_number": 7,
+        "record_timestamp": "2026-08-10T12:00:00Z",
+        "commit_sha": "abc123",
+        "is_current": True,
+        "analyses": [],
+        "detector_configurations": [],
+        "gracedb_events": [],
+        "catalog_connections": [],
+        "raw_payload": {"GraceDB": {"Events": [{"gpstime": 1234567890.5}]}},
+    }
+    payload.update(overrides)
+    return payload
 
 
 @override_settings(CBCFLOW_PORTAL_URL=PORTAL_URL, CBCFLOW_PORTAL_TOKEN=PORTAL_TOKEN)
-class TestGWFlowPortalClient(TestCase):
+class TestGWFlowPortalClient(BilbyTestCase):
     def setUp(self):
         caches["default"].clear()
 
     @responses.activate
     def test_live_response_cached(self):
-        payload = {"sname": "S230601ag", "foo": "bar"}
+        payload = canonical_detail()
         responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", json=payload, status=200)
 
-        data, state = gwflow_portal.get_superevent("S230601ag")
+        data, state = gwflow_portal.get_superevent(SNAME)
 
         self.assertEqual(state, "live")
         self.assertEqual(data, payload)
-        self.assertEqual(caches["default"].get("gwflow:se:S230601ag"), payload)
+        self.assertEqual(caches["default"].get(f"gwflow:se:{SNAME}"), payload)
 
     @responses.activate
-    def test_stale_on_failure_with_cache(self):
-        payload = {"sname": "S230601ag"}
+    def test_cache_hit_within_ttl_returns_stale_without_http(self):
+        payload = canonical_detail()
         responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", json=payload, status=200)
-        gwflow_portal.get_superevent("S230601ag")
 
-        responses.reset()
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", status=500)
+        gwflow_portal.get_superevent(SNAME)
+        data, state = gwflow_portal.get_superevent(SNAME)
 
-        data, state = gwflow_portal.get_superevent("S230601ag")
-
-        self.assertEqual(state, "stale")
-        self.assertEqual(data, payload)
-        self.assertEqual(len(responses.calls), 0)
-
-    @responses.activate
-    def test_stale_on_connection_error_with_cache(self):
-        payload = {"sname": "S230601ag"}
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", json=payload, status=200)
-        gwflow_portal.get_superevent("S230601ag")
-
-        responses.reset()
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", body=requests.ConnectionError("boom"))
-
-        data, state = gwflow_portal.get_superevent("S230601ag")
-
-        self.assertEqual(state, "stale")
-        self.assertEqual(data, payload)
-
-    @responses.activate
-    def test_down_on_failure_without_cache(self):
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", status=500)
-
-        data, state = gwflow_portal.get_superevent("S230601ag")
-
-        self.assertEqual(state, "down")
-        self.assertIsNone(data)
-
-    @responses.activate
-    def test_down_on_non_200_logs_status(self):
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", status=500)
-
-        with self.assertLogs("bilbyui.utils.gwflow_portal", level="WARNING") as cm:
-            data, state = gwflow_portal.get_superevent("S230601ag")
-
-        self.assertEqual(state, "down")
-        self.assertIsNone(data)
-        self.assertIn("500", cm.output[0])
-
-    @responses.activate
-    def test_down_on_connection_error_without_cache(self):
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", body=requests.ConnectionError("boom"))
-
-        data, state = gwflow_portal.get_superevent("S230601ag")
-
-        self.assertEqual(state, "down")
-        self.assertIsNone(data)
-
-    @responses.activate
-    def test_down_on_non_json_200_response_without_cache(self):
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", body="<html>proxy error</html>", status=200)
-
-        data, state = gwflow_portal.get_superevent("S230601ag")
-
-        self.assertEqual(state, "down")
-        self.assertIsNone(data)
-
-    @responses.activate
-    def test_unconfigured_settings_logs_warning(self):
-        with override_settings(CBCFLOW_PORTAL_URL=None, CBCFLOW_PORTAL_TOKEN=None):
-            with self.assertLogs("bilbyui.utils.gwflow_portal", level="WARNING") as cm:
-                data, state = gwflow_portal.get_superevent("S230601ag")
-
-        self.assertEqual(state, "down")
-        self.assertIsNone(data)
-        self.assertIn("not configured", cm.output[0])
-
-    @responses.activate
-    def test_cache_hit_within_ttl_no_http_call(self):
-        payload = {"sname": "S230601ag"}
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", json=payload, status=200)
-        gwflow_portal.get_superevent("S230601ag")
-
-        data, state = gwflow_portal.get_superevent("S230601ag")
-
-        self.assertEqual(state, "stale")
-        self.assertEqual(data, payload)
+        self.assertEqual((data, state), (payload, "stale"))
         self.assertEqual(len(responses.calls), 1)
+        self.assertEqual(gwflow_portal.CACHE_TTL, 60 * 10)
 
     @responses.activate
     def test_cache_clear_forces_http_call(self):
-        payload = {"sname": "S230601ag"}
+        payload = canonical_detail()
         responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", json=payload, status=200)
-        gwflow_portal.get_superevent("S230601ag")
 
+        gwflow_portal.get_superevent(SNAME)
         caches["default"].clear()
-        gwflow_portal.get_superevent("S230601ag")
+        gwflow_portal.get_superevent(SNAME)
 
         self.assertEqual(len(responses.calls), 2)
 
     @responses.activate
-    def test_authorization_header_raw_token(self):
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", json={}, status=200)
+    def test_raw_payload_null_passthrough_live(self):
+        payload = canonical_detail(raw_payload=None)
+        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", json=payload, status=200)
 
-        gwflow_portal.get_superevent("S230601ag")
+        data, state = gwflow_portal.get_superevent(SNAME)
 
-        self.assertEqual(responses.calls[0].request.headers["Authorization"], PORTAL_TOKEN)
+        self.assertEqual(state, "live")
+        self.assertIsNone(data["raw_payload"])
 
     @responses.activate
-    def test_wrapper_urls_and_cache_keys(self):
-        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", json={}, status=200)
-        responses.add(responses.GET, f"{PORTAL_URL}/api/v1/superevents/S230601ag/versions/", json={}, status=200)
+    def test_raw_payload_null_passthrough_stale(self):
+        payload = canonical_detail(raw_payload=None)
+        responses.add(responses.GET, f"{PORTAL_URL}{VERSION_PATH}", json=payload, status=200)
+
+        gwflow_portal.get_version(SNAME, "abc123")
+        data, state = gwflow_portal.get_version(SNAME, "abc123")
+
+        self.assertEqual(state, "stale")
+        self.assertIsNone(data["raw_payload"])
+        self.assertEqual(len(responses.calls), 1)
+
+    @responses.activate
+    def test_empty_canonical_collections_are_valid(self):
+        payload = canonical_detail()
+        responses.add(responses.GET, f"{PORTAL_URL}{VERSION_PATH}", json=payload, status=200)
+
+        data, state = gwflow_portal.get_version(SNAME, "abc123")
+
+        self.assertEqual((data, state), (payload, "live"))
+
+    @responses.activate
+    def test_populated_canonical_collections_are_valid(self):
+        payload = canonical_detail(
+            analyses=[{"pipeline": "bilby"}],
+            detector_configurations=[{"detector": "H1"}],
+            gracedb_events=[{"uid": "G123"}],
+            catalog_connections=[{"catalog": "GWTC"}],
+        )
+        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", json=payload, status=200)
+
+        data, state = gwflow_portal.get_superevent(SNAME)
+
+        self.assertEqual((data, state), (payload, "live"))
+
+    def _assert_version_collection_is_malformed(self, field, value):
+        with responses.RequestsMock() as mocked:
+            mocked.add(
+                responses.GET,
+                f"{PORTAL_URL}{VERSION_PATH}",
+                json=canonical_detail(**{field: value}),
+                status=200,
+            )
+            with self.assertLogs(
+                "bilbyui.utils.gwflow_portal",
+                level="ERROR",
+            ) as logs:
+                data, state = gwflow_portal.get_version(SNAME, "abc123")
+
+        self.assertEqual((data, state), (None, "malformed"))
+        self.assertIn(VERSION_PATH, "\n".join(logs.output))
+        self.assertIn(SNAME, "\n".join(logs.output))
+
+    def test_null_analyses_is_malformed(self):
+        self._assert_version_collection_is_malformed("analyses", None)
+
+    def test_null_detector_configurations_is_malformed(self):
+        self._assert_version_collection_is_malformed(
+            "detector_configurations",
+            None,
+        )
+
+    def test_null_gracedb_events_is_malformed(self):
+        self._assert_version_collection_is_malformed("gracedb_events", None)
+
+    def test_null_catalog_connections_is_malformed(self):
+        self._assert_version_collection_is_malformed(
+            "catalog_connections",
+            None,
+        )
+
+    def test_non_array_analyses_is_malformed(self):
+        self._assert_version_collection_is_malformed(
+            "analyses",
+            {"unexpected": "object"},
+        )
+
+    def test_non_array_detector_configurations_is_malformed(self):
+        self._assert_version_collection_is_malformed(
+            "detector_configurations",
+            {"unexpected": "object"},
+        )
+
+    def test_non_array_gracedb_events_is_malformed(self):
+        self._assert_version_collection_is_malformed(
+            "gracedb_events",
+            {"unexpected": "object"},
+        )
+
+    def test_non_array_catalog_connections_is_malformed(self):
+        self._assert_version_collection_is_malformed(
+            "catalog_connections",
+            {"unexpected": "object"},
+        )
+
+    @responses.activate
+    def test_missing_required_root_field_rejected_with_context(self):
+        payload = canonical_detail()
+        del payload["commit_sha"]
+        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", json=payload, status=200)
+
+        with self.assertLogs("bilbyui.utils.gwflow_portal", level="ERROR") as logs:
+            data, state = gwflow_portal.get_superevent(SNAME)
+
+        self.assertEqual((data, state), (None, "malformed"))
+        output = "\n".join(logs.output)
+        self.assertIn(SUPEREVENT_PATH, output)
+        self.assertIn(SNAME, output)
+        self.assertNotIn(f"gwflow:se:{SNAME}", caches["default"])
+
+    @responses.activate
+    def test_authorization_header_and_timeout_are_unchanged(self):
         responses.add(
             responses.GET,
-            f"{PORTAL_URL}/api/v1/superevents/S230601ag/versions/abc123/",
-            json={},
+            f"{PORTAL_URL}{SUPEREVENT_PATH}",
+            json=canonical_detail(),
             status=200,
         )
 
-        gwflow_portal.get_superevent("S230601ag")
-        gwflow_portal.get_versions("S230601ag")
-        gwflow_portal.get_version("S230601ag", "abc123")
+        with mock.patch("bilbyui.utils.gwflow_portal.requests.get", wraps=requests.get) as request_get:
+            gwflow_portal.get_superevent(SNAME)
 
-        self.assertEqual(len(responses.calls), 3)
-        self.assertEqual(responses.calls[0].request.url, f"{PORTAL_URL}{SUPEREVENT_PATH}")
-        self.assertEqual(responses.calls[1].request.url, f"{PORTAL_URL}/api/v1/superevents/S230601ag/versions/")
-        self.assertEqual(responses.calls[2].request.url, f"{PORTAL_URL}/api/v1/superevents/S230601ag/versions/abc123/")
-        self.assertIn("gwflow:se:S230601ag", caches["default"])
-        self.assertIn("gwflow:versions:S230601ag", caches["default"])
-        self.assertIn("gwflow:version:S230601ag:abc123", caches["default"])
+        self.assertEqual(responses.calls[0].request.headers["Authorization"], PORTAL_TOKEN)
+        self.assertEqual(request_get.call_args.kwargs["timeout"], 10)
+
+    @responses.activate
+    def test_wrapper_urls_and_cache_keys(self):
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}{SUPEREVENT_PATH}",
+            json=canonical_detail(),
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/",
+            json=[],
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}{VERSION_PATH}",
+            json=canonical_detail(),
+            status=200,
+        )
+
+        gwflow_portal.get_superevent(SNAME)
+        gwflow_portal.get_versions(SNAME)
+        gwflow_portal.get_version(SNAME, "abc123")
+
+        self.assertEqual(
+            [call.request.url for call in responses.calls],
+            [
+                f"{PORTAL_URL}{SUPEREVENT_PATH}",
+                f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/",
+                f"{PORTAL_URL}{VERSION_PATH}",
+            ],
+        )
+        self.assertIn(f"gwflow:se:{SNAME}", caches["default"])
+        self.assertIn(f"gwflow:versions:{SNAME}", caches["default"])
+        self.assertIn(f"gwflow:version:{SNAME}:abc123", caches["default"])
+
+    def test_resolve_current_version_uses_record_timestamp(self):
+        summary = {
+            "is_current": True,
+            "commit_sha": "abc123",
+            "record_timestamp": "2026-08-10T12:00:00Z",
+            "commit_timestamp": "1999-01-01T00:00:00Z",
+        }
+        detail = canonical_detail()
+
+        with (
+            mock.patch.object(gwflow_portal, "get_versions", return_value=([summary], "live")),
+            mock.patch.object(gwflow_portal, "get_version", return_value=(detail, "live")),
+            mock.patch.object(
+                gwflow_portal,
+                "_gwflow_trigger_time_from_metadata",
+                return_value=1234567890.5,
+            ),
+        ):
+            result = gwflow_portal.resolve_current_version(SNAME)
+
+        self.assertTrue(result.available)
+        self.assertEqual(
+            result.current_history_timestamp,
+            datetime(2026, 8, 10, 12, 0, tzinfo=UTC),
+        )
+
+    def test_resolve_current_version_does_not_fall_back_to_commit_timestamp(self):
+        summary = {
+            "is_current": True,
+            "commit_sha": "abc123",
+            "commit_timestamp": "2026-08-10 12:00:00 UTC",
+        }
+
+        with mock.patch.object(
+            gwflow_portal,
+            "get_versions",
+            return_value=([summary], "live"),
+        ):
+            result = gwflow_portal.resolve_current_version(SNAME)
+
+        self.assertFalse(result.available)
+        self.assertEqual(result.reason, "current summary has no usable record_timestamp")
 
 
 @override_settings(CBCFLOW_PORTAL_URL=PORTAL_URL, CBCFLOW_PORTAL_TOKEN=PORTAL_TOKEN)
-class TestPortalGetDirect(TestCase):
-    PATH = "/api/v1/superevents/S230601ag/"
+class TestPortalGetDirect(BilbyTestCase):
+    PATH = SUPEREVENT_PATH
     CACHE_KEY = "gwflow:direct:test"
 
     def setUp(self):
@@ -170,59 +301,268 @@ class TestPortalGetDirect(TestCase):
     @responses.activate
     def test_not_configured_returns_down(self):
         with override_settings(CBCFLOW_PORTAL_URL=None, CBCFLOW_PORTAL_TOKEN=None):
-            with self.assertLogs("bilbyui.utils.gwflow_portal", level="WARNING") as cm:
-                data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
+            with self.assertLogs("bilbyui.utils.gwflow_portal", level="WARNING") as logs:
+                data, state = gwflow_portal.portal_get(
+                    self.PATH,
+                    cache_key=self.CACHE_KEY,
+                )
 
-        self.assertEqual(state, "down")
-        self.assertIsNone(data)
-        self.assertIn("not configured", cm.output[0])
+        self.assertEqual((data, state), (None, "down"))
+        self.assertIn("not configured", logs.output[0])
 
     @responses.activate
     def test_cached_returns_stale_without_http_call(self):
-        payload = {"sname": "S230601ag"}
+        payload = {"sname": SNAME}
         responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", json=payload, status=200)
-        gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
 
+        gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
         data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
 
-        self.assertEqual(state, "stale")
-        self.assertEqual(data, payload)
+        self.assertEqual((data, state), (payload, "stale"))
         self.assertEqual(len(responses.calls), 1)
 
     @responses.activate
     def test_200_returns_live_and_caches(self):
-        payload = {"sname": "S230601ag", "foo": "bar"}
+        payload = {"sname": SNAME, "foo": "bar"}
         responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", json=payload, status=200)
 
         data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
 
-        self.assertEqual(state, "live")
-        self.assertEqual(data, payload)
+        self.assertEqual((data, state), (payload, "live"))
         self.assertEqual(caches["default"].get(self.CACHE_KEY), payload)
 
     @responses.activate
-    def test_non_200_without_cache_returns_down(self):
+    @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
+    def test_non_200_without_cache_returns_down(self, mock_sleep):
         responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", status=500)
 
         data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
 
-        self.assertEqual(state, "down")
-        self.assertIsNone(data)
+        self.assertEqual((data, state), (None, "down"))
+        self.assertEqual(len(responses.calls), 3)
+        self.assertEqual([call.args[0] for call in mock_sleep.call_args_list], [1.0, 2.0])
 
     @responses.activate
-    def test_requests_exception_without_cache_returns_down(self):
-        responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", body=requests.ConnectionError("boom"))
+    @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
+    def test_requests_exception_without_cache_returns_down(self, mock_sleep):
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}{self.PATH}",
+            body=requests.ConnectionError("boom"),
+        )
 
         data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
 
-        self.assertEqual(state, "down")
-        self.assertIsNone(data)
+        self.assertEqual((data, state), (None, "down"))
+        self.assertEqual(len(responses.calls), 3)
+        self.assertEqual([call.args[0] for call in mock_sleep.call_args_list], [1.0, 2.0])
 
     @responses.activate
-    def test_value_error_without_cache_returns_down(self):
-        responses.add(responses.GET, f"{PORTAL_URL}{self.PATH}", body="<html>proxy error</html>", status=200)
+    def test_non_json_200_without_cache_returns_malformed(self):
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}{self.PATH}",
+            body="<html>proxy error</html>",
+            status=200,
+        )
+
+        data, state = gwflow_portal.portal_get(
+            self.PATH,
+            cache_key=self.CACHE_KEY,
+            sname=SNAME,
+        )
+
+        self.assertEqual((data, state), (None, "malformed"))
+        self.assertIsNone(caches["default"].get(self.CACHE_KEY))
+
+    @responses.activate
+    def test_connection_failure_remains_down_not_malformed(self):
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}{self.PATH}",
+            body=requests.Timeout("timed out"),
+        )
 
         data, state = gwflow_portal.portal_get(self.PATH, cache_key=self.CACHE_KEY)
 
-        self.assertEqual(state, "down")
-        self.assertIsNone(data)
+        self.assertEqual((data, state), (None, "down"))
+
+
+@override_settings(CBCFLOW_PORTAL_URL=PORTAL_URL, CBCFLOW_PORTAL_TOKEN=PORTAL_TOKEN)
+class TestPortalRetryAndDiff(BilbyTestCase):
+    def setUp(self):
+        caches["default"].clear()
+
+    @responses.activate
+    @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
+    def test_500_then_200_retries_and_succeeds(self, mock_sleep):
+        payload = canonical_detail()
+        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", status=500)
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}{SUPEREVENT_PATH}",
+            json=payload,
+            status=200,
+        )
+
+        data, state = gwflow_portal.get_superevent(SNAME)
+
+        self.assertEqual((data, state), (payload, "live"))
+        self.assertEqual(len(responses.calls), 2)
+        mock_sleep.assert_called_once_with(1.0)
+
+    @responses.activate
+    @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
+    def test_exhausted_5xx_uses_cache_that_appears_during_retry(self, mock_sleep):
+        payload = canonical_detail()
+        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", status=503)
+        cache = caches["default"]
+        original_get = cache.get
+        calls = 0
+
+        def cache_get(key, *args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return None
+            return payload
+
+        with mock.patch.object(cache, "get", side_effect=cache_get):
+            data, state = gwflow_portal.get_superevent(SNAME)
+
+        self.assertEqual((data, state), (payload, "stale"))
+        self.assertEqual(len(responses.calls), 3)
+        self.assertEqual([call.args[0] for call in mock_sleep.call_args_list], [1.0, 2.0])
+        self.assertIsNone(original_get("unused-key"))
+
+    @responses.activate
+    @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
+    def test_exhausted_5xx_without_cache_is_down(self, mock_sleep):
+        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", status=500)
+
+        data, state = gwflow_portal.get_superevent(SNAME)
+
+        self.assertEqual((data, state), (None, "down"))
+        self.assertEqual(len(responses.calls), 3)
+        self.assertEqual([call.args[0] for call in mock_sleep.call_args_list], [1.0, 2.0])
+
+    @responses.activate
+    @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
+    def test_4xx_is_not_retried(self, mock_sleep):
+        responses.add(responses.GET, f"{PORTAL_URL}{SUPEREVENT_PATH}", status=404)
+
+        data, state = gwflow_portal.get_superevent(SNAME)
+
+        self.assertEqual((data, state), (None, "down"))
+        self.assertEqual(len(responses.calls), 1)
+        mock_sleep.assert_not_called()
+
+    @responses.activate
+    def test_get_diff_golden_passthrough_url_and_cache_key(self):
+        changes = [
+            {
+                "entity_type": "analysis",
+                "operation": "modified",
+                "path": ["analyses", "bilby"],
+                "before": {"status": "running", "labels": ["a", "b"]},
+                "after": {"status": "complete", "labels": ["b", "a"]},
+            },
+            {
+                "entity_type": "detector_configuration",
+                "operation": "added",
+                "path": ["detector_configurations", "H1"],
+                "after": {"detector": "H1", "channels": ["strain", "dq"]},
+            },
+            {
+                "entity_type": "analysis",
+                "operation": "removed",
+                "path": ["analyses", "lalinference"],
+                "before": {"pipeline": "lalinference"},
+            },
+        ]
+        payload = {
+            "sname": SNAME,
+            "baseline_version": 3,
+            "selected_version": 7,
+            "baseline_timestamp": "2026-08-01T00:00:00Z",
+            "selected_timestamp": "2026-08-10T12:00:00Z",
+            "changes": changes,
+        }
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}{DIFF_PATH}",
+            json=payload,
+            status=200,
+        )
+
+        data, state = gwflow_portal.get_diff(SNAME, 3, 7)
+
+        self.assertEqual(state, "live")
+        self.assertEqual(data, payload)
+        self.assertEqual(data["changes"], changes)
+        self.assertEqual(responses.calls[0].request.url, f"{PORTAL_URL}{DIFF_PATH}")
+        self.assertEqual(
+            caches["default"].get(f"gwflow:diff:{SNAME}:3:7"),
+            payload,
+        )
+
+    def test_get_diff_rejects_each_missing_required_root_field(self):
+        payload = {
+            "sname": SNAME,
+            "baseline_version": 3,
+            "selected_version": 7,
+            "baseline_timestamp": "2026-08-01T00:00:00Z",
+            "selected_timestamp": "2026-08-10T12:00:00Z",
+            "changes": [],
+        }
+        for field in gwflow_portal.DIFF_REQUIRED_FIELDS:
+            with self.subTest(field=field), responses.RequestsMock() as mocked:
+                malformed = payload.copy()
+                del malformed[field]
+                mocked.add(
+                    responses.GET,
+                    f"{PORTAL_URL}{DIFF_PATH}",
+                    json=malformed,
+                    status=200,
+                )
+
+                data, state = gwflow_portal.get_diff(SNAME, 3, 7)
+
+                self.assertEqual((data, state), (None, "malformed"))
+                self.assertIsNone(caches["default"].get(f"gwflow:diff:{SNAME}:3:7"))
+
+    @responses.activate
+    def test_get_diff_rejects_non_list_changes(self):
+        payload = {
+            "sname": SNAME,
+            "baseline_version": 3,
+            "selected_version": 7,
+            "baseline_timestamp": "2026-08-01T00:00:00Z",
+            "selected_timestamp": "2026-08-10T12:00:00Z",
+            "changes": {"analysis": []},
+        }
+        responses.add(responses.GET, f"{PORTAL_URL}{DIFF_PATH}", json=payload, status=200)
+
+        self.assertEqual(gwflow_portal.get_diff(SNAME, 3, 7), (None, "malformed"))
+
+    @responses.activate
+    @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
+    def test_get_diff_malformed_is_distinct_from_down(self, mock_sleep):
+        malformed = {
+            "sname": SNAME,
+            "baseline_version": 3,
+            "selected_version": 7,
+            "baseline_timestamp": "2026-08-01T00:00:00Z",
+            "selected_timestamp": "2026-08-10T12:00:00Z",
+            "changes": "not-a-list",
+        }
+        responses.add(responses.GET, f"{PORTAL_URL}{DIFF_PATH}", json=malformed, status=200)
+
+        self.assertEqual(gwflow_portal.get_diff(SNAME, 3, 7), (None, "malformed"))
+
+        responses.reset()
+        responses.add(responses.GET, f"{PORTAL_URL}{DIFF_PATH}", status=503)
+
+        self.assertEqual(gwflow_portal.get_diff(SNAME, 3, 7), (None, "down"))
+        self.assertEqual(len(responses.calls), 3)
+        self.assertEqual([call.args[0] for call in mock_sleep.call_args_list], [1.0, 2.0])
