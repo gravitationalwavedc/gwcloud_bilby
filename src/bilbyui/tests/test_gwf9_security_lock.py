@@ -242,7 +242,7 @@ class TestFourteenSupereventSecurityCompletion(BilbyTestCase):
             [
                 {
                     "commit_sha": f"sha-{sname}",
-                    "commit_timestamp": timestamp,
+                    "record_timestamp": timestamp,
                     "is_current": True,
                     "libraries": ["cbc-workflow-o4c"],
                 }

@@ -126,7 +126,7 @@ class TestIngestWiring(GWFlowTestBase):
         mock_portal.iter_changed.return_value = [
             {
                 "sname": "S260101a",
-                "commit_timestamp": "2026-01-01T12:00:00Z",
+                "record_timestamp": "2026-01-01T12:00:00Z",
                 "schema_version": "1.0",
                 "commit_sha": "sha-test-123",
             }

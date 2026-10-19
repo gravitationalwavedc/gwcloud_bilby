@@ -89,7 +89,7 @@ class TestKillStateRecovery(GWFlowTestBase):
                 mock_portal.iter_changed.return_value = [
                     {
                         "sname": sname,
-                        "commit_timestamp": "2026-01-01T12:00:00Z",
+                        "record_timestamp": "2026-01-01T12:00:00Z",
                         "schema_version": "1.0",
                         "commit_sha": "sha-run1",
                     }
@@ -192,7 +192,7 @@ class TestKillStateRecovery(GWFlowTestBase):
                 mock_portal.iter_changed.return_value = [
                     {
                         "sname": sname,
-                        "commit_timestamp": "2026-01-01T12:00:00Z",
+                        "record_timestamp": "2026-01-01T12:00:00Z",
                         "schema_version": "1.0",
                         "commit_sha": "sha-run1",
                     }
@@ -285,7 +285,7 @@ class TestKillStateRecovery(GWFlowTestBase):
                 mock_portal.iter_changed.return_value = [
                     {
                         "sname": sname,
-                        "commit_timestamp": "2026-01-01T12:00:00Z",
+                        "record_timestamp": "2026-01-01T12:00:00Z",
                         "schema_version": "1.0",
                         "commit_sha": "sha-run1",
                     }
@@ -362,13 +362,13 @@ class TestKillStateRecovery(GWFlowTestBase):
                 mock_portal.iter_changed.return_value = [
                     {
                         "sname": sname1,
-                        "commit_timestamp": "2026-01-01T10:00:00Z",
+                        "record_timestamp": "2026-01-01T10:00:00Z",
                         "schema_version": "1.0",
                         "commit_sha": "sha1",
                     },
                     {
                         "sname": sname2,
-                        "commit_timestamp": "2026-01-02T10:00:00Z",
+                        "record_timestamp": "2026-01-02T10:00:00Z",
                         "schema_version": "1.0",
                         "commit_sha": "sha2",
                     },
@@ -431,7 +431,7 @@ class TestKillStateRecovery(GWFlowTestBase):
                 mock_portal.iter_changed.return_value = [
                     {
                         "sname": sname,
-                        "commit_timestamp": "2026-01-01T10:00:00Z",
+                        "record_timestamp": "2026-01-01T10:00:00Z",
                         "schema_version": "1.0",
                         "commit_sha": "sha1",
                     }

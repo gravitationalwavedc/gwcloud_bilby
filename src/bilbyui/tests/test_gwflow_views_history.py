@@ -81,13 +81,15 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "version_number": 1010,
+                    "record_timestamp": "2026-08-10 12:00:00 UTC",
                     "schema_version": "v3",
                     "is_current": True,
                 },
                 {
                     "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
-                    "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                    "version_number": 1011,
+                    "record_timestamp": "2026-08-09 10:00:00 UTC",
                     "schema_version": "v2",
                     "is_current": False,
                 },
@@ -133,7 +135,8 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
             [
                 {
                     "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
-                    "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                    "version_number": 1012,
+                    "record_timestamp": "2026-08-09 10:00:00 UTC",
                     "is_current": True,
                 }
             ],
@@ -156,7 +159,8 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "version_number": 1013,
+                    "record_timestamp": "2026-08-10 12:00:00 UTC",
                 }
             ],
             "stale",
@@ -210,6 +214,15 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.job = _create_job(self.ligo_user)
         self.sha = "1111222233334444555566667777888899990000"
         self.url = reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.sha])
+        self.get_versions_patcher = mock.patch(
+            "bilbyui.views.get_versions",
+            return_value=(
+                [{"commit_sha": self.sha, "version_number": 1008}],
+                "live",
+            ),
+        )
+        self.get_versions_patcher.start()
+        self.addCleanup(self.get_versions_patcher.stop)
 
     @mock.patch(
         "bilbyui.views.get_version",
@@ -217,7 +230,8 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
             {
                 "schema_version": "v3",
                 "commit_sha": "1111222233334444555566667777888899990000",
-                "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                "version_number": 1008,
+                "record_timestamp": "2026-08-10 12:00:00 UTC",
                 "gracedb": {"events": [{"uid": "E99", "pipeline": "pycbc"}]},
             },
             "live",
@@ -243,6 +257,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
             {
                 "schema_version": "v3",
                 "commit_sha": "1111222233334444555566667777888899990000",
+                "version_number": 1009,
                 "gracedb": {"events": [{"uid": "E99", "pipeline": "pycbc"}]},
             },
             "stale",
@@ -341,7 +356,10 @@ class TestGWFlowHistoryVisibility(BilbyTestCase):
         self.authenticate(user=self.non_ligo_user)
         self._assert_denied_without_portal_calls()
 
-    @mock.patch("bilbyui.views.get_versions", return_value=([], "live"))
+    @mock.patch(
+        "bilbyui.views.get_versions",
+        return_value=([{"commit_sha": "1111222233334444555566667777888899990000", "version_number": 1010}], "live"),
+    )
     @mock.patch("bilbyui.views.get_version", return_value=({}, "live"))
     def test_ligo_user_200_on_all_history_routes(
         self,
@@ -352,7 +370,10 @@ class TestGWFlowHistoryVisibility(BilbyTestCase):
         for url in self._history_routes(self.embargoed_job.sname):
             self.assertEqual(self.client.get(url).status_code, 200)
 
-    @mock.patch("bilbyui.views.get_versions", return_value=([], "live"))
+    @mock.patch(
+        "bilbyui.views.get_versions",
+        return_value=([{"commit_sha": "1111222233334444555566667777888899990000", "version_number": 1011}], "live"),
+    )
     @mock.patch("bilbyui.views.get_version", return_value=({}, "live"))
     def test_legacy_flag_does_not_hide_public_history(
         self,
@@ -424,7 +445,8 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "version_number": 1014,
+                    "record_timestamp": "2026-08-10 12:00:00 UTC",
                     "is_current": True,
                 }
             ],
@@ -448,7 +470,8 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 12:00:00 UTC",
+                    "version_number": 1015,
+                    "record_timestamp": "2026-08-10 12:00:00 UTC",
                     "is_current": True,
                 }
             ],
@@ -470,13 +493,15 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                    "version_number": 1016,
+                    "record_timestamp": "2026-08-09 10:00:00 UTC",
                     "schema_version": "v1",
                     "is_current": False,
                 },
                 {
                     "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
-                    "commit_timestamp": "2026-08-10 10:00:00 UTC",
+                    "version_number": 1017,
+                    "record_timestamp": "2026-08-10 10:00:00 UTC",
                     "schema_version": "v2",
                     "is_current": True,
                 },
@@ -509,7 +534,8 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
             [
                 {
                     "commit_sha": "1111222233334444555566667777888899990000",
-                    "commit_timestamp": "2026-08-10 10:00:00 UTC",
+                    "version_number": 1018,
+                    "record_timestamp": "2026-08-10 10:00:00 UTC",
                     "schema_version": "v1",
                     "is_current": True,
                 }
@@ -545,19 +571,22 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         return [
             {
                 "commit_sha": "0000000000000000000000000000000000000000",
-                "commit_timestamp": "2026-08-08 10:00:00 UTC",
+                "version_number": 1005,
+                "record_timestamp": "2026-08-08 10:00:00 UTC",
                 "schema_version": "v2",
                 "is_current": False,
             },
             {
                 "commit_sha": "1111222233334444555566667777888899990000",
-                "commit_timestamp": "2026-08-09 10:00:00 UTC",
+                "version_number": 1006,
+                "record_timestamp": "2026-08-09 10:00:00 UTC",
                 "schema_version": "v2",
                 "is_current": False,
             },
             {
                 "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
-                "commit_timestamp": "2026-08-10 10:00:00 UTC",
+                "version_number": 1007,
+                "record_timestamp": "2026-08-10 10:00:00 UTC",
                 "schema_version": "v2",
                 "is_current": True,
             },
@@ -588,7 +617,6 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
     @mock.patch("bilbyui.views.get_versions")
     def test_fetches_only_selected_and_resolved_baseline_details(self, mock_get_versions, mock_get_job):
         selected_sha = "aaaabbbbccccddddeeeeffff0000111122223333"
-        baseline_sha = "1111222233334444555566667777888899990000"
         mock_get_job.return_value.current_history_id = selected_sha
         mock_get_versions.return_value = (self._metadata_versions(), "live")
         self.mock_get_version.side_effect = [
@@ -601,8 +629,8 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         self.assertEqual(
             self.mock_get_version.call_args_list,
             [
-                mock.call(self.sname, selected_sha),
-                mock.call(self.sname, baseline_sha),
+                mock.call(self.sname, "aaaabbbbccccddddeeeeffff0000111122223333"),
+                mock.call(self.sname, "1111222233334444555566667777888899990000"),
             ],
         )
 
@@ -624,7 +652,7 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         response, _ = _render_gwflow_history_section(request, self.sname)
         response.render()
 
-        self.mock_get_version.assert_called_once_with(self.sname, current_sha)
+        self.mock_get_version.assert_called_once_with(self.sname, "aaaabbbbccccddddeeeeffff0000111122223333")
         self.assertEqual(
             response.context_data["baseline_raw_json"],
             response.context_data["selected_raw_json"],
