@@ -8,11 +8,13 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from bilbyui.management.commands.es_ingest import build_bilby_es_mapping
-from bilbyui.management.commands.gwflow_es_migrate import (
+from bilbyui.services.search_registry import (
     _DEFAULT_FIELD,
     GWFLOW_ALIASES,
+    SEARCH_FIELDS,
+    SURFACES,
+    is_denied,
 )
-from bilbyui.services.search_registry import SEARCH_FIELDS, SURFACES, is_denied
 from bilbyui.utils.gwflow_es import get_es_client
 
 EXIT_OK = 0

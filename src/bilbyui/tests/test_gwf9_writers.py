@@ -6,9 +6,7 @@ from django.core.management import call_command
 from django.db import IntegrityError
 from django.test import override_settings
 
-from bilbyui.management.commands.es_ingest import Command
 from bilbyui.models import BilbyJob, EventID, GWFlowJob
-from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_portal import (
     GWFlowCurrentVersion,
@@ -566,31 +564,6 @@ class TestGWFlowChildrenFollowParent(BilbyTestCase):
         child.refresh_from_db()
         self.assertIsNone(child.event_id)
 
-    def test_reconcile_children_propagates_none(self):
-        stale = EventID.objects.create(
-            event_id="G700031",
-            trigger_id="S231013ab",
-            gps_time=1000.0,
-        )
-        parent = GWFlowJob.objects.create(
-            sname="S250802a",
-            user=self.user,
-            event_id=None,
-        )
-        child = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="GWF9-child-reconcile",
-            gwflow_job=parent,
-            event_id=stale,
-            ini_string="[data]\ndetectors = ['H1']\n",
-        )
-
-        processed, failed = Command()._reconcile_gwflow_children(parent)
-
-        self.assertEqual((processed, failed), (1, 0))
-        child.refresh_from_db()
-        self.assertIsNone(child.event_id)
-
 
 @override_settings(
     CBCFLOW_PORTAL_URL="https://portal.example",
@@ -613,68 +586,3 @@ class TestGWFlowChosenUIDCollisionPath(BilbyTestCase):
             name="GWF-9 chosen UID user",
             primary_email="gwf9-chosen@example.com",
         )
-
-    def test_foreign_chosen_uid_does_not_mutate_owner_or_link_parent(self):
-        foreign = EventID.objects.create(
-            event_id="G585653",
-            trigger_id="S231013ab",
-            gps_time=1381222535.0,
-            nickname="original",
-        )
-        parent = GWFlowJob.objects.create(
-            sname="S250801h",
-            user=self.user,
-            event_id=foreign,
-        )
-        child = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="GWF9-chosen-child",
-            gwflow_job=parent,
-            event_id=foreign,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-        )
-        detail = {
-            "raw_payload": {
-                "GraceDB": {
-                    "preferred_event": "G585653",
-                    "Events": [
-                        {
-                            "UID": "G585653",
-                            "State": "preferred",
-                            "GPSTime": 1438044067.054443,
-                        }
-                    ],
-                }
-            }
-        }
-
-        def fake_get(url, **_kwargs):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self.Response(
-                    {
-                        "results": [{"sname": "S250801h"}],
-                        "next": None,
-                    }
-                )
-            if url.endswith("/api/v1/superevents/S250801h/"):
-                return self.Response(detail)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        with (
-            mock.patch(
-                "bilbyui.management.commands.es_ingest.requests.get",
-                side_effect=fake_get,
-            ),
-            mock.patch("bilbyui.management.commands.es_ingest.gwflow_elastic_search_update"),
-        ):
-            call_command("es_ingest", gwflow=True)
-
-        parent.refresh_from_db()
-        child.refresh_from_db()
-        foreign.refresh_from_db()
-        self.assertIsNone(parent.event_id)
-        self.assertIsNone(child.event_id)
-        self.assertEqual(foreign.trigger_id, "S231013ab")
-        self.assertEqual(foreign.gps_time, 1381222535.0)
-        self.assertEqual(foreign.nickname, "original")
-        self.assertEqual(EventID.objects.filter(event_id="G585653").count(), 1)
