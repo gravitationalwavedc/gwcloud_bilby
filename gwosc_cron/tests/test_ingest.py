@@ -316,6 +316,18 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertIn("Unable to find preferred job", logs.output[0])
 
     @responses.activate
+    def test_boolean_true_is_preferred_selected(self, gwc):
+        """A real boolean True is_preferred must still be selected as preferred."""
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response()
+
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once()
+
+    @responses.activate
     def test_too_many_preferred(self, gwc):
         """More than 1 preferred h5 file found"""
         self.add_allevents_response()
