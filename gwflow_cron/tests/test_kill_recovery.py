@@ -124,7 +124,6 @@ class TestKillStateRecovery(GWFlowTestBase):
                     }
                 ]
                 mock_portal.get_superevent.return_value = detail
-                mock_portal.iter_current_snames.return_value = [sname]
 
                 con = gwflow_ingest.sqlite3.connect(settings.DB_PATH)
                 con.row_factory = gwflow_ingest.sqlite3.Row
@@ -141,7 +140,6 @@ class TestKillStateRecovery(GWFlowTestBase):
                 # --- RUN 2: Next invocation. Portal delta is empty because watermark is current ---
                 mock_portal.iter_changed.return_value = []
                 mock_portal.get_superevent.return_value = detail
-                mock_portal.iter_current_snames.return_value = [sname]
 
                 res = gwflow_ingest.run([])
                 self.assertEqual(res, 0)
@@ -225,7 +223,6 @@ class TestKillStateRecovery(GWFlowTestBase):
                     }
                 ]
                 mock_portal.get_superevent.return_value = detail
-                mock_portal.iter_current_snames.return_value = [sname]
                 mock_gwc.get_gwflow_pending_files.return_value = [pending_f1, pending_f2]
                 mock_fetch.side_effect = [staged_f1, RuntimeError("Network killed mid-mirror")]
 
@@ -316,7 +313,6 @@ class TestKillStateRecovery(GWFlowTestBase):
                     }
                 ]
                 mock_portal.get_superevent.return_value = detail
-                mock_portal.iter_current_snames.return_value = [sname]
 
                 # Run 1: Fails at link step
                 gwflow_ingest.run([])
@@ -399,7 +395,6 @@ class TestKillStateRecovery(GWFlowTestBase):
                     },
                 ]
                 mock_portal.get_superevent.side_effect = lambda s: detail1 if s == sname1 else detail2
-                mock_portal.iter_current_snames.return_value = [sname1, sname2]
 
                 con = gwflow_ingest.sqlite3.connect(settings.DB_PATH)
                 con.row_factory = gwflow_ingest.sqlite3.Row
@@ -462,7 +457,6 @@ class TestKillStateRecovery(GWFlowTestBase):
                     }
                 ]
                 mock_portal.get_superevent.return_value = detail
-                mock_portal.iter_current_snames.return_value = [sname]
 
                 con = gwflow_ingest.sqlite3.connect(settings.DB_PATH)
                 con.row_factory = gwflow_ingest.sqlite3.Row

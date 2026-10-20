@@ -36,7 +36,6 @@ class TestMetadataPhase(GWFlowTestBase):
             "raw_payload": {"sname": sname},
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": ["bilby"]}]
-        mock_portal.iter_current_snames.return_value = ["S260101a", "S260102b"]
 
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -79,7 +78,6 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.get_versions.return_value = [
             {"is_current": True, "libraries": [None, "  ", "bilby", {"foo": "bar"}, "gwpy", 123]}
         ]
-        mock_portal.iter_current_snames.return_value = ["S_LIBS"]
 
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -107,7 +105,6 @@ class TestMetadataPhase(GWFlowTestBase):
             },
         ]
         mock_portal.get_superevent.return_value = "malformed-response"
-        mock_portal.iter_current_snames.return_value = ["S_BAD_DETAIL"]
 
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -171,7 +168,6 @@ class TestMetadataPhase(GWFlowTestBase):
             },
         ]
         mock_portal.get_superevent.return_value = {"sname": "S260101b", "raw_payload": {}}
-        mock_portal.iter_current_snames.return_value = ["S260101a", "S260101b"]
 
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -208,7 +204,6 @@ class TestMetadataPhase(GWFlowTestBase):
             return {"sname": sname, "raw_payload": {}}
 
         mock_portal.get_superevent.side_effect = get_detail_side_effect
-        mock_portal.iter_current_snames.return_value = ["S_OK1", "S_FAIL", "S_OK2"]
 
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -228,7 +223,6 @@ class TestMetadataPhase(GWFlowTestBase):
     def test_phase_metadata_creates_connection_when_con_is_none(self, mock_portal_cls):
         mock_portal = MagicMock()
         mock_portal.iter_changed.return_value = []
-        mock_portal.iter_current_snames.return_value = []
         mock_portal_cls.return_value = mock_portal
 
         phase_metadata(gwc_client=MagicMock())
@@ -248,7 +242,6 @@ class TestMetadataPhase(GWFlowTestBase):
             "raw_payload": "not-a-dict",
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
-        mock_portal.iter_current_snames.return_value = ["S_RAW"]
 
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -272,7 +265,6 @@ class TestMetadataPhase(GWFlowTestBase):
             {"sname": "S_CAP", "record_timestamp": "2026-01-01T10:00:00Z", "schema_version": "1.0"},
         ]
         mock_portal.get_superevent.side_effect = ValueError("Persistent Failure")
-        mock_portal.iter_current_snames.return_value = ["S_CAP"]
 
         cur = self.con.cursor()
         # Pre-seed failure count to MAX_RETRY_ATTEMPTS - 1
@@ -293,7 +285,6 @@ class TestMetadataPhase(GWFlowTestBase):
     def _run_phase(self, mock_portal, sname="S_LIB", detail=None):
         mock_portal.iter_changed.return_value = [self._changed_row(sname)]
         mock_portal.get_superevent.return_value = {"sname": sname, "raw_payload": {}} if detail is None else detail
-        mock_portal.iter_current_snames.return_value = [sname]
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
         phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
@@ -405,7 +396,6 @@ class TestMetadataPhase(GWFlowTestBase):
         ]
         mock_portal.iter_changed.return_value = [self._changed_row()]
         mock_portal.get_superevent.return_value = {"sname": "S_LIB", "raw_payload": {}}
-        mock_portal.iter_current_snames.return_value = ["S_LIB"]
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
 
@@ -435,7 +425,6 @@ class TestMetadataPhase(GWFlowTestBase):
             },
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
-        mock_portal.iter_current_snames.return_value = ["S_EV"]
 
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -460,7 +449,6 @@ class TestMetadataPhase(GWFlowTestBase):
             "raw_payload": {},
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
-        mock_portal.iter_current_snames.return_value = ["S_NOGDB"]
 
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -489,7 +477,6 @@ class TestMetadataPhase(GWFlowTestBase):
             },
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
-        mock_portal.iter_current_snames.return_value = ["S_EVFAIL"]
 
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []

@@ -1566,7 +1566,6 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
             },
         ]
         portal.get_superevent.return_value = {"sname": "S1", "raw_payload": {}}
-        portal.iter_current_snames.return_value = ["S1"]
         gwc = MagicMock()
         gwc.get_gwflow_job_list.return_value = []
 
@@ -1578,7 +1577,6 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
     def test_phase_metadata_clears_changed_snames_per_run(self):
         portal = MagicMock()
         portal.iter_changed.return_value = []
-        portal.iter_current_snames.return_value = []
         gwc = MagicMock()
         gwc.get_gwflow_job_list.return_value = []
 

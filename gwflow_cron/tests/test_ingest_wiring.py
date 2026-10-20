@@ -155,7 +155,6 @@ class TestIngestWiring(GWFlowTestBase):
             "raw_payload": {"sname": "S260101a", "event": "GW260101"},
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": ["bilby"]}]
-        mock_portal.iter_current_snames.return_value = ["S260101a"]
         mock_gwc.get_gwflow_job_list.return_value = []
 
         # File mirror queue has 1 pending file
