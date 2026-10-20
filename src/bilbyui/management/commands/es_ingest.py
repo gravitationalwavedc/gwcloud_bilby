@@ -2,22 +2,28 @@ import json
 import logging
 import math
 import re
-import urllib.parse
 
-import requests
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from elasticsearch import helpers
 
-from bilbyui.models import BilbyJob, EventID, GWFlowJob
-from bilbyui.utils.gwflow_es import get_es_client, gwflow_elastic_search_update
-from bilbyui.utils.gwflow_portal import resolve_event_id_for_superevent
-from bilbyui.views import _create_event_id_guarded
+from bilbyui.models import BilbyJob, EventID
+from bilbyui.utils.gwflow_es import (
+    InvalidGWFlowMetadata,
+    build_gwflow_es_doc,
+    build_gwflow_es_mapping,
+    clear_gwflow_portal_cache,
+    compute_protected_identity_digest,
+    eligible_gwflow_jobs,
+    get_es_client,
+    invalidate_gwflow_facet_caches,
+)
+from bilbyui.utils.gwflow_portal import get_superevent
 
 logger = logging.getLogger(__name__)
 
-HTTP_OK = 200
-
-_TRUTHY_PREFERRED = (True, "true", "True", "yes")
+EXIT_OK = 0
+EXIT_FAILURES = 1
 
 
 def build_bilby_es_mapping():
@@ -57,13 +63,16 @@ def build_bilby_es_mapping():
 class Command(BaseCommand):
     help = (
         "Ingest job details into Elasticsearch.\n\n"
-        "Operational sequencing:\n"
-        "  Step 1: python manage.py es_ingest --gwflow\n"
-        "          Populate/create EventID rows for all superevents and link GWFlowJob.event_id,\n"
-        "          cascading to child bilby_jobs.\n"
-        "  Step 2: python manage.py es_ingest\n"
-        "          Drop and rebuild the Bilby index, backfilling GWOSC jobs and linking\n"
-        "          child Bilby jobs to their established parent EventID."
+        "Operational modes:\n"
+        "  python manage.py es_ingest --gwflow\n"
+        "      Upsert documents for every local GWFlowJob using live portal detail.\n"
+        "  python manage.py es_ingest --gwflow --wipe-and-rebuild\n"
+        "      Delete and recreate only settings.ELASTIC_SEARCH_GWFLOW_INDEX before rebuilding it.\n"
+        "      The rebuild expects a quiescent database and is intended to run inside the maintenance "
+        "writer freeze (issue #123); a concurrent write can make the before/after protected-identity "
+        "digest differ and the run will fail closed.\n"
+        "  python manage.py es_ingest\n"
+        "      Drop and rebuild the Bilby index."
     )
 
     def add_arguments(self, parser):
@@ -73,10 +82,24 @@ class Command(BaseCommand):
             default=False,
             help="Ingest gwflow superevent records from cbcflow portal",
         )
+        parser.add_argument(
+            "--wipe-and-rebuild",
+            action="store_true",
+            help="With --gwflow, delete and recreate only the GWFlow index before rebuilding it.",
+        )
+
+    def execute(self, *args, **options):
+        self._exit_code = EXIT_OK
+        super().execute(*args, **options)
+        if self._exit_code != EXIT_OK:
+            raise CommandError(f"es_ingest exited with code {self._exit_code}", returncode=self._exit_code)
+        return self._exit_code
 
     def handle(self, *_args, **options):
-        if options.get("gwflow"):
-            self.handle_gwflow()
+        if options["wipe_and_rebuild"] and not options["gwflow"]:
+            raise CommandError("--wipe-and-rebuild requires --gwflow")
+        if options["gwflow"]:
+            self._exit_code = self.handle_gwflow(wipe_and_rebuild=options["wipe_and_rebuild"])
         else:
             self.handle_bilby()
 
@@ -160,244 +183,379 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"\nIngestion complete: {success_count} succeeded, {error_count} failed"))
 
-    def _reconcile_gwflow_children(self, job) -> tuple[int, int]:
-        # Derive the counters from the final persisted state: a child save may
-        # persist the EventID and then raise from later save-path work, so an
-        # exception alone does not mean the child is left unlinked.
-        children = BilbyJob.objects.filter(gwflow_job=job).order_by("pk")
-        child_ids = list(children.values_list("pk", flat=True))
+    def _run_gwflow_query_checks(self, es, index, docs_by_id, record_failure):
+        """Run the five deterministic wipe-mode query gates."""
+        checks = []
 
-        for child in children:
-            if child.event_id_id == job.event_id_id:
+        snames = sorted(
+            {
+                doc["_gwcloud"]["sname"]
+                for doc in docs_by_id.values()
+                if doc.get("_gwcloud", {}).get("sname") is not None
+            }
+        )
+        if snames:
+            sname = snames[0]
+            checks.append(
+                (
+                    f"sname={sname}",
+                    {"term": {"_gwcloud.sname": sname}},
+                    {pk for pk, doc in docs_by_id.items() if doc.get("_gwcloud", {}).get("sname") == sname},
+                )
+            )
+        else:
+            record_failure(
+                "query",
+                reason="sname query gate: no document carries _gwcloud.sname",
+            )
+
+        for field in ("type", "status", "review_status"):
+            values = sorted(
+                {
+                    analysis[field]
+                    for doc in docs_by_id.values()
+                    for analysis in (doc.get("metadata", {}).get("analyses") or [])
+                    if analysis.get(field) is not None
+                },
+                key=lambda value: str(value),
+            )
+            if not values:
+                # Do not query an absent value: an empty expected set would trivially
+                # pass and hide a genuine problem with the rebuilt corpus.
+                record_failure(
+                    "query",
+                    reason=(f"analyses.{field} query gate: no analysis carries metadata.analyses.{field}"),
+                )
+                continue
+
+            value = values[0]
+            checks.append(
+                (
+                    f"analyses.{field}={value}",
+                    {"term": {f"metadata.analyses.{field}": value}},
+                    {
+                        pk
+                        for pk, doc in docs_by_id.items()
+                        if any(
+                            analysis.get(field) == value for analysis in (doc.get("metadata", {}).get("analyses") or [])
+                        )
+                    },
+                )
+            )
+
+        checks.append(
+            (
+                "searchTriggerTime range [100, 200)",
+                {
+                    "range": {
+                        "_gwcloud.searchTriggerTime": {
+                            "gte": 100.0,
+                            "lt": 200.0,
+                        }
+                    }
+                },
+                {
+                    pk
+                    for pk, doc in docs_by_id.items()
+                    if isinstance(
+                        doc.get("_gwcloud", {}).get("searchTriggerTime"),
+                        (int, float),
+                    )
+                    and 100.0 <= float(doc["_gwcloud"]["searchTriggerTime"]) < 200.0
+                },
+            )
+        )
+
+        for label, query, expected in checks:
+            try:
+                response = es.search(index=index, query=query, size=10000)
+            except Exception as exc:
+                record_failure("query", reason=f"{label}: search failed: {exc}")
+                continue
+            actual = {str(hit["_id"]) for hit in response.get("hits", {}).get("hits", [])}
+            if actual != expected:
+                record_failure(
+                    "query",
+                    reason=f"{label}: expected ids {sorted(expected)} got {sorted(actual)}",
+                )
+            else:
+                self.stdout.write(f"✓ query {label}: {len(actual)} hit(s)")
+
+    def handle_gwflow(self, wipe_and_rebuild=False):
+        if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
+            raise CommandError("IGNORE_ELASTIC_SEARCH must be false to run --gwflow ingestion")
+
+        portal_url = getattr(settings, "CBCFLOW_PORTAL_URL", None)
+        portal_token = getattr(settings, "CBCFLOW_PORTAL_TOKEN", None)
+        if not portal_url or not portal_token:
+            raise CommandError("CBCFLOW_PORTAL_URL and CBCFLOW_PORTAL_TOKEN must be set to run --gwflow ingestion.")
+
+        index = settings.ELASTIC_SEARCH_GWFLOW_INDEX
+        failures = []
+        actions = []
+        jobs_by_id = {}
+        docs_by_id = {}
+        eligible_jobs = list(eligible_gwflow_jobs())
+        eligible_ids = {str(job.pk) for job in eligible_jobs}
+
+        def record_failure(phase, job=None, *, pk=None, sname=None, reason):
+            # A durable machine-readable failure record is deliberately deferred to
+            # issue #118 and is owned by the issue #123 cutover runbook.
+            if job is not None:
+                pk = job.pk
+                sname = job.sname
+                history_id = job.current_history_id
+            else:
+                history_id = None
+            failure = {
+                "phase": phase,
+                "sname": sname,
+                "pk": pk,
+                "current_history_id": history_id,
+                "reason": str(reason),
+            }
+            failures.append(failure)
+            line = f"✗ phase={phase} sname={sname} pk={pk} reason={reason}"
+            self.stdout.write(self.style.ERROR(line))
+            logger.error(line)
+
+        for job in eligible_jobs:
+            clear_gwflow_portal_cache(job.sname)
+            try:
+                data, state = get_superevent(job.sname)
+            except Exception as exc:
+                record_failure("fetch", job, reason=exc)
+                logger.exception(
+                    "GWFlow fetch raised for sname=%s pk=%s history=%s",
+                    job.sname,
+                    job.pk,
+                    job.current_history_id,
+                )
+                continue
+
+            if state != "live" or not isinstance(data, dict):
+                reason = f"state={state}; expected live state with object data"
+                record_failure("fetch", job, reason=reason)
                 continue
 
             try:
-                child.event_id = job.event_id
-                child.save(update_fields=["event_id"])
+                doc = build_gwflow_es_doc(job, data)
+            except InvalidGWFlowMetadata as exc:
+                record_failure("build", job, reason=exc)
+                continue
+
+            action = {
+                "_op_type": "index",
+                "_index": index,
+                "_id": str(job.id),
+                "_source": doc,
+            }
+            actions.append(action)
+            jobs_by_id[str(job.id)] = job
+            docs_by_id[str(job.id)] = doc
+
+        before = compute_protected_identity_digest()
+        logger.info("GWFlow protected PostgreSQL identity digest before ES: %s", before)
+
+        try:
+            es = get_es_client()
+        except Exception as exc:
+            record_failure("client", reason=exc)
+            es = None
+
+        expected_mapping = build_gwflow_es_mapping()
+        if es is not None and wipe_and_rebuild:
+            try:
+                es.indices.delete(index=index, ignore_unavailable=True)
+                es.indices.create(index=index, body=expected_mapping)
             except Exception as exc:
-                logger.exception(
-                    "Child cascade failed for parent %s, child %s, expected EventID %s: %s",
-                    job.id,
-                    child.id,
-                    job.event_id_id,
-                    exc,
+                record_failure("mapping", reason=f"index recreation failed: {exc}")
+
+        submitted_ids = {str(action["_id"]) for action in actions}
+        indexed_ids = set()
+        failed_ids = set()
+
+        if es is not None and actions and not any(failure["phase"] == "mapping" for failure in failures):
+            try:
+                results = helpers.streaming_bulk(
+                    es,
+                    actions,
+                    raise_on_error=False,
+                    raise_on_exception=False,
+                    refresh=True,
+                    chunk_size=500,
+                )
+                for ok, item in results:
+                    if not isinstance(item, dict) or len(item) != 1:
+                        record_failure(
+                            "bulk",
+                            reason=f"malformed/unknown item result: {item!r}",
+                        )
+                        continue
+
+                    operation_name, operation = next(iter(item.items()))
+                    if operation_name != "index" or not isinstance(operation, dict):
+                        record_failure(
+                            "bulk",
+                            reason=f"malformed/unknown item result: {item!r}",
+                        )
+                        continue
+
+                    item_id = operation.get("_id")
+                    item_id = str(item_id) if item_id is not None else None
+                    if item_id not in submitted_ids:
+                        record_failure(
+                            "bulk",
+                            pk=item_id,
+                            reason=f"malformed/unknown item result: {item!r}",
+                        )
+                        continue
+
+                    job = jobs_by_id[item_id]
+                    if item_id in failed_ids:
+                        record_failure(
+                            "bulk",
+                            job,
+                            reason="malformed/unknown item result: duplicate item result",
+                        )
+                        continue
+
+                    if ok is False:
+                        failed_ids.add(item_id)
+                        error = operation.get("error")
+                        if isinstance(error, dict):
+                            reason = error.get("reason") or str(error)
+                        else:
+                            reason = error or "unknown bulk indexing error"
+                        status = operation.get("status")
+                        if status is not None:
+                            reason = f"{reason} (status={status})"
+                        record_failure("bulk", job, reason=reason)
+                        indexed_ids.discard(item_id)
+                        continue
+
+                    status = operation.get("status")
+                    valid_success = (
+                        ok is True
+                        and operation.get("_index") == index
+                        and isinstance(status, int)
+                        and 200 <= status <= 299
+                    )
+                    if not valid_success:
+                        failed_ids.add(item_id)
+                        indexed_ids.discard(item_id)
+                        record_failure(
+                            "bulk",
+                            job,
+                            reason=f"malformed/unknown item result: {item!r}",
+                        )
+                        continue
+
+                    if item_id in indexed_ids:
+                        indexed_ids.remove(item_id)
+                        failed_ids.add(item_id)
+                        record_failure(
+                            "bulk",
+                            job,
+                            reason="malformed/unknown item result: duplicate success",
+                        )
+                        continue
+
+                    indexed_ids.add(item_id)
+            except Exception as exc:
+                logger.exception("GWFlow bulk indexing raised: %s", exc)
+                for item_id in submitted_ids - failed_ids:
+                    failed_ids.add(item_id)
+                    indexed_ids.discard(item_id)
+                    record_failure("bulk", jobs_by_id[item_id], reason=exc)
+
+            for item_id in submitted_ids - indexed_ids - failed_ids:
+                failed_ids.add(item_id)
+                record_failure(
+                    "bulk",
+                    jobs_by_id[item_id],
+                    reason="missing item result",
                 )
 
-        processed = BilbyJob.objects.filter(
-            pk__in=child_ids,
-            event_id_id=job.event_id_id,
-        ).count()
-        failed = len(child_ids) - processed
-        return processed, failed
+        indexed_jobs = [jobs_by_id[item_id] for item_id in indexed_ids]
 
-    def handle_gwflow(self):
-        portal_url = getattr(settings, "CBCFLOW_PORTAL_URL", None)
-        portal_token = getattr(settings, "CBCFLOW_PORTAL_TOKEN", None)
-
-        if not portal_url or not portal_token:
-            msg = "CBCFLOW_PORTAL_URL and CBCFLOW_PORTAL_TOKEN must be set to run --gwflow ingestion."
-            self.stderr.write(self.style.ERROR(msg))
-            logger.error(msg)
-            return
-
-        headers = {"Authorization": portal_token}
-        base_url = portal_url.rstrip("/")
-        next_url = f"{base_url}/api/v1/superevents/?page=1"
-
-        success_count = 0
-        skip_count = 0
-        error_count = 0
-        child_processed = 0
-        child_failed = 0
-
-        self.stdout.write("Starting Elasticsearch ingestion for gwflow jobs from portal...")
-
-        while next_url:
+        if es is not None and wipe_and_rebuild:
             try:
-                response = requests.get(next_url, headers=headers, timeout=30)
-                if response.status_code != HTTP_OK:
-                    msg = f"Failed to fetch superevents list from portal: HTTP {response.status_code}"
-                    self.stderr.write(self.style.ERROR(msg))
-                    logger.error(msg)
-                    break
+                es.indices.refresh(index=index)
+            except Exception as exc:
+                record_failure("refresh", reason=exc)
 
-                try:
-                    data = response.json()
-                except ValueError:
-                    msg = "Portal returned invalid JSON for superevents list"
-                    self.stdout.write(self.style.WARNING(msg))
-                    logger.warning(msg)
-                    break
-                results = data.get("results") if isinstance(data, dict) and "results" in data else data
-                if not isinstance(results, list):
-                    msg = f"Unexpected portal response shape: {type(data)}"
-                    self.stderr.write(self.style.ERROR(msg))
-                    logger.error(msg)
-                    break
+            try:
+                mapping_response = es.indices.get_mapping(index=index)
+                installed_mapping = mapping_response[index]["mappings"]
+                if installed_mapping != expected_mapping["mappings"]:
+                    record_failure(
+                        "mapping",
+                        reason=(
+                            "installed mapping differs from the contract: "
+                            f"expected={expected_mapping['mappings']!r} "
+                            f"actual={installed_mapping!r}"
+                        ),
+                    )
+            except Exception as exc:
+                record_failure("mapping", reason=f"mapping verification failed: {exc}")
 
-                for item in results:
-                    sname = (item.get("sname") or item.get("name")) if isinstance(item, dict) else str(item)
-                    if not sname:
-                        continue
+            try:
+                count = es.count(index=index)["count"]
+                if count != len(eligible_ids):
+                    record_failure(
+                        "parity",
+                        reason=f"index count {count} != eligible {len(eligible_ids)}",
+                    )
+            except Exception as exc:
+                record_failure("parity", reason=f"count verification failed: {exc}")
 
-                    # Fetch detail payload for this superevent
-                    detail_url = f"{base_url}/api/v1/superevents/{urllib.parse.quote(sname)}/"
-                    try:
-                        detail_resp = requests.get(detail_url, headers=headers, timeout=30)
-                    except requests.RequestException as e:
-                        self.stdout.write(self.style.WARNING(f"Skipping {sname}: portal detail request failed: {e}"))
-                        error_count += 1
-                        continue
-                    if detail_resp.status_code != HTTP_OK:
-                        self.stdout.write(
-                            self.style.WARNING(
-                                f"Skipping {sname}: portal detail returned HTTP {detail_resp.status_code}"
-                            )
-                        )
-                        error_count += 1
-                        continue
+            try:
+                id_response = es.search(
+                    index=index,
+                    query={"match_all": {}},
+                    size=max(len(eligible_ids), 1),
+                    _source=False,
+                )
+                actual_ids = {str(hit["_id"]) for hit in id_response.get("hits", {}).get("hits", [])}
+                if actual_ids != eligible_ids:
+                    record_failure(
+                        "parity",
+                        reason=(
+                            f"index ids differ from eligible ids: "
+                            f"missing={sorted(eligible_ids - actual_ids)} "
+                            f"unexpected={sorted(actual_ids - eligible_ids)}"
+                        ),
+                    )
+            except Exception as exc:
+                record_failure("parity", reason=f"id-set verification failed: {exc}")
 
-                    try:
-                        metadata = detail_resp.json()
-                    except ValueError:
-                        self.stdout.write(self.style.WARNING(f"Skipping {sname}: portal detail returned invalid JSON"))
-                        error_count += 1
-                        continue
-
-                    job = GWFlowJob.objects.filter(sname=sname).first()
-
-                    if not job:
-                        self.stdout.write(
-                            self.style.WARNING(f"Skipping {sname}: no matching local GWFlowJob record found")
-                        )
-                        skip_count += 1
-                        continue
-
-                    try:
-                        event = resolve_event_id_for_superevent(sname)
-                        if event is None and isinstance(metadata, dict):
-                            raw = metadata.get("raw_payload") if isinstance(metadata.get("raw_payload"), dict) else {}
-                            gracedb = (
-                                metadata.get("GraceDB")
-                                or metadata.get("gracedb")
-                                or raw.get("GraceDB")
-                                or raw.get("gracedb")
-                                or {}
-                            )
-                            if not isinstance(gracedb, dict):
-                                gracedb = {}
-                            preferred_uid = gracedb.get("preferred_event") or gracedb.get("preferred_event_uid")
-                            events = gracedb.get("Events") or gracedb.get("events") or []
-                            if not isinstance(events, list):
-                                events = []
-
-                            chosen = None
-                            if preferred_uid:
-                                for ev in events:
-                                    if isinstance(ev, dict) and (
-                                        ev.get("UID") == preferred_uid or ev.get("uid") == preferred_uid
-                                    ):
-                                        chosen = ev
-                                        break
-                            if chosen is None:
-                                for ev in events:
-                                    if isinstance(ev, dict):
-                                        st = ev.get("state") or ev.get("State")
-                                        if isinstance(st, str) and st.lower() == "preferred":
-                                            chosen = ev
-                                            break
-                            if chosen is None:
-                                for ev in events:
-                                    if isinstance(ev, dict) and ev.get("is_preferred") in _TRUTHY_PREFERRED:
-                                        chosen = ev
-                                        break
-                            if chosen is None:
-                                for ev in events:
-                                    if isinstance(ev, dict) and ev.get("preferred") in _TRUTHY_PREFERRED:
-                                        chosen = ev
-                                        break
-                            if chosen is None and events:
-                                if isinstance(events[0], dict):
-                                    chosen = events[0]
-
-                            chosen_uid = None
-                            gps_time = None
-                            if chosen:
-                                chosen_uid = chosen.get("UID") or chosen.get("uid") or preferred_uid
-                                gps_time = (
-                                    chosen.get("GPSTime")
-                                    or chosen.get("gps_time")
-                                    or chosen.get("gpstime")
-                                    or gracedb.get("preferred_event_gps")
-                                    or gracedb.get("gps_time")
-                                )
-                            elif preferred_uid:
-                                chosen_uid = preferred_uid
-                                gps_time = gracedb.get("preferred_event_gps") or gracedb.get("gps_time")
-
-                            gps_val = None
-                            if gps_time is not None:
-                                try:
-                                    val = json.loads(gps_time) if isinstance(gps_time, str) else gps_time
-                                    parsed_gps = float(val)
-                                except (ValueError, TypeError, OverflowError, json.JSONDecodeError):
-                                    try:
-                                        parsed_gps = float(gps_time)
-                                    except (ValueError, TypeError, OverflowError):
-                                        parsed_gps = None
-                                if parsed_gps is not None and math.isfinite(parsed_gps):
-                                    gps_val = parsed_gps
-
-                            if chosen_uid and re.match(r"^(GW\d{6}(_\d{6})?|G\d+)$", str(chosen_uid)):
-                                if gps_val is None:
-                                    logger.warning(
-                                        "No finite GPS value for GWFlowJob %s (%s); "
-                                        "creating EventID %s with gps_time=None",
-                                        job.id,
-                                        sname,
-                                        chosen_uid,
-                                    )
-                                _create_event_id_guarded(
-                                    str(chosen_uid),
-                                    gps_val,
-                                    trigger_id=sname,
-                                )
-
-                        # Creation may conflict with a foreign owner. Resolve
-                        # again strictly by superevent ownership and assign the
-                        # result even when None, clearing any stale foreign link.
-                        event = resolve_event_id_for_superevent(sname)
-                        if job.event_id_id != getattr(event, "id", None):
-                            job.event_id = event
-                            job.save(update_fields=["event_id"])
-
-                        processed, failed = self._reconcile_gwflow_children(job)
-                        child_processed += processed
-                        child_failed += failed
-
-                        gwflow_elastic_search_update(job, metadata)
-                        success_count += 1
-                        self.stdout.write(self.style.SUCCESS(f"✓ GWFlowJob {job.id} ({sname}) ingested"))
-                    except Exception as e:
-                        error_count += 1
-                        logger.exception("Error ingesting GWFlowJob %s (%s)", job.id, sname)
-                        self.stdout.write(self.style.ERROR(f"✗ GWFlowJob {job.id} ({sname}): {e}"))
-
-                # Determine next page URL
-                next_page = data.get("next") if isinstance(data, dict) else None
-                next_url = next_page or None
-
-            except Exception as e:
-                msg = f"Error during gwflow ingestion loop: {e}"
-                self.stderr.write(self.style.ERROR(msg))
-                logger.exception(msg)
-                break
-
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"\nGWFlow ingestion complete: {success_count} succeeded, {skip_count} skipped, {error_count} failed"
+            self._run_gwflow_query_checks(
+                es,
+                index,
+                docs_by_id,
+                record_failure,
             )
-        )
-        self.stdout.write(f"Child cascade: {child_processed} processed, {child_failed} failed")
-        if child_failed > 0:
-            raise CommandError(f"Child cascade failed: {child_failed} child jobs remain unlinked")
+
+        after = compute_protected_identity_digest()
+        logger.info("GWFlow protected PostgreSQL identity digest after ES: %s", after)
+        if before != after:
+            record_failure(
+                "postgres",
+                reason=f"protected identity digest changed: before={before} after={after}",
+            )
+
+        if not failures and wipe_and_rebuild:
+            invalidate_gwflow_facet_caches()
+
+        failed_index_ids = {
+            str(failure["pk"]) for failure in failures if failure["phase"] == "bulk" and failure["pk"] is not None
+        }
+        indexed_jobs = [job for job in indexed_jobs if str(job.pk) not in failed_index_ids]
+        for job in indexed_jobs:
+            line = f"✓ GWFlowJob {job.pk} ({job.sname}) indexed"
+            self.stdout.write(self.style.SUCCESS(line))
+            logger.info(line)
+
+        self.stdout.write(f"{len(indexed_jobs)} indexed, {len(failures)} failed")
+        return EXIT_FAILURES if failures else EXIT_OK

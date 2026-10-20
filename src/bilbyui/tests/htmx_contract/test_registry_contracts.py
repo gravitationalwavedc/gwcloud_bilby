@@ -46,15 +46,27 @@ CONTENT_METADATA = {
     "commit_sha": "contract-history",
     "version_number": 1002,
     "gracedb": {"events": [{"uid": "E-CONTRACT", "pipeline": "gstlal"}]},
-    "ParameterEstimation": [
+    "analyses": [
         {
             "uid": "U-CONTRACT",
-            "inference_software": "bilby",
-            "waveform_approximant": "IMRPhenomD",
-            "run_status": "complete",
+            "type": "pe",
+            "revision": "1",
+            "name": "Contract analysis",
+            "description": "",
+            "status": "complete",
+            "deprecated": False,
+            "software": {"name": "bilby", "version": "2.0.0"},
+            "analysts": [],
+            "reviews": [{"review_status": "approved"}],
+            "input_files": [],
+            "output_files": [],
+            "configurations": [],
+            "in_catalog": True,
+            "review_status": "approved",
         }
     ],
 }
+
 LIVE_VERSIONS = [
     {
         "commit_sha": "contract-history",

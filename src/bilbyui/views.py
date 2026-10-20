@@ -79,7 +79,11 @@ from .utils.embargo import (
     visible_to_user,
 )
 from .utils.gen_parameter_output import generate_parameter_output
-from .utils.gwflow_es import gwflow_elastic_search_update, parse_analyses
+from .utils.gwflow_es import (
+    InvalidGWFlowMetadata,
+    gwflow_elastic_search_update,
+    parse_analyses,
+)
 from .utils.gwflow_portal import (
     get_superevent,
     get_version,
@@ -1300,7 +1304,15 @@ def _build_gwflow_job_rows(gwflow_jobs_result):
     rows = []
     for record, job in _iter_es_job_records(records, jobs, page_size):
         es_source = record.get("_source")
-        analysis_count = len(parse_analyses(es_source.get("metadata")))
+        try:
+            analysis_count = len(parse_analyses(es_source.get("metadata")))
+        except InvalidGWFlowMetadata as exc:
+            logger.warning(
+                "GWFlow list row for job %s has unparseable analyses: %s",
+                job.id,
+                exc,
+            )
+            analysis_count = 0
 
         files_total, files_uploaded = file_counts.get(job.id, (0, 0))
         files_pending = max(0, files_total - files_uploaded)
@@ -1740,16 +1752,24 @@ def _render_gwflow_files_section(request, sname):
         raise Http404("Files metadata not found")
     if state in ("live", "stale") and isinstance(data, dict):
         analyses = {}
-        for a in parse_analyses(data):
-            if not a["uid"]:
-                continue
-            analyses[a["uid"]] = {
-                "software": a["software"],
-                "waveform": a["waveform"],
-                "run_status": a["runStatus"],
-                "review_status": a["reviewStatus"],
-                "deprecated": a["deprecated"],
-            }
+        try:
+            for a in parse_analyses(data):
+                if not a["uid"]:
+                    continue
+                software = a["software"] or {}
+                analyses[a["uid"]] = {
+                    "software": software.get("name", ""),
+                    "run_status": a["status"],
+                    "review_status": a["review_status"],
+                    "deprecated": a["deprecated"],
+                }
+        except InvalidGWFlowMetadata as exc:
+            logger.warning(
+                "GWFlow files metadata for job %s has unparseable analyses: %s",
+                job.id,
+                exc,
+            )
+            analyses = None
 
     analysis_blocks = _build_gwflow_analysis_blocks(job, analyses)
     return (

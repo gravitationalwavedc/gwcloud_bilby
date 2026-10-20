@@ -2,8 +2,7 @@ import json
 from io import StringIO
 from unittest import mock
 
-import requests
-from django.core.management import CommandError, call_command
+from django.core.management import call_command
 from django.db import DatabaseError
 from django.test import override_settings
 
@@ -89,193 +88,6 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertIn("✗ Job", output)
         self.assertIn("bad detectors", output)
 
-    def test_es_ingest_gwflow_non_dict_item_does_not_abort(self):
-        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
-
-        class MockResponse:
-            def __init__(self, payload, status_code):
-                self._payload = payload
-                self.status_code = status_code
-
-            def json(self):
-                return self._payload
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return MockResponse({"results": ["S230601ag"], "next": None}, 200)
-            if url.endswith("/api/v1/superevents/S230601ag/"):
-                return MockResponse({}, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        out = StringIO()
-        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
-            with override_settings(
-                CBCFLOW_PORTAL_URL="https://portal.example.com",
-                CBCFLOW_PORTAL_TOKEN="token",
-            ):
-                call_command("es_ingest", "--gwflow", stdout=out)
-
-        output = out.getvalue()
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-        self.assertNotIn("Error during gwflow ingestion loop", output)
-
-    def test_es_ingest_gwflow_invalid_list_json_stops_cleanly(self):
-        class MockResponse:
-            def __init__(self, status_code):
-                self.status_code = status_code
-
-            def json(self):
-                raise ValueError("No JSON object could be decoded")
-
-        def fake_get(url, headers=None, timeout=None):
-            return MockResponse(200)
-
-        out = StringIO()
-        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
-            with override_settings(
-                CBCFLOW_PORTAL_URL="https://portal.example.com",
-                CBCFLOW_PORTAL_TOKEN="token",
-            ):
-                call_command("es_ingest", "--gwflow", stdout=out)
-
-        output = out.getvalue()
-        self.assertIn("invalid JSON", output)
-        self.assertNotIn("Error during gwflow ingestion loop", output)
-
-    def test_es_ingest_gwflow_missing_settings_returns_cleanly(self):
-        out = StringIO()
-        with mock.patch("bilbyui.management.commands.es_ingest.requests.get") as mock_get:
-            with override_settings(CBCFLOW_PORTAL_URL=None, CBCFLOW_PORTAL_TOKEN=None):
-                call_command("es_ingest", "--gwflow", stdout=out, stderr=out)
-
-        mock_get.assert_not_called()
-        output = out.getvalue()
-        self.assertIn("CBCFLOW_PORTAL_URL and CBCFLOW_PORTAL_TOKEN must be set", output)
-        self.assertNotIn("GWFlow ingestion complete", output)
-        self.assertNotIn("Error during gwflow ingestion loop", output)
-
-    def _run_gwflow(self, fake_get):
-        out = StringIO()
-        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
-            with override_settings(
-                CBCFLOW_PORTAL_URL="https://portal.example.com",
-                CBCFLOW_PORTAL_TOKEN="token",
-            ):
-                call_command("es_ingest", "--gwflow", stdout=out, stderr=out)
-        return out.getvalue()
-
-    def _list_page(self, results, next_url=None):
-        return _MockResponse({"results": results, "next": next_url}, 200)
-
-    def test_es_ingest_gwflow_paginates_across_multiple_pages(self):
-        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
-        GWFlowJob.objects.create(sname="S230601ah", user=self.user)
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page(
-                    [{"sname": "S230601ag"}], "https://portal.example.com/api/v1/superevents/?page=2"
-                )
-            if url.endswith("/api/v1/superevents/?page=2"):
-                return self._list_page([{"sname": "S230601ah"}])
-            if url.endswith("/api/v1/superevents/S230601ag/") or url.endswith("/api/v1/superevents/S230601ah/"):
-                return _MockResponse({}, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 2 succeeded", output)
-        self.assertNotIn("Error during gwflow ingestion loop", output)
-
-    def test_es_ingest_gwflow_non_200_list_response_stops(self):
-        def fake_get(url, headers=None, timeout=None):
-            return _MockResponse({}, 500)
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("Failed to fetch superevents list from portal: HTTP 500", output)
-        self.assertNotIn("Error during gwflow ingestion loop", output)
-
-    def test_es_ingest_gwflow_detail_request_exception_skips(self):
-        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S230601ag"}])
-            if url.endswith("/api/v1/superevents/S230601ag/"):
-                raise requests.RequestException("connection refused")
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("portal detail request failed", output)
-        self.assertIn("GWFlow ingestion complete: 0 succeeded, 0 skipped, 1 failed", output)
-
-    def test_es_ingest_gwflow_detail_non_200_skips(self):
-        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S230601ag"}])
-            if url.endswith("/api/v1/superevents/S230601ag/"):
-                return _MockResponse({}, 404)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("portal detail returned HTTP 404", output)
-        self.assertIn("GWFlow ingestion complete: 0 succeeded, 0 skipped, 1 failed", output)
-
-    def test_es_ingest_gwflow_detail_invalid_json_skips(self):
-        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S230601ag"}])
-            if url.endswith("/api/v1/superevents/S230601ag/"):
-                return _MockResponse(ValueError("No JSON object could be decoded"), 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("portal detail returned invalid JSON", output)
-        self.assertIn("GWFlow ingestion complete: 0 succeeded, 0 skipped, 1 failed", output)
-
-    def test_es_ingest_gwflow_no_matching_local_job_skips(self):
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S230601ag"}])
-            if url.endswith("/api/v1/superevents/S230601ag/"):
-                return _MockResponse({}, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("no matching local GWFlowJob record found", output)
-        self.assertIn("GWFlow ingestion complete: 0 succeeded, 1 skipped, 0 failed", output)
-
-    def test_es_ingest_gwflow_non_list_results_stops(self):
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return _MockResponse({"foo": "bar"}, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("Unexpected portal response shape", output)
-        self.assertNotIn("Error during gwflow ingestion loop", output)
-
-    def test_es_ingest_gwflow_item_without_sname_skipped(self):
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"foo": "bar"}])
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 0 succeeded, 0 skipped, 0 failed", output)
-        self.assertNotIn("Error during gwflow ingestion loop", output)
-
-    def test_es_ingest_gwflow_unexpected_exception_stops(self):
-        def fake_get(url, headers=None, timeout=None):
-            raise ValueError("boom")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("Error during gwflow ingestion loop", output)
-        self.assertIn("boom", output)
-
     def test_handle_bilby_backfills_gwosc_job_with_version_suffix(self):
         job = BilbyJob.objects.create(
             user_id=self.user.id,
@@ -325,227 +137,6 @@ class TestEsIngestCommand(BilbyTestCase):
 
         child.refresh_from_db()
         self.assertEqual(child.event_id, event)
-
-    def test_handle_gwflow_selects_state_preferred(self):
-        gwflow_job = GWFlowJob.objects.create(
-            sname="S200105ae",
-            user=self.user,
-            event_id=None,
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "Events": [
-                    {"UID": "G000001", "state": "neighbor", "GPSTime": 1262272818.0},
-                    {"UID": "G000002", "state": "neighbor", "GPSTime": 1262272819.0},
-                    {"UID": "G000003", "state": "neighbor", "GPSTime": 1262272820.0},
-                    {"UID": "G000004", "state": "preferred", "GPSTime": 1262272821.5},
-                ]
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200105ae"}])
-            if url.endswith("/api/v1/superevents/S200105ae/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-
-        gwflow_job.refresh_from_db()
-        self.assertIsNotNone(gwflow_job.event_id)
-        self.assertEqual(gwflow_job.event_id.event_id, "G000004")
-        self.assertEqual(gwflow_job.event_id.trigger_id, "S200105ae")
-        self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1262272821.5)
-
-    def test_handle_gwflow_selects_is_preferred_flag(self):
-        gwflow_job = GWFlowJob.objects.create(
-            sname="S200116b",
-            user=self.user,
-            event_id=None,
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "Events": [
-                    {"UID": "G000020", "state": "neighbor", "GPSTime": 1262272818.0},
-                    {"UID": "G000021", "state": "neighbor", "GPSTime": 1262272819.0},
-                    {"UID": "G000022", "is_preferred": True, "GPSTime": 1262272821.5},
-                ]
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200116b"}])
-            if url.endswith("/api/v1/superevents/S200116b/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-
-        gwflow_job.refresh_from_db()
-        self.assertIsNotNone(gwflow_job.event_id)
-        self.assertEqual(gwflow_job.event_id.event_id, "G000022")
-        self.assertEqual(gwflow_job.event_id.trigger_id, "S200116b")
-        self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1262272821.5)
-
-    def test_handle_gwflow_selects_preferred_flag(self):
-        gwflow_job = GWFlowJob.objects.create(
-            sname="S200116c",
-            user=self.user,
-            event_id=None,
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "Events": [
-                    {"UID": "G000023", "state": "neighbor", "GPSTime": 1262272818.0},
-                    {"UID": "G000024", "preferred": "true", "GPSTime": 1262272821.5},
-                ]
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200116c"}])
-            if url.endswith("/api/v1/superevents/S200116c/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-
-        gwflow_job.refresh_from_db()
-        self.assertIsNotNone(gwflow_job.event_id)
-        self.assertEqual(gwflow_job.event_id.event_id, "G000024")
-        self.assertEqual(gwflow_job.event_id.trigger_id, "S200116c")
-        self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1262272821.5)
-
-    def test_handle_gwflow_inspects_raw_payload_for_gracedb(self):
-        gwflow_job = GWFlowJob.objects.create(
-            sname="S200115j",
-            user=self.user,
-            event_id=None,
-        )
-
-        detail_payload = {
-            "raw_payload": {
-                "gracedb": {
-                    "preferred_event_uid": "G000005",
-                    "events": [
-                        {"uid": "G000005", "gps_time": "1263172181.28"},
-                    ],
-                }
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200115j"}])
-            if url.endswith("/api/v1/superevents/S200115j/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-
-        gwflow_job.refresh_from_db()
-        self.assertIsNotNone(gwflow_job.event_id)
-        self.assertEqual(gwflow_job.event_id.event_id, "G000005")
-        self.assertEqual(gwflow_job.event_id.trigger_id, "S200115j")
-        self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1263172181.28)
-
-    def test_handle_gwflow_cascades_to_children_via_bilby_jobs(self):
-        """GWF-9 rule 2: children copy the resolved parent link, including None."""
-        # GWF-9 rule 2: every child follows its parent's resolved link, including None.
-        # 1. Unlinked parent that gets resolved during ingestion
-        parent1 = GWFlowJob.objects.create(sname="S200219ac", user=self.user, event_id=None)
-        child1 = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="Child1_Unlinked_Parent",
-            gwflow_job=parent1,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-        )
-
-        # 2. Pre-linked parent with existing EventID
-        existing_event = EventID.objects.create(event_id="GW200224", gps_time=1266624018.0)
-        parent2 = GWFlowJob.objects.create(sname="S200224a", user=self.user, event_id=existing_event)
-        child2 = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="Child2_Prelinked_Parent",
-            gwflow_job=parent2,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-        )
-
-        self.assertIsNone(child1.event_id)
-        self.assertIsNone(child2.event_id)
-
-        detail_payload1 = {
-            "GraceDB": {
-                "preferred_event": "G000010",
-                "Events": [{"UID": "G000010", "GPSTime": 1266105618.0}],
-            }
-        }
-        detail_payload2 = {}
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200219ac"}, {"sname": "S200224a"}])
-            if url.endswith("/api/v1/superevents/S200219ac/"):
-                return _MockResponse(detail_payload1, 200)
-            if url.endswith("/api/v1/superevents/S200224a/"):
-                return _MockResponse(detail_payload2, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 2 succeeded", output)
-
-        parent1.refresh_from_db()
-        child1.refresh_from_db()
-        child2.refresh_from_db()
-
-        self.assertIsNotNone(parent1.event_id)
-        self.assertEqual(parent1.event_id.event_id, "G000010")
-        self.assertEqual(child1.event_id, parent1.event_id)
-        parent2.refresh_from_db()
-        self.assertIsNone(parent2.event_id)
-        self.assertIsNone(child2.event_id)
-        self.assertTrue(EventID.objects.filter(pk=existing_event.pk).exists())
-
-    def test_handle_gwflow_individual_error_does_not_abort_loop(self):
-        GWFlowJob.objects.create(sname="S230601ag", user=self.user)
-        GWFlowJob.objects.create(sname="S230601ah", user=self.user)
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page(
-                    [{"sname": "S230601ag"}],
-                    "https://portal.example.com/api/v1/superevents/?page=2",
-                )
-            if url.endswith("/api/v1/superevents/?page=2"):
-                return self._list_page([{"sname": "S230601ah"}])
-            if url.endswith("/api/v1/superevents/S230601ag/") or url.endswith("/api/v1/superevents/S230601ah/"):
-                return _MockResponse({}, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        def fail_on_first(job, metadata):
-            if job.sname == "S230601ag":
-                raise RuntimeError("Failed to update ES for S230601ag")
-
-        with mock.patch(
-            "bilbyui.management.commands.es_ingest.gwflow_elastic_search_update",
-            side_effect=fail_on_first,
-        ):
-            output = self._run_gwflow(fake_get)
-
-        self.assertIn("GWFlow ingestion complete: 1 succeeded, 0 skipped, 1 failed", output)
-        self.assertIn("✗ GWFlowJob", output)
-        self.assertIn("✓ GWFlowJob", output)
-        self.assertIn("Failed to update ES for S230601ag", output)
 
     def test_handle_bilby_child_follows_unlinked_gwflow_parent(self):
         """GWF-9 rule 2: an unlinked parent leaves its child unlinked without fallback."""
@@ -603,158 +194,6 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(job.event_id.event_id, "GW170817")
         self.assertAlmostEqual(job.event_id.gps_time, 1187008882.43)
 
-    def test_handle_gwflow_matches_preferred_uid(self):
-        gwflow_job = GWFlowJob.objects.create(
-            sname="S190814bv",
-            user=self.user,
-            event_id=None,
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "preferred_event": "G000002",
-                "Events": [
-                    {"UID": "G000001", "GPSTime": 1249852257.0},
-                    {"UID": "G000002", "GPSTime": 1249852258.12},
-                ],
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S190814bv"}])
-            if url.endswith("/api/v1/superevents/S190814bv/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-
-        gwflow_job.refresh_from_db()
-        self.assertIsNotNone(gwflow_job.event_id)
-        self.assertEqual(gwflow_job.event_id.event_id, "G000002")
-        self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1249852258.12)
-
-    def test_handle_gwflow_preferred_uid_without_events_list(self):
-        gwflow_job = GWFlowJob.objects.create(
-            sname="S190910d",
-            user=self.user,
-            event_id=None,
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "preferred_event_uid": "G000003",
-                "preferred_event_gps": 1252150000.5,
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S190910d"}])
-            if url.endswith("/api/v1/superevents/S190910d/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-
-        gwflow_job.refresh_from_db()
-        self.assertIsNotNone(gwflow_job.event_id)
-        self.assertEqual(gwflow_job.event_id.event_id, "G000003")
-        self.assertAlmostEqual(gwflow_job.event_id.gps_time, 1252150000.5)
-
-    def test_handle_gwflow_invalid_gps_creates_null_gps_link(self):
-        gwflow_job = GWFlowJob.objects.create(
-            sname="S200118a",
-            user=self.user,
-            event_id=None,
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "preferred_event": "G000008",
-                "Events": [{"UID": "G000008", "GPSTime": "not-a-number"}],
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200118a"}])
-            if url.endswith("/api/v1/superevents/S200118a/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-
-        gwflow_job.refresh_from_db()
-        self.assertIsNotNone(gwflow_job.event_id)
-        self.assertEqual(gwflow_job.event_id.event_id, "G000008")
-        self.assertIsNone(gwflow_job.event_id.gps_time)
-
-    def test_handle_gwflow_reuses_event_without_promoting_flag(self):
-        existing_event = EventID.objects.create(
-            event_id="G000007",
-            gps_time=1262272821.5,
-            trigger_id=None,
-        )
-        gwflow_job = GWFlowJob.objects.create(
-            sname="S200116a",
-            user=self.user,
-            event_id=None,
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "preferred_event": "G000007",
-                "Events": [{"UID": "G000007", "GPSTime": 1262272821.5}],
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200116a"}])
-            if url.endswith("/api/v1/superevents/S200116a/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-
-        gwflow_job.refresh_from_db()
-        existing_event.refresh_from_db()
-        self.assertEqual(gwflow_job.event_id, existing_event)
-        self.assertEqual(existing_event.trigger_id, "S200116a")
-
-    def test_handle_gwflow_ignores_malformed_chosen_uid(self):
-        gwflow_job = GWFlowJob.objects.create(
-            sname="S200117a",
-            user=self.user,
-            event_id=None,
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "preferred_event": "INVALID-UID-12345",
-                "Events": [{"UID": "INVALID-UID-12345", "GPSTime": 1262272821.5}],
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200117a"}])
-            if url.endswith("/api/v1/superevents/S200117a/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-
-        gwflow_job.refresh_from_db()
-        self.assertIsNone(gwflow_job.event_id)
-        self.assertFalse(EventID.objects.filter(event_id="INVALID-UID-12345").exists())
-
     def test_es_ingest_source_has_no_legacy_flag_or_sentinel(self):
         import inspect
 
@@ -790,35 +229,6 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(job.event_id.event_id, "GW150914")
         self.assertIsNone(job.event_id.gps_time)
 
-    def test_handle_gwflow_huge_int_gps_creates_null_gps_link(self):
-        gwflow_job = GWFlowJob.objects.create(
-            sname="S200118b",
-            user=self.user,
-            event_id=None,
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "preferred_event": "G000009",
-                "Events": [{"UID": "G000009", "GPSTime": str(10**400)}],
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200118b"}])
-            if url.endswith("/api/v1/superevents/S200118b/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-
-        gwflow_job.refresh_from_db()
-        self.assertIsNotNone(gwflow_job.event_id)
-        self.assertEqual(gwflow_job.event_id.event_id, "G000009")
-        self.assertIsNone(gwflow_job.event_id.gps_time)
-
     def test_handle_bilby_unparseable_gps_creates_null_gps_link(self):
         job = BilbyJob.objects.create(
             user_id=self.user.id,
@@ -843,183 +253,810 @@ class TestEsIngestCommand(BilbyTestCase):
         self.assertEqual(job.event_id.event_id, "GW150914")
         self.assertIsNone(job.event_id.gps_time)
 
-    def test_handle_gwflow_cascade_links_all_children(self):
-        parent = GWFlowJob.objects.create(sname="S200220a", user=self.user, event_id=None)
-        parent_event = EventID.objects.create(event_id="G000011", gps_time=1266105618.0)
-        other_event = EventID.objects.create(event_id="G000012", gps_time=1266105619.0)
 
-        child_unlinked = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="Child_Unlinked",
-            gwflow_job=parent,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-        )
-        child_correct = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="Child_Correct",
-            gwflow_job=parent,
-            event_id=parent_event,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-        )
-        child_conflict = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="Child_Conflict",
-            gwflow_job=parent,
-            event_id=other_event,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
+class TestGWFlowIngestFailureBranches(BilbyTestCase):
+    def setUp(self):
+        super().setUp()
+        self.command_path = "bilbyui.management.commands.es_ingest"
+        self.user = self.create_user()
+        self.job = GWFlowJob.objects.create(
+            sname="S000001a",
+            user=self.user,
+            current_history_id="history-sha",
         )
 
-        detail_payload = {
-            "GraceDB": {
-                "preferred_event": "G000011",
-                "Events": [{"UID": "G000011", "GPSTime": 1266105618.0}],
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200220a"}])
-            if url.endswith("/api/v1/superevents/S200220a/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        output = self._run_gwflow(fake_get)
-        self.assertIn("GWFlow ingestion complete: 1 succeeded", output)
-        self.assertIn("Child cascade: 3 processed, 0 failed", output)
-
-        parent.refresh_from_db()
-        child_unlinked.refresh_from_db()
-        child_correct.refresh_from_db()
-        child_conflict.refresh_from_db()
-        self.assertEqual(parent.event_id, parent_event)
-        self.assertEqual(child_unlinked.event_id, parent_event)
-        self.assertEqual(child_correct.event_id, parent_event)
-        self.assertEqual(child_conflict.event_id, parent_event)
-
-    def test_handle_gwflow_cascade_reports_failure_and_exits_nonzero(self):
-        parent = GWFlowJob.objects.create(sname="S200221a", user=self.user, event_id=None)
-        parent_event = EventID.objects.create(event_id="G000013", gps_time=1266105618.0)
-        parent.event_id = parent_event
-        parent.save()
-
-        child_correct = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="Child_Correct",
-            gwflow_job=parent,
-            event_id=parent_event,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-        )
-        child_fail = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="Child_Fail",
-            gwflow_job=parent,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-        )
-        child_ok = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="Child_Ok",
-            gwflow_job=parent,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "preferred_event": "G000013",
-                "Events": [{"UID": "G000013", "GPSTime": 1266105618.0}],
-            }
-        }
-
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200221a"}])
-            if url.endswith("/api/v1/superevents/S200221a/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        original_save = BilbyJob.save
-
-        def flaky_save(self, *args, **kwargs):
-            if getattr(self, "pk", None) == child_fail.pk:
-                raise RuntimeError("simulated child save failure")
-            return original_save(self, *args, **kwargs)
+    def _command(self):
+        from bilbyui.management.commands.es_ingest import Command
 
         out = StringIO()
-        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
-            with override_settings(
-                CBCFLOW_PORTAL_URL="https://portal.example.com",
-                CBCFLOW_PORTAL_TOKEN="token",
-            ):
-                with mock.patch.object(BilbyJob, "save", autospec=True, side_effect=flaky_save):
-                    with self.assertRaises(CommandError):
-                        call_command("es_ingest", "--gwflow", stdout=out, stderr=out)
+        command = Command(stdout=out, stderr=out)
+        return command, out
 
-        output = out.getvalue()
-        self.assertIn("Child cascade: 2 processed, 1 failed", output)
-
-        child_fail.refresh_from_db()
-        child_ok.refresh_from_db()
-        child_correct.refresh_from_db()
-        self.assertIsNone(child_fail.event_id)
-        self.assertEqual(child_ok.event_id, parent_event)
-        self.assertEqual(child_correct.event_id, parent_event)
-
-    def test_handle_gwflow_cascade_counts_persisted_child_despite_save_error(self):
-        # A child save may persist the EventID and then raise from later save-path
-        # work. The counters must reflect the final persisted state, so it counts
-        # as processed and the command must not raise a false failure.
-        parent = GWFlowJob.objects.create(sname="S200222a", user=self.user, event_id=None)
-        parent_event = EventID.objects.create(event_id="G000014", gps_time=1266105618.0)
-        parent.event_id = parent_event
-        parent.save()
-
-        child_persist_then_raise = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="Child_Persist_Then_Raise",
-            gwflow_job=parent,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-        )
-        child_ok = BilbyJob.objects.create(
-            user_id=self.user.id,
-            name="Child_Ok",
-            gwflow_job=parent,
-            ini_string=create_test_ini_string({"detectors": "['H1']"}),
-        )
-
-        detail_payload = {
-            "GraceDB": {
-                "preferred_event": "G000014",
-                "Events": [{"UID": "G000014", "GPSTime": 1266105618.0}],
-            }
+    def _document(self):
+        return {
+            "_gwcloud": {
+                "sname": self.job.sname,
+                "searchTriggerTime": 150.0,
+            },
+            "metadata": {
+                "analyses": [
+                    {
+                        "type": "pe",
+                        "status": "complete",
+                        "review_status": "approved",
+                    }
+                ]
+            },
         }
 
-        def fake_get(url, headers=None, timeout=None):
-            if url.endswith("/api/v1/superevents/?page=1"):
-                return self._list_page([{"sname": "S200222a"}])
-            if url.endswith("/api/v1/superevents/S200222a/"):
-                return _MockResponse(detail_payload, 200)
-            raise AssertionError(f"Unexpected URL: {url}")
+    def _run_handle(
+        self,
+        *,
+        es=None,
+        fetch=None,
+        build=None,
+        bulk=None,
+        before="same",
+        after="same",
+        wipe=False,
+    ):
+        command, out = self._command()
+        es = es if es is not None else mock.MagicMock()
+        fetch = fetch if fetch is not None else mock.Mock(return_value=({"analyses": []}, "live"))
+        build = build if build is not None else mock.Mock(return_value=self._document())
+        if bulk is None:
 
-        original_save = BilbyJob.save
+            def successful_stream(_es, actions, **_kwargs):
+                return iter(
+                    (
+                        True,
+                        {
+                            "index": {
+                                "_id": str(action["_id"]),
+                                "_index": str(action["_index"]),
+                                "status": 201,
+                            }
+                        },
+                    )
+                    for action in actions
+                )
 
-        def persist_then_raise(self, *args, **kwargs):
-            result = original_save(self, *args, **kwargs)
-            if getattr(self, "pk", None) == child_persist_then_raise.pk:
-                raise RuntimeError("simulated post-persistence save failure")
+            bulk = mock.Mock(side_effect=successful_stream)
+
+        with (
+            override_settings(
+                IGNORE_ELASTIC_SEARCH=False,
+                CBCFLOW_PORTAL_URL="https://portal.example.test",
+                CBCFLOW_PORTAL_TOKEN="secret",
+                ELASTIC_SEARCH_GWFLOW_INDEX="gwcloud-gwflowjob",
+            ),
+            mock.patch(f"{self.command_path}.eligible_gwflow_jobs", return_value=[self.job]),
+            mock.patch(f"{self.command_path}.clear_gwflow_portal_cache"),
+            mock.patch(f"{self.command_path}.get_superevent", fetch),
+            mock.patch(f"{self.command_path}.build_gwflow_es_doc", build),
+            mock.patch(f"{self.command_path}.get_es_client", return_value=es),
+            mock.patch(f"{self.command_path}.helpers.streaming_bulk", bulk),
+            mock.patch(
+                f"{self.command_path}.compute_protected_identity_digest",
+                side_effect=[before, after],
+            ),
+            mock.patch(f"{self.command_path}.invalidate_gwflow_facet_caches"),
+        ):
+            result = command.handle_gwflow(wipe_and_rebuild=wipe)
+        return result, out.getvalue()
+
+    def test_gwflow_requires_portal_configuration(self):
+        from django.core.management import CommandError
+
+        command, _ = self._command()
+        with override_settings(
+            IGNORE_ELASTIC_SEARCH=False,
+            CBCFLOW_PORTAL_URL="",
+            CBCFLOW_PORTAL_TOKEN="",
+        ):
+            with self.assertRaisesRegex(CommandError, "CBCFLOW_PORTAL_URL"):
+                command.handle_gwflow()
+
+    def test_query_checks_issue_exact_five_queries_with_expected_ids(self):
+        command, out = self._command()
+        documents = {
+            "1": {
+                "_gwcloud": {"sname": "S000002b", "searchTriggerTime": 150.0},
+                "metadata": {
+                    "analyses": [
+                        {
+                            "type": "pe",
+                            "status": "complete",
+                            "review_status": "approved",
+                        },
+                        {
+                            "type": "event_validation",
+                            "status": "running",
+                            "review_status": "pending",
+                        },
+                    ]
+                },
+            },
+            "2": {
+                "_gwcloud": {"sname": "S000001a", "searchTriggerTime": 99.0},
+                "metadata": {
+                    "analyses": [
+                        {
+                            "type": "event_validation",
+                            "status": "complete",
+                            "review_status": "approved",
+                        }
+                    ]
+                },
+            },
+            "3": {
+                "_gwcloud": {"sname": "S000001a", "searchTriggerTime": 199.5},
+                "metadata": {
+                    "analyses": [
+                        {
+                            "type": "pe",
+                            "status": "running",
+                            "review_status": "pending",
+                        }
+                    ]
+                },
+            },
+        }
+        expected_ids = {
+            json.dumps(
+                {"term": {"_gwcloud.sname": "S000001a"}},
+                sort_keys=True,
+            ): {"2", "3"},
+            json.dumps(
+                {"term": {"metadata.analyses.type": "event_validation"}},
+                sort_keys=True,
+            ): {"1", "2"},
+            json.dumps(
+                {"term": {"metadata.analyses.status": "complete"}},
+                sort_keys=True,
+            ): {"1", "2"},
+            json.dumps(
+                {"term": {"metadata.analyses.review_status": "approved"}},
+                sort_keys=True,
+            ): {"1", "2"},
+            json.dumps(
+                {
+                    "range": {
+                        "_gwcloud.searchTriggerTime": {
+                            "gte": 100.0,
+                            "lt": 200.0,
+                        }
+                    }
+                },
+                sort_keys=True,
+            ): {"1", "3"},
+        }
+        seen_queries = []
+
+        def search(*, index, query, size):
+            self.assertEqual(index, "gwcloud-gwflowjob")
+            self.assertEqual(size, 10000)
+            key = json.dumps(query, sort_keys=True)
+            seen_queries.append(key)
+            return {"hits": {"hits": [{"_id": item_id} for item_id in sorted(expected_ids[key])]}}
+
+        failures = []
+        es = mock.Mock()
+        es.search.side_effect = search
+
+        command._run_gwflow_query_checks(
+            es,
+            "gwcloud-gwflowjob",
+            documents,
+            lambda phase, **details: failures.append((phase, details["reason"])),
+        )
+
+        self.assertEqual(failures, [])
+        self.assertCountEqual(seen_queries, expected_ids)
+        self.assertEqual(es.search.call_count, 5)
+        self.assertIn("✓ query analyses.status=complete: 2 hit(s)", out.getvalue())
+
+    def test_query_checks_range_excludes_golden_upper_boundary(self):
+        command, _ = self._command()
+        first = self.job
+        first.trigger_time = 100.0
+        first.save(update_fields=["trigger_time"])
+        second = GWFlowJob.objects.create(
+            sname="S000002b",
+            user=self.user,
+            trigger_time=200.0,
+        )
+        documents = {
+            str(first.pk): {
+                "_gwcloud": {
+                    "sname": first.sname,
+                    "searchTriggerTime": first.trigger_time,
+                },
+                "metadata": {
+                    "analyses": [
+                        {
+                            "type": "pe",
+                            "status": "complete",
+                            "review_status": "approved",
+                        }
+                    ]
+                },
+            },
+            str(second.pk): {
+                "_gwcloud": {
+                    "sname": second.sname,
+                    "searchTriggerTime": second.trigger_time,
+                },
+                "metadata": {
+                    "analyses": [
+                        {
+                            "type": "event_validation",
+                            "status": "running",
+                            "review_status": "pending",
+                        }
+                    ]
+                },
+            },
+        }
+        expected_range = {
+            "range": {
+                "_gwcloud.searchTriggerTime": {
+                    "gte": 100.0,
+                    "lt": 200.0,
+                }
+            }
+        }
+        range_ids = set()
+
+        def search(*, index, query, size):
+            self.assertEqual(index, "gwcloud-gwflowjob")
+            self.assertEqual(size, 10000)
+            if query == expected_range:
+                hits = [{"_id": str(first.pk)}]
+                range_ids.update(hit["_id"] for hit in hits)
+                return {"hits": {"hits": hits}}
+
+            if "term" in query:
+                field, expected = next(iter(query["term"].items()))
+                hits = []
+                for document_id, document in documents.items():
+                    if field == "_gwcloud.sname":
+                        matched = document["_gwcloud"]["sname"] == expected
+                    else:
+                        analysis_field = field.rsplit(".", 1)[-1]
+                        matched = any(
+                            analysis.get(analysis_field) == expected for analysis in document["metadata"]["analyses"]
+                        )
+                    if matched:
+                        hits.append({"_id": document_id})
+                return {"hits": {"hits": hits}}
+
+            self.fail(f"Unexpected Elasticsearch query: {query!r}")
+
+        failures = []
+        es = mock.Mock()
+        es.search.side_effect = search
+
+        command._run_gwflow_query_checks(
+            es,
+            "gwcloud-gwflowjob",
+            documents,
+            lambda phase, **details: failures.append((phase, details["reason"])),
+        )
+
+        self.assertEqual(failures, [])
+        self.assertIn(
+            mock.call(
+                index="gwcloud-gwflowjob",
+                query=expected_range,
+                size=10000,
+            ),
+            es.search.call_args_list,
+        )
+        self.assertEqual(range_ids, {str(first.pk)})
+        self.assertNotIn(str(second.pk), range_ids)
+
+    def test_query_checks_fail_required_gate_with_no_analysis_value(self):
+        from django.core.management import CommandError
+
+        document = self._document()
+        del document["metadata"]["analyses"][0]["review_status"]
+        search_bodies = []
+
+        with self.assertRaises(CommandError) as caught:
+            self._run_rebuild_command(
+                [self.job],
+                mock.Mock(return_value=({"analyses": []}, "live")),
+                mock.Mock(return_value=document),
+                [],
+                search_bodies,
+            )
+
+        self.assertEqual(caught.exception.returncode, 1)
+        self.assertIn(
+            "analyses.review_status query gate: no analysis carries metadata.analyses.review_status",
+            caught.exception.command_output,
+        )
+        self.assertFalse(any("metadata.analyses.review_status" in body.get("term", {}) for body in search_bodies))
+
+    def _run_rebuild_command(
+        self,
+        jobs,
+        fetch,
+        build,
+        captured_runs,
+        captured_searches=None,
+        captured_audits=None,
+    ):
+        from django.core.management import CommandError
+
+        from bilbyui.management.commands.es_ingest import build_gwflow_es_mapping
+
+        documents = {}
+
+        es = mock.MagicMock()
+        es.indices.get_mapping.return_value = {"gwcloud-gwflowjob": build_gwflow_es_mapping()}
+
+        def count(*, index):
+            result = {"count": len(documents)}
+            if captured_audits is not None:
+                captured_audits.append(("count", index, result["count"]))
             return result
 
+        es.count.side_effect = count
+
+        def search(*, index, query, size, **kwargs):
+            if captured_searches is not None:
+                captured_searches.append(query)
+            if "match_all" in query:
+                ids = sorted(documents)
+                if captured_audits is not None:
+                    captured_audits.append(("parity", index, tuple(ids)))
+            elif "term" in query:
+                field, expected = next(iter(query["term"].items()))
+                ids = []
+                for document_id, document in documents.items():
+                    if field == "_gwcloud.sname":
+                        matched = document["_gwcloud"]["sname"] == expected
+                    else:
+                        analysis_field = field.rsplit(".", 1)[-1]
+                        matched = any(
+                            analysis.get(analysis_field) == expected
+                            for analysis in document.get("metadata", {}).get("analyses", [])
+                        )
+                    if matched:
+                        ids.append(document_id)
+            elif "range" in query:
+                field, bounds = next(iter(query["range"].items()))
+                self.assertEqual(field, "_gwcloud.searchTriggerTime")
+                ids = [
+                    document_id
+                    for document_id, document in documents.items()
+                    if bounds["gte"] <= document["_gwcloud"]["searchTriggerTime"] < bounds["lt"]
+                ]
+            else:
+                self.fail(f"Unexpected Elasticsearch query: {query!r}")
+            return {"hits": {"hits": [{"_id": document_id} for document_id in ids[:size]]}}
+
+        es.search.side_effect = search
+
+        def streaming_bulk(_es, actions, **kwargs):
+            captured = list(actions)
+            captured_runs.append(captured)
+            documents.clear()
+            documents.update({str(action["_id"]): action["_source"] for action in captured})
+            return iter(
+                (
+                    True,
+                    {
+                        "index": {
+                            "_id": str(action["_id"]),
+                            "_index": str(action["_index"]),
+                            "status": 201,
+                        }
+                    },
+                )
+                for action in captured
+            )
+
         out = StringIO()
-        with mock.patch("bilbyui.management.commands.es_ingest.requests.get", side_effect=fake_get):
-            with override_settings(
-                CBCFLOW_PORTAL_URL="https://portal.example.com",
-                CBCFLOW_PORTAL_TOKEN="token",
-            ):
-                with mock.patch.object(BilbyJob, "save", autospec=True, side_effect=persist_then_raise):
-                    call_command("es_ingest", "--gwflow", stdout=out, stderr=out)
+        with (
+            override_settings(
+                IGNORE_ELASTIC_SEARCH=False,
+                CBCFLOW_PORTAL_URL="https://portal.example.test",
+                CBCFLOW_PORTAL_TOKEN="secret",
+                ELASTIC_SEARCH_GWFLOW_INDEX="gwcloud-gwflowjob",
+            ),
+            mock.patch(
+                f"{self.command_path}.eligible_gwflow_jobs",
+                return_value=jobs,
+            ),
+            mock.patch(f"{self.command_path}.clear_gwflow_portal_cache"),
+            mock.patch(f"{self.command_path}.get_superevent", side_effect=fetch),
+            mock.patch(f"{self.command_path}.build_gwflow_es_doc", side_effect=build),
+            mock.patch(f"{self.command_path}.get_es_client", return_value=es),
+            mock.patch(
+                f"{self.command_path}.helpers.streaming_bulk",
+                side_effect=streaming_bulk,
+            ),
+            mock.patch(
+                f"{self.command_path}.compute_protected_identity_digest",
+                return_value="same",
+            ),
+            mock.patch(f"{self.command_path}.invalidate_gwflow_facet_caches"),
+        ):
+            try:
+                call_command(
+                    "es_ingest",
+                    "--gwflow",
+                    "--wipe-and-rebuild",
+                    stdout=out,
+                    stderr=out,
+                )
+            except CommandError as exc:
+                exc.command_output = out.getvalue()
+                raise
 
-        output = out.getvalue()
-        self.assertIn("Child cascade: 2 processed, 0 failed", output)
+        return out.getvalue()
 
-        child_persist_then_raise.refresh_from_db()
-        child_ok.refresh_from_db()
-        self.assertEqual(child_persist_then_raise.event_id, parent_event)
-        self.assertEqual(child_ok.event_id, parent_event)
+    def test_stale_portal_detail_is_fetch_failure_and_command_exits_one(self):
+        from django.core.management import CommandError
+
+        captured_runs = []
+        fetch = mock.Mock(return_value=({"analyses": []}, "stale"))
+        build = mock.Mock()
+
+        with self.assertRaises(CommandError) as caught:
+            self._run_rebuild_command(
+                [self.job],
+                fetch,
+                build,
+                captured_runs,
+            )
+
+        self.assertEqual(caught.exception.returncode, 1)
+        self.assertIn("phase=fetch", caught.exception.command_output)
+        self.assertIn("state=stale; expected live state with object data", caught.exception.command_output)
+        self.assertIn("0 indexed", caught.exception.command_output)
+        build.assert_not_called()
+        self.assertEqual(captured_runs, [])
+
+    def test_two_rebuilds_have_identical_ids_and_sources(self):
+        import copy
+
+        second_job = GWFlowJob.objects.create(
+            sname="S000002b",
+            user=self.user,
+            trigger_time=200.5,
+            current_history_id="history-sha-2",
+        )
+        self.job.trigger_time = 150.0
+        self.job.save(update_fields=["trigger_time"])
+
+        jobs = [self.job, second_job]
+        details = {
+            job.sname: {
+                "sname": job.sname,
+                "analyses": [
+                    {
+                        "uid": f"{job.sname}-pe",
+                        "type": "pe",
+                        "status": "complete",
+                        "review_status": "approved",
+                    }
+                ],
+            }
+            for job in jobs
+        }
+
+        def fetch(sname):
+            return copy.deepcopy(details[sname]), "live"
+
+        def build(job, detail):
+            return {
+                "_gwcloud": {
+                    "sname": job.sname,
+                    "searchTriggerTime": job.trigger_time,
+                },
+                "metadata": {
+                    "analyses": copy.deepcopy(detail["analyses"]),
+                },
+            }
+
+        captured_runs = []
+        first_searches = []
+        second_searches = []
+        first_audits = []
+        second_audits = []
+        first_output = self._run_rebuild_command(
+            jobs,
+            fetch,
+            build,
+            captured_runs,
+            first_searches,
+            first_audits,
+        )
+        second_output = self._run_rebuild_command(
+            jobs,
+            fetch,
+            build,
+            captured_runs,
+            second_searches,
+            second_audits,
+        )
+
+        self.assertIn("2 indexed, 0 failed", first_output)
+        self.assertIn("2 indexed, 0 failed", second_output)
+        self.assertEqual(len(captured_runs), 2)
+
+        first = {str(action["_id"]): copy.deepcopy(action["_source"]) for action in captured_runs[0]}
+        second = {str(action["_id"]): copy.deepcopy(action["_source"]) for action in captured_runs[1]}
+        self.assertEqual(set(first), set(second))
+        self.assertEqual(first, second)
+        self.assertEqual(first_audits, second_audits)
+        self.assertEqual(
+            first_audits,
+            [
+                ("count", "gwcloud-gwflowjob", 2),
+                ("parity", "gwcloud-gwflowjob", tuple(sorted(first))),
+            ],
+        )
+        self.assertEqual(first_searches, second_searches)
+        self.assertEqual(len(first_searches), 6)
+        self.assertEqual(first_searches[0], {"match_all": {}})
+
+        first_query_successes = [line for line in first_output.splitlines() if line.startswith("✓ query ")]
+        second_query_successes = [line for line in second_output.splitlines() if line.startswith("✓ query ")]
+        self.assertEqual(first_query_successes, second_query_successes)
+        self.assertEqual(
+            first_query_successes,
+            [
+                "✓ query sname=S000001a: 1 hit(s)",
+                "✓ query analyses.type=pe: 2 hit(s)",
+                "✓ query analyses.status=complete: 2 hit(s)",
+                "✓ query analyses.review_status=approved: 2 hit(s)",
+                "✓ query searchTriggerTime range [100, 200): 1 hit(s)",
+            ],
+        )
+        self.assertEqual(
+            second[str(second_job.pk)]["_gwcloud"]["searchTriggerTime"],
+            200.5,
+        )
+
+    def test_fetch_exception_is_reported_without_attempting_bulk(self):
+        fetch = mock.Mock(side_effect=RuntimeError("portal unavailable"))
+        bulk = mock.Mock()
+
+        result, output = self._run_handle(fetch=fetch, bulk=bulk)
+
+        self.assertEqual(result, 1)
+        self.assertIn("phase=fetch", output)
+        self.assertIn("portal unavailable", output)
+        bulk.assert_not_called()
+
+    def test_invalid_metadata_is_reported_as_build_failure(self):
+        from bilbyui.utils.gwflow_es import InvalidGWFlowMetadata
+
+        build = mock.Mock(side_effect=InvalidGWFlowMetadata("bad canonical analysis"))
+        result, output = self._run_handle(build=build)
+
+        self.assertEqual(result, 1)
+        self.assertIn("phase=build", output)
+        self.assertIn("bad canonical analysis", output)
+
+    def test_client_creation_failure_is_reported(self):
+        command, out = self._command()
+        with (
+            override_settings(
+                IGNORE_ELASTIC_SEARCH=False,
+                CBCFLOW_PORTAL_URL="https://portal.example.test",
+                CBCFLOW_PORTAL_TOKEN="secret",
+                ELASTIC_SEARCH_GWFLOW_INDEX="gwcloud-gwflowjob",
+            ),
+            mock.patch(f"{self.command_path}.eligible_gwflow_jobs", return_value=[self.job]),
+            mock.patch(f"{self.command_path}.clear_gwflow_portal_cache"),
+            mock.patch(
+                f"{self.command_path}.get_superevent",
+                return_value=({"analyses": []}, "live"),
+            ),
+            mock.patch(
+                f"{self.command_path}.build_gwflow_es_doc",
+                return_value=self._document(),
+            ),
+            mock.patch(
+                f"{self.command_path}.get_es_client",
+                side_effect=RuntimeError("client unavailable"),
+            ),
+            mock.patch(
+                f"{self.command_path}.compute_protected_identity_digest",
+                side_effect=["same", "same"],
+            ),
+        ):
+            result = command.handle_gwflow()
+
+        self.assertEqual(result, 1)
+        self.assertIn("phase=client", out.getvalue())
+        self.assertIn("client unavailable", out.getvalue())
+
+    def test_mapping_recreation_failure_prevents_bulk(self):
+        es = mock.MagicMock()
+        es.indices.create.side_effect = RuntimeError("mapping rejected")
+        bulk = mock.Mock()
+
+        result, output = self._run_handle(es=es, bulk=bulk, wipe=True)
+
+        self.assertEqual(result, 1)
+        self.assertIn("phase=mapping", output)
+        self.assertIn("index recreation failed", output)
+        bulk.assert_not_called()
+
+    def test_streaming_bulk_success_validates_every_item(self):
+        bulk = mock.Mock(
+            return_value=iter(
+                [
+                    (
+                        True,
+                        {
+                            "index": {
+                                "_id": str(self.job.pk),
+                                "_index": "gwcloud-gwflowjob",
+                                "status": 201,
+                            }
+                        },
+                    )
+                ]
+            )
+        )
+
+        result, output = self._run_handle(bulk=bulk)
+
+        self.assertEqual(result, 0)
+        self.assertIn("1 indexed, 0 failed", output)
+        bulk.assert_called_once()
+        self.assertEqual(
+            bulk.call_args.kwargs,
+            {
+                "raise_on_error": False,
+                "raise_on_exception": False,
+                "refresh": True,
+                "chunk_size": 500,
+            },
+        )
+
+    def test_streaming_bulk_item_failure_records_reason_and_status(self):
+        bulk = mock.Mock(
+            return_value=iter(
+                [
+                    (
+                        False,
+                        {
+                            "index": {
+                                "_id": str(self.job.pk),
+                                "_index": "gwcloud-gwflowjob",
+                                "status": 429,
+                                "error": {"reason": "queue full"},
+                            }
+                        },
+                    )
+                ]
+            )
+        )
+
+        result, output = self._run_handle(bulk=bulk)
+
+        self.assertEqual(result, 1)
+        self.assertIn("queue full (status=429)", output)
+        self.assertIn("0 indexed", output)
+
+    def test_streaming_bulk_malformed_item_is_not_counted_as_indexed(self):
+        bulk = mock.Mock(return_value=iter([(True, {"index": "not-an-object"})]))
+
+        result, output = self._run_handle(bulk=bulk)
+
+        self.assertEqual(result, 1)
+        self.assertIn("malformed/unknown item result", output)
+        self.assertIn("missing item result", output)
+        self.assertIn("0 indexed", output)
+
+    def test_streaming_bulk_duplicate_success_rejects_document(self):
+        success = (
+            True,
+            {
+                "index": {
+                    "_id": str(self.job.pk),
+                    "_index": "gwcloud-gwflowjob",
+                    "status": 200,
+                }
+            },
+        )
+        bulk = mock.Mock(return_value=iter([success, success]))
+
+        result, output = self._run_handle(bulk=bulk)
+
+        self.assertEqual(result, 1)
+        self.assertIn("duplicate success", output)
+        self.assertIn("0 indexed", output)
+
+    def test_streaming_bulk_unknown_id_is_not_counted_as_indexed(self):
+        bulk = mock.Mock(
+            return_value=iter(
+                [
+                    (
+                        True,
+                        {
+                            "index": {
+                                "_id": "999999",
+                                "_index": "gwcloud-gwflowjob",
+                                "status": 200,
+                            }
+                        },
+                    )
+                ]
+            )
+        )
+
+        result, output = self._run_handle(bulk=bulk)
+
+        self.assertEqual(result, 1)
+        self.assertIn("malformed/unknown item result", output)
+        self.assertIn("missing item result", output)
+        self.assertIn("0 indexed", output)
+
+    def test_streaming_bulk_missing_result_is_reported(self):
+        bulk = mock.Mock(return_value=iter([]))
+
+        result, output = self._run_handle(bulk=bulk)
+
+        self.assertEqual(result, 1)
+        self.assertIn("missing item result", output)
+        self.assertIn("0 indexed", output)
+
+    def test_bulk_exception_marks_each_action_failed(self):
+        def raise_during_stream(_es, _actions, **_kwargs):
+            def results():
+                raise RuntimeError("bulk transport failed")
+                yield
+
+            return results()
+
+        result, output = self._run_handle(
+            bulk=mock.Mock(side_effect=raise_during_stream),
+        )
+
+        self.assertEqual(result, 1)
+        self.assertIn("phase=bulk", output)
+        self.assertIn("bulk transport failed", output)
+        self.assertIn("0 indexed", output)
+
+    def test_rebuild_verification_failures_are_reported(self):
+        es = mock.MagicMock()
+        es.indices.get_mapping.return_value = {"gwcloud-gwflowjob": {"mappings": {"properties": {}}}}
+        es.count.side_effect = RuntimeError("count unavailable")
+        es.search.side_effect = RuntimeError("id search unavailable")
+
+        result, output = self._run_handle(es=es, wipe=True)
+
+        self.assertEqual(result, 1)
+        self.assertIn("installed mapping differs from the contract", output)
+        self.assertIn("count verification failed: count unavailable", output)
+        self.assertIn("id-set verification failed: id search unavailable", output)
+
+    def test_refresh_and_mapping_lookup_exceptions_are_reported(self):
+        es = mock.MagicMock()
+        es.indices.refresh.side_effect = RuntimeError("refresh unavailable")
+        es.indices.get_mapping.side_effect = RuntimeError("mapping unavailable")
+        es.count.return_value = {"count": 1}
+        es.search.return_value = {"hits": {"hits": [{"_id": str(self.job.pk)}]}}
+
+        result, output = self._run_handle(es=es, wipe=True)
+
+        self.assertEqual(result, 1)
+        self.assertIn("phase=refresh", output)
+        self.assertIn("mapping verification failed: mapping unavailable", output)
+
+    def test_protected_identity_change_is_reported(self):
+        result, output = self._run_handle(before="before", after="after")
+
+        self.assertEqual(result, 1)
+        self.assertIn("phase=postgres", output)
+        self.assertIn("protected identity digest changed", output)

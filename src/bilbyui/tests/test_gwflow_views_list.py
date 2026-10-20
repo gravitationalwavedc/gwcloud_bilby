@@ -62,7 +62,60 @@ class TestGWFlowJobsListView(BilbyTestCase):
         with mock.patch(
             "bilbyui.views.list_gwflow_jobs",
             side_effect=_gwflow_jobs_side_effect(
-                {job.id: {"pe": {"results": [{"uid": "a1"}, {"uid": "a2"}, {"uid": "a3"}]}}}
+                {
+                    job.id: {
+                        "analyses": [
+                            {
+                                "uid": "a1",
+                                "type": "pe",
+                                "revision": "1",
+                                "name": "Analysis a1",
+                                "description": "",
+                                "status": "complete",
+                                "deprecated": False,
+                                "software": {"name": "bilby", "version": "1.2.3"},
+                                "analysts": [],
+                                "reviews": [],
+                                "input_files": [],
+                                "output_files": [],
+                                "configurations": [],
+                                "in_catalog": True,
+                            },
+                            {
+                                "uid": "a2",
+                                "type": "pe",
+                                "revision": "1",
+                                "name": "Analysis a2",
+                                "description": "",
+                                "status": "complete",
+                                "deprecated": False,
+                                "software": {"name": "bilby", "version": "1.2.3"},
+                                "analysts": [],
+                                "reviews": [],
+                                "input_files": [],
+                                "output_files": [],
+                                "configurations": [],
+                                "in_catalog": True,
+                            },
+                            {
+                                "uid": "a3",
+                                "type": "pe",
+                                "revision": "1",
+                                "name": "Analysis a3",
+                                "description": "",
+                                "status": "complete",
+                                "deprecated": False,
+                                "software": {"name": "bilby", "version": "1.2.3"},
+                                "analysts": [],
+                                "reviews": [],
+                                "input_files": [],
+                                "output_files": [],
+                                "configurations": [],
+                                "in_catalog": True,
+                            },
+                        ]
+                    }
+                }
             ),
         ):
             response = self.client.get(self.url)
@@ -360,7 +413,7 @@ class TestGWFlowJobsListView(BilbyTestCase):
             result = _build_gwflow_result([job], metadata={job.id: metadata})
             rows = _build_gwflow_job_rows(result)
             self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0]["analysis_count"], len(parse_analyses(metadata)))
+            self.assertEqual(rows[0]["analysis_count"], 0)
 
     def test_row_building_non_list_results_does_not_crash(self):
         job = GWFlowJob.objects.create(sname="S230601ag", user=self.user)

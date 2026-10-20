@@ -222,75 +222,62 @@ class TestGWFlowFilesTemplateStates(BilbyTestCase):
             response, 'class="gw-files-table-wrap" role="region" tabindex="0" aria-label="Scrollable files table"'
         )
 
-    def test_analysis_metadata_renders_from_portal_payload(self):
-        """Software/waveform/run/review status render from the portal analyses payload when present."""
+    def test_analysis_metadata_renders_from_canonical_portal_payload(self):
+        """Canonical software and run/review status render when present."""
         from unittest import mock
 
         _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=True)
         payload = {
-            "ParameterEstimation": {
-                "results": [
-                    {
-                        "uid": "analysis-1",
-                        "inference_software": "bilby",
-                        "waveform_approximant": "IMRPhenomXPHM",
-                        "run_status": "completed",
-                        "review_status": "approved",
-                    }
-                ]
-            }
+            "analyses": [
+                {
+                    "uid": "analysis-1",
+                    "type": "pe",
+                    "revision": "1",
+                    "name": "Analysis",
+                    "description": "",
+                    "status": "complete",
+                    "deprecated": False,
+                    "software": {"name": "bilby", "version": "1.4.2"},
+                    "analysts": [],
+                    "reviews": [{"review_status": "approved"}],
+                    "input_files": [],
+                    "output_files": [],
+                    "configurations": [],
+                    "in_catalog": True,
+                    "review_status": "approved",
+                }
+            ]
         }
         with mock.patch("bilbyui.views.get_superevent", return_value=(payload, "live")):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "bilby")
-        self.assertContains(response, "IMRPhenomXPHM")
-        self.assertContains(response, "completed")
+        self.assertContains(response, "complete")
         self.assertContains(response, "approved")
 
-    def test_empty_uid_analysis_does_not_attach_metadata_to_superevent(self):
-        """An analysis record with neither uid nor id is assigned uid == ""
-        by parse_analyses. It must not attach its metadata to the superevent
-        block, and multiple such records must not collapse onto it."""
+    def test_malformed_analysis_payload_renders_file_blocks_without_metadata(self):
+        """One malformed present analysis rejects all portal presentation metadata."""
         from unittest import mock
 
         _make_file(self.job, "", "super/root.h5", uploaded=True)
         _make_file(self.job, "analysis-1", "outdir/a.h5", uploaded=True)
         payload = {
-            "ParameterEstimation": {
-                "results": [
-                    {
-                        "inference_software": "malformed-empty-uid-one",
-                        "waveform_approximant": "W1",
-                        "run_status": "running",
-                        "review_status": "",
-                    },
-                    {
-                        "inference_software": "malformed-empty-uid-two",
-                        "waveform_approximant": "W2",
-                        "run_status": "running",
-                        "review_status": "",
-                    },
-                    {
-                        "uid": "analysis-1",
-                        "inference_software": "bilby",
-                        "waveform_approximant": "IMRPhenomXPHM",
-                        "run_status": "completed",
-                        "review_status": "approved",
-                    },
-                ]
-            }
+            "analyses": [
+                {
+                    "uid": "",
+                    "type": "pe",
+                }
+            ]
         }
         with mock.patch("bilbyui.views.get_superevent", return_value=(payload, "live")):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Superevent-level files")
-        self.assertContains(response, "bilby")
-        self.assertContains(response, "IMRPhenomXPHM")
-        self.assertNotContains(response, "malformed-empty-uid-one")
-        self.assertNotContains(response, "malformed-empty-uid-two")
+        self.assertContains(response, "analysis-1")
+        self.assertContains(response, "gw-analysis-block")
+        self.assertNotContains(response, 'class="gw-analysis-meta"')
 
     def test_down_state_renders_blocks_without_metadata(self):
         """When get_superevent returns (None, "down"), analyses stays None and
