@@ -313,22 +313,3 @@ class PortalClient:
         ):
             versions.extend(results)
         return versions
-
-    def iter_current_snames(self):
-        url = urljoin(self.base_url, "api/v1/superevents/")
-        for results, _ in self._iter_pages(
-            url,
-            operation="current-snames",
-        ):
-            for row in results:
-                if not isinstance(row, dict) or not isinstance(row.get("sname"), str):
-                    row_keys = sorted(row.keys()) if isinstance(row, dict) else None
-                    logger.error(
-                        "Skipping malformed current-sname row endpoint=%s correlation_context=%r row_type=%s row_keys=%r",
-                        url,
-                        (url, None, "current-snames"),
-                        type(row).__name__,
-                        row_keys,
-                    )
-                    continue
-                yield row["sname"]

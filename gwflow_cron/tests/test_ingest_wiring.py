@@ -156,7 +156,6 @@ class TestIngestWiring(GWFlowTestBase):
             "raw_payload": {"sname": "S260101a", "event": "GW260101"},
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": ["bilby"]}]
-        mock_portal.iter_current_snames.return_value = ["S260101a"]
         mock_gwc.get_gwflow_job_list.return_value = []
 
         # File mirror queue has 1 pending file
@@ -257,7 +256,6 @@ class TestIngestWiring(GWFlowTestBase):
             ):
                 self.assertEqual(gwflow_ingest.run([]), 0)
 
-        mock_portal.iter_current_snames.assert_not_called()
         self.assertFalse(
             any(call.kwargs.get("is_pruned") is True for call in mock_gwc.upsert_gwflow_job.call_args_list)
         )

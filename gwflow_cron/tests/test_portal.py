@@ -654,52 +654,6 @@ class TestPortalClient(unittest.TestCase):
         self.assertEqual(caught.exception.reason, "result row must be an object")
 
     @responses.activate
-    def test_iter_current_snames_skips_and_logs_malformed_rows(self):
-        first_url = f"{self.base_url}/api/v1/superevents/"
-        second_url = f"{first_url}?page=2"
-        responses.add(
-            responses.GET,
-            first_url,
-            json=self.envelope(
-                [
-                    {"sname": "S260101a"},
-                    "raw-sensitive-row-contents",
-                    {},
-                    {"sname": None},
-                ],
-                count=5,
-                next_url=second_url,
-            ),
-            status=200,
-        )
-        responses.add(
-            responses.GET,
-            second_url,
-            json=self.envelope(
-                [{"sname": "S260103c"}],
-                count=5,
-                previous=first_url,
-            ),
-            status=200,
-        )
-
-        with self.assertLogs("gwflow_ingest.portal", level="ERROR") as logs:
-            snames = list(self.client.iter_current_snames())
-
-        self.assertEqual(snames, ["S260101a", "S260103c"])
-        self.assertEqual(len(logs.output), 3)
-        self.assertTrue(all("Skipping malformed current-sname row" in line for line in logs.output))
-        joined_logs = "\n".join(logs.output)
-        self.assertNotIn("raw-sensitive-row-contents", joined_logs)
-        self.assertIn("row_type=str", joined_logs)
-        self.assertIn("row_keys=[]", joined_logs)
-        self.assertIn("row_keys=['sname']", joined_logs)
-        self.assertEqual(
-            [call.request.url for call in responses.calls],
-            [first_url, second_url],
-        )
-
-    @responses.activate
     @patch("time.sleep", return_value=None)
     def test_each_4xx_class_raises_without_retry(self, mock_sleep):
         for status in (400, 401, 403, 404):
