@@ -1,93 +1,79 @@
-<section class="gwflow-changes" aria-labelledby="version-changes-heading">
-  {% if baseline_version %}
-    <h3 id="version-changes-heading" class="h5">
-      Changes from {% if compare_mode == "current" %}current{% else %}previous{% endif %}
-      version {{ baseline_version.short_sha }} to selected version {{ selected_version.short_sha }}
-    </h3>
-  {% else %}
-    <h3 id="version-changes-heading" class="h5">Changes for selected version {{ selected_version.short_sha }}</h3>
-  {% endif %}
+{% if diff_outcome %}
+  <section class="gwflow-changes" aria-labelledby="version-changes-heading">
+    {% if diff_outcome.baseline_version is not None and diff_outcome.selected_version is not None %}
+      <h3 id="version-changes-heading" class="h5">
+        Changes from {% if compare_mode == "current" %}current{% else %}previous{% endif %}
+        version {{ diff_outcome.baseline_version }} to selected version {{ diff_outcome.selected_version }}
+      </h3>
+      {% if diff_outcome.baseline_timestamp and diff_outcome.selected_timestamp %}
+        <p>
+          Comparison timestamps:
+          {{ diff_outcome.baseline_timestamp }} to {{ diff_outcome.selected_timestamp }}
+        </p>
+      {% endif %}
+    {% elif diff_outcome.selected_version is not None %}
+      <h3 id="version-changes-heading" class="h5">
+        Changes for selected version {{ diff_outcome.selected_version }}
+      </h3>
+    {% else %}
+      <h3 id="version-changes-heading" class="h5">Semantic comparison</h3>
+    {% endif %}
 
-  {% if diff_outcome.status == "semantic" %}
-    <p class="gwflow-changes__legend">
-      <strong>Change legend:</strong>
-      <span><span class="gwflow-change-badge gwflow-change-badge--added">Added</span> exists only in the selected version;</span>
-      <span><span class="gwflow-change-badge gwflow-change-badge--removed">Removed</span> exists only in the baseline;</span>
-      <span><span class="gwflow-change-badge gwflow-change-badge--changed">Changed</span> has different values.</span>
-    </p>
-    {% if diff_outcome.changes %}
-      <p>{{ diff_outcome.changes|length }} field change{{ diff_outcome.changes|length|pluralize }}.</p>
+    {% if diff_outcome.status == "semantic" %}
+      <p class="gwflow-changes__legend">
+        <strong>Change legend:</strong>
+        <span><span class="gwflow-change-badge gwflow-change-badge--added">Added</span> added in the selected version;</span>
+        <span><span class="gwflow-change-badge gwflow-change-badge--removed">Removed</span> removed from the selected version;</span>
+        <span><span class="gwflow-change-badge gwflow-change-badge--modified">Modified</span> modified between versions;</span>
+        <span><span class="gwflow-change-badge gwflow-change-badge--deprecated">Deprecated</span> deprecated in the selected version.</span>
+      </p>
+      <p>{{ diff_rows|length }} semantic change{{ diff_rows|length|pluralize }}.</p>
       <ul class="gwflow-changes__list">
-        {% for change in diff_outcome.changes %}
+        {% for row in diff_rows %}
           <li class="gwflow-changes__item">
-            <span class="gwflow-change-badge gwflow-change-badge--{{ change.kind }}">
-              {% if change.kind == "added" %}Added{% elif change.kind == "removed" %}Removed{% else %}Changed{% endif %}
-            </span>
-            <strong class="gwflow-changes__path">
-              {% for segment in change.path %}{% if not forloop.first %} › {% endif %}{{ segment }}{% empty %}Payload{% endfor %}
-            </strong>
-            <dl class="gwflow-changes__values">
-              <div>
-                <dt>Baseline</dt>
-                <dd>{% if change.baseline_present %}<code>{{ change.baseline_value|default_if_none:"None" }}</code>{% else %}<em>Missing</em>{% endif %}</dd>
-              </div>
-              <div>
-                <dt>Selected</dt>
-                <dd>{% if change.selected_present %}<code>{{ change.selected_value|default_if_none:"None" }}</code>{% else %}<em>Missing</em>{% endif %}</dd>
-              </div>
-            </dl>
+            <strong class="gwflow-changes__path">{{ row.entity_type }}</strong>
+            <span>{{ row.identity_display }}</span>
+            <span class="gwflow-change-badge gwflow-change-badge--{{ row.kind }}">{{ row.kind }}</span>
+            <details>
+              <summary>
+                {{ row.field_diff_count }} supplied field difference{{ row.field_diff_count|pluralize }}
+              </summary>
+              <p>
+                Temporary technical inspection aid. GWF-5 replaces this inspection view.
+              </p>
+              <strong>Before</strong>
+              <pre><code>{{ row.before_json }}</code></pre>
+              <strong>After</strong>
+              <pre><code>{{ row.after_json }}</code></pre>
+              <strong>Field differences</strong>
+              <pre><code>{{ row.field_diffs_json }}</code></pre>
+            </details>
           </li>
         {% endfor %}
       </ul>
-    {% else %}
-      <p class="gwflow-changes__empty">No field changes between these versions.</p>
-    {% endif %}
-  {% elif diff_outcome.status == "no_baseline" %}
-    <p class="gwflow-changes__empty">No previous version is available for comparison.</p>
-  {% elif diff_outcome.status == "cross_schema" %}
-    <div class="alert alert-warning border-warning" role="note">
-      <strong>Diff may be incomplete across schema versions.</strong>
-      Baseline schema {{ diff_outcome.baseline_schema|default:"unknown" }};
-      selected schema {{ diff_outcome.selected_schema|default:"unknown" }}.
-    </div>
-    <div class="gwflow-changes__fallback">
-      <section aria-label="Baseline version {{ baseline_version.short_sha }}">
-        <h4 class="h6">Baseline — version {{ baseline_version.short_sha }}</h4>
-        {% include "bilbyui/_gwflow_metadata.html" with payload=baseline_version.payload presentation=baseline_presentation suppress_historical_banner=True %}
-      </section>
-      <section aria-label="Selected version {{ selected_version.short_sha }}">
-        <h4 class="h6">Selected — version {{ selected_version.short_sha }}</h4>
-        {% include "bilbyui/_gwflow_metadata.html" with payload=selected_version.payload presentation=presentation suppress_historical_banner=True %}
-      </section>
-    </div>
-  {% elif diff_outcome %}
-    <div class="alert alert-warning border-warning" role="note">
-      <strong>A semantic comparison is unavailable.</strong>
-      The payloads are shown as a technical inspection aid and must not be interpreted as an empty change set.
-    </div>
-    <div class="gwflow-changes__fallback">
-      <section aria-label="Baseline"><h4 class="h6">Baseline</h4><p>{% if baseline_version %}Version {{ baseline_version.short_sha }}{% else %}Unavailable{% endif %}</p></section>
-      <section aria-label="Selected version"><h4 class="h6">Selected version</h4><p>Version {{ selected_version.short_sha }}</p></section>
-    </div>
-  {% endif %}
-
-  {% if baseline_version %}
-    <details class="gwflow-changes__raw">
-      <summary>View raw JSON diff</summary>
-      <p class="small text-muted">
-        Technical inspection aid only. The semantic summary above remains authoritative.
-        {% if diff_outcome.status == "cross_schema" %}This cross-schema output is non-authoritative.{% endif %}
-      </p>
-      <div class="gwflow-changes__raw-columns">
-        <section aria-label="Baseline raw JSON">
-          <h4 class="h6">Baseline {{ baseline_version.short_sha }}</h4>
-          <pre><code>{{ baseline_raw_json }}</code></pre>
-        </section>
-        <section aria-label="Selected raw JSON">
-          <h4 class="h6">Selected {{ selected_version.short_sha }}</h4>
-          <pre><code>{{ selected_raw_json }}</code></pre>
-        </section>
+    {% elif diff_outcome.status == "semantic_empty" %}
+      <div class="alert alert-warning border-warning" role="note">
+        The comparison is valid and contains no semantic changes.
       </div>
-    </details>
-  {% endif %}
-</section>
+    {% elif diff_outcome.status == "no_baseline" %}
+      <div class="alert alert-warning border-warning" role="note">
+        No earlier version is available to compare against.
+      </div>
+    {% elif diff_outcome.status == "unavailable" %}
+      <div class="alert alert-warning border-warning" role="note">
+        <strong>The semantic comparison service is unavailable.</strong>
+        Please try the comparison again.
+        {% if request.GET.urlencode %}
+          <a href="?{{ request.GET.urlencode }}" aria-label="Try the semantic comparison again">Try again</a>
+        {% else %}
+          <a href="?" aria-label="Try the semantic comparison again">Try again</a>
+        {% endif %}
+      </div>
+    {% elif diff_outcome.status == "failed" %}
+      <div class="alert alert-warning border-warning" role="note">
+        <strong>The semantic comparison failed.</strong>
+        The comparison result could not be produced.
+      </div>
+    {% endif %}
+  </section>
+{% endif %}
