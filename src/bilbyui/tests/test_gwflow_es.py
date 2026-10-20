@@ -280,6 +280,7 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
 
         self.assertEqual(doc["metadata"], metadata)
 
+
 class TestCollectReviewStatuses(BilbyTestCase):
     def setUp(self):
         super().setUp()
@@ -744,7 +745,6 @@ class TestGWFlowESIntegration(BilbyTestCase):
         self.assertEqual(rev_counts["pending"], 1)
         self.assertEqual(rev_counts["reviewed"], 1)
         self.assertEqual(rev_counts["Approved"], 1)
-
 
 
 class TestParseAnalysesCanonical(BilbyTestCase):

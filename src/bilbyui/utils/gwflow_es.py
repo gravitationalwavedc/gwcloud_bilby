@@ -330,11 +330,11 @@ def eligible_gwflow_jobs():
     return GWFlowJob.objects.select_related("event_id").order_by("pk")
 
 
-_GWFLOW_NUMERIC_SECTIONS = (
-    "metadata.analyses",
-    "metadata.detector_configurations",
-    "metadata.gracedb_events",
-    "metadata.catalog_connections",
+_GWFLOW_NUMERIC_TEMPLATE_SECTIONS = (
+    ("analyses_numbers", "metadata.analyses"),
+    ("detector_configuration_numbers", "metadata.detector_configurations"),
+    ("gracedb_event_numbers", "metadata.gracedb_events"),
+    ("catalog_connection_numbers", "metadata.catalog_connections"),
 )
 
 
@@ -346,12 +346,6 @@ def build_gwflow_es_mapping():
     observed as a long in one document and a double in another cannot fail
     because of document order. Nothing is mapped ``nested``.
     """
-    template_sections = (
-        ("analyses_numbers", "metadata.analyses"),
-        ("detector_configuration_numbers", "metadata.detector_configurations"),
-        ("gracedb_event_numbers", "metadata.gracedb_events"),
-        ("catalog_connection_numbers", "metadata.catalog_connections"),
-    )
     templates = [
         {
             name: {
@@ -360,7 +354,7 @@ def build_gwflow_es_mapping():
                 "mapping": {"type": "double"},
             }
         }
-        for name, section in template_sections
+        for name, section in _GWFLOW_NUMERIC_TEMPLATE_SECTIONS
     ]
 
     return {

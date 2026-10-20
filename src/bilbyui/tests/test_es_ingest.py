@@ -370,7 +370,7 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
                             "review_status": "approved",
                         },
                         {
-                            "type": "cbc",
+                            "type": "event_validation",
                             "status": "running",
                             "review_status": "pending",
                         },
@@ -382,7 +382,7 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
                 "metadata": {
                     "analyses": [
                         {
-                            "type": "cbc",
+                            "type": "event_validation",
                             "status": "complete",
                             "review_status": "approved",
                         }
@@ -408,7 +408,7 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
                 sort_keys=True,
             ): {"2", "3"},
             json.dumps(
-                {"term": {"metadata.analyses.type": "cbc"}},
+                {"term": {"metadata.analyses.type": "event_validation"}},
                 sort_keys=True,
             ): {"1", "2"},
             json.dumps(
@@ -456,6 +456,106 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
         self.assertEqual(es.search.call_count, 5)
         self.assertIn("✓ query analyses.status=complete: 2 hit(s)", out.getvalue())
 
+    def test_query_checks_range_excludes_golden_upper_boundary(self):
+        command, _ = self._command()
+        first = self.job
+        first.trigger_time = 100.0
+        first.save(update_fields=["trigger_time"])
+        second = GWFlowJob.objects.create(
+            sname="S000002b",
+            user=self.user,
+            trigger_time=200.0,
+        )
+        documents = {
+            str(first.pk): {
+                "_gwcloud": {
+                    "sname": first.sname,
+                    "searchTriggerTime": first.trigger_time,
+                },
+                "metadata": {
+                    "analyses": [
+                        {
+                            "type": "pe",
+                            "status": "complete",
+                            "review_status": "approved",
+                        }
+                    ]
+                },
+            },
+            str(second.pk): {
+                "_gwcloud": {
+                    "sname": second.sname,
+                    "searchTriggerTime": second.trigger_time,
+                },
+                "metadata": {
+                    "analyses": [
+                        {
+                            "type": "event_validation",
+                            "status": "running",
+                            "review_status": "pending",
+                        }
+                    ]
+                },
+            },
+        }
+        expected_range = {
+            "range": {
+                "_gwcloud.searchTriggerTime": {
+                    "gte": 100.0,
+                    "lt": 200.0,
+                }
+            }
+        }
+        range_ids = set()
+
+        def search(*, index, query, size):
+            self.assertEqual(index, "gwcloud-gwflowjob")
+            self.assertEqual(size, 10000)
+            if query == expected_range:
+                hits = [{"_id": str(first.pk)}]
+                range_ids.update(hit["_id"] for hit in hits)
+                return {"hits": {"hits": hits}}
+
+            if "term" in query:
+                field, expected = next(iter(query["term"].items()))
+                hits = []
+                for document_id, document in documents.items():
+                    if field == "_gwcloud.sname":
+                        matched = document["_gwcloud"]["sname"] == expected
+                    else:
+                        analysis_field = field.rsplit(".", 1)[-1]
+                        matched = any(
+                            analysis.get(analysis_field) == expected for analysis in document["metadata"]["analyses"]
+                        )
+                    if matched:
+                        hits.append({"_id": document_id})
+                return {"hits": {"hits": hits}}
+
+            self.fail(f"Unexpected Elasticsearch query: {query!r}")
+
+        failures = []
+        es = mock.Mock()
+        es.search.side_effect = search
+
+        command._run_gwflow_query_checks(
+            es,
+            "gwcloud-gwflowjob",
+            documents,
+            lambda phase, **details: failures.append((phase, details["reason"])),
+        )
+
+        self.assertEqual(failures, [])
+        self.assertIn(
+            mock.call(
+                index="gwcloud-gwflowjob",
+                query=expected_range,
+                size=10000,
+            ),
+            es.search.call_args_list,
+        )
+        self.assertEqual(range_ids, {str(first.pk)})
+        self.assertNotIn(str(second.pk), range_ids)
+
     def test_query_checks_fail_required_gate_with_no_analysis_value(self):
         from django.core.management import CommandError
 
@@ -474,16 +574,10 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
 
         self.assertEqual(caught.exception.returncode, 1)
         self.assertIn(
-            "analyses.review_status query gate: "
-            "no analysis carries metadata.analyses.review_status",
+            "analyses.review_status query gate: no analysis carries metadata.analyses.review_status",
             caught.exception.command_output,
         )
-        self.assertFalse(
-            any(
-                "metadata.analyses.review_status" in body.get("term", {})
-                for body in search_bodies
-            )
-        )
+        self.assertFalse(any("metadata.analyses.review_status" in body.get("term", {}) for body in search_bodies))
 
     def _run_rebuild_command(
         self,
@@ -492,6 +586,7 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
         build,
         captured_runs,
         captured_searches=None,
+        captured_audits=None,
     ):
         from django.core.management import CommandError
 
@@ -500,16 +595,23 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
         documents = {}
 
         es = mock.MagicMock()
-        es.indices.get_mapping.return_value = {
-            "gwcloud-gwflowjob": build_gwflow_es_mapping()
-        }
-        es.count.side_effect = lambda *, index: {"count": len(documents)}
+        es.indices.get_mapping.return_value = {"gwcloud-gwflowjob": build_gwflow_es_mapping()}
+
+        def count(*, index):
+            result = {"count": len(documents)}
+            if captured_audits is not None:
+                captured_audits.append(("count", index, result["count"]))
+            return result
+
+        es.count.side_effect = count
 
         def search(*, index, query, size, **kwargs):
             if captured_searches is not None:
                 captured_searches.append(query)
             if "match_all" in query:
                 ids = sorted(documents)
+                if captured_audits is not None:
+                    captured_audits.append(("parity", index, tuple(ids)))
             elif "term" in query:
                 field, expected = next(iter(query["term"].items()))
                 ids = []
@@ -530,9 +632,7 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
                 ids = [
                     document_id
                     for document_id, document in documents.items()
-                    if bounds["gte"]
-                    <= document["_gwcloud"]["searchTriggerTime"]
-                    < bounds["lt"]
+                    if bounds["gte"] <= document["_gwcloud"]["searchTriggerTime"] < bounds["lt"]
                 ]
             else:
                 self.fail(f"Unexpected Elasticsearch query: {query!r}")
@@ -544,12 +644,7 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
             captured = list(actions)
             captured_runs.append(captured)
             documents.clear()
-            documents.update(
-                {
-                    str(action["_id"]): action["_source"]
-                    for action in captured
-                }
-            )
+            documents.update({str(action["_id"]): action["_source"] for action in captured})
             return iter(
                 (
                     True,
@@ -669,23 +764,60 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
             }
 
         captured_runs = []
-        first_output = self._run_rebuild_command(jobs, fetch, build, captured_runs)
-        second_output = self._run_rebuild_command(jobs, fetch, build, captured_runs)
+        first_searches = []
+        second_searches = []
+        first_audits = []
+        second_audits = []
+        first_output = self._run_rebuild_command(
+            jobs,
+            fetch,
+            build,
+            captured_runs,
+            first_searches,
+            first_audits,
+        )
+        second_output = self._run_rebuild_command(
+            jobs,
+            fetch,
+            build,
+            captured_runs,
+            second_searches,
+            second_audits,
+        )
 
         self.assertIn("2 indexed, 0 failed", first_output)
         self.assertIn("2 indexed, 0 failed", second_output)
         self.assertEqual(len(captured_runs), 2)
 
-        first = {
-            str(action["_id"]): copy.deepcopy(action["_source"])
-            for action in captured_runs[0]
-        }
-        second = {
-            str(action["_id"]): copy.deepcopy(action["_source"])
-            for action in captured_runs[1]
-        }
+        first = {str(action["_id"]): copy.deepcopy(action["_source"]) for action in captured_runs[0]}
+        second = {str(action["_id"]): copy.deepcopy(action["_source"]) for action in captured_runs[1]}
         self.assertEqual(set(first), set(second))
         self.assertEqual(first, second)
+        self.assertEqual(first_audits, second_audits)
+        self.assertEqual(
+            first_audits,
+            [
+                ("count", "gwcloud-gwflowjob", 2),
+                ("parity", "gwcloud-gwflowjob", tuple(sorted(first))),
+            ],
+        )
+        self.assertEqual(first_searches, second_searches)
+        self.assertEqual(len(first_searches), 6)
+        self.assertEqual(first_searches[0], {"match_all": {}})
+
+        first_query_successes = [line for line in first_output.splitlines() if line.startswith("✓ query ")]
+        second_query_successes = [line for line in second_output.splitlines() if line.startswith("✓ query ")]
+        self.assertEqual(first_query_successes, second_query_successes)
+        self.assertEqual(
+            first_query_successes,
+            [
+                "✓ query sname=S000001a: 1 hit(s)",
+                "✓ query analyses.type=pe: 2 hit(s)",
+                "✓ query analyses.status=complete: 2 hit(s)",
+                "✓ query analyses.review_status=approved: 2 hit(s)",
+                "✓ query searchTriggerTime range [100, 200): 1 hit(s)",
+            ],
+        )
         self.assertEqual(
             second[str(second_job.pk)]["_gwcloud"]["searchTriggerTime"],
             200.5,

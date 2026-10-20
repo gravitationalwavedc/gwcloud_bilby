@@ -68,6 +68,9 @@ class Command(BaseCommand):
         "      Upsert documents for every local GWFlowJob using live portal detail.\n"
         "  python manage.py es_ingest --gwflow --wipe-and-rebuild\n"
         "      Delete and recreate only settings.ELASTIC_SEARCH_GWFLOW_INDEX before rebuilding it.\n"
+        "      The rebuild expects a quiescent database and is intended to run inside the maintenance "
+        "writer freeze (issue #123); a concurrent write can make the before/after protected-identity "
+        "digest differ and the run will fail closed.\n"
         "  python manage.py es_ingest\n"
         "      Drop and rebuild the Bilby index."
     )
@@ -296,6 +299,8 @@ class Command(BaseCommand):
         eligible_ids = {str(job.pk) for job in eligible_jobs}
 
         def record_failure(phase, job=None, *, pk=None, sname=None, reason):
+            # A durable machine-readable failure record is deliberately deferred to
+            # issue #118 and is owned by the issue #123 cutover runbook.
             if job is not None:
                 pk = job.pk
                 sname = job.sname

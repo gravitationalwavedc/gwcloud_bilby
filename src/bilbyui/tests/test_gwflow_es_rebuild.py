@@ -24,8 +24,11 @@ CANONICAL_SECTIONS = (
 )
 
 
-def golden_detail(sname="S000001a", library="o4a"):
+def golden_detail(sname="S000001a", library=None):
     """Return the shared golden canonical detail payload."""
+    if library is None:
+        library = "o4b" if sname == "S000002b" else "o4a"
+
     return {
         "sname": sname,
         "libraries": [library],
@@ -45,12 +48,41 @@ def golden_detail(sname="S000001a", library="o4a"):
                 "software": {"name": "bilby_pipe", "version": "1.2.0"},
                 "analysts": [],
                 "reviews": [],
-                "input_files": [],
+                "input_files": [
+                    {
+                        "direction": "input",
+                        "role": "config",
+                        "file": {
+                            "name": "bilby_config.ini",
+                            "description": "Bilby parameter-estimation configuration",
+                            "md5sum": "0123456789abcdef0123456789abcdef",
+                            "last_modified": "2026-08-31T11:59:00Z",
+                            "locations": ["https://example.test/bilby_config.ini"],
+                        },
+                    }
+                ],
                 "output_files": [],
                 "configurations": [],
                 "in_catalog": True,
                 "review_status": "approved",
-            }
+            },
+            {
+                "uid": "S000001a-validation-report",
+                "type": "event_validation",
+                "revision": "1",
+                "name": "Event validation",
+                "description": "",
+                "status": "complete",
+                "deprecated": False,
+                "software": None,
+                "analysts": [],
+                "reviews": [],
+                "input_files": [],
+                "output_files": [],
+                "configurations": [],
+                "suggested_detector_configuration_uids": ["H1"],
+                "review_status": "approved",
+            },
         ],
         "detector_configurations": [{"uid": "H1"}],
         "gracedb_events": [{"event_name": "G000001", "network_snr": 12.5}],
@@ -259,6 +291,31 @@ class TestGoldenDocument(BilbyTestCase):
         self.assertEqual(doc["_gwcloud"]["searchTriggerTime"], 100.0)
         self.assertEqual(doc["_gwcloud"]["eventTriggerId"], "S000001a")
         self.assertEqual(doc["metadata"]["analyses"][0]["uid"], "pe_1")
+        validation = doc["metadata"]["analyses"][1]
+        self.assertEqual(validation["uid"], "S000001a-validation-report")
+        self.assertEqual(validation["type"], "event_validation")
+        self.assertEqual(
+            validation["suggested_detector_configuration_uids"],
+            ["H1"],
+        )
+        config_inputs = [
+            relationship
+            for relationship in doc["metadata"]["analyses"][0]["input_files"]
+            if relationship["role"] == "config"
+        ]
+        self.assertEqual(len(config_inputs), 1)
+        self.assertEqual(config_inputs[0]["direction"], "input")
+        self.assertEqual(config_inputs[0]["file"]["name"], "bilby_config.ini")
+        self.assertEqual(
+            config_inputs[0]["file"]["locations"],
+            ["https://example.test/bilby_config.ini"],
+        )
+
+    def test_golden_second_event_uses_o4b_library(self):
+        detail = golden_detail("S000002b")
+
+        self.assertEqual(detail["sname"], "S000002b")
+        self.assertEqual(detail["libraries"], ["o4b"])
 
 
 class TestProtectedIdentityDigest(BilbyTestCase):
