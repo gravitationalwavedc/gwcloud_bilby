@@ -2,9 +2,7 @@ import datetime
 from unittest.mock import MagicMock, patch
 
 import elasticsearch
-import requests
 from django.core.cache import caches
-from django.core.management import call_command
 from django.test import override_settings
 
 from bilbyui.models import EventID, GWFlowJob
@@ -282,228 +280,6 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
 
         self.assertEqual(doc["metadata"], metadata)
 
-    def test_parse_analyses_malformed_first_record_does_not_abort_later_records(self):
-        """A single malformed record must not discard later valid analyses."""
-
-        class RaisingGetDict(dict):
-            def get(self, *args, **kwargs):
-                raise ValueError("boom")
-
-        metadata = {
-            "ParameterEstimation": {
-                "results": [
-                    RaisingGetDict({"uid": "bad-1"}),
-                    {"uid": "good-1", "inference_software": "bilby", "run_status": "completed"},
-                ]
-            }
-        }
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual([a["uid"] for a in analyses], ["good-1"])
-        self.assertEqual(analyses[0]["software"], "bilby")
-
-    def test_parse_analyses_non_dict_returns_empty(self):
-        self.assertEqual(parse_analyses(None), [])
-        self.assertEqual(parse_analyses("not-a-dict"), [])
-
-    def test_parse_analyses_deprecated_string_booleans(self):
-        """Portal string booleans for 'deprecated' are normalised, not bool()'d."""
-        metadata = {
-            "ParameterEstimation": {
-                "results": [
-                    {"uid": "pe-false", "deprecated": "false"},
-                    {"uid": "pe-zero", "deprecated": "0"},
-                    {"uid": "pe-true", "deprecated": "true"},
-                    {"uid": "pe-one", "deprecated": "1"},
-                    {"uid": "pe-bool-true", "deprecated": True},
-                    {"uid": "pe-bool-false", "deprecated": False},
-                    {"uid": "pe-absent"},
-                ]
-            }
-        }
-
-        analyses = {a["uid"]: a["deprecated"] for a in parse_analyses(metadata)}
-
-        self.assertFalse(analyses["pe-false"])
-        self.assertFalse(analyses["pe-zero"])
-        self.assertTrue(analyses["pe-true"])
-        self.assertTrue(analyses["pe-one"])
-        self.assertTrue(analyses["pe-bool-true"])
-        self.assertFalse(analyses["pe-bool-false"])
-        self.assertFalse(analyses["pe-absent"])
-
-    def test_parse_analyses_scalar_analysts_reviewers_wrapped_in_list(self):
-        """A non-list scalar analysts/reviewers value is wrapped as a single string."""
-        metadata = {
-            "ParameterEstimation": {
-                "results": [
-                    {
-                        "uid": "pe-1",
-                        "analysts": "Alice",
-                        "reviewers": "Bob",
-                    }
-                ]
-            }
-        }
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual(analyses[0]["analysts"], ["Alice"])
-        self.assertEqual(analyses[0]["reviewers"], ["Bob"])
-
-    def test_parse_analyses_missing_analysts_reviewers_default_to_empty(self):
-        """Missing analysts/reviewers fields default to empty lists."""
-        metadata = {
-            "ParameterEstimation": {
-                "results": [
-                    {
-                        "uid": "pe-1",
-                    }
-                ]
-            }
-        }
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual(analyses[0]["analysts"], [])
-        self.assertEqual(analyses[0]["reviewers"], [])
-
-    def test_parse_analyses_mixed_dict_and_string_list_entries(self):
-        """List entries that are dicts use their 'name'; plain strings are kept as-is."""
-        metadata = {
-            "ParameterEstimation": {
-                "results": [
-                    {
-                        "uid": "pe-1",
-                        "analysts": [{"name": "Alice"}, "Bob", None],
-                        "reviewers": [{"name": "Carol"}, "Dave"],
-                    }
-                ]
-            }
-        }
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual(analyses[0]["analysts"], ["Alice", "Bob"])
-        self.assertEqual(analyses[0]["reviewers"], ["Carol", "Dave"])
-
-    def test_parse_analyses_dict_entry_without_name_dropped(self):
-        """Dict list entries without a usable 'name' are dropped, not persisted as None."""
-        metadata = {
-            "ParameterEstimation": {
-                "results": [
-                    {
-                        "uid": "pe-1",
-                        "analysts": [{"name": "Alice"}, {"id": "x"}, None],
-                        "reviewers": [{"id": "y"}, {"name": "Carol"}, ""],
-                    }
-                ]
-            }
-        }
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual(analyses[0]["analysts"], ["Alice"])
-        self.assertEqual(analyses[0]["reviewers"], ["Carol"])
-
-    def test_parse_analyses_section_dict_without_results_list(self):
-        """A section dict without a 'results' list is treated as a single record."""
-        metadata = {
-            "ParameterEstimation": {
-                "uid": "pe-1",
-                "inference_software": "bilby",
-                "run_status": "completed",
-            }
-        }
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual(len(analyses), 1)
-        self.assertEqual(analyses[0]["uid"], "pe-1")
-        self.assertEqual(analyses[0]["software"], "bilby")
-        self.assertEqual(analyses[0]["runStatus"], "completed")
-
-    def test_parse_analyses_scalar_analysts_and_reviewers(self):
-        """Non-list analysts/reviewers are wrapped into a single-element list."""
-        metadata = {
-            "ParameterEstimation": {
-                "results": [
-                    {
-                        "uid": "pe-1",
-                        "analysts": "Alice",
-                        "reviewers": "Bob",
-                    }
-                ]
-            }
-        }
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual(analyses[0]["analysts"], ["Alice"])
-        self.assertEqual(analyses[0]["reviewers"], ["Bob"])
-
-    def test_parse_analyses_unknown_section_key_skipped(self):
-        """A top-level section key not in section_type_map is skipped."""
-        metadata = {
-            "UnknownSection": {"results": [{"uid": "unknown-1"}]},
-            "ParameterEstimation": {"results": [{"uid": "pe-1"}]},
-        }
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual([a["uid"] for a in analyses], ["pe-1"])
-
-    def test_parse_analyses_top_level_list_section(self):
-        """A section whose value is a top-level list is parsed as records."""
-        metadata = {
-            "TGR": [
-                {"uid": "tgr-1", "software": "pycbc"},
-                {"uid": "tgr-2"},
-            ]
-        }
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual([a["uid"] for a in analyses], ["tgr-1", "tgr-2"])
-        self.assertEqual(analyses[0]["software"], "pycbc")
-
-    def test_parse_analyses_non_list_non_dict_section_value(self):
-        """A section value that is neither a list nor a dict yields no analyses."""
-        metadata = {"ParameterEstimation": "just-a-string"}
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual(analyses, [])
-
-    def test_parse_analyses_non_dict_list_item_skipped(self):
-        """A list item that is not a dict is skipped without aborting."""
-        metadata = {
-            "ParameterEstimation": {
-                "results": [
-                    "not-a-dict",
-                    {"uid": "pe-1"},
-                ]
-            }
-        }
-
-        analyses = parse_analyses(metadata)
-
-        self.assertEqual([a["uid"] for a in analyses], ["pe-1"])
-
-    def test_parse_analyses_never_raises_on_malformed_metadata(self):
-        """The outer guard returns [] without raising when metadata is malformed."""
-
-        class RaisingItemsDict(dict):
-            def items(self):
-                raise ValueError("boom")
-
-        with self.assertLogs("bilbyui.utils.gwflow_es", level="WARNING") as logs:
-            analyses = parse_analyses(RaisingItemsDict({"ParameterEstimation": {"results": []}}))
-
-        self.assertEqual(analyses, [])
-        self.assertTrue(any("Error parsing analyses" in r.getMessage() for r in logs.records))
-
 
 class TestCollectReviewStatuses(BilbyTestCase):
     def setUp(self):
@@ -675,90 +451,6 @@ class TestGetESClient(BilbyTestCase):
             api_key="test_api_key",
             verify_certs=False,
         )
-
-
-class TestESIngestGWFlowCommand(BilbyTestCase):
-    def setUp(self):
-        super().setUp()
-        self.user = self.create_user(id=12, primary_email="user12@example.com")
-        self.job = GWFlowJob.objects.create(sname="S230601ag", user=self.user)
-
-    @override_settings(CBCFLOW_PORTAL_URL="", CBCFLOW_PORTAL_TOKEN="")
-    def test_ingest_gwflow_missing_settings(self):
-        call_command("es_ingest", "--gwflow")
-
-    @override_settings(
-        CBCFLOW_PORTAL_URL="https://portal.example.com",
-        CBCFLOW_PORTAL_TOKEN="Bearer token123",
-        IGNORE_ELASTIC_SEARCH=True,
-    )
-    @patch("requests.get")
-    def test_ingest_gwflow_success(self, mock_get):
-        list_resp = MagicMock()
-        list_resp.status_code = 200
-        list_resp.json.return_value = {
-            "results": [{"sname": "S230601ag"}],
-            "next": None,
-        }
-
-        detail_resp = MagicMock()
-        detail_resp.status_code = 200
-        detail_resp.json.return_value = {"ParameterEstimation": {"results": []}}
-
-        mock_get.side_effect = [list_resp, detail_resp]
-
-        call_command("es_ingest", "--gwflow")
-        self.assertEqual(mock_get.call_count, 2)
-
-    @override_settings(
-        CBCFLOW_PORTAL_URL="https://portal.example.com",
-        CBCFLOW_PORTAL_TOKEN="Bearer token123",
-        IGNORE_ELASTIC_SEARCH=True,
-    )
-    @patch("requests.get")
-    def test_ingest_gwflow_skips_invalid_detail_json(self, mock_get):
-        list_resp = MagicMock()
-        list_resp.status_code = 200
-        list_resp.json.return_value = {
-            "results": [{"sname": "S230601ag"}, {"sname": "S230601ah"}],
-            "next": None,
-        }
-
-        invalid_detail_resp = MagicMock()
-        invalid_detail_resp.status_code = 200
-        invalid_detail_resp.json.side_effect = ValueError("No JSON object could be decoded")
-
-        valid_detail_resp = MagicMock()
-        valid_detail_resp.status_code = 200
-        valid_detail_resp.json.return_value = {"ParameterEstimation": {"results": []}}
-
-        mock_get.side_effect = [list_resp, invalid_detail_resp, valid_detail_resp]
-
-        call_command("es_ingest", "--gwflow")
-        self.assertEqual(mock_get.call_count, 3)
-
-    @override_settings(
-        CBCFLOW_PORTAL_URL="https://portal.example.com",
-        CBCFLOW_PORTAL_TOKEN="Bearer token123",
-        IGNORE_ELASTIC_SEARCH=True,
-    )
-    @patch("requests.get")
-    def test_ingest_gwflow_skips_detail_request_error(self, mock_get):
-        list_resp = MagicMock()
-        list_resp.status_code = 200
-        list_resp.json.return_value = {
-            "results": [{"sname": "S230601ag"}, {"sname": "S230601ah"}],
-            "next": None,
-        }
-
-        detail_resp = MagicMock()
-        detail_resp.status_code = 200
-        detail_resp.json.return_value = {"ParameterEstimation": {"results": []}}
-
-        mock_get.side_effect = [list_resp, requests.ConnectionError("connection timeout"), detail_resp]
-
-        call_command("es_ingest", "--gwflow")
-        self.assertEqual(mock_get.call_count, 3)
 
 
 class FakeGWFlowES:
@@ -1053,3 +745,78 @@ class TestGWFlowESIntegration(BilbyTestCase):
         self.assertEqual(rev_counts["pending"], 1)
         self.assertEqual(rev_counts["reviewed"], 1)
         self.assertEqual(rev_counts["Approved"], 1)
+
+
+class TestParseAnalysesCanonical(BilbyTestCase):
+    """PM-2..PM-9: the canonical analyses boundary."""
+
+    def _pe(self, **overrides):
+        entry = {
+            "uid": "pe_1",
+            "type": "pe",
+            "revision": "1",
+            "name": "PE",
+            "description": "",
+            "status": "complete",
+            "deprecated": False,
+            "software": {"name": "bilby_pipe", "version": "1.2.3"},
+            "analysts": [],
+            "reviews": [],
+            "input_files": [],
+            "output_files": [],
+            "configurations": [],
+            "in_catalog": True,
+        }
+        entry.update(overrides)
+        return entry
+
+    def test_absent_analyses_yields_empty(self):
+        self.assertEqual(parse_analyses({}), [])
+
+    def test_null_analyses_yields_empty(self):
+        self.assertEqual(parse_analyses({"analyses": None}), [])
+
+    def test_empty_analyses_yields_empty(self):
+        self.assertEqual(parse_analyses({"analyses": []}), [])
+
+    def test_pe_entry_is_returned_canonically(self):
+        [analysis] = parse_analyses({"analyses": [self._pe()]})
+        self.assertEqual(analysis["uid"], "pe_1")
+        self.assertEqual(analysis["type"], "pe")
+        self.assertEqual(analysis["status"], "complete")
+        self.assertEqual(analysis["software"], {"name": "bilby_pipe", "version": "1.2.3"})
+        self.assertTrue(analysis["in_catalog"])
+
+    def test_event_validation_entry_is_returned_canonically(self):
+        entry = self._pe(
+            uid="S000001a-validation-report",
+            type="event_validation",
+            suggested_detector_configuration_uids=["H1"],
+        )
+        entry.pop("in_catalog")
+        [analysis] = parse_analyses({"analyses": [entry]})
+        self.assertEqual(analysis["type"], "event_validation")
+        self.assertEqual(analysis["suggested_detector_configuration_uids"], ["H1"])
+
+    def test_malformed_entry_fails_the_whole_record(self):
+        good = self._pe(uid="pe_1")
+        bad = self._pe(uid="pe_2", status="unknown")
+        with self.assertRaises(InvalidGWFlowMetadata):
+            parse_analyses({"analyses": [good, bad]})
+
+    def test_software_null_is_accepted(self):
+        [analysis] = parse_analyses({"analyses": [self._pe(software=None)]})
+        self.assertIsNone(analysis["software"])
+
+    def test_legacy_section_keys_are_not_consumed(self):
+        legacy = {"ParameterEstimation": {"results": [{"uid": "pe-legacy", "review_status": "approved"}]}}
+        self.assertEqual(parse_analyses(legacy), [])
+
+    def test_non_array_analyses_is_rejected(self):
+        with self.assertRaises(InvalidGWFlowMetadata):
+            parse_analyses({"analyses": {"uid": "pe_1"}})
+
+    def test_review_status_is_derived_when_absent(self):
+        entry = self._pe(reviews=[{"review_status": "approved", "occurrence_uid": "r1"}])
+        [analysis] = parse_analyses({"analyses": [entry]})
+        self.assertEqual(analysis["review_status"], "approved")

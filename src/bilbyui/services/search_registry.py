@@ -88,6 +88,42 @@ DENIED_GLOBS = (
     "*.frame_file",
 )
 
+# Legacy GWFlow alias/default-field declarations relocated from the deleted
+# command and consumed by verify_search_fields.py.
+GWFLOW_ALIASES: dict[str, str] = {
+    "sname": "_gwcloud.sname",
+    "libraries": "_gwcloud.libraries",
+    "review_statuses": "_gwcloud.reviewStatuses",
+    "event_trigger_id": "_gwcloud.eventTriggerId",
+    "search_trigger_time": "_gwcloud.searchTriggerTime",
+    "last_updated_time": "_gwcloud.lastUpdatedTime",
+    "is_pruned": "_gwcloud.isPruned",
+    # Short aliases for the GraceDB event fields, so fielded queries read
+    # compactly (e.g. `instruments:(L1 V1) snr:[40 TO 60]`).
+    "instruments": "metadata.gracedb.instruments",
+    "snr": "metadata.gracedb.events.network_snr",
+    "far": "metadata.gracedb.events.far",
+    "pipeline": "metadata.gracedb.events.pipeline",
+    "pastro": "metadata.gracedb.events.pastro",
+}
+
+_DEFAULT_FIELD = [
+    "_gwcloud.sname",
+    "_gwcloud.eventTriggerId",
+    "_gwcloud.libraries",
+    "_gwcloud.reviewStatuses",
+    "metadata.gracedb.events.uid",
+    "metadata.pe.results.uid",
+    "metadata.pe.results.inference_software",
+    "metadata.pe.results.waveform_approximant",
+    "metadata.pe.results.run_status",
+    "metadata.pe.results.review_status",
+    "metadata.pe.status",
+    "metadata.gracedb.events.pipeline",
+    "metadata.gracedb.events.state",
+    "metadata.gracedb.instruments",
+]
+
 
 def is_denied(path: str) -> bool:
     """Return whether a mapped path is intentionally excluded from help."""
