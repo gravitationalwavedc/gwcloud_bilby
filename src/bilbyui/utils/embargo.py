@@ -435,6 +435,8 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
             gps = gracedb.get("gps_time")
         if gps is None:
             return None
+        if isinstance(gps, bool):
+            return None
         try:
             gps = float(gps)
         except (TypeError, ValueError, OverflowError):

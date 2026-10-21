@@ -193,6 +193,18 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
         metadata = {"gracedb": {"events": [{"gps_time": "bad"}], "preferred_event_gps": None, "gps_time": None}}
         self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
 
+    def test_boolean_preferred_event_gps_fallback_is_rejected(self):
+        # A boolean gracedb-level preferred_event_gps is unusable, matching the
+        # per-event branch, instead of float(True) == 1.0.
+        metadata = {"gracedb": {"events": [], "preferred_event_gps": True}}
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
+
+    def test_boolean_gps_time_fallback_is_rejected(self):
+        # A boolean gracedb-level gps_time is unusable, matching the per-event
+        # branch, instead of float(True) == 1.0.
+        metadata = {"gracedb": {"events": [], "gps_time": True}}
+        self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
+
     def test_capitalized_state_preferred_selected(self):
         # Capitalised preferred state (State/state: "Preferred") is treated
         # as preferred, matching resolve_event_id_for's case-insensitive match.
