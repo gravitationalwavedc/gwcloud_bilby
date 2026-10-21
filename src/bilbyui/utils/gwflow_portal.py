@@ -107,7 +107,7 @@ def _request_portal_json(url, *, path, sname=None):
                     return None, "failed"
                 try:
                     return resp.json(), "live"
-                except ValueError as exc:
+                except (ValueError, RecursionError) as exc:
                     logger.error(
                         "Malformed portal response for %s (sname=%s): %s",
                         path,
