@@ -1940,7 +1940,10 @@ def _render_gwflow_history_section(request, sname):
             def display_json(value):
                 if value is None:
                     return "Not provided"
-                return json.dumps(value, indent=2, sort_keys=True, default=str)
+                try:
+                    return json.dumps(value, indent=2, sort_keys=True, default=str)
+                except (TypeError, RecursionError):
+                    return "Not provided"
 
             diff_rows.append(
                 {
