@@ -256,6 +256,12 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         with self.assertRaises(InvalidGWFlowMetadata):
             build_gwflow_es_doc(self.job, metadata)
 
+    def test_build_gwflow_es_doc_invalid_round_trip_recursion(self):
+        metadata = {"x": {"y": 1}}
+        with patch("bilbyui.utils.gwflow_es.json.loads", side_effect=RecursionError("boom")):
+            with self.assertRaises(InvalidGWFlowMetadata):
+                build_gwflow_es_doc(self.job, metadata)
+
     def test_build_gwflow_es_doc_envelope_has_exactly_seven_fields(self):
         doc = build_gwflow_es_doc(self.job, {"ParameterEstimation": {"results": []}})
 
