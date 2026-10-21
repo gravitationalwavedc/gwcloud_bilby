@@ -31,6 +31,24 @@ def _time_range_to_timedelta(time_range):
         raise ValueError(msg) from None
 
 
+def _es_error_reason(error):
+    """Extract a reason string from an Elasticsearch error body, or '' if absent."""
+    body = getattr(error, "body", None)
+    if not isinstance(body, dict):
+        return ""
+    error_info = body.get("error")
+    if isinstance(error_info, dict):
+        reason = error_info.get("reason")
+        if reason:
+            return str(reason)
+        root_cause = error_info.get("root_cause")
+        if isinstance(root_cause, list) and root_cause:
+            first = root_cause[0]
+            if isinstance(first, dict) and first.get("reason"):
+                return str(first["reason"])
+    return ""
+
+
 def _numeric_es_records(records):
     """Return ES hit records whose ``_id`` is numeric, normalised to an int.
 
@@ -235,9 +253,12 @@ def list_public_jobs(user, *, search="", time_range="all", page=1, page_size=20,
         logger.exception("Failed to connect to Elasticsearch")
         empty_result["state"] = "down"
         return empty_result
-    except elasticsearch.exceptions.BadRequestError:
+    except elasticsearch.exceptions.BadRequestError as exc:
         logger.exception("Elasticsearch rejected the public jobs list query")
-        empty_result["state"] = "invalid"
+        if "leading wildcard" in _es_error_reason(exc):
+            empty_result["state"] = "invalid_leading_wildcard"
+        else:
+            empty_result["state"] = "invalid"
         return empty_result
 
     if not results or "hits" not in results:
