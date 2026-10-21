@@ -1,0 +1,197 @@
+{
+  "sname": "S000001a",
+  "baseline_version": 1,
+  "selected_version": 2,
+  "baseline_timestamp": "2026-01-01T00:00:00Z",
+  "selected_timestamp": "2026-01-02T00:00:00Z",
+  "changes": [
+    {
+      "entity_type": "analysis",
+      "identity": "S000001a-validation-report",
+      "kind": "deprecated",
+      "before": {
+        "uid": "S000001a-validation-report",
+        "library": "o4a",
+        "deprecated": false
+      },
+      "after": {
+        "uid": "S000001a-validation-report",
+        "library": "o4b",
+        "deprecated": true
+      },
+      "field_diffs": {
+        "deprecated": {
+          "baseline": false,
+          "selected": true
+        },
+        "library": {
+          "baseline": "o4a",
+          "selected": "o4b"
+        }
+      }
+    },
+    {
+      "entity_type": "analysis",
+      "identity": "pe_1",
+      "kind": "modified",
+      "before": {
+        "uid": "pe_1",
+        "library": "o4",
+        "deprecated": false
+      },
+      "after": {
+        "uid": "pe_1",
+        "library": "o4a",
+        "deprecated": false
+      },
+      "field_diffs": {
+        "library": {
+          "baseline": "o4",
+          "selected": "o4a"
+        }
+      }
+    },
+    {
+      "entity_type": "detector_configuration",
+      "identity": "H1",
+      "kind": "added",
+      "before": null,
+      "after": {
+        "uid": "H1"
+      },
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "gracedb_event",
+      "identity": "G000001",
+      "kind": "modified",
+      "before": {
+        "event_name": "G000001",
+        "has_ns": null,
+        "has_remnant": 0,
+        "has_mass_gap": 0.25,
+        "pipeline_has_ns": 1,
+        "pipeline_has_remnant": null,
+        "pipeline_has_mass_gap": 0.5
+      },
+      "after": {
+        "event_name": "G000001",
+        "has_ns": 1,
+        "has_remnant": 0.2,
+        "has_mass_gap": null,
+        "pipeline_has_ns": 0,
+        "pipeline_has_remnant": 0.75,
+        "pipeline_has_mass_gap": 1
+      },
+      "field_diffs": {
+        "has_ns": {
+          "baseline": null,
+          "selected": 1
+        },
+        "has_remnant": {
+          "baseline": 0,
+          "selected": 0.2
+        },
+        "has_mass_gap": {
+          "baseline": 0.25,
+          "selected": null
+        },
+        "pipeline_has_ns": {
+          "baseline": 1,
+          "selected": 0
+        },
+        "pipeline_has_remnant": {
+          "baseline": null,
+          "selected": 0.75
+        },
+        "pipeline_has_mass_gap": {
+          "baseline": 0.5,
+          "selected": 1
+        }
+      }
+    },
+    {
+      "entity_type": "catalog_connection",
+      "identity": "4:1",
+      "kind": "removed",
+      "before": {
+        "catalog_number": 4,
+        "catalog_version": 1
+      },
+      "after": null,
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "review",
+      "identity": {
+        "analysis_uid": "pe_1",
+        "occurrence_uid": "review-occurrence-1"
+      },
+      "kind": "modified",
+      "before": {
+        "occurrence_uid": "review-occurrence-1",
+        "name": "PE review",
+        "description": "",
+        "reviewers": [
+          {
+            "name": "Reviewer One",
+            "email_address": ""
+          }
+        ],
+        "passed_review": null,
+        "completion_date": null,
+        "review_status": "pending"
+      },
+      "after": {
+        "occurrence_uid": "review-occurrence-1",
+        "name": "PE review",
+        "description": "",
+        "reviewers": [
+          {
+            "name": "Reviewer One",
+            "email_address": ""
+          },
+          {
+            "name": "Reviewer Two",
+            "email_address": ""
+          }
+        ],
+        "passed_review": true,
+        "completion_date": "2026-01-02T00:00:00Z",
+        "review_status": "approved"
+      },
+      "field_diffs": {
+        "reviewers": {
+          "baseline": [
+            {
+              "name": "Reviewer One",
+              "email_address": ""
+            }
+          ],
+          "selected": [
+            {
+              "name": "Reviewer One",
+              "email_address": ""
+            },
+            {
+              "name": "Reviewer Two",
+              "email_address": ""
+            }
+          ]
+        },
+        "passed_review": {
+          "baseline": null,
+          "selected": true
+        },
+        "completion_date": {
+          "baseline": null,
+          "selected": "2026-01-02T00:00:00Z"
+        },
+        "review_status": {
+          "baseline": "pending",
+          "selected": "approved"
+        }
+      }
+    }
+  ]
+}

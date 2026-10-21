@@ -1,0 +1,160 @@
+{
+  "producer": {
+    "result": "success",
+    "operation": "attachment_created",
+    "analysis_uid": "A1",
+    "review": {
+      "occurrence_uid": "O",
+      "name": "R1",
+      "description": "Original review attachment",
+      "reviewers": [
+        {
+          "name": "Reviewer One",
+          "email_address": "reviewer.one@example.test"
+        }
+      ],
+      "passed_review": null,
+      "completion_date": null,
+      "review_status": "pending"
+    }
+  },
+  "version_1": {
+    "sname": "S000001a",
+    "baseline_version": 0,
+    "selected_version": 1,
+    "baseline_timestamp": "2026-01-01T00:00:00Z",
+    "selected_timestamp": "2026-01-02T00:00:00Z",
+    "changes": [
+      {
+        "entity_type": "analysis",
+        "identity": "A1",
+        "kind": "added",
+        "before": null,
+        "after": {
+          "uid": "A1",
+          "reviews": [
+            {
+              "occurrence_uid": "O",
+              "name": "R1",
+              "description": "Original review attachment",
+              "reviewers": [
+                {
+                  "name": "Reviewer One",
+                  "email_address": "reviewer.one@example.test"
+                }
+              ],
+              "passed_review": null,
+              "completion_date": null,
+              "review_status": "pending"
+            }
+          ]
+        },
+        "field_diffs": {}
+      },
+      {
+        "entity_type": "review",
+        "identity": {
+          "analysis_uid": "A1",
+          "occurrence_uid": "O"
+        },
+        "kind": "added",
+        "before": null,
+        "after": {
+          "occurrence_uid": "O",
+          "name": "R1",
+          "description": "Original review attachment",
+          "reviewers": [
+            {
+              "name": "Reviewer One",
+              "email_address": "reviewer.one@example.test"
+            }
+          ],
+          "passed_review": null,
+          "completion_date": null,
+          "review_status": "pending"
+        },
+        "field_diffs": {}
+      }
+    ]
+  },
+  "version_2": {
+    "sname": "S000001a",
+    "baseline_version": 1,
+    "selected_version": 2,
+    "baseline_timestamp": "2026-01-02T00:00:00Z",
+    "selected_timestamp": "2026-01-03T00:00:00Z",
+    "changes": [
+      {
+        "entity_type": "analysis",
+        "identity": "A2",
+        "kind": "added",
+        "before": null,
+        "after": {
+          "uid": "A2",
+          "reviews": [
+            {
+              "occurrence_uid": "O",
+              "name": "R2",
+              "description": "New review attachment",
+              "reviewers": [
+                {
+                  "name": "Reviewer Two",
+                  "email_address": "reviewer.two@example.test"
+                }
+              ],
+              "passed_review": null,
+              "completion_date": null,
+              "review_status": "pending"
+            }
+          ],
+          "preserved_analyses": [
+            {
+              "uid": "A1",
+              "reviews": [
+                {
+                  "occurrence_uid": "O",
+                  "name": "R1",
+                  "description": "Original review attachment",
+                  "reviewers": [
+                    {
+                      "name": "Reviewer One",
+                      "email_address": "reviewer.one@example.test"
+                    }
+                  ],
+                  "passed_review": null,
+                  "completion_date": null,
+                  "review_status": "pending"
+                }
+              ]
+            }
+          ]
+        },
+        "field_diffs": {}
+      },
+      {
+        "entity_type": "review",
+        "identity": {
+          "analysis_uid": "A2",
+          "occurrence_uid": "O"
+        },
+        "kind": "added",
+        "before": null,
+        "after": {
+          "occurrence_uid": "O",
+          "name": "R2",
+          "description": "New review attachment",
+          "reviewers": [
+            {
+              "name": "Reviewer Two",
+              "email_address": "reviewer.two@example.test"
+            }
+          ],
+          "passed_review": null,
+          "completion_date": null,
+          "review_status": "pending"
+        },
+        "field_diffs": {}
+      }
+    ]
+  }
+}

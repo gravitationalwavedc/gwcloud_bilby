@@ -62,7 +62,7 @@ from .services.gwflow_metadata import (
     warn_unmapped_metadata_leaves,
 )
 from .services.gwflow_versions import (
-    diff_payloads,
+    adapt_semantic_diff,
     prepare_version_snapshots,
     resolve_history_selection,
 )
@@ -85,6 +85,7 @@ from .utils.gwflow_es import (
     parse_analyses,
 )
 from .utils.gwflow_portal import (
+    get_diff,
     get_superevent,
     get_version,
     get_versions,
@@ -1844,12 +1845,34 @@ def _render_gwflow_history_section(request, sname):
             stale,
         )
 
-    snapshots = prepare_version_snapshots(
-        versions if isinstance(versions, list) else (),
-        current_sha=job.current_history_id or "",
-    )
-    selected = baseline = outcome = presentation = baseline_presentation = None
-    selected_payload = baseline_payload = None
+    try:
+        snapshots = prepare_version_snapshots(
+            versions if isinstance(versions, list) else (),
+            current_sha=job.current_history_id or "",
+        )
+    except ValueError as exc:
+        logger.warning(
+            "Malformed GWFlow history summary for %s: %s",
+            sname,
+            type(exc).__name__,
+        )
+        return (
+            TemplateResponse(
+                request,
+                "bilbyui/_async_state.html",
+                {
+                    "state": "error",
+                    "thing": "the history",
+                    "region_label": "History",
+                    "retry_url": reverse("bilbyui:gwflow_job_history", args=[sname]),
+                    "retry_target": "#detail-pane",
+                },
+            ),
+            False,
+        )
+
+    selected = baseline = None
+    diff_outcome = presentation = None
     compare_mode = request.GET.get("compare")
     try:
         selected, baseline, compare_mode = resolve_history_selection(
@@ -1862,17 +1885,9 @@ def _render_gwflow_history_section(request, sname):
             raise Http404("Version not found") from None
         compare_mode = "prev"
     else:
-        selected_detail, selected_state = get_version(sname, selected.full_sha)
+        selected_detail, selected_state = get_version(sname, selected.version_number)
         selected_payload = selected_detail.get("raw_payload") if isinstance(selected_detail, Mapping) else None
         stale = stale or selected_state == "stale"
-
-        if baseline is not None:
-            if baseline.full_sha == selected.full_sha:
-                baseline_payload = selected_payload
-            else:
-                baseline_detail, baseline_state = get_version(sname, baseline.full_sha)
-                baseline_payload = baseline_detail.get("raw_payload") if isinstance(baseline_detail, Mapping) else None
-                stale = stale or baseline_state == "stale"
 
         if isinstance(selected_payload, dict):
             presentation = build_metadata_presentation(
@@ -1880,16 +1895,63 @@ def _render_gwflow_history_section(request, sname):
                 historical=not selected.is_current,
             )
             warn_unmapped_metadata_leaves(selected_payload, sname=sname)
-        outcome = diff_payloads(
-            baseline_payload,
-            selected_payload,
-            baseline_schema=baseline.schema_version if baseline else None,
-            selected_schema=selected.schema_version,
+
+        if baseline is not None:
+            diff_payload, diff_state = get_diff(
+                sname,
+                baseline.version_number,
+                selected.version_number,
+            )
+            stale = stale or diff_state == "stale"
+        else:
+            # The adapter short-circuits before inspecting payload when no baseline exists.
+            diff_payload, diff_state = None, "live"
+
+        diff_outcome = adapt_semantic_diff(
+            sname=sname,
+            baseline_version=baseline.version_number if baseline else None,
+            selected_version=selected.version_number,
+            payload=diff_payload,
+            state=diff_state,
         )
-        if outcome.status == "cross_schema" and isinstance(baseline_payload, dict):
-            baseline_presentation = build_metadata_presentation(
-                baseline_payload,
-                historical=True,
+
+        if diff_outcome.status not in {
+            "semantic",
+            "semantic_empty",
+            "no_baseline",
+        }:
+            logger.warning(
+                "GWFlow semantic comparison %s for %s versions %s to %s: %s",
+                diff_outcome.status,
+                sname,
+                baseline.version_number if baseline else None,
+                selected.version_number,
+                diff_outcome.reason,
+            )
+
+    diff_rows = []
+    if diff_outcome is not None:
+        for row in diff_outcome.rows:
+            if row.entity_type == "review":
+                identity_display = f"{row.identity['analysis_uid']} / {row.identity['occurrence_uid']}"
+            else:
+                identity_display = str(row.identity)
+
+            def display_json(value):
+                if value is None:
+                    return "Not provided"
+                return json.dumps(value, indent=2, sort_keys=True, default=str)
+
+            diff_rows.append(
+                {
+                    "entity_type": row.entity_type,
+                    "identity_display": identity_display,
+                    "kind": row.kind,
+                    "field_diff_count": len(row.field_diffs),
+                    "before_json": display_json(row.before),
+                    "after_json": display_json(row.after),
+                    "field_diffs_json": display_json(row.field_diffs),
+                }
             )
 
     return (
@@ -1903,15 +1965,9 @@ def _render_gwflow_history_section(request, sname):
                 "selected_version": selected,
                 "baseline_version": baseline,
                 "compare_mode": compare_mode,
-                "diff_outcome": outcome,
+                "diff_outcome": diff_outcome,
+                "diff_rows": diff_rows,
                 "presentation": presentation,
-                "baseline_presentation": baseline_presentation,
-                "baseline_raw_json": json.dumps(
-                    baseline_payload if baseline and baseline_payload is not None else None
-                ),
-                "selected_raw_json": json.dumps(
-                    selected_payload if selected and selected_payload is not None else None
-                ),
                 "stale": stale,
             },
         ),

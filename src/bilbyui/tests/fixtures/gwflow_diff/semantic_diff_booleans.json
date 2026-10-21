@@ -1,0 +1,42 @@
+{
+  "sname": "S000001a",
+  "baseline_version": 1,
+  "selected_version": 2,
+  "baseline_timestamp": "2026-01-01T00:00:00Z",
+  "selected_timestamp": "2026-01-02T00:00:00Z",
+  "changes": [
+    {
+      "entity_type": "gracedb_event",
+      "identity": "G000001",
+      "kind": "modified",
+      "before": {
+        "event_name": "G000001",
+        "has_ns": null,
+        "has_remnant": 0,
+        "has_mass_gap": 0.25,
+        "pipeline_has_ns": 1,
+        "pipeline_has_remnant": null,
+        "pipeline_has_mass_gap": 1
+      },
+      "after": {
+        "event_name": "G000001",
+        "has_ns": true,
+        "has_remnant": 0,
+        "has_mass_gap": 0.25,
+        "pipeline_has_ns": 1,
+        "pipeline_has_remnant": null,
+        "pipeline_has_mass_gap": false
+      },
+      "field_diffs": {
+        "has_ns": {
+          "baseline": null,
+          "selected": true
+        },
+        "pipeline_has_mass_gap": {
+          "baseline": 1,
+          "selected": false
+        }
+      }
+    }
+  ]
+}
