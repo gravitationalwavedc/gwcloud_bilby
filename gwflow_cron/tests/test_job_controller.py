@@ -3,6 +3,7 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 import jwt
 import requests
@@ -91,6 +92,17 @@ class TestJobControllerClient(unittest.TestCase):
                     responses.add(responses.POST, f"{API_URL}/file/", json=payload, status=200)
                 with self.assertRaises(FetchError):
                     self.client.create_file_downloads(["/data/pe1/config.ini"])
+
+    @mock.patch("job_controller.requests.post")
+    def test_create_file_downloads_raises_fetch_error_on_recursion_error(self, mock_post):
+        resp = mock.Mock()
+        resp.status_code = 200
+        resp.text = "deeply nested"
+        resp.json.side_effect = RecursionError("maximum recursion depth exceeded")
+        mock_post.return_value = resp
+
+        with self.assertRaises(FetchError):
+            self.client.create_file_downloads(["/data/pe1/config.ini"])
 
     @responses.activate
     def test_create_file_downloads_raises_fetch_error_on_empty_file_ids(self):
