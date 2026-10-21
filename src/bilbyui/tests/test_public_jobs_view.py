@@ -477,7 +477,16 @@ class TestPublicJobsView(BilbyTestCase):
         }
         search_query = {
             "bool": {
-                "must": [{"query_string": {"query": "GW150914", "default_operator": "AND"}}],
+                "must": [
+                    {
+                        "query_string": {
+                            "query": "GW150914",
+                            "default_operator": "AND",
+                            "allow_leading_wildcard": False,
+                            "analyze_wildcard": False,
+                        }
+                    }
+                ],
                 "filter": [{"term": {"_private_info_.private": False}}],
             }
         }
