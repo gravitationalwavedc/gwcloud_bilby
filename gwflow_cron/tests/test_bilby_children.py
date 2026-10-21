@@ -843,6 +843,10 @@ class TestResolveEventIdFor(unittest.TestCase):
         detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": "not-a-number"}]}}
         self.assertIsNone(resolve_event_id_for("S1", detail))
 
+    def test_boolean_gps_returns_none(self):
+        detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": True}]}}
+        self.assertIsNone(resolve_event_id_for("S1", detail))
+
     def test_nan_gps_returns_none(self):
         detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": "nan"}]}}
         self.assertIsNone(resolve_event_id_for("S1", detail))
