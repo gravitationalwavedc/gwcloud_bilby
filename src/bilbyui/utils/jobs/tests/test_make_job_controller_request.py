@@ -93,3 +93,17 @@ class TestMakeJobControllerRequest(BilbyTestCase):
             _make_job_controller_request("GET", f"{BASE_URL}/status/", USER_ID)
 
         self.assertIn("Job controller returned invalid JSON", str(ctx.exception))
+
+    def test_recursion_limit_response_raises_request_exception(self):
+        deeply_nested = b"[" * 10000 + b"]" * 10000
+        self.responses.add(
+            responses.GET,
+            f"{BASE_URL}/status/",
+            body=deeply_nested,
+            status=200,
+        )
+
+        with self.assertRaises(requests.RequestException) as ctx:
+            _make_job_controller_request("GET", f"{BASE_URL}/status/", USER_ID)
+
+        self.assertIn("Job controller returned invalid JSON", str(ctx.exception))

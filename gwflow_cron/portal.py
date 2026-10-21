@@ -92,7 +92,7 @@ class PortalClient:
     ):
         try:
             return response.json()
-        except ValueError as exc:
+        except (ValueError, RecursionError) as exc:
             raise self._malformed(
                 endpoint,
                 sname,

@@ -926,6 +926,9 @@ class TestSafeJsonLoads(BilbyTestCase):
         self.assertIsNone(_safe_json_loads({"a": 1}))
         self.assertIsNone(_safe_json_loads(["a"]))
 
+    def test_deeply_nested_json_returns_none(self):
+        self.assertIsNone(_safe_json_loads("[" * 100000 + "]" * 100000))
+
 
 class TestTriggerTimeAndGpsTimeSchema(BilbyTestCase):
     @classmethod

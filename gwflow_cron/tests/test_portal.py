@@ -7,6 +7,11 @@ import responses
 from portal import PortalClient, PortalMalformedResponseError
 
 
+def _deeply_nested_body() -> str:
+    depth = 20000
+    return "[" * depth + "]" * depth
+
+
 class TestPortalClient(unittest.TestCase):
     def setUp(self):
         self.base_url = "https://cbcflow.example.com"
@@ -297,6 +302,20 @@ class TestPortalClient(unittest.TestCase):
         self.assertIn("'list'", log_text)
 
     @responses.activate
+    def test_list_deeply_nested_body_raises_malformed(self):
+        url = f"{self.base_url}/api/v1/superevents/?page=1"
+        responses.add(
+            responses.GET,
+            url,
+            body=_deeply_nested_body(),
+            status=200,
+            content_type="application/json",
+        )
+
+        with self.assertRaises(PortalMalformedResponseError):
+            list(self.client.iter_changed())
+
+    @responses.activate
     def test_get_superevent_accepts_empty_arrays_and_null_raw_payload(self):
         sname = "S260101a"
         url = f"{self.base_url}/api/v1/superevents/{sname}/"
@@ -438,6 +457,21 @@ class TestPortalClient(unittest.TestCase):
         self.assertIn(sname, "\n".join(logs.output))
 
     @responses.activate
+    def test_get_superevent_deeply_nested_body_raises_malformed(self):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/"
+        responses.add(
+            responses.GET,
+            url,
+            body=_deeply_nested_body(),
+            status=200,
+            content_type="application/json",
+        )
+
+        with self.assertRaises(PortalMalformedResponseError):
+            self.client.get_superevent(sname)
+
+    @responses.activate
     def test_get_versions_canonical_one_page_preserves_server_order(self):
         sname = "S260101a"
         url = f"{self.base_url}/api/v1/superevents/{sname}/versions/"
@@ -568,6 +602,21 @@ class TestPortalClient(unittest.TestCase):
         )
         self.assertIn(url, "\n".join(logs.output))
         self.assertIn(sname, "\n".join(logs.output))
+
+    @responses.activate
+    def test_get_versions_deeply_nested_body_raises_malformed(self):
+        sname = "S260101a"
+        url = f"{self.base_url}/api/v1/superevents/{sname}/versions/"
+        responses.add(
+            responses.GET,
+            url,
+            body=_deeply_nested_body(),
+            status=200,
+            content_type="application/json",
+        )
+
+        with self.assertRaises(PortalMalformedResponseError):
+            self.client.get_versions(sname)
 
     @responses.activate
     def test_iter_changed_rejects_row_missing_record_timestamp_with_context(self):

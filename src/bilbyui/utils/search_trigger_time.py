@@ -42,7 +42,10 @@ def max_finite_time(values) -> float | None:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             continue
 
-        finite_value = float(value)
+        try:
+            finite_value = float(value)
+        except OverflowError:
+            continue
         if math.isfinite(finite_value) and (maximum is None or finite_value > maximum):
             maximum = finite_value
 

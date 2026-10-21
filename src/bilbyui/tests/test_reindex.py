@@ -11,6 +11,7 @@ from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.reindex import (
     ReindexCounts,
     ReindexError,
+    _finite_numeric,
     reindex_affected_event,
     reindex_jobs,
     verify_search_trigger_time,
@@ -253,6 +254,30 @@ class TestReindexJobs(BilbyTestCase):
         self.assertEqual(bulk.call_count, 1)
         sleep.assert_not_called()
 
+    def test_malformed_response_counts_successes_and_real_failures(self):
+        jobs = [self.make_bilby(number) for number in range(3)]
+        errors = [
+            bulk_error(jobs[1].id, 400),
+            {"index": {"_id": "999", "status": 400, "error": {"type": "x", "reason": "spurious"}}},
+        ]
+        with (
+            mock.patch("bilbyui.utils.reindex.get_es_client"),
+            mock.patch(
+                "bilbyui.utils.reindex.build_bilby_es_doc",
+                side_effect=lambda job: {"id": job.id},
+            ),
+            mock.patch(
+                "bilbyui.utils.reindex.helpers.bulk",
+                return_value=(0, errors),
+            ) as bulk,
+            mock.patch("bilbyui.utils.reindex.time.sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(ReindexError, r"scanned=3 succeeded=2 failed=1"):
+                reindex_jobs([job.id for job in jobs], "bilby")
+
+        self.assertEqual(bulk.call_count, 1)
+        sleep.assert_not_called()
+
     def test_retry_exhaustion_is_exactly_three_calls_and_two_sleeps(self):
         job = self.make_bilby(1)
         response = (0, [bulk_error(job.id, 429)])
@@ -388,6 +413,11 @@ class TestReindexAffectedEvent(BilbyTestCase):
         self.assertNotIn(unrelated_gwflow.id, gwflow_ids)
         self.assertTrue(all(len(ids) <= 200 for ids, _kind in calls))
         self.assertEqual(counts, ReindexCounts(4, 4, 0))
+
+
+class TestFiniteNumeric(BilbyTestCase):
+    def test_oversized_int_returns_none_without_raising(self):
+        self.assertIsNone(_finite_numeric(10**400))
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=False)

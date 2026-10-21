@@ -474,7 +474,7 @@ class TestActiveFiltersPagination(BilbyTestCase):
     def test_my_jobs_page_passes_search_form_params(self):
         source = get_template("bilbyui/my_jobs.html").template.source
 
-        self.assertIn('search_help_template="bilbyui/_bilby_search_help.html"', source)
+        self.assertIn('search_help_template="bilbyui/_plain_search_help.html"', source)
         self.assertIn("show_gwflow_filters=False", source)
         self.assertIn('list_target_id="job-list"', source)
 

@@ -122,9 +122,10 @@ def _bulk_actions(es, actions, kind):
                 )
 
         if malformed_response:
-            for key in current:
-                permanent.add(key)
+            successful_ids = set(current) - failed_ids
+            for key in successful_ids:
                 pending.pop(key, None)
+            succeeded += len(successful_ids)
             break
 
         successful_ids = set(current) - failed_ids
@@ -278,7 +279,10 @@ def _finite_numeric(value):
         value = value.item()
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    numeric = float(value)
+    try:
+        numeric = float(value)
+    except OverflowError:
+        return None
     return numeric if math.isfinite(numeric) else None
 
 

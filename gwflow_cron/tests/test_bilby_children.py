@@ -554,6 +554,10 @@ class TestSetIniLabel(unittest.TestCase):
         self.assertIn("label = new\n", out)
         self.assertNotIn("label = old", out)
 
+    def test_backslash_in_name_treated_literally(self):
+        text = "label = old\nfoo = bar\n"
+        self.assertEqual(_set_ini_label(text, "S1--a\\1b"), "label = S1--a\\1b\nfoo = bar\n")
+
 
 class TestIniOutdir(unittest.TestCase):
     def test_empty_ini_returns_none(self):
@@ -841,6 +845,10 @@ class TestResolveEventIdFor(unittest.TestCase):
 
     def test_non_numeric_gps_returns_none(self):
         detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": "not-a-number"}]}}
+        self.assertIsNone(resolve_event_id_for("S1", detail))
+
+    def test_boolean_gps_returns_none(self):
+        detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": True}]}}
         self.assertIsNone(resolve_event_id_for("S1", detail))
 
     def test_nan_gps_returns_none(self):

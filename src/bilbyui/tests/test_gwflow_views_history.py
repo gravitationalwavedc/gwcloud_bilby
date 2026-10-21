@@ -1505,3 +1505,14 @@ class TestGWFlowHistoryRenderedOutcomes(BilbyTestCase):
                 region = self.changes_region(response)
                 self.assertEqual("Try again" in region, expected_retry)
                 self.assertNotIn("None", region)
+
+    def test_recursion_error_serialising_diff_rows_degrades_gracefully(self):
+        with mock.patch("bilbyui.views.json.dumps", side_effect=RecursionError):
+            response, _, get_version, get_diff = self.render()
+
+        self.assertEqual(response.status_code, 200)
+        region = self.changes_region(response)
+        self.assertIn("Not provided", region)
+        self.assertNotIn("Try again", region)
+        get_version.assert_called_once_with(self.sname, 42)
+        get_diff.assert_called_once_with(self.sname, 41, 42)

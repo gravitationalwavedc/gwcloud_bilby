@@ -318,7 +318,7 @@ def _set_ini_label(ini_text: str, name: str) -> str:
     whitespace tolerant); otherwise prepends "label = {name}\\n".
     """
     pattern = re.compile(r"^label\s*=[^\n]*", re.MULTILINE | re.IGNORECASE)
-    replacement = f"label = {name}"
+    replacement = f"label = {name}".replace("\\", "\\\\")
     if pattern.search(ini_text):
         return pattern.sub(replacement, ini_text, count=1)
     return f"{replacement}\n{ini_text}"
@@ -540,6 +540,9 @@ def resolve_event_id_for(sname: str, detail: dict) -> tuple[str, float] | None:
         gps_time = gracedb.get("preferred_event_gps")
     if gps_time is None:
         gps_time = gracedb.get("gps_time")
+
+    if isinstance(gps_time, bool):
+        return None
 
     try:
         parsed = float(gps_time)

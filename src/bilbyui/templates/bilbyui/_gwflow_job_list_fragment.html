@@ -2,6 +2,10 @@
 <div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="error">
   {% include "bilbyui/_async_state.html" with state="error" thing="the GWFlow jobs" region_label="GWFlow job list" retry_url=retry_url retry_target=retry_target indicator_id=indicator_id retry_sync="#jobs-search-region:replace" %}
 </div>
+{% elif service_state == "invalid_leading_wildcard" %}
+<div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="error">
+  <div class="alert alert-warning" role="alert">Leading wildcards are not supported. Try <code>sname:2306*</code> instead of <code>sname:*2306*</code>.</div>
+</div>
 {% elif service_state == "invalid" %}
 <div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="error">
   <div class="alert alert-warning" role="alert">The search expression is invalid. Check the advanced syntax and try again.</div>

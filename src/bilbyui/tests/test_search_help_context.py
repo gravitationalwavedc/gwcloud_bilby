@@ -40,6 +40,16 @@ class TestSearchHelpContext(SimpleTestCase):
             ],
         )
 
+    def test_plain_surface_has_no_fielded_content(self):
+        context = build_search_help("plain")
+        self.assertEqual(context["syntax_hint"], "Search matches your job name and description.")
+        self.assertEqual(context["common"], [])
+        self.assertEqual(context["groups"], [])
+        self.assertEqual(context["typed_note"], "")
+        self.assertEqual(context["alias_note"], "")
+        self.assertEqual(context["placeholder"], "Try GW150914")
+        self.assertEqual(context["examples"], [])
+
     def test_casing_hint_eligibility_truth_table(self):
         cases = (
             ("", 0, False),
