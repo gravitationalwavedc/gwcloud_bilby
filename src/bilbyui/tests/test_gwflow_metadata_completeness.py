@@ -62,6 +62,17 @@ class LeafPathTests(SimpleTestCase):
             ["info.z_unknown[]"],
         )
 
+    def test_deeply_nested_payload_degrades_gracefully_without_raising(self):
+        payload = {}
+        node = payload
+        for _ in range(2000):
+            node["next"] = {}
+            node = node["next"]
+        node["leaf"] = 1
+
+        with self.assertNoLogs("bilbyui.services.gwflow_metadata", level="WARNING"):
+            warn_unmapped_metadata_leaves(payload, sname="S-DEEP")
+
     def test_non_mapping_payload_is_silent(self):
         for payload in ("not-a-mapping", None, ["not-a-mapping"]):
             with self.subTest(payload=payload):
