@@ -122,9 +122,10 @@ def _bulk_actions(es, actions, kind):
                 )
 
         if malformed_response:
-            for key in current:
-                permanent.add(key)
+            successful_ids = set(current) - failed_ids
+            for key in successful_ids:
                 pending.pop(key, None)
+            succeeded += len(successful_ids)
             break
 
         successful_ids = set(current) - failed_ids
