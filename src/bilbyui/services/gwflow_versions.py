@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
+from bilbyui.utils.gwflow_es import _parse_portal_bool
+
 SemanticPresentationStatus = Literal[
     "semantic",
     "semantic_empty",
@@ -94,14 +96,6 @@ class SemanticPresentationOutcome:
     baseline_timestamp: str | None = None
     selected_timestamp: str | None = None
     reason: str | None = None
-
-
-def _parse_portal_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() in ("true", "1", "yes")
-    return bool(value)
 
 
 def _timestamp(value: Any) -> datetime | None:
