@@ -123,6 +123,11 @@
     overflow-wrap: anywhere;
   }
 
+  &__record {
+    dt, dd { overflow-wrap: anywhere; }
+    ul { padding-left: 1.25rem; }
+  }
+
   &__values,
   &__fallback,
   &__raw-columns {
@@ -205,6 +210,14 @@
 
 .gwflow-change-badge--changed::before {
   content: "± ";
+}
+
+.gwflow-change-badge--modified::before {
+  content: "± ";
+}
+
+.gwflow-change-badge--deprecated::before {
+  content: "✕ ";
 }
 
 @media (max-width: 767.98px) {

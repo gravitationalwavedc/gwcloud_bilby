@@ -1,3 +1,4 @@
+{% load gwflow_diff_render %}
 {% if diff_outcome %}
   <section class="gwflow-changes" aria-labelledby="version-changes-heading">
     {% if diff_outcome.baseline_version is not None and diff_outcome.selected_version is not None %}
@@ -31,23 +32,30 @@
       <ul class="gwflow-changes__list">
         {% for row in diff_rows %}
           <li class="gwflow-changes__item">
+            <span class="gwflow-change-badge gwflow-change-badge--{{ row.kind }}">{{ row.kind|capfirst }}</span>
             <strong class="gwflow-changes__path">{{ row.entity_type }}</strong>
-            <span>{{ row.identity_display }}</span>
-            <span class="gwflow-change-badge gwflow-change-badge--{{ row.kind }}">{{ row.kind }}</span>
-            <details>
-              <summary>
-                {{ row.field_diff_count }} supplied field difference{{ row.field_diff_count|pluralize }}
-              </summary>
-              <p>
-                Temporary technical inspection aid. GWF-5 replaces this inspection view.
-              </p>
-              <strong>Before</strong>
-              <pre><code>{{ row.before_json }}</code></pre>
-              <strong>After</strong>
-              <pre><code>{{ row.after_json }}</code></pre>
-              <strong>Field differences</strong>
-              <pre><code>{{ row.field_diffs_json }}</code></pre>
-            </details>
+            {% include "bilbyui/_tech_value.html" with value=row.identity_value primary=row.identity_primary kind="id" %}
+            {% if row.kind == "added" or row.kind == "removed" %}
+              <div class="gwflow-changes__record">{% render_diff_value row.record %}</div>
+            {% elif row.kind == "deprecated" %}
+              <div class="gwflow-changes__record">
+                <h4 class="h6">Before</h4>
+                {% render_diff_value row.record.0 %}
+                <h4 class="h6">After</h4>
+                {% render_diff_value row.record.1 %}
+              </div>
+              {% if row.field_diff_count %}
+                <details>
+                  <summary>{{ row.field_diff_count }} field difference{{ row.field_diff_count|pluralize }}</summary>
+                  <div class="gwflow-changes__record">{% render_diff_value row.field_diffs %}</div>
+                </details>
+              {% endif %}
+            {% else %}
+              <details>
+                <summary>{{ row.field_diff_count }} field difference{{ row.field_diff_count|pluralize }}</summary>
+                <div class="gwflow-changes__record">{% render_diff_value row.field_diffs %}</div>
+              </details>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>
