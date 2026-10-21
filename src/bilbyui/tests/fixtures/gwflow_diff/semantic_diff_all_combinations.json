@@ -1,0 +1,304 @@
+{
+  "sname": "S000001a",
+  "baseline_version": 1,
+  "selected_version": 2,
+  "baseline_timestamp": "2026-01-01T00:00:00Z",
+  "selected_timestamp": "2026-01-02T00:00:00Z",
+  "changes": [
+    {
+      "entity_type": "analysis",
+      "identity": "01-01-analysis-added",
+      "kind": "added",
+      "before": null,
+      "after": {
+        "uid": "01-01-analysis-added",
+        "value": "selected-analysis-added"
+      },
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "analysis",
+      "identity": "01-02-analysis-removed",
+      "kind": "removed",
+      "before": {
+        "uid": "01-02-analysis-removed",
+        "value": "baseline-analysis-removed"
+      },
+      "after": null,
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "analysis",
+      "identity": "01-03-analysis-modified",
+      "kind": "modified",
+      "before": {
+        "uid": "01-03-analysis-modified",
+        "value": "baseline-analysis-modified"
+      },
+      "after": {
+        "uid": "01-03-analysis-modified",
+        "value": "selected-analysis-modified"
+      },
+      "field_diffs": {
+        "value": {
+          "baseline": "baseline-analysis-modified",
+          "selected": "selected-analysis-modified"
+        }
+      }
+    },
+    {
+      "entity_type": "analysis",
+      "identity": "01-04-analysis-deprecated",
+      "kind": "deprecated",
+      "before": {
+        "uid": "01-04-analysis-deprecated",
+        "value": "baseline-analysis-deprecated"
+      },
+      "after": {
+        "uid": "01-04-analysis-deprecated",
+        "value": "selected-analysis-deprecated"
+      },
+      "field_diffs": {
+        "value": {
+          "baseline": "baseline-analysis-deprecated",
+          "selected": "selected-analysis-deprecated"
+        }
+      }
+    },
+    {
+      "entity_type": "detector_configuration",
+      "identity": "02-01-detector_configuration-added",
+      "kind": "added",
+      "before": null,
+      "after": {
+        "uid": "02-01-detector_configuration-added",
+        "value": "selected-detector_configuration-added"
+      },
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "detector_configuration",
+      "identity": "02-02-detector_configuration-removed",
+      "kind": "removed",
+      "before": {
+        "uid": "02-02-detector_configuration-removed",
+        "value": "baseline-detector_configuration-removed"
+      },
+      "after": null,
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "detector_configuration",
+      "identity": "02-03-detector_configuration-modified",
+      "kind": "modified",
+      "before": {
+        "uid": "02-03-detector_configuration-modified",
+        "value": "baseline-detector_configuration-modified"
+      },
+      "after": {
+        "uid": "02-03-detector_configuration-modified",
+        "value": "selected-detector_configuration-modified"
+      },
+      "field_diffs": {
+        "value": {
+          "baseline": "baseline-detector_configuration-modified",
+          "selected": "selected-detector_configuration-modified"
+        }
+      }
+    },
+    {
+      "entity_type": "gracedb_event",
+      "identity": "03-01-gracedb_event-added",
+      "kind": "added",
+      "before": null,
+      "after": {
+        "uid": "03-01-gracedb_event-added",
+        "value": "selected-gracedb_event-added"
+      },
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "gracedb_event",
+      "identity": "03-02-gracedb_event-removed",
+      "kind": "removed",
+      "before": {
+        "uid": "03-02-gracedb_event-removed",
+        "value": "baseline-gracedb_event-removed"
+      },
+      "after": null,
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "gracedb_event",
+      "identity": "03-03-gracedb_event-modified",
+      "kind": "modified",
+      "before": {
+        "uid": "03-03-gracedb_event-modified",
+        "value": "baseline-gracedb_event-modified"
+      },
+      "after": {
+        "uid": "03-03-gracedb_event-modified",
+        "value": "selected-gracedb_event-modified"
+      },
+      "field_diffs": {
+        "value": {
+          "baseline": "baseline-gracedb_event-modified",
+          "selected": "selected-gracedb_event-modified"
+        }
+      }
+    },
+    {
+      "entity_type": "catalog_connection",
+      "identity": "04-01-catalog_connection-added",
+      "kind": "added",
+      "before": null,
+      "after": {
+        "uid": "04-01-catalog_connection-added",
+        "value": "selected-catalog_connection-added"
+      },
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "catalog_connection",
+      "identity": "04-02-catalog_connection-removed",
+      "kind": "removed",
+      "before": {
+        "uid": "04-02-catalog_connection-removed",
+        "value": "baseline-catalog_connection-removed"
+      },
+      "after": null,
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "catalog_connection",
+      "identity": "04-03-catalog_connection-modified",
+      "kind": "modified",
+      "before": {
+        "uid": "04-03-catalog_connection-modified",
+        "value": "baseline-catalog_connection-modified"
+      },
+      "after": {
+        "uid": "04-03-catalog_connection-modified",
+        "value": "selected-catalog_connection-modified"
+      },
+      "field_diffs": {
+        "value": {
+          "baseline": "baseline-catalog_connection-modified",
+          "selected": "selected-catalog_connection-modified"
+        }
+      }
+    },
+    {
+      "entity_type": "review",
+      "identity": {
+        "analysis_uid": "analysis-05",
+        "occurrence_uid": "05-01-review-added"
+      },
+      "kind": "added",
+      "before": null,
+      "after": {
+        "occurrence_uid": "05-01-review-added",
+        "name": "Semantic review",
+        "description": "Selected review record",
+        "reviewers": [
+          {
+            "name": "Reviewer Selected",
+            "email_address": "selected@example.test"
+          }
+        ],
+        "passed_review": true,
+        "completion_date": "2026-01-02T00:00:00Z",
+        "review_status": "approved"
+      },
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "review",
+      "identity": {
+        "analysis_uid": "analysis-05",
+        "occurrence_uid": "05-02-review-removed"
+      },
+      "kind": "removed",
+      "before": {
+        "occurrence_uid": "05-02-review-removed",
+        "name": "Semantic review",
+        "description": "Baseline review record",
+        "reviewers": [
+          {
+            "name": "Reviewer Baseline",
+            "email_address": "baseline@example.test"
+          }
+        ],
+        "passed_review": null,
+        "completion_date": null,
+        "review_status": "pending"
+      },
+      "after": null,
+      "field_diffs": {}
+    },
+    {
+      "entity_type": "review",
+      "identity": {
+        "analysis_uid": "analysis-05",
+        "occurrence_uid": "05-03-review-modified"
+      },
+      "kind": "modified",
+      "before": {
+        "occurrence_uid": "05-03-review-modified",
+        "name": "Semantic review",
+        "description": "Baseline review record",
+        "reviewers": [
+          {
+            "name": "Reviewer Baseline",
+            "email_address": "baseline@example.test"
+          }
+        ],
+        "passed_review": null,
+        "completion_date": null,
+        "review_status": "pending"
+      },
+      "after": {
+        "occurrence_uid": "05-03-review-modified",
+        "name": "Semantic review",
+        "description": "Selected review record",
+        "reviewers": [
+          {
+            "name": "Reviewer Selected",
+            "email_address": "selected@example.test"
+          }
+        ],
+        "passed_review": true,
+        "completion_date": "2026-01-02T00:00:00Z",
+        "review_status": "approved"
+      },
+      "field_diffs": {
+        "reviewers": {
+          "baseline": [
+            {
+              "name": "Reviewer Baseline",
+              "email_address": "baseline@example.test"
+            }
+          ],
+          "selected": [
+            {
+              "name": "Reviewer Selected",
+              "email_address": "selected@example.test"
+            }
+          ]
+        },
+        "passed_review": {
+          "baseline": null,
+          "selected": true
+        },
+        "completion_date": {
+          "baseline": null,
+          "selected": "2026-01-02T00:00:00Z"
+        },
+        "review_status": {
+          "baseline": "pending",
+          "selected": "approved"
+        }
+      }
+    }
+  ]
+}

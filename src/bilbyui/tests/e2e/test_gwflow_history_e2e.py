@@ -422,7 +422,9 @@ class TestGWFlowHistorySemanticAxeScanWithDetailsOpened(GWFlowHistoryDiffAxeStat
     async def test_no_serious_or_critical_axe_violations_with_details_opened(self):
         await self.page.wait_for_selector(AXE_SCOPE_SELECTOR, state="visible")
         details = self.page.locator(f"{AXE_SCOPE_SELECTOR} details").first
-        await details.locator("summary").click()
+        summary = details.locator("summary")
+        await summary.focus()
+        await self.page.keyboard.press("Enter")
         await self.page.wait_for_selector(f"{AXE_SCOPE_SELECTOR} details[open]", state="attached", timeout=5000)
         await load_axe(self.page)
         violations = await run_axe(self.page, AXE_SCOPE_SELECTOR)
@@ -471,6 +473,32 @@ class TestGWFlowHistoryUnavailableAxeScan(GWFlowHistoryDiffAxeStatusBase):
         await load_axe(self.page)
         violations = await run_axe(self.page, AXE_SCOPE_SELECTOR)
         self.assert_no_serious_or_critical_violations(violations)
+
+
+class TestGWFlowHistoryUnavailableKeyboardRetry(GWFlowHistoryDiffPageBase):
+    """Keyboard activation retries the unavailable semantic comparison."""
+
+    diff_payload = None
+    diff_state = "down"
+
+    @async_e2e_test
+    async def test_try_again_activates_by_keyboard(self):
+        await self.page.wait_for_selector(AXE_SCOPE_SELECTOR, state="visible")
+        retry = self.page.get_by_role(
+            "link",
+            name="Try the semantic comparison again",
+        )
+        await retry.focus()
+        self.assertTrue(
+            await retry.evaluate("element => element === document.activeElement"),
+            "the Try again link must receive keyboard focus",
+        )
+        await self.page.keyboard.press("Enter")
+        await self.page.wait_for_selector(AXE_SCOPE_SELECTOR, state="visible")
+        self.assertIn(
+            "The semantic comparison service is unavailable.",
+            " ".join((await self.page.content()).split()),
+        )
 
 
 class TestGWFlowHistoryFailedAxeScan(GWFlowHistoryDiffAxeStatusBase):

@@ -1216,7 +1216,7 @@ class TestGWFlowHistoryRenderedOutcomes(BilbyTestCase):
         self.assertIn('class="sr-only" role="status" aria-live="polite"', content)
         self.assertIn(sentence, content)
 
-    def test_golden_fixture_renders_all_entity_types_and_kinds(self):
+    def test_shared_golden_fixture_renders_entity_and_kind_classes(self):
         response, _, _, _ = self.render(
             diff_payload=self.load_fixture("semantic_diff.json"),
         )
@@ -1248,6 +1248,40 @@ class TestGWFlowHistoryRenderedOutcomes(BilbyTestCase):
         self.assertNotIn("<pre><code>", content)
         self.assertNotIn("Temporary technical inspection aid", content)
         self.assert_announcement(response, "6 semantic changes.")
+
+    def test_all_supported_entity_kind_combinations_render(self):
+        response, _, _, _ = self.render(
+            diff_payload=self.load_fixture("semantic_diff_all_combinations.json"),
+        )
+        content = response.content.decode()
+        combinations = (
+            ("analysis", "added", "01-01-analysis-added"),
+            ("analysis", "removed", "01-02-analysis-removed"),
+            ("analysis", "modified", "01-03-analysis-modified"),
+            ("analysis", "deprecated", "01-04-analysis-deprecated"),
+            ("detector_configuration", "added", "02-01-detector_configuration-added"),
+            ("detector_configuration", "removed", "02-02-detector_configuration-removed"),
+            ("detector_configuration", "modified", "02-03-detector_configuration-modified"),
+            ("gracedb_event", "added", "03-01-gracedb_event-added"),
+            ("gracedb_event", "removed", "03-02-gracedb_event-removed"),
+            ("gracedb_event", "modified", "03-03-gracedb_event-modified"),
+            ("catalog_connection", "added", "04-01-catalog_connection-added"),
+            ("catalog_connection", "removed", "04-02-catalog_connection-removed"),
+            ("catalog_connection", "modified", "04-03-catalog_connection-modified"),
+            ("review", "added", "analysis-05 / 05-01-review-added"),
+            ("review", "removed", "analysis-05 / 05-02-review-removed"),
+            ("review", "modified", "analysis-05 / 05-03-review-modified"),
+        )
+
+        for entity_type, kind, identity in combinations:
+            with self.subTest(entity_type=entity_type, kind=kind):
+                self.assertIn(f">{entity_type}</strong>", content)
+                self.assertIn(identity, content)
+                self.assertIn(
+                    f"gwflow-change-badge gwflow-change-badge--{kind}",
+                    content,
+                )
+        self.assert_announcement(response, "16 semantic changes.")
 
     def test_review_deltas_render_as_named_rows(self):
         response, _, _, _ = self.render(
