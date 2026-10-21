@@ -42,7 +42,18 @@ MAX_RETRY_ATTEMPTS = 24
 _VERSION_RE = re.compile(r"-v(\d+)$")
 _JOB_NAME_RE = re.compile(r"[^a-z0-9_-]", re.IGNORECASE)
 _EVENT_ID_RE = re.compile(r"^GW\d{6}(_\d{6})?$")
-_TRUTHY_PREFERRED = (True, "true", "True", "yes")
+
+
+def _is_truthy_preferred(value):
+    """Return True when *value* represents a truthy is_preferred flag.
+
+    Accepts a real boolean True as well as the string forms "true", "1", and
+    "yes" (case-insensitive, surrounding whitespace tolerated), mirroring the
+    portal boolean grammar.
+    """
+    if isinstance(value, bool):
+        return value
+    return isinstance(value, str) and value.strip().lower() in ("true", "1", "yes")
 
 
 def compute_is_latest_version(event_name, shared_common_names):
@@ -328,7 +339,7 @@ def _check_and_download_inner(con, cur):
         if ignored:
             continue
 
-        found = [v for v in parameters.values() if isinstance(v, dict) and v.get("is_preferred") in _TRUTHY_PREFERRED]
+        found = [v for v in parameters.values() if isinstance(v, dict) and _is_truthy_preferred(v.get("is_preferred"))]
         if len(found) != 1:
             logger.error("Unable to find preferred job for %s 😠", event_name)
             save_sqlite_job(
