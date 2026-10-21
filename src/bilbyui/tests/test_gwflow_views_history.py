@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
@@ -6,6 +8,7 @@ from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
 from bilbyui.models import GWFlowJob
+from bilbyui.services.gwflow_versions import adapt_semantic_diff
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import _render_gwflow_history_section
 
@@ -578,6 +581,288 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         self.assertEqual(outcome.rows[0].kind, "modified")
         self.mock_get_diff.assert_called_once_with(self.sname, 1006, 1007)
 
+    def test_diff_rows_are_shaped_by_kind(self):
+        cases = (
+            (
+                "added",
+                {
+                    "entity_type": "analysis",
+                    "identity": "analysis-added",
+                    "kind": "added",
+                    "before": None,
+                    "after": {"status": "ready"},
+                    "field_diffs": {},
+                },
+                {
+                    "record": {"status": "ready"},
+                    "field_diffs": {},
+                    "field_diff_count": 0,
+                },
+            ),
+            (
+                "removed",
+                {
+                    "entity_type": "analysis",
+                    "identity": "analysis-removed",
+                    "kind": "removed",
+                    "before": {"status": "ready"},
+                    "after": None,
+                    "field_diffs": {},
+                },
+                {
+                    "record": {"status": "ready"},
+                    "field_diffs": {},
+                    "field_diff_count": 0,
+                },
+            ),
+            (
+                "modified",
+                {
+                    "entity_type": "analysis",
+                    "identity": "analysis-modified",
+                    "kind": "modified",
+                    "before": {"status": "draft"},
+                    "after": {"status": "ready"},
+                    "field_diffs": {
+                        "status": {
+                            "baseline": "draft",
+                            "selected": "ready",
+                        }
+                    },
+                },
+                {
+                    "record": None,
+                    "field_diffs": {
+                        "status": {
+                            "baseline": "draft",
+                            "selected": "ready",
+                        }
+                    },
+                    "field_diff_count": 1,
+                },
+            ),
+            (
+                "deprecated",
+                {
+                    "entity_type": "analysis",
+                    "identity": "analysis-deprecated",
+                    "kind": "deprecated",
+                    "before": {"deprecated": False},
+                    "after": {"deprecated": True},
+                    "field_diffs": {
+                        "deprecated": {
+                            "baseline": False,
+                            "selected": True,
+                        }
+                    },
+                },
+                {
+                    "record": (
+                        {"deprecated": False},
+                        {"deprecated": True},
+                    ),
+                    "field_diffs": {
+                        "deprecated": {
+                            "baseline": False,
+                            "selected": True,
+                        }
+                    },
+                    "field_diff_count": 1,
+                },
+            ),
+        )
+
+        expected_keys = {
+            "entity_type",
+            "kind",
+            "identity_primary",
+            "identity_value",
+            "field_diff_count",
+            "record",
+            "field_diffs",
+        }
+        for name, change, expected in cases:
+            with self.subTest(kind=name):
+                self.mock_get_diff.return_value = (
+                    self._semantic_payload(changes=[change]),
+                    "live",
+                )
+
+                response, _ = self._render()
+
+                row = response.context_data["diff_rows"][0]
+                self.assertEqual(set(row), expected_keys)
+                self.assertEqual(row["entity_type"], "analysis")
+                self.assertEqual(row["kind"], name)
+                self.assertEqual(row["identity_primary"], change["identity"])
+                self.assertEqual(row["identity_value"], change["identity"])
+                self.assertEqual(row["record"], expected["record"])
+                self.assertEqual(row["field_diffs"], expected["field_diffs"])
+                self.assertEqual(
+                    row["field_diff_count"],
+                    expected["field_diff_count"],
+                )
+
+    def test_review_identity_is_shaped_for_display_and_copy(self):
+        occurrence_uid = "review-occurrence-1"
+        review_record = {
+            "occurrence_uid": occurrence_uid,
+            "name": "Review",
+            "description": "Review description",
+            "reviewers": [],
+            "passed_review": None,
+            "completion_date": None,
+            "review_status": "pending",
+        }
+        self.mock_get_diff.return_value = (
+            self._semantic_payload(
+                changes=[
+                    {
+                        "entity_type": "review",
+                        "identity": {
+                            "analysis_uid": "pe_1",
+                            "occurrence_uid": occurrence_uid,
+                        },
+                        "kind": "modified",
+                        "before": review_record,
+                        "after": review_record,
+                        "field_diffs": {},
+                    }
+                ]
+            ),
+            "live",
+        )
+
+        response, _ = self._render()
+
+        row = response.context_data["diff_rows"][0]
+        self.assertEqual(
+            row["identity_primary"],
+            "pe_1 / review-occurrence-1",
+        )
+        self.assertEqual(row["identity_value"], row["identity_primary"])
+
+    def test_diff_announcement_matches_each_outcome_status(self):
+        cases = (
+            (
+                "semantic_singular",
+                self._semantic_payload(),
+                "live",
+                None,
+                "1 semantic change.",
+            ),
+            (
+                "semantic_plural",
+                self._semantic_payload(
+                    changes=[
+                        {
+                            "entity_type": "analysis",
+                            "identity": identity,
+                            "kind": "modified",
+                            "before": {"status": "draft"},
+                            "after": {"status": "ready"},
+                            "field_diffs": {
+                                "status": {
+                                    "baseline": "draft",
+                                    "selected": "ready",
+                                }
+                            },
+                        }
+                        for identity in ("analysis-1", "analysis-2")
+                    ]
+                ),
+                "live",
+                None,
+                "2 semantic changes.",
+            ),
+            (
+                "semantic_empty",
+                self._semantic_payload(changes=[]),
+                "live",
+                None,
+                "No semantic changes.",
+            ),
+            (
+                "no_baseline",
+                None,
+                "live",
+                [self._metadata_versions()[0]],
+                "No earlier version available to compare.",
+            ),
+            (
+                "unavailable",
+                None,
+                "down",
+                None,
+                "Semantic comparison unavailable.",
+            ),
+            (
+                "failed",
+                None,
+                "failed",
+                None,
+                "Semantic comparison failed.",
+            ),
+        )
+
+        for name, payload, state, versions, expected in cases:
+            with self.subTest(status=name):
+                self.mock_get_diff.reset_mock()
+                self.mock_get_diff.return_value = (payload, state)
+                job = None
+                if versions is not None:
+                    job = self._job()
+                    job.current_history_id = self.oldest_sha
+
+                response, _ = self._render(versions=versions, job=job)
+
+                self.assertEqual(
+                    response.context_data["diff_announcement"],
+                    expected,
+                )
+
+    def test_deprecated_kind_never_reaches_template_for_non_analysis(self):
+        for entity_type in (
+            "detector_configuration",
+            "gracedb_event",
+            "catalog_connection",
+            "review",
+        ):
+            with self.subTest(entity_type=entity_type):
+                identity = (
+                    {
+                        "analysis_uid": "pe_1",
+                        "occurrence_uid": "review-occurrence-1",
+                    }
+                    if entity_type == "review"
+                    else "identity-1"
+                )
+                outcome = adapt_semantic_diff(
+                    sname=self.sname,
+                    baseline_version=1006,
+                    selected_version=1007,
+                    payload=self._semantic_payload(
+                        changes=[
+                            {
+                                "entity_type": entity_type,
+                                "identity": identity,
+                                "kind": "deprecated",
+                                "before": {},
+                                "after": {},
+                                "field_diffs": {},
+                            }
+                        ]
+                    ),
+                    state="live",
+                )
+
+                self.assertEqual(outcome.status, "failed")
+                self.assertEqual(outcome.rows, ())
+                self.assertEqual(
+                    outcome.reason,
+                    "invalid_enum:changes[0].kind",
+                )
+
     def test_semantic_empty_distinct_from_no_baseline(self):
         self.mock_get_diff.return_value = (
             self._semantic_payload(changes=[]),
@@ -692,10 +977,14 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
 
     def test_history_render_has_no_raw_json_context(self):
         response, _ = self._render()
+        response.render()
+        content = response.content.decode()
 
         self.assertNotIn("baseline_raw_json", response.context_data)
         self.assertNotIn("selected_raw_json", response.context_data)
         self.assertNotIn("baseline_presentation", response.context_data)
+        self.assertNotIn("<pre><code>", content)
+        self.assertNotIn("Temporary technical inspection aid", content)
 
     def test_unknown_version_deep_link_raises_404(self):
         request = self.factory.get(
@@ -777,6 +1066,9 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
             response.context_data["diff_outcome"].status,
             "semantic",
         )
+
+
+FIXTURE_DIR = Path(__file__).parent / "fixtures" / "gwflow_diff"
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
@@ -885,7 +1177,7 @@ class TestGWFlowHistoryRenderedOutcomes(BilbyTestCase):
         self.assertIn(marker, content)
         return marker + content.split(marker, 1)[1].split("</section>", 1)[0]
 
-    def test_semantic_render_uses_validated_labels_and_json(self):
+    def test_semantic_render_uses_validated_labels_and_structured_values(self):
         response, get_versions, get_version, get_diff = self.render()
 
         self.assertEqual(response.status_code, 200)
@@ -895,14 +1187,200 @@ class TestGWFlowHistoryRenderedOutcomes(BilbyTestCase):
         self.assertIn("2026-09-01T00:00:00Z", region)
         self.assertIn("2026-09-02T00:00:00Z", region)
         self.assertIn("1 semantic change.", region)
-        self.assertIn("&quot;null_value&quot;: null", region)
-        self.assertIn("&quot;false_value&quot;: false", region)
-        self.assertIn("&quot;zero_value&quot;: 0", region)
+        row = response.context["diff_rows"][0]
+        self.assertIsNone(row["record"])
+        self.assertEqual(
+            row["field_diffs"]["nested"]["baseline"],
+            {
+                "null_value": None,
+                "false_value": False,
+                "zero_value": 0,
+            },
+        )
         self.assertNotIn("None", region)
         self.assertNotIn("Try again", region)
         get_versions.assert_called_once_with(self.sname)
         get_version.assert_called_once_with(self.sname, 42)
         get_diff.assert_called_once_with(self.sname, 41, 42)
+
+    def load_fixture(self, name):
+        with (FIXTURE_DIR / name).open(encoding="utf-8") as fixture:
+            payload = json.load(fixture)
+        payload["sname"] = self.sname
+        payload["baseline_version"] = 41
+        payload["selected_version"] = 42
+        return payload
+
+    def assert_announcement(self, response, sentence):
+        content = " ".join(response.content.decode().split())
+        self.assertIn('class="sr-only" role="status" aria-live="polite"', content)
+        self.assertIn(sentence, content)
+
+    def test_golden_fixture_renders_all_entity_types_and_kinds(self):
+        response, _, _, _ = self.render(
+            diff_payload=self.load_fixture("semantic_diff.json"),
+        )
+        content = response.content.decode()
+
+        for entity_type in (
+            "analysis",
+            "detector_configuration",
+            "gracedb_event",
+            "catalog_connection",
+            "review",
+        ):
+            with self.subTest(entity_type=entity_type):
+                self.assertIn(f">{entity_type}</strong>", content)
+        for kind in ("added", "removed", "modified", "deprecated"):
+            with self.subTest(kind=kind):
+                self.assertIn(f"gwflow-change-badge--{kind}", content)
+        for identity in (
+            "S000001a-validation-report",
+            "pe_1",
+            "H1",
+            "G000001",
+            "4:1",
+            "pe_1 / review-occurrence-1",
+        ):
+            with self.subTest(identity=identity):
+                self.assertIn(identity, content)
+        self.assertGreaterEqual(content.count("tech-value--id"), 6)
+        self.assertNotIn("<pre><code>", content)
+        self.assertNotIn("Temporary technical inspection aid", content)
+        self.assert_announcement(response, "6 semantic changes.")
+
+    def test_review_deltas_render_as_named_rows(self):
+        response, _, _, _ = self.render(
+            diff_payload=self.load_fixture("semantic_diff.json"),
+        )
+        content = response.content.decode()
+
+        self.assertIn("<dt>Reviewers</dt>", content)
+        self.assertIn("<dt>Passed review</dt>", content)
+        self.assertIn("<dt>Completion date</dt>", content)
+        self.assertIn("Reviewer One", content)
+        self.assertIn("Reviewer Two", content)
+        self.assertIn("2026-01-02T00:00:00Z", content)
+
+    def test_gracedb_nullable_numbers_are_not_boolean_coerced(self):
+        payload = self.load_fixture("semantic_diff_booleans.json")
+        change = payload["changes"][0]
+
+        # This fixture proves that portal booleans are invalid for nullable
+        # number fields. Use its exact shape with numeric wire values here so
+        # the accepted path can assert that 1 and 0 remain literal numbers.
+        change["after"]["has_ns"] = 1
+        change["after"]["pipeline_has_mass_gap"] = 0
+        change["field_diffs"]["has_ns"]["selected"] = 1
+        change["field_diffs"]["pipeline_has_mass_gap"]["selected"] = 0
+
+        response, _, _, _ = self.render(diff_payload=payload)
+        region = self.changes_region(response)
+
+        self.assertIn("<dt>Has ns</dt>", region)
+        self.assertIn("<dt>Pipeline has mass gap</dt>", region)
+        self.assertIn("<dd>Not provided</dd>", region)
+        self.assertIn("<dd>1</dd>", region)
+        self.assertIn("<dd>0</dd>", region)
+        self.assertNotIn("<dd>Yes</dd>", region)
+        self.assertNotIn("<dd>No</dd>", region)
+        self.assertNotIn("<dd>True</dd>", region)
+        self.assertNotIn("<dd>False</dd>", region)
+        self.assert_announcement(response, "1 semantic change.")
+
+    def test_null_false_zero_and_empty_string_render_distinctly(self):
+        payload = self.semantic_payload(
+            changes=[
+                {
+                    "entity_type": "analysis",
+                    "identity": "edge-values",
+                    "kind": "modified",
+                    "before": {"value": "before"},
+                    "after": {"value": "after"},
+                    "field_diffs": {
+                        "null_value": {"baseline": None, "selected": None},
+                        "false_value": {"baseline": False, "selected": False},
+                        "zero_value": {"baseline": 0, "selected": 0},
+                        "empty_value": {"baseline": "", "selected": ""},
+                    },
+                }
+            ],
+        )
+        response, _, _, _ = self.render(diff_payload=payload)
+        region = self.changes_region(response)
+
+        self.assertIn("<dt>Null value</dt>", region)
+        self.assertIn("Not provided", region)
+        self.assertIn("<dt>False value</dt>", region)
+        self.assertIn("<dd>No</dd>", region)
+        self.assertIn("<dt>Zero value</dt>", region)
+        self.assertIn("<dd>0</dd>", region)
+        self.assertIn("<dt>Empty value</dt>", region)
+        self.assertIn("<dd></dd>", region)
+        self.assertNotIn(">None<", region)
+        self.assertNotIn(">null<", region)
+        self.assertNotIn(">false<", region)
+
+    def test_hostile_field_diff_value_is_escaped_not_executed(self):
+        hostile = '<script>alert("diff")</script>'
+        payload = self.semantic_payload(
+            changes=[
+                {
+                    "entity_type": "analysis",
+                    "identity": "hostile",
+                    "kind": "modified",
+                    "before": {"value": "safe"},
+                    "after": {"value": hostile},
+                    "field_diffs": {
+                        "value": {"baseline": "safe", "selected": hostile},
+                    },
+                }
+            ],
+        )
+        response, _, _, _ = self.render(diff_payload=payload)
+        region = self.changes_region(response)
+
+        self.assertNotIn("<script>", region)
+        self.assertIn("&lt;script&gt;alert", region)
+        self.assertIn("&quot;diff&quot;", region)
+        self.assertIn("&lt;/script&gt;", region)
+
+    def test_settled_statuses_fold_diff_sentence_into_existing_region(self):
+        cases = (
+            ("semantic", self.semantic_payload(), "live", "1 semantic change."),
+            (
+                "semantic_empty",
+                self.load_fixture("semantic_diff_empty.json"),
+                "live",
+                "No semantic changes.",
+            ),
+            ("unavailable", None, "down", "Semantic comparison unavailable."),
+            ("failed", None, "failed", "Semantic comparison failed."),
+        )
+        for name, payload, state, sentence in cases:
+            with self.subTest(name=name):
+                response, _, _, _ = self.render(
+                    diff_payload=payload,
+                    diff_state=state,
+                )
+                self.assert_announcement(response, sentence)
+
+        self.job.current_history_id = self.previous_sha
+        self.job.save(update_fields=["current_history_id"])
+        response, _, _, _ = self.render(versions=[self.versions[0]])
+        self.assert_announcement(
+            response,
+            "No earlier version available to compare.",
+        )
+
+    def test_rendered_output_has_no_json_shim(self):
+        response, _, _, _ = self.render(
+            diff_payload=self.load_fixture("semantic_diff.json"),
+        )
+        content = response.content.decode()
+
+        self.assertNotIn("<pre><code>", content)
+        self.assertNotIn("Temporary technical inspection aid", content)
 
     def test_semantic_empty_render_is_distinct(self):
         response, _, get_version, get_diff = self.render(
