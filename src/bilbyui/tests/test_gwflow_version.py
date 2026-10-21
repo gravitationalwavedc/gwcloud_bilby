@@ -1,3 +1,4 @@
+import copy
 import json
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
@@ -825,6 +826,35 @@ class GWFlowDiffGoldenTestCase(SemanticDiffTestMixin, BilbyTestCase):
             self.assertIs(row.after, change["after"])
             self.assertIs(row.field_diffs, change["field_diffs"])
 
+    def test_review_modification_preserves_tp4_field_deltas(self):
+        payload = self.load_fixture("semantic_diff.json")
+        outcome = self.adapt(payload)
+        review_rows = [row for row in outcome.rows if row.entity_type == "review" and row.kind == "modified"]
+        self.assertEqual(len(review_rows), 1)
+        self.assertEqual(
+            review_rows[0].field_diffs,
+            {
+                "reviewers": {
+                    "baseline": [
+                        {"name": "Reviewer One", "email_address": ""},
+                    ],
+                    "selected": [
+                        {"name": "Reviewer One", "email_address": ""},
+                        {"name": "Reviewer Two", "email_address": ""},
+                    ],
+                },
+                "passed_review": {"baseline": None, "selected": True},
+                "completion_date": {
+                    "baseline": None,
+                    "selected": "2026-01-02T00:00:00Z",
+                },
+                "review_status": {
+                    "baseline": "pending",
+                    "selected": "approved",
+                },
+            },
+        )
+
     def test_missing_occurrence_uid_golden_rejected(self):
         outcome = self.adapt(self.load_fixture("semantic_diff_missing_occurrence_uid.json"))
         self.assertEqual(outcome.status, "failed")
@@ -1287,6 +1317,45 @@ class GWFlowDiffReviewIdentityTestCase(SemanticDiffTestMixin, BilbyTestCase):
                     self.adapt(self.payload(changes=[change])).status,
                     "failed",
                 )
+
+        contradictory_decisions = (
+            ("pending", True),
+            ("pending", False),
+            ("approved", None),
+            ("approved", False),
+            ("rejected", None),
+            ("rejected", True),
+        )
+        review_change = self.review_change()
+        for review_status, passed_review in contradictory_decisions:
+            with self.subTest(
+                review_status=review_status,
+                passed_review=passed_review,
+                valid=False,
+            ):
+                change = copy.deepcopy(review_change)
+                change["after"]["review_status"] = review_status
+                change["after"]["passed_review"] = passed_review
+                outcome = self.adapt(self.payload(changes=[change]))
+                self.assertEqual(outcome.status, "failed")
+                self.assertEqual(outcome.rows, ())
+
+        valid_decisions = (
+            ("pending", None),
+            ("approved", True),
+            ("rejected", False),
+        )
+        for review_status, passed_review in valid_decisions:
+            with self.subTest(
+                review_status=review_status,
+                passed_review=passed_review,
+                valid=True,
+            ):
+                change = copy.deepcopy(review_change)
+                change["after"]["review_status"] = review_status
+                change["after"]["passed_review"] = passed_review
+                outcome = self.adapt(self.payload(changes=[change]))
+                self.assertEqual(outcome.status, "semantic")
 
     def test_reviewer_structure_rejected(self):
         reviewers = (

@@ -156,9 +156,9 @@
             "email_address": ""
           }
         ],
-        "passed_review": null,
-        "completion_date": null,
-        "review_status": "pending"
+        "passed_review": true,
+        "completion_date": "2026-01-02T00:00:00Z",
+        "review_status": "approved"
       },
       "field_diffs": {
         "reviewers": {
@@ -178,6 +178,18 @@
               "email_address": ""
             }
           ]
+        },
+        "passed_review": {
+          "baseline": null,
+          "selected": true
+        },
+        "completion_date": {
+          "baseline": null,
+          "selected": "2026-01-02T00:00:00Z"
+        },
+        "review_status": {
+          "baseline": "pending",
+          "selected": "approved"
         }
       }
     }

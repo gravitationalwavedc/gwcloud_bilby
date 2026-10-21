@@ -170,7 +170,15 @@ def _validate_review_record(value: Any, occurrence_uid: str) -> bool:
     if value["completion_date"] is not None and not isinstance(value["completion_date"], str):
         return False
     review_status = value["review_status"]
-    return isinstance(review_status, str) and review_status in _REVIEW_STATUSES
+    if not isinstance(review_status, str) or review_status not in _REVIEW_STATUSES:
+        return False
+
+    expected_decision = {
+        "pending": None,
+        "approved": True,
+        "rejected": False,
+    }[review_status]
+    return value["passed_review"] is expected_decision
 
 
 def _validate_gracedb_record(value: Any) -> bool:
