@@ -62,6 +62,11 @@ def to_dec(val):
     if not isinstance(val, Number):
         return val
 
+    # Complex numbers are numbers.Number but cannot be passed to math.isinf/isnan or floor()
+    # — return them unchanged
+    if isinstance(val, complex):
+        return val
+
     # Non-finite floats (inf/-inf/nan) cannot be passed to floor() — parse them directly
     if math.isinf(val) or math.isnan(val):
         return Decimal(str(val))
