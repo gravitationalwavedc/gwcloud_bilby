@@ -630,6 +630,25 @@ class TestPortalGetDirect(BilbyTestCase):
         self.assertIsNone(caches["default"].get(self.CACHE_KEY))
 
     @responses.activate
+    def test_recursion_error_without_cache_returns_malformed(self):
+        deeply_nested = "[" * 20000 + "]" * 20000
+        responses.add(
+            responses.GET,
+            f"{PORTAL_URL}{self.PATH}",
+            body=deeply_nested,
+            status=200,
+        )
+
+        data, state = gwflow_portal.portal_get(
+            self.PATH,
+            cache_key=self.CACHE_KEY,
+            sname=SNAME,
+        )
+
+        self.assertEqual((data, state), (None, "malformed"))
+        self.assertIsNone(caches["default"].get(self.CACHE_KEY))
+
+    @responses.activate
     def test_connection_failure_remains_down_not_malformed(self):
         responses.add(
             responses.GET,
