@@ -1,5 +1,4 @@
 import datetime
-import json
 import math
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -294,14 +293,12 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
 
     def test_build_gwflow_es_doc_normalises_gracedb_event_far(self):
         """A value/unit dict far is normalised to a finite number for the
-        double mapping and far range alias (regression for the canonical
-        complete_curated fixture)."""
-        fixture_path = _METADATA_CORPUS_DIR / "complete_curated.json"
-        metadata = json.loads(fixture_path.read_text(encoding="utf-8"))
+        double mapping and far range alias."""
+        metadata = {"gracedb_events": [{"event_name": "G000001", "far": {"value": 1.1e-10, "unit": "Hz"}}]}
 
         doc = build_gwflow_es_doc(self.job, metadata)
 
-        events = doc["metadata"]["gracedb"]["events"]
+        events = doc["metadata"]["gracedb_events"]
         self.assertTrue(events)
         for event in events:
             far = event.get("far")
@@ -310,15 +307,37 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
 
     def test_normalise_gracedb_event_far_handles_shapes(self):
         """Numeric far is untouched; dict far is unwrapped; absent paths are safe."""
-        numeric = {"gracedb": {"events": [{"far": 0}]}}
+        numeric = {"gracedb_events": [{"far": 0}]}
         self.assertEqual(_normalise_gracedb_event_far(numeric), numeric)
 
-        dict_far = {"gracedb": {"events": [{"far": {"value": 1.1e-10, "unit": "Hz"}}]}}
+        dict_far = {"gracedb_events": [{"far": {"value": 1.1e-10, "unit": "Hz"}}]}
         result = _normalise_gracedb_event_far(dict_far)
-        self.assertEqual(result["gracedb"]["events"][0]["far"], 1.1e-10)
+        self.assertEqual(result["gracedb_events"][0]["far"], 1.1e-10)
 
-        for empty in ({}, {"gracedb": {}}, {"gracedb": {"events": None}}, {"gracedb": "x"}):
+        for empty in ({}, {"gracedb_events": None}, {"gracedb_events": "x"}):
             self.assertEqual(_normalise_gracedb_event_far(empty), empty)
+
+    def test_normalise_gracedb_event_far_coerces_string_value(self):
+        """A string value in a value/unit dict is coerced to a float so the
+        double mapping does not raise a mapper_parsing_exception."""
+        string_far = {"gracedb_events": [{"far": {"value": "1.1e-10", "unit": "Hz"}}]}
+        result = _normalise_gracedb_event_far(string_far)
+        value = result["gracedb_events"][0]["far"]
+        self.assertIsInstance(value, float)
+        self.assertEqual(value, 1.1e-10)
+
+    def test_normalise_gracedb_event_far_value_less_dict(self):
+        """A value/unit dict without a value is replaced with None rather than
+        left as a raw dict that would break the double mapping."""
+        value_less = {"gracedb_events": [{"far": {"unit": "Hz"}}]}
+        result = _normalise_gracedb_event_far(value_less)
+        self.assertIsNone(result["gracedb_events"][0]["far"])
+
+    def test_normalise_gracedb_event_far_keeps_uncoercible_value(self):
+        """An uncoercible value is left as-is rather than crashing the index build."""
+        bad = {"gracedb_events": [{"far": {"value": "not-a-number"}}]}
+        result = _normalise_gracedb_event_far(bad)
+        self.assertEqual(result["gracedb_events"][0]["far"], "not-a-number")
 
 
 class TestCollectReviewStatuses(BilbyTestCase):
