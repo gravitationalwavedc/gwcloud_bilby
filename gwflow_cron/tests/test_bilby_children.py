@@ -554,6 +554,10 @@ class TestSetIniLabel(unittest.TestCase):
         self.assertIn("label = new\n", out)
         self.assertNotIn("label = old", out)
 
+    def test_backslash_in_name_treated_literally(self):
+        text = "label = old\nfoo = bar\n"
+        self.assertEqual(_set_ini_label(text, "S1--a\\1b"), "label = S1--a\\1b\nfoo = bar\n")
+
 
 class TestIniOutdir(unittest.TestCase):
     def test_empty_ini_returns_none(self):
