@@ -206,7 +206,7 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
         "Stable GWCloud envelope",
         2,
         advertised="search_trigger_time",
-        type_hint="date",
+        type_hint="number",
     ),
     _field(
         "gwflow",
