@@ -62,7 +62,7 @@ class LeafPathTests(SimpleTestCase):
             ["info.z_unknown[]"],
         )
 
-    def test_deeply_nested_payload_degrades_gracefully_without_raising(self):
+    def test_deeply_nested_payload_degrades_gracefully_with_truncation_warning(self):
         payload = {}
         node = payload
         for _ in range(2000):
@@ -70,8 +70,10 @@ class LeafPathTests(SimpleTestCase):
             node = node["next"]
         node["leaf"] = 1
 
-        with self.assertNoLogs("bilbyui.services.gwflow_metadata", level="WARNING"):
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
             warn_unmapped_metadata_leaves(payload, sname="S-DEEP")
+        self.assertEqual(len(captured.records), 1)
+        self.assertIn("truncated", captured.records[0].getMessage())
 
     def test_non_mapping_payload_is_silent(self):
         for payload in ("not-a-mapping", None, ["not-a-mapping"]):
@@ -180,7 +182,7 @@ class RecursionErrorGuardTests(SimpleTestCase):
         self.assertEqual(presentation.sections, ())
         self.assertTrue(any("too deeply nested" in record.getMessage() for record in captured.records))
 
-    def test_warn_unmapped_metadata_leaves_returns_without_warning_on_deeply_nested_payload(self):
+    def test_warn_unmapped_metadata_leaves_warns_on_deeply_nested_payload(self):
         payload = self._deep_payload(5000)
         with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
             warn_unmapped_metadata_leaves(payload, sname="S-DEEP")
