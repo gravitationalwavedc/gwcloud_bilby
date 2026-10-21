@@ -480,6 +480,17 @@ class TestSearchHelpPartials(BilbyTestCase):
         self.assertIn(str(code_spans(help_context["typed_note"])), html)
         self._assert_nested_disclosure(html)
 
+    def test_plain_help_renders_only_plain_hint(self):
+        help_context = build_search_help("plain")
+        html = self._render_help("bilbyui/_plain_search_help.html", "plain")
+
+        self.assertIn(str(code_spans(help_context["syntax_hint"])), html)
+        self.assertNotIn("Common fields", html)
+        self.assertNotIn("Examples:", html)
+        self.assertNotIn("Full supported field reference", html)
+        self.assertNotIn('data-target="#search-help-full"', html)
+        self.assertNotIn("<code>job.name</code>", html)
+
     def test_help_templates_contain_no_literal_registry_field_names(self):
         advertised_fields = {
             str(entry["advertised"])
@@ -553,11 +564,13 @@ class TestHelpOnAllSurfaces(BilbyTestCase):
         self.assertContains(response, 'hx-sync="#jobs-search-region:replace"')
 
     @mock.patch("bilbyui.views.list_user_jobs", return_value=_user_jobs_ok_result())
-    def test_my_jobs_surface_renders_bilby_help(self, mock_jobs):
+    def test_my_jobs_surface_renders_plain_help(self, mock_jobs):
         response = self.client.get(reverse("bilbyui:my_jobs"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="search-help"')
-        self.assertContains(response, "<code>job.name</code>")
+        self.assertContains(response, "Search matches your job name and description.")
+        self.assertNotContains(response, "<code>job.name</code>")
+        self.assertNotContains(response, "Full supported field reference")
         self.assertContains(response, 'hx-sync="#jobs-search-region:replace"')
 
     @mock.patch("bilbyui.views.list_public_jobs", return_value=_public_jobs_ok_result())
