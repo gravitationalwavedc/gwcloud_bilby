@@ -1938,29 +1938,45 @@ def _render_gwflow_history_section(request, sname):
     if diff_outcome is not None:
         for row in diff_outcome.rows:
             if row.entity_type == "review":
-                identity_display = f"{row.identity['analysis_uid']} / {row.identity['occurrence_uid']}"
+                identity_primary = f"{row.identity['analysis_uid']} / {row.identity['occurrence_uid']}"
             else:
-                identity_display = str(row.identity)
+                identity_primary = str(row.identity)
+            identity_value = identity_primary
 
-            def display_json(value):
-                if value is None:
-                    return "Not provided"
-                try:
-                    return json.dumps(value, indent=2, sort_keys=True, default=str)
-                except (TypeError, RecursionError):
-                    return "Not provided"
+            if row.kind == "added":
+                display_record = row.after
+            elif row.kind == "removed":
+                display_record = row.before
+            elif row.kind == "deprecated":
+                display_record = (row.before, row.after)
+            else:
+                display_record = None
 
             diff_rows.append(
                 {
                     "entity_type": row.entity_type,
-                    "identity_display": identity_display,
                     "kind": row.kind,
+                    "identity_primary": identity_primary,
+                    "identity_value": identity_value,
                     "field_diff_count": len(row.field_diffs),
-                    "before_json": display_json(row.before),
-                    "after_json": display_json(row.after),
-                    "field_diffs_json": display_json(row.field_diffs),
+                    "record": display_record,
+                    "field_diffs": (row.field_diffs if row.kind in ("modified", "deprecated") else {}),
                 }
             )
+
+    diff_announcement = ""
+    if diff_outcome is not None:
+        if diff_outcome.status == "semantic":
+            change_count = len(diff_rows)
+            suffix = "" if change_count == 1 else "s"
+            diff_announcement = f"{change_count} semantic change{suffix}."
+        else:
+            diff_announcement = {
+                "semantic_empty": "No semantic changes.",
+                "no_baseline": "No earlier version available to compare.",
+                "unavailable": "Semantic comparison unavailable.",
+                "failed": "Semantic comparison failed.",
+            }[diff_outcome.status]
 
     return (
         TemplateResponse(
@@ -1975,6 +1991,7 @@ def _render_gwflow_history_section(request, sname):
                 "compare_mode": compare_mode,
                 "diff_outcome": diff_outcome,
                 "diff_rows": diff_rows,
+                "diff_announcement": diff_announcement,
                 "presentation": presentation,
                 "stale": stale,
             },
