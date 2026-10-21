@@ -2,6 +2,10 @@
 <div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="error">
   {% include "bilbyui/_async_state.html" with state="error" thing="the job list" region_label="Job list" retry_url=retry_url retry_target=retry_target indicator_id=indicator_id retry_sync="#jobs-search-region:replace" %}
 </div>
+{% elif service_state == "invalid_leading_wildcard" %}
+<div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="error">
+  <div class="alert alert-warning" role="alert">Leading wildcards are not supported. Try <code>job.name:150914*</code> instead of <code>job.name:*150914*</code>.</div>
+</div>
 {% elif service_state == "invalid" %}
 <div class="list-fragment" data-document-title="{{ page_title }}" data-settled-kind="error">
   <div class="alert alert-warning" role="alert">

@@ -788,6 +788,21 @@ class TestJobQueryTotal(BilbyTestCase):
         self.assertEqual(res["jobs"], {})
 
     @mock.patch("bilbyui.services.jobs.get_es_client")
+    def test_list_public_jobs_leading_wildcard_error_returns_distinct_state(self, mock_get_es_client):
+        mock_client = mock.MagicMock()
+        mock_get_es_client.return_value = mock_client
+        mock_client.search.side_effect = elasticsearch.exceptions.BadRequestError(
+            400,
+            "bad request",
+            {"error": {"reason": "Failed to parse query [job.name:*150914*]: leading wildcard is not allowed."}},
+        )
+
+        res = list_public_jobs(self.user, search="job.name:*150914*")
+
+        self.assertEqual(res["state"], "invalid_leading_wildcard")
+        self.assertEqual(res["jobs"], {})
+
+    @mock.patch("bilbyui.services.jobs.get_es_client")
     def test_list_public_jobs_reconciliation_with_string_ids(self, mock_get_es_client):
         """Real ES returns string _id values; reconciliation must normalise them
         to ints so valid hits are not misclassified as stale."""
