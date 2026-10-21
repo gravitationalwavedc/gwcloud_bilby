@@ -328,6 +328,68 @@ class TestGWOSCCron(GWOSCTestBase):
         gwc.return_value.upload_external_job.assert_called_once()
 
     @responses.activate
+    def test_uppercase_true_is_preferred_selected(self, gwc):
+        """An uppercase string "TRUE" is_preferred must be treated as preferred."""
+        self.add_allevents_response()
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001_123456.json",
+            json={
+                "events": {
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "GPS": 1729400000,
+                        "gracedb_id": "S123456z",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": "TRUE",
+                                "data_url": "https://test.org/GW000001.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        self.add_file_response()
+
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once()
+
+    @responses.activate
+    def test_numeric_one_is_preferred_selected(self, gwc):
+        """A string "1" is_preferred must be treated as preferred."""
+        self.add_allevents_response()
+        responses.add(
+            responses.GET,
+            "https://test.org/GW000001_123456.json",
+            json={
+                "events": {
+                    "GW000001_123456": {
+                        "commonName": "GW000001_123456",
+                        "catalog.shortName": "GWTC-3-confident",
+                        "GPS": 1729400000,
+                        "gracedb_id": "S123456z",
+                        "parameters": {
+                            "AAAAA": {
+                                "is_preferred": "1",
+                                "data_url": "https://test.org/GW000001.h5",
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        self.add_file_response()
+
+        with self.con_patch:
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once()
+
+    @responses.activate
     def test_too_many_preferred(self, gwc):
         """More than 1 preferred h5 file found"""
         self.add_allevents_response()
