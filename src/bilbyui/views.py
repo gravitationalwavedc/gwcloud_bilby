@@ -1933,10 +1933,7 @@ def _render_gwflow_history_section(request, sname):
     if diff_outcome is not None:
         for row in diff_outcome.rows:
             if row.entity_type == "review":
-                identity_primary = (
-                    f"{row.identity['analysis_uid']} / "
-                    f"{row.identity['occurrence_uid']}"
-                )
+                identity_primary = f"{row.identity['analysis_uid']} / {row.identity['occurrence_uid']}"
             else:
                 identity_primary = str(row.identity)
             identity_value = identity_primary
@@ -1958,11 +1955,7 @@ def _render_gwflow_history_section(request, sname):
                     "identity_value": identity_value,
                     "field_diff_count": len(row.field_diffs),
                     "record": display_record,
-                    "field_diffs": (
-                        row.field_diffs
-                        if row.kind in ("modified", "deprecated")
-                        else {}
-                    ),
+                    "field_diffs": (row.field_diffs if row.kind in ("modified", "deprecated") else {}),
                 }
             )
 

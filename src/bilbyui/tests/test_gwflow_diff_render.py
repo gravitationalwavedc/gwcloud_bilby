@@ -28,9 +28,7 @@ class GWFlowDiffRenderTagTestCase(BilbyTestCase):
 
         self.assertEqual(
             rendered,
-            "<dl><dt>Outer label</dt><dd>"
-            "<dl><dt>Inner label</dt><dd>value</dd></dl>"
-            "</dd></dl>",
+            "<dl><dt>Outer label</dt><dd><dl><dt>Inner label</dt><dd>value</dd></dl></dd></dl>",
         )
 
     def test_nested_mixed_list_dispatches_each_item_independently(self):
