@@ -67,19 +67,18 @@ def _collect_review_statuses(metadata, job, path="", out=None):
 
 
 def _normalise_gracedb_event_far(metadata: dict) -> dict:
-    """Normalise ``metadata.gracedb.events[].far`` to its numeric value.
+    """Normalise ``metadata.gracedb_events[].far`` to its numeric value.
 
     The portal payload can represent ``far`` either as a plain number or as a
     value/unit dict (``{"value": ..., "unit": "Hz"}``). The gwflow ES mapping
     declares ``far`` as ``double`` and the ``far`` search alias targets it, so
     indexing a dict would raise a ``mapper_parsing_exception``. Extract the
-    numeric ``value`` when present, leaving already-numeric values untouched.
-    Mutates and returns ``metadata``.
+    numeric ``value`` when present (coercing string values to float), leaving
+    already-numeric values untouched. A value-less dict is replaced with
+    ``None`` so it does not break the double mapping. Mutates and returns
+    ``metadata``.
     """
-    gracedb = metadata.get("gracedb")
-    if not isinstance(gracedb, dict):
-        return metadata
-    events = gracedb.get("events")
+    events = metadata.get("gracedb_events")
     if isinstance(events, dict):
         events = [events]
     if not isinstance(events, list):
@@ -88,8 +87,16 @@ def _normalise_gracedb_event_far(metadata: dict) -> dict:
         if not isinstance(event, dict):
             continue
         far = event.get("far")
-        if isinstance(far, dict) and "value" in far:
-            event["far"] = far["value"]
+        if not isinstance(far, dict):
+            continue
+        if "value" not in far:
+            event["far"] = None
+            continue
+        value = far["value"]
+        try:
+            event["far"] = float(value)
+        except (TypeError, ValueError, OverflowError):
+            event["far"] = value
     return metadata
 
 
