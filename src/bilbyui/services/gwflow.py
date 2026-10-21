@@ -46,6 +46,24 @@ def _public_visibility_filters():
     return filters
 
 
+def _es_error_reason(error):
+    """Extract a reason string from an Elasticsearch error body, or '' if absent."""
+    body = getattr(error, "body", None)
+    if not isinstance(body, dict):
+        return ""
+    error_info = body.get("error")
+    if isinstance(error_info, dict):
+        reason = error_info.get("reason")
+        if reason:
+            return str(reason)
+        root_cause = error_info.get("root_cause")
+        if isinstance(root_cause, list) and root_cause:
+            first = root_cause[0]
+            if isinstance(first, dict) and first.get("reason"):
+                return str(first["reason"])
+    return ""
+
+
 def _collect_library_options():
     es = get_es_client()
     results = es.search(
@@ -245,9 +263,12 @@ def list_gwflow_jobs(
         logger.exception("Failed to connect to Elasticsearch")
         empty_result["state"] = "down"
         return empty_result
-    except elasticsearch.exceptions.BadRequestError:
+    except elasticsearch.exceptions.BadRequestError as exc:
         logger.exception("Elasticsearch rejected the gwflow list query")
-        empty_result["state"] = "invalid"
+        if "leading wildcard" in _es_error_reason(exc):
+            empty_result["state"] = "invalid_leading_wildcard"
+        else:
+            empty_result["state"] = "invalid"
         return empty_result
 
     if not results or "hits" not in results:
