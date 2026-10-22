@@ -150,6 +150,24 @@ class TestSafeJsonDumps(BilbyTestCase):
         for value in native_values:
             self.assertEqual(safe_json_dumps(value), json.dumps(value))
 
+    def test_deeply_nested_value_degrades_on_recursion_error(self):
+        # json.dumps raises RecursionError for deeply nested structures;
+        # safe_json_dumps must honour its "without raising" contract and
+        # fall back to the degradation envelope rather than propagating.
+        deep = []
+        current = deep
+        for _ in range(20000):
+            current.append([])
+            current = current[-1]
+
+        with self.assertRaises(RecursionError):
+            json.dumps(deep)
+
+        envelope = json.loads(safe_json_dumps(deep))
+        self.assertEqual(envelope["__gwcloud_type__"], "python.string_fallback")
+        self.assertEqual(envelope["value"], "<unserializable object>")
+        self.assertFalse(envelope["round_trip"])
+
     def test_regression_original_typeerror(self):
         # Reproduce the original bug: json.dumps cannot handle a cosmology.
         cosmology = FlatLambdaCDM(
