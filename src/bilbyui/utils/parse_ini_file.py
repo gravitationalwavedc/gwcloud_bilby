@@ -140,10 +140,13 @@ def safe_json_dumps(value):
     """
     try:
         return json.dumps(value)
-    except TypeError:
+    except (TypeError, RecursionError):
         if isinstance(value, astropy.cosmology.Cosmology):
             return json.dumps(_serialise_cosmology(value))
-        normalised, _ = _normalise(value)
+        try:
+            normalised, _ = _normalise(value)
+        except RecursionError:
+            return json.dumps(_degrade(value))
         if isinstance(normalised, str):
             return json.dumps(_degrade(value))
         return json.dumps(normalised)
