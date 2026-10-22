@@ -68,7 +68,7 @@
   {% if presentation %}
     <section class="gwflow-history__metadata" aria-labelledby="selected-metadata-heading">
       <h3 id="selected-metadata-heading" class="h5">Metadata for selected version</h3>
-      {% include "bilbyui/_gwflow_metadata.html" with payload=selected_version.payload presentation=presentation suppress_historical_banner=True %}
+      {% include "bilbyui/_gwflow_metadata.html" with presentation=presentation suppress_historical_banner=True %}
     </section>
   {% endif %}
 {% endif %}
