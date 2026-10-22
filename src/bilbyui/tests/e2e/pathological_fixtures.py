@@ -43,47 +43,39 @@ def create_1000_character_file(job):
     )
 
 
+def _canonical_event(index, *, long_values=False):
+    suffix = f"-{LONG_VALUE}" if long_values else ""
+    return {
+        "event_name": f"G{index:06d}{suffix}",
+        "has_ns": 0.10,
+        "has_remnant": 0.09,
+        "has_mass_gap": 0.80,
+        "pipeline_has_ns": 0.99,
+        "pipeline_has_remnant": 0.49,
+        "pipeline_has_mass_gap": 0.51,
+        "pipeline": f"pipeline-{index:03d}-{LONG_VALUE}",
+        "state": f"state-{index:03d}-{LONG_VALUE}",
+        "gps_time": 1_400_000_000.0 + index,
+        "far": {"value": 1e-9 + index * 1e-12, "unit": "Hz"},
+        "network_snr": 20.0 + index,
+    }
+
+
 def build_superevent_with_100_events():
-    """Build the real metadata payload shape consumed by the detail renderer."""
-    events = []
-    for index in range(SUPEREVENT_EVENT_COUNT):
-        events.append(
-            {
-                "uid": f"G{index:06d}",
-                "pipeline": f"pipeline-{index:03d}-{LONG_VALUE}",
-                "state": f"state-{index:03d}-{LONG_VALUE}",
-                "gps_time": 1_400_000_000.0 + index,
-                "far": {"value": 1e-9 + index * 1e-12, "unit": "Hz"},
-                "network_snr": 20.0 + index,
-                "pastro": 0.99,
-                "p_bbh": 0.80,
-                "p_bns": 0.10,
-                "p_nsbh": 0.09,
-                "mass_1": 30.0 + index,
-                "mass_2": 20.0 + index,
-            }
-        )
-    return {"sname": SNAME, "schema_version": "v3", "gracedb": {"events": events}}
+    """Build 100 canonical GraceDB events with deep residual metadata."""
+    return {
+        "sname": SNAME,
+        "schema_version": "v3",
+        "gracedb_events": [
+            _canonical_event(index) for index in range(SUPEREVENT_EVENT_COUNT)
+        ],
+    }
 
 
 def build_12_column_metadata():
-    """Build one long-valued GraceDB record covering all 12 comparative columns."""
-    event = {
-        "uid": f"G-LONG-{LONG_VALUE}",
-        "pipeline": f"gstlal-{LONG_VALUE}",
-        "state": f"preferred-{LONG_VALUE}",
-        "gps_time": f"1400000000.000-{LONG_VALUE}",
-        "far": {"value": 1.2e-12, "unit": f"Hz-{LONG_VALUE}"},
-        "network_snr": f"24.8-{LONG_VALUE}",
-        "pastro": f"0.99-{LONG_VALUE}",
-        "p_bbh": f"0.80-{LONG_VALUE}",
-        "p_bns": f"0.10-{LONG_VALUE}",
-        "p_nsbh": f"0.09-{LONG_VALUE}",
-        "mass_1": f"31.2-{LONG_VALUE}",
-        "mass_2": f"22.4-{LONG_VALUE}",
-    }
-    return {"sname": SNAME, "schema_version": "v3", "gracedb": {"events": [event]}}
-
+    """Build one long-valued canonical event with five residual fields."""
+    event = _canonical_event(0, long_values=True)
+    return {"sname": SNAME, "schema_version": "v3", "gracedb_events": [event]}
 
 def build_long_version_list():
     """Build viewport-overflowing rows in the shape returned by get_versions."""

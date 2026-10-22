@@ -19,19 +19,7 @@ class GWFlowMetadataRegistryTests(SimpleTestCase):
     def test_exact_researcher_section_order(self):
         self.assertEqual(
             SECTION_ORDER,
-            (
-                "info",
-                "gracedb",
-                "pe",
-                "tgr",
-                "lensing",
-                "detchar",
-                "extreme_matter",
-                "cosmology",
-                "rnp",
-                "catalog_tracking",
-                "publications",
-            ),
+            ("info", "gracedb", "pe", "detchar", "catalog_tracking"),
         )
         self.assertEqual(
             tuple(SECTION_HEADINGS[section] for section in SECTION_ORDER),
@@ -39,14 +27,8 @@ class GWFlowMetadataRegistryTests(SimpleTestCase):
                 "Info",
                 "GraceDB",
                 "Parameter estimation (PE)",
-                "Tests of general relativity (TGR)",
-                "Lensing",
-                "Detector characterisation (Detchar)",
-                "Extreme matter",
-                "Cosmology",
-                "Rapid neutron-star parameter estimation (RNP)",
+                "Detector characterisation (DetChar)",
                 "Catalogue tracking",
-                "Publications",
             ),
         )
         self.assertEqual(tuple(FIELD_REGISTRY), SECTION_ORDER)
@@ -84,66 +66,107 @@ class GWFlowMetadataRegistryTests(SimpleTestCase):
         second = KNOWN_KEYS()
         self.assertIsInstance(first, frozenset)
         self.assertEqual(first, second)
-        self.assertIn("gracedb.events[].uid", first)
-        self.assertIn("info.status", first)
-        self.assertIn("pe.results[].deprecated", first)
-        represented_tiers = {
-            field.tier
-            for section, fields in FIELD_REGISTRY.items()
-            for field in fields
-            if f"{section}.{field.key}" in first
-        }
-        self.assertEqual(represented_tiers, TIERS)
+        self.assertIn("sname", first)
+        self.assertIn("gracedb_events[].event_name", first)
+        self.assertIn("analyses[].software.name", first)
+        self.assertIn("detector_configurations[]", first)
+        self.assertIn("catalog_connections[]", first)
+        self.assertNotIn("raw_payload", first)
+        self.assertEqual(
+            {field.tier for fields in FIELD_REGISTRY.values() for field in fields},
+            TIERS,
+        )
 
-    def test_builder_preserves_falsy_values_aliases_and_unknown_fallback(self):
-        payload = {
-            "Info": {"status": ""},
-            "GraceDB": {
-                "superevent_far": 0,
-                "advok": False,
-                "extra": {"nullable": None},
+    def test_canonical_root_fields_select_exactly_their_sections(self):
+        cases = (
+            ({"sname": "S000001a"}, "info"),
+            ({"gracedb_events": [{"event_name": "G000001"}]}, "gracedb"),
+            ({"analyses": [{"uid": "pe_1", "type": "pe"}]}, "pe"),
+            ({"detector_configurations": [{"uid": "H1"}]}, "detchar"),
+            (
+                {"catalog_connections": [{"catalog_number": 4, "catalog_version": 1}]},
+                "catalog_tracking",
+            ),
+        )
+        for payload, expected_section in cases:
+            with self.subTest(expected_section=expected_section):
+                result = build_metadata_presentation(payload)
+                self.assertEqual(
+                    [section.id for section in result.sections],
+                    [expected_section],
+                )
+
+    def test_raw_payload_never_selects_renders_suppresses_or_reorders(self):
+        canonical = {
+            "sname": "S000001a",
+            "gracedb_events": [{"event_name": "G000001"}],
+            "analyses": [{"uid": "pe_1", "type": "pe"}],
+            "detector_configurations": [{"uid": "H1"}],
+            "catalog_connections": [{"catalog_number": 4, "catalog_version": 1}],
+        }
+        expected = ["info", "gracedb", "pe", "detchar", "catalog_tracking"]
+
+        for raw_payload in (
+            None,
+            {
+                "Info": {"status": "legacy"},
+                "GraceDB": {"events": [{"uid": "legacy-event"}]},
             },
-            "UnmappedProbe": {"deep": {"sentinel": "UX8_PROBE"}},
-        }
-        result = build_metadata_presentation(payload, historical=True)
-        self.assertTrue(result.historical)
-        self.assertEqual([section.id for section in result.sections], ["info", "gracedb", "unknown:UnmappedProbe"])
-        self.assertEqual([field.raw_value for field in result.summary], ["", False, 0])
-        gracedb = result.sections[1]
-        self.assertEqual(gracedb.disclosed_leaf_count, 1)
-        unknown = result.sections[2]
-        self.assertTrue(unknown.fallback)
-        self.assertEqual(unknown.disclosed_leaf_count, 1)
-        self.assertNotIn("UnmappedProbe.deep.sentinel", KNOWN_KEYS())
+        ):
+            with self.subTest(raw_payload=raw_payload):
+                result = build_metadata_presentation(
+                    {"raw_payload": raw_payload, **canonical},
+                )
+                self.assertEqual([section.id for section in result.sections], expected)
+                self.assertFalse(
+                    any(
+                        field.path.startswith("raw_payload")
+                        for section in result.sections
+                        for field in (*section.summary, *section.detail)
+                    )
+                )
+                self.assertFalse(
+                    any(
+                        node.path.startswith("raw_payload")
+                        for section in result.sections
+                        for node in section.disclosure
+                    )
+                )
 
-    def test_builder_discloses_non_mapping_section_values_without_raising(self):
-        scalar = build_metadata_presentation({"info": "scalar-value"})
-        scalar_section = scalar.sections[0]
-        self.assertEqual(scalar_section.id, "info")
-        self.assertEqual(scalar_section.data_shape, "scalar")
-        self.assertEqual(scalar_section.disclosure[0].path, "info")
-        self.assertEqual(scalar_section.disclosure[0].value, "scalar-value")
-        self.assertEqual(scalar_section.disclosure[0].leaf_count, 1)
+        only_raw = build_metadata_presentation({"raw_payload": {"sname": "shadow"}})
+        self.assertEqual(only_raw.sections, ())
+        self.assertEqual(only_raw.summary, ())
 
-        scalar_list = build_metadata_presentation({"info": ["a", "b"]})
-        scalar_list_section = scalar_list.sections[0]
-        self.assertEqual(scalar_list_section.data_shape, "scalar-list")
-        self.assertEqual(scalar_list_section.disclosure[0].shape, "scalar-list")
-        self.assertEqual(len(scalar_list_section.disclosure[0].children), 2)
-
-        record_list = build_metadata_presentation({"info": [{"a": 1}]})
-        record_list_section = record_list.sections[0]
-        self.assertEqual(record_list_section.data_shape, "record-list")
-        self.assertEqual(record_list_section.disclosure[0].shape, "record-list")
-
-    def test_builder_comparative_contracts_are_explicit(self):
+    def test_unknown_root_key_renders_after_all_five_known_sections(self):
         payload = {
-            "gracedb": {"events": [{"uid": "G1", "far": 0}]},
-            "pe": {"results": [{"uid": "P1", "deprecated": False}]},
+            "UnmappedProbe": {"deep": {"sentinel": "UX8_PROBE"}},
+            "catalog_connections": [{"catalog_number": 4, "catalog_version": 1}],
+            "detector_configurations": [{"uid": "H1"}],
+            "analyses": [{"uid": "pe_1", "type": "pe"}],
+            "gracedb_events": [{"event_name": "G000001"}],
+            "sname": "S000001a",
         }
-        result = build_metadata_presentation(payload)
-        grace, pe = result.sections
-        self.assertEqual(len(grace.comparative_sets[0].columns), 12)
-        self.assertEqual(len(pe.comparative_sets[0].columns), 8)
-        self.assertEqual(grace.comparative_sets[0].rows[0].identity, "G1")
-        self.assertEqual(pe.comparative_sets[0].rows[0].identity, "P1")
+
+        result = build_metadata_presentation(payload, historical=True)
+
+        self.assertTrue(result.historical)
+        self.assertEqual(
+            [section.id for section in result.sections],
+            [
+                "info",
+                "gracedb",
+                "pe",
+                "detchar",
+                "catalog_tracking",
+                "unknown:UnmappedProbe",
+            ],
+        )
+        unknown = result.sections[-1]
+        self.assertTrue(unknown.fallback)
+        self.assertEqual(unknown.heading, "Additional metadata: UnmappedProbe")
+        self.assertEqual(unknown.disclosed_leaf_count, 1)
+        self.assertEqual(
+            unknown.disclosure[0].children[0].children[0].value,
+            "UX8_PROBE",
+        )
+        self.assertNotIn("UnmappedProbe.deep.sentinel", KNOWN_KEYS())

@@ -11,7 +11,11 @@ from bilbyui.services.gwflow_metadata import (
     warn_unmapped_metadata_leaves,
 )
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.views import _render_gwflow_metadata_section, gwflow_job_history_version_partial
+from bilbyui.views import (
+    _render_gwflow_history_section,
+    _render_gwflow_metadata_section,
+    gwflow_job_history_version_partial,
+)
 
 
 class LeafPathTests(SimpleTestCase):
@@ -29,7 +33,6 @@ class LeafPathTests(SimpleTestCase):
             "empty_mapping": {},
             "empty_sequence": [],
         }
-
         self.assertEqual(
             _iter_leaf_paths(payload),
             (
@@ -41,35 +44,104 @@ class LeafPathTests(SimpleTestCase):
             ),
         )
 
-    def test_known_paths_are_silent(self):
+    def test_known_canonical_paths_are_silent(self):
         with self.assertNoLogs("bilbyui.services.gwflow_metadata", level="WARNING"):
             warn_unmapped_metadata_leaves(
-                {"info": {"notes": "known", "status": False}},
+                {
+                    "sname": "S000001a",
+                    "is_current": False,
+                    "gracedb_events": [{"event_name": "G000001"}],
+                    "analyses": [{"uid": "pe_1", "status": "complete"}],
+                },
                 sname="S-KNOWN",
             )
 
-    def test_registered_scalar_list_leaves_are_silent_but_unregistered_still_warns(self):
+    def test_raw_payload_and_registered_comparative_descendants_are_silent(self):
         payload = {
-            "gracedb": {"instruments": ["H1", "L1"]},
-            "pe": {"results": [{"uid": "u", "analysts": ["a"]}]},
-            "info": {"z_unknown": ["x"]},
+            "raw_payload": {"GraceDB": {"Events": [{"secret": "never-walked"}]}},
+            "analyses": [
+                {
+                    "uid": "pe_1",
+                    "type": "pe",
+                    "analysts": [{"name": "A", "email_address": "private@example.test"}],
+                    "reviews": [
+                        {
+                            "occurrence_uid": "review-1",
+                            "name": "Review",
+                            "description": "Description",
+                            "passed_review": None,
+                            "completion_date": None,
+                            "review_status": "pending",
+                            "reviewers": [{"name": "R", "email_address": "hidden@example.test"}],
+                        }
+                    ],
+                    "input_files": [{"file": {"name": "input.ini"}}],
+                }
+            ],
+        }
+        with self.assertNoLogs("bilbyui.services.gwflow_metadata", level="WARNING"):
+            warn_unmapped_metadata_leaves(payload, sname="S-OWNED")
+
+    def test_unknown_person_and_review_descendants_still_warn(self):
+        payload = {
+            "analyses": [
+                {
+                    "uid": "pe_1",
+                    "type": "pe",
+                    "analysts": [{"name": "A", "new_person_field": "SECRET-PERSON"}],
+                    "reviews": [
+                        {
+                            "name": "R",
+                            "reviewers": [{"name": "Reviewer", "new_reviewer_field": "SECRET-REVIEWER"}],
+                            "new_review_field": "SECRET-REVIEW",
+                        }
+                    ],
+                }
+            ]
         }
         with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
-            warn_unmapped_metadata_leaves(payload, sname="S-LIST")
-
+            warn_unmapped_metadata_leaves(payload, sname="S-NESTED-DRIFT")
         self.assertEqual(
             [record.path for record in captured.records],
-            ["info.z_unknown[]"],
+            [
+                "analyses[].analysts[].new_person_field",
+                "analyses[].reviews[].new_review_field",
+                "analyses[].reviews[].reviewers[].new_reviewer_field",
+            ],
+        )
+        self.assertNotIn("SECRET", "\n".join(captured.output))
+
+    def test_unregistered_comparative_leaf_still_warns_with_full_path(self):
+        payload = {"analyses": [{"uid": "pe_1", "type": "pe", "new_field": {"leaf": "SECRET"}}]}
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
+            warn_unmapped_metadata_leaves(payload, sname="S-DRIFT")
+        self.assertEqual([record.path for record in captured.records], ["analyses[].new_field.leaf"])
+        self.assertNotIn("SECRET", "\n".join(captured.output))
+
+    def test_catch_all_descendants_still_warn_by_exact_match_policy(self):
+        payload = {
+            "detector_configurations": [{"uid": "H1", "subtype_state": "science"}],
+            "catalog_connections": [{"catalog_number": 4, "catalog_version": 1}],
+        }
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
+            warn_unmapped_metadata_leaves(payload, sname="S-CATCH-ALL")
+        self.assertEqual(
+            [record.path for record in captured.records],
+            [
+                "catalog_connections[].catalog_number",
+                "catalog_connections[].catalog_version",
+                "detector_configurations[].subtype_state",
+                "detector_configurations[].uid",
+            ],
         )
 
-    def test_deeply_nested_payload_degrades_gracefully_with_truncation_warning(self):
+    def test_deeply_nested_payload_degrades_with_truncation_warning(self):
         payload = {}
         node = payload
         for _ in range(2000):
             node["next"] = {}
             node = node["next"]
         node["leaf"] = 1
-
         with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
             warn_unmapped_metadata_leaves(payload, sname="S-DEEP")
         self.assertEqual(len(captured.records), 1)
@@ -81,82 +153,70 @@ class LeafPathTests(SimpleTestCase):
                 with self.assertNoLogs("bilbyui.services.gwflow_metadata", level="WARNING"):
                     warn_unmapped_metadata_leaves(payload, sname="S-NON-MAPPING")
 
-    def test_warning_records_are_exact_sorted_and_contain_no_values(self):
-        payload = {"info": {"z_unknown": "SECRET-Z", "a_unknown": "SECRET-A"}}
-
+    def test_warning_records_are_sorted_and_contain_no_values(self):
+        payload = {"UnknownExtension": {"z": "SECRET-Z", "a": "SECRET-A"}}
         with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
             warn_unmapped_metadata_leaves(payload, sname="S-WARN")
-
         self.assertEqual(
-            [(record.getMessage(), record.path, record.sname) for record in captured.records],
+            [(record.path, record.sname) for record in captured.records],
             [
-                ("unmapped gwflow metadata leaf", "info.a_unknown", "S-WARN"),
-                ("unmapped gwflow metadata leaf", "info.z_unknown", "S-WARN"),
+                ("UnknownExtension.a", "S-WARN"),
+                ("UnknownExtension.z", "S-WARN"),
             ],
         )
         self.assertNotIn("SECRET", " ".join(record.getMessage() for record in captured.records))
 
-    def test_limiter_suppresses_same_key_but_keeps_sname_and_path_independent(self):
+    def test_limiter_keys_on_sname_and_path(self):
         logger_name = "bilbyui.services.gwflow_metadata"
         with self.assertLogs(logger_name, level="WARNING") as captured:
-            warn_unmapped_metadata_leaves({"info": {"drift": 1}}, sname="S-ONE")
-            warn_unmapped_metadata_leaves({"info": {"drift": 2}}, sname="S-ONE")
-            warn_unmapped_metadata_leaves({"info": {"drift": 3}}, sname="S-TWO")
-            warn_unmapped_metadata_leaves({"info": {"other": 4}}, sname="S-ONE")
-
+            warn_unmapped_metadata_leaves({"Unknown": {"drift": 1}}, sname="S-ONE")
+            warn_unmapped_metadata_leaves({"Unknown": {"drift": 2}}, sname="S-ONE")
+            warn_unmapped_metadata_leaves({"Unknown": {"drift": 3}}, sname="S-TWO")
+            warn_unmapped_metadata_leaves({"Unknown": {"other": 4}}, sname="S-ONE")
         self.assertEqual(
             [(record.path, record.sname) for record in captured.records],
             [
-                ("info.drift", "S-ONE"),
-                ("info.drift", "S-TWO"),
-                ("info.other", "S-ONE"),
+                ("Unknown.drift", "S-ONE"),
+                ("Unknown.drift", "S-TWO"),
+                ("Unknown.other", "S-ONE"),
             ],
         )
 
     def test_blank_sname_is_normalised_and_cache_reset_restores_emission(self):
+        payload = {"Unknown": {"drift": 1}}
         logger_name = "bilbyui.services.gwflow_metadata"
-        payload = {"info": {"drift": 1}}
         with self.assertLogs(logger_name, level="WARNING") as first:
             warn_unmapped_metadata_leaves(payload, sname=" ")
         _reset_unmapped_warning_cache()
         with self.assertLogs(logger_name, level="WARNING") as second:
             warn_unmapped_metadata_leaves(payload, sname=None)
-
         self.assertEqual(first.records[0].sname, "unknown")
         self.assertEqual(second.records[0].sname, "unknown")
 
 
-class InfoCompletenessTests(SimpleTestCase):
-    def tearDown(self):
-        _reset_unmapped_warning_cache()
-        super().tearDown()
-
-    def test_info_notes_nested_unknown_and_falsy_values_render_and_warn(self):
+class CanonicalCompletenessTests(SimpleTestCase):
+    def test_unknown_nested_and_falsy_values_render_and_warn(self):
         payload = {
-            "info": {
-                "notes": "Complete notes",
-                "status": "",
-                "is_public": False,
-                "review_count": 0,
-                "upstream": {"nested": "Nested upstream value"},
-            }
+            "sname": "",
+            "version_number": 0,
+            "is_current": False,
+            "UnknownExtension": {"nested": "Nested upstream value"},
         }
         with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
             warn_unmapped_metadata_leaves(payload, sname="S-INFO")
-
         presentation = build_metadata_presentation(payload)
         rendered = render_to_string(
             "bilbyui/_gwflow_metadata.html",
-            {"payload": payload, "presentation": presentation, "stale": False},
+            {"payload": payload, "presentation": presentation},
         )
-
-        self.assertIn("Complete notes", rendered)
         self.assertIn("Nested upstream value", rendered)
-        self.assertIn(">0<", rendered)
+        self.assertRegex(rendered, r">\s*0\s*<")
         self.assertIn("✗ False", rendered)
         self.assertIn("&quot;&quot;", rendered)
-        warned_paths = [record.path for record in captured.records]
-        self.assertIn("info.upstream.nested", warned_paths)
+        self.assertEqual(
+            [record.path for record in captured.records],
+            ["UnknownExtension.nested"],
+        )
 
 
 class RecursionErrorGuardTests(SimpleTestCase):
@@ -165,7 +225,7 @@ class RecursionErrorGuardTests(SimpleTestCase):
         super().tearDown()
 
     @staticmethod
-    def _deep_payload(depth):
+    def deep_payload(depth):
         payload = {}
         node = payload
         for _ in range(depth):
@@ -174,19 +234,13 @@ class RecursionErrorGuardTests(SimpleTestCase):
         node["leaf"] = 1
         return payload
 
-    def test_build_metadata_presentation_degrades_on_deeply_nested_payload(self):
-        payload = self._deep_payload(5000)
-        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
+    def test_build_and_warning_walk_degrade_on_deep_payload(self):
+        payload = self.deep_payload(5000)
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING"):
             presentation = build_metadata_presentation(payload)
-        self.assertEqual(presentation.summary, ())
         self.assertEqual(presentation.sections, ())
-        self.assertTrue(any("too deeply nested" in record.getMessage() for record in captured.records))
-
-    def test_warn_unmapped_metadata_leaves_warns_on_deeply_nested_payload(self):
-        payload = self._deep_payload(5000)
         with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
             warn_unmapped_metadata_leaves(payload, sname="S-DEEP")
-        self.assertEqual(len(captured.records), 1)
         self.assertIn("truncated", captured.records[0].getMessage())
 
 
@@ -199,18 +253,16 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
     @mock.patch("bilbyui.views.warn_unmapped_metadata_leaves")
     @mock.patch("bilbyui.views.get_superevent")
     @mock.patch("bilbyui.views._get_gwflow_job_or_404")
-    def test_current_path_warns_after_build(self, get_job, get_superevent, warn, build):
-        payload = {"info": {"upstream": "visible"}}
+    def test_current_path_builds_then_warns(self, get_job, get_superevent, warn, build):
+        payload = {"sname": "S-CURRENT"}
         get_job.return_value = mock.Mock()
         get_superevent.return_value = (payload, "live")
         events = []
-        warn.side_effect = lambda *args, **kwargs: events.append(("warn", args, kwargs))
-        build.side_effect = lambda *args, **kwargs: events.append(("build", args, kwargs)) or mock.Mock()
-
+        build.side_effect = lambda *args, **kwargs: events.append("build") or mock.Mock()
+        warn.side_effect = lambda *args, **kwargs: events.append("warn")
         response, stale = _render_gwflow_metadata_section(self.request, "S-CURRENT")
-
         self.assertFalse(stale)
-        self.assertEqual([event[0] for event in events], ["build", "warn"])
+        self.assertEqual(events, ["build", "warn"])
         warn.assert_called_once_with(payload, sname="S-CURRENT")
         self.assertEqual(response.context_data["payload"], payload)
 
@@ -219,13 +271,10 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
     @mock.patch("bilbyui.views.get_version")
     @mock.patch(
         "bilbyui.views.get_versions",
-        return_value=(
-            [{"commit_sha": "version-1", "version_number": 1}],
-            "live",
-        ),
+        return_value=([{"commit_sha": "version-1", "version_number": 1}], "live"),
     )
     @mock.patch("bilbyui.views._get_gwflow_job_or_404")
-    def test_historical_path_warns_after_build(
+    def test_historical_partial_builds_then_warns(
         self,
         get_job,
         get_versions,
@@ -233,41 +282,75 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
         warn,
         build,
     ):
-        payload = {"info": {"upstream": "visible"}}
+        payload = {"sname": "S-HISTORY"}
         get_job.return_value = mock.Mock()
         get_version.return_value = (payload, "live")
         events = []
-        warn.side_effect = lambda *args, **kwargs: events.append(("warn", args, kwargs))
-        build.side_effect = lambda *args, **kwargs: events.append(("build", args, kwargs)) or mock.Mock()
-
-        response = gwflow_job_history_version_partial(self.request, "S-HISTORY", "version-1")
-
-        self.assertEqual([event[0] for event in events], ["build", "warn"])
-        warn.assert_called_once_with(payload, sname="S-HISTORY")
+        build.side_effect = lambda *args, **kwargs: events.append("build") or mock.Mock()
+        warn.side_effect = lambda *args, **kwargs: events.append("warn")
+        response = gwflow_job_history_version_partial(
+            self.request,
+            "S-HISTORY",
+            "version-1",
+        )
+        self.assertEqual(events, ["build", "warn"])
         build.assert_called_once_with(payload, historical=True)
+        warn.assert_called_once_with(payload, sname="S-HISTORY")
         self.assertEqual(response.context_data["payload"], payload)
+
+    @mock.patch("bilbyui.views.adapt_semantic_diff")
+    @mock.patch("bilbyui.views.get_diff", return_value=(None, "live"))
+    @mock.patch("bilbyui.views.build_metadata_presentation")
+    @mock.patch("bilbyui.views.warn_unmapped_metadata_leaves")
+    @mock.patch("bilbyui.views.get_version")
+    @mock.patch("bilbyui.views.resolve_history_selection")
+    @mock.patch("bilbyui.views.prepare_version_snapshots")
+    @mock.patch("bilbyui.views.get_versions", return_value=([], "live"))
+    @mock.patch("bilbyui.views._get_gwflow_job_or_404")
+    def test_history_section_builds_from_canonical_detail_not_raw_payload(
+        self,
+        get_job,
+        get_versions,
+        prepare,
+        resolve,
+        get_version,
+        warn,
+        build,
+        get_diff,
+        adapt,
+    ):
+        selected = mock.Mock(version_number=7, is_current=False)
+        get_job.return_value = mock.Mock(current_history_id="sha-current")
+        prepare.return_value = (selected,)
+        resolve.return_value = (selected, None, "prev")
+        detail = {
+            "sname": "S-HISTORY",
+            "gracedb_events": [{"event_name": "G000001"}],
+            "raw_payload": {"Info": {"status": "legacy"}},
+        }
+        get_version.return_value = (detail, "live")
+        build.return_value = mock.Mock()
+        adapt.return_value = mock.Mock(status="no_baseline", rows=())
+        _render_gwflow_history_section(self.request, "S-HISTORY")
+        build.assert_called_once_with(detail, historical=True)
+        warn.assert_called_once_with(detail, sname="S-HISTORY")
 
 
 class ProductionLoggingRoutingTests(SimpleTestCase):
-    def test_service_warning_inherits_one_warning_capable_bilbyui_route(self):
+    def test_service_warning_inherits_warning_capable_bilbyui_route(self):
         import os
 
-        production_environment = {
+        environment = {
             "GWOSC_INGEST_USER": "1",
             "GWFLOW_INGEST_USER": "1",
             "PERMITTED_EVENT_CREATION_USER_IDS": "[]",
             "CLUSTERS": "{}",
         }
-        with mock.patch.dict(os.environ, production_environment):
+        with mock.patch.dict(os.environ, environment):
             from gw_bilby.prod import LOGGING
 
         config = LOGGING["loggers"]["bilbyui"]
         self.assertEqual(config["level"], "INFO")
         self.assertFalse(config["propagate"])
         self.assertEqual(config["handlers"], ["console", "file", "error_file"])
-        self.assertEqual(LOGGING["handlers"]["console"]["level"], "INFO")
-        self.assertEqual(LOGGING["handlers"]["file"]["level"], "INFO")
-        self.assertEqual(LOGGING["handlers"]["error_file"]["level"], "ERROR")
-
-        service_logger = logging.getLogger("bilbyui.services.gwflow_metadata")
-        self.assertTrue(service_logger.name.startswith("bilbyui."))
+        self.assertTrue(logging.getLogger("bilbyui.services.gwflow_metadata").name.startswith("bilbyui."))

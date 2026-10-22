@@ -1,6 +1,6 @@
 {% load gwflow_tags %}
 <div class="gwflow-comparison gwflow-comparison--gracedb"
-     data-comparison-kind="events"
+     data-comparison-kind="gracedb_events"
      data-column-count="{{ comparative_set.columns|length }}"
      data-row-count="{{ comparative_set.rows|length }}"
      x-data="{ columnsExpanded: false }">
@@ -20,7 +20,7 @@
   </button>
 
   <div role="region"
-       aria-label="GraceDB events, 12-column comparison"
+       aria-label="GraceDB events, {{ comparative_set.columns|length }}-column comparison"
        tabindex="0"
        class="table-scroll-region">
     <table id="gracedb-comparison-table"

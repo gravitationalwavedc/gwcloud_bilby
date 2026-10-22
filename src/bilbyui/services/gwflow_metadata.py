@@ -24,6 +24,8 @@ FORMATTER_NAMES = frozenset(
         "boolean",
         "link",
         "list",
+        "people",
+        "reviews",
         "person",
         "probability",
         "scientific",
@@ -109,126 +111,110 @@ class MetadataPresentation:
 
 # Identifiers are stable policy keys. Visible first-use expansions live in
 # SECTION_HEADINGS rather than being inferred from source keys.
-SECTION_ORDER: tuple[str, ...] = (
-    "info",
-    "gracedb",
-    "pe",
-    "tgr",
-    "lensing",
-    "detchar",
-    "extreme_matter",
-    "cosmology",
-    "rnp",
-    "catalog_tracking",
-    "publications",
-)
+SECTION_ORDER: tuple[str, ...] = ("info", "gracedb", "pe", "detchar", "catalog_tracking")
 
 SECTION_HEADINGS: Mapping[str, str] = MappingProxyType(
     {
         "info": "Info",
         "gracedb": "GraceDB",
         "pe": "Parameter estimation (PE)",
-        "tgr": "Tests of general relativity (TGR)",
-        "lensing": "Lensing",
-        "detchar": "Detector characterisation (Detchar)",
-        "extreme_matter": "Extreme matter",
-        "cosmology": "Cosmology",
-        "rnp": "Rapid neutron-star parameter estimation (RNP)",
+        "detchar": "Detector characterisation (DetChar)",
         "catalog_tracking": "Catalogue tracking",
-        "publications": "Publications",
     }
 )
 
-SECTION_ALIASES: Mapping[str, tuple[str, ...]] = MappingProxyType(
+SECTION_SOURCES: Mapping[str, str] = MappingProxyType(
     {
-        "info": ("info", "Info"),
-        "gracedb": ("gracedb", "GraceDB"),
-        "pe": ("pe", "ParameterEstimation"),
-        "tgr": ("tgr", "TGR"),
-        "lensing": ("lensing", "Lensing"),
-        "detchar": ("detchar", "DetectorCharacterization", "DetectorCharacterisation"),
-        "extreme_matter": ("extreme_matter", "ExtremeMatter"),
-        "cosmology": ("cosmology", "Cosmology"),
-        "rnp": ("rnp", "RapidParameterEstimation"),
-        "catalog_tracking": ("catalog_tracking", "CatalogTracking", "CatalogueTracking"),
-        "publications": ("publications", "Publications"),
+        "gracedb": "gracedb_events",
+        "pe": "analyses",
+        "detchar": "detector_configurations",
+        "catalog_tracking": "catalog_connections",
+    }
+)
+INFO_KEYS = ("sname", "libraries", "version_number", "record_timestamp", "commit_sha", "is_current")
+RECOGNISED_ROOT_KEYS = frozenset((*INFO_KEYS, *SECTION_SOURCES.values(), "raw_payload"))
+RECOGNISED_NON_DISPLAYED_PATHS = frozenset(
+    {
+        "raw_payload",
+        "analyses[].type",
+        "analyses[].revision",
+        "analyses[].suggested_detector_configuration_uids[]",
+        "analyses[].analysts[].email_address",
+        "analyses[].reviews[].reviewers[].email_address",
+    }
+)
+COMPARATIVE_DESCENDANT_PATHS = frozenset(
+    {
+        "analyses[].analysts[].name",
+        "analyses[].reviews[].occurrence_uid",
+        "analyses[].reviews[].name",
+        "analyses[].reviews[].description",
+        "analyses[].reviews[].reviewers[].name",
+        "analyses[].reviews[].passed_review",
+        "analyses[].reviews[].completion_date",
+        "analyses[].reviews[].review_status",
     }
 )
 
-# Presentation-only policy for source sections absent from SECTION_ALIASES.
 UNKNOWN_SECTION_FALLBACK: Mapping[str, str] = MappingProxyType(
     {"heading": "Additional metadata", "tier": "disclosure", "formatter": "text"}
 )
 
 _GRACEDB_EVENT_FIELDS = (
-    FieldSpec("events[].uid", "Event identifier", "text", "detail"),
-    FieldSpec("events[].pipeline", "Pipeline", "text", "detail"),
-    FieldSpec("events[].state", "State", "status", "detail"),
-    FieldSpec("events[].gps_time", "GPS time", "text", "disclosure"),
-    FieldSpec("events[].far", "False-alarm rate (FAR)", "scientific", "detail"),
-    FieldSpec("events[].network_snr", "Network signal-to-noise ratio", "scientific", "detail"),
-    FieldSpec("events[].pastro", "Astrophysical probability", "probability", "disclosure"),
-    FieldSpec("events[].p_bbh", "Binary black-hole probability", "probability", "disclosure"),
-    FieldSpec("events[].p_bns", "Binary neutron-star probability", "probability", "disclosure"),
-    FieldSpec("events[].p_nsbh", "Neutron-star–black-hole probability", "probability", "disclosure"),
-    FieldSpec("events[].mass_1", "Primary mass", "scientific", "disclosure"),
-    FieldSpec("events[].mass_2", "Secondary mass", "scientific", "disclosure"),
+    FieldSpec("gracedb_events[].event_name", "Event name", "text", "detail"),
+    FieldSpec("gracedb_events[].has_ns", "Has neutron star (probability)", "probability", "detail"),
+    FieldSpec("gracedb_events[].has_remnant", "Has remnant (probability)", "probability", "detail"),
+    FieldSpec("gracedb_events[].has_mass_gap", "Has mass gap (probability)", "probability", "disclosure"),
+    FieldSpec(
+        "gracedb_events[].pipeline_has_ns",
+        "Pipeline: has neutron star (probability)",
+        "probability",
+        "disclosure",
+    ),
+    FieldSpec(
+        "gracedb_events[].pipeline_has_remnant",
+        "Pipeline: has remnant (probability)",
+        "probability",
+        "disclosure",
+    ),
+    FieldSpec(
+        "gracedb_events[].pipeline_has_mass_gap",
+        "Pipeline: has mass gap (probability)",
+        "probability",
+        "disclosure",
+    ),
 )
 _PE_RESULT_FIELDS = (
-    FieldSpec("results[].uid", "Result identifier", "text", "detail"),
-    FieldSpec("results[].inference_software", "Inference software", "text", "detail"),
-    FieldSpec("results[].waveform_approximant", "Waveform approximant", "text", "detail"),
-    FieldSpec("results[].run_status", "Run status", "status", "detail"),
-    FieldSpec("results[].review_status", "Review status", "status", "detail"),
-    FieldSpec("results[].analysts", "Analysts", "list", "disclosure"),
-    FieldSpec("results[].reviewers", "Reviewers", "list", "disclosure"),
-    FieldSpec("results[].deprecated", "Deprecated", "boolean", "disclosure"),
+    FieldSpec("analyses[].uid", "UID", "text", "detail"),
+    FieldSpec("analyses[].name", "Name", "text", "detail"),
+    FieldSpec("analyses[].status", "Status", "status", "detail"),
+    FieldSpec("analyses[].review_status", "Review status", "status", "detail"),
+    FieldSpec("analyses[].deprecated", "Deprecated", "boolean", "detail"),
+    FieldSpec("analyses[].description", "Description", "text", "disclosure"),
+    FieldSpec("analyses[].software.name", "Software name", "text", "disclosure"),
+    FieldSpec("analyses[].software.version", "Software version", "text", "disclosure"),
+    FieldSpec("analyses[].analysts", "Analysts", "people", "disclosure"),
+    FieldSpec("analyses[].reviews", "Reviews", "reviews", "disclosure"),
+    FieldSpec("analyses[].configurations", "Configurations", "list", "disclosure"),
+    FieldSpec("analyses[].input_files", "Input files", "list", "disclosure"),
+    FieldSpec("analyses[].output_files", "Output files", "list", "disclosure"),
+    FieldSpec("analyses[].in_catalog", "In catalog", "boolean", "disclosure"),
 )
 
 FIELD_REGISTRY: Mapping[str, tuple[FieldSpec, ...]] = MappingProxyType(
     {
         "info": (
-            FieldSpec("status", "Overall status", "status", "summary"),
-            FieldSpec("notes", "Notes", "text", "detail"),
+            FieldSpec("sname", "Superevent name", "text", "summary"),
+            FieldSpec("libraries", "Libraries", "list", "summary"),
+            FieldSpec("version_number", "Version number", "text", "summary"),
+            FieldSpec("record_timestamp", "Recorded", "utc_timestamp", "summary"),
+            FieldSpec("commit_sha", "Commit", "text", "detail"),
+            FieldSpec("is_current", "Current version", "boolean", "detail"),
         ),
-        "gracedb": (
-            FieldSpec("instruments", "Instruments", "list", "summary"),
-            FieldSpec("advok", "ADVOK state", "status", "summary"),
-            FieldSpec("superevent_far", "False-alarm rate (FAR)", "scientific", "summary"),
-            FieldSpec(
-                "superevent_pastro",
-                "Astrophysical probability (p_astro) classification",
-                "probability",
-                "summary",
-            ),
-            FieldSpec("notes", "Notes", "text", "detail"),
-            *_GRACEDB_EVENT_FIELDS,
-        ),
-        "pe": (
-            FieldSpec("status", "Parameter-estimation status", "status", "detail"),
-            FieldSpec("analysts", "Analysts", "list", "detail"),
-            FieldSpec("reviewers", "Reviewers", "list", "detail"),
-            FieldSpec("notes", "Notes", "text", "detail"),
-            *_PE_RESULT_FIELDS,
-        ),
-        "tgr": (
-            FieldSpec("notes", "Notes", "text", "detail"),
-            FieldSpec("results[].uid", "Analysis identifier", "text", "detail"),
-            FieldSpec("results[].analysis_software", "Analysis software", "text", "detail"),
-            FieldSpec("results[].analysts", "Analysts", "list", "disclosure"),
-            FieldSpec("results[].description", "Description", "text", "disclosure"),
-        ),
-        "lensing": (
-            FieldSpec("notes", "Notes", "text", "detail"),
-            FieldSpec("multiplet_groups[].companion_sname", "Companion superevent", "text", "detail"),
-            FieldSpec("singlet_analyses[].uid", "Singlet analysis identifier", "text", "detail"),
-        ),
-        "detchar": (FieldSpec("notes", "Notes", "text", "detail"),),
-        "extreme_matter": (FieldSpec("notes", "Notes", "text", "detail"),),
-        "cosmology": (FieldSpec("notes", "Notes", "text", "detail"),),
-        "rnp": (FieldSpec("notes", "Notes", "text", "detail"),),
-        "catalog_tracking": (FieldSpec("notes", "Notes", "text", "detail"),),
-        "publications": (FieldSpec("notes", "Notes", "text", "detail"),),
+        "gracedb": _GRACEDB_EVENT_FIELDS,
+        "pe": _PE_RESULT_FIELDS,
+        "detchar": (FieldSpec("detector_configurations[]", "Detector configurations", "text", "disclosure"),),
+        "catalog_tracking": (FieldSpec("catalog_connections[]", "Catalog connections", "text", "disclosure"),),
     }
 )
 
@@ -256,7 +242,7 @@ validate_registry()
 def KNOWN_KEYS() -> frozenset[str]:
     """Return immutable canonical full leaf-path patterns for every tier."""
 
-    return frozenset(f"{section}.{field.key}" for section in SECTION_ORDER for field in FIELD_REGISTRY[section])
+    return frozenset(field.key for section in SECTION_ORDER for field in FIELD_REGISTRY[section])
 
 
 def _iter_leaf_paths(value: Any, path: str = "") -> tuple[str, ...]:
@@ -265,6 +251,8 @@ def _iter_leaf_paths(value: Any, path: str = "") -> tuple[str, ...]:
     paths: set[str] = set()
 
     def walk(child: Any, child_path: str) -> None:
+        if child_path == "raw_payload" or child_path.startswith("raw_payload."):
+            return
         if isinstance(child, Mapping):
             for key, nested in child.items():
                 nested_path = f"{child_path}.{key}" if child_path else str(key)
@@ -285,11 +273,30 @@ def _iter_leaf_paths(value: Any, path: str = "") -> tuple[str, ...]:
 
 
 def _unmapped_paths(payload: Mapping[str, Any]) -> tuple[str, ...]:
-    """Return canonical scalar leaf paths absent from the registry."""
+    """Return canonical scalar leaf paths absent from presentation policy."""
 
     known = KNOWN_KEYS()
-    leaf_paths = _iter_leaf_paths(payload)
-    return tuple(sorted(path for path in leaf_paths if path not in known and path.removesuffix("[]") not in known))
+    scalar_comparative_owners = frozenset(
+        field.key
+        for section_id in ("gracedb", "pe")
+        for field in FIELD_REGISTRY[section_id]
+        if field.formatter not in {"people", "reviews"}
+    )
+
+    def is_registered(path: str) -> bool:
+        normalised = path.removesuffix("[]")
+        if normalised in RECOGNISED_NON_DISPLAYED_PATHS:
+            return True
+        if normalised in COMPARATIVE_DESCENDANT_PATHS:
+            return True
+        if normalised in known:
+            return True
+        return any(
+            path.startswith(f"{owner}.") or path.startswith(f"{owner}[]")
+            for owner in scalar_comparative_owners
+        )
+
+    return tuple(sorted(path for path in _iter_leaf_paths(payload) if not is_registered(path)))
 
 
 @lru_cache(maxsize=512)
@@ -327,13 +334,6 @@ def warn_unmapped_metadata_leaves(payload: Mapping[str, Any], *, sname: Any) -> 
 _MISSING = object()
 
 
-def _find_source(payload: Mapping[str, Any], section_id: str) -> tuple[str, Any]:
-    for alias in SECTION_ALIASES[section_id]:
-        if alias in payload:
-            return alias, payload[alias]
-    return "", _MISSING
-
-
 def _lookup(value: Any, path: str) -> Any:
     """Resolve canonical mapping and record-list paths without losing records."""
 
@@ -367,7 +367,7 @@ def _raw_label(key: str) -> str:
     return key.replace("_", " ").strip() or "Unnamed field"
 
 
-def _node(path: str, label: str, value: Any) -> DisclosureNode:
+def _node(path: str, label: str, value: Any, identity_keys: tuple[str, ...] = ()) -> DisclosureNode:
     if isinstance(value, Mapping):
         children = tuple(_node(f"{path}.{key}", _raw_label(str(key)), child) for key, child in value.items())
         return DisclosureNode(
@@ -378,15 +378,23 @@ def _node(path: str, label: str, value: Any) -> DisclosureNode:
             leaf_count=sum(child.leaf_count for child in children),
         )
     if isinstance(value, list):
-        children = tuple(_node(f"{path}[{index}]", f"Item {index + 1}", child) for index, child in enumerate(value))
+        children = []
+        for index, child in enumerate(value):
+            child_label = f"Item {index + 1}"
+            if isinstance(child, Mapping) and identity_keys:
+                identity = [child.get(key) for key in identity_keys]
+                if all(item is not None for item in identity):
+                    child_label = ":".join(str(item) for item in identity)
+            children.append(_node(f"{path}[{index}]", child_label, child))
+        children_tuple = tuple(children)
         shape = "record-list" if value and all(isinstance(item, Mapping) for item in value) else "scalar-list"
         return DisclosureNode(
             path,
             label,
             shape,
             value=() if not value else None,
-            children=children,
-            leaf_count=sum(child.leaf_count for child in children),
+            children=children_tuple,
+            leaf_count=sum(child.leaf_count for child in children_tuple),
         )
     return DisclosureNode(path, label, "scalar", value=value, leaf_count=1)
 
@@ -401,29 +409,62 @@ def _field(section: str, spec: FieldSpec, value: Any) -> PresentationField:
     )
 
 
-def _top_registered_key(path: str) -> str:
-    return path.split(".", 1)[0].removesuffix("[]")
+def _disclosure_value(key: str, value: Any) -> Any:
+    """Remove deliberately non-displayed email fields without hiding other metadata."""
+    if key == "analysts" and isinstance(value, list):
+        return [
+            {nested_key: nested for nested_key, nested in analyst.items() if nested_key != "email_address"}
+            if isinstance(analyst, Mapping)
+            else analyst
+            for analyst in value
+        ]
+
+    if key == "reviews" and isinstance(value, list):
+        sanitised_reviews = []
+        for review in value:
+            if not isinstance(review, Mapping):
+                sanitised_reviews.append(review)
+                continue
+            sanitised_review = dict(review)
+            reviewers = sanitised_review.get("reviewers")
+            if isinstance(reviewers, list):
+                sanitised_review["reviewers"] = [
+                    {
+                        nested_key: nested
+                        for nested_key, nested in reviewer.items()
+                        if nested_key != "email_address"
+                    }
+                    if isinstance(reviewer, Mapping)
+                    else reviewer
+                    for reviewer in reviewers
+                ]
+            sanitised_reviews.append(sanitised_review)
+        return sanitised_reviews
+
+    return value
 
 
 def _comparative_residual(
     section_id: str,
     record_key: str,
-    records: list,
+    indexed_records: list[tuple[int, Any]],
     registered_keys: frozenset[str],
+    disclosed_keys: frozenset[str] = frozenset(),
 ) -> tuple[DisclosureNode, ...]:
     """Preserve unregistered leaves inside comparative records as disclosure nodes."""
     nodes: list[DisclosureNode] = []
-    for index, record in enumerate(records):
+    for source_index, record in indexed_records:
         if not isinstance(record, Mapping):
             continue
         for key, child in record.items():
-            if str(key) in registered_keys:
+            key_text = str(key)
+            if key_text in registered_keys and key_text not in disclosed_keys:
                 continue
             nodes.append(
                 _node(
-                    f"{section_id}.{record_key}[{index}].{key}",
+                    f"{section_id}.{record_key}[{source_index}].{key}",
                     _raw_label(str(key)),
-                    child,
+                    _disclosure_value(key_text, child),
                 )
             )
     return tuple(nodes)
@@ -431,21 +472,18 @@ def _comparative_residual(
 
 def _comparative(
     section_id: str,
-    section: Mapping[str, Any],
+    records: list[Any],
     record_key: str,
     specs: tuple[FieldSpec, ...],
     default_keys: frozenset[str],
 ) -> ComparativeSet | None:
-    records = section.get(record_key, _MISSING)
-    if not isinstance(records, list):
-        return None
     columns = tuple(
         ComparativeColumn(
-            key=spec.key.rsplit(".", 1)[-1],
+            key=spec.key.removeprefix(f"{record_key}[]."),
             path=f"{section_id}.{spec.key}",
             label=spec.label,
             formatter=spec.formatter,
-            default_visible=spec.key.rsplit(".", 1)[-1] in default_keys,
+            default_visible=spec.key.removeprefix(f"{record_key}[].") in default_keys,
             identity=index == 0,
         )
         for index, spec in enumerate(specs)
@@ -454,115 +492,121 @@ def _comparative(
     for record in records:
         if not isinstance(record, Mapping):
             continue
-        cells = tuple(
-            _field(
-                section_id,
-                spec,
-                record.get(spec.key.rsplit(".", 1)[-1], None),
-            )
-            for spec in specs
-        )
-        rows.append(ComparativeRow(cells[0].raw_value if cells else None, cells))
+        cells = []
+        for spec in specs:
+            relative_key = spec.key.removeprefix(f"{record_key}[].")
+            raw = _lookup(record, relative_key)
+            cells.append(_field(section_id, spec, None if raw is _MISSING else raw))
+        cell_tuple = tuple(cells)
+        rows.append(ComparativeRow(cell_tuple[0].raw_value if cell_tuple else None, cell_tuple))
+    if not rows:
+        return None
     return ComparativeSet(record_key, columns, tuple(rows))
 
 
-def _build_section(
-    section_id: str,
-    source_key: str,
-    value: Any,
-) -> MetadataSection:
-    specs = FIELD_REGISTRY[section_id]
-    mapping = value if isinstance(value, Mapping) else {}
-    summary: list[PresentationField] = []
-    detail: list[PresentationField] = []
-    disclosure: list[DisclosureNode] = []
-    consumed_top: set[str] = set()
-    comparative_sets: list[ComparativeSet] = []
-
-    comparative_roots = {"events"} if section_id == "gracedb" else {"results"} if section_id == "pe" else set()
-    for spec in specs:
-        top = _top_registered_key(spec.key)
-        if top in comparative_roots:
-            consumed_top.add(top)
-            continue
-        raw = _lookup(mapping, spec.key)
+def _build_info_section(payload: Mapping[str, Any]) -> MetadataSection:
+    summary = []
+    detail = []
+    for spec in FIELD_REGISTRY["info"]:
+        raw = _lookup(payload, spec.key)
         if raw is _MISSING:
             continue
-        consumed_top.add(top)
-        prepared = _field(section_id, spec, raw)
-        if "[]" in spec.key:
-            # Ordinary record-list fields remain labelled recursive groups.
-            # GraceDB and PE comparative roots are consumed before this branch.
-            disclosure.append(_node(prepared.path, prepared.label, raw))
-        elif spec.tier == "summary":
-            summary.append(prepared)
-        elif spec.tier == "detail":
-            detail.append(prepared)
-        else:
-            disclosure.append(_node(prepared.path, prepared.label, raw))
+        prepared = _field("info", spec, raw)
+        (summary if spec.tier == "summary" else detail).append(prepared)
+    return MetadataSection(
+        id="info",
+        source_key="",
+        heading=SECTION_HEADINGS["info"],
+        summary=tuple(summary),
+        detail=tuple(detail),
+        disclosure=(),
+        disclosed_leaf_count=0,
+        data_shape="scalar-mapping",
+    )
 
-    if section_id == "gracedb":
+
+def _build_section(section_id: str, source_key: str, value: Any) -> MetadataSection:
+    disclosure: list[DisclosureNode] = []
+    comparative_sets: list[ComparativeSet] = []
+
+    if section_id == "gracedb" and isinstance(value, list):
         table = _comparative(
             section_id,
-            mapping,
-            "events",
+            value,
+            source_key,
             _GRACEDB_EVENT_FIELDS,
-            frozenset({"uid", "pipeline", "state", "far", "network_snr"}),
+            frozenset({"event_name", "has_ns", "has_remnant"}),
         )
         if table is not None:
             comparative_sets.append(table)
-            records = mapping.get("events")
-            if isinstance(records, list):
-                disclosure.extend(
-                    _comparative_residual(
-                        section_id,
-                        "events",
-                        records,
-                        frozenset(spec.key.rsplit(".", 1)[-1] for spec in _GRACEDB_EVENT_FIELDS),
-                    )
-                )
-        else:
-            raw = mapping.get("events", _MISSING)
-            if raw is not _MISSING:
-                disclosure.append(_node(f"{section_id}.events", _raw_label("events"), raw))
-    elif section_id == "pe":
+        disclosure.extend(
+            _comparative_residual(
+                section_id,
+                source_key,
+                list(enumerate(value)),
+                frozenset(
+                    spec.key.removeprefix(f"{source_key}[].").split(".", 1)[0]
+                    for spec in _GRACEDB_EVENT_FIELDS
+                ),
+            )
+        )
+    elif section_id == "pe" and isinstance(value, list):
+        indexed_records = [
+            (source_index, record)
+            for source_index, record in enumerate(value)
+            if isinstance(record, Mapping) and record.get("type") == "pe"
+        ]
+        records = [record for _source_index, record in indexed_records]
         table = _comparative(
             section_id,
-            mapping,
-            "results",
+            records,
+            source_key,
             _PE_RESULT_FIELDS,
-            frozenset({"uid", "inference_software", "run_status", "review_status"}),
+            frozenset({"uid", "name", "status", "review_status", "deprecated"}),
         )
         if table is not None:
             comparative_sets.append(table)
-            records = mapping.get("results")
-            if isinstance(records, list):
-                disclosure.extend(
-                    _comparative_residual(
-                        section_id,
-                        "results",
-                        records,
-                        frozenset(spec.key.rsplit(".", 1)[-1] for spec in _PE_RESULT_FIELDS),
-                    )
-                )
-        else:
-            raw = mapping.get("results", _MISSING)
-            if raw is not _MISSING:
-                disclosure.append(_node(f"{section_id}.results", _raw_label("results"), raw))
-
-    for key, child in mapping.items():
-        if str(key) not in consumed_top:
-            disclosure.append(_node(f"{section_id}.{key}", _raw_label(str(key)), child))
-
-    if not isinstance(value, Mapping):
-        disclosure.append(_node(section_id, SECTION_HEADINGS[section_id], value))
+        disclosure.extend(
+            _comparative_residual(
+                section_id,
+                source_key,
+                indexed_records,
+                frozenset(
+                    spec.key.removeprefix(f"{source_key}[].").split(".", 1)[0]
+                    for spec in _PE_RESULT_FIELDS
+                ),
+                frozenset(
+                    {
+                        "analysts",
+                        "reviews",
+                        "configurations",
+                        "input_files",
+                        "output_files",
+                    }
+                ),
+            )
+        )
+    elif section_id == "detchar":
+        disclosure.append(
+            _node(
+                f"{section_id}.{source_key}",
+                FIELD_REGISTRY[section_id][0].label,
+                value,
+                ("uid",),
+            )
+        )
+    elif section_id == "catalog_tracking":
+        disclosure.append(
+            _node(
+                f"{section_id}.{source_key}",
+                FIELD_REGISTRY[section_id][0].label,
+                value,
+                ("catalog_number", "catalog_version"),
+            )
+        )
 
     if comparative_sets:
         shape = "comparative"
-    elif isinstance(value, Mapping) and all(not isinstance(child, (Mapping, list)) for child in value.values()):
-        shape = "scalar-mapping"
-    elif isinstance(value, Mapping):
-        shape = "nested"
     elif isinstance(value, list):
         shape = "record-list" if value and all(isinstance(item, Mapping) for item in value) else "scalar-list"
     else:
@@ -572,8 +616,8 @@ def _build_section(
         id=section_id,
         source_key=source_key,
         heading=SECTION_HEADINGS[section_id],
-        summary=tuple(summary),
-        detail=tuple(detail),
+        summary=(),
+        detail=(),
         disclosure=tuple(disclosure),
         disclosed_leaf_count=sum(node.leaf_count for node in disclosure),
         data_shape=shape,
@@ -600,18 +644,24 @@ def build_metadata_presentation(payload: Mapping[str, Any], *, historical: bool 
 def _build_presentation(payload: Mapping[str, Any], *, historical: bool) -> MetadataPresentation:
     sections: list[MetadataSection] = []
     root_summary: list[PresentationField] = []
-    recognised_sources: set[str] = set()
-    for section_id in SECTION_ORDER:
-        source_key, value = _find_source(payload, section_id)
-        if value is _MISSING:
+
+    info = _build_info_section(payload)
+    if info.summary or info.detail:
+        sections.append(info)
+        root_summary.extend(info.summary)
+
+    for section_id in SECTION_ORDER[1:]:
+        source_key = SECTION_SOURCES[section_id]
+        value = payload.get(source_key, _MISSING)
+        if value is _MISSING or value == []:
             continue
-        recognised_sources.add(source_key)
         section = _build_section(section_id, source_key, value)
+        if section_id in {"gracedb", "pe"} and not section.comparative_sets:
+            continue
         sections.append(section)
-        root_summary.extend(section.summary)
 
     for source_key, value in payload.items():
-        if source_key in recognised_sources:
+        if source_key in RECOGNISED_ROOT_KEYS:
             continue
         node = _node(str(source_key), _raw_label(str(source_key)), value)
         sections.append(

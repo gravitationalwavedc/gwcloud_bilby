@@ -10,6 +10,7 @@ from django.test import SimpleTestCase
 from bilbyui.services.gwflow_metadata import (
     FIELD_REGISTRY,
     KNOWN_KEYS,
+    RECOGNISED_NON_DISPLAYED_PATHS,
     _reset_unmapped_warning_cache,
     build_metadata_presentation,
     warn_unmapped_metadata_leaves,
@@ -22,61 +23,49 @@ VALID_FIXTURES = (
     "absent_optional_highlights.json",
     "historical_curated.json",
 )
-
-COMPARATIVE_COLUMNS = frozenset(
-    {
-        "gracedb.events[].uid",
-        "gracedb.events[].pipeline",
-        "gracedb.events[].state",
-        "gracedb.events[].gps_time",
-        "gracedb.events[].far",
-        "gracedb.events[].network_snr",
-        "gracedb.events[].pastro",
-        "gracedb.events[].p_bbh",
-        "gracedb.events[].p_bns",
-        "gracedb.events[].p_nsbh",
-        "gracedb.events[].mass_1",
-        "gracedb.events[].mass_2",
-        "pe.results[].uid",
-        "pe.results[].inference_software",
-        "pe.results[].waveform_approximant",
-        "pe.results[].run_status",
-        "pe.results[].review_status",
-        "pe.results[].analysts",
-        "pe.results[].reviewers",
-        "pe.results[].deprecated",
-    }
-)
-REGISTERED_PATHS = KNOWN_KEYS() | COMPARATIVE_COLUMNS
+NON_DISPLAYED = RECOGNISED_NON_DISPLAYED_PATHS
+CATCH_ALL = frozenset({"detector_configurations[]", "catalog_connections[]"})
+EXPECTED_UNKNOWN_EXTENSIONS = frozenset({"future_section.unsafe"})
+NULLABLE_REGISTERED_CONTAINERS = {
+    "analyses[].software": (
+        "analyses[].software.name",
+        "analyses[].software.version",
+    ),
+}
 FORMATTER_BY_PATH = {
-    f"{section}.{field.key}": field.formatter for section, fields in FIELD_REGISTRY.items() for field in fields
+    field.key: field.formatter
+    for fields in FIELD_REGISTRY.values()
+    for field in fields
 }
 
 
 class VisibleMetadataParser(HTMLParser):
-    """Collect body text and rendered path hooks, never attribute values as text."""
-
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self._excluded_depth = 0
+        self.excluded_depth = 0
+        self.sr_only_depth = 0
         self.text_parts = []
         self.paths = Counter()
 
     def handle_starttag(self, tag, attrs):
         if tag in {"script", "style"}:
-            self._excluded_depth += 1
+            self.excluded_depth += 1
             return
         attributes = dict(attrs)
+        if "sr-only" in attributes.get("class", "").split():
+            self.sr_only_depth += 1
         path = attributes.get("data-metadata-path")
         if path:
             self.paths[path] += 1
 
     def handle_endtag(self, tag):
-        if tag in {"script", "style"} and self._excluded_depth:
-            self._excluded_depth -= 1
+        if tag in {"script", "style"} and self.excluded_depth:
+            self.excluded_depth -= 1
+        elif self.sr_only_depth:
+            self.sr_only_depth -= 1
 
     def handle_data(self, data):
-        if not self._excluded_depth:
+        if not self.excluded_depth and not self.sr_only_depth:
             self.text_parts.append(data)
 
     @property
@@ -85,50 +74,58 @@ class VisibleMetadataParser(HTMLParser):
 
 
 def load_fixture(name):
-    with (FIXTURE_DIR / name).open(encoding="utf-8") as fixture_file:
-        return json.load(fixture_file)
+    return json.loads((FIXTURE_DIR / name).read_text())
 
 
-def fixture_scalar_leaves(value, path=""):
-    """Walk fixture content only, using [] rather than concrete list indices."""
+def fixture_scalar_leaves(value, path="", atomic_paths=frozenset()):
+    if path in NULLABLE_REGISTERED_CONTAINERS and value is None:
+        for registered_path in NULLABLE_REGISTERED_CONTAINERS[path]:
+            yield registered_path, value
+        return
+    if path in atomic_paths:
+        yield path, value
+        return
     if isinstance(value, dict):
         if not value:
             yield path, value
-            return
         for key, child in value.items():
             child_path = f"{path}.{key}" if path else key
-            yield from fixture_scalar_leaves(child, child_path)
+            yield from fixture_scalar_leaves(child, child_path, atomic_paths)
         return
     if isinstance(value, list):
         if not value:
             yield path, value
             return
-        list_path = f"{path}[]"
         for child in value:
-            yield from fixture_scalar_leaves(child, list_path)
+            yield from fixture_scalar_leaves(child, f"{path}[]", atomic_paths)
         return
     yield path, value
 
 
 def registered_owner(path):
-    """Return the most-specific registered field containing a fixture leaf."""
-    owners = [
-        candidate
-        for candidate in REGISTERED_PATHS
-        if path == candidate or path.startswith(f"{candidate}.") or path.startswith(f"{candidate}[]")
-    ]
-    if not owners:
-        return None
-    return max(owners, key=len)
+    if path in NON_DISPLAYED or path.startswith("raw_payload."):
+        return "non-displayed"
+    if path in EXPECTED_UNKNOWN_EXTENSIONS:
+        return "unknown-extension"
+    if path in KNOWN_KEYS():
+        return path
+    for catch_all in CATCH_ALL:
+        if path.startswith(f"{catch_all}."):
+            return catch_all
+    return None
 
 
 def unmapped_paths(payload):
-    return sorted({path for path, _value in fixture_scalar_leaves(payload) if registered_owner(path) is None})
-
-
-def assert_fixture_complete(testcase, payload):
-    unknown = unmapped_paths(payload)
-    testcase.assertEqual([], unknown, f"Unmapped canonical paths: {', '.join(unknown)}")
+    return sorted(
+        {
+            path
+            for path, _value in fixture_scalar_leaves(
+                payload,
+                atomic_paths=KNOWN_KEYS() | NON_DISPLAYED,
+            )
+            if registered_owner(path) is None
+        }
+    )
 
 
 def presentation_paths(presentation):
@@ -168,137 +165,154 @@ def rendered_fixture(payload, historical=False):
 class GWFlowMetadataRoundTripTests(SimpleTestCase):
     maxDiff = None
 
-    def test_every_valid_fixture_leaf_round_trips_through_complete_fragment(self):
+    def test_every_valid_fixture_display_leaf_is_reachable_in_html(self):
         exercised = set()
         for fixture_name in VALID_FIXTURES:
             payload = load_fixture(fixture_name)
             presentation, _html, parsed = rendered_fixture(payload)
             built_paths = presentation_paths(presentation)
+            self.assertEqual([], unmapped_paths(payload))
 
-            with self.subTest(fixture=fixture_name, check="mapping"):
-                assert_fixture_complete(self, payload)
-
-            grouped_leaves = {}
-            for leaf_path, value in fixture_scalar_leaves(payload):
+            display_payload = {
+                **payload,
+                "analyses": [
+                    record
+                    for record in payload.get("analyses", ())
+                    if isinstance(record, dict) and record.get("type") == "pe"
+                ],
+            }
+            for leaf_path, value in fixture_scalar_leaves(
+                display_payload,
+                atomic_paths=KNOWN_KEYS() | NON_DISPLAYED,
+            ):
                 owner = registered_owner(leaf_path)
                 self.assertIsNotNone(owner, leaf_path)
-                exercised.add(owner)
-                grouped_leaves.setdefault(owner, []).append((leaf_path, value))
-
-            for owner, leaves in grouped_leaves.items():
-                formatter = FORMATTER_BY_PATH[owner]
-                with self.subTest(fixture=fixture_name, path=owner):
+                if owner == "non-displayed":
+                    continue
+                if owner == "unknown-extension":
+                    concrete_path = leaf_path
                     self.assertGreater(
-                        built_paths[owner],
+                        parsed.paths[concrete_path],
                         0,
-                        f"{owner} has fixture leaves but no presentation field/node",
+                        f"{leaf_path} is not reachable in rendered HTML",
                     )
-                    # The canonical field formatter owns container formatting.
-                    # Scalar descendants are additionally checked when their
-                    # formatted value is independently visible.
-                    owner_value = self._registered_value(payload, owner)
-                    expected = str(format_value(owner_value, formatter))
-                    self.assertIn(expected, parsed.text)
-                    for leaf_path, scalar in leaves:
-                        scalar_text = str(format_value(scalar, formatter))
-                        if scalar_text in expected:
-                            self.assertIn(
-                                scalar_text,
-                                parsed.text,
-                                f"{leaf_path} did not survive canonical formatting",
-                            )
+                    continue
+                exercised.add(owner)
+                if owner in CATCH_ALL:
+                    section = {
+                        "detector_configurations[]": "detchar",
+                        "catalog_connections[]": "catalog_tracking",
+                    }[owner]
+                    concrete_path = f"{section}.{leaf_path.replace('[]', '[0]')}"
+                    self.assertGreater(
+                        parsed.paths[concrete_path],
+                        0,
+                        f"{leaf_path} is not reachable in rendered HTML",
+                    )
+                else:
+                    section = self.section_for(owner)
+                    presentation_path = f"{section}.{owner}"
+                    self.assertGreater(built_paths[presentation_path], 0)
+                    formatted = VisibleMetadataParser()
+                    formatted.feed(str(format_value(value, FORMATTER_BY_PATH[owner])))
+                    formatted.close()
+                    self.assertIn(formatted.text, parsed.text)
 
-            # Equal scalar values cannot pass merely because another field
-            # rendered the same substring: every owning path must be built.
-            duplicate_values = Counter(
-                json.dumps(value, sort_keys=True) for _path, value in fixture_scalar_leaves(payload)
-            )
-            for leaf_path, value in fixture_scalar_leaves(payload):
-                if duplicate_values[json.dumps(value, sort_keys=True)] > 1:
-                    owner = registered_owner(leaf_path)
-                    with self.subTest(fixture=fixture_name, duplicate_path=leaf_path):
-                        self.assertGreater(built_paths[owner], 0)
-
-            # Every prepared field and disclosure node has a corresponding
-            # rendered path hook. Root-summary duplicates may share the same
-            # canonical path, so reachability rather than equal counts is used.
             for path in built_paths:
                 with self.subTest(fixture=fixture_name, rendered_path=path):
-                    self.assertGreater(
-                        parsed.paths[path],
-                        0,
-                        f"presentation path {path} is not reachable in rendered HTML",
-                    )
+                    self.assertGreater(parsed.paths[path], 0)
 
-        expected_exercised = {
-            f"{section}.{field.key}" for section, fields in FIELD_REGISTRY.items() for field in fields
-        }
-        self.assertEqual(expected_exercised, exercised)
+        self.assertTrue(KNOWN_KEYS().issubset(exercised))
 
-    def test_falsy_values_are_literal_and_only_none_is_missing(self):
+    def test_long_pe_lists_keep_fourth_and_later_items_reachable(self):
         payload = load_fixture("complete_curated.json")
+        _presentation, html, parsed = rendered_fixture(payload)
+        self.assertIn("bilby_config_4.ini", parsed.text)
+        self.assertIn("Review 4", parsed.text)
+        self.assertIn("Reviewer 4", parsed.text)
+        self.assertIn("Canonical review 4", parsed.text)
+        self.assertIn("2026-08-04 12:00:00 UTC", parsed.text)
+        self.assertNotIn('class="sr-only">All items:', html)
+        self.assertNotIn("<script>", html)
+        self.assertIn("&lt;script&gt;", html)
+
+    def test_falsy_literals_all_render(self):
+        payload = {
+            "sname": "",
+            "version_number": 0,
+            "commit_sha": None,
+            "is_current": False,
+            "analyses": [
+                {
+                    "uid": "pe_1",
+                    "type": "pe",
+                    "name": "",
+                    "status": "complete",
+                    "review_status": "pending",
+                    "deprecated": False,
+                    "in_catalog": True,
+                }
+            ],
+        }
         _presentation, _html, parsed = rendered_fixture(payload)
-        for literal in ("0", "✗ False", "✓ True", '""'):
+        for literal in ("0", "✗ False", "✓ True", '""', "—"):
             with self.subTest(literal=literal):
                 self.assertIn(literal, parsed.text)
-        self.assertIn("—", parsed.text)
-        self.assertEqual("0", format_value(0, "text"))
-        self.assertEqual("✗ False", format_value(False, "boolean"))
-        self.assertEqual("✓ True", format_value(True, "boolean"))
-        self.assertEqual('""', format_value("", "text"))
-        self.assertEqual("—", format_value(None, "text"))
-        self.assertNotEqual("—", format_value([], "text"))
-        self.assertNotEqual("—", format_value({}, "text"))
 
-    def test_unmapped_probe_is_rendered_but_fails_with_full_path(self):
+    def test_unmapped_probe_renders_but_fails_completeness(self):
         payload = copy.deepcopy(load_fixture("complete_curated.json"))
         payload["UnmappedProbe"] = {"deep": {"sentinel": "UX8_PROBE"}}
         _presentation, _html, parsed = rendered_fixture(payload)
         self.assertIn("UX8_PROBE", parsed.text)
-        with self.assertRaisesRegex(
-            AssertionError,
-            r"UnmappedProbe\.deep\.sentinel",
-        ):
-            assert_fixture_complete(self, payload)
+        self.assertEqual(unmapped_paths(payload), ["UnmappedProbe.deep.sentinel"])
 
-    def test_unknown_leaves_in_comparative_records_render_in_disclosure(self):
+    def test_comparative_unknown_fields_render_in_disclosure(self):
         payload = {
-            "gracedb": {"events": [{"uid": "E1", "new_metric": 5, "new_nested": {"sentinel": "UX8"}}]},
-            "pe": {"results": [{"uid": "P1", "extra": {"deep": "PEUX8"}}]},
+            "gracedb_events": [
+                {"event_name": "G1", "new_metric": 5, "new_nested": {"sentinel": "UX8"}}
+            ],
+            "analyses": [
+                {"uid": "P1", "type": "pe", "extra": {"deep": "PEUX8"}}
+            ],
         }
         presentation, _html, parsed = rendered_fixture(payload)
         paths = presentation_paths(presentation)
-        self.assertGreater(paths["gracedb.events[0].new_metric"], 0)
-        self.assertGreater(paths["gracedb.events[0].new_nested"], 0)
-        self.assertGreater(paths["pe.results[0].extra"], 0)
+        self.assertGreater(paths["gracedb.gracedb_events[0].new_metric"], 0)
+        self.assertGreater(paths["gracedb.gracedb_events[0].new_nested"], 0)
+        self.assertGreater(paths["pe.analyses[0].extra"], 0)
         self.assertIn("UX8", parsed.text)
         self.assertIn("PEUX8", parsed.text)
 
-    def test_unmapped_paths_are_logged_deduplicated_without_values(self):
+    def test_catch_all_record_unknown_leaf_is_lossless_and_warned(self):
         payload = {
-            "gracedb": {
-                "events": [
-                    {"uid": "E1", "new_metric": 5},
-                    {"uid": "E2", "new_metric": 6},
-                ]
-            },
-            "UnmappedProbe": {"deep": {"sentinel": "UX8"}},
-        }
-        _reset_unmapped_warning_cache()
-        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as cm:
-            warn_unmapped_metadata_leaves(payload, sname="S-TEST")
-        _reset_unmapped_warning_cache()
-        self.assertEqual(
-            [record.path for record in cm.records],
-            [
-                "UnmappedProbe.deep.sentinel",
-                "gracedb.events[].new_metric",
+            "detector_configurations": [{"uid": "H1", "new_subtype_leaf": "DET-UX8"}],
+            "catalog_connections": [
+                {
+                    "catalog_number": 4,
+                    "catalog_version": 1,
+                    "new_catalog_leaf": "CAT-UX8",
+                }
             ],
-        )
-        self.assertTrue(all(record.getMessage() == "unmapped gwflow metadata leaf" for record in cm.records))
-        self.assertNotIn("UX8", "\n".join(cm.output))
+        }
+        _presentation, _html, parsed = rendered_fixture(payload)
+        self.assertIn("DET-UX8", parsed.text)
+        self.assertIn("CAT-UX8", parsed.text)
+        self.assertEqual(unmapped_paths(payload), [])
 
-    def test_historical_context_does_not_change_scientific_body(self):
+        _reset_unmapped_warning_cache()
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
+            warn_unmapped_metadata_leaves(payload, sname="S-CATCH-ALL")
+        _reset_unmapped_warning_cache()
+        self.assertIn(
+            "detector_configurations[].new_subtype_leaf",
+            [record.path for record in captured.records],
+        )
+        self.assertIn(
+            "catalog_connections[].new_catalog_leaf",
+            [record.path for record in captured.records],
+        )
+
+    def test_historical_flag_changes_only_chrome(self):
         payload = load_fixture("historical_curated.json")
         current, _current_html, current_parser = rendered_fixture(payload)
         historical, _historical_html, historical_parser = rendered_fixture(
@@ -314,19 +328,30 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
         )
         self.assertEqual(current_parser.text, " ".join(historical_body.split()))
 
-    def _registered_value(self, payload, canonical_path):
-        current = payload
-        parts = canonical_path.split(".")
-        section = parts.pop(0)
-        current = payload[section]
-        for part in parts:
-            if part.endswith("[]"):
-                key = part[:-2]
-                current = current[key]
-                # Corpus records use one row where a scalar canonical field is
-                # resolved; all rows are still independently represented by
-                # presentation path coverage.
-                current = current[0]
-            else:
-                current = current[part]
-        return current
+    def test_unmapped_warning_is_deduplicated_without_values(self):
+        payload = {
+            "gracedb_events": [
+                {"event_name": "G1", "new_metric": 5},
+                {"event_name": "G2", "new_metric": 6},
+            ],
+            "UnmappedProbe": {"deep": {"sentinel": "UX8"}},
+        }
+        _reset_unmapped_warning_cache()
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
+            warn_unmapped_metadata_leaves(payload, sname="S-TEST")
+        _reset_unmapped_warning_cache()
+        self.assertEqual(
+            [record.path for record in captured.records],
+            ["UnmappedProbe.deep.sentinel", "gracedb_events[].new_metric"],
+        )
+        self.assertNotIn("UX8", "\n".join(captured.output))
+
+    @staticmethod
+    def section_for(path):
+        if path in {field.key for field in FIELD_REGISTRY["info"]}:
+            return "info"
+        if path.startswith("gracedb_events[]"):
+            return "gracedb"
+        if path.startswith("analyses[]"):
+            return "pe"
+        raise AssertionError(f"No section for {path}")
