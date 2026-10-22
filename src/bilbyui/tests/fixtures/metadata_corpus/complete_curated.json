@@ -1,91 +1,230 @@
 {
-  "info": {
-    "status": "ready",
-    "notes": {
-      "created_at": "2026-09-15T23:10:00Z",
-      "contact": {"display_name": "Example Analyst", "orcid": "0000-0000-0000-0000"},
-      "public_url": "https://example.invalid/gw/event",
-      "zero": 0,
-      "false_value": false,
-      "true_value": true,
-      "empty_text": "",
-      "none_value": null,
-      "empty_list": [],
-      "empty_mapping": {},
-      "nested": {
-        "level_two": {
-          "scientific": {"value": 1.2e-8, "unit": "Hz"},
-          "scalar_list": ["H1", "L1", "V1"],
-          "record_list": [
-            {"kind": "review", "status": "complete"},
-            {"kind": "validation", "probability": 0.99}
-          ],
-          "heterogeneous": ["text", 0, false, {"state": "unknown"}]
+  "sname": "S000001a",
+  "libraries": [
+    "o4a"
+  ],
+  "version_number": 1,
+  "record_timestamp": "2026-08-31T12:00:00Z",
+  "commit_sha": "0000000000000000000000000000000000000000",
+  "is_current": true,
+  "analyses": [
+    {
+      "uid": "pe_1",
+      "type": "pe",
+      "revision": "1",
+      "name": "PE",
+      "description": "",
+      "status": "complete",
+      "review_status": "approved",
+      "deprecated": false,
+      "software": {
+        "name": "bilby_pipe",
+        "version": "1.2.0"
+      },
+      "analysts": [
+        {
+          "name": "Sanitised Analyst",
+          "email_address": "analyst-hidden@example.test"
         }
-      }
+      ],
+      "reviews": [
+        {
+          "name": "Review 1",
+          "description": "Canonical review 1",
+          "passed_review": true,
+          "completion_date": "2026-08-01T12:00:00Z",
+          "reviewers": [
+            {
+              "name": "Reviewer 1",
+              "email_address": "hidden1@example.test"
+            }
+          ],
+          "occurrence_uid": "review-occurrence-1",
+          "review_status": "approved"
+        },
+        {
+          "name": "Review 2",
+          "description": "Canonical review 2",
+          "passed_review": true,
+          "completion_date": "2026-08-02T12:00:00Z",
+          "reviewers": [
+            {
+              "name": "Reviewer 2",
+              "email_address": "hidden2@example.test"
+            }
+          ],
+          "occurrence_uid": "review-occurrence-2",
+          "review_status": "approved"
+        },
+        {
+          "name": "Review 3",
+          "description": "Canonical review 3",
+          "passed_review": true,
+          "completion_date": "2026-08-03T12:00:00Z",
+          "reviewers": [
+            {
+              "name": "Reviewer 3",
+              "email_address": "hidden3@example.test"
+            }
+          ],
+          "occurrence_uid": "review-occurrence-3",
+          "review_status": "approved"
+        },
+        {
+          "name": "Review 4",
+          "description": "Canonical review 4",
+          "passed_review": true,
+          "completion_date": "2026-08-04T12:00:00Z",
+          "reviewers": [
+            {
+              "name": "Reviewer 4",
+              "email_address": "hidden4@example.test"
+            }
+          ],
+          "occurrence_uid": "review-occurrence-4",
+          "review_status": "approved"
+        }
+      ],
+      "configurations": [
+        {
+          "uid": "pe-config-1",
+          "role": "production",
+          "settings": {
+            "sampler": "dynesty"
+          }
+        }
+      ],
+      "input_files": [
+        {
+          "direction": "input",
+          "role": "config",
+          "file": {
+            "name": "bilby_config_1.ini",
+            "description": "Bilby parameter-estimation configuration",
+            "md5sum": "0123456789abcdef0123456789abcdef",
+            "last_modified": "2026-08-31T11:59:00Z",
+            "locations": [
+              "https://example.test/bilby_config.ini",
+              "file:///sanitised/bilby_config.ini"
+            ],
+            "provenance": null
+          }
+        },
+        {
+          "direction": "input",
+          "role": "config",
+          "file": {
+            "name": "bilby_config_2.ini",
+            "description": "Bilby parameter-estimation configuration",
+            "md5sum": "0123456789abcdef0123456789abcdef",
+            "last_modified": "2026-08-31T11:59:00Z",
+            "locations": [
+              "https://example.test/bilby_config.ini",
+              "file:///sanitised/bilby_config.ini"
+            ],
+            "provenance": "generated-2"
+          }
+        },
+        {
+          "direction": "input",
+          "role": "config",
+          "file": {
+            "name": "bilby_config_3.ini",
+            "description": "Bilby parameter-estimation configuration",
+            "md5sum": "0123456789abcdef0123456789abcdef",
+            "last_modified": "2026-08-31T11:59:00Z",
+            "locations": [
+              "https://example.test/bilby_config.ini",
+              "file:///sanitised/bilby_config.ini"
+            ],
+            "provenance": "generated-3"
+          }
+        },
+        {
+          "direction": "input",
+          "role": "config",
+          "file": {
+            "name": "bilby_config_4.ini",
+            "description": "Bilby parameter-estimation configuration",
+            "md5sum": "0123456789abcdef0123456789abcdef",
+            "last_modified": "2026-08-31T11:59:00Z",
+            "locations": [
+              "https://example.test/bilby_config.ini",
+              "file:///sanitised/bilby_config.ini"
+            ],
+            "provenance": "generated-4"
+          }
+        }
+      ],
+      "output_files": [
+        {
+          "direction": "output",
+          "role": "result",
+          "file": {
+            "name": "result.hdf5",
+            "description": "Sanitised parameter-estimation result",
+            "md5sum": "fedcba9876543210fedcba9876543210",
+            "last_modified": "2026-08-31T12:30:00Z",
+            "locations": []
+          }
+        }
+      ],
+      "in_catalog": true
+    },
+    {
+      "uid": "S000001a-validation-report",
+      "type": "event_validation",
+      "revision": "1",
+      "name": "Event validation",
+      "description": "",
+      "status": "complete",
+      "review_status": "approved",
+      "deprecated": false,
+      "software": null,
+      "analysts": [],
+      "reviews": [],
+      "configurations": [],
+      "input_files": [],
+      "output_files": [],
+      "suggested_detector_configuration_uids": [
+        "H1"
+      ]
     }
-  },
-  "gracedb": {
-    "instruments": ["H1", "L1", "V1"],
-    "advok": "approved",
-    "superevent_far": {"value": 2.5e-9, "unit": "Hz"},
-    "superevent_pastro": 0.97,
-    "notes": "Sanitised GraceDB metadata",
-    "events": [
-      {
-        "uid": "G-SANITISED-001",
-        "pipeline": "gstlal",
-        "state": "preferred",
-        "gps_time": 1450000000.25,
-        "far": {"value": 1.1e-10, "unit": "Hz"},
-        "network_snr": 18.4,
-        "pastro": 0.98,
-        "p_bbh": 0.72,
-        "p_bns": 0.18,
-        "p_nsbh": 0.08,
-        "mass_1": {"value": 35.2, "unit": "M_sun"},
-        "mass_2": {"value": 28.1, "unit": "M_sun"}
-      }
-    ]
-  },
-  "pe": {
-    "status": "complete",
-    "analysts": [{"display_name": "Example Analyst"}],
-    "reviewers": [{"display_name": "Example Reviewer"}],
-    "notes": "Sanitised parameter-estimation metadata",
-    "results": [
-      {
-        "uid": "PE-SANITISED-001",
-        "inference_software": "bilby",
-        "waveform_approximant": "IMRPhenomXPHM",
-        "run_status": "complete",
-        "review_status": "reviewed",
-        "analysts": ["Example Analyst"],
-        "reviewers": ["Example Reviewer"],
-        "deprecated": false
-      }
-    ]
-  },
-  "tgr": {
-    "notes": "Sanitised tests-of-general-relativity metadata",
-    "results": [
-      {
-        "uid": "TGR-SANITISED-001",
-        "analysis_software": "example-tgr",
-        "analysts": ["Example Analyst"],
-        "description": "Consistency analysis"
-      }
-    ]
-  },
-  "lensing": {
-    "notes": "Sanitised lensing metadata",
-    "multiplet_groups": [{"companion_sname": "S-SANITISED-002"}],
-    "singlet_analyses": [{"uid": "LENS-SANITISED-001"}]
-  },
-  "detchar": {"notes": "Detector state reviewed"},
-  "extreme_matter": {"notes": "Equation-of-state follow-up pending"},
-  "cosmology": {"notes": "Cosmology-ready"},
-  "rnp": {"notes": "Rapid estimate complete"},
-  "catalog_tracking": {"notes": "Included in sanitised catalogue"},
-  "publications": {"notes": "No publication identifier assigned"}
+  ],
+  "detector_configurations": [
+    {
+      "uid": "H1",
+      "revision": "1",
+      "frame_file": "H-H1_HOFT_C00-0000000000-4096.gwf",
+      "configuration_type": "interferometer",
+      "subtype_state": "science"
+    }
+  ],
+  "gracedb_events": [
+    {
+      "event_name": "G000001",
+      "has_ns": 0,
+      "has_remnant": 0.25,
+      "has_mass_gap": null,
+      "pipeline_has_ns": 0.1,
+      "pipeline_has_remnant": 0.2,
+      "pipeline_has_mass_gap": 0.3
+    }
+  ],
+  "catalog_connections": [
+    {
+      "catalog_number": 4,
+      "catalog_version": 1,
+      "catalog_url": "https://example.test/catalog/4/1",
+      "far": 0,
+      "p_astro": 0.98,
+      "gracedb_event_names": [
+        "G000001"
+      ]
+    }
+  ],
+  "raw_payload": null,
+  "future_section": {
+    "unsafe": "<script>alert('fixture')</script>"
+  }
 }

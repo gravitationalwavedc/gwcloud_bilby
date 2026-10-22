@@ -1,29 +1,133 @@
 {
-  "info": {
-    "status": "archived",
-    "notes": "Sanitised historical metadata snapshot"
-  },
-  "gracedb": {
-    "instruments": ["H1", "L1"],
-    "advok": "unknown",
-    "superevent_far": 0,
-    "superevent_pastro": 0,
-    "notes": null,
-    "events": [
-      {
-        "uid": "G-HISTORICAL-001",
-        "pipeline": "pycbc",
-        "state": "archived",
-        "gps_time": 1234567890,
-        "far": 0,
-        "network_snr": 0,
-        "pastro": 0,
-        "p_bbh": 0,
-        "p_bns": 1,
-        "p_nsbh": 0,
-        "mass_1": {"value": 0, "unit": "M_sun"},
-        "mass_2": {"value": 0, "unit": "M_sun"}
-      }
-    ]
-  }
+  "sname": "S000001a",
+  "libraries": [
+    "o4a"
+  ],
+  "version_number": 0,
+  "record_timestamp": "2026-08-30T12:00:00Z",
+  "commit_sha": "2222222222222222222222222222222222222222",
+  "is_current": false,
+  "analyses": [
+    {
+      "uid": "pe_1",
+      "type": "pe",
+      "revision": "0",
+      "name": "PE",
+      "description": "Historical parameter-estimation record",
+      "status": "complete",
+      "review_status": "approved",
+      "deprecated": true,
+      "software": {
+        "name": "bilby_pipe",
+        "version": "1.1.0"
+      },
+      "analysts": [],
+      "reviews": [
+        {
+          "name": "Review 1",
+          "description": "Canonical review 1",
+          "passed_review": true,
+          "completion_date": null,
+          "reviewers": [
+            {
+              "name": "Reviewer 1",
+              "email_address": "hidden1@example.test"
+            }
+          ]
+        },
+        {
+          "name": "Review 2",
+          "description": "Canonical review 2",
+          "passed_review": true,
+          "completion_date": null,
+          "reviewers": [
+            {
+              "name": "Reviewer 2",
+              "email_address": "hidden2@example.test"
+            }
+          ]
+        },
+        {
+          "name": "Review 3",
+          "description": "Canonical review 3",
+          "passed_review": true,
+          "completion_date": null,
+          "reviewers": [
+            {
+              "name": "Reviewer 3",
+              "email_address": "hidden3@example.test"
+            }
+          ]
+        },
+        {
+          "name": "Review 4",
+          "description": "Canonical review 4",
+          "passed_review": true,
+          "completion_date": null,
+          "reviewers": [
+            {
+              "name": "Reviewer 4",
+              "email_address": "hidden4@example.test"
+            }
+          ]
+        }
+      ],
+      "configurations": [],
+      "input_files": [],
+      "output_files": [],
+      "in_catalog": true
+    },
+    {
+      "uid": "S000001a-validation-report",
+      "type": "event_validation",
+      "revision": "0",
+      "name": "Event validation",
+      "description": "Historical validation record",
+      "status": "complete",
+      "review_status": "approved",
+      "deprecated": false,
+      "software": null,
+      "analysts": [],
+      "reviews": [],
+      "configurations": [],
+      "input_files": [],
+      "output_files": [],
+      "suggested_detector_configuration_uids": [
+        "H1"
+      ]
+    }
+  ],
+  "detector_configurations": [
+    {
+      "uid": "H1",
+      "revision": "0",
+      "frame_file": "H-H1_HOFT_C00-HISTORICAL.gwf",
+      "configuration_type": "interferometer",
+      "subtype_state": "archived"
+    }
+  ],
+  "gracedb_events": [
+    {
+      "event_name": "G000001",
+      "has_ns": 0,
+      "has_remnant": 0,
+      "has_mass_gap": 0,
+      "pipeline_has_ns": 0,
+      "pipeline_has_remnant": 0,
+      "pipeline_has_mass_gap": null
+    }
+  ],
+  "catalog_connections": [
+    {
+      "catalog_number": 4,
+      "catalog_version": 1,
+      "catalog_url": "https://example.test/catalog/4/1",
+      "far": 0,
+      "p_astro": 0,
+      "gracedb_event_names": [
+        "G000001"
+      ]
+    }
+  ],
+  "raw_payload": null
 }

@@ -1,6 +1,6 @@
 {% load gwflow_tags %}
 <div class="gwflow-comparison gwflow-comparison--pe"
-     data-comparison-kind="results"
+     data-comparison-kind="analyses"
      data-column-count="{{ comparative_set.columns|length }}"
      data-row-count="{{ comparative_set.rows|length }}"
      x-data="{ columnsExpanded: false }">
@@ -20,7 +20,7 @@
   </button>
 
   <div role="region"
-       aria-label="Parameter estimation results, 8-column comparison"
+       aria-label="Parameter estimation results, {{ comparative_set.columns|length }}-column comparison"
        tabindex="0"
        class="table-scroll-region">
     <table id="pe-comparison-table"
@@ -56,7 +56,15 @@
                     <td data-column-key="{{ column.key }}"
                         data-metadata-path="{{ cell.path }}"
                         {% if not column.default_visible %}x-show="columnsExpanded"{% endif %}>
-                      {% format_value cell.raw_value cell.formatter %}
+                      {% if column.key == "status" %}
+                        <span class="badge badge-dark">{% format_value cell.raw_value cell.formatter %}</span>
+                      {% elif column.key == "review_status" %}
+                        <span class="badge badge-secondary">{% format_value cell.raw_value cell.formatter %}</span>
+                      {% elif column.key == "deprecated" %}
+                        <span class="badge {% if cell.raw_value %}badge-dark{% else %}badge-secondary{% endif %}">{% format_value cell.raw_value cell.formatter %}</span>
+                      {% else %}
+                        {% format_value cell.raw_value cell.formatter %}
+                      {% endif %}
                     </td>
                   {% endif %}
                 {% endif %}

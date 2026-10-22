@@ -1045,13 +1045,19 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
 
     def test_selected_payload_still_feeds_metadata_presentation(self):
         self.mock_get_version.return_value = (
-            {"raw_payload": {"info": {"status": "ready"}}},
+            {
+                "sname": self.sname,
+                "analyses": [{"uid": "pe_1", "type": "pe", "name": "Canonical PE"}],
+                "raw_payload": {"info": {"status": "legacy"}},
+            },
             "live",
         )
 
         response, _ = self._render()
 
-        self.assertIsNotNone(response.context_data["presentation"])
+        presentation = response.context_data["presentation"]
+        self.assertEqual([section.id for section in presentation.sections], ["info", "pe"])
+        self.assertEqual(presentation.sections[1].comparative_sets[0].rows[0].identity, "pe_1")
 
     def test_non_mapping_selected_detail_has_no_presentation(self):
         self.mock_get_version.return_value = (

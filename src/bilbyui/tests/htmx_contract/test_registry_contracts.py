@@ -81,8 +81,22 @@ LIVE_VERSION = {
     "commit_sha": "contract-history",
     "version_number": 1003,
     "record_timestamp": "2026-09-18 00:00:00 UTC",
-    "gracedb": {"events": [{"uid": "E-CONTRACT", "pipeline": "gstlal"}]},
-    "raw_payload": CONTENT_METADATA,
+    "sname": "S-CONTRACT",
+    "gracedb_events": [
+        {
+            "event_name": "E-CONTRACT",
+            "has_ns": 0.1,
+            "has_remnant": 0.2,
+            "has_mass_gap": None,
+            "pipeline_has_ns": 0.3,
+            "pipeline_has_remnant": 0.4,
+            "pipeline_has_mass_gap": 0.5,
+        }
+    ],
+    "analyses": CONTENT_METADATA["analyses"],
+    "detector_configurations": [],
+    "catalog_connections": [],
+    "raw_payload": None,
 }
 
 # contract name -> response state -> {view function: return value}

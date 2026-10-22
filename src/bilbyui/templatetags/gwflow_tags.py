@@ -120,10 +120,7 @@ def person(value: Any) -> str:
     if parts:
         return " ".join(parts)
 
-    email = value.get("email")
-    if email not in (None, ""):
-        return text(email)
-    return text(value)
+    return "Unnamed person"
 
 
 def probability(value: Any, precision: int = 3) -> str:
@@ -213,20 +210,55 @@ def list_value(value: Any, limit: int = 3) -> str:
     return preview
 
 
-def list_accessible(value: Any, limit: int = 3) -> str:
-    """Render a preview and an adjacent accessible expansion containing every item."""
+def people(value: Any) -> str:
+    """Render every person by name without disclosing email-bearing raw mappings."""
+    presence = _presence_text(value)
+    if presence is not None:
+        return presence
+    if not _is_sequence(value):
+        return person(value)
+    return ", ".join(person(item) for item in value)
+
+
+def reviews(value: Any) -> str:
+    """Render every canonical review field without exposing reviewer email addresses."""
     presence = _presence_text(value)
     if presence is not None:
         return presence
     if not _is_sequence(value):
         return text(value)
-    preview = list_value(value, limit)
-    all_items = "; ".join(text(item) for item in value)
-    return format_html(
-        '<span aria-hidden="true">{}</span><span class="sr-only">All items: {}</span>',
-        preview,
-        all_items,
-    )
+
+    rendered = []
+    for review in value:
+        if not isinstance(review, Mapping):
+            rendered.append(text(review))
+            continue
+
+        passed = review.get("passed_review")
+        if passed is True:
+            derived_status = "Passed"
+        elif passed is False:
+            derived_status = "Not passed"
+        else:
+            derived_status = "Pending"
+
+        reviewers = review.get("reviewers", ())
+        fields = (
+            ("Occurrence UID", text(review.get("occurrence_uid"))),
+            ("Name", text(review.get("name"))),
+            ("Description", text(review.get("description"))),
+            ("Reviewers", people(reviewers) if reviewers else "No reviewers"),
+            ("Passed review", text(passed)),
+            ("Completion date", utc_timestamp(review.get("completion_date"))),
+            (
+                "Review status",
+                status(review.get("review_status"))
+                if review.get("review_status") not in (None, "")
+                else derived_status,
+            ),
+        )
+        rendered.append(", ".join(f"{label}: {field_value}" for label, field_value in fields))
+    return "; ".join(rendered)
 
 
 def link(value: Any, label: str = "") -> str:
@@ -272,6 +304,8 @@ FORMATTERS = {
     "boolean": boolean,
     "link": link,
     "list": list_value,
+    "people": people,
+    "reviews": reviews,
     "person": person,
     "probability": probability,
     "scientific": scientific,
@@ -311,6 +345,5 @@ register.filter("person", person)
 register.filter("probability", probability)
 register.filter("status", status)
 register.simple_tag(name="scientific")(scientific)
-register.simple_tag(name="list")(list_accessible)
 register.simple_tag(name="link")(link)
 register.simple_tag(name="format_value")(format_value)
