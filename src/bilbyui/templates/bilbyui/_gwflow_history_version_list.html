@@ -27,7 +27,6 @@
          hx-indicator="#gwflow-history-loading">
         <span class="gwflow-history__version-main">
           <code class="gwflow-history__sha" title="{{ v.full_sha }}">{{ v.short_sha }}</code>
-          {% if v.schema_version %}<span class="badge badge-secondary">Schema {{ v.schema_version }}</span>{% endif %}
           {% if v.is_current %}<span class="badge badge-primary">Current</span>{% endif %}
           {% if selected_version.full_sha == v.full_sha %}<span class="gwflow-history__selected-text">Selected</span>{% endif %}
         </span>
