@@ -776,23 +776,22 @@ class TestGWOSCCron(GWOSCTestBase):
     @parameterized.expand(
         [
             ("empty_dataset", []),
-            ("non_bytes_dataset", ["not-bytes"]),
             ("non_utf8_bytes", [b"\xff\xfe"]),
         ]
     )
     @responses.activate
     def test_h5_malformed_config_records_job_failure(self, gwc, case_name, config_value):
-        """A malformed config dataset (empty -> IndexError, non-bytes -> AttributeError,
-        non-UTF-8 bytes -> UnicodeDecodeError) records a job_errors row for retry and
-        does not crash the whole script."""
+        """A malformed config dataset (empty -> IndexError, non-UTF-8 bytes ->
+        UnicodeDecodeError) records a job_errors row for retry and does not crash
+        the whole script."""
         self.add_allevents_response()
         self.add_event_response()
         self.add_file_response()
 
         # Build a mock H5 object that passes all isinstance/membership checks but
         # yields a config dataset that cannot be decoded: an empty dataset raises
-        # IndexError on [0], a non-bytes dataset raises AttributeError on .decode(),
-        # and non-UTF-8 bytes raise UnicodeDecodeError (a ValueError subclass).
+        # IndexError on [0], and non-UTF-8 bytes raise UnicodeDecodeError (a
+        # ValueError subclass).
         mock_config = MagicMock()
         mock_config.__class__ = h5py.Group
         mock_config.keys.return_value = ["param1"]
@@ -826,6 +825,55 @@ class TestGWOSCCron(GWOSCTestBase):
         self.assertEqual(error_rows[0]["job_id"], "GW000001_123456")
         self.assertEqual(error_rows[0]["failure_count"], 1)
         self.assertIn("Failed to read H5 config data", error_rows[0]["last_error"])
+
+    @responses.activate
+    def test_h5_nonbytes_scalar_config_is_ingested(self, gwc):
+        """A non-bytes scalar config value (e.g. a numeric parameter) is stringified
+        and written into the ini string rather than failing the config read."""
+        self.add_allevents_response()
+        self.add_event_response()
+        self.add_file_response()
+
+        # Build a mock H5 object that passes all isinstance/membership checks but
+        # yields a scalar (shape ()) config dataset whose value is a non-bytes
+        # scalar (an int). _read_config_value must stringify it instead of raising.
+        scalar_dataset = MagicMock()
+        scalar_dataset.shape = ()
+        scalar_dataset.__getitem__ = MagicMock(return_value=4)
+
+        mock_config = MagicMock()
+        mock_config.__class__ = h5py.Group
+        mock_config.keys.return_value = ["param1"]
+        mock_config.__getitem__ = MagicMock(return_value=scalar_dataset)
+
+        mock_config_file_group = MagicMock()
+        mock_config_file_group.__class__ = h5py.Group
+        mock_config_file_group.__contains__ = MagicMock(return_value=True)
+        mock_config_file_group.__getitem__ = MagicMock(return_value=mock_config)
+
+        mock_toplevel_group = MagicMock()
+        mock_toplevel_group.__class__ = h5py.Group
+        mock_toplevel_group.__contains__ = MagicMock(return_value=True)
+        mock_toplevel_group.__getitem__ = MagicMock(return_value=mock_config_file_group)
+
+        mock_h5 = MagicMock()
+        mock_h5.keys.return_value = ["IMRPhenom"]
+        mock_h5.__iter__ = MagicMock(return_value=iter(["IMRPhenom"]))
+        mock_h5.__getitem__ = MagicMock(return_value=mock_toplevel_group)
+        mock_h5.__enter__ = MagicMock(return_value=mock_h5)
+        mock_h5.__exit__ = MagicMock(return_value=False)
+
+        with self.con_patch, patch("h5py.File", return_value=mock_h5):
+            gwosc_ingest.check_and_download()
+
+        gwc.return_value.upload_external_job.assert_called_once_with(
+            "GW000001_123456--IMRPhenom",
+            "IMRPhenom",
+            False,
+            "param1=4",
+            "https://test.org/GW000001.h5",
+        )
+        self.assertEqual(len(self.get_job_errors()), 0)
 
     @responses.activate
     def test_multiple_bilbyjobs(self, gwc):

@@ -101,9 +101,12 @@ def _read_config_value(dataset):
     h5py stores a single string written via ``create_dataset(key, data="value")``
     as a scalar dataset (shape ``()``), where ``ds[0]`` raises ValueError.
     Array-shaped datasets (shape ``(1,)``) are read with ``ds[0]``.
+    Non-bytes scalar values (e.g. numeric config) are stringified.
     """
     value = dataset[()] if dataset.shape == () else dataset[0]
-    return value.decode("utf-8")
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return str(value)
 
 
 def create_table(cursor):
