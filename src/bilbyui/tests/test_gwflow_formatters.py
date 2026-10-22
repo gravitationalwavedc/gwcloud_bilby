@@ -13,7 +13,6 @@ from bilbyui.templatetags.gwflow_tags import (
     get_item,
     human_value,
     link,
-    list_accessible,
     list_value,
     person,
     probability,
@@ -108,20 +107,21 @@ class GwflowFormatterTests(SimpleTestCase):
             "Ng",
         )
 
-    def test_person_email(self):
+    def test_person_email_without_name_uses_neutral_placeholder(self):
         self.assertEqual(
             person({"email": "researcher@example.test"}),
-            "researcher@example.test",
+            "Unnamed person",
+        )
+        self.assertEqual(
+            person({"email_address": "researcher@example.test"}),
+            "Unnamed person",
         )
 
     def test_person_scalar(self):
         self.assertEqual(person("Single Name"), "Single Name")
 
-    def test_person_without_name_or_email_falls_back_to_text(self):
-        self.assertEqual(
-            person({"some_unrelated": "value"}),
-            text({"some_unrelated": "value"}),
-        )
+    def test_person_without_name_uses_neutral_placeholder(self):
+        self.assertEqual(person({"some_unrelated": "value"}), "Unnamed person")
 
     def test_boolean_formats_both_values_and_preserves_zero(self):
         self.assertEqual(boolean(True), "✓ True")
@@ -219,11 +219,8 @@ class GwflowFormatterTests(SimpleTestCase):
     def test_list_value_degrades_on_non_numeric_limit(self):
         self.assertEqual(list_value(["a", "b"], "abc"), "a, b")
 
-        rendered = str(list_accessible(["H1", "L1", "V1", "K1"], 2))
-        self.assertIn("H1, L1, +2 more", rendered)
-        for item in ("H1", "L1", "V1", "K1"):
-            self.assertIn(item, rendered)
-        self.assertIn("All items:", rendered)
+        rendered = str(list_value(["H1", "L1", "V1", "K1"], 2))
+        self.assertEqual(rendered, "H1, L1, +2 more")
 
     def test_link_allows_only_http_and_https_and_escapes_values(self):
         safe = link(
@@ -306,7 +303,9 @@ class GwflowFormatterTests(SimpleTestCase):
                 "boolean",
                 "link",
                 "list",
+                "people",
                 "person",
+                "reviews",
                 "probability",
                 "scientific",
                 "status",

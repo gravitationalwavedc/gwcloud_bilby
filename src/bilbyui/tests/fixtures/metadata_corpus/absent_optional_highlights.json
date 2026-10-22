@@ -1,23 +1,144 @@
 {
-  "info": {
-    "notes": "Optional summary highlights intentionally absent"
-  },
-  "pe": {
-    "status": "queued",
-    "analysts": [],
-    "reviewers": [],
-    "notes": "",
-    "results": [
-      {
-        "uid": "PE-SANITISED-EMPTY",
-        "inference_software": "bilby",
-        "waveform_approximant": "Unknown",
-        "run_status": "queued",
-        "review_status": "not-reviewed",
-        "analysts": [],
-        "reviewers": [],
-        "deprecated": true
-      }
-    ]
+  "sname": "S000002b",
+  "libraries": [
+    "o4b"
+  ],
+  "version_number": 1,
+  "record_timestamp": "2026-09-01T12:00:00Z",
+  "commit_sha": "1111111111111111111111111111111111111111",
+  "is_current": true,
+  "analyses": [
+    {
+      "uid": "pe_1",
+      "type": "pe",
+      "revision": "1",
+      "name": "PE",
+      "description": "",
+      "status": "unstarted",
+      "review_status": "pending",
+      "deprecated": false,
+      "software": {
+        "name": "bilby_pipe",
+        "version": "1.2.0"
+      },
+      "analysts": [],
+      "reviews": [
+        {
+          "name": "Review 1",
+          "description": "Canonical review 1",
+          "passed_review": null,
+          "completion_date": null,
+          "reviewers": [
+            {
+              "name": "Reviewer 1",
+              "email_address": "hidden1@example.test"
+            }
+          ]
+        },
+        {
+          "name": "Review 2",
+          "description": "Canonical review 2",
+          "passed_review": null,
+          "completion_date": null,
+          "reviewers": [
+            {
+              "name": "Reviewer 2",
+              "email_address": "hidden2@example.test"
+            }
+          ]
+        },
+        {
+          "name": "Review 3",
+          "description": "Canonical review 3",
+          "passed_review": null,
+          "completion_date": null,
+          "reviewers": [
+            {
+              "name": "Reviewer 3",
+              "email_address": "hidden3@example.test"
+            }
+          ]
+        },
+        {
+          "name": "Review 4",
+          "description": "Canonical review 4",
+          "passed_review": null,
+          "completion_date": null,
+          "reviewers": [
+            {
+              "name": "Reviewer 4",
+              "email_address": "hidden4@example.test"
+            }
+          ]
+        }
+      ],
+      "configurations": [],
+      "input_files": [],
+      "output_files": [],
+      "in_catalog": false
+    },
+    {
+      "uid": "S000001a-validation-report",
+      "type": "event_validation",
+      "revision": "1",
+      "name": "Event validation",
+      "description": "",
+      "status": "unstarted",
+      "review_status": "pending",
+      "deprecated": false,
+      "software": null,
+      "analysts": [],
+      "reviews": [],
+      "configurations": [],
+      "input_files": [],
+      "output_files": [],
+      "suggested_detector_configuration_uids": [
+        "H1"
+      ]
+    }
+  ],
+  "detector_configurations": [
+    {
+      "uid": "H1",
+      "revision": "1",
+      "frame_file": null,
+      "configuration_type": "interferometer",
+      "subtype_state": ""
+    }
+  ],
+  "gracedb_events": [
+    {
+      "event_name": "G000001",
+      "has_ns": null,
+      "has_remnant": null,
+      "has_mass_gap": null,
+      "pipeline_has_ns": null,
+      "pipeline_has_remnant": null,
+      "pipeline_has_mass_gap": null
+    }
+  ],
+  "catalog_connections": [
+    {
+      "catalog_number": 4,
+      "catalog_version": 1,
+      "catalog_url": null,
+      "far": null,
+      "p_astro": null,
+      "gracedb_event_names": [
+        "G000001"
+      ]
+    }
+  ],
+  "raw_payload": {
+    "Info": {
+      "status": "legacy-value-that-must-not-render"
+    },
+    "GraceDB": {
+      "events": [
+        {
+          "uid": "legacy-event-that-must-not-render"
+        }
+      ]
+    }
   }
 }

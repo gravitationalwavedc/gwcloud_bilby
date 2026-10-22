@@ -30,9 +30,9 @@
     {% endif %}
 
     {% for comparative_set in section.comparative_sets %}
-      {% if comparative_set.kind == "events" %}
+      {% if comparative_set.kind == "gracedb_events" %}
         {% include "bilbyui/_gwflow_metadata_gracedb_comparison_hook.html" with comparative_set=comparative_set only %}
-      {% elif comparative_set.kind == "results" %}
+      {% elif comparative_set.kind == "analyses" %}
         {% include "bilbyui/_gwflow_metadata_pe_comparison_hook.html" with comparative_set=comparative_set only %}
       {% endif %}
     {% endfor %}

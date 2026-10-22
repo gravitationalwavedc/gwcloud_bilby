@@ -30,15 +30,19 @@ class PathologicalFixturesTests(BilbyTestCase):
         self.assertEqual(len(fixtures["file"].path), PATH_LENGTH)
         self.assertEqual(fixtures["file"].path, "p" * PATH_LENGTH)
 
-        events = fixtures["superevent"]["gracedb"]["events"]
+        events = fixtures["superevent"]["gracedb_events"]
         self.assertEqual(len(events), SUPEREVENT_EVENT_COUNT)
 
         metadata = fixtures["metadata"]
-        event = metadata["gracedb"]["events"][0]
+        event = metadata["gracedb_events"][0]
         self.assertEqual(len(event), METADATA_COLUMN_COUNT)
         presentation = build_metadata_presentation(metadata)
         gracedb = next(section for section in presentation.sections if section.id == "gracedb")
-        self.assertEqual(len(gracedb.comparative_sets[0].columns), METADATA_COLUMN_COUNT)
+        self.assertEqual(len(gracedb.comparative_sets[0].columns), 7)
+        self.assertEqual(gracedb.comparative_sets[0].rows[0].identity, event["event_name"])
+        # Five residual top-level fields remain, with ``far`` contributing
+        # two nested leaves (value and unit).
+        self.assertEqual(gracedb.disclosed_leaf_count, 6)
 
         versions = fixtures["versions"]
         self.assertEqual(len(versions), VERSION_COUNT)

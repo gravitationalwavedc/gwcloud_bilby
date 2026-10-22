@@ -1891,7 +1891,7 @@ def _render_gwflow_history_section(request, sname):
         compare_mode = "prev"
     else:
         selected_detail, selected_state = get_version(sname, selected.version_number)
-        selected_payload = selected_detail.get("raw_payload") if isinstance(selected_detail, Mapping) else None
+        selected_payload = selected_detail if isinstance(selected_detail, Mapping) else None
         stale = stale or selected_state == "stale"
 
         if isinstance(selected_payload, dict):

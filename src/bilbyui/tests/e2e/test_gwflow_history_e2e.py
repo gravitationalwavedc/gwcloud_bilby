@@ -26,7 +26,7 @@ from bilbyui.models import GWFlowJob
 from bilbyui.tests.e2e.utils import AsyncE2ETestCase, async_e2e_test, load_axe, run_axe
 from bilbyui.tests.testcases import BilbyTestCase
 
-SNAME = "S230601ag"
+SNAME = "S000001a"
 SHA_V1 = "1111111111111111111111111111111111111111"
 SHA_V2 = "2222222222222222222222222222222222222222"
 SHA_V3 = "3333333333333333333333333333333333333333"
@@ -81,20 +81,61 @@ def _single_version():
 
 def _version_detail(sname, version_ref):
     versions = {
-        1023: (SHA_V1, {"info": {"status": "draft"}}),
-        1024: (SHA_V2, {"info": {"status": "ready"}, "extra": "v2-only"}),
-        1025: (SHA_V3, {"info": {"status": "ready"}, "extra": "v3-only"}),
+        1023: (SHA_V1, "2026-08-08T10:00:00Z", False),
+        1024: (SHA_V2, "2026-08-09T10:00:00Z", False),
+        1025: (SHA_V3, "2026-08-10T10:00:00Z", True),
     }
     if isinstance(version_ref, str):
-        version_ref = {sha: version_number for version_number, (sha, _) in versions.items()}[version_ref]
+        version_ref = {sha: version_number for version_number, (sha, _, _) in versions.items()}[version_ref]
 
-    sha, payload = versions[version_ref]
+    sha, record_timestamp, is_current = versions[version_ref]
     return (
         {
             "sname": sname,
+            "libraries": ["o4a"],
             "commit_sha": sha,
-            "raw_payload": payload,
             "version_number": version_ref,
+            "record_timestamp": record_timestamp,
+            "is_current": is_current,
+            "analyses": [
+                {
+                    "uid": "pe_1",
+                    "type": "pe",
+                    "revision": str(version_ref),
+                    "name": f"PE selected version {version_ref}",
+                    "description": "",
+                    "status": "complete",
+                    "review_status": "approved",
+                    "deprecated": False,
+                    "software": {"name": "bilby_pipe", "version": str(version_ref)},
+                    "analysts": [],
+                    "reviews": [],
+                    "configurations": [],
+                    "input_files": [],
+                    "output_files": [],
+                    "in_catalog": True,
+                }
+            ],
+            "detector_configurations": [{"uid": "H1", "revision": str(version_ref)}],
+            "gracedb_events": [
+                {
+                    "event_name": "G000001",
+                    "has_ns": None,
+                    "has_remnant": None,
+                    "has_mass_gap": None,
+                    "pipeline_has_ns": None,
+                    "pipeline_has_remnant": None,
+                    "pipeline_has_mass_gap": None,
+                }
+            ],
+            "catalog_connections": [
+                {
+                    "catalog_number": 4,
+                    "catalog_version": 1,
+                    "gracedb_event_names": ["G000001"],
+                }
+            ],
+            "raw_payload": None,
         },
         "live",
     )
@@ -250,7 +291,10 @@ class TestHistoryDeepLink(GWFlowHistoryPageBase):
         await self._wait_for_rail()
         selected = self.page.locator(".gwflow-history__desktop-list [aria-current='true']")
         self.assertEqual(await selected.get_attribute("data-version-sha"), SHA_V2)
-        self.assertIn("v2-only", await self.page.content())
+        metadata_panel = self.page.locator(".gwflow-metadata")
+        metadata_text = await metadata_panel.inner_text()
+        self.assertIn("PE selected version 1024", metadata_text)
+        self.assertNotIn("PE selected version 1023", metadata_text)
 
 
 class TestHistoryKeyboardWalkthrough(GWFlowHistoryPageBase):
