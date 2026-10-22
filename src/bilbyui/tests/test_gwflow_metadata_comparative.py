@@ -70,39 +70,23 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
         parser = StructureParser()
         parser.feed(html)
         elements = parser.elements
-        regions = [
-            attrs
-            for tag, attrs in elements
-            if tag == "div" and attrs.get("role") == "region"
-        ]
+        regions = [attrs for tag, attrs in elements if tag == "div" and attrs.get("role") == "region"]
         self.assertEqual(len(regions), 1)
         self.assertEqual(regions[0]["aria-label"], region_label)
         self.assertEqual(regions[0]["tabindex"], "0")
         self.assertIn("table-scroll-region", regions[0]["class"].split())
 
-        tables = [
-            attrs
-            for tag, attrs in elements
-            if tag == "table" and attrs.get("id") == table_id
-        ]
+        tables = [attrs for tag, attrs in elements if tag == "table" and attrs.get("id") == table_id]
         self.assertEqual(len(tables), 1)
         self.assertIn("<caption>", html)
         self.assertIn("1 record", html)
 
-        headers = [
-            attrs
-            for tag, attrs in elements
-            if tag == "th" and attrs.get("scope") == "col"
-        ]
+        headers = [attrs for tag, attrs in elements if tag == "th" and attrs.get("scope") == "col"]
         self.assertEqual(
             tuple(header["data-column-key"] for header in headers),
             expected_columns,
         )
-        defaults = {
-            header["data-column-key"]
-            for header in headers
-            if header["data-default-visible"] == "true"
-        }
+        defaults = {header["data-column-key"] for header in headers if header["data-default-visible"] == "true"}
         self.assertEqual(defaults, expected_defaults)
         for header in headers:
             if header["data-column-key"] in expected_defaults:
@@ -110,11 +94,7 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
             else:
                 self.assertEqual(header.get("x-show"), "columnsExpanded")
 
-        row_headers = [
-            attrs
-            for tag, attrs in elements
-            if tag == "th" and attrs.get("scope") == "row"
-        ]
+        row_headers = [attrs for tag, attrs in elements if tag == "th" and attrs.get("scope") == "row"]
         self.assertEqual(len(row_headers), 1)
         self.assertIn("table-sticky-identity", row_headers[0]["class"].split())
         self.assertIn("table-sticky-identity", headers[0]["class"].split())
@@ -122,20 +102,14 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
         cells = [
             attrs
             for tag, attrs in elements
-            if tag in {"td", "th"}
-            and attrs.get("data-column-key") in expected_columns
-            and attrs.get("scope") != "col"
+            if tag in {"td", "th"} and attrs.get("data-column-key") in expected_columns and attrs.get("scope") != "col"
         ]
         self.assertEqual(
             tuple(cell["data-column-key"] for cell in cells),
             expected_columns,
         )
 
-        buttons = [
-            attrs
-            for tag, attrs in elements
-            if tag == "button" and attrs.get("aria-controls") == table_id
-        ]
+        buttons = [attrs for tag, attrs in elements if tag == "button" and attrs.get("aria-controls") == table_id]
         self.assertEqual(len(buttons), 1)
         self.assertEqual(buttons[0]["type"], "button")
         self.assertEqual(buttons[0]["aria-expanded"], "false")
@@ -254,9 +228,7 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
         presentation = build_metadata_presentation(
             {
                 "detector_configurations": [{"uid": "H1", "custom": 1}],
-                "catalog_connections": [
-                    {"catalog_number": 4, "catalog_version": 1, "custom": 2}
-                ],
+                "catalog_connections": [{"catalog_number": 4, "catalog_version": 1, "custom": 2}],
             }
         )
         sections = {section.id: section for section in presentation.sections}

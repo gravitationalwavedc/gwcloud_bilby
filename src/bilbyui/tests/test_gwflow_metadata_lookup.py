@@ -5,9 +5,7 @@ from bilbyui.services.gwflow_metadata import build_metadata_presentation
 
 class GWFlowMetadataLookupTests(SimpleTestCase):
     def _pe_row(self, analysis):
-        presentation = build_metadata_presentation(
-            {"analyses": [{"uid": "pe_1", "type": "pe", **analysis}]}
-        )
+        presentation = build_metadata_presentation({"analyses": [{"uid": "pe_1", "type": "pe", **analysis}]})
         pe = next(section for section in presentation.sections if section.id == "pe")
         return {
             column.key: cell.raw_value
@@ -18,10 +16,22 @@ class GWFlowMetadataLookupTests(SimpleTestCase):
             )
         }
 
+    def test_libraries_are_presented_in_canonical_order(self):
+        presentation = build_metadata_presentation({"libraries": ["o4b", "o4a"]})
+        info = next(section for section in presentation.sections if section.id == "info")
+        libraries = next(field for field in (*info.summary, *info.detail) if field.path == "info.libraries")
+        self.assertEqual(libraries.raw_value, ["o4a", "o4b"])
+
+        for value in (["o4a"], [], None):
+            with self.subTest(libraries=value):
+                presentation = build_metadata_presentation({"libraries": value})
+                info = next(section for section in presentation.sections if section.id == "info")
+                libraries = next(field for field in (*info.summary, *info.detail) if field.path == "info.libraries")
+                expected = value
+                self.assertEqual(libraries.raw_value, expected)
+
     def test_nested_software_fields_resolve_for_populated_null_and_missing_values(self):
-        populated = self._pe_row(
-            {"software": {"name": "bilby_pipe", "version": "1.2.0"}}
-        )
+        populated = self._pe_row({"software": {"name": "bilby_pipe", "version": "1.2.0"}})
         self.assertEqual(populated["software.name"], "bilby_pipe")
         self.assertEqual(populated["software.version"], "1.2.0")
 

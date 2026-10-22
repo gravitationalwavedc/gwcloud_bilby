@@ -291,10 +291,7 @@ def _unmapped_paths(payload: Mapping[str, Any]) -> tuple[str, ...]:
             return True
         if normalised in known:
             return True
-        return any(
-            path.startswith(f"{owner}.") or path.startswith(f"{owner}[]")
-            for owner in scalar_comparative_owners
-        )
+        return any(path.startswith(f"{owner}.") or path.startswith(f"{owner}[]") for owner in scalar_comparative_owners)
 
     return tuple(sorted(path for path in _iter_leaf_paths(payload) if not is_registered(path)))
 
@@ -429,11 +426,7 @@ def _disclosure_value(key: str, value: Any) -> Any:
             reviewers = sanitised_review.get("reviewers")
             if isinstance(reviewers, list):
                 sanitised_review["reviewers"] = [
-                    {
-                        nested_key: nested
-                        for nested_key, nested in reviewer.items()
-                        if nested_key != "email_address"
-                    }
+                    {nested_key: nested for nested_key, nested in reviewer.items() if nested_key != "email_address"}
                     if isinstance(reviewer, Mapping)
                     else reviewer
                     for reviewer in reviewers
@@ -511,6 +504,8 @@ def _build_info_section(payload: Mapping[str, Any]) -> MetadataSection:
         raw = _lookup(payload, spec.key)
         if raw is _MISSING:
             continue
+        if spec.key == "libraries" and isinstance(raw, list):
+            raw = sorted(raw, key=str)
         prepared = _field("info", spec, raw)
         (summary if spec.tier == "summary" else detail).append(prepared)
     return MetadataSection(
@@ -544,10 +539,7 @@ def _build_section(section_id: str, source_key: str, value: Any) -> MetadataSect
                 section_id,
                 source_key,
                 list(enumerate(value)),
-                frozenset(
-                    spec.key.removeprefix(f"{source_key}[].").split(".", 1)[0]
-                    for spec in _GRACEDB_EVENT_FIELDS
-                ),
+                frozenset(spec.key.removeprefix(f"{source_key}[].").split(".", 1)[0] for spec in _GRACEDB_EVENT_FIELDS),
             )
         )
     elif section_id == "pe" and isinstance(value, list):
@@ -571,10 +563,7 @@ def _build_section(section_id: str, source_key: str, value: Any) -> MetadataSect
                 section_id,
                 source_key,
                 indexed_records,
-                frozenset(
-                    spec.key.removeprefix(f"{source_key}[].").split(".", 1)[0]
-                    for spec in _PE_RESULT_FIELDS
-                ),
+                frozenset(spec.key.removeprefix(f"{source_key}[].").split(".", 1)[0] for spec in _PE_RESULT_FIELDS),
                 frozenset(
                     {
                         "analysts",

@@ -30,15 +30,9 @@ NULLABLE_REGISTERED_CONTAINERS = {
     ),
 }
 COMPARATIVE_COLUMNS = frozenset(
-    {
-        path
-        for section in ("gracedb", "pe")
-        for path in (field.key for field in FIELD_REGISTRY[section])
-    }
+    {path for section in ("gracedb", "pe") for path in (field.key for field in FIELD_REGISTRY[section])}
 )
-CANONICAL_PATH = re.compile(
-    r"^[A-Za-z_][A-Za-z0-9_]*(?:\[\])?(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[\])?)*$"
-)
+CANONICAL_PATH = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(?:\[\])?(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[\])?)*$")
 
 
 def load_fixture(name):

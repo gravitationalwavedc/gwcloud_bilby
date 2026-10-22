@@ -9,9 +9,7 @@ from django.test import SimpleTestCase
 
 from bilbyui.services.gwflow_metadata import build_metadata_presentation
 
-CORPUS_FIXTURE = (
-    Path(__file__).parent / "fixtures" / "metadata_corpus" / "complete_curated.json"
-)
+CORPUS_FIXTURE = Path(__file__).parent / "fixtures" / "metadata_corpus" / "complete_curated.json"
 # Keep this table in canonical SECTION_ORDER so expected section IDs also assert
 # ordering while each case exercises a selector that is present with value ``[]``.
 COLLECTION_SECTIONS = {
@@ -84,11 +82,7 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
                 section_ids = [section.id for section in presentation.sections]
                 expected_ids = [
                     "info",
-                    *[
-                        section_id
-                        for key, (section_id, _heading) in COLLECTION_SECTIONS.items()
-                        if key != empty_key
-                    ],
+                    *[section_id for key, (section_id, _heading) in COLLECTION_SECTIONS.items() if key != empty_key],
                 ]
                 self.assertEqual(section_ids, expected_ids)
 
@@ -108,9 +102,7 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         payload = {
             **populated,
             **{collection: [] for collection in COLLECTION_SECTIONS},
-            "raw_payload": {
-                "GraceDB": {"events": [{"uid": "legacy-must-not-render"}]}
-            },
+            "raw_payload": {"GraceDB": {"events": [{"uid": "legacy-must-not-render"}]}},
         }
         for collection in COLLECTION_SECTIONS:
             self.assertIn(collection, payload)
@@ -151,9 +143,7 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
     def test_disclosure_has_count_accessible_control_and_identity_labels(self):
         output = self.render(
             {
-                "detector_configurations": [
-                    {"uid": "H1", "frame_file": "H1.gwf", "subtype_state": "science"}
-                ],
+                "detector_configurations": [{"uid": "H1", "frame_file": "H1.gwf", "subtype_state": "science"}],
                 "catalog_connections": [
                     {
                         "catalog_number": 4,
@@ -224,9 +214,7 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
                                 "passed_review": True,
                                 "completion_date": "2026-08-31T12:00:00Z",
                                 "review_status": "approved",
-                                "reviewers": [
-                                    {"name": "Reviewer Name", "email_address": "reviewer@example.test"}
-                                ],
+                                "reviewers": [{"name": "Reviewer Name", "email_address": "reviewer@example.test"}],
                             }
                         ],
                     }

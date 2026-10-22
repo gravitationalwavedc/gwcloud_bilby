@@ -32,11 +32,7 @@ NULLABLE_REGISTERED_CONTAINERS = {
         "analyses[].software.version",
     ),
 }
-FORMATTER_BY_PATH = {
-    field.key: field.formatter
-    for fields in FIELD_REGISTRY.values()
-    for field in fields
-}
+FORMATTER_BY_PATH = {field.key: field.formatter for fields in FIELD_REGISTRY.values() for field in fields}
 
 
 class VisibleMetadataParser(HTMLParser):
@@ -268,12 +264,8 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
 
     def test_comparative_unknown_fields_render_in_disclosure(self):
         payload = {
-            "gracedb_events": [
-                {"event_name": "G1", "new_metric": 5, "new_nested": {"sentinel": "UX8"}}
-            ],
-            "analyses": [
-                {"uid": "P1", "type": "pe", "extra": {"deep": "PEUX8"}}
-            ],
+            "gracedb_events": [{"event_name": "G1", "new_metric": 5, "new_nested": {"sentinel": "UX8"}}],
+            "analyses": [{"uid": "P1", "type": "pe", "extra": {"deep": "PEUX8"}}],
         }
         presentation, _html, parsed = rendered_fixture(payload)
         paths = presentation_paths(presentation)

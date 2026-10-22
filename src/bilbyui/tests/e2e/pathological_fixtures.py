@@ -66,9 +66,7 @@ def build_superevent_with_100_events():
     return {
         "sname": SNAME,
         "schema_version": "v3",
-        "gracedb_events": [
-            _canonical_event(index) for index in range(SUPEREVENT_EVENT_COUNT)
-        ],
+        "gracedb_events": [_canonical_event(index) for index in range(SUPEREVENT_EVENT_COUNT)],
     }
 
 
@@ -76,6 +74,7 @@ def build_12_column_metadata():
     """Build one long-valued canonical event with five residual fields."""
     event = _canonical_event(0, long_values=True)
     return {"sname": SNAME, "schema_version": "v3", "gracedb_events": [event]}
+
 
 def build_long_version_list():
     """Build viewport-overflowing rows in the shape returned by get_versions."""
