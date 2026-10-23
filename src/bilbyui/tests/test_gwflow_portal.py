@@ -426,6 +426,24 @@ class TestGWFlowPortalClient(BilbyTestCase):
             datetime(2026, 8, 10, 12, 0, tzinfo=UTC),
         )
 
+    def test_resolve_current_version_with_null_raw_payload_is_unavailable(self):
+        summary = {
+            "is_current": True,
+            "commit_sha": "abc123",
+            "version_number": 4,
+            "record_timestamp": "2026-08-10T12:00:00Z",
+        }
+        detail = canonical_detail(raw_payload=None)
+
+        with (
+            mock.patch.object(gwflow_portal, "get_versions", return_value=([summary], "live")),
+            mock.patch.object(gwflow_portal, "get_version", return_value=(detail, "live")),
+        ):
+            result = gwflow_portal.resolve_current_version(SNAME)
+
+        self.assertFalse(result.available)
+        self.assertEqual(result.reason, "detail has no usable finite trigger time")
+
     def test_resolve_current_version_does_not_fall_back_to_commit_timestamp(self):
         summary = {
             "is_current": True,

@@ -469,21 +469,7 @@ def resolve_current_version(sname):
             reason="detail response is not a dict",
         )
 
-    raw_payload = detail.get("raw_payload")
-    if not isinstance(raw_payload, dict):
-        logger.warning(
-            "Current-version detail unavailable for %s (%s): raw_payload is not a dict",
-            sname,
-            commit_sha,
-        )
-        return GWFlowCurrentVersion(
-            available=False,
-            versions_state=versions_state,
-            detail_state=detail_state,
-            reason="detail raw_payload is not a dict",
-        )
-
-    trigger_time = _gwflow_trigger_time_from_metadata(raw_payload)
+    trigger_time = _gwflow_trigger_time_from_metadata(detail)
     if isinstance(trigger_time, bool) or not isinstance(trigger_time, (int, float)) or not math.isfinite(trigger_time):
         logger.warning(
             "Current-version detail unavailable for %s (%s): no usable finite trigger time",
