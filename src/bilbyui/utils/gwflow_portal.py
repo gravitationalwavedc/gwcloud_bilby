@@ -433,7 +433,11 @@ def resolve_current_version(sname):
         )
 
     raw_payload = detail.get("raw_payload")
-    if raw_payload is not None and not isinstance(raw_payload, dict):
+    if raw_payload is None:
+        trigger_time = _gwflow_trigger_time_from_metadata(detail)
+    elif isinstance(raw_payload, dict):
+        trigger_time = _gwflow_trigger_time_from_metadata(raw_payload)
+    else:
         logger.warning(
             "Current-version detail unavailable for %s (v%s): raw_payload is not an object or null",
             sname,
@@ -445,8 +449,6 @@ def resolve_current_version(sname):
             detail_state=detail_state,
             reason="detail raw_payload is not a dict",
         )
-
-    trigger_time = _gwflow_trigger_time_from_metadata(raw_payload)
     if isinstance(trigger_time, bool) or not isinstance(trigger_time, (int, float)) or not math.isfinite(trigger_time):
         logger.warning(
             "Current-version %s (v%s) has no usable finite trigger time; "
