@@ -291,15 +291,6 @@ def status(value: Any) -> str:
     return _STATUS_LABELS.get(raw.casefold(), raw)
 
 
-def human_value(value: Any) -> str:
-    """Legacy compatibility path using the same non-dropping presence semantics."""
-    if isinstance(value, Mapping):
-        return text(value)
-    if _is_sequence(value):
-        return ", ".join(person(item) if isinstance(item, Mapping) else text(item) for item in value) or EMPTY_LIST
-    return text(value)
-
-
 FORMATTERS = {
     "boolean": boolean,
     "link": link,
@@ -323,21 +314,6 @@ def format_value(value: Any, formatter: str, **options: Any) -> str:
     return formatter_function(value, **options)
 
 
-@register.filter
-def get_item(value, key):
-    if isinstance(value, dict):
-        return value.get(key)
-    return None
-
-
-@register.filter
-def sort_items(value):
-    if isinstance(value, dict):
-        return sorted(value.items())
-    return []
-
-
-register.filter("human_value", human_value)
 register.filter("text", text)
 register.filter("boolean", boolean)
 register.filter("utc_timestamp", utc_timestamp)
