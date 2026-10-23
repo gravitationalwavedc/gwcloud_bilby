@@ -38,8 +38,8 @@ class TestSearchRegistry(SimpleTestCase):
             [
                 "sname",
                 "review_statuses",
-                "metadata.pe.results.waveform_approximant",
-                "snr",
+                "metadata.analyses.software.name",
+                "metadata.analyses.status",
             ],
         )
         self.assertEqual(
@@ -62,23 +62,16 @@ class TestSearchRegistry(SimpleTestCase):
             list(BILBY_GROUPS),
         )
 
-    def test_grace_db_aliases_are_documented_and_envelope_aliases_are_not(self):
-        """User-facing GraceDB aliases surface their full path in help; internal
-        `_gwcloud.*` envelope aliases and non-alias fields do not."""
+    def test_no_legacy_gracedb_aliases_are_documented(self):
+        """GWF-6 removed the short GraceDB aliases (snr, far, pipeline,
+        pastro, instruments) because the canonical gracedb_events structure
+        has no such fields. No GWFlow field now surfaces an underlying alias
+        path, and the internal `_gwcloud.*` envelope aliases stay hidden."""
         by_advertised = {str(e["advertised"]): e for e in SEARCH_FIELDS if e["surface"] == "gwflow"}
-        for alias, path in (
-            ("snr", "metadata.gracedb.events.network_snr"),
-            ("instruments", "metadata.gracedb.instruments"),
-            ("far", "metadata.gracedb.events.far"),
-            ("pipeline", "metadata.gracedb.events.pipeline"),
-            ("pastro", "metadata.gracedb.events.pastro"),
-        ):
-            with self.subTest(alias=alias):
-                self.assertEqual(documented_alias_path(by_advertised[alias]), path)
-        for internal in ("sname", "libraries", "review_statuses", "is_pruned"):
-            with self.subTest(internal=internal):
-                self.assertIsNone(documented_alias_path(by_advertised[internal]))
-        self.assertIsNone(documented_alias_path(by_advertised["metadata.pe.results.waveform_approximant"]))
+        for entry in by_advertised.values():
+            self.assertIsNone(documented_alias_path(entry))
+        for legacy in ("snr", "far", "pipeline", "pastro", "instruments"):
+            self.assertNotIn(legacy, by_advertised)
 
     def test_seven_gwflow_aliases_map_to_canonical_envelope_paths(self):
         expected = {

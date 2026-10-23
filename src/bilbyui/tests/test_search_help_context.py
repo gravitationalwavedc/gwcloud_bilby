@@ -28,7 +28,7 @@ class TestSearchHelpContext(SimpleTestCase):
             [
                 "sname:S2306*",
                 "review_statuses:pass",
-                "snr:>10",
+                "metadata.analyses.status:complete",
             ],
         )
         self.assertEqual(

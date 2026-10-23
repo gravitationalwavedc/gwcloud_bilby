@@ -40,7 +40,10 @@ GROUPS: Mapping[str, tuple[str, ...]] = {
 }
 
 TYPED_NOTES: Mapping[str, str] = {
-    "gwflow": ("Numeric, date, and boolean fields support exact values and ranges, for example `snr:>10`."),
+    "gwflow": (
+        "Numeric, date, and boolean fields support exact values and ranges, "
+        "for example `_gwcloud.lastUpdatedTime:>2024-01-01`."
+    ),
     "bilby": (
         "Numeric, date, and boolean fields support exact values and ranges, "
         "for example `params.sampling_frequency:>=4096`."
@@ -98,13 +101,6 @@ GWFLOW_ALIASES: dict[str, str] = {
     "search_trigger_time": "_gwcloud.searchTriggerTime",
     "last_updated_time": "_gwcloud.lastUpdatedTime",
     "is_pruned": "_gwcloud.isPruned",
-    # Short aliases for the GraceDB event fields, so fielded queries read
-    # compactly (e.g. `instruments:(L1 V1) snr:[40 TO 60]`).
-    "instruments": "metadata.gracedb.instruments",
-    "snr": "metadata.gracedb.events.network_snr",
-    "far": "metadata.gracedb.events.far",
-    "pipeline": "metadata.gracedb.events.pipeline",
-    "pastro": "metadata.gracedb.events.pastro",
 }
 
 _DEFAULT_FIELD = [
@@ -112,16 +108,10 @@ _DEFAULT_FIELD = [
     "_gwcloud.eventTriggerId",
     "_gwcloud.libraries",
     "_gwcloud.reviewStatuses",
-    "metadata.gracedb.events.uid",
-    "metadata.pe.results.uid",
-    "metadata.pe.results.inference_software",
-    "metadata.pe.results.waveform_approximant",
-    "metadata.pe.results.run_status",
-    "metadata.pe.results.review_status",
-    "metadata.pe.status",
-    "metadata.gracedb.events.pipeline",
-    "metadata.gracedb.events.state",
-    "metadata.gracedb.instruments",
+    "metadata.analyses.uid",
+    "metadata.analyses.software.name",
+    "metadata.analyses.status",
+    "metadata.analyses.review_status",
 ]
 
 
@@ -154,7 +144,7 @@ def documented_alias_path(entry: Mapping[str, object]) -> str | None:
     """Return the underlying field path for a user-facing alias, else None.
 
     Only aliases whose target is a researcher-meaningful field are surfaced in
-    the help (e.g. `snr` → `metadata.gracedb.events.network_snr`). The internal
+    the help (e.g. `sname` → `_gwcloud.sname`). The internal
     `_gwcloud.*` stable-envelope aliases are never exposed, and non-alias fields
     return None.
     """
@@ -175,7 +165,7 @@ def grouped_fields(surface: str) -> list[dict[str, object]]:
     """Return the complete field reference, grouped in the approved heading order.
 
     Includes the common fields as well, so the reference is literally complete
-    and every alias mapping — including common ones such as `snr` — is visible.
+    and every alias mapping — including common ones such as `review_statuses` — is visible.
     """
 
     entries = _surface_fields(surface)
