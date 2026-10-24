@@ -205,6 +205,27 @@ class GWFlowMetadataComparativeTests(SimpleTestCase):
             {node.path for node in pe.disclosure},
         )
 
+    def test_pe_residual_hides_recognised_non_displayed_paths(self):
+        presentation = build_metadata_presentation(
+            {
+                "analyses": [
+                    {
+                        "uid": "pe_1",
+                        "type": "pe",
+                        "revision": 3,
+                        "suggested_detector_configuration_uids": ["H1"],
+                        "extra": "kept",
+                    }
+                ]
+            }
+        )
+        pe = next(section for section in presentation.sections if section.id == "pe")
+        paths = {node.path for node in pe.disclosure}
+        self.assertIn("pe.analyses[0].extra", paths)
+        self.assertNotIn("pe.analyses[0].type", paths)
+        self.assertNotIn("pe.analyses[0].revision", paths)
+        self.assertNotIn("pe.analyses[0].suggested_detector_configuration_uids", paths)
+
     def test_gracedb_with_no_mapping_records_is_omitted(self):
         for value in ("not-a-list", ["malformed"]):
             with self.subTest(value=value):
