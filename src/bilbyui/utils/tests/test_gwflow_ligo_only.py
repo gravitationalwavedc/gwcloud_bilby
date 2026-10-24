@@ -272,6 +272,26 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
         )
         self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
 
+    def test_is_preferred_flag_accepts_string_one(self):
+        # is_preferred accepts the string "1", matching _parse_portal_bool.
+        metadata = _metadata_with_events(
+            [
+                {"GPSTime": 1000.0},
+                {"GPSTime": 2000.0, "is_preferred": "1"},
+            ]
+        )
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
+    def test_is_preferred_flag_is_case_insensitive(self):
+        # is_preferred is matched case-insensitively via _parse_portal_bool.
+        metadata = _metadata_with_events(
+            [
+                {"GPSTime": 1000.0},
+                {"GPSTime": 2000.0, "is_preferred": "TRUE"},
+            ]
+        )
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
     def test_state_preferred_takes_priority_over_flags(self):
         # State == "preferred" still wins over is_preferred / preferred flags.
         metadata = _metadata_with_events(

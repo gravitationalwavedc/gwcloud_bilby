@@ -23,13 +23,12 @@ from gwosc.datasets import event_gps
 
 from bilbyui import models
 
+from .gwflow_es import _parse_portal_bool
 from .misc import is_ligo_user
 
 logger = logging.getLogger(__name__)
 
 N_SIM_TEXT = r"^[ \t]*\+?[0-9]{1,9}[ \t]*\Z"
-
-_TRUTHY_PREFERRED = (True, "true", "True", "yes")
 
 _CACHE_UNSET = object()
 _cached_embargo_start_raw = _CACHE_UNSET
@@ -469,12 +468,12 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
                 break
     if chosen is None:
         for event, gps in usable:
-            if event.get("is_preferred") in _TRUTHY_PREFERRED:
+            if _parse_portal_bool(event.get("is_preferred")):
                 chosen = gps
                 break
     if chosen is None:
         for event, gps in usable:
-            if event.get("preferred") in _TRUTHY_PREFERRED:
+            if _parse_portal_bool(event.get("preferred")):
                 chosen = gps
                 break
     if chosen is None:
