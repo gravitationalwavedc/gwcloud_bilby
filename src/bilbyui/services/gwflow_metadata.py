@@ -453,6 +453,9 @@ def _comparative_residual(
             key_text = str(key)
             if key_text in registered_keys and key_text not in disclosed_keys:
                 continue
+            canonical = f"{record_key}[].{key_text}"
+            if canonical in RECOGNISED_NON_DISPLAYED_PATHS or f"{canonical}[]" in RECOGNISED_NON_DISPLAYED_PATHS:
+                continue
             nodes.append(
                 _node(
                     f"{section_id}.{record_key}[{source_index}].{key}",
