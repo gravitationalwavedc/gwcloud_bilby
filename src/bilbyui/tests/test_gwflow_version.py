@@ -14,7 +14,6 @@ from bilbyui.services.gwflow_versions import (
     adapt_semantic_diff,
     prepare_version_snapshots,
     resolve_history_selection,
-    resolve_version_number,
 )
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_version import (
@@ -340,13 +339,6 @@ class ResolveHistorySelectionVersionNumberTestCase(BilbyTestCase):
             ],
             current_sha="c" * 40,
         )
-
-    def test_sha_resolves_to_version_number(self):
-        self.assertEqual(resolve_version_number(self._snapshots(), "b" * 40), 20)
-
-    def test_unknown_sha_raises_lookup_error(self):
-        with self.assertRaisesRegex(LookupError, "Version not found"):
-            resolve_version_number(self._snapshots(), "z" * 40)
 
     def test_default_selects_current_with_previous_baseline(self):
         selected, baseline, mode = resolve_history_selection(self._snapshots(), requested_sha=None, compare=None)

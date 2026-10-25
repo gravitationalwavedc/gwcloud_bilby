@@ -408,15 +408,6 @@ def prepare_version_snapshots(
     return tuple(ordered)
 
 
-def resolve_version_number(snapshots: Sequence[VersionSnapshot], commit_sha: str) -> int:
-    """Resolve a commit SHA to its canonical summary version number."""
-
-    snapshot = next((item for item in snapshots if item.full_sha == commit_sha), None)
-    if snapshot is None:
-        raise LookupError("Version not found")
-    return snapshot.version_number
-
-
 def resolve_history_selection(
     snapshots: Sequence[VersionSnapshot],
     *,
@@ -454,5 +445,4 @@ __all__ = [
     "adapt_semantic_diff",
     "prepare_version_snapshots",
     "resolve_history_selection",
-    "resolve_version_number",
 ]
