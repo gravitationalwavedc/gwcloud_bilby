@@ -140,6 +140,14 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         self.assertRegex(output, r">\s*&quot;&quot;\s*</dd>")
         self.assertEqual(len(re.findall(r">\s*—\s*</dd>", output)), 1)
 
+    def test_string_is_current_renders_as_canonical_boolean(self):
+        output = self.render({"is_current": "true"})
+        self.assertRegex(output, r">\s*✓ True\s*</dd>")
+        self.assertNotRegex(output, r">\s*true\s*</dd>")
+
+        output = self.render({"is_current": "false"})
+        self.assertRegex(output, r">\s*✗ False\s*</dd>")
+
     def test_disclosure_has_count_accessible_control_and_identity_labels(self):
         output = self.render(
             {

@@ -15,6 +15,8 @@ from functools import lru_cache
 from types import MappingProxyType
 from typing import Any, Literal
 
+from bilbyui.utils.gwflow_es import _parse_portal_bool
+
 logger = logging.getLogger(__name__)
 
 Tier = Literal["summary", "detail", "disclosure"]
@@ -506,6 +508,8 @@ def _build_info_section(payload: Mapping[str, Any]) -> MetadataSection:
             continue
         if spec.key == "libraries" and isinstance(raw, list):
             raw = sorted(raw, key=str)
+        if spec.key == "is_current":
+            raw = _parse_portal_bool(raw)
         prepared = _field("info", spec, raw)
         (summary if spec.tier == "summary" else detail).append(prepared)
     return MetadataSection(
