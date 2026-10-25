@@ -817,6 +817,18 @@ class TestResolveEventIdFor(unittest.TestCase):
         }
         self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
 
+    def test_is_preferred_case_insensitive_true(self):
+        for flag in ("1", "TRUE", "Yes", "YES"):
+            with self.subTest(flag=flag):
+                detail = {
+                    "gracedb": {
+                        "events": [
+                            {"uid": "EVT-A", "gps_time": 1234567890.5, "is_preferred": flag},
+                        ]
+                    }
+                }
+                self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
+
     def test_preferred_field_used(self):
         detail = {
             "gracedb": {

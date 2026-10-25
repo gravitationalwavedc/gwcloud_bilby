@@ -37,6 +37,12 @@ class TestResolveLibraries(unittest.TestCase):
         client = self._client([{"is_current": "false", "libraries": ["bilby"]}])
         self.assertEqual(resolve_libraries(client, "S1"), [])
 
+    def test_case_insensitive_string_true_current_flag_selects(self):
+        for flag in ("1", "TRUE", "Yes", "YES"):
+            with self.subTest(flag=flag):
+                client = self._client([{"is_current": flag, "libraries": ["bilby"]}])
+                self.assertEqual(resolve_libraries(client, "S1"), ["bilby"])
+
     def test_multiple_current_versions_uses_first(self):
         client = self._client(
             [

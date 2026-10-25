@@ -14,7 +14,7 @@ class StageError(Exception):
     """Raised when a supporting file cannot be safely staged into the job tree."""
 
 
-_TRUTHY_PREFERRED = (True, "true", "True", "yes")
+_TRUTHY_PREFERRED = (True, "true", "True", "TRUE", "yes", "Yes", "YES", "1")
 _HDF5_SUFFIXES = {".hdf5", ".h5"}
 
 
