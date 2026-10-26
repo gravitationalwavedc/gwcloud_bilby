@@ -118,6 +118,23 @@ class LeafPathTests(SimpleTestCase):
         self.assertEqual([record.path for record in captured.records], ["analyses[].new_field.leaf"])
         self.assertNotIn("SECRET", "\n".join(captured.output))
 
+    def test_list_of_scalars_registered_path_is_silent_but_unknown_leaf_still_warns(self):
+        payload = {
+            "analyses": [
+                {
+                    "uid": "pe_1",
+                    "type": "pe",
+                    "suggested_detector_configuration_uids": ["H1", "L1"],
+                    "new_unknown_field": "SECRET",
+                }
+            ]
+        }
+        with self.assertLogs("bilbyui.services.gwflow_metadata", level="WARNING") as captured:
+            warn_unmapped_metadata_leaves(payload, sname="S-SUGGESTED-UIDS")
+        self.assertEqual([record.path for record in captured.records], ["analyses[].new_unknown_field"])
+        self.assertNotIn("suggested_detector_configuration_uids", "\n".join(captured.output))
+        self.assertNotIn("SECRET", "\n".join(captured.output))
+
     def test_catch_all_descendants_still_warn_by_exact_match_policy(self):
         payload = {
             "detector_configurations": [{"uid": "H1", "subtype_state": "science"}],
