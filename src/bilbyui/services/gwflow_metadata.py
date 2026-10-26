@@ -284,6 +284,8 @@ def _unmapped_paths(payload: Mapping[str, Any]) -> tuple[str, ...]:
     )
 
     def is_registered(path: str) -> bool:
+        if path in RECOGNISED_NON_DISPLAYED_PATHS:
+            return True
         normalised = path.removesuffix("[]")
         if normalised in RECOGNISED_NON_DISPLAYED_PATHS:
             return True
