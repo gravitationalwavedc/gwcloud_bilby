@@ -72,7 +72,14 @@ def request_file_list(job, path, recursive, user_id=None):
                         file_list.append(entry)
         else:
             # Not a recursive search
-            for item in dir_path_obj.iterdir():
+            try:
+                entries = dir_path_obj.iterdir()
+            except OSError:
+                # The requested directory is unreadable (e.g. a permission
+                # change since the checks above), consistent with os.walk's
+                # tolerance of unreadable directories in the recursive branch.
+                return True, []
+            for item in entries:
                 try:
                     is_dir = item.is_dir()
                 except OSError:
