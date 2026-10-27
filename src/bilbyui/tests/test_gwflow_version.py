@@ -272,6 +272,18 @@ class VersionSnapshotCanonicalTestCase(BilbyTestCase):
         )
         self.assertEqual([snapshot.version_number for snapshot in snapshots], [4, 5, 6])
 
+    def test_non_dict_rows_are_skipped(self):
+        snapshots = self._snapshots(
+            [
+                {"commit_sha": "a" * 40, "version_number": 4},
+                "malformed",
+                None,
+                123,
+                {"commit_sha": "b" * 40, "version_number": 6},
+            ]
+        )
+        self.assertEqual([snapshot.version_number for snapshot in snapshots], [4, 6])
+
     def test_ordering_preserves_timestamp_version_and_undated_contract(self):
         snapshots = self._snapshots(
             [

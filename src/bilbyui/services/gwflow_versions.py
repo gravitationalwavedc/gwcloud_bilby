@@ -383,6 +383,8 @@ def prepare_version_snapshots(
 
     prepared: list[tuple[int, VersionSnapshot]] = []
     for index, row in enumerate(versions):
+        if not isinstance(row, dict):
+            continue
         version_number = row.get("version_number")
         if isinstance(version_number, bool) or not isinstance(version_number, int):
             raise ValueError("version_number must be an integer")
