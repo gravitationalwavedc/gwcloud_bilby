@@ -37,7 +37,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         return GWFlowJob.objects.create(
             user=self.user,
             sname=sname,
-            current_history_id=f"history-{sname}",
+            current_version_number=1,
             event_id=event,
             trigger_time=trigger_time,
         )
@@ -342,7 +342,7 @@ class TriggerTimeBackfillCommandTests(BilbyTestCase):
         }
 
         def portal(sname, history_id):
-            self.assertEqual(history_id, f"history-{sname}")
+            self.assertEqual(history_id, 1)
             value = values[sname]
             metadata = self.metadata(value) if value is not None else {"GraceDB": {"Events": []}}
             return metadata, "live"

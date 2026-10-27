@@ -24,10 +24,9 @@ CURRENT_GPS = 1438044067.054443
 OLD_GPS = 1381222535.0
 
 
-def current_summary(libraries=None, *, commit_sha="sha-current", is_current=True):
+def current_summary(libraries=None, *, version_number=2, is_current=True):
     return {
         "libraries": ["cbc-workflow-o4c"] if libraries is None else libraries,
-        "commit_sha": commit_sha,
         "record_timestamp": TS,
         "is_current": is_current,
     }
@@ -36,13 +35,13 @@ def current_summary(libraries=None, *, commit_sha="sha-current", is_current=True
 def available_current(
     *,
     trigger_time=CURRENT_GPS,
-    history_id="sha-current",
+    version_number=2,
     timestamp=TS,
 ):
     return GWFlowCurrentVersion(
         available=True,
         trigger_time=trigger_time,
-        current_history_id=history_id,
+        current_version_number=version_number,
         current_history_timestamp=timestamp,
         versions_state="live",
         detail_state="live",
@@ -154,7 +153,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         )
         parent = self.make_parent(
             trigger_time=OLD_GPS,
-            current_history_id="sha-old",
+            current_version_number=1,
             current_history_timestamp=OLD_TS,
             event_id=foreign,
         )
@@ -169,7 +168,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         child.refresh_from_db()
         foreign.refresh_from_db()
         self.assertEqual(parent.trigger_time, CURRENT_GPS)
-        self.assertEqual(parent.current_history_id, "sha-current")
+        self.assertEqual(parent.current_version_number, 2)
         self.assertEqual(parent.current_history_timestamp, TS)
         self.assertEqual(parent.event_id, owned)
         self.assertEqual(child.event_id, owned)
@@ -190,7 +189,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         )
         parent = self.make_parent(
             trigger_time=OLD_GPS,
-            current_history_id="sha-old",
+            current_version_number=1,
             current_history_timestamp=OLD_TS,
             event_id=foreign,
         )
@@ -212,7 +211,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         parent.refresh_from_db()
         child.refresh_from_db()
         self.assertEqual(parent.trigger_time, OLD_GPS)
-        self.assertEqual(parent.current_history_id, "sha-old")
+        self.assertEqual(parent.current_version_number, 1)
         self.assertEqual(parent.event_id, foreign)
         self.assertEqual(child.event_id, foreign)
         self.assertEqual(cache.get(LIBRARIES_CACHE_KEY), ["old"])
@@ -231,7 +230,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         )
         parent = self.make_parent(
             trigger_time=CURRENT_GPS,
-            current_history_id="sha-current",
+            current_version_number=1,
             current_history_timestamp=TS,
             event_id=owned,
             libraries=["cbc-workflow-o4c"],
@@ -260,7 +259,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         )
         parent = self.make_parent(
             trigger_time=CURRENT_GPS,
-            current_history_id="sha-stored",
+            current_version_number=1,
             current_history_timestamp=OLD_TS,
             event_id=foreign,
         )
@@ -274,7 +273,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         parent.refresh_from_db()
         child.refresh_from_db()
         self.assertEqual(parent.trigger_time, CURRENT_GPS)
-        self.assertEqual(parent.current_history_id, "sha-stored")
+        self.assertEqual(parent.current_version_number, 1)
         self.assertEqual(parent.current_history_timestamp, OLD_TS)
         self.assertEqual(parent.event_id, owned)
         self.assertEqual(child.event_id, owned)
@@ -290,7 +289,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
                 parent = self.make_parent(
                     sname=f"S25081{index}h",
                     trigger_time=trigger_time,
-                    current_history_id="sha-stored",
+                    current_version_number=1,
                     current_history_timestamp=OLD_TS,
                     event_id=foreign,
                 )
@@ -341,7 +340,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
     def test_unavailable_below_threshold_is_reported_and_exits_nonzero(self):
         parent = self.make_parent(
             trigger_time=OLD_GPS,
-            current_history_id="sha-stored",
+            current_version_number=1,
             current_history_timestamp=OLD_TS,
         )
 
@@ -352,7 +351,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         self.assertIn(f"Containment gap for GWFlowJob {parent.id}", err)
         parent.refresh_from_db()
         self.assertEqual(parent.trigger_time, OLD_GPS)
-        self.assertEqual(parent.current_history_id, "sha-stored")
+        self.assertEqual(parent.current_version_number, 1)
         self.assertEqual(parent.current_history_timestamp, OLD_TS)
 
     def test_second_run_is_noop_and_does_not_bulk_update(self):
@@ -363,7 +362,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         )
         parent = self.make_parent(
             trigger_time=OLD_GPS,
-            current_history_id="sha-old",
+            current_version_number=1,
             current_history_timestamp=OLD_TS,
         )
         child = self.make_child(parent)
@@ -396,7 +395,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         )
         parent = self.make_parent(
             trigger_time=OLD_GPS,
-            current_history_id="sha-old",
+            current_version_number=1,
             current_history_timestamp=OLD_TS,
             event_id=foreign,
         )
@@ -411,7 +410,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
 
         parent.refresh_from_db()
         self.assertEqual(parent.trigger_time, OLD_GPS)
-        self.assertEqual(parent.current_history_id, "sha-old")
+        self.assertEqual(parent.current_version_number, 1)
         self.assertEqual(parent.event_id, foreign)
 
     def test_apply_failure_after_parent_bulk_update_rolls_back_parent(self):
@@ -427,7 +426,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         )
         parent = self.make_parent(
             trigger_time=OLD_GPS,
-            current_history_id="sha-old",
+            current_version_number=1,
             current_history_timestamp=OLD_TS,
             event_id=foreign,
         )
@@ -462,7 +461,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         self.assertIsNotNone(original_apply)
         parent.refresh_from_db()
         self.assertEqual(parent.trigger_time, OLD_GPS)
-        self.assertEqual(parent.current_history_id, "sha-old")
+        self.assertEqual(parent.current_version_number, 1)
         self.assertEqual(parent.event_id, foreign)
 
     def test_no_same_owner_event_clears_parent_and_child_links(self):
@@ -473,7 +472,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         )
         parent = self.make_parent(
             trigger_time=CURRENT_GPS,
-            current_history_id="sha-current",
+            current_version_number=1,
             current_history_timestamp=TS,
             event_id=foreign,
             libraries=["cbc-workflow-o4c"],
@@ -509,7 +508,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         unrelated = self.make_parent(
             sname="S231013ab",
             trigger_time=OLD_GPS,
-            current_history_id="unrelated-pointer",
+            current_version_number=2,
             current_history_timestamp=OLD_TS,
             event_id=original,
             libraries=["legacy"],
@@ -525,7 +524,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
                 return available_current()
             return available_current(
                 trigger_time=OLD_GPS,
-                history_id="unrelated-pointer",
+                version_number=2,
                 timestamp=OLD_TS,
             )
 
@@ -546,7 +545,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         self.assertEqual(target.event_id, owned)
         self.assertEqual(unrelated.event_id, original)
         self.assertEqual(unrelated.trigger_time, OLD_GPS)
-        self.assertEqual(unrelated.current_history_id, "unrelated-pointer")
+        self.assertEqual(unrelated.current_version_number, 2)
         self.assertEqual(unrelated_child.event_id, original)
         self.assertEqual(original.trigger_id, "S231013ab")
         self.assertEqual(original.gps_time, OLD_GPS)
@@ -587,7 +586,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
     def test_pointer_disagreement_is_reported(self):
         parent = self.make_parent(
             trigger_time=CURRENT_GPS,
-            current_history_id="sha-old",
+            current_version_number=1,
             current_history_timestamp=OLD_TS,
         )
 

@@ -552,7 +552,7 @@ class GWFlowJob(models.Model):
 
     # Current-version pointer (display/sorting/change-detection only — payloads
     # stay in the cbcflow-portal and are fetched on demand)
-    current_history_id = models.CharField(max_length=64, blank=True, default="")
+    current_version_number = models.PositiveIntegerField(null=True, blank=True, db_index=True)
     current_history_timestamp = models.DateTimeField(null=True, blank=True)
 
     # Mirrored soft-delete: superevent no longer current in any source library

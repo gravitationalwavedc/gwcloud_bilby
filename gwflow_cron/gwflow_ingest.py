@@ -2,6 +2,7 @@ import argparse
 import contextlib
 import copy
 import fcntl
+import inspect
 import logging
 import shutil
 import sqlite3
@@ -154,7 +155,6 @@ def phase_metadata(
                 row_ts = row.get("record_timestamp")
                 row_sname = row.get("sname")
                 row_schema_ver = row.get("schema_version")
-                row_commit_sha = row.get("commit_sha")
 
                 if not row_ts or not row_sname:
                     continue
@@ -187,6 +187,12 @@ def phase_metadata(
                     if not isinstance(metadata, dict):
                         metadata = {}
 
+                    # Use the validated detail's integer version as the
+                    # current identity. The list row's timestamp is the same
+                    # current-version timestamp, and remains the fallback when
+                    # a caller supplies a minimal detail.
+                    detail_ts = detail.get("record_timestamp") or row_ts
+
                     if gwc_client is not None:
                         ev = resolve_event_id_for(row_sname, detail)
                         if ev:
@@ -202,8 +208,8 @@ def phase_metadata(
                             metadata=metadata,
                             libraries=libraries,
                             is_pruned=False,
-                            current_history_id=row_commit_sha,
-                            current_history_timestamp=row_ts,
+                            current_version_number=detail["version_number"],
+                            current_history_timestamp=detail_ts,
                         )
 
                     state.clear_failure(con, cur, row_sname)
@@ -572,6 +578,16 @@ def run(args=None):
     try:
         logger.info("Starting gwflow_ingest run")
         gwc = GWCloud(token=settings.GWCLOUD_TOKEN, endpoint=settings.GWCLOUD_ENDPOINT)
+        upsert_parameters = inspect.signature(gwc.upsert_gwflow_job).parameters
+        accepts_any_kwarg = any(
+            parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in upsert_parameters.values()
+        )
+        if not accepts_any_kwarg and "current_version_number" not in upsert_parameters:
+            logger.critical(
+                "The installed gwcloud_python SDK does not support current_version_number; "
+                "upgrade to the revision that sends currentVersionNumber."
+            )
+            return 1
         jc = JobControllerClient(
             api_url=settings.JOB_CONTROLLER_API_URL,
             jwt_secret=settings.JOB_CONTROLLER_JWT_SECRET,

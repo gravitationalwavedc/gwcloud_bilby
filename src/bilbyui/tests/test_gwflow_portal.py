@@ -56,58 +56,12 @@ class TestGWFlowPortalClient(BilbyTestCase):
             f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/7/",
         )
 
-    @responses.activate
-    def test_get_version_sha_resolves_to_summary_version_number(self):
-        sha = "0123456789abcdef"
-        payload = canonical_detail(commit_sha=sha, version_number=12)
-        responses.add(
-            responses.GET,
-            f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1",
-            json={
-                "count": 1,
-                "next": None,
-                "previous": None,
-                "results": [{"commit_sha": sha, "version_number": 12}],
-            },
-            status=200,
-        )
-        responses.add(
-            responses.GET,
-            f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/12/",
-            json=payload,
-            status=200,
-        )
-
-        self.assertEqual(gwflow_portal.get_version(SNAME, sha), (payload, "live"))
-        self.assertEqual(
-            [call.request.url for call in responses.calls],
-            [
-                f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1",
-                f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/12/",
-            ],
-        )
-
-    @responses.activate
-    def test_get_version_unknown_sha_fails_without_sha_detail_request(self):
-        sha = "unknown-sha"
-        responses.add(
-            responses.GET,
-            f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1",
-            json={
-                "count": 1,
-                "next": None,
-                "previous": None,
-                "results": [{"commit_sha": "known-sha", "version_number": 13}],
-            },
-            status=200,
-        )
-
-        self.assertEqual(gwflow_portal.get_version(SNAME, sha), (None, "failed"))
-        self.assertEqual(len(responses.calls), 1)
-        self.assertNotIn(
-            f"/versions/{sha}/",
-            responses.calls[0].request.url,
-        )
+    def test_get_version_non_integer_ref_fails_without_request(self):
+        for value in ("0123456789abcdef", None, True, 1.0, ""):
+            with self.subTest(value=value):
+                with mock.patch.object(gwflow_portal, "portal_get") as portal_get:
+                    self.assertEqual(gwflow_portal.get_version(SNAME, value), (None, "failed"))
+                    portal_get.assert_not_called()
 
     @responses.activate
     def test_live_response_cached(self):

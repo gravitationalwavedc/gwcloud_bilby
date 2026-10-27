@@ -14,19 +14,17 @@ def _file_relationship(role, path, *, direction):
     return {
         "direction": direction,
         "role": role,
-        "file": {
-            "name": Path(path).name,
-            "description": role,
-            "md5sum": "",
-            "last_modified": None,
-            "locations": [
-                {
-                    "file_system": "fs_a",
-                    "path": path,
-                    "url": None,
-                }
-            ],
-        },
+        "name": Path(path).name,
+        "description": role,
+        "md5sum": "",
+        "last_modified": None,
+        "locations": [
+            {
+                "file_system": "fs_a",
+                "path": path,
+                "url": None,
+            }
+        ],
     }
 
 
@@ -56,6 +54,7 @@ def _superevent_detail(sname="S260101a", analyses=None, files=None):
         analyses = [_bilby_pe_analysis()]
     return {
         "sname": sname,
+        "version_number": 1,
         "raw_payload": {"sname": sname, "event": "GW260101"},
         "libraries": [{"name": "bilby"}],
         "analyses": analyses,

@@ -13,3 +13,10 @@ ADACS_SSO_CLIENT_SECRET = "test_secret_for_ci"
 # Never let the dev-mode SSO shim answer user lookups under test — auth tests
 # mock the real lookup path and assert against it.
 ADACS_SSO_LOCAL_MODE = False
+
+# Tests must never depend on a reachable portal. A developer's local.py may
+# point at a live cbcflow-portal instance; without this override, unmocked
+# portal calls would resolve real metadata and change deterministic
+# expectations (for example GWFlow trigger-time resolution).
+CBCFLOW_PORTAL_URL = ""
+CBCFLOW_PORTAL_TOKEN = ""

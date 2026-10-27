@@ -17,6 +17,7 @@ from bilbyui.utils.gwflow_es import (
     eligible_gwflow_jobs,
     get_es_client,
     invalidate_gwflow_facet_caches,
+    mapping_satisfies_contract,
 )
 from bilbyui.utils.gwflow_portal import get_superevent
 
@@ -306,14 +307,14 @@ class Command(BaseCommand):
             if job is not None:
                 pk = job.pk
                 sname = job.sname
-                history_id = job.current_history_id
+                version_number = job.current_version_number
             else:
-                history_id = None
+                version_number = None
             failure = {
                 "phase": phase,
                 "sname": sname,
                 "pk": pk,
-                "current_history_id": history_id,
+                "current_version_number": version_number,
                 "reason": str(reason),
             }
             failures.append(failure)
@@ -328,10 +329,10 @@ class Command(BaseCommand):
             except Exception as exc:
                 record_failure("fetch", job, reason=exc)
                 logger.exception(
-                    "GWFlow fetch raised for sname=%s pk=%s history=%s",
+                    "GWFlow fetch raised for sname=%s pk=%s version=%s",
                     job.sname,
                     job.pk,
-                    job.current_history_id,
+                    job.current_version_number,
                 )
                 continue
 
@@ -490,11 +491,11 @@ class Command(BaseCommand):
             try:
                 mapping_response = es.indices.get_mapping(index=index)
                 installed_mapping = mapping_response[index]["mappings"]
-                if installed_mapping != expected_mapping["mappings"]:
+                if not mapping_satisfies_contract(expected_mapping["mappings"], installed_mapping):
                     record_failure(
                         "mapping",
                         reason=(
-                            "installed mapping differs from the contract: "
+                            "installed mapping does not satisfy the contract: "
                             f"expected={expected_mapping['mappings']!r} "
                             f"actual={installed_mapping!r}"
                         ),

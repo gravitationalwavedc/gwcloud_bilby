@@ -152,6 +152,7 @@ class TestIngestWiring(GWFlowTestBase):
         ]
         mock_portal.get_superevent.return_value = {
             "sname": "S260101a",
+            "version_number": 1,
             "raw_payload": {"sname": "S260101a", "event": "GW260101"},
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": ["bilby"]}]
@@ -208,7 +209,7 @@ class TestIngestWiring(GWFlowTestBase):
             metadata={"sname": "S260101a", "event": "GW260101"},
             libraries=["bilby"],
             is_pruned=False,
-            current_history_id="sha-test-123",
+            current_version_number=1,
             current_history_timestamp="2026-01-01T12:00:00Z",
         )
 

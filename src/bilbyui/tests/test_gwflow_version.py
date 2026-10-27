@@ -14,7 +14,6 @@ from bilbyui.services.gwflow_versions import (
     adapt_semantic_diff,
     prepare_version_snapshots,
     resolve_history_selection,
-    resolve_version_number,
 )
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_version import (
@@ -118,14 +117,14 @@ class NormaliseCurrentHistoryTimestampTestCase(BilbyTestCase):
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class VersionTupleTestCase(BilbyTestCase):
-    def test_version_tuple_returns_timestamp_and_id(self):
+    def test_version_tuple_returns_timestamp_and_version_number(self):
         ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
-        job = GWFlowJob(current_history_timestamp=ts, current_history_id="abc123")
-        self.assertEqual(version_tuple(job), (ts, "abc123"))
+        job = GWFlowJob(current_history_timestamp=ts, current_version_number=3)
+        self.assertEqual(version_tuple(job), (ts, 3))
 
-    def test_version_tuple_with_none_timestamp(self):
-        job = GWFlowJob(current_history_timestamp=None, current_history_id="")
-        self.assertEqual(version_tuple(job), (None, ""))
+    def test_version_tuple_with_none_values(self):
+        job = GWFlowJob(current_history_timestamp=None, current_version_number=None)
+        self.assertEqual(version_tuple(job), (None, None))
 
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
@@ -140,7 +139,7 @@ class GWFlowStructuredDiffTestCase(BilbyTestCase):
             sname="S000001a",
             user=user,
             libraries=["cbc-workflow-o4a"],
-            current_history_id="b" * 40,
+            current_version_number=2,
         )
         payload = {
             "sname": job.sname,
@@ -205,8 +204,8 @@ class GWFlowStructuredDiffTestCase(BilbyTestCase):
 
 @override_settings(IGNORE_ELASTIC_SEARCH=True)
 class VersionSnapshotCanonicalTestCase(BilbyTestCase):
-    def _snapshots(self, rows, *, current_sha=""):
-        return prepare_version_snapshots(rows, current_sha=current_sha)
+    def _snapshots(self, rows, *, current_version_number=None):
+        return prepare_version_snapshots(rows, current_version_number=current_version_number)
 
     def test_canonical_summary_fields_are_accepted(self):
         snapshots = self._snapshots(
@@ -221,8 +220,6 @@ class VersionSnapshotCanonicalTestCase(BilbyTestCase):
         )
 
         self.assertEqual(len(snapshots), 1)
-        self.assertEqual(snapshots[0].full_sha, "a" * 40)
-        self.assertEqual(snapshots[0].short_sha, "a" * 8)
         self.assertEqual(snapshots[0].version_number, 7)
         self.assertEqual(
             snapshots[0].recorded_at,
@@ -265,17 +262,17 @@ class VersionSnapshotCanonicalTestCase(BilbyTestCase):
                 snapshots = self._snapshots([{"commit_sha": "a" * 40, "record_timestamp": value, "version_number": 3}])
                 self.assertIsNone(snapshots[0].recorded_at)
 
-    def test_row_without_sha_is_skipped(self):
+    def test_rows_without_sha_are_kept(self):
         snapshots = self._snapshots(
             [
-                {"commit_sha": "a" * 40, "version_number": 4},
+                {"version_number": 4},
                 {"commit_sha": "", "version_number": 5},
-                {"commit_sha": "b" * 40, "version_number": 6},
+                {"version_number": 6},
             ]
         )
-        self.assertEqual([snapshot.full_sha for snapshot in snapshots], ["a" * 40, "b" * 40])
+        self.assertEqual([snapshot.version_number for snapshot in snapshots], [4, 5, 6])
 
-    def test_ordering_preserves_timestamp_sha_and_undated_contract(self):
+    def test_ordering_preserves_timestamp_version_and_undated_contract(self):
         snapshots = self._snapshots(
             [
                 {
@@ -298,18 +295,18 @@ class VersionSnapshotCanonicalTestCase(BilbyTestCase):
             ]
         )
         self.assertEqual(
-            [snapshot.full_sha for snapshot in snapshots],
-            ["a" * 40, "z" * 40, "m" * 40, "b" * 40, "d" * 40],
+            [snapshot.version_number for snapshot in snapshots],
+            [7, 9, 10, 8, 11],
         )
 
-    def test_is_current_accepts_canonical_flag_and_current_sha_fallback(self):
+    def test_is_current_accepts_canonical_flag_and_current_version_number_fallback(self):
         snapshots = self._snapshots(
             [
                 {"commit_sha": "a" * 40, "version_number": 12, "is_current": "false"},
                 {"commit_sha": "b" * 40, "version_number": 13, "is_current": "true"},
                 {"commit_sha": "c" * 40, "version_number": 14, "is_current": False},
             ],
-            current_sha="c" * 40,
+            current_version_number=14,
         )
         self.assertEqual([snapshot.is_current for snapshot in snapshots], [False, True, True])
 
@@ -338,24 +335,19 @@ class ResolveHistorySelectionVersionNumberTestCase(BilbyTestCase):
                     "version_number": 21,
                 },
             ],
-            current_sha="c" * 40,
+            current_version_number=21,
         )
 
-    def test_sha_resolves_to_version_number(self):
-        self.assertEqual(resolve_version_number(self._snapshots(), "b" * 40), 20)
-
-    def test_unknown_sha_raises_lookup_error(self):
-        with self.assertRaisesRegex(LookupError, "Version not found"):
-            resolve_version_number(self._snapshots(), "z" * 40)
-
     def test_default_selects_current_with_previous_baseline(self):
-        selected, baseline, mode = resolve_history_selection(self._snapshots(), requested_sha=None, compare=None)
+        selected, baseline, mode = resolve_history_selection(self._snapshots(), requested_version=None, compare=None)
         self.assertEqual(selected.version_number, 21)
         self.assertEqual(baseline.version_number, 20)
         self.assertEqual(mode, "prev")
 
     def test_compare_current_uses_current_baseline(self):
-        selected, baseline, mode = resolve_history_selection(self._snapshots(), requested_sha=None, compare="current")
+        selected, baseline, mode = resolve_history_selection(
+            self._snapshots(), requested_version=None, compare="current"
+        )
         self.assertEqual(selected.version_number, 21)
         self.assertEqual(baseline.version_number, 21)
         self.assertEqual(mode, "current")
@@ -363,7 +355,7 @@ class ResolveHistorySelectionVersionNumberTestCase(BilbyTestCase):
     def test_deep_link_selects_requested_version(self):
         selected, baseline, mode = resolve_history_selection(
             self._snapshots(),
-            requested_sha="a" * 40,
+            requested_version=19,
             compare="prev",
         )
         self.assertEqual(selected.version_number, 19)
@@ -372,7 +364,15 @@ class ResolveHistorySelectionVersionNumberTestCase(BilbyTestCase):
 
     def test_unknown_version_raises_lookup_error(self):
         with self.assertRaises(LookupError):
-            resolve_history_selection(self._snapshots(), requested_sha="z" * 40, compare="prev")
+            resolve_history_selection(self._snapshots(), requested_version=999, compare="prev")
+
+    def test_malformed_version_raises_lookup_error(self):
+        with self.assertRaises(LookupError):
+            resolve_history_selection(self._snapshots(), requested_version="not-an-int", compare="prev")
+
+    def test_zero_padded_version_is_rejected(self):
+        with self.assertRaises(LookupError):
+            resolve_history_selection(self._snapshots(), requested_version="019", compare="prev")
 
     def test_no_current_row_falls_back_to_latest_snapshot(self):
         snapshots = prepare_version_snapshots(
@@ -391,14 +391,14 @@ class ResolveHistorySelectionVersionNumberTestCase(BilbyTestCase):
                 },
             ]
         )
-        selected, baseline, mode = resolve_history_selection(snapshots, requested_sha=None, compare=None)
+        selected, baseline, mode = resolve_history_selection(snapshots, requested_version=None, compare=None)
         self.assertEqual(selected.version_number, 23)
         self.assertEqual(baseline.version_number, 22)
         self.assertEqual(mode, "prev")
 
     def test_empty_history_raises_lookup_error(self):
         with self.assertRaises(LookupError):
-            resolve_history_selection((), requested_sha=None, compare=None)
+            resolve_history_selection((), requested_version=None, compare=None)
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "gwflow_diff"

@@ -52,7 +52,7 @@ def _collect_review_statuses(metadata, job, path="", out=None):
                         "Non-scalar review_status at %s for gwflow job %s (history %s); skipping",
                         child_path,
                         job.id,
-                        getattr(job, "current_history_id", ""),
+                        getattr(job, "current_version_number", None),
                     )
                 else:
                     if value not in out:
@@ -69,16 +69,20 @@ def _collect_review_statuses(metadata, job, path="", out=None):
 def parse_analyses(metadata: dict) -> list:
     """Return the canonical analyses of a portal detail payload.
 
-    Consumes only ``metadata["analyses"]``. Absent or null yields ``[]``. Every
-    present entry must be an object carrying the required canonical fields; a
-    malformed entry fails the whole source record (``InvalidGWFlowMetadata``)
-    rather than being skipped or defaulted.
+    Consumes only ``metadata["analyses"]``. An absent member yields ``[]``;
+    a present null or any other non-array value is malformed and rejected, as
+    required at the GWF-1 boundary. Every present entry must be an object
+    carrying the required canonical fields; a malformed entry fails the whole
+    source record (``InvalidGWFlowMetadata``) rather than being skipped or
+    defaulted.
     """
     if not isinstance(metadata, dict):
         raise InvalidGWFlowMetadata("metadata must be a top-level JSON object")
 
-    if "analyses" not in metadata or metadata["analyses"] is None:
+    if "analyses" not in metadata:
         return []
+    if metadata["analyses"] is None:
+        raise InvalidGWFlowMetadata("metadata.analyses must be an array")
 
     raw_analyses = metadata["analyses"]
     if not isinstance(raw_analyses, list):
@@ -133,7 +137,11 @@ def _parse_analysis(entry, index):
     if not isinstance(entry["deprecated"], bool):
         raise InvalidGWFlowMetadata(f"{where}.deprecated must be a boolean")
 
-    for field in ("revision", "name", "description"):
+    revision = entry["revision"]
+    if isinstance(revision, bool) or not isinstance(revision, (int, str)):
+        raise InvalidGWFlowMetadata(f"{where}.revision must be an integer or a string")
+
+    for field in ("name", "description"):
         if not isinstance(entry[field], str):
             raise InvalidGWFlowMetadata(f"{where}.{field} must be a string")
 
@@ -292,7 +300,7 @@ def gwflow_elastic_search_update(job, metadata: dict) -> None:
         logger.warning(
             "GWFlow ES ingest failed for job %s (history %s): %s",
             job.id,
-            getattr(job, "current_history_id", ""),
+            getattr(job, "current_version_number", None),
             exc,
         )
         return
@@ -347,19 +355,24 @@ def build_gwflow_es_mapping():
     """
     templates = [
         {
-            name: {
+            f"{name}_{json_type}": {
                 "path_match": f"{section}.*",
-                "match_mapping_type": ["long", "double"],
+                "match_mapping_type": json_type,
                 "mapping": {"type": "double"},
             }
         }
         for name, section in _GWFLOW_NUMERIC_TEMPLATE_SECTIONS
+        for json_type in ("long", "double")
     ]
 
+    from bilbyui.services.search_registry import _DEFAULT_FIELD, GWFLOW_ALIASES
+
     return {
+        "settings": {"index": {"query": {"default_field": _DEFAULT_FIELD}}},
         "mappings": {
             "dynamic_templates": templates,
             "properties": {
+                **{alias: {"type": "alias", "path": target} for alias, target in GWFLOW_ALIASES.items()},
                 "_gwcloud": {
                     "type": "object",
                     "dynamic": "strict",
@@ -398,14 +411,100 @@ def build_gwflow_es_mapping():
                                 "configurations": {"type": "object"},
                             },
                         },
-                        "detector_configurations": {"type": "object"},
-                        "gracedb_events": {"type": "object"},
+                        "detector_configurations": {
+                            "type": "object",
+                            "properties": {"uid": {"type": "keyword"}},
+                        },
+                        "gracedb_events": {
+                            "type": "object",
+                            "properties": {
+                                "network_snr": {"type": "double"},
+                                "far": {"type": "double"},
+                                "pipeline": {"type": "keyword"},
+                            },
+                        },
                         "catalog_connections": {"type": "object"},
+                        # Legacy O4 payload retained in _source for provenance but
+                        # deliberately not indexed: its loose date/number formats
+                        # collide with dynamically inferred mappings.
+                        "raw_payload": {"type": "object", "enabled": False},
                     },
                 },
             },
-        }
+        },
     }
+
+
+_DEFAULT_DATE_FORMAT = "strict_date_optional_time||epoch_millis"
+
+
+def _normalise_dynamic(value):
+    """Normalise ES's stringified booleans for comparison."""
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    return value
+
+
+def mapping_satisfies_contract(expected, actual):
+    """Return True when ``actual`` contains every declaration in ``expected``.
+
+    Elasticsearch expands dynamic mappings, adds fields inferred from indexed
+    documents, and normalises some values (``dynamic: true`` comes back as
+    ``"true"``; a date using the default format omits ``format``). Comparing
+    the whole installed mapping for equality therefore always fails on a real
+    cluster. This checks that every explicitly declared property and template
+    is present and correct, ignoring fields ES inferred on its own.
+    """
+    if not isinstance(actual, dict) or not isinstance(expected, dict):
+        return False
+
+    for key, expected_value in expected.items():
+        if (
+            key == "type"
+            and expected_value == "object"
+            and key not in actual
+            and isinstance(actual.get("properties"), dict)
+        ):
+            # ES omits the implied type for an object that declares properties.
+            continue
+        if (
+            key == "format"
+            and key not in actual
+            and expected.get("type") == "date"
+            and expected_value == _DEFAULT_DATE_FORMAT
+        ):
+            continue
+        if key not in actual:
+            return False
+        actual_value = actual[key]
+
+        if key == "properties":
+            if not isinstance(actual_value, dict) or not isinstance(expected_value, dict):
+                return False
+            for prop, prop_expected in expected_value.items():
+                if prop not in actual_value:
+                    return False
+                if not mapping_satisfies_contract(prop_expected, actual_value[prop]):
+                    return False
+            continue
+        if key == "dynamic_templates":
+            if actual_value != expected_value:
+                return False
+            continue
+        if key == "dynamic":
+            if _normalise_dynamic(expected_value) != _normalise_dynamic(actual_value):
+                return False
+            continue
+
+        if isinstance(expected_value, dict):
+            if not mapping_satisfies_contract(expected_value, actual_value):
+                return False
+        elif expected_value != actual_value:
+            return False
+
+    return True
 
 
 def compute_protected_identity_digest():

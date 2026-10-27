@@ -97,13 +97,15 @@ class Command(BaseCommand):
         exact payload was being fetched).
         """
         expected = version_tuple(job)
-        history_id = expected[1]
-        if not history_id:
+        version_number = expected[1]
+        if version_number is None:
             return "no-current-version"
 
-        data, state = get_version(job.sname, history_id)
+        data, state = get_version(job.sname, version_number)
         if state == "down" or data is None:
-            raise ExactVersionFetchError(f"could not fetch exact version {history_id} for {job.sname} (state={state})")
+            raise ExactVersionFetchError(
+                f"could not fetch exact version {version_number} for {job.sname} (state={state})"
+            )
 
         # Re-read the job's version tuple immediately before writing. If it
         # changed while the payload was being fetched, skip so we never index

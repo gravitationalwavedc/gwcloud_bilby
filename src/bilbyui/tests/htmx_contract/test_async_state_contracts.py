@@ -345,12 +345,12 @@ class TestGWFlowHistoryVersionFailureBranch(BilbyTestCase):
         )
         self.authenticate(user=self.ligo_user)
         self.job = GWFlowJob.objects.create(sname="S230601ag", user=self.ligo_user)
-        self.sha = "1111222233334444555566667777888899990000"
-        self.url = reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.sha])
+        self.version_number = 1
+        self.url = reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.version_number])
         self.get_versions_patcher = patch(
             "bilbyui.views.get_versions",
             return_value=(
-                [{"commit_sha": self.sha, "version_number": 1}],
+                [{"version_number": 1}],
                 "live",
             ),
         )
@@ -362,7 +362,7 @@ class TestGWFlowHistoryVersionFailureBranch(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        mock_get_version.assert_called_once_with(self.job.sname, self.sha)
+        mock_get_version.assert_called_once_with(self.job.sname, self.version_number)
         self.assertContains(response, "async-error")
         self.assertContains(response, 'role="alert"')
         self.assertContains(response, '<span class="sr-only">Error:</span>')
@@ -372,7 +372,7 @@ class TestGWFlowHistoryVersionFailureBranch(BilbyTestCase):
         )
         self.assertContains(
             response,
-            f'hx-get="{reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.sha])}"',
+            f'hx-get="{reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.version_number])}"',
         )
         self.assertContains(response, 'hx-target="#gwflow-history-version"')
         self.assertContains(response, "Retry")

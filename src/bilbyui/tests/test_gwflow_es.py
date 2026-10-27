@@ -49,7 +49,7 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
             user=self.user,
             schema_version="v3",
             libraries=["cbc-workflow-o4a"],
-            current_history_id="hist-001",
+            current_version_number=1,
             current_history_timestamp=datetime.datetime(2026, 8, 31, 12, 34, 56, tzinfo=datetime.UTC),
             is_pruned=False,
             event_id=self.event_id,
@@ -290,7 +290,7 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
 class TestCollectReviewStatuses(BilbyTestCase):
     def setUp(self):
         super().setUp()
-        self.job = MagicMock(id=99, current_history_id="hist-001")
+        self.job = MagicMock(id=99, current_version_number=1)
 
     def test_collect_nested_and_array_review_statuses(self):
         metadata = {
@@ -779,8 +779,9 @@ class TestParseAnalysesCanonical(BilbyTestCase):
     def test_absent_analyses_yields_empty(self):
         self.assertEqual(parse_analyses({}), [])
 
-    def test_null_analyses_yields_empty(self):
-        self.assertEqual(parse_analyses({"analyses": None}), [])
+    def test_null_analyses_is_rejected(self):
+        with self.assertRaises(InvalidGWFlowMetadata):
+            parse_analyses({"analyses": None})
 
     def test_empty_analyses_yields_empty(self):
         self.assertEqual(parse_analyses({"analyses": []}), [])
@@ -792,6 +793,11 @@ class TestParseAnalysesCanonical(BilbyTestCase):
         self.assertEqual(analysis["status"], "complete")
         self.assertEqual(analysis["software"], {"name": "bilby_pipe", "version": "1.2.3"})
         self.assertTrue(analysis["in_catalog"])
+
+    def test_integer_revision_is_accepted(self):
+        """The canonical portal emits revision as an integer (PositiveIntegerField)."""
+        [analysis] = parse_analyses({"analyses": [self._pe(revision=1)]})
+        self.assertEqual(analysis["revision"], 1)
 
     def test_event_validation_entry_is_returned_canonically(self):
         entry = self._pe(

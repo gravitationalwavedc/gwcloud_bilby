@@ -33,6 +33,7 @@ class TestMetadataPhase(GWFlowTestBase):
         ]
         mock_portal.get_superevent.side_effect = lambda sname: {
             "sname": sname,
+            "version_number": 1,
             "raw_payload": {"sname": sname},
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": ["bilby"]}]
@@ -54,13 +55,36 @@ class TestMetadataPhase(GWFlowTestBase):
             metadata={"sname": "S260101a"},
             libraries=["bilby"],
             is_pruned=False,
-            current_history_id="sha1",
+            current_version_number=1,
             current_history_timestamp="2026-01-01T10:00:00Z",
         )
 
         # Assert state updated to latest row
         self.assertEqual(state.get_watermark(cur), "2026-01-02T12:00:00Z")
         self.assertEqual(state.get_last_sname(cur), "S260102b")
+
+    def test_history_pointer_comes_from_detail_when_list_row_omits_it(self):
+        """The canonical list row carries no commit_sha/schema_version."""
+        mock_portal = MagicMock()
+        mock_portal.iter_changed.return_value = [
+            {"sname": "S_CANON", "record_timestamp": "2026-01-01T10:00:00Z"},
+        ]
+        mock_portal.get_superevent.return_value = {
+            "sname": "S_CANON",
+            "record_timestamp": "2026-01-01T10:00:00Z",
+            "version_number": 7,
+            "raw_payload": {"sname": "S_CANON"},
+        }
+        mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
+        mock_gwc = MagicMock()
+
+        result = phase_metadata(portal_client=mock_portal, gwc_client=mock_gwc, con=self.con)
+        self.assertEqual(result, [])
+
+        kwargs = mock_gwc.upsert_gwflow_job.call_args.kwargs
+        self.assertEqual(kwargs["current_version_number"], 7)
+        self.assertEqual(kwargs["current_history_timestamp"], "2026-01-01T10:00:00Z")
+        self.assertIsNone(kwargs["schema_version"])
 
     def test_malformed_libraries_entry_is_skipped(self):
         mock_portal = MagicMock()
@@ -74,6 +98,7 @@ class TestMetadataPhase(GWFlowTestBase):
         ]
         mock_portal.get_superevent.return_value = {
             "sname": "S_LIBS",
+            "version_number": 1,
             "raw_payload": {"sname": "S_LIBS"},
         }
         mock_portal.get_versions.return_value = [
@@ -93,7 +118,7 @@ class TestMetadataPhase(GWFlowTestBase):
             metadata={"sname": "S_LIBS"},
             libraries=["bilby", "gwpy"],
             is_pruned=False,
-            current_history_id="sha1",
+            current_version_number=1,
             current_history_timestamp="2026-01-01T10:00:00Z",
         )
 
@@ -170,7 +195,7 @@ class TestMetadataPhase(GWFlowTestBase):
                 "schema_version": "1.0",
             },
         ]
-        mock_portal.get_superevent.return_value = {"sname": "S260101b", "raw_payload": {}}
+        mock_portal.get_superevent.return_value = {"sname": "S260101b", "version_number": 1, "raw_payload": {}}
         mock_portal.iter_current_snames.return_value = ["S260101a", "S260101b"]
 
         mock_gwc = MagicMock()
@@ -205,7 +230,7 @@ class TestMetadataPhase(GWFlowTestBase):
         def get_detail_side_effect(sname):
             if sname == "S_FAIL":
                 raise ValueError("Portal API temporary failure")
-            return {"sname": sname, "raw_payload": {}}
+            return {"sname": sname, "version_number": 1, "raw_payload": {}}
 
         mock_portal.get_superevent.side_effect = get_detail_side_effect
         mock_portal.iter_current_snames.return_value = ["S_OK1", "S_FAIL", "S_OK2"]
@@ -245,6 +270,7 @@ class TestMetadataPhase(GWFlowTestBase):
         ]
         mock_portal.get_superevent.return_value = {
             "sname": "S_RAW",
+            "version_number": 1,
             "raw_payload": "not-a-dict",
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
@@ -262,7 +288,7 @@ class TestMetadataPhase(GWFlowTestBase):
             metadata={},
             libraries=[],
             is_pruned=False,
-            current_history_id="sha1",
+            current_version_number=1,
             current_history_timestamp="2026-01-01T10:00:00Z",
         )
 
@@ -292,7 +318,9 @@ class TestMetadataPhase(GWFlowTestBase):
 
     def _run_phase(self, mock_portal, sname="S_LIB", detail=None):
         mock_portal.iter_changed.return_value = [self._changed_row(sname)]
-        mock_portal.get_superevent.return_value = {"sname": sname, "raw_payload": {}} if detail is None else detail
+        mock_portal.get_superevent.return_value = (
+            {"sname": sname, "version_number": 1, "raw_payload": {}} if detail is None else detail
+        )
         mock_portal.iter_current_snames.return_value = [sname]
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -312,6 +340,7 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.get_versions.return_value = [{"is_current": True}]
         detail = {
             "sname": "S_LIB",
+            "version_number": 1,
             "raw_payload": {},
             "libraries": ["bilby", "gwpy"],
         }
@@ -329,6 +358,7 @@ class TestMetadataPhase(GWFlowTestBase):
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": "bilby"}]
         detail = {
             "sname": "S_LIB",
+            "version_number": 1,
             "raw_payload": {},
             "libraries": {"name": "gwpy"},
         }
@@ -404,7 +434,7 @@ class TestMetadataPhase(GWFlowTestBase):
             {"is_current": True, "libraries": ["second"]},
         ]
         mock_portal.iter_changed.return_value = [self._changed_row()]
-        mock_portal.get_superevent.return_value = {"sname": "S_LIB", "raw_payload": {}}
+        mock_portal.get_superevent.return_value = {"sname": "S_LIB", "version_number": 1, "raw_payload": {}}
         mock_portal.iter_current_snames.return_value = ["S_LIB"]
         mock_gwc = MagicMock()
         mock_gwc.get_gwflow_job_list.return_value = []
@@ -428,11 +458,11 @@ class TestMetadataPhase(GWFlowTestBase):
         ]
         mock_portal.get_superevent.return_value = {
             "sname": "S_EV",
+            "version_number": 1,
             "raw_payload": {},
-            "gracedb": {
-                "preferred_event": "EVT-X",
-                "events": [{"uid": "EVT-X", "gps_time": 1234567890.5}],
-            },
+            "gracedb_events": [
+                {"event_name": "EVT-X", "gps_time": 1234567890.5, "state": "preferred"},
+            ],
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
         mock_portal.iter_current_snames.return_value = ["S_EV"]
@@ -457,6 +487,7 @@ class TestMetadataPhase(GWFlowTestBase):
         ]
         mock_portal.get_superevent.return_value = {
             "sname": "S_NOGDB",
+            "version_number": 1,
             "raw_payload": {},
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
@@ -482,11 +513,11 @@ class TestMetadataPhase(GWFlowTestBase):
         ]
         mock_portal.get_superevent.return_value = {
             "sname": "S_EVFAIL",
+            "version_number": 1,
             "raw_payload": {},
-            "gracedb": {
-                "preferred_event": "EVT-Y",
-                "events": [{"uid": "EVT-Y", "gps_time": 9876543210.0}],
-            },
+            "gracedb_events": [
+                {"event_name": "EVT-Y", "gps_time": 9876543210.0, "state": "preferred"},
+            ],
         }
         mock_portal.get_versions.return_value = [{"is_current": True, "libraries": []}]
         mock_portal.iter_current_snames.return_value = ["S_EVFAIL"]

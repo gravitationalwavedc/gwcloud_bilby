@@ -20,13 +20,11 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
     def test_resolves_one_current_summary_as_coherent_unit(self):
         summaries = [
             {
-                "commit_sha": "old-sha",
                 "version_number": 1,
                 "record_timestamp": "2026-09-01T01:00:00+00:00",
                 "is_current": False,
             },
             {
-                "commit_sha": "current-sha",
                 "version_number": 2,
                 "commit_timestamp": "1999-01-01T00:00:00+00:00",
                 "record_timestamp": "2026-09-02T03:04:05+10:00",
@@ -58,7 +56,7 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
 
         self.assertTrue(result.available)
         self.assertEqual(result.trigger_time, 1438044067.054443)
-        self.assertEqual(result.current_history_id, "current-sha")
+        self.assertEqual(result.current_version_number, 2)
         self.assertEqual(
             result.current_history_timestamp,
             datetime.datetime(
@@ -85,7 +83,6 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
                 summaries = [
                     {
                         "is_current": is_current,
-                        "commit_sha": "current-sha",
                         "version_number": 7,
                         "record_timestamp": "2026-09-01T00:00:00+00:00",
                     }
@@ -119,7 +116,6 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
                 summaries = [
                     {
                         "is_current": is_current,
-                        "commit_sha": "current-sha",
                         "version_number": 8,
                         "record_timestamp": "2026-09-01T00:00:00+00:00",
                     }
@@ -146,8 +142,8 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
         cases = (
             [],
             [
-                {"is_current": True, "commit_sha": "one", "version_number": 5},
-                {"is_current": True, "commit_sha": "two", "version_number": 6},
+                {"is_current": True, "version_number": 5},
+                {"is_current": True, "version_number": 6},
             ],
         )
         for summaries in cases:
@@ -167,7 +163,6 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
         summary = [
             {
                 "is_current": True,
-                "commit_sha": "current-sha",
                 "version_number": 3,
                 "record_timestamp": "2026-09-01T00:00:00+00:00",
             }
@@ -192,7 +187,6 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
         summary = [
             {
                 "is_current": True,
-                "commit_sha": "current-sha",
                 "version_number": 4,
                 "record_timestamp": "2026-09-01T00:00:00+00:00",
             }
@@ -202,10 +196,6 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
             ([], "live"),
             ({}, "live"),
             ({"raw_payload": []}, "live"),
-            (
-                {"raw_payload": {"GraceDB": {"Events": [{"State": "preferred", "GPSTime": "nan"}]}}},
-                "live",
-            ),
         )
         for detail_result in cases:
             with self.subTest(detail=detail_result):
@@ -222,6 +212,33 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
                     result = resolve_current_version("S250801h")
                 self.assertFalse(result.available)
                 self.assertIsNone(result.trigger_time)
+
+    def test_version_identity_is_authoritative_without_a_trigger_time(self):
+        """A missing GraceDB trigger time must not suppress the version pointer."""
+        summary = [
+            {
+                "is_current": True,
+                "version_number": 4,
+                "record_timestamp": "2026-09-01T00:00:00+00:00",
+            }
+        ]
+        detail = {"raw_payload": {"GraceDB": {"Events": [{"State": "preferred", "GPSTime": "nan"}]}}}
+        with (
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_versions",
+                return_value=(summary, "live"),
+            ),
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_version",
+                return_value=(detail, "live"),
+            ),
+        ):
+            result = resolve_current_version("S250801h")
+
+        self.assertTrue(result.available)
+        self.assertIsNone(result.trigger_time)
+        self.assertEqual(result.current_version_number, 4)
+        self.assertIsNotNone(result.current_history_timestamp)
 
 
 class TestSupereventEventIDResolver(BilbyTestCase):
@@ -377,7 +394,7 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
             "schema_version": "v1",
             "libraries": ["cbc-workflow-o4c"],
             "is_pruned": False,
-            "current_history_id": "caller-sha",
+            "current_version_number": 1,
             "current_history_timestamp": "2026-08-01T00:00:00+00:00",
             "event_id": "G585653",
             "metadata": '{"GraceDB": {"Events": [{"GPSTime": 1.0}]}}',
@@ -400,7 +417,7 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
         resolved = GWFlowCurrentVersion(
             available=True,
             trigger_time=1438044067.054443,
-            current_history_id="portal-sha",
+            current_version_number=1,
             current_history_timestamp=datetime.datetime(
                 2026,
                 9,
@@ -426,7 +443,7 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
 
         job = GWFlowJob.objects.get(sname="S250801h")
         self.assertEqual(job.trigger_time, 1438044067.054443)
-        self.assertEqual(job.current_history_id, "portal-sha")
+        self.assertEqual(job.current_version_number, 1)
         self.assertEqual(
             job.current_history_timestamp,
             resolved.current_history_timestamp,
@@ -453,7 +470,7 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
                     sname=f"S25080{index + 1}h",
                     user=self.user,
                     trigger_time=trigger_time,
-                    current_history_id="stored-sha",
+                    current_version_number=1,
                     current_history_timestamp=stored_timestamp,
                     event_id=foreign,
                 )
@@ -474,12 +491,15 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
                 ):
                     upsert_gwflow_job(
                         self.user,
-                        self.params(job.sname),
+                        self.params(
+                            job.sname,
+                            current_history_timestamp=stored_timestamp,
+                        ),
                     )
 
                 job.refresh_from_db()
                 self.assertEqual(job.trigger_time, trigger_time)
-                self.assertEqual(job.current_history_id, "stored-sha")
+                self.assertEqual(job.current_version_number, 1)
                 self.assertEqual(
                     job.current_history_timestamp,
                     stored_timestamp,
@@ -502,7 +522,7 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
             sname="S250809h",
             user=self.user,
             trigger_time=1438044067.0,
-            current_history_id="stored-sha",
+            current_version_number=1,
             current_history_timestamp=stored_timestamp,
             event_id=foreign,
         )
@@ -521,11 +541,17 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
             ),
             mock.patch("bilbyui.views.gwflow_elastic_search_update"),
         ):
-            upsert_gwflow_job(self.user, self.params(job.sname))
+            upsert_gwflow_job(
+                self.user,
+                self.params(
+                    job.sname,
+                    current_history_timestamp=stored_timestamp,
+                ),
+            )
 
         job.refresh_from_db()
         self.assertEqual(job.trigger_time, 1438044067.0)
-        self.assertEqual(job.current_history_id, "stored-sha")
+        self.assertEqual(job.current_version_number, 1)
         self.assertEqual(job.current_history_timestamp, stored_timestamp)
         self.assertIsNone(job.event_id)
 

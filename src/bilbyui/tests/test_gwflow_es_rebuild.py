@@ -1,12 +1,14 @@
 """Mapping, digest, cache and golden-document tests for the GWFlow rebuild."""
 
 import json
+from copy import deepcopy
 from datetime import UTC, datetime
 
 from django.core.cache import caches
 
 from bilbyui.models import EventID, GWFlowJob
 from bilbyui.services.gwflow import LIBRARIES_CACHE_KEY, REVIEW_STATUSES_CACHE_KEY
+from bilbyui.services.search_registry import _DEFAULT_FIELD, GWFLOW_ALIASES
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_es import (
     build_gwflow_es_doc,
@@ -14,6 +16,7 @@ from bilbyui.utils.gwflow_es import (
     clear_gwflow_portal_cache,
     compute_protected_identity_digest,
     invalidate_gwflow_facet_caches,
+    mapping_satisfies_contract,
 )
 
 CANONICAL_SECTIONS = (
@@ -95,6 +98,23 @@ class TestGWFlowMapping(BilbyTestCase):
     def setUp(self):
         self.mapping = build_gwflow_es_mapping()
 
+    def test_default_fields_match_search_registry(self):
+        self.assertEqual(
+            self.mapping["settings"]["index"]["query"]["default_field"],
+            _DEFAULT_FIELD,
+        )
+
+    def test_aliases_match_registry_and_all_targets_exist(self):
+        from bilbyui.management.commands.verify_search_fields import (
+            _flatten_properties,
+        )
+
+        fields = _flatten_properties(self.mapping["mappings"]["properties"])
+        aliases = {path: definition["path"] for path, definition in fields.items() if definition.get("type") == "alias"}
+        self.assertEqual(aliases, GWFLOW_ALIASES)
+        self.assertTrue(set(aliases.values()) <= fields.keys())
+        self.assertNotIn("pastro", aliases)
+
     def test_search_trigger_time_is_explicit_double(self):
         gwcloud = self.mapping["mappings"]["properties"]["_gwcloud"]["properties"]
         self.assertEqual(gwcloud["searchTriggerTime"], {"type": "double"})
@@ -104,35 +124,67 @@ class TestGWFlowMapping(BilbyTestCase):
             self.mapping["mappings"]["dynamic_templates"],
             [
                 {
-                    "analyses_numbers": {
+                    "analyses_numbers_long": {
                         "path_match": "metadata.analyses.*",
-                        "match_mapping_type": ["long", "double"],
+                        "match_mapping_type": "long",
                         "mapping": {"type": "double"},
                     }
                 },
                 {
-                    "detector_configuration_numbers": {
+                    "analyses_numbers_double": {
+                        "path_match": "metadata.analyses.*",
+                        "match_mapping_type": "double",
+                        "mapping": {"type": "double"},
+                    }
+                },
+                {
+                    "detector_configuration_numbers_long": {
                         "path_match": "metadata.detector_configurations.*",
-                        "match_mapping_type": ["long", "double"],
+                        "match_mapping_type": "long",
                         "mapping": {"type": "double"},
                     }
                 },
                 {
-                    "gracedb_event_numbers": {
+                    "detector_configuration_numbers_double": {
+                        "path_match": "metadata.detector_configurations.*",
+                        "match_mapping_type": "double",
+                        "mapping": {"type": "double"},
+                    }
+                },
+                {
+                    "gracedb_event_numbers_long": {
                         "path_match": "metadata.gracedb_events.*",
-                        "match_mapping_type": ["long", "double"],
+                        "match_mapping_type": "long",
                         "mapping": {"type": "double"},
                     }
                 },
                 {
-                    "catalog_connection_numbers": {
+                    "gracedb_event_numbers_double": {
+                        "path_match": "metadata.gracedb_events.*",
+                        "match_mapping_type": "double",
+                        "mapping": {"type": "double"},
+                    }
+                },
+                {
+                    "catalog_connection_numbers_long": {
                         "path_match": "metadata.catalog_connections.*",
-                        "match_mapping_type": ["long", "double"],
+                        "match_mapping_type": "long",
+                        "mapping": {"type": "double"},
+                    }
+                },
+                {
+                    "catalog_connection_numbers_double": {
+                        "path_match": "metadata.catalog_connections.*",
+                        "match_mapping_type": "double",
                         "mapping": {"type": "double"},
                     }
                 },
             ],
         )
+
+    def test_legacy_raw_payload_is_stored_but_not_indexed(self):
+        metadata = self.mapping["mappings"]["properties"]["metadata"]["properties"]
+        self.assertEqual(metadata["raw_payload"], {"type": "object", "enabled": False})
 
     def test_no_metadata_array_is_nested(self):
         serialized = json.dumps(self.mapping)
@@ -151,6 +203,30 @@ class TestGWFlowMapping(BilbyTestCase):
         self.assertEqual(analyses["deprecated"], {"type": "boolean"})
         self.assertEqual(analyses["software"]["properties"]["name"], {"type": "keyword"})
         self.assertEqual(analyses["software"]["properties"]["version"], {"type": "keyword"})
+
+    def test_contract_check_accepts_elasticsearch_normalisation(self):
+        expected = self.mapping["mappings"]
+        actual = deepcopy(expected)
+        # ES returns stringified booleans, omits the default date format and
+        # adds fields it inferred from indexed documents.
+        actual["properties"]["metadata"]["dynamic"] = "true"
+        del actual["properties"]["_gwcloud"]["properties"]["lastUpdatedTime"]["format"]
+        del actual["properties"]["metadata"]["type"]
+        del actual["properties"]["_gwcloud"]["type"]
+        actual["properties"]["metadata"]["properties"]["analyses"]["properties"]["extra_inferred"] = {"type": "text"}
+        self.assertTrue(mapping_satisfies_contract(expected, actual))
+
+    def test_contract_check_rejects_wrong_declared_type(self):
+        expected = self.mapping["mappings"]
+        actual = deepcopy(expected)
+        actual["properties"]["_gwcloud"]["properties"]["searchTriggerTime"] = {"type": "keyword"}
+        self.assertFalse(mapping_satisfies_contract(expected, actual))
+
+    def test_contract_check_rejects_missing_template(self):
+        expected = self.mapping["mappings"]
+        actual = deepcopy(expected)
+        actual["dynamic_templates"] = actual["dynamic_templates"][:-1]
+        self.assertFalse(mapping_satisfies_contract(expected, actual))
 
 
 class TestGoldenDocument(BilbyTestCase):
@@ -175,7 +251,8 @@ class TestGoldenDocument(BilbyTestCase):
             ("uid", "", ".uid must be a non-empty string"),
             ("type", "tgr", ".type must be 'pe' or 'event_validation'"),
             ("deprecated", "false", ".deprecated must be a boolean"),
-            ("revision", 1, ".revision must be a string"),
+            ("revision", True, ".revision must be an integer or a string"),
+            ("revision", 1.5, ".revision must be an integer or a string"),
             ("name", None, ".name must be a string"),
             ("description", [], ".description must be a string"),
             ("analysts", {}, ".analysts must be an array"),
@@ -261,7 +338,9 @@ class TestGoldenDocument(BilbyTestCase):
                 analyses = parse_analyses(detail)
                 self.assertEqual(analyses[0]["review_status"], expected)
 
-    def test_document_accepts_absent_or_null_analyses(self):
+    def test_document_accepts_absent_analyses_and_rejects_null(self):
+        from bilbyui.utils.gwflow_es import InvalidGWFlowMetadata
+
         user = self.create_user()
         job = GWFlowJob.objects.create(sname="S000001a", user=user)
 
@@ -271,7 +350,8 @@ class TestGoldenDocument(BilbyTestCase):
 
         null = golden_detail()
         null["analyses"] = None
-        self.assertIsNone(build_gwflow_es_doc(job, null)["metadata"]["analyses"])
+        with self.assertRaises(InvalidGWFlowMetadata):
+            build_gwflow_es_doc(job, null)
 
     def test_document_identity_and_envelope(self):
         user = self.create_user()

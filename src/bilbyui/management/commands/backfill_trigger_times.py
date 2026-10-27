@@ -270,7 +270,7 @@ class Command(BaseCommand):
                 try:
                     metadata, state = get_version(
                         job.sname,
-                        job.current_history_id,
+                        job.current_version_number,
                     )
                 except Exception as exc:
                     raise RuntimeError(f"portal fetch failed for GWFlowJob {job.id}") from exc

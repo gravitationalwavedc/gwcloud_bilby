@@ -42,7 +42,7 @@ class RepairProposal:
     available: bool
     reason: str | None
     trigger_time: float | None
-    current_history_id: str
+    current_version_number: int | None
     current_history_timestamp: object
     event_id: object
     parent_fields: dict = field(default_factory=dict)
@@ -57,7 +57,7 @@ class RepairProposal:
 
 class Command(BaseCommand):
     help = (
-        "Backfill GWFlowJob libraries, current-history metadata, trigger times, "
+        "Backfill GWFlowJob libraries, current-version metadata, trigger times, "
         "event links, and child links from authoritative current state."
     )
 
@@ -296,14 +296,15 @@ class Command(BaseCommand):
         pointer_disagreement = False
         if current.available:
             pointer_disagreement = (
-                job.current_history_id != current.current_history_id
+                job.current_version_number != current.current_version_number
                 or job.current_history_timestamp != current.current_history_timestamp
             )
             authoritative = {
-                "trigger_time": current.trigger_time,
-                "current_history_id": current.current_history_id,
+                "current_version_number": current.current_version_number,
                 "current_history_timestamp": current.current_history_timestamp,
             }
+            if current.trigger_time is not None:
+                authoritative["trigger_time"] = current.trigger_time
             for name, value in authoritative.items():
                 if getattr(job, name) != value:
                     fields[name] = value
@@ -324,8 +325,8 @@ class Command(BaseCommand):
             self.stderr.write(
                 self.style.WARNING(
                     f"Pointer disagreement for GWFlowJob {job.id} ({job.sname}): "
-                    f"stored=({job.current_history_id!r}, {job.current_history_timestamp!r}) "
-                    f"selected=({current.current_history_id!r}, {current.current_history_timestamp!r})"
+                    f"stored=({job.current_version_number!r}, {job.current_history_timestamp!r}) "
+                    f"selected=({current.current_version_number!r}, {current.current_history_timestamp!r})"
                 )
             )
 
@@ -333,8 +334,12 @@ class Command(BaseCommand):
             job=job,
             available=current.available,
             reason=current.reason,
-            trigger_time=current.trigger_time if current.available else job.trigger_time,
-            current_history_id=(current.current_history_id if current.available else job.current_history_id),
+            trigger_time=(
+                current.trigger_time if current.available and current.trigger_time is not None else job.trigger_time
+            ),
+            current_version_number=(
+                current.current_version_number if current.available else job.current_version_number
+            ),
             current_history_timestamp=(
                 current.current_history_timestamp if current.available else job.current_history_timestamp
             ),

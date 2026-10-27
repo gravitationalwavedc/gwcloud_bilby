@@ -46,7 +46,7 @@ class TestReindexJobs(BilbyTestCase):
         defaults = {
             "user": self.user,
             "sname": f"S2309{number:02d}a",
-            "current_history_id": f"sha-{number}",
+            "current_version_number": number,
         }
         defaults.update(kwargs)
         return GWFlowJob.objects.create(**defaults)
@@ -190,7 +190,7 @@ class TestReindexJobs(BilbyTestCase):
             'LEFT OUTER JOIN "bilbyui_eventid"',
             gwflow_queries.captured_queries[0]["sql"],
         )
-        get_version.assert_called_once_with(gwflow.sname, gwflow.current_history_id)
+        get_version.assert_called_once_with(gwflow.sname, gwflow.current_version_number)
         build.assert_called_once()
         self.assertEqual(bulk.call_args.args[1][0]["_index"], settings.ELASTIC_SEARCH_GWFLOW_INDEX)
         self.assertEqual(bulk.call_args.args[1][0]["_source"], {"canonical": "gwflow"})
