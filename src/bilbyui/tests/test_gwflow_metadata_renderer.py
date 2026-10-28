@@ -198,6 +198,11 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         empty = self.render({"UnknownExtension": {"tags": [], "note": "x"}})
         self.assertIn("Empty list", empty)
 
+    def test_empty_mapping_disclosure_renders_empty_mapping_not_missing_marker(self):
+        output = self.render({"UnknownExtension": {"note": {}, "flag": "x"}})
+        self.assertIn("Empty mapping", output)
+        self.assertNotIn(">—</dd>", output)
+
     def test_people_and_reviews_render_names_without_email_addresses(self):
         output = self.render(
             {

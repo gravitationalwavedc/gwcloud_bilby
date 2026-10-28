@@ -371,6 +371,7 @@ def _node(path: str, label: str, value: Any, identity_keys: tuple[str, ...] = ()
             path,
             label,
             "mapping",
+            value=value if not value else None,
             children=children,
             leaf_count=sum(child.leaf_count for child in children),
         )
