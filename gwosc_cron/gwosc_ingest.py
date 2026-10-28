@@ -96,14 +96,19 @@ def build_bilbyjob_name(event_name, config_name):
 
 
 def _read_config_value(dataset):
-    """Read a single config value from an HDF5 dataset, returning it as a str.
+    """Read a config value from an HDF5 dataset, returning it as a str.
 
     h5py stores a single string written via ``create_dataset(key, data="value")``
     as a scalar dataset (shape ``()``), where ``ds[0]`` raises ValueError.
-    Array-shaped datasets (shape ``(1,)``) are read with ``ds[0]``.
+    Array-shaped datasets (shape ``(1,)``) are read with ``ds[0]``; array
+    datasets with more than one element have all elements joined with ``", "``
+    so list-valued configs survive the round-trip into the ini.
     """
-    value = dataset[()] if dataset.shape == () else dataset[0]
-    return value.decode("utf-8")
+    if dataset.shape == ():
+        value = dataset[()].decode("utf-8")
+    else:
+        value = ", ".join(v.decode("utf-8") for v in dataset[()])
+    return value
 
 
 def create_table(cursor):

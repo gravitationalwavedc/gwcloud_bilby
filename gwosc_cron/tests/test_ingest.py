@@ -141,6 +141,31 @@ class TestEventIdRegex(unittest.TestCase):
         self.assertIsNone(gwosc_ingest._EVENT_ID_RE.match("GW150914-v1"))
 
 
+class TestReadConfigValue(unittest.TestCase):
+    """Unit tests for _read_config_value."""
+
+    def setUp(self):
+        self._f = h5py.File("test_config.h5", "w", driver="core", backing_store=False)
+
+    def tearDown(self):
+        self._f.close()
+
+    def _make_dataset(self, name, values):
+        return self._f.create_dataset(name, data=values)
+
+    def test_scalar_dataset_returns_value(self):
+        ds = self._make_dataset("scalar", "good")
+        self.assertEqual(gwosc_ingest._read_config_value(ds), "good")
+
+    def test_single_element_array_returns_value(self):
+        ds = self._make_dataset("single", [b"good"])
+        self.assertEqual(gwosc_ingest._read_config_value(ds), "good")
+
+    def test_multi_element_array_joins_values(self):
+        ds = self._make_dataset("multi", [b"a", b"b"])
+        self.assertEqual(gwosc_ingest._read_config_value(ds), "a, b")
+
+
 @unittest.mock.patch("gwosc_ingest.GWCloud", autospec=True)
 class TestGWOSCCron(GWOSCTestBase):
     @responses.activate
