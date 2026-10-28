@@ -23,7 +23,7 @@ class GWFlowModelsTestCase(BilbyTestCase):
         self.assertFalse(job.is_pruned)
         self.assertEqual(job.libraries, [])
         self.assertEqual(job.schema_version, "")
-        self.assertEqual(job.current_history_id, "")
+        self.assertIsNone(job.current_version_number)
         self.assertIsNone(job.current_history_timestamp)
         self.assertIsNone(job.event_id)
         self.assertIsNotNone(job.creation_time)

@@ -19,8 +19,8 @@ from bilbyui.tests.e2e.base import (
 )
 from bilbyui.tests.e2e.test_api_token_keyboard_e2e import APITokenKeyboardBase
 from bilbyui.tests.e2e.test_gwflow_history_e2e import (
-    SHA_V1,
-    SHA_V2,
+    BASELINE_VERSION_NUMBER,
+    SELECTED_VERSION_NUMBER,
     GWFlowHistoryPageBase,
 )
 from bilbyui.tests.e2e.utils import AsyncE2ETestCase, async_e2e_test
@@ -199,23 +199,25 @@ class HTMXHistoryContractTest(
         initial_url = page.url
         initial_length = await page.evaluate("history.length")
 
-        await self._version_link(SHA_V2).click()
-        await page.wait_for_function(f"() => location.search.includes('version={SHA_V2}')")
+        await self._version_link(SELECTED_VERSION_NUMBER).click()
+        await page.wait_for_function(f"() => location.search.includes('version={SELECTED_VERSION_NUMBER}')")
         self.assertEqual(await page.evaluate("history.length"), initial_length + 1)
         self.assertEqual(
-            await page.locator(".gwflow-history__desktop-list [aria-current='true']").get_attribute("data-version-sha"),
-            SHA_V2,
+            await page.locator(".gwflow-history__desktop-list [aria-current='true']").get_attribute(
+                "data-version-number"
+            ),
+            str(SELECTED_VERSION_NUMBER),
         )
 
         await page.go_back()
-        await page.wait_for_function(f"() => !location.search.includes('version={SHA_V2}')")
+        await page.wait_for_function(f"() => !location.search.includes('version={SELECTED_VERSION_NUMBER}')")
         self.assertEqual(page.url, initial_url)
         restored = await page.locator(".gwflow-history__desktop-list [aria-current='true']").get_attribute(
-            "data-version-sha"
+            "data-version-number"
         )
-        self.assertNotEqual(restored, SHA_V2)
+        self.assertNotEqual(restored, str(SELECTED_VERSION_NUMBER))
         self.assertIsNotNone(restored)
-        self.assertIn(restored, {SHA_V1, restored})
+        self.assertIn(restored, {str(BASELINE_VERSION_NUMBER), restored})
 
 
 class HTMXClipboardContractTest(

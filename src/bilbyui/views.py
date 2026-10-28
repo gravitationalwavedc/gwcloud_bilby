@@ -1853,7 +1853,7 @@ def _render_gwflow_history_section(request, sname):
     try:
         snapshots = prepare_version_snapshots(
             versions if isinstance(versions, list) else (),
-            current_sha=job.current_history_id or "",
+            current_version_number=job.current_version_number,
         )
     except ValueError as exc:
         logger.warning(
@@ -1882,7 +1882,7 @@ def _render_gwflow_history_section(request, sname):
     try:
         selected, baseline, compare_mode = resolve_history_selection(
             snapshots,
-            requested_sha=request.GET.get("version"),
+            requested_version=request.GET.get("version"),
             compare=compare_mode,
         )
     except LookupError:
@@ -2000,9 +2000,9 @@ def _render_gwflow_history_section(request, sname):
     )
 
 
-def gwflow_job_history_version_partial(request, sname, history_id):
+def gwflow_job_history_version_partial(request, sname, version_number):
     job = _get_gwflow_job_or_404(request, sname)
-    data, state = get_version(sname, history_id)
+    data, state = get_version(sname, version_number)
     if state == "failed":
         raise Http404("Version not found")
     if state == "down":
@@ -2013,7 +2013,7 @@ def gwflow_job_history_version_partial(request, sname, history_id):
                 "state": "error",
                 "thing": "the version details",
                 "region_label": "Version details",
-                "retry_url": reverse("bilbyui:gwflow_job_history_version", args=[sname, history_id]),
+                "retry_url": reverse("bilbyui:gwflow_job_history_version", args=[sname, version_number]),
                 "retry_target": "#gwflow-history-version",
             },
         )
@@ -2029,7 +2029,7 @@ def gwflow_job_history_version_partial(request, sname, history_id):
         "bilbyui/_gwflow_history_version.html",
         {
             "job": job,
-            "history_id": history_id,
+            "version_number": version_number,
             "payload": data,
             "presentation": presentation,
             "stale": state == "stale",
@@ -2776,51 +2776,54 @@ def upsert_gwflow_job(user, params):
         if roundtrip != metadata_dict:
             raise GraphQLError("Invalid metadata: not losslessly JSON-serialisable")
 
-    # --- Validate current_history_id and current_history_timestamp ---
+    # --- Validate current_version_number and current_history_timestamp ---
     # The timestamp must be timezone-aware UTC (naive treated as UTC); a
     # malformed value is an ingest error, never silently substituted.
     current_history_timestamp = normalise_current_history_timestamp(getattr(params, "current_history_timestamp", None))
     if getattr(params, "current_history_timestamp", None) is not None and current_history_timestamp is None:
         raise GraphQLError("Invalid current_history_timestamp")
 
-    # current_history_id must be a non-blank string when provided; a blank or
-    # non-string value is an ingest error, never silently persisted.
-    current_history_id = getattr(params, "current_history_id", None)
-    if current_history_id is not None and (not isinstance(current_history_id, str) or not current_history_id.strip()):
-        raise GraphQLError("Invalid current_history_id")
+    current_version_number = getattr(params, "current_version_number", None)
+    if current_version_number is not None and (
+        isinstance(current_version_number, bool)
+        or not isinstance(current_version_number, int)
+        or current_version_number < 1
+    ):
+        raise GraphQLError("Invalid current_version_number")
 
     with transaction.atomic():
         job, created = GWFlowJob.objects.get_or_create(sname=sname, defaults={"user": user})
         prior_trigger_state = (job.trigger_time, job.event_id_id)
 
         # --- Version-ordering guard (issue #74) ---
-        # The authoritative version is (current_history_timestamp, current_history_id):
-        # a later timestamp wins; equal timestamps with differing IDs is an
-        # observable conflict. Do not let an older delivery replace newer
-        # persisted state, and report an equal-timestamp/different-ID conflict
-        # without mutating DB or ES state.
-        incoming_id = current_history_id
+        # Integer version number is the identity and ordering key. Lower
+        # deliveries cannot replace newer state. Equal identities must carry
+        # the same recorded timestamp.
+        incoming_version = current_version_number
         incoming_ts = current_history_timestamp
-        stored_ts, stored_id = version_tuple(job)
+        stored_ts, stored_version = version_tuple(job)
         delivery_older = False
-        if incoming_ts is not None and stored_ts is not None:
-            if incoming_ts < stored_ts:
-                # Older delivery: keep the newer persisted version pointer and
-                # leave the existing ES document untouched.
+        if incoming_version is not None and stored_version is not None:
+            if incoming_version < stored_version:
                 logger.warning(
-                    "GWFlow older delivery for job %s (%s): incoming %s < stored %s; keeping newer version",
+                    "GWFlow older delivery for job %s (%s): incoming v%s < stored v%s; keeping newer version",
                     job.id,
                     sname,
-                    incoming_ts.isoformat(),
-                    stored_ts.isoformat(),
+                    incoming_version,
+                    stored_version,
                 )
                 delivery_older = True
-                incoming_id = None
+                incoming_version = None
                 incoming_ts = None
-            elif incoming_ts == stored_ts and incoming_id != stored_id:
+            elif (
+                incoming_version == stored_version
+                and incoming_ts is not None
+                and stored_ts is not None
+                and incoming_ts != stored_ts
+            ):
                 raise GraphQLError(
-                    f"current_history version conflict for {sname}: equal timestamp "
-                    f"{incoming_ts.isoformat()} with differing IDs {stored_id!r} vs {incoming_id!r}"
+                    f"current_history version conflict for {sname}: version "
+                    f"{incoming_version} has differing timestamps {stored_ts!r} vs {incoming_ts!r}"
                 )
 
         if not delivery_older:
@@ -2834,16 +2837,21 @@ def upsert_gwflow_job(user, params):
             if refresh_requested:
                 resolved_version = resolve_current_version(sname)
                 if resolved_version.available:
-                    if job.current_history_id and job.current_history_id != resolved_version.current_history_id:
+                    if (
+                        job.current_version_number is not None
+                        and job.current_version_number != resolved_version.current_version_number
+                    ):
                         logger.warning(
-                            "GWFlow stored current history for %s disagrees with portal: "
-                            "stored=%s portal=%s; portal current wins",
+                            "GWFlow stored current version for %s disagrees with portal: "
+                            "stored=v%s portal=v%s; portal current wins",
                             sname,
-                            job.current_history_id,
-                            resolved_version.current_history_id,
+                            job.current_version_number,
+                            resolved_version.current_version_number,
                         )
-                    job.trigger_time = resolved_version.trigger_time
-                    job.current_history_id = resolved_version.current_history_id
+                    job.trigger_time = (
+                        resolved_version.trigger_time if resolved_version.trigger_time is not None else job.trigger_time
+                    )
+                    job.current_version_number = resolved_version.current_version_number
                     job.current_history_timestamp = resolved_version.current_history_timestamp
                 else:
                     logger.warning(
@@ -2853,9 +2861,16 @@ def upsert_gwflow_job(user, params):
                         resolved_version.reason,
                     )
             else:
-                if incoming_id is not None:
-                    job.current_history_id = incoming_id
-                if incoming_ts is not None:
+                if incoming_version is not None:
+                    job.current_version_number = incoming_version
+                    if incoming_ts is not None:
+                        job.current_history_timestamp = incoming_ts
+                    elif incoming_version != stored_version:
+                        # A version supplied without its timestamp is incomplete.
+                        # Drop any stale timestamp so the correct redelivery is
+                        # not mistaken for an equal-version conflict.
+                        job.current_history_timestamp = None
+                elif incoming_ts is not None:
                     job.current_history_timestamp = incoming_ts
 
             if refresh_requested or getattr(params, "event_id", None):
@@ -2880,6 +2895,7 @@ def upsert_gwflow_job(user, params):
                         and stored_time_unresolved
                         and resolved_event is None
                         and job.event_id_id is not None
+                        and job.event_id.trigger_id == sname
                     ):
                         # Fail closed (docs/SECURITY.md P0 rule 6): retain the
                         # existing link rather than clearing a possibly
@@ -2959,28 +2975,28 @@ def upsert_gwflow_job(user, params):
     # still equals the authoritative version captured at commit; otherwise the
     # version changed during ingest (or an equal-timestamp conflict arose) and
     # we leave the previous ES document untouched, relying on gwflow_es_retry.
-    target_id = job.current_history_id
+    target_version = job.current_version_number
     target_ts = job.current_history_timestamp
     if delivery_older:
         # Older delivery: keep the newer persisted version and leave the
         # existing ES document untouched.
         pass
-    elif target_id:
-        data, state = get_version(job.sname, target_id)
+    elif target_version is not None:
+        data, state = get_version(job.sname, target_version)
         if data is None:
             logger.warning(
                 "GWFlow exact-version fetch failed for job %s (history %s): state=%s",
                 job.id,
-                target_id,
+                target_version,
                 state,
             )
         else:
             job.refresh_from_db()
-            if version_tuple(job) != (target_ts, target_id):
+            if version_tuple(job) != (target_ts, target_version):
                 logger.warning(
                     "GWFlow version changed during ingest for job %s: expected %s, found %s",
                     job.id,
-                    (target_ts, target_id),
+                    (target_ts, target_version),
                     version_tuple(job),
                 )
             else:
@@ -2990,7 +3006,7 @@ def upsert_gwflow_job(user, params):
                     logger.warning(
                         "GWFlow ES ingest failed for job %s (history %s): %s",
                         job.id,
-                        target_id,
+                        target_version,
                         e,
                     )
     elif metadata_dict is not None:

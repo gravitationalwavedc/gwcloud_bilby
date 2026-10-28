@@ -98,7 +98,7 @@ urlpatterns = [
         name="gwflow_job_history",
     ),
     path(
-        "gwflow/<str:sname>/history/<str:history_id>/",
+        "gwflow/<str:sname>/history/<int:version_number>/",
         views.gwflow_job_history_version_partial,
         name="gwflow_job_history_version",
     ),

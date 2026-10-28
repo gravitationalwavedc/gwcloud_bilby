@@ -219,7 +219,7 @@ class TestFourteenSupereventSecurityCompletion(BilbyTestCase):
             return GWFlowCurrentVersion(
                 available=True,
                 trigger_time=OLD_OWNER_GPS,
-                current_history_id="sha-S231013ab",
+                current_version_number=1,
                 current_history_timestamp=OLD_TIMESTAMP,
                 versions_state="fixture",
                 detail_state="fixture",
@@ -229,7 +229,7 @@ class TestFourteenSupereventSecurityCompletion(BilbyTestCase):
         return GWFlowCurrentVersion(
             available=True,
             trigger_time=ABOVE + index,
-            current_history_id=f"sha-{sname}",
+            current_version_number=1,
             current_history_timestamp=CURRENT_TIMESTAMP,
             versions_state="fixture",
             detail_state="fixture",
@@ -241,7 +241,6 @@ class TestFourteenSupereventSecurityCompletion(BilbyTestCase):
         return (
             [
                 {
-                    "commit_sha": f"sha-{sname}",
                     "record_timestamp": timestamp,
                     "is_current": True,
                     "libraries": ["cbc-workflow-o4c"],
@@ -261,7 +260,7 @@ class TestFourteenSupereventSecurityCompletion(BilbyTestCase):
             sname="S231013ab",
             user=self.owner,
             trigger_time=OLD_OWNER_GPS,
-            current_history_id="sha-S231013ab",
+            current_version_number=1,
             current_history_timestamp=OLD_TIMESTAMP,
             event_id=old_event,
             libraries=["cbc-workflow-o4c"],
@@ -279,7 +278,7 @@ class TestFourteenSupereventSecurityCompletion(BilbyTestCase):
                     sname=sname,
                     user=self.owner,
                     trigger_time=OLD_OWNER_GPS,
-                    current_history_id="stale-sha",
+                    current_version_number=1,
                     current_history_timestamp=OLD_TIMESTAMP,
                     event_id=old_event,
                 )
@@ -322,7 +321,7 @@ class TestFourteenSupereventSecurityCompletion(BilbyTestCase):
             with self.subTest(sname=original.sname):
                 repaired = GWFlowJob.objects.select_related("event_id").get(pk=original.pk)
                 self.assertGreaterEqual(repaired.trigger_time, THRESHOLD)
-                self.assertEqual(repaired.current_history_id, f"sha-{repaired.sname}")
+                self.assertEqual(repaired.current_version_number, 1)
                 self.assertEqual(repaired.event_id.trigger_id, repaired.sname)
                 self.assertFalse(
                     visible_to_user(

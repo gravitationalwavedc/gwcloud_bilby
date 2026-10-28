@@ -234,7 +234,7 @@ class GWFlowUpsertInput(graphene.InputObjectType):
     libraries = graphene.List(graphene.String, required=False)
     is_pruned = graphene.Boolean(required=False)
     event_id = graphene.String(required=False)
-    current_history_id = graphene.String(required=False)
+    current_version_number = graphene.Int(required=False)
     current_history_timestamp = graphene.DateTime(required=False)
     files = graphene.List(GWFlowFileInput, required=False)
 

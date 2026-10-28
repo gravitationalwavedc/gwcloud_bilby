@@ -286,7 +286,7 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
         self.job = GWFlowJob.objects.create(
             sname="S000001a",
             user=self.user,
-            current_history_id="history-sha",
+            current_version_number=1,
         )
 
     def _command(self):
@@ -752,7 +752,7 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
             sname="S000002b",
             user=self.user,
             trigger_time=200.5,
-            current_history_id="history-sha-2",
+            current_version_number=2,
         )
         self.job.trigger_time = 150.0
         self.job.save(update_fields=["trigger_time"])
@@ -1061,7 +1061,7 @@ class TestGWFlowIngestFailureBranches(BilbyTestCase):
         result, output = self._run_handle(es=es, wipe=True)
 
         self.assertEqual(result, 1)
-        self.assertIn("installed mapping differs from the contract", output)
+        self.assertIn("installed mapping does not satisfy the contract", output)
         self.assertIn("count verification failed: count unavailable", output)
         self.assertIn("id-set verification failed: id search unavailable", output)
 

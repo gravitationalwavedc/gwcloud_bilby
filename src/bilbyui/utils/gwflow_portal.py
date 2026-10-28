@@ -301,37 +301,9 @@ def get_versions(sname):
     )
 
 
-def get_version(sname, version_ref):
-    """Fetch one version using its canonical integer transport key.
-
-    The persisted history identity in this project is a commit SHA; this
-    adapter resolves it to the canonical integer transport key in exactly one
-    place.
-    """
-    if isinstance(version_ref, int) and not isinstance(version_ref, bool):
-        version_number = version_ref
-    elif isinstance(version_ref, str) and version_ref.strip():
-        commit_sha = version_ref.strip()
-        versions, _state = get_versions(sname)
-        summary = (
-            next(
-                (
-                    row
-                    for row in versions
-                    if isinstance(row, dict)
-                    and row.get("commit_sha") == commit_sha
-                    and isinstance(row.get("version_number"), int)
-                    and not isinstance(row.get("version_number"), bool)
-                ),
-                None,
-            )
-            if isinstance(versions, list)
-            else None
-        )
-        if summary is None:
-            return None, "failed"
-        version_number = summary["version_number"]
-    else:
+def get_version(sname, version_number):
+    """Fetch one version using its canonical integer transport key."""
+    if isinstance(version_number, bool) or not isinstance(version_number, int):
         return None, "failed"
 
     return portal_get(
@@ -357,7 +329,7 @@ class GWFlowCurrentVersion:
 
     available: bool
     trigger_time: float | None = None
-    current_history_id: str | None = None
+    current_version_number: int | None = None
     current_history_timestamp: datetime | None = None
     versions_state: str | None = None
     detail_state: str | None = None
@@ -408,16 +380,6 @@ def resolve_current_version(sname):
         )
 
     summary = current[0]
-    commit_sha = summary.get("commit_sha")
-    if not isinstance(commit_sha, str) or not commit_sha.strip():
-        logger.warning("Current-version summary for %s has no usable commit_sha", sname)
-        return GWFlowCurrentVersion(
-            available=False,
-            versions_state=versions_state,
-            reason="current summary has no usable commit_sha",
-        )
-    commit_sha = commit_sha.strip()
-
     version_number = summary.get("version_number")
     if not isinstance(version_number, int) or isinstance(version_number, bool):
         logger.warning("Current-version summary for %s has no usable version_number", sname)
@@ -430,9 +392,9 @@ def resolve_current_version(sname):
     timestamp = normalise_current_history_timestamp(summary.get("record_timestamp"))
     if timestamp is None:
         logger.warning(
-            "Current-version summary for %s (%s) has no usable record_timestamp",
+            "Current-version summary for %s (v%s) has no usable record_timestamp",
             sname,
-            commit_sha,
+            version_number,
         )
         return GWFlowCurrentVersion(
             available=False,
@@ -444,9 +406,9 @@ def resolve_current_version(sname):
         detail, detail_state = get_version(sname, version_number)
     except Exception as exc:
         logger.warning(
-            "Current-version detail fetch failed for %s (%s): %s",
+            "Current-version detail fetch failed for %s (v%s): %s",
             sname,
-            commit_sha,
+            version_number,
             exc,
         )
         return GWFlowCurrentVersion(
@@ -457,9 +419,9 @@ def resolve_current_version(sname):
 
     if not isinstance(detail, dict):
         logger.warning(
-            "Current-version detail unavailable for %s (%s): expected dict, got %s",
+            "Current-version detail unavailable for %s (v%s): expected dict, got %s",
             sname,
-            commit_sha,
+            version_number,
             type(detail).__name__,
         )
         return GWFlowCurrentVersion(
@@ -470,11 +432,11 @@ def resolve_current_version(sname):
         )
 
     raw_payload = detail.get("raw_payload")
-    if not isinstance(raw_payload, dict):
+    if raw_payload is not None and not isinstance(raw_payload, dict):
         logger.warning(
-            "Current-version detail unavailable for %s (%s): raw_payload is not a dict",
+            "Current-version detail unavailable for %s (v%s): raw_payload is not an object or null",
             sname,
-            commit_sha,
+            version_number,
         )
         return GWFlowCurrentVersion(
             available=False,
@@ -486,21 +448,19 @@ def resolve_current_version(sname):
     trigger_time = _gwflow_trigger_time_from_metadata(raw_payload)
     if isinstance(trigger_time, bool) or not isinstance(trigger_time, (int, float)) or not math.isfinite(trigger_time):
         logger.warning(
-            "Current-version detail unavailable for %s (%s): no usable finite trigger time",
+            "Current-version %s (v%s) has no usable finite trigger time; "
+            "the version identity is still authoritative and any stored trigger time is preserved",
             sname,
-            commit_sha,
+            version_number,
         )
-        return GWFlowCurrentVersion(
-            available=False,
-            versions_state=versions_state,
-            detail_state=detail_state,
-            reason="detail has no usable finite trigger time",
-        )
+        trigger_time = None
+    else:
+        trigger_time = float(trigger_time)
 
     return GWFlowCurrentVersion(
         available=True,
-        trigger_time=float(trigger_time),
-        current_history_id=commit_sha,
+        trigger_time=trigger_time,
+        current_version_number=version_number,
         current_history_timestamp=timestamp,
         versions_state=versions_state,
         detail_state=detail_state,

@@ -135,7 +135,7 @@ def build_canonical_fixtures(testcase_cls):
             sname=spec["sname"],
             user=user,
             libraries=spec["libraries"],
-            current_history_id=f"hist-{spec['id']:03d}",
+            current_version_number=spec["id"],
             current_history_timestamp=spec["current_history_timestamp"],
             is_pruned=spec["is_pruned"],
             event_id=event,

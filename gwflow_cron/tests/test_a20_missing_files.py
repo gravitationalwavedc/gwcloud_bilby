@@ -183,7 +183,7 @@ class TestPhaseBilbyChildrenMissingFiles(GWFlowTestBase):
             base = Path(settings.STAGING_DIR)
             dest = base / rec["sname"] / rec["analysis_uid"] / rec["path"].lstrip("/")
             dest.parent.mkdir(parents=True, exist_ok=True)
-            config_path = analysis["input_files"][0]["file"]["locations"][0]["path"]
+            config_path = analysis["input_files"][0]["locations"][0]["path"]
             if rec["path"] == config_path:
                 dest.write_text(ini_text)
             else:

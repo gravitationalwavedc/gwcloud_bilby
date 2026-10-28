@@ -27,15 +27,12 @@ from bilbyui.tests.e2e.utils import AsyncE2ETestCase, async_e2e_test, load_axe, 
 from bilbyui.tests.testcases import BilbyTestCase
 
 SNAME = "S000001a"
-SHA_V1 = "1111111111111111111111111111111111111111"
-SHA_V2 = "2222222222222222222222222222222222222222"
-SHA_V3 = "3333333333333333333333333333333333333333"
-
-#: `version_number`s backing SHA_V1/SHA_V2 in `_versions()`, reused by the
-#: semantic-diff payloads below so `adapt_semantic_diff`'s request-match
-#: checks (`baseline_version`/`selected_version`) succeed.
+#: Version numbers used by `_versions()`, reused by the semantic-diff payloads
+#: below so `adapt_semantic_diff`'s request-match checks
+#: (`baseline_version`/`selected_version`) succeed.
 BASELINE_VERSION_NUMBER = 1023
 SELECTED_VERSION_NUMBER = 1024
+CURRENT_VERSION_NUMBER = 1025
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "gwflow_diff"
 AXE_SCOPE_SELECTOR = ".gwflow-changes"
@@ -45,19 +42,16 @@ def _versions():
     return (
         [
             {
-                "commit_sha": SHA_V1,
                 "version_number": 1023,
                 "record_timestamp": "2026-08-08 10:00:00 UTC",
                 "is_current": False,
             },
             {
-                "commit_sha": SHA_V2,
                 "version_number": 1024,
                 "record_timestamp": "2026-08-09 10:00:00 UTC",
                 "is_current": False,
             },
             {
-                "commit_sha": SHA_V3,
                 "version_number": 1025,
                 "record_timestamp": "2026-08-10 10:00:00 UTC",
                 "is_current": True,
@@ -71,7 +65,6 @@ def _single_version():
     """A one-entry versions list, forcing `diff_outcome.status == "no_baseline"`."""
     return [
         {
-            "commit_sha": SHA_V1,
             "version_number": BASELINE_VERSION_NUMBER,
             "record_timestamp": "2026-08-08 10:00:00 UTC",
             "is_current": True,
@@ -81,19 +74,15 @@ def _single_version():
 
 def _version_detail(sname, version_ref):
     versions = {
-        1023: (SHA_V1, "2026-08-08T10:00:00Z", False),
-        1024: (SHA_V2, "2026-08-09T10:00:00Z", False),
-        1025: (SHA_V3, "2026-08-10T10:00:00Z", True),
+        1023: ("2026-08-08T10:00:00Z", False),
+        1024: ("2026-08-09T10:00:00Z", False),
+        1025: ("2026-08-10T10:00:00Z", True),
     }
-    if isinstance(version_ref, str):
-        version_ref = {sha: version_number for version_number, (sha, _, _) in versions.items()}[version_ref]
-
-    sha, record_timestamp, is_current = versions[version_ref]
+    record_timestamp, is_current = versions[version_ref]
     return (
         {
             "sname": sname,
             "libraries": ["o4a"],
-            "commit_sha": sha,
             "version_number": version_ref,
             "record_timestamp": record_timestamp,
             "is_current": is_current,
@@ -147,7 +136,7 @@ def _load_semantic_fixture(name: str) -> dict:
     Mirrors `TestGWFlowHistoryRenderedOutcomes.load_fixture` in
     `test_gwflow_views_history.py`: the fixture's `sname`/`baseline_version`/
     `selected_version` are overwritten to match what this module's `_versions()`
-    resolves for `?version={SHA_V2}&compare=prev`, so `adapt_semantic_diff`'s
+    resolves for `?version={SELECTED_VERSION_NUMBER}&compare=prev`, so `adapt_semantic_diff`'s
     request-match checks accept the payload.
     """
     with (FIXTURE_DIR / name).open(encoding="utf-8") as fixture:
@@ -274,8 +263,8 @@ class GWFlowHistoryPageBase(AsyncE2ETestCase):
     def _rail(self):
         return self.page.locator(".gwflow-history__desktop-list")
 
-    def _version_link(self, sha: str):
-        return self.page.locator(f'.gwflow-history__desktop-list a[data-version-sha="{sha}"]')
+    def _version_link(self, version_number: int):
+        return self.page.locator(f'.gwflow-history__desktop-list a[data-version-number="{version_number}"]')
 
     async def _wait_for_rail(self):
         await self.page.wait_for_selector(".gwflow-history__desktop-list", state="attached", timeout=20000)
@@ -284,13 +273,13 @@ class GWFlowHistoryPageBase(AsyncE2ETestCase):
 class TestHistoryDeepLink(GWFlowHistoryPageBase):
     """Deep-link landing (initial navigation to a version+compare URL)."""
 
-    initial_query = f"?version={SHA_V2}&compare=prev"
+    initial_query = f"?version={SELECTED_VERSION_NUMBER}&compare=prev"
 
     @async_e2e_test
     async def test_deep_link_renders_selected_version(self):
         await self._wait_for_rail()
         selected = self.page.locator(".gwflow-history__desktop-list [aria-current='true']")
-        self.assertEqual(await selected.get_attribute("data-version-sha"), SHA_V2)
+        self.assertEqual(await selected.get_attribute("data-version-number"), str(SELECTED_VERSION_NUMBER))
         metadata_panel = self.page.locator(".gwflow-metadata")
         metadata_text = await metadata_panel.inner_text()
         self.assertIn("PE selected version 1024", metadata_text)
@@ -310,19 +299,19 @@ class TestHistoryKeyboardWalkthrough(GWFlowHistoryPageBase):
 
         # The rail renders newest-first; select a NON-current version so the
         # "vs current" comparison is meaningful (not a self-comparison).
-        target_sha = await links.nth(1).get_attribute("data-version-sha")
+        target_version = await links.nth(1).get_attribute("data-version-number")
 
         # Keyboard-only select: focus a version link and activate it with Enter
         # (native link behaviour), which must update the URL to that version.
         await links.nth(1).focus()
         self.assertEqual(
-            await self.page.evaluate("document.activeElement.getAttribute('data-version-sha')"),
-            target_sha,
+            await self.page.evaluate("document.activeElement.getAttribute('data-version-number')"),
+            target_version,
             "a version link must be keyboard-focusable",
         )
         await self.page.keyboard.press("Enter")
         await self.page.wait_for_function(
-            f"() => location.search.includes('version={target_sha}')",
+            f"() => location.search.includes('version={target_version}')",
             timeout=10000,
         )
 
@@ -359,7 +348,7 @@ class GWFlowHistoryDiffPageBase(AsyncE2ETestCase):
     #: `(payload, state)` returned by the mocked `get_diff`.
     diff_payload = None
     diff_state = "live"
-    initial_query = f"?version={SHA_V2}&compare=prev"
+    initial_query = f"?version={SELECTED_VERSION_NUMBER}&compare=prev"
 
     async def asetUp(self):
         self.user = await sync_to_async(self._create_user)()

@@ -241,7 +241,7 @@ class TestGWFlowMutations(BilbyTestCase):
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
-            current_history_id="h1",
+            current_version_number=1,
             current_history_timestamp="2026-09-01T12:00:00+00:00",
             event_id=None,
             files=[],
@@ -273,7 +273,7 @@ class TestGWFlowMutations(BilbyTestCase):
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
-            current_history_id="h1",
+            current_version_number=1,
             current_history_timestamp="2026-09-01T12:00:00+00:00",
             event_id=None,
             files=[],
@@ -339,7 +339,7 @@ class TestGWFlowMutations(BilbyTestCase):
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
-            current_history_id="h1",
+            current_version_number=1,
             current_history_timestamp="2026-09-01T12:00:00+00:00",
             metadata=None,
             files=[],
@@ -378,7 +378,7 @@ class TestGWFlowMutations(BilbyTestCase):
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
-            current_history_id="h1",
+            current_version_number=1,
             current_history_timestamp="2026-09-01T12:00:00+00:00",
             metadata=None,
             files=[],
@@ -415,7 +415,7 @@ class TestGWFlowMutations(BilbyTestCase):
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
-            current_history_id="h1",
+            current_version_number=1,
             current_history_timestamp="2026-09-01T12:00:00+00:00",
             metadata=None,
             files=[],
@@ -604,7 +604,7 @@ class TestGWFlowMutations(BilbyTestCase):
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_upsert_omit_field_preserves_prior_value(self):
-        """Omitting schema_version / current_history_id on an update must not overwrite prior values."""
+        """Omitting schema_version / current_version_number on an update must not overwrite prior values."""
         self._auth_as(self.ingest_user)
 
         query = """
@@ -620,7 +620,7 @@ class TestGWFlowMutations(BilbyTestCase):
             "params": {
                 "sname": "S230701omit",
                 "schemaVersion": "v1",
-                "currentHistoryId": "hist-001",
+                "currentVersionNumber": 1,
             }
         }
         with (
@@ -633,7 +633,7 @@ class TestGWFlowMutations(BilbyTestCase):
 
         job = GWFlowJob.objects.get(sname="S230701omit")
         self.assertEqual(job.schema_version, "v1")
-        self.assertEqual(job.current_history_id, "hist-001")
+        self.assertEqual(job.current_version_number, 1)
 
         # Update omitting both fields — prior values must be preserved
         input_update = {
@@ -653,7 +653,7 @@ class TestGWFlowMutations(BilbyTestCase):
         job.refresh_from_db()
         self.assertEqual(job.schema_version, "v1", "schema_version was silently reset — default_value bug not fixed")
         self.assertEqual(
-            job.current_history_id, "hist-001", "current_history_id was silently reset — default_value bug not fixed"
+            job.current_version_number, 1, "current_version_number was silently reset — default_value bug not fixed"
         )
         self.assertEqual(job.libraries, ["updated-lib"])
 
@@ -1280,7 +1280,7 @@ class TestExactVersionIngest(BilbyTestCase):
             "schema_version": "v1",
             "libraries": ["cbc-workflow-o4a"],
             "is_pruned": False,
-            "current_history_id": "sha-001",
+            "current_version_number": 1,
             "current_history_timestamp": "2026-09-01T12:00:00+00:00",
             "event_id": None,
             "files": [],
@@ -1293,17 +1293,17 @@ class TestExactVersionIngest(BilbyTestCase):
     def test_exact_version_ingest_builds_doc_from_fetched_payload(self):
         from bilbyui.views import upsert_gwflow_job
 
-        payload = {"superevent": "S230601exact", "version": "sha-001"}
+        payload = {"superevent": "S230601exact", "version": 1}
         with (
             mock.patch("bilbyui.views.get_version", return_value=(payload, "live")) as mock_gv,
             mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
         ):
             upsert_gwflow_job(self.ingest_user, self._params())
 
-        mock_gv.assert_called_once_with("S230601exact", "sha-001")
+        mock_gv.assert_called_once_with("S230601exact", 1)
         job = GWFlowJob.objects.get(sname="S230601exact")
         mock_es.assert_called_once_with(job, payload)
-        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertEqual(job.current_version_number, 1)
         self.assertEqual(job.current_history_timestamp.year, 2026)
 
     @override_settings(GWFLOW_INGEST_USER=99)
@@ -1312,13 +1312,13 @@ class TestExactVersionIngest(BilbyTestCase):
 
         from bilbyui.views import upsert_gwflow_job
 
-        def fake_get_version(sname, sha):
+        def fake_get_version(sname, version_number):
             # Simulate a concurrent ingest that bumps the version after our commit
             # but before the ES write.
             job = GWFlowJob.objects.get(sname=sname)
-            job.current_history_id = "sha-newer"
+            job.current_version_number = 2
             job.current_history_timestamp = datetime.datetime(2026, 9, 2, tzinfo=datetime.UTC)
-            job.save(update_fields=["current_history_id", "current_history_timestamp"])
+            job.save(update_fields=["current_version_number", "current_history_timestamp"])
             return {"payload": "stale"}, "live"
 
         with (
@@ -1329,7 +1329,54 @@ class TestExactVersionIngest(BilbyTestCase):
 
         mock_es.assert_not_called()
         job = GWFlowJob.objects.get(sname="S230601exact")
-        self.assertEqual(job.current_history_id, "sha-newer")
+        self.assertEqual(job.current_version_number, 2)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
+    def test_version_only_delivery_does_not_false_conflict_or_wedge(self):
+        """A missing timestamp must not be treated as a differing timestamp."""
+        from bilbyui.views import upsert_gwflow_job
+
+        with (
+            mock.patch("bilbyui.views.get_version", return_value=({"payload": "x"}, "live")),
+            mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+        ):
+            # Establish v2 with its authoritative timestamp.
+            upsert_gwflow_job(
+                self.ingest_user,
+                self._params(
+                    current_version_number=2,
+                    current_history_timestamp="2026-09-02T12:00:00+00:00",
+                ),
+            )
+            # Equal version, no timestamp: no conflict, timestamp preserved.
+            upsert_gwflow_job(
+                self.ingest_user,
+                self._params(current_version_number=2, current_history_timestamp=None),
+            )
+            job = GWFlowJob.objects.get(sname="S230601exact")
+            self.assertEqual(job.current_version_number, 2)
+            self.assertIsNotNone(job.current_history_timestamp)
+
+            # Higher version without a timestamp clears the stale timestamp...
+            upsert_gwflow_job(
+                self.ingest_user,
+                self._params(current_version_number=3, current_history_timestamp=None),
+            )
+            job.refresh_from_db()
+            self.assertEqual(job.current_version_number, 3)
+            self.assertIsNone(job.current_history_timestamp)
+
+            # ...so the correct redelivery of v3 with its timestamp is accepted.
+            upsert_gwflow_job(
+                self.ingest_user,
+                self._params(
+                    current_version_number=3,
+                    current_history_timestamp="2026-09-03T12:00:00+00:00",
+                ),
+            )
+            job.refresh_from_db()
+            self.assertEqual(job.current_version_number, 3)
+            self.assertEqual(job.current_history_timestamp.day, 3)
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_db_success_es_failure_leaves_db_committed_and_es_untouched(self):
@@ -1344,19 +1391,21 @@ class TestExactVersionIngest(BilbyTestCase):
 
         mock_es.assert_called_once()
         job = GWFlowJob.objects.get(sname="S230601exact")
-        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertEqual(job.current_version_number, 1)
         self.assertIsNotNone(job.current_history_timestamp)
 
     @override_settings(GWFLOW_INGEST_USER=99)
-    def test_equal_timestamp_different_id_is_conflict_and_skips_es_write(self):
+    def test_equal_version_different_timestamp_is_conflict_and_skips_es_write(self):
+        import datetime
+
         from bilbyui.views import upsert_gwflow_job
 
-        def fake_get_version(sname, sha):
-            # A concurrent ingest replaces the history id but keeps the same
-            # timestamp — an equal-timestamp conflict (no guess).
+        def fake_get_version(sname, version_number):
+            # A concurrent ingest keeps the same version but changes its timestamp,
+            # which is an identity conflict for an exact version.
             job = GWFlowJob.objects.get(sname=sname)
-            job.current_history_id = "sha-other"
-            job.save(update_fields=["current_history_id"])
+            job.current_history_timestamp = datetime.datetime(2026, 9, 2, tzinfo=datetime.UTC)
+            job.save(update_fields=["current_history_timestamp"])
             return {"payload": "x"}, "live"
 
         with (
@@ -1367,7 +1416,7 @@ class TestExactVersionIngest(BilbyTestCase):
 
         mock_es.assert_not_called()
         job = GWFlowJob.objects.get(sname="S230601exact")
-        self.assertEqual(job.current_history_id, "sha-other")
+        self.assertEqual(job.current_version_number, 1)
 
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_exact_version_fetch_failure_persists_db_and_skips_es(self):
@@ -1381,7 +1430,7 @@ class TestExactVersionIngest(BilbyTestCase):
 
         mock_es.assert_not_called()
         job = GWFlowJob.objects.get(sname="S230601exact")
-        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertEqual(job.current_version_number, 1)
         self.assertIsNotNone(job.current_history_timestamp)
 
     @override_settings(GWFLOW_INGEST_USER=99)
@@ -1393,7 +1442,7 @@ class TestExactVersionIngest(BilbyTestCase):
         GWFlowJob.objects.create(
             sname="S230601exact",
             user=self.ingest_user,
-            current_history_id="sha-newer",
+            current_version_number=2,
             current_history_timestamp=datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC),
         )
 
@@ -1406,7 +1455,7 @@ class TestExactVersionIngest(BilbyTestCase):
         mock_gv.assert_not_called()
         mock_es.assert_not_called()
         job = GWFlowJob.objects.get(sname="S230601exact")
-        self.assertEqual(job.current_history_id, "sha-newer")
+        self.assertEqual(job.current_version_number, 2)
         self.assertEqual(job.current_history_timestamp, datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC))
 
     @override_settings(GWFLOW_INGEST_USER=99)
@@ -1432,7 +1481,7 @@ class TestExactVersionIngest(BilbyTestCase):
             schema_version="v2",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
-            current_history_id="sha-newer",
+            current_version_number=2,
             current_history_timestamp=datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC),
             event_id=event,
             trigger_time=1200.0,
@@ -1479,7 +1528,7 @@ class TestExactVersionIngest(BilbyTestCase):
         self.assertEqual(job.schema_version, "v2")
         self.assertEqual(job.libraries, ["cbc-workflow-o4a"])
         self.assertFalse(job.is_pruned)
-        self.assertEqual(job.current_history_id, "sha-newer")
+        self.assertEqual(job.current_version_number, 2)
         self.assertEqual(
             job.current_history_timestamp,
             datetime.datetime(2026, 9, 2, 12, 0, 0, tzinfo=datetime.UTC),
@@ -1513,7 +1562,7 @@ class TestExactVersionIngest(BilbyTestCase):
             schema_version="v1",
             libraries=["cbc-workflow-o4a"],
             is_pruned=False,
-            current_history_id="sha-old",
+            current_version_number=1,
             current_history_timestamp=datetime.datetime(2026, 9, 1, 12, 0, 0, tzinfo=datetime.UTC),
             event_id=event,
             trigger_time=1200.0,
@@ -1528,13 +1577,13 @@ class TestExactVersionIngest(BilbyTestCase):
             uploaded=True,
         )
 
-        payload = {"superevent": "S230601c", "version": "sha-001"}
+        payload = {"superevent": "S230601c", "version": 1}
         params = self._params(
             sname="S230601c",
             schema_version="v2",
             libraries=["cbc-workflow-o4b"],
             is_pruned=True,
-            current_history_id="sha-001",
+            current_version_number=2,
             current_history_timestamp="2026-09-03T12:00:00+00:00",
             event_id="GW230601_999999",
             metadata='{"GraceDB": {"Events": [{"GPSTime": 2200.0}]}}',
@@ -1552,8 +1601,7 @@ class TestExactVersionIngest(BilbyTestCase):
         summaries = [
             {
                 "is_current": True,
-                "commit_sha": "sha-001",
-                "version_number": 1,
+                "version_number": 2,
                 "record_timestamp": "2026-09-03T12:00:00+00:00",
             }
         ]
@@ -1579,14 +1627,14 @@ class TestExactVersionIngest(BilbyTestCase):
                 upsert_gwflow_job(self.ingest_user, params)
 
         mock_versions.assert_called_once_with("S230601c")
-        mock_portal_version.assert_called_once_with("S230601c", 1)
-        mock_gv.assert_called_once_with("S230601c", "sha-001")
+        mock_portal_version.assert_called_once_with("S230601c", 2)
+        mock_gv.assert_called_once_with("S230601c", 2)
         mock_es.assert_called_once()
         job.refresh_from_db()
         self.assertEqual(job.schema_version, "v2")
         self.assertEqual(job.libraries, ["cbc-workflow-o4b"])
         self.assertTrue(job.is_pruned)
-        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertEqual(job.current_version_number, 2)
         self.assertEqual(job.event_id, other_event)
         self.assertEqual(job.trigger_time, 2200.0)
         self.assertTrue(GWFlowFile.objects.filter(job=job, analysis_uid="pe_2").exists())
@@ -1608,7 +1656,7 @@ class TestExactVersionIngest(BilbyTestCase):
 
         params = self._params(
             libraries=["cbc-workflow-o4a", "gwpy"],
-            current_history_id=None,
+            current_version_number=None,
             current_history_timestamp=None,
             metadata='{"ParameterEstimation": {"results": []}}',
         )
@@ -1636,7 +1684,7 @@ class TestExactVersionIngest(BilbyTestCase):
 
         params = self._params(
             is_pruned=True,
-            current_history_id=None,
+            current_version_number=None,
             current_history_timestamp=None,
             files=None,
         )
@@ -1653,7 +1701,7 @@ class TestExactVersionIngest(BilbyTestCase):
         self.assertTrue(job.is_pruned)
 
     @override_settings(GWFLOW_INGEST_USER=99)
-    def test_equal_timestamp_different_id_conflict_leaves_db_and_es_untouched(self):
+    def test_equal_version_different_timestamp_conflict_leaves_db_and_es_untouched(self):
         import datetime
 
         from bilbyui.views import upsert_gwflow_job
@@ -1661,7 +1709,7 @@ class TestExactVersionIngest(BilbyTestCase):
         GWFlowJob.objects.create(
             sname="S230601exact",
             user=self.ingest_user,
-            current_history_id="sha-001",
+            current_version_number=1,
             current_history_timestamp=datetime.datetime(2026, 9, 1, 12, 0, 0, tzinfo=datetime.UTC),
         )
 
@@ -1672,13 +1720,13 @@ class TestExactVersionIngest(BilbyTestCase):
             with self.assertRaises(GraphQLError):
                 upsert_gwflow_job(
                     self.ingest_user,
-                    self._params(current_history_id="sha-other", current_history_timestamp="2026-09-01T12:00:00+00:00"),
+                    self._params(current_version_number=1, current_history_timestamp="2026-09-02T12:00:00+00:00"),
                 )
 
         mock_gv.assert_not_called()
         mock_es.assert_not_called()
         job = GWFlowJob.objects.get(sname="S230601exact")
-        self.assertEqual(job.current_history_id, "sha-001")
+        self.assertEqual(job.current_version_number, 1)
         self.assertEqual(job.current_history_timestamp, datetime.datetime(2026, 9, 1, 12, 0, 0, tzinfo=datetime.UTC))
 
     @override_settings(GWFLOW_INGEST_USER=99)
@@ -1712,7 +1760,7 @@ class TestExactVersionIngest(BilbyTestCase):
         self.assertFalse(GWFlowJob.objects.filter(sname="S230601exact").exists())
 
     @override_settings(GWFLOW_INGEST_USER=99)
-    def test_blank_current_history_id_raises_before_db_transaction(self):
+    def test_zero_current_version_number_raises_before_db_transaction(self):
         from bilbyui.views import upsert_gwflow_job
 
         with (
@@ -1720,7 +1768,7 @@ class TestExactVersionIngest(BilbyTestCase):
             mock.patch("bilbyui.views.gwflow_elastic_search_update") as mock_es,
         ):
             with self.assertRaises(GraphQLError):
-                upsert_gwflow_job(self.ingest_user, self._params(current_history_id="   "))
+                upsert_gwflow_job(self.ingest_user, self._params(current_version_number=0))
 
         mock_gv.assert_not_called()
         mock_es.assert_not_called()
@@ -1776,7 +1824,7 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
             "schema_version": "v1",
             "libraries": ["cbc-workflow-o4a"],
             "is_pruned": False,
-            "current_history_id": None,
+            "current_version_number": None,
             "current_history_timestamp": None,
             "event_id": None,
             "files": [],
@@ -1794,7 +1842,6 @@ class TestGWFlowTriggerTimePersistence(BilbyTestCase):
         summaries = [
             {
                 "is_current": True,
-                "commit_sha": f"{params.sname}-current",
                 "version_number": 2,
                 "record_timestamp": "2026-09-03T12:00:00+00:00",
             }
@@ -1958,7 +2005,7 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
             "schema_version": None,
             "libraries": None,
             "is_pruned": None,
-            "current_history_id": None,
+            "current_version_number": None,
             "current_history_timestamp": None,
             "event_id": None,
             "files": None,
@@ -1977,7 +2024,7 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
         resolved = GWFlowCurrentVersion(
             available=available,
             trigger_time=resolved_trigger if available else None,
-            current_history_id=f"{params.sname}-current" if available else None,
+            current_version_number=1 if available else None,
             current_history_timestamp=(
                 datetime.datetime(2026, 9, 3, 12, 0, tzinfo=datetime.UTC) if available else None
             ),
@@ -2145,7 +2192,7 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
             user=self.ingest_user,
             trigger_time=1000.0,
             event_id=event,
-            current_history_id="new",
+            current_version_number=2,
             current_history_timestamp=datetime.datetime(
                 2026,
                 9,
@@ -2158,7 +2205,7 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
                 job.sname,
                 event_id=replacement.trigger_id,
                 metadata='{"GraceDB": {"Events": [{"GPSTime": 2000.0}]}}',
-                current_history_id="old",
+                current_version_number=1,
                 current_history_timestamp="2026-09-01T00:00:00+00:00",
             )
         )
@@ -2222,7 +2269,7 @@ class TestGWFlowPreservationManifest(BilbyTestCase):
             "schema_version": "v1",
             "libraries": ["cbc-workflow-o4a"],
             "is_pruned": False,
-            "current_history_id": None,
+            "current_version_number": None,
             "current_history_timestamp": None,
             "event_id": None,
             "files": [],

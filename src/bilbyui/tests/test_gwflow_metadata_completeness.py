@@ -271,7 +271,7 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
     @mock.patch("bilbyui.views.get_version")
     @mock.patch(
         "bilbyui.views.get_versions",
-        return_value=([{"commit_sha": "version-1", "version_number": 1}], "live"),
+        return_value=([{"version_number": 1}], "live"),
     )
     @mock.patch("bilbyui.views._get_gwflow_job_or_404")
     def test_historical_partial_builds_then_warns(
@@ -291,7 +291,7 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
         response = gwflow_job_history_version_partial(
             self.request,
             "S-HISTORY",
-            "version-1",
+            1,
         )
         self.assertEqual(events, ["build", "warn"])
         build.assert_called_once_with(payload, historical=True)
@@ -320,7 +320,7 @@ class MetadataWarningViewIntegrationTests(BilbyTestCase):
         adapt,
     ):
         selected = mock.Mock(version_number=7, is_current=False)
-        get_job.return_value = mock.Mock(current_history_id="sha-current")
+        get_job.return_value = mock.Mock(current_version_number=1)
         prepare.return_value = (selected,)
         resolve.return_value = (selected, None, "prev")
         detail = {

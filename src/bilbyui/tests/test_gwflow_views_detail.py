@@ -57,7 +57,7 @@ class TestGWFlowJobDetailView(BilbyTestCase):
             libraries=["lib-a", "lib-b"],
             schema_version="v2",
             is_pruned=False,
-            current_history_id="abcdef123456",
+            current_version_number=1,
             current_history_timestamp="2026-08-10 12:34:56+00:00",
             event_id=event_id,
         )
@@ -69,7 +69,8 @@ class TestGWFlowJobDetailView(BilbyTestCase):
         self.assertContains(response, "lib-a")
         self.assertContains(response, "lib-b")
         self.assertContains(response, "v2")
-        self.assertContains(response, "abcdef12")
+        self.assertContains(response, "Current version:")
+        self.assertContains(response, "v1")
         self.assertContains(response, "2026-08-10 12:34 UTC")
         self.assertContains(response, "Metadata")
         self.assertContains(response, "Files")
@@ -367,7 +368,7 @@ class TestGWFlowSectionRoutes(BilbyTestCase):
             self.ligo_user,
             sname="S230603ag",
             schema_version="v2",
-            current_history_id="abcdef1234567890abcdef1234567890abcdef12",
+            current_version_number=1,
             current_history_timestamp="2026-08-10 12:34:56+00:00",
         )
         with mock.patch(
@@ -395,15 +396,17 @@ class TestGWFlowSectionRoutes(BilbyTestCase):
         provenance_start = strip_region.index('class="context-provenance"')
         provenance_region = strip_region[provenance_start:]
 
-        # Exactly one current-provenance triple (short SHA, recorded timestamp,
-        # schema version) inside the current-context component.
-        self.assertEqual(provenance_region.count("abcdef12"), 1)
+        # Exactly one current-provenance triple (integer version label,
+        # recorded timestamp, schema version) inside the current-context component.
+        self.assertEqual(provenance_region.count("Current version:"), 1)
+        self.assertEqual(provenance_region.count("v1"), 1)
         self.assertEqual(provenance_region.count("2026-08-10 12:34 UTC"), 1)
         self.assertEqual(provenance_region.count("v2"), 1)
 
         # The pane (metadata cards) omits the current provenance entirely.
         pane_region = content[content.index('id="detail-pane"') :]
-        self.assertNotIn("abcdef12", pane_region)
+        self.assertNotIn("Current version:", pane_region)
+        self.assertNotIn("v1", pane_region)
         self.assertNotIn("2026-08-10 12:34 UTC", pane_region)
         self.assertNotIn("v2", pane_region)
 

@@ -7,8 +7,9 @@ from django.core.management import CommandError, call_command
 from bilbyui.management.commands.verify_search_fields import (
     GWFLOW_ALIASES,
     NUMERIC_TYPES,
+    _flatten_properties,
 )
-from bilbyui.services.search_registry import SEARCH_FIELDS
+from bilbyui.services.search_registry import _DEFAULT_FIELD, SEARCH_FIELDS
 from bilbyui.tests.testcases import BilbyTestCase
 
 COMMAND = "bilbyui.management.commands.verify_search_fields"
@@ -43,22 +44,7 @@ def _surface_properties(surface):
             )
 
     defaults = (
-        [
-            "_gwcloud.sname",
-            "_gwcloud.eventTriggerId",
-            "_gwcloud.libraries",
-            "_gwcloud.reviewStatuses",
-            "metadata.gracedb.events.uid",
-            "metadata.pe.results.uid",
-            "metadata.pe.results.inference_software",
-            "metadata.pe.results.waveform_approximant",
-            "metadata.pe.results.run_status",
-            "metadata.pe.results.review_status",
-            "metadata.pe.status",
-            "metadata.gracedb.events.pipeline",
-            "metadata.gracedb.events.state",
-            "metadata.gracedb.instruments",
-        ]
+        _DEFAULT_FIELD
         if surface == "gwflow"
         else [
             "job.name",
@@ -110,22 +96,7 @@ class VerifySearchFieldsTests(BilbyTestCase):
             settings.ELASTIC_SEARCH_INDEX: {"mappings": {"properties": bilby or _surface_properties("bilby")}},
         }
         configured_defaults = {
-            settings.ELASTIC_SEARCH_GWFLOW_INDEX: [
-                "_gwcloud.sname",
-                "_gwcloud.eventTriggerId",
-                "_gwcloud.libraries",
-                "_gwcloud.reviewStatuses",
-                "metadata.gracedb.events.uid",
-                "metadata.pe.results.uid",
-                "metadata.pe.results.inference_software",
-                "metadata.pe.results.waveform_approximant",
-                "metadata.pe.results.run_status",
-                "metadata.pe.results.review_status",
-                "metadata.pe.status",
-                "metadata.gracedb.events.pipeline",
-                "metadata.gracedb.events.state",
-                "metadata.gracedb.instruments",
-            ],
+            settings.ELASTIC_SEARCH_GWFLOW_INDEX: _DEFAULT_FIELD,
             settings.ELASTIC_SEARCH_INDEX: [
                 "job.name",
                 "job.description",
@@ -166,6 +137,21 @@ class VerifySearchFieldsTests(BilbyTestCase):
             except CommandError as error:
                 code = error.returncode
         return code, output.getvalue(), es
+
+    def test_flat_mapping_covers_registry_and_alias_targets(self):
+        # This complete in-memory mapping represents the generated declarations
+        # plus fields Elasticsearch discovers dynamically from canonical
+        # documents. No live Elasticsearch service is required.
+        live = _flatten_properties(_surface_properties("gwflow"))
+        registry_paths = {str(entry["path"]) for entry in SEARCH_FIELDS if entry["surface"] == "gwflow"}
+
+        self.assertTrue(registry_paths <= live.keys())
+        self.assertTrue(set(GWFLOW_ALIASES.values()) <= live.keys())
+        for alias, target in GWFLOW_ALIASES.items():
+            self.assertEqual(
+                live[alias],
+                {"type": "alias", "path": target},
+            )
 
     def test_clean_both_surfaces_exit_zero(self):
         code, output, es = self._run()

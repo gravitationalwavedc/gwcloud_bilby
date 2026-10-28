@@ -28,48 +28,44 @@
           {
             "direction": "input",
             "role": "config",
-            "file": {
-              "name": "pe_1.ini",
-              "description": "Bilby configuration for pe_1",
-              "md5sum": "0123456789abcdef0123456789abcdef",
-              "last_modified": "2026-01-01T00:00:00Z",
-              "locations": [
-                {
-                  "file_system": "LDAS",
-                  "path": "/ldas/S000001a/pe_1.ini",
-                  "url": "https://ldas.example/S000001a/pe_1.ini"
-                },
-                {
-                  "file_system": "CIT",
-                  "path": "/cit/S000001a/pe_1.ini",
-                  "url": null
-                },
-                {
-                  "file_system": "OzStar",
-                  "path": "/ozstar/S000001a/pe_1.ini",
-                  "url": "https://ozstar.example/S000001a/pe_1.ini"
-                }
-              ]
-            }
+            "name": "pe_1.ini",
+            "description": "Bilby configuration for pe_1",
+            "md5sum": "0123456789abcdef0123456789abcdef",
+            "last_modified": "2026-01-01T00:00:00Z",
+            "locations": [
+              {
+                "file_system": "LDAS",
+                "path": "/ldas/S000001a/pe_1.ini",
+                "url": "https://ldas.example/S000001a/pe_1.ini"
+              },
+              {
+                "file_system": "CIT",
+                "path": "/cit/S000001a/pe_1.ini",
+                "url": null
+              },
+              {
+                "file_system": "OzStar",
+                "path": "/ozstar/S000001a/pe_1.ini",
+                "url": "https://ozstar.example/S000001a/pe_1.ini"
+              }
+            ]
           }
         ],
         "output_files": [
           {
             "direction": "output",
             "role": "result",
-            "file": {
-              "name": "pe_1_result.hdf5",
-              "description": "Bilby posterior result for pe_1",
-              "md5sum": null,
-              "last_modified": "2026-01-01T01:00:00Z",
-              "locations": [
-                {
-                  "file_system": "OzStar",
-                  "path": "/ozstar/S000001a/pe_1_result.hdf5",
-                  "url": null
-                }
-              ]
-            }
+            "name": "pe_1_result.hdf5",
+            "description": "Bilby posterior result for pe_1",
+            "md5sum": null,
+            "last_modified": "2026-01-01T01:00:00Z",
+            "locations": [
+              {
+                "file_system": "OzStar",
+                "path": "/ozstar/S000001a/pe_1_result.hdf5",
+                "url": null
+              }
+            ]
           }
         ]
       },

@@ -67,7 +67,7 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         self.authenticate(user=self.ligo_user)
         self.job = _create_job(
             self.ligo_user,
-            current_history_id="1111222233334444555566667777888899990000",
+            current_version_number=1008,
         )
         self.url = reverse("bilbyui:gwflow_job_history", args=[self.job.sname])
         self.get_version_patcher = mock.patch(
@@ -82,13 +82,11 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         return_value=(
             [
                 {
-                    "commit_sha": "1111222233334444555566667777888899990000",
                     "version_number": 1010,
                     "record_timestamp": "2026-08-10 12:00:00 UTC",
                     "is_current": True,
                 },
                 {
-                    "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
                     "version_number": 1011,
                     "record_timestamp": "2026-08-09 10:00:00 UTC",
                     "is_current": False,
@@ -102,9 +100,9 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         mock_get_versions.assert_called_once_with(self.job.sname)
-        # Short SHAs
-        self.assertContains(response, "11112222")
-        self.assertContains(response, "aaaabbbb")
+        # Version labels
+        self.assertContains(response, "v1010")
+        self.assertContains(response, "v1011")
         # Timestamps
         self.assertContains(response, "2026-08-10 12:00:00 UTC")
         self.assertContains(response, "2026-08-09 10:00:00 UTC")
@@ -114,11 +112,11 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         history_url = reverse("bilbyui:gwflow_job_history", args=[self.job.sname])
         self.assertContains(
             response,
-            f'hx-get="{history_url}?version=1111222233334444555566667777888899990000&amp;compare=prev"',
+            f'hx-get="{history_url}?version=1010&amp;compare=prev"',
         )
         self.assertContains(
             response,
-            f'hx-get="{history_url}?version=aaaabbbbccccddddeeeeffff0000111122223333&amp;compare=prev"',
+            f'hx-get="{history_url}?version=1011&amp;compare=prev"',
         )
         self.assertContains(response, 'hx-target="#gwflow-history-region"')
         self.assertContains(response, 'id="gwflow-history-version"')
@@ -130,7 +128,6 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         return_value=(
             [
                 {
-                    "commit_sha": "aaaabbbbccccddddeeeeffff0000111122223333",
                     "version_number": 1012,
                     "record_timestamp": "2026-08-09 10:00:00 UTC",
                     "is_current": True,
@@ -140,8 +137,8 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         ),
     )
     def test_current_marker_fallback_to_is_current(self, mock_get_versions):
-        # Job has no current_history_id set
-        job = _create_job(self.ligo_user, sname="S230602ag", current_history_id="")
+        # Job has no current_version_number set
+        job = _create_job(self.ligo_user, sname="S230602ag", current_version_number=None)
         url = reverse("bilbyui:gwflow_job_history", args=[job.sname])
 
         response = self.client.get(url, HTTP_HX_REQUEST="true")
@@ -154,7 +151,6 @@ class TestGWFlowJobHistoryPartial(BilbyTestCase):
         return_value=(
             [
                 {
-                    "commit_sha": "1111222233334444555566667777888899990000",
                     "version_number": 1013,
                     "record_timestamp": "2026-08-10 12:00:00 UTC",
                 }
@@ -208,12 +204,12 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         )
         self.authenticate(user=self.ligo_user)
         self.job = _create_job(self.ligo_user)
-        self.sha = "1111222233334444555566667777888899990000"
-        self.url = reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.sha])
+        self.version_number = 1008
+        self.url = reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.version_number])
         self.get_versions_patcher = mock.patch(
             "bilbyui.views.get_versions",
             return_value=(
-                [{"commit_sha": self.sha, "version_number": 1008}],
+                [{"version_number": 1008}],
                 "live",
             ),
         )
@@ -224,7 +220,6 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         "bilbyui.views.get_version",
         return_value=(
             {
-                "commit_sha": "1111222233334444555566667777888899990000",
                 "version_number": 1008,
                 "record_timestamp": "2026-08-10 12:00:00 UTC",
                 "gracedb": {"events": [{"uid": "E99", "pipeline": "pycbc"}]},
@@ -236,11 +231,11 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        mock_get_version.assert_called_once_with(self.job.sname, self.sha)
-        self.assertContains(response, "11112222")
+        mock_get_version.assert_called_once_with(self.job.sname, self.version_number)
+        self.assertContains(response, "v1008")
         self.assertContains(response, "E99")
         self.assertContains(response, "pycbc")
-        self.assertContains(response, "Viewing version 11112222 (historical) — not the current record")
+        self.assertContains(response, "Viewing version v1008 (historical) — not the current record")
         self.assertNotContains(response, "Showing cached copy")
         self.assertNotContains(response, "<!doctype html>")
 
@@ -248,7 +243,6 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         "bilbyui.views.get_version",
         return_value=(
             {
-                "commit_sha": "1111222233334444555566667777888899990000",
                 "version_number": 1009,
                 "gracedb": {"events": [{"uid": "E99", "pipeline": "pycbc"}]},
             },
@@ -263,7 +257,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "E99")
         self.assertContains(response, "pycbc")
-        self.assertContains(response, "Viewing version 11112222 (historical) — not the current record")
+        self.assertContains(response, "Viewing version v1008 (historical) — not the current record")
         self.assertNotContains(response, "Showing cached copy")
         self.assertNotContains(response, "<!doctype html>")
 
@@ -281,7 +275,7 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         )
         self.assertContains(
             response,
-            f'hx-get="{reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.sha])}"',
+            f'hx-get="{reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.version_number])}"',
         )
         self.assertContains(response, 'hx-target="#gwflow-history-version"')
         self.assertContains(response, "Retry")
@@ -313,14 +307,14 @@ class TestGWFlowHistoryVisibility(BilbyTestCase):
             sname="S230602ag",
             trigger_time=99.0,
         )
-        self.sha = "1111222233334444555566667777888899990000"
+        self.version_number = 1008
 
     def _history_routes(self, sname):
         return [
             reverse("bilbyui:gwflow_job_history", args=[sname]),
             reverse(
                 "bilbyui:gwflow_job_history_version",
-                args=[sname, self.sha],
+                args=[sname, self.version_number],
             ),
         ]
 
@@ -352,7 +346,7 @@ class TestGWFlowHistoryVisibility(BilbyTestCase):
 
     @mock.patch(
         "bilbyui.views.get_versions",
-        return_value=([{"commit_sha": "1111222233334444555566667777888899990000", "version_number": 1010}], "live"),
+        return_value=([{"version_number": 1010}], "live"),
     )
     @mock.patch("bilbyui.views.get_version", return_value=({}, "live"))
     def test_ligo_user_200_on_all_history_routes(
@@ -366,7 +360,7 @@ class TestGWFlowHistoryVisibility(BilbyTestCase):
 
     @mock.patch(
         "bilbyui.views.get_versions",
-        return_value=([{"commit_sha": "1111222233334444555566667777888899990000", "version_number": 1011}], "live"),
+        return_value=([{"version_number": 1011}], "live"),
     )
     @mock.patch("bilbyui.views.get_version", return_value=({}, "live"))
     def test_legacy_flag_does_not_hide_public_history(
@@ -389,9 +383,9 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.sname = "S230601ag"
-        self.current_sha = "aaaabbbbccccddddeeeeffff0000111122223333"
-        self.previous_sha = "1111222233334444555566667777888899990000"
-        self.oldest_sha = "0000000000000000000000000000000000000000"
+        self.current_version_number = 1007
+        self.previous_version_number = 1006
+        self.oldest_version_number = 1005
         self.request = self.factory.get(reverse("bilbyui:gwflow_job_history", args=[self.sname]))
 
         self.get_version_patcher = mock.patch(
@@ -410,25 +404,22 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
 
     def _job(self):
         job = mock.Mock()
-        job.current_history_id = self.current_sha
+        job.current_version_number = self.current_version_number
         return job
 
     def _metadata_versions(self):
         return [
             {
-                "commit_sha": self.oldest_sha,
                 "version_number": 1005,
                 "record_timestamp": "2026-08-08 10:00:00 UTC",
                 "is_current": False,
             },
             {
-                "commit_sha": self.previous_sha,
                 "version_number": 1006,
                 "record_timestamp": "2026-08-09 10:00:00 UTC",
                 "is_current": False,
             },
             {
-                "commit_sha": self.current_sha,
                 "version_number": 1007,
                 "record_timestamp": "2026-08-10 10:00:00 UTC",
                 "is_current": True,
@@ -557,7 +548,7 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
     def test_no_baseline_makes_zero_diff_calls(self):
         versions = [self._metadata_versions()[0]]
         job = self._job()
-        job.current_history_id = self.oldest_sha
+        job.current_version_number = self.oldest_version_number
 
         response, stale = self._render(versions=versions, job=job)
 
@@ -812,7 +803,7 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
                 job = None
                 if versions is not None:
                     job = self._job()
-                    job.current_history_id = self.oldest_sha
+                    job.current_version_number = self.oldest_version_number
 
                 response, _ = self._render(versions=versions, job=job)
 
@@ -956,7 +947,7 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
         request = self.factory.get(
             reverse("bilbyui:gwflow_job_history", args=[self.sname]),
             {
-                "version": self.previous_sha,
+                "version": self.previous_version_number,
                 "compare": "current",
             },
         )
@@ -989,7 +980,7 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
     def test_unknown_version_deep_link_raises_404(self):
         request = self.factory.get(
             reverse("bilbyui:gwflow_job_history", args=[self.sname]),
-            {"version": "ffffffffffffffffffffffffffffffffffffffff"},
+            {"version": "9999"},
         )
 
         with self.assertRaisesMessage(Http404, "Version not found"):
@@ -1001,7 +992,6 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
     def test_malformed_summary_renders_error_state_with_retry(self):
         malformed = [
             {
-                "commit_sha": self.current_sha,
                 "version_number": "1007",
                 "record_timestamp": "2026-08-10 10:00:00 UTC",
                 "is_current": True,
@@ -1040,8 +1030,8 @@ class TestRenderGWFlowHistorySection(BilbyTestCase):
             response.template_name,
             "bilbyui/_gwflow_history.html",
         )
-        self.assertEqual(response.context_data["selected_version"].full_sha, self.current_sha)
-        self.assertEqual(response.context_data["baseline_version"].full_sha, self.previous_sha)
+        self.assertEqual(response.context_data["selected_version"].version_number, 1007)
+        self.assertEqual(response.context_data["baseline_version"].version_number, 1006)
 
     def test_selected_payload_still_feeds_metadata_presentation(self):
         self.mock_get_version.return_value = (
@@ -1086,23 +1076,21 @@ class TestGWFlowHistoryRenderedOutcomes(BilbyTestCase):
         )
         self.authenticate(user=self.user)
         self.sname = "S240101aa"
-        self.previous_sha = "1" * 40
-        self.current_sha = "2" * 40
+        self.previous_version_number = 41
+        self.current_version_number = 42
         self.job = _create_job(
             self.user,
             sname=self.sname,
-            current_history_id=self.current_sha,
+            current_version_number=self.current_version_number,
         )
         self.url = reverse("bilbyui:gwflow_job_history", args=[self.sname])
         self.versions = [
             {
-                "commit_sha": self.previous_sha,
                 "version_number": 41,
                 "record_timestamp": "2026-09-01 00:00:00 UTC",
                 "is_current": False,
             },
             {
-                "commit_sha": self.current_sha,
                 "version_number": 42,
                 "record_timestamp": "2026-09-02 00:00:00 UTC",
                 "is_current": True,
@@ -1405,8 +1393,8 @@ class TestGWFlowHistoryRenderedOutcomes(BilbyTestCase):
                 )
                 self.assert_announcement(response, sentence)
 
-        self.job.current_history_id = self.previous_sha
-        self.job.save(update_fields=["current_history_id"])
+        self.job.current_version_number = self.previous_version_number
+        self.job.save(update_fields=["current_version_number"])
         response, _, _, _ = self.render(versions=[self.versions[0]])
         self.assert_announcement(
             response,
@@ -1439,8 +1427,8 @@ class TestGWFlowHistoryRenderedOutcomes(BilbyTestCase):
 
     def test_no_baseline_render_is_distinct_and_skips_diff(self):
         only = [self.versions[0]]
-        self.job.current_history_id = self.previous_sha
-        self.job.save(update_fields=["current_history_id"])
+        self.job.current_version_number = self.previous_version_number
+        self.job.save(update_fields=["current_version_number"])
 
         response, _, get_version, get_diff = self.render(versions=only)
 

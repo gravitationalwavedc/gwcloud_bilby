@@ -64,6 +64,5 @@ def normalise_current_history_timestamp(raw):
 
 
 def version_tuple(job):
-    """Return (current_history_timestamp, current_history_id) used for version
-    ordering and conflict detection."""
-    return (job.current_history_timestamp, job.current_history_id)
+    """Return the timestamp and integer version used for ordering and conflict detection."""
+    return (job.current_history_timestamp, job.current_version_number)
