@@ -235,20 +235,6 @@ class TestFourteenSupereventSecurityCompletion(BilbyTestCase):
             detail_state="fixture",
         )
 
-    @staticmethod
-    def _versions(sname):
-        timestamp = OLD_TIMESTAMP if sname == "S231013ab" else CURRENT_TIMESTAMP
-        return (
-            [
-                {
-                    "record_timestamp": timestamp,
-                    "is_current": True,
-                    "libraries": ["cbc-workflow-o4c"],
-                }
-            ],
-            "fixture",
-        )
-
     def test_repair_hides_all_fourteen_and_preserves_2023_owner(self):
         old_event = EventID.objects.create(
             event_id="G585653",
@@ -290,10 +276,6 @@ class TestFourteenSupereventSecurityCompletion(BilbyTestCase):
             mock.patch(
                 "bilbyui.management.commands.gwflow_es_backfill.resolve_current_version",
                 side_effect=self._resolved_version,
-            ),
-            mock.patch(
-                "bilbyui.management.commands.gwflow_es_backfill.get_versions",
-                side_effect=self._versions,
             ),
         ):
             result = call_command(

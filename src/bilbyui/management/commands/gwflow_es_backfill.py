@@ -10,9 +10,7 @@ from django.db import transaction
 from bilbyui.models import BilbyJob, GWFlowJob
 from bilbyui.services.gwflow import LIBRARIES_CACHE_KEY, REVIEW_STATUSES_CACHE_KEY
 from bilbyui.utils.embargo import get_embargo_start
-from bilbyui.utils.gwflow_es import _parse_portal_bool
 from bilbyui.utils.gwflow_portal import (
-    get_versions,
     resolve_current_version,
     resolve_event_id_for_superevent,
 )
@@ -257,28 +255,15 @@ class Command(BaseCommand):
         if current.versions_state == "down" or current.detail_state == "down" or transport_failure:
             raise PortalUnavailable(job)
 
-        # Library membership remains a separately repaired field. portal_get's
-        # existing cache means this normally reuses the summary fetched by the
-        # shared current-version resolver rather than issuing another request.
-        versions_data, versions_state = get_versions(job.sname)
-        if versions_state == "down" or versions_data is None:
-            raise PortalUnavailable(job)
-
         fields = {}
         if not job.is_pruned:
-            selected = None
-            if isinstance(versions_data, list):
-                selected = next(
-                    (
-                        version
-                        for version in versions_data
-                        if isinstance(version, dict) and _parse_portal_bool(version.get("is_current"))
-                    ),
-                    None,
-                )
-            libraries = normalise_libraries(selected.get("libraries")) if selected else []
-            if libraries != job.libraries:
-                fields["libraries"] = libraries
+            # The versions summary omits libraries; the authoritative list comes
+            # from the current detail carried by the resolver. If it is absent,
+            # preserve the stored value rather than writing an empty list.
+            if current.libraries is not None:
+                libraries = normalise_libraries(current.libraries)
+                if libraries != job.libraries:
+                    fields["libraries"] = libraries
 
         threshold = get_embargo_start()
         stored_time_unresolved = threshold is not None and (job.trigger_time is None or job.trigger_time < threshold)

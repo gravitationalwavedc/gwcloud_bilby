@@ -239,6 +239,54 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
         self.assertEqual(result.current_version_number, 4)
         self.assertIsNotNone(result.current_history_timestamp)
 
+    def test_current_version_carries_detail_libraries(self):
+        summary = [
+            {
+                "is_current": True,
+                "version_number": 4,
+                "record_timestamp": "2026-09-01T00:00:00+00:00",
+            }
+        ]
+        detail = {"raw_payload": {}, "libraries": ["cbc-workflow-o4a", "cbc-workflow-o4c"]}
+        with (
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_versions",
+                return_value=(summary, "live"),
+            ),
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_version",
+                return_value=(detail, "live"),
+            ),
+        ):
+            result = resolve_current_version("S250801h")
+
+        self.assertTrue(result.available)
+        self.assertEqual(result.libraries, ["cbc-workflow-o4a", "cbc-workflow-o4c"])
+
+    def test_current_version_missing_libraries_stays_none(self):
+        summary = [
+            {
+                "is_current": True,
+                "version_number": 4,
+                "record_timestamp": "2026-09-01T00:00:00+00:00",
+            }
+        ]
+        detail = {"raw_payload": {}, "libraries": "not-a-list"}
+        with (
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_versions",
+                return_value=(summary, "live"),
+            ),
+            mock.patch(
+                "bilbyui.utils.gwflow_portal.get_version",
+                return_value=(detail, "live"),
+            ),
+        ):
+            result = resolve_current_version("S250801h")
+
+        self.assertTrue(result.available)
+        self.assertIsNone(result.libraries)
+
     def test_null_raw_payload_keeps_version_identity(self):
         """A canonical object-or-null payload must not suppress the pointer."""
         summary = [
