@@ -194,7 +194,6 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
         cases = (
             (None, "down"),
             ([], "live"),
-            ({}, "live"),
             ({"raw_payload": []}, "live"),
         )
         for detail_result in cases:
@@ -239,6 +238,34 @@ class TestGWFlowCurrentVersionResolver(BilbyTestCase):
         self.assertIsNone(result.trigger_time)
         self.assertEqual(result.current_version_number, 4)
         self.assertIsNotNone(result.current_history_timestamp)
+
+    def test_null_raw_payload_keeps_version_identity(self):
+        """A canonical object-or-null payload must not suppress the pointer."""
+        summary = [
+            {
+                "is_current": True,
+                "version_number": 4,
+                "record_timestamp": "2026-09-01T00:00:00+00:00",
+            }
+        ]
+        for detail in ({"raw_payload": None}, {}):
+            with self.subTest(detail=detail):
+                with (
+                    mock.patch(
+                        "bilbyui.utils.gwflow_portal.get_versions",
+                        return_value=(summary, "live"),
+                    ),
+                    mock.patch(
+                        "bilbyui.utils.gwflow_portal.get_version",
+                        return_value=(detail, "live"),
+                    ),
+                ):
+                    result = resolve_current_version("S250801h")
+
+                self.assertTrue(result.available)
+                self.assertIsNone(result.trigger_time)
+                self.assertEqual(result.current_version_number, 4)
+                self.assertIsNotNone(result.current_history_timestamp)
 
 
 class TestSupereventEventIDResolver(BilbyTestCase):
@@ -451,7 +478,7 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
         self.assertEqual(job.event_id, owned)
         self.assertNotEqual(job.event_id, foreign)
 
-    def test_unavailable_retains_foreign_link_when_stored_time_unresolved(self):
+    def test_unavailable_clears_foreign_link_when_stored_time_unresolved(self):
         stored_timestamp = datetime.datetime(
             2026,
             7,
@@ -504,7 +531,60 @@ class TestGWFlowAuthoritativeUpsert(BilbyTestCase):
                     job.current_history_timestamp,
                     stored_timestamp,
                 )
-                self.assertEqual(job.event_id, foreign)
+                self.assertIsNone(job.event_id)
+
+    def test_unavailable_retains_same_owner_link_when_stored_time_unresolved(self):
+        stored_timestamp = datetime.datetime(
+            2026,
+            7,
+            1,
+            tzinfo=datetime.UTC,
+        )
+
+        for index, trigger_time in enumerate((None, 1400.0)):
+            with self.subTest(trigger_time=trigger_time):
+                sname = f"S25081{index}h"
+                owned = EventID.objects.create(
+                    event_id=f"G70001{index}",
+                    trigger_id=sname,
+                    gps_time=1438044067.0,
+                )
+                job = GWFlowJob.objects.create(
+                    sname=sname,
+                    user=self.user,
+                    trigger_time=trigger_time,
+                    current_version_number=1,
+                    current_history_timestamp=stored_timestamp,
+                    event_id=owned,
+                )
+
+                with (
+                    mock.patch(
+                        "bilbyui.views.resolve_current_version",
+                        return_value=GWFlowCurrentVersion(
+                            available=False,
+                            reason="detail has no usable finite trigger time",
+                        ),
+                    ),
+                    mock.patch(
+                        "bilbyui.views.resolve_event_id_for_superevent",
+                        return_value=None,
+                    ),
+                    mock.patch("bilbyui.views.gwflow_elastic_search_update"),
+                ):
+                    upsert_gwflow_job(
+                        self.user,
+                        self.params(
+                            job.sname,
+                            current_history_timestamp=stored_timestamp,
+                        ),
+                    )
+
+                job.refresh_from_db()
+                self.assertEqual(job.trigger_time, trigger_time)
+                self.assertEqual(job.current_version_number, 1)
+                self.assertEqual(job.current_history_timestamp, stored_timestamp)
+                self.assertEqual(job.event_id, owned)
 
     def test_unavailable_clears_foreign_link_when_own_time_is_embargoed(self):
         foreign = EventID.objects.create(

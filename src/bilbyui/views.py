@@ -2895,6 +2895,7 @@ def upsert_gwflow_job(user, params):
                         and stored_time_unresolved
                         and resolved_event is None
                         and job.event_id_id is not None
+                        and job.event_id.trigger_id == sname
                     ):
                         # Fail closed (docs/SECURITY.md P0 rule 6): retain the
                         # existing link rather than clearing a possibly

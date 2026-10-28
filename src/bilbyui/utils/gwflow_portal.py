@@ -432,9 +432,9 @@ def resolve_current_version(sname):
         )
 
     raw_payload = detail.get("raw_payload")
-    if not isinstance(raw_payload, dict):
+    if raw_payload is not None and not isinstance(raw_payload, dict):
         logger.warning(
-            "Current-version detail unavailable for %s (v%s): raw_payload is not a dict",
+            "Current-version detail unavailable for %s (v%s): raw_payload is not an object or null",
             sname,
             version_number,
         )
