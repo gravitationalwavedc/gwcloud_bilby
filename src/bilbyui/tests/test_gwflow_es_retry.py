@@ -15,11 +15,11 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
         super().setUp()
         self.user = self.create_user(id=20, primary_email="user20@example.com")
 
-    def _make_job(self, sname="S230601ag", history_id="hist-001", age_hours=1):
+    def _make_job(self, sname="S230601ag", version_number=1, age_hours=1):
         job = GWFlowJob.objects.create(
             sname=sname,
             user=self.user,
-            current_history_id=history_id,
+            current_version_number=version_number,
             current_history_timestamp=datetime(2026, 8, 31, 12, 0, 0, tzinfo=UTC),
         )
         # Control last_updated (the ingest-update event the retry window is based
@@ -43,7 +43,7 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
 
         output = self._run()
 
-        mock_get_version.assert_called_once_with(job.sname, job.current_history_id)
+        mock_get_version.assert_called_once_with(job.sname, job.current_version_number)
         mock_update.assert_called_once()
         written_job, written_meta = mock_update.call_args.args
         self.assertEqual(written_job.id, job.id)
@@ -54,13 +54,13 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
     @mock.patch("bilbyui.management.commands.gwflow_es_retry.gwflow_elastic_search_update")
     def test_retry_after_newer_version(self, mock_update, mock_get_version):
         """Retry re-indexes the job's current (newer) authoritative version."""
-        job = self._make_job(history_id="hist-002")
+        job = self._make_job(version_number=2)
         newer_payload = {"ParameterEstimation": {"results": [{"uid": "pe-2", "review_status": "pending"}]}}
         mock_get_version.return_value = (newer_payload, "live")
 
         output = self._run()
 
-        mock_get_version.assert_called_once_with(job.sname, "hist-002")
+        mock_get_version.assert_called_once_with(job.sname, 2)
         mock_update.assert_called_once()
         self.assertEqual(mock_update.call_args.args[1], newer_payload)
         self.assertIn("1 re-indexed", output)
@@ -69,12 +69,12 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
     @mock.patch("bilbyui.management.commands.gwflow_es_retry.gwflow_elastic_search_update")
     def test_version_change_during_retry(self, mock_update, mock_get_version):
         """If the version tuple changes while the payload is fetched, skip the write."""
-        job = self._make_job(history_id="hist-001")
+        job = self._make_job(version_number=1)
         payload = {"ParameterEstimation": {"results": []}}
         mock_get_version.return_value = (payload, "live")
 
-        def change_version(sname, sha):
-            GWFlowJob.objects.filter(pk=job.pk).update(current_history_id="hist-002")
+        def change_version(sname, version_number):
+            GWFlowJob.objects.filter(pk=job.pk).update(current_version_number=2)
             return (payload, "live")
 
         mock_get_version.side_effect = change_version
@@ -123,7 +123,7 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
         output = self._run("--hours", "24")
 
         self.assertEqual(mock_get_version.call_count, 1)
-        mock_get_version.assert_called_once_with(recent.sname, recent.current_history_id)
+        mock_get_version.assert_called_once_with(recent.sname, recent.current_version_number)
         self.assertIn("1 re-indexed", output)
 
     @mock.patch("bilbyui.management.commands.gwflow_es_retry.get_version")
@@ -140,7 +140,7 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
 
         output = self._run("--hours", "24")
 
-        mock_get_version.assert_called_once_with(job.sname, job.current_history_id)
+        mock_get_version.assert_called_once_with(job.sname, job.current_version_number)
         mock_update.assert_called_once()
         self.assertIn("1 re-indexed", output)
 
@@ -148,7 +148,7 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
     @mock.patch("bilbyui.management.commands.gwflow_es_retry.gwflow_elastic_search_update")
     def test_no_current_version_skipped(self, mock_update, mock_get_version):
         """A job with no current version is skipped without portal or ES calls."""
-        self._make_job(history_id="")
+        self._make_job(version_number=None)
 
         output = self._run()
 
@@ -182,7 +182,7 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
         output = self._run("--no-doc")
 
         mock_scan.assert_called_once()
-        mock_get_version.assert_called_once_with(job.sname, job.current_history_id)
+        mock_get_version.assert_called_once_with(job.sname, job.current_version_number)
         self.assertIn("1 re-indexed", output)
 
     @mock.patch("bilbyui.management.commands.gwflow_es_retry.Command.handle_job")
@@ -213,7 +213,7 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
 
         mock_scan.assert_not_called()
         mock_es.assert_not_called()
-        mock_get_version.assert_called_once_with(job.sname, job.current_history_id)
+        mock_get_version.assert_called_once_with(job.sname, job.current_version_number)
         self.assertIn("1 re-indexed", output)
 
     @override_settings(IGNORE_ELASTIC_SEARCH=False)
@@ -235,5 +235,5 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
         output = self._run("--no-doc")
 
         mock_scan.assert_called_once()
-        mock_get_version.assert_called_once_with(job.sname, job.current_history_id)
+        mock_get_version.assert_called_once_with(job.sname, job.current_version_number)
         self.assertIn("1 re-indexed", output)

@@ -1,5 +1,5 @@
 {% load frontend_tags %}
-{# Persistent current-context strip (issue #53 UX-6): identity line + current-version provenance line. The provenance triple (schema_version + short commit_sha + commit_timestamp) appears ONLY here — never in pane content. Design contract: docs/plans/designs/077-ux6-superevent-detail-shell.md. #}
+{# Persistent current-context strip: identity line plus current-version provenance. #}
 {# Context: job. Optional: stale (renders an inline stale notice + Refresh). #}
 <div class="context-strip mb-4">
   <div class="context-identity">
@@ -20,8 +20,8 @@
   </div>
 
   <div class="context-provenance">
-    {% if job.current_history_id %}
-      <span class="context-provenance-item">Current version: <span class="font-monospace">{{ job.current_history_id|slice:":8" }}</span></span>
+    {% if job.current_version_number is not None %}
+      <span class="context-provenance-item">Current version: <span class="font-monospace">v{{ job.current_version_number }}</span></span>
     {% endif %}
     {% if job.current_history_timestamp %}
       <span class="context-provenance-item">recorded {{ job.current_history_timestamp|utc_timestamp }}</span>

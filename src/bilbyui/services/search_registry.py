@@ -88,8 +88,7 @@ DENIED_GLOBS = (
     "*.frame_file",
 )
 
-# Legacy GWFlow alias/default-field declarations relocated from the deleted
-# command and consumed by verify_search_fields.py.
+# GWFlow aliases and default fields mirror build_gwflow_es_mapping exactly.
 GWFLOW_ALIASES: dict[str, str] = {
     "sname": "_gwcloud.sname",
     "libraries": "_gwcloud.libraries",
@@ -98,13 +97,10 @@ GWFLOW_ALIASES: dict[str, str] = {
     "search_trigger_time": "_gwcloud.searchTriggerTime",
     "last_updated_time": "_gwcloud.lastUpdatedTime",
     "is_pruned": "_gwcloud.isPruned",
-    # Short aliases for the GraceDB event fields, so fielded queries read
-    # compactly (e.g. `instruments:(L1 V1) snr:[40 TO 60]`).
-    "instruments": "metadata.gracedb.instruments",
-    "snr": "metadata.gracedb.events.network_snr",
-    "far": "metadata.gracedb.events.far",
-    "pipeline": "metadata.gracedb.events.pipeline",
-    "pastro": "metadata.gracedb.events.pastro",
+    "snr": "metadata.gracedb_events.network_snr",
+    "far": "metadata.gracedb_events.far",
+    "pipeline": "metadata.gracedb_events.pipeline",
+    "instruments": "metadata.detector_configurations.uid",
 }
 
 _DEFAULT_FIELD = [
@@ -112,16 +108,21 @@ _DEFAULT_FIELD = [
     "_gwcloud.eventTriggerId",
     "_gwcloud.libraries",
     "_gwcloud.reviewStatuses",
-    "metadata.gracedb.events.uid",
-    "metadata.pe.results.uid",
-    "metadata.pe.results.inference_software",
-    "metadata.pe.results.waveform_approximant",
-    "metadata.pe.results.run_status",
-    "metadata.pe.results.review_status",
-    "metadata.pe.status",
-    "metadata.gracedb.events.pipeline",
-    "metadata.gracedb.events.state",
-    "metadata.gracedb.instruments",
+    "metadata.analyses.uid",
+    "metadata.analyses.name",
+    "metadata.analyses.description",
+    "metadata.analyses.software.name",
+    "metadata.analyses.software.version",
+    "metadata.analyses.status",
+    "metadata.analyses.review_status",
+    "metadata.analyses.type",
+    "metadata.gracedb_events.event_name",
+    "metadata.gracedb_events.pipeline",
+    "metadata.gracedb_events.state",
+    "metadata.detector_configurations.uid",
+    "metadata.detector_configurations.name",
+    "metadata.sname",
+    "metadata.commit_sha",
 ]
 
 
@@ -154,7 +155,7 @@ def documented_alias_path(entry: Mapping[str, object]) -> str | None:
     """Return the underlying field path for a user-facing alias, else None.
 
     Only aliases whose target is a researcher-meaningful field are surfaced in
-    the help (e.g. `snr` → `metadata.gracedb.events.network_snr`). The internal
+    the help (e.g. `snr` → `metadata.gracedb_events.network_snr`). The internal
     `_gwcloud.*` stable-envelope aliases are never exposed, and non-alias fields
     return None.
     """

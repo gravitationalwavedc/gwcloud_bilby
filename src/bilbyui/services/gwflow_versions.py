@@ -69,8 +69,6 @@ _GRACEDB_NUMBER_KEYS = {
 
 @dataclass(frozen=True, slots=True)
 class VersionSnapshot:
-    full_sha: str
-    short_sha: str
     version_number: int
     recorded_at: datetime | None
     is_current: bool
@@ -371,16 +369,16 @@ def adapt_semantic_diff(
 def prepare_version_snapshots(
     versions: Sequence[Mapping[str, Any]],
     *,
-    current_sha: str = "",
+    current_version_number: int | None = None,
 ) -> tuple[VersionSnapshot, ...]:
     """Create a deterministic oldest-to-newest canonical summary snapshot.
 
     Invalid canonical rows are rejected by raising ``ValueError`` rather than
     being skipped: ``version_number`` must be present and must be an integer,
     with booleans explicitly excluded. Portal order is not treated as
-    chronology. Parseable timestamps establish ordering; SHA provides
-    deterministic tie handling without inventing a chronology. Rows without a
-    timestamp retain their source order after dated rows.
+    chronology. Parseable timestamps establish ordering; version number
+    provides deterministic tie handling. Rows without a timestamp retain their
+    source order after dated rows.
     """
 
     prepared: list[tuple[int, VersionSnapshot]] = []
@@ -389,38 +387,25 @@ def prepare_version_snapshots(
         if isinstance(version_number, bool) or not isinstance(version_number, int):
             raise ValueError("version_number must be an integer")
 
-        sha = str(row.get("commit_sha") or "").strip()
-        if not sha:
-            continue
         snapshot = VersionSnapshot(
-            full_sha=sha,
-            short_sha=sha[:8],
             version_number=version_number,
             recorded_at=_timestamp(row.get("record_timestamp")),
-            is_current=bool(current_sha and sha == current_sha) or _parse_portal_bool(row.get("is_current")),
+            is_current=(current_version_number is not None and version_number == current_version_number)
+            or _parse_portal_bool(row.get("is_current")),
         )
         prepared.append((index, snapshot))
 
     dated = [(index, item) for index, item in prepared if item.recorded_at is not None]
     undated = [(index, item) for index, item in prepared if item.recorded_at is None]
-    dated.sort(key=lambda pair: (pair[1].recorded_at, pair[1].full_sha))
+    dated.sort(key=lambda pair: (pair[1].recorded_at, pair[1].version_number))
     ordered = [item for _, item in dated] + [item for _, item in undated]
     return tuple(ordered)
-
-
-def resolve_version_number(snapshots: Sequence[VersionSnapshot], commit_sha: str) -> int:
-    """Resolve a commit SHA to its canonical summary version number."""
-
-    snapshot = next((item for item in snapshots if item.full_sha == commit_sha), None)
-    if snapshot is None:
-        raise LookupError("Version not found")
-    return snapshot.version_number
 
 
 def resolve_history_selection(
     snapshots: Sequence[VersionSnapshot],
     *,
-    requested_sha: str | None,
+    requested_version: int | str | None,
     compare: str | None,
 ) -> tuple[VersionSnapshot, VersionSnapshot | None, str]:
     """Resolve selected and baseline versions inside one authorised snapshot."""
@@ -431,8 +416,14 @@ def resolve_history_selection(
         current = snapshots[-1]
     if not snapshots or current is None:
         raise LookupError("No version history is available")
-    if requested_sha:
-        selected = next((item for item in snapshots if item.full_sha == requested_sha), None)
+    if requested_version not in (None, ""):
+        try:
+            version_number = int(requested_version)
+        except (TypeError, ValueError):
+            raise LookupError("Version not found") from None
+        if isinstance(requested_version, bool) or str(version_number) != str(requested_version).strip():
+            raise LookupError("Version not found")
+        selected = next((item for item in snapshots if item.version_number == version_number), None)
         if selected is None:
             raise LookupError("Version not found")
     else:
@@ -454,5 +445,4 @@ __all__ = [
     "adapt_semantic_diff",
     "prepare_version_snapshots",
     "resolve_history_selection",
-    "resolve_version_number",
 ]

@@ -179,7 +179,7 @@ def _build_actions(requested_ids, kind):
                 if document is None:
                     raise ValueError("canonical builder returned no document")
             else:
-                metadata, state = get_version(job.sname, job.current_history_id)
+                metadata, state = get_version(job.sname, job.current_version_number)
                 if state == "down" or metadata is None:
                     raise ValueError("portal metadata unavailable")
                 document = build_gwflow_es_doc(job, metadata)

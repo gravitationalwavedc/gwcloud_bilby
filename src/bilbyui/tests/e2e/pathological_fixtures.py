@@ -26,7 +26,7 @@ def create_pathological_job(testcase_cls):
         user=user,
         libraries=["cbc-workflow-pathological"],
         schema_version="v3",
-        current_history_id="0" * 40,
+        current_version_number=1,
     )
 
 
@@ -83,7 +83,6 @@ def build_long_version_list():
     for index in range(VERSION_COUNT):
         versions.append(
             {
-                "commit_sha": f"{index:040x}",
                 "version_number": 1021,
                 "record_timestamp": (origin + timedelta(hours=index)).isoformat(),
                 "schema_version": "3",

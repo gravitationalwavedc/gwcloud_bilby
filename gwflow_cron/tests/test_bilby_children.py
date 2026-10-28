@@ -100,19 +100,17 @@ class TestSelectBilbyAnalyses(unittest.TestCase):
         return {
             "direction": "output",
             "role": role,
-            "file": {
-                "name": Path(path).name,
-                "description": role,
-                "md5sum": md5sum,
-                "last_modified": None,
-                "locations": [
-                    {
-                        "file_system": file_system,
-                        "path": path,
-                        "url": url,
-                    }
-                ],
-            },
+            "name": Path(path).name,
+            "description": role,
+            "md5sum": md5sum,
+            "last_modified": None,
+            "locations": [
+                {
+                    "file_system": file_system,
+                    "path": path,
+                    "url": url,
+                }
+            ],
         }
 
     def test_te_1_eligible_golden_analysis(self):
@@ -329,7 +327,7 @@ class TestSelectBilbyAnalyses(unittest.TestCase):
                 detail = self.detail()
                 analysis = detail["analyses"][0]
                 analysis["input_files"][0]["role"] = role
-                analysis["input_files"][0]["file"]["name"] = "config.ini"
+                analysis["input_files"][0]["name"] = "config.ini"
                 self.assertEqual(self.select(detail), ([], []))
 
     def test_tf_optional_inaccessible_is_null_and_warned(self):
@@ -413,14 +411,14 @@ class TestSelectBilbyAnalyses(unittest.TestCase):
         for name, locations, file_systems, expected, rejected_expected in cases:
             with self.subTest(name=name):
                 detail = self.detail()
-                detail["analyses"][0]["input_files"][0]["file"]["locations"] = locations
+                detail["analyses"][0]["input_files"][0]["locations"] = locations
                 selected, rejected = self.select(detail, file_systems)
                 self.assertEqual(bool(rejected), rejected_expected)
                 if expected is not None:
                     self.assertEqual(selected[0]["config_file"]["path"], expected)
 
         detail = self.detail()
-        locations = detail["analyses"][0]["input_files"][0]["file"]["locations"]
+        locations = detail["analyses"][0]["input_files"][0]["locations"]
         first = self.select(detail)
         locations.reverse()
         second = self.select(detail)
@@ -430,7 +428,7 @@ class TestSelectBilbyAnalyses(unittest.TestCase):
         for checksum in ("abc", None):
             with self.subTest(checksum=checksum):
                 detail = self.detail()
-                detail["analyses"][0]["input_files"][0]["file"]["md5sum"] = checksum
+                detail["analyses"][0]["input_files"][0]["md5sum"] = checksum
                 selected, rejected = self.select(detail)
                 self.assertEqual(rejected, [])
                 self.assertEqual(selected[0]["config_file"]["md5_sum"], checksum)
@@ -439,7 +437,7 @@ class TestSelectBilbyAnalyses(unittest.TestCase):
         for wrong_key in ("md5_sum", "checksum"):
             with self.subTest(wrong_key=wrong_key):
                 detail = self.detail()
-                file_data = detail["analyses"][0]["input_files"][0]["file"]
+                file_data = detail["analyses"][0]["input_files"][0]
                 checksum = file_data.pop("md5sum")
                 file_data[wrong_key] = checksum
                 selected, rejected = self.select(detail)
@@ -456,7 +454,7 @@ class TestSelectBilbyAnalyses(unittest.TestCase):
         self.assertEqual(first, second)
 
         shuffled = copy.deepcopy(detail)
-        random.Random(117).shuffle(shuffled["analyses"][0]["input_files"][0]["file"]["locations"])
+        random.Random(117).shuffle(shuffled["analyses"][0]["input_files"][0]["locations"])
         random.Random(118).shuffle(shuffled["analyses"][0]["output_files"])
         self.assertEqual(first, self.select(shuffled))
 
@@ -467,7 +465,7 @@ class TestSelectBilbyAnalyses(unittest.TestCase):
 
     def test_tr_1_rejection_fields(self):
         detail = self.detail()
-        detail["analyses"][0]["input_files"][0]["file"]["locations"] = [
+        detail["analyses"][0]["input_files"][0]["locations"] = [
             {"file_system": "REMOTE_B", "path": "/b", "url": None},
             {"file_system": "REMOTE_A", "path": "/a", "url": None},
         ]
@@ -772,228 +770,74 @@ class TestMakeArchive(unittest.TestCase):
 
 
 class TestResolveEventIdFor(unittest.TestCase):
-    def test_preferred_event_field_used(self):
+    def test_preferred_state_is_selected(self):
+        detail = {
+            "gracedb_events": [
+                {"event_name": "G111", "gps_time": 111.0, "state": "preliminary"},
+                {"event_name": "G222", "gps_time": 222.0, "state": "preferred"},
+            ]
+        }
+        self.assertEqual(resolve_event_id_for("S1", detail), ("G222", 222.0))
+
+    def test_preferred_state_is_case_insensitive_and_trimmed(self):
+        detail = {"gracedb_events": [{"event_name": "G222", "gps_time": 222.0, "state": "  PREFERRED "}]}
+        self.assertEqual(resolve_event_id_for("S1", detail), ("G222", 222.0))
+
+    def test_first_valid_event_fallback(self):
+        detail = {
+            "gracedb_events": [
+                "not-an-object",
+                {"event_name": "G111", "gps_time": 111.0, "state": "preliminary"},
+                {"event_name": "G222", "gps_time": 222.0, "state": "preliminary"},
+            ]
+        }
+        self.assertEqual(resolve_event_id_for("S1", detail), ("G111", 111.0))
+
+    def test_missing_or_empty_events_returns_none(self):
+        for detail in ({}, {"gracedb_events": None}, {"gracedb_events": []}, {"gracedb_events": "G1"}):
+            with self.subTest(detail=detail):
+                self.assertIsNone(resolve_event_id_for("S1", detail))
+
+    def test_missing_event_name_returns_none(self):
+        detail = {"gracedb_events": [{"gps_time": 111.0, "state": "preferred"}]}
+        self.assertIsNone(resolve_event_id_for("S1", detail))
+
+    def test_missing_or_malformed_gps_returns_none(self):
+        cases = (
+            ({"event_name": "G1"},),
+            ({"event_name": "G1", "gps_time": "not-a-number"},),
+            ({"event_name": "G1", "gps_time": True},),
+            ({"event_name": "G1", "gps_time": "nan"},),
+        )
+        for (event,) in cases:
+            with self.subTest(event=event):
+                self.assertIsNone(resolve_event_id_for("S1", {"gracedb_events": [event]}))
+
+    def test_legacy_payload_shape_is_not_consulted(self):
         detail = {
             "gracedb": {
                 "preferred_event": "EVT-A",
-                "events": [
-                    {"uid": "EVT-A", "gps_time": 1234567890.5},
-                    {"uid": "EVT-B", "gps_time": 1111111111.0},
-                ],
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
-
-    def test_preferred_event_uid_alias_used(self):
-        detail = {
-            "gracedb": {
-                "preferred_event_uid": "EVT-B",
-                "events": [
-                    {"uid": "EVT-A", "gps_time": 1234567890.5},
-                    {"uid": "EVT-B", "gps_time": 1111111111.0},
-                ],
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-B", 1111111111.0))
-
-    def test_is_preferred_event_used(self):
-        detail = {
-            "gracedb": {
-                "events": [
-                    {"uid": "EVT-A", "gps_time": 1234567890.5},
-                    {"uid": "EVT-B", "gps_time": 1111111111.0, "is_preferred": True},
-                ]
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-B", 1111111111.0))
-
-    def test_is_preferred_string_true(self):
-        detail = {
-            "gracedb": {
-                "events": [
-                    {"uid": "EVT-A", "gps_time": 1234567890.5, "is_preferred": "true"},
-                ]
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
-
-    def test_preferred_field_used(self):
-        detail = {
-            "gracedb": {
-                "events": [
-                    {"uid": "EVT-A", "gps_time": 1234567890.5},
-                    {"uid": "EVT-B", "gps_time": 1111111111.0, "preferred": "yes"},
-                ]
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-B", 1111111111.0))
-
-    def test_first_event_fallback(self):
-        detail = {
-            "gracedb": {
-                "events": [
-                    {"uid": "EVT-A", "gps_time": 1234567890.5},
-                    {"uid": "EVT-B", "gps_time": 1111111111.0},
-                ]
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
-
-    def test_missing_gps_time_returns_none(self):
-        detail = {"gracedb": {"events": [{"uid": "EVT-A"}]}}
-        self.assertIsNone(resolve_event_id_for("S1", detail))
-
-    def test_non_numeric_gps_returns_none(self):
-        detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": "not-a-number"}]}}
-        self.assertIsNone(resolve_event_id_for("S1", detail))
-
-    def test_boolean_gps_returns_none(self):
-        detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": True}]}}
-        self.assertIsNone(resolve_event_id_for("S1", detail))
-
-    def test_nan_gps_returns_none(self):
-        detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": "nan"}]}}
-        self.assertIsNone(resolve_event_id_for("S1", detail))
-
-    def test_inf_gps_returns_none(self):
-        detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": "inf"}]}}
-        self.assertIsNone(resolve_event_id_for("S1", detail))
-
-    def test_oversized_integer_gps_returns_none(self):
-        detail = {"gracedb": {"events": [{"uid": "EVT-A", "gps_time": 10**400}]}}
-        self.assertIsNone(resolve_event_id_for("S1", detail))
-
-    def test_gpstime_alias_used(self):
-        detail = {"gracedb": {"events": [{"uid": "EVT-A", "gpstime": 1234567890.5}]}}
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
-
-    def test_gracedb_preferred_event_gps_fallback(self):
-        detail = {
-            "gracedb": {
-                "preferred_event_gps": 1234567890.5,
-                "events": [{"uid": "EVT-A"}],
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
-
-    def test_gracedb_gps_time_fallback(self):
-        detail = {
-            "gracedb": {
-                "gps_time": 1234567890.5,
-                "events": [{"uid": "EVT-A"}],
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
-
-    def test_missing_uid_returns_none(self):
-        detail = {"gracedb": {"events": [{"gps_time": 1234567890.5}]}}
-        self.assertIsNone(resolve_event_id_for("S1", detail))
-
-    def test_empty_uid_returns_none(self):
-        detail = {"gracedb": {"events": [{"uid": "", "gps_time": 1234567890.5}]}}
-        self.assertIsNone(resolve_event_id_for("S1", detail))
-
-    def test_missing_gracedb_section_returns_none(self):
-        self.assertIsNone(resolve_event_id_for("S1", {"foo": "bar"}))
-
-    def test_non_dict_gracedb_returns_none(self):
-        self.assertIsNone(resolve_event_id_for("S1", {"gracedb": "nope"}))
-        self.assertIsNone(resolve_event_id_for("S1", {"gracedb": None}))
-
-    def test_GraceDB_caps_alias(self):
-        detail = {
-            "GraceDB": {
                 "events": [{"uid": "EVT-A", "gps_time": 1234567890.5}],
             }
         }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
-
-    def test_Empty_events_returns_none(self):
-        detail = {"gracedb": {"events": []}}
         self.assertIsNone(resolve_event_id_for("S1", detail))
-
-    def test_Events_alias_used(self):
-        detail = {
-            "gracedb": {
-                "Events": [{"uid": "EVT-A", "gps_time": 1234567890.5}],
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
-
-    def test_non_dict_detail_returns_none(self):
-        self.assertIsNone(resolve_event_id_for("S1", None))
-        self.assertIsNone(resolve_event_id_for("S1", ["not a dict"]))
-
-    def test_state_preferred_selects_correct_event(self):
-        events = [{"uid": f"EVT-{i}", "gps_time": 1000.0 + i, "state": "neighbor"} for i in range(4)]
-        events.append({"uid": "EVT-4", "gps_time": 1004.0, "state": "preferred"})
-        detail = {"gracedb": {"events": events}}
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-4", 1004.0))
-
-    def test_capitalized_state_preferred_selects_correct_event(self):
-        detail = {
-            "gracedb": {
-                "events": [
-                    {"uid": "EVT-A", "gps_time": 1000.0, "State": "neighbor"},
-                    {"uid": "EVT-B", "gps_time": 2000.0, "State": "Preferred"},
-                ],
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-B", 2000.0))
-
-    def test_state_preferred_takes_priority_over_first_event(self):
-        detail = {
-            "gracedb": {
-                "events": [
-                    {"uid": "EVT-A", "gps_time": 1000.0},
-                    {"uid": "EVT-B", "gps_time": 2000.0},
-                    {"uid": "EVT-C", "gps_time": 3000.0, "state": "preferred"},
-                ],
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-C", 3000.0))
-
-    def test_preferred_uid_takes_priority_over_state(self):
-        detail = {
-            "gracedb": {
-                "preferred_event": "EVT-B",
-                "events": [
-                    {"uid": "EVT-A", "gps_time": 1000.0, "state": "preferred"},
-                    {"uid": "EVT-B", "gps_time": 2000.0, "state": "neighbor"},
-                ],
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-B", 2000.0))
-
-    def test_UID_alias_in_preferred_uid_match(self):
-        detail = {
-            "gracedb": {
-                "preferred_event": "EVT-A",
-                "events": [
-                    {"UID": "EVT-A", "gps_time": 1234567890.5},
-                ],
-            }
-        }
-        self.assertEqual(resolve_event_id_for("S1", detail), ("EVT-A", 1234567890.5))
 
 
 def _canonical_file_relationship(role, path, *, direction, md5sum=""):
     return {
         "direction": direction,
         "role": role,
-        "file": {
-            "name": Path(path).name,
-            "description": role,
-            "md5sum": md5sum,
-            "last_modified": None,
-            "locations": [
-                {
-                    "file_system": "fs_a",
-                    "path": path,
-                    "url": None,
-                }
-            ],
-        },
+        "name": Path(path).name,
+        "description": role,
+        "md5sum": md5sum,
+        "last_modified": None,
+        "locations": [
+            {
+                "file_system": "fs_a",
+                "path": path,
+                "url": None,
+            }
+        ],
     }
 
 
@@ -1056,8 +900,7 @@ def _bilby_detail(sname="S1", analyses=None, gracedb=None):
         "analyses": analyses if analyses is not None else [],
     }
     if gracedb is not None:
-        # Deferred resolve_event_id_for residue still consumes this legacy key.
-        detail["gracedb"] = gracedb
+        detail["gracedb_events"] = gracedb
     return detail
 
 
@@ -1150,10 +993,7 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
     def test_event_id_created_after_structural_parent_link_without_identifier_child_link(self):
         sname = "S_EV"
         analysis = _bilby_analysis(uid="uid1", config_path="/data/pe/config.ini", result_path="/data/pe/result.h5")
-        gracedb = {
-            "preferred_event": "EVT-A",
-            "events": [{"uid": "EVT-A", "gps_time": 1234567890.5}],
-        }
+        gracedb = [{"event_name": "EVT-A", "gps_time": 1234567890.5, "state": "preferred"}]
         detail = _bilby_detail(sname=sname, analyses=[analysis], gracedb=gracedb)
         self._seed_changed_sname(sname)
 
@@ -1184,10 +1024,7 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
     def test_event_id_failure_logged_not_fatal(self):
         sname = "S_EVFAIL"
         analysis = _bilby_analysis(uid="uid1", config_path="/data/pe/config.ini", result_path="/data/pe/result.h5")
-        gracedb = {
-            "preferred_event": "EVT-A",
-            "events": [{"uid": "EVT-A", "gps_time": 1234567890.5}],
-        }
+        gracedb = [{"event_name": "EVT-A", "gps_time": 1234567890.5, "state": "preferred"}]
         detail = _bilby_detail(sname=sname, analyses=[analysis], gracedb=gracedb)
         self._seed_changed_sname(sname)
 
@@ -1565,7 +1402,7 @@ class TestPhaseBilbyChildrenOrchestrator(GWFlowTestBase):
                 "commit_sha": "sha1",
             },
         ]
-        portal.get_superevent.return_value = {"sname": "S1", "raw_payload": {}}
+        portal.get_superevent.return_value = {"sname": "S1", "version_number": 1, "raw_payload": {}}
         portal.iter_current_snames.return_value = ["S1"]
         gwc = MagicMock()
         gwc.get_gwflow_job_list.return_value = []

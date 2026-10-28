@@ -92,7 +92,7 @@ def _relationships_with_role(sname, uid, relationships, role, index):
         if (
             not isinstance(relationship, dict)
             or not isinstance(relationship.get("role"), str)
-            or not isinstance(relationship.get("file"), dict)
+            or not isinstance(relationship.get("locations"), list)
         ):
             return None, _rejection(
                 sname,
@@ -149,7 +149,10 @@ def _select_location(sname, uid, role, file_data, file_systems, index):
 
 
 def _select_file(sname, uid, role, relationship, file_systems, index):
-    file_data = relationship["file"]
+    # The canonical portal API emits a flat file relationship: the file's
+    # name/description/md5sum/last_modified/locations live on the relationship
+    # itself (CP-10 "File relation and location"), not under a nested "file".
+    file_data = relationship
     path, rejection = _select_location(sname, uid, role, file_data, file_systems, index)
     if rejection:
         return None, rejection
@@ -472,82 +475,45 @@ def stage_supporting_files(tree: Path, missing: list[str], staged_files: dict[st
 
 
 def resolve_event_id_for(sname: str, detail: dict) -> tuple[str, float] | None:
-    """Return (event_uid, gps_time) from the payload's GraceDB preferred event.
+    """Return (event_name, gps_time) from the canonical GraceDB event array.
 
-    Defensive parsing: returns None on any missing / malformed section.
-    sname is unused in resolution (reserved for future extension / logging symmetry).
+    Selects the event whose ``state`` is ``preferred`` (case-insensitive),
+    otherwise the first valid event. Returns None on any missing or malformed
+    section. No legacy payload shape is consulted.
     """
     del sname  # unused; signature kept symmetric with the design spec
 
     if not isinstance(detail, dict):
         return None
 
-    gracedb = detail.get("gracedb")
-    if not isinstance(gracedb, dict):
-        gracedb = detail.get("GraceDB")
-    if not isinstance(gracedb, dict):
-        return None
-
-    events = gracedb.get("events")
-    if not events:
-        events = gracedb.get("Events")
+    events = detail.get("gracedb_events")
     if not isinstance(events, list) or not events:
         return None
 
-    preferred_uid = gracedb.get("preferred_event")
-    if not preferred_uid:
-        preferred_uid = gracedb.get("preferred_event_uid")
-
     chosen = None
-    if preferred_uid:
-        for ev in events:
-            if isinstance(ev, dict) and (ev.get("uid") == preferred_uid or ev.get("UID") == preferred_uid):
-                chosen = ev
-                break
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        state = event.get("state")
+        if isinstance(state, str) and state.strip().lower() == "preferred":
+            chosen = event
+            break
     if chosen is None:
-        for ev in events:
-            if isinstance(ev, dict):
-                state_val = ev.get("state") or ev.get("State")
-                if isinstance(state_val, str) and state_val.lower() == "preferred":
-                    chosen = ev
-                    break
+        chosen = next((event for event in events if isinstance(event, dict)), None)
     if chosen is None:
-        for ev in events:
-            if isinstance(ev, dict) and ev.get("is_preferred") in _TRUTHY_PREFERRED:
-                chosen = ev
-                break
-    if chosen is None:
-        for ev in events:
-            if isinstance(ev, dict) and ev.get("preferred") in _TRUTHY_PREFERRED:
-                chosen = ev
-                break
-    if chosen is None:
-        chosen = events[0]
-
-    if not isinstance(chosen, dict):
         return None
 
-    event_uid = chosen.get("uid") or chosen.get("UID")
-    if not isinstance(event_uid, str) or not event_uid:
+    event_name = chosen.get("event_name")
+    if not isinstance(event_name, str) or not event_name.strip():
         return None
 
     gps_time = chosen.get("gps_time")
-    if gps_time is None:
-        gps_time = chosen.get("gpstime")
-    if gps_time is None:
-        gps_time = chosen.get("GPSTime")
-    if gps_time is None:
-        gps_time = gracedb.get("preferred_event_gps")
-    if gps_time is None:
-        gps_time = gracedb.get("gps_time")
-
     if isinstance(gps_time, bool):
         return None
-
     try:
         parsed = float(gps_time)
     except (TypeError, ValueError, OverflowError):
         return None
     if not math.isfinite(parsed):
         return None
-    return event_uid, parsed
+    return event_name.strip(), parsed

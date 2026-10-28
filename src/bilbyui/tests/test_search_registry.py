@@ -38,7 +38,7 @@ class TestSearchRegistry(SimpleTestCase):
             [
                 "sname",
                 "review_statuses",
-                "metadata.pe.results.waveform_approximant",
+                "metadata.analyses.configurations.waveform_approximant",
                 "snr",
             ],
         )
@@ -67,18 +67,17 @@ class TestSearchRegistry(SimpleTestCase):
         `_gwcloud.*` envelope aliases and non-alias fields do not."""
         by_advertised = {str(e["advertised"]): e for e in SEARCH_FIELDS if e["surface"] == "gwflow"}
         for alias, path in (
-            ("snr", "metadata.gracedb.events.network_snr"),
-            ("instruments", "metadata.gracedb.instruments"),
-            ("far", "metadata.gracedb.events.far"),
-            ("pipeline", "metadata.gracedb.events.pipeline"),
-            ("pastro", "metadata.gracedb.events.pastro"),
+            ("snr", "metadata.gracedb_events.network_snr"),
+            ("instruments", "metadata.detector_configurations.uid"),
+            ("far", "metadata.gracedb_events.far"),
+            ("pipeline", "metadata.gracedb_events.pipeline"),
         ):
             with self.subTest(alias=alias):
                 self.assertEqual(documented_alias_path(by_advertised[alias]), path)
         for internal in ("sname", "libraries", "review_statuses", "is_pruned"):
             with self.subTest(internal=internal):
                 self.assertIsNone(documented_alias_path(by_advertised[internal]))
-        self.assertIsNone(documented_alias_path(by_advertised["metadata.pe.results.waveform_approximant"]))
+        self.assertIsNone(documented_alias_path(by_advertised["metadata.analyses.configurations.waveform_approximant"]))
 
     def test_seven_gwflow_aliases_map_to_canonical_envelope_paths(self):
         expected = {

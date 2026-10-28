@@ -563,8 +563,8 @@ docs = ["Sphinx (>=5.1.1,<6.0.0)", "sphinx-rtd-theme (>=1.0.0,<2.0.0)"]
 [package.source]
 type = "git"
 url = "https://gitlab.com/CAS-eResearch/GWDC/gwcloud_python.git"
-reference = "04bf95ecd88818d88d4de98f7ec75c64619c5302"
-resolved_reference = "04bf95ecd88818d88d4de98f7ec75c64619c5302"
+reference = "ca06db20c4759512ce95804e7c061ab591e24b1f"
+resolved_reference = "ca06db20c4759512ce95804e7c061ab591e24b1f"
 
 [[package]]
 name = "gwdc-python"
@@ -1128,4 +1128,4 @@ type = ["pytest-mypy (>=1.0.1)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "013ea2720094c10a32948a71d55d0faafbf780ac6818e517877a51cfd6b56d71"
+content-hash = "f112a7333291ed4c1e66cfab52255eb26d70805a5271c8af6b589257770c08a4"

@@ -1,10 +1,10 @@
 {% if payload %}
   <div class="alert alert-warning border-warning gwflow-history__historical" role="note">
-    <strong>Viewing version {{ history_id|slice:":8" }} (historical) — not the current record</strong>
+    <strong>Viewing version v{{ version_number }} (historical) — not the current record</strong>
   </div>
 
   <h3 id="selected-version-heading" class="h5">
-    Historical version {{ history_id|slice:":8" }}
+    Historical version v{{ version_number }}
     {% if payload.schema_version %}
       <span class="badge badge-secondary">Schema {{ payload.schema_version }}</span>
     {% endif %}
@@ -14,13 +14,13 @@
 {% elif selected_version %}
   {% if not selected_version.is_current %}
     <div class="alert alert-warning border-warning gwflow-history__historical" role="note">
-      <strong>Viewing version {{ selected_version.short_sha }} (historical) — not the current record</strong>
+      <strong>Viewing version v{{ selected_version.version_number }} (historical) — not the current record</strong>
     </div>
   {% endif %}
 
   <p class="sr-only" role="status" aria-live="polite">
-    Selected version {{ selected_version.short_sha }}.
-    {% if baseline_version %}Compared with {% if compare_mode == "current" %}current{% else %}previous{% endif %} version {{ baseline_version.short_sha }}.{% endif %}
+    Selected version v{{ selected_version.version_number }}.
+    {% if baseline_version %}Compared with {% if compare_mode == "current" %}current{% else %}previous{% endif %} version v{{ baseline_version.version_number }}.{% endif %}
     {{ diff_announcement }}
   </p>
 
@@ -35,7 +35,7 @@
         hx-push-url="true"
         hx-sync="#gwflow-history-region:replace"
         hx-indicator="#gwflow-history-loading">
-    <input type="hidden" name="version" value="{{ selected_version.full_sha }}">
+    <input type="hidden" name="version" value="{{ selected_version.version_number }}">
     <fieldset>
       <legend class="h6">Compare selected version</legend>
       <div class="gwflow-history__compare-options">
