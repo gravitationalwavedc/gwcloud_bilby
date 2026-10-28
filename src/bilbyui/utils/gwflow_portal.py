@@ -331,6 +331,7 @@ class GWFlowCurrentVersion:
     trigger_time: float | None = None
     current_version_number: int | None = None
     current_history_timestamp: datetime | None = None
+    libraries: list | None = None
     versions_state: str | None = None
     detail_state: str | None = None
     reason: str | None = None
@@ -457,11 +458,13 @@ def resolve_current_version(sname):
     else:
         trigger_time = float(trigger_time)
 
+    detail_libraries = detail.get("libraries")
     return GWFlowCurrentVersion(
         available=True,
         trigger_time=trigger_time,
         current_version_number=version_number,
         current_history_timestamp=timestamp,
+        libraries=detail_libraries if isinstance(detail_libraries, list) else None,
         versions_state=versions_state,
         detail_state=detail_state,
     )

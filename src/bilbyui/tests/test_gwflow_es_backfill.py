@@ -24,25 +24,19 @@ CURRENT_GPS = 1438044067.054443
 OLD_GPS = 1381222535.0
 
 
-def current_summary(libraries=None, *, version_number=2, is_current=True):
-    return {
-        "libraries": ["cbc-workflow-o4c"] if libraries is None else libraries,
-        "record_timestamp": TS,
-        "is_current": is_current,
-    }
-
-
 def available_current(
     *,
     trigger_time=CURRENT_GPS,
     version_number=2,
     timestamp=TS,
+    libraries=None,
 ):
     return GWFlowCurrentVersion(
         available=True,
         trigger_time=trigger_time,
         current_version_number=version_number,
         current_history_timestamp=timestamp,
+        libraries=libraries,
         versions_state="live",
         detail_state="live",
     )
@@ -97,8 +91,6 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         *args,
         current=None,
         current_side_effect=None,
-        versions_return=None,
-        versions_side_effect=None,
         event_side_effect=None,
         **kwargs,
     ):
@@ -107,18 +99,12 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         kwargs.setdefault("pacing", 0)
         kwargs.setdefault("max_retries", 0)
         current = current if current is not None else available_current()
-        versions_return = versions_return or ([current_summary()], "live")
 
         with (
             mock.patch(
                 "bilbyui.management.commands.gwflow_es_backfill.resolve_current_version",
                 return_value=current,
                 side_effect=current_side_effect,
-            ),
-            mock.patch(
-                "bilbyui.management.commands.gwflow_es_backfill.get_versions",
-                return_value=versions_return,
-                side_effect=versions_side_effect,
             ),
             mock.patch(
                 "bilbyui.management.commands.gwflow_es_backfill.resolve_event_id_for_superevent",
@@ -347,7 +333,7 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         code, out, err = self.run_command(current=unavailable_current())
 
         self.assertEqual(code, 1)
-        self.assertIn("Summary: scanned=1 changed=1 unavailable=1", out)
+        self.assertIn("Summary: scanned=1 changed=0 unavailable=1", out)
         self.assertIn(f"Containment gap for GWFlowJob {parent.id}", err)
         parent.refresh_from_db()
         self.assertEqual(parent.trigger_time, OLD_GPS)
@@ -521,21 +507,15 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
 
         def current_for(sname):
             if sname == "S250801h":
-                return available_current()
+                return available_current(libraries=["cbc-workflow-o4c"])
             return available_current(
                 trigger_time=OLD_GPS,
                 version_number=2,
                 timestamp=OLD_TS,
+                libraries=["legacy"],
             )
 
-        def versions_for(sname):
-            libraries = ["cbc-workflow-o4c"] if sname == "S250801h" else ["legacy"]
-            return [current_summary(libraries=libraries)], "live"
-
-        code, _, _ = self.run_command(
-            current_side_effect=current_for,
-            versions_side_effect=versions_for,
-        )
+        code, _, _ = self.run_command(current_side_effect=current_for)
 
         self.assertEqual(code, 0)
         target.refresh_from_db()
@@ -559,12 +539,12 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
             is_pruned=True,
         )
 
-        def versions_for(sname):
+        def current_for(sname):
             if sname == normal.sname:
-                return [current_summary(libraries=[" lib ", "", "   ", 123, None, "second"])], "live"
-            return [current_summary(libraries=["new"])], "live"
+                return available_current(libraries=[" lib ", "", "   ", 123, None, "second"])
+            return available_current(libraries=["new"])
 
-        code, _, _ = self.run_command(versions_side_effect=versions_for)
+        code, _, _ = self.run_command(current_side_effect=current_for)
 
         self.assertEqual(code, 0)
         normal.refresh_from_db()
@@ -572,16 +552,14 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
         self.assertEqual(normal.libraries, ["lib", "second"])
         self.assertEqual(pruned.libraries, ["last-known"])
 
-    def test_string_false_current_flag_does_not_select(self):
+    def test_missing_authoritative_libraries_preserve_stored_value(self):
         parent = self.make_parent(sname="S250801h", libraries=["old"])
 
-        code, _, _ = self.run_command(
-            versions_return=([current_summary(is_current="false")], "live"),
-        )
+        code, _, _ = self.run_command()
 
         self.assertEqual(code, 0)
         parent.refresh_from_db()
-        self.assertEqual(parent.libraries, [])
+        self.assertEqual(parent.libraries, ["old"])
 
     def test_pointer_disagreement_is_reported(self):
         parent = self.make_parent(
@@ -605,7 +583,6 @@ class GwflowEsBackfillCommandTestCase(BilbyTestCase):
 
         code, out, err = self.run_command(
             current=down,
-            versions_return=(None, "down"),
             max_retries=1,
         )
 
