@@ -237,6 +237,30 @@ class TestMyJobsView(BilbyTestCase):
         self.assertContains(response, "S123456a")
         self.assertContains(response, "GW123456")
 
+    @mock.patch("bilbyui.views.list_user_jobs")
+    def test_fielded_query_does_not_show_casing_hint_on_plain_surface(self, mock_list_user_jobs):
+        # My Jobs is the plain surface: it supports no fielded syntax and
+        # renders no field reference, so the case-sensitivity hint must not
+        # appear even for a fielded query that returns zero results.
+        self.authenticate()
+        mock_list_user_jobs.return_value = {
+            "jobs": [],
+            "records": [],
+            "has_next": False,
+            "total": 0,
+            "page": 1,
+            "page_size": 20,
+            "state": "ok",
+        }
+
+        response = self.client.get(self.url, {"search": "job.name:GW150914*"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response,
+            "Field names are case-sensitive. Check the supported field reference.",
+        )
+
     @override_settings(EMBARGO_START_TIME=100.0)
     def test_total_and_has_next_use_adapter_filtered_queryset(self):
         self.authenticate()
