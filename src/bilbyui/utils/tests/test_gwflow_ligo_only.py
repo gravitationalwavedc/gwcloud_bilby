@@ -224,3 +224,63 @@ class TestGWFlowTriggerTimeFromMetadata(BilbyTestCase):
             with self.subTest(key=key):
                 metadata = {"gracedb": {"events": [{"gps_time": "bad"}], key: 10**400}}
                 self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
+
+    def test_canonical_gracedb_events_first_usable(self):
+        # The canonical gracedb_events array (per-event gps_time) is read when
+        # no legacy GraceDB/gracedb mapping yields a trigger.
+        metadata = {
+            "gracedb_events": [
+                {"event_name": "G1", "gps_time": "bad"},
+                {"event_name": "G2", "gps_time": 1_400_000_000.0},
+            ]
+        }
+
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 1_400_000_000.0)
+
+    def test_canonical_gracedb_events_preferred_wins(self):
+        metadata = {
+            "gracedb_events": [
+                {"event_name": "G1", "gps_time": 1000.0},
+                {"event_name": "G2", "gps_time": 2000.0, "state": "preferred"},
+            ]
+        }
+
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)
+
+    def test_canonical_gracedb_events_rejects_non_finite(self):
+        for value in (float("nan"), float("inf"), "nan", True, "1e10000", 10**10000):
+            with self.subTest(value=value):
+                metadata = {"gracedb_events": [{"event_name": "G1", "gps_time": value}]}
+                self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
+
+    def test_canonical_gracedb_events_malformed_returns_none(self):
+        cases = (
+            {"gracedb_events": None},
+            {"gracedb_events": "not-a-list"},
+            {"gracedb_events": []},
+            {"gracedb_events": [None, {}, {"gps_time": None}]},
+        )
+
+        for metadata in cases:
+            with self.subTest(metadata=metadata):
+                self.assertIsNone(_gwflow_trigger_time_from_metadata(metadata))
+
+    def test_legacy_gracedb_wins_over_canonical_gracedb_events(self):
+        # A usable legacy mapping still takes precedence over the canonical
+        # gracedb_events array.
+        metadata = {
+            "GraceDB": {"Events": [{"GPSTime": 1000.0}]},
+            "gracedb_events": [{"event_name": "G1", "gps_time": 2000.0}],
+        }
+
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 1000.0)
+
+    def test_canonical_gracedb_events_used_when_legacy_gracedb_unusable(self):
+        # A legacy mapping that yields no trigger falls back to the canonical
+        # gracedb_events array.
+        metadata = {
+            "GraceDB": {"Events": [{"GPSTime": "bad"}]},
+            "gracedb_events": [{"event_name": "G1", "gps_time": 2000.0}],
+        }
+
+        self.assertEqual(_gwflow_trigger_time_from_metadata(metadata), 2000.0)

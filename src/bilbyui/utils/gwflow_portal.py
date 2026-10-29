@@ -446,7 +446,7 @@ def resolve_current_version(sname):
             reason="detail raw_payload is not a dict",
         )
 
-    trigger_time = _gwflow_trigger_time_from_metadata(raw_payload)
+    trigger_time = _gwflow_trigger_time_from_metadata(detail)
     if isinstance(trigger_time, bool) or not isinstance(trigger_time, (int, float)) or not math.isfinite(trigger_time):
         logger.warning(
             "Current-version %s (v%s) has no usable finite trigger time; "
