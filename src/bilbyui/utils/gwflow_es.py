@@ -22,8 +22,9 @@ def _parse_portal_bool(value) -> bool:
     Portal payloads may carry boolean fields as strings (e.g. ``"true"`` /
     ``"false"``), so a bare ``bool()`` would misclassify any non-empty string
     as truthy. Treat ``"true"/"1"/"yes"`` (case-insensitive) as true and
-    everything else as false, mirroring the ``_TRUTHY_PREFERRED`` convention
-    used for sibling portal fields.
+    everything else as false. This is a case-insensitive superset of the
+    cron-side ``_TRUTHY_PREFERRED`` tuple (which is case-sensitive and does
+    not include ``"1"``).
     """
     if isinstance(value, bool):
         return value
