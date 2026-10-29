@@ -1538,7 +1538,11 @@ def _render_job_list(
     else:
         _help_surface = "bilby"
     context["search_help"] = search_help.build_search_help(_help_surface)
-    context["casing_hint_eligible"] = service_state == "ok" and search_help.casing_hint_eligible(search, total)
+    context["casing_hint_eligible"] = (
+        _help_surface != "plain"
+        and service_state == "ok"
+        and search_help.casing_hint_eligible(search, total)
+    )
     if list_target_id is not None:
         context["list_target_id"] = list_target_id
 
