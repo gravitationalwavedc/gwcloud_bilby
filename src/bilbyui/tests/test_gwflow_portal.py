@@ -398,6 +398,29 @@ class TestGWFlowPortalClient(BilbyTestCase):
         self.assertFalse(result.available)
         self.assertEqual(result.reason, "current summary has no usable record_timestamp")
 
+    def test_resolve_current_version_canonical_gracedb_events_trigger_time(self):
+        # A canonical detail with no raw_payload still yields a trigger time
+        # from the canonical gracedb_events array.
+        summary = {
+            "is_current": True,
+            "commit_sha": "abc123",
+            "version_number": 8,
+            "record_timestamp": "2026-08-10T12:00:00Z",
+        }
+        detail = canonical_detail(
+            raw_payload=None,
+            gracedb_events=[{"event_name": "G1", "gps_time": 1_400_000_000.0}],
+        )
+
+        with (
+            mock.patch.object(gwflow_portal, "get_versions", return_value=([summary], "live")),
+            mock.patch.object(gwflow_portal, "get_version", return_value=(detail, "live")),
+        ):
+            result = gwflow_portal.resolve_current_version(SNAME)
+
+        self.assertTrue(result.available)
+        self.assertEqual(result.trigger_time, 1_400_000_000.0)
+
     @responses.activate
     def test_versions_rejects_cross_origin_next(self):
         page_1_url = f"{PORTAL_URL}/api/v1/superevents/{SNAME}/versions/?page=1"

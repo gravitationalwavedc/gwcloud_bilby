@@ -365,45 +365,14 @@ def resolve_job_trigger(processed_args=None, args=None) -> float | None:
     return None
 
 
-def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
-    """Return a finite trigger time from GraceDB metadata, or ``None``.
+def _scan_events_for_trigger(events) -> float | None:
+    """Return the first usable preferred event's GPS time, else the first usable event's, else ``None``.
 
-    A valid top-level ``GraceDB``/``gracedb`` mapping takes precedence over
-    the corresponding mapping under ``raw_payload``; once a mapping source is
-    selected it is not abandoned even if its event list is unusable. Within
-    the selected mapping, scan ``Events``/``events`` in source order, reject
-    non-finite/boolean/malformed GPS values, and return the first usable
+    Scans ``events`` in source order, rejecting non-mapping entries and
+    non-finite/boolean/malformed GPS values. Returns the first usable
     preferred event (``State``/``state`` == "preferred"), otherwise the first
-    usable event. When no event has a usable GPS time, falls back to the
-    gracedb-level ``preferred_event_gps`` then ``gps_time`` fields.
+    usable event.
     """
-    if not isinstance(metadata, Mapping):
-        return None
-
-    raw_payload = metadata.get("raw_payload")
-    locations = (metadata, raw_payload if isinstance(raw_payload, Mapping) else None)
-
-    gracedb = None
-    for location in locations:
-        if location is None:
-            continue
-        for key in ("GraceDB", "gracedb"):
-            candidate = location.get(key)
-            if isinstance(candidate, Mapping):
-                gracedb = candidate
-                break
-        if gracedb is not None:
-            break
-
-    if gracedb is None:
-        return None
-
-    events = gracedb.get("Events")
-    if not isinstance(events, list):
-        events = gracedb.get("events")
-    if not isinstance(events, list):
-        return None
-
     usable = []
     for event in events:
         if not isinstance(event, Mapping):
@@ -429,25 +398,75 @@ def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
 
         usable.append((event, gps))
 
-    if not usable:
-        gps = gracedb.get("preferred_event_gps")
-        if gps is None:
-            gps = gracedb.get("gps_time")
-        if gps is None:
-            return None
-        if isinstance(gps, bool):
-            return None
-        try:
-            gps = float(gps)
-        except (TypeError, ValueError, OverflowError):
-            return None
-        if not math.isfinite(gps):
-            return None
-        return gps
-
     for event, gps in usable:
         state_val = event.get("State") or event.get("state")
         if isinstance(state_val, str) and state_val.lower() == "preferred":
             return gps
 
     return usable[0][1] if usable else None
+
+
+def _gwflow_trigger_time_from_metadata(metadata) -> float | None:
+    """Return a finite trigger time from GraceDB metadata, or ``None``.
+
+    A valid top-level ``GraceDB``/``gracedb`` mapping takes precedence over
+    the corresponding mapping under ``raw_payload``; once a mapping source is
+    selected it is not abandoned even if its event list is unusable. Within
+    the selected mapping, scan ``Events``/``events`` in source order, reject
+    non-finite/boolean/malformed GPS values, and return the first usable
+    preferred event (``State``/``state`` == "preferred"), otherwise the first
+    usable event. When no event has a usable GPS time, falls back to the
+    gracedb-level ``preferred_event_gps`` then ``gps_time`` fields. When the
+    legacy mapping yields no trigger, falls back to the canonical
+    ``gracedb_events`` array (per-event ``gps_time``, same selection and
+    validation).
+    """
+    if not isinstance(metadata, Mapping):
+        return None
+
+    locations = []
+    seen = set()
+    current = metadata
+    while isinstance(current, Mapping) and id(current) not in seen:
+        seen.add(id(current))
+        locations.append(current)
+        current = current.get("raw_payload")
+
+    gracedb = None
+    for location in locations:
+        for key in ("GraceDB", "gracedb"):
+            candidate = location.get(key)
+            if isinstance(candidate, Mapping):
+                gracedb = candidate
+                break
+        if gracedb is not None:
+            break
+
+    if gracedb is not None:
+        events = gracedb.get("Events")
+        if not isinstance(events, list):
+            events = gracedb.get("events")
+        if isinstance(events, list):
+            trigger = _scan_events_for_trigger(events)
+            if trigger is not None:
+                return trigger
+
+        gps = gracedb.get("preferred_event_gps")
+        if gps is None:
+            gps = gracedb.get("gps_time")
+        if gps is not None:
+            if isinstance(gps, bool):
+                return None
+            try:
+                gps = float(gps)
+            except (TypeError, ValueError, OverflowError):
+                return None
+            if not math.isfinite(gps):
+                return None
+            return gps
+
+    canonical_events = metadata.get("gracedb_events")
+    if isinstance(canonical_events, list):
+        return _scan_events_for_trigger(canonical_events)
+
+    return None
