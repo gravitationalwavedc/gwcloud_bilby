@@ -14,7 +14,22 @@ class StageError(Exception):
     """Raised when a supporting file cannot be safely staged into the job tree."""
 
 
-_TRUTHY_PREFERRED = (True, "true", "True", "yes")
+def _is_truthy_portal_bool(value) -> bool:
+    """Normalise a portal boolean-like value to a real bool.
+
+    Portal payloads may carry boolean fields as strings (e.g. ``"true"`` /
+    ``"false"``), so a bare ``bool()`` would misclassify any non-empty string
+    as truthy. Treat ``"true"/"1"/"yes"`` (case-insensitive) as true and
+    everything else as false, mirroring
+    ``bilbyui.utils.gwflow_es._parse_portal_bool``.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes")
+    return bool(value)
+
+
 _HDF5_SUFFIXES = {".hdf5", ".h5"}
 
 
