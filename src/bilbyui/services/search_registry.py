@@ -18,9 +18,7 @@ GWFLOW_GROUPS = (
     "Identifiers and collections",
     "Parameter estimation and review",
     "GraceDB event and significance",
-    "Source classification and detector network",
     "Catalogue and detector characterisation",
-    "Specialist analyses, provenance, and notes",
     "Stable GWCloud envelope",
 )
 
