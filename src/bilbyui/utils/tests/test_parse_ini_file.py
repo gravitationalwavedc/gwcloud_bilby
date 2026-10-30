@@ -12,7 +12,7 @@ from django.test import override_settings
 from bilbyui.models import BilbyJob, EventID, IniKeyValue, _safe_json_loads
 from bilbyui.tests.test_utils import compare_ini_kvs, create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
-from bilbyui.utils.parse_ini_file import _safe_serialise, parse_ini_file, safe_json_dumps
+from bilbyui.utils.parse_ini_file import _normalise, _safe_serialise, parse_ini_file, safe_json_dumps
 
 # Reference to the real implementation so a patched safe_json_dumps can still
 # delegate to it for non-failing values in failure-isolation tests.
@@ -130,6 +130,18 @@ class TestSafeJsonDumps(BilbyTestCase):
             description="test job",
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
+
+    def test_mapping_key_stringification_collision_not_round_trippable(self):
+        # Two distinct keys that stringify to the same value collide: the
+        # later value overwrites the earlier, so the stored form cannot be
+        # reconstructed and round_trip must be False.
+        normalised, ok = _normalise({1: "a", "1": "b"})
+        self.assertEqual(normalised, {"1": "b"})
+        self.assertFalse(ok)
+
+        # A mapping without collisions remains round-trippable.
+        _, ok = _normalise({"a": 1, "b": 2})
+        self.assertTrue(ok)
 
     def test_matches_json_dumps_for_native_values(self):
         # Byte-identical output for every currently-serializable value.
