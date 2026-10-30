@@ -61,9 +61,12 @@ def _normalise(value):
         for key, item in value.items():
             normalised, item_ok = _normalise(item)
             ok = ok and item_ok
-            if str(key) != key:
+            str_key = str(key)
+            if str_key != key:
                 ok = False
-            out[str(key)] = normalised
+            if str_key in out:
+                ok = False
+            out[str_key] = normalised
         return out, ok
     if isinstance(value, (list, tuple)):
         out = []
