@@ -236,6 +236,25 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         self.assertNotIn("analyst@example.test", output)
         self.assertNotIn("reviewer@example.test", output)
 
+    def test_unknown_root_key_redacts_analyst_and_reviewer_email_addresses(self):
+        output = self.render(
+            {
+                "some_new_root": {
+                    "analysts": [{"name": "Analyst Name", "email_address": "analyst@example.test"}],
+                    "reviews": [
+                        {
+                            "name": "Scientific review",
+                            "reviewers": [{"name": "Reviewer Name", "email_address": "reviewer@example.test"}],
+                        }
+                    ],
+                }
+            }
+        )
+        self.assertIn("Analyst Name", output)
+        self.assertIn("Reviewer Name", output)
+        self.assertNotIn("analyst@example.test", output)
+        self.assertNotIn("reviewer@example.test", output)
+
     def test_pe_status_review_and_deprecated_use_existing_badge_markup(self):
         output = self.render(
             {
