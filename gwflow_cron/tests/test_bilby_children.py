@@ -401,6 +401,16 @@ class TestSelectBilbyAnalyses(unittest.TestCase):
                 False,
             ),
             (
+                "TL-6b whitespace-padded path",
+                [
+                    {"file_system": "OzStar", "path": " /ozstar/file ", "url": None},
+                    {"file_system": "CIT", "path": "/cit", "url": None},
+                ],
+                self.file_systems,
+                "/ozstar/file",
+                False,
+            ),
+            (
                 "TL-7 empty configured tuple",
                 [{"file_system": "OzStar", "path": "/ozstar", "url": None}],
                 (),
