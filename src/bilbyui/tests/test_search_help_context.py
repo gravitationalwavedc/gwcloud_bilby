@@ -27,7 +27,7 @@ class TestSearchHelpContext(SimpleTestCase):
             build_search_help("gwflow")["examples"],
             [
                 "sname:S2306*",
-                "review_statuses:pass",
+                "review_statuses:approved",
                 "snr:>10",
             ],
         )

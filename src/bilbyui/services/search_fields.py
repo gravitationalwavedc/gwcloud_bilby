@@ -48,12 +48,12 @@ SEARCH_FIELDS: tuple[dict[str, object], ...] = (
     _field(
         "gwflow",
         "_gwcloud.reviewStatuses",
-        "Current aggregate review status (`unstarted`, `ongoing`, `pass`, or `fail`).",
+        "Current review status (`pending`, `approved`, or `rejected`).",
         "Stable GWCloud envelope",
         1,
         advertised="review_statuses",
         visibility="common",
-        example="review_statuses:pass",
+        example="review_statuses:approved",
         type_hint="term",
     ),
     _field(

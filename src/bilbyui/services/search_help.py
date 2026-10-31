@@ -23,7 +23,7 @@ PLACEHOLDERS = {
 EXAMPLES = {
     "gwflow": [
         "sname:S2306*",
-        "review_statuses:pass",
+        "review_statuses:approved",
         "snr:>10",
     ],
     "bilby": [
