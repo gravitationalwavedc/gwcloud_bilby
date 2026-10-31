@@ -366,7 +366,10 @@ def _raw_label(key: str) -> str:
 
 def _node(path: str, label: str, value: Any, identity_keys: tuple[str, ...] = ()) -> DisclosureNode:
     if isinstance(value, Mapping):
-        children = tuple(_node(f"{path}.{key}", _raw_label(str(key)), child) for key, child in value.items())
+        children = tuple(
+            _node(f"{path}.{key}", _raw_label(str(key)), _disclosure_value(str(key), child))
+            for key, child in value.items()
+        )
         return DisclosureNode(
             path,
             label,
