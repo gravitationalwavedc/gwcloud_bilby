@@ -27,7 +27,7 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         presentation = build_metadata_presentation(payload, historical=historical)
         return render_to_string(
             self.template_name,
-            {"payload": payload, "presentation": presentation, "historical": historical},
+            {"payload": payload, "presentation": presentation},
         )
 
     def test_sections_render_in_canonical_order_and_absent_sections_are_omitted(self):
