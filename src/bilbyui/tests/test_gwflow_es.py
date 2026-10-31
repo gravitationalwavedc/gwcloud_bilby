@@ -103,6 +103,59 @@ class TestGWFlowESDocBuilder(BilbyTestCase):
         self.assertEqual(envelope["eventTriggerId"], "S150914a")
         self.assertEqual(envelope["reviewStatuses"], ["approved", "pending"])
 
+    def test_build_gwflow_es_doc_canonical_derives_review_status(self):
+        metadata = {
+            "analyses": [
+                {
+                    "uid": "pe-1",
+                    "type": "pe",
+                    "revision": "1",
+                    "name": "PE",
+                    "description": "",
+                    "status": "complete",
+                    "deprecated": False,
+                    "software": {"name": "bilby_pipe", "version": "1.2.3"},
+                    "analysts": [],
+                    "reviews": [{"review_status": "approved", "occurrence_uid": "r1"}],
+                    "input_files": [],
+                    "output_files": [],
+                    "configurations": [],
+                    "in_catalog": True,
+                }
+            ]
+        }
+
+        doc = build_gwflow_es_doc(self.job, metadata)
+
+        self.assertEqual(doc["_gwcloud"]["reviewStatuses"], ["approved"])
+
+    def test_build_gwflow_es_doc_canonical_pending_not_polluted_by_review_level(self):
+        metadata = {
+            "analyses": [
+                {
+                    "uid": "pe-1",
+                    "type": "pe",
+                    "revision": "1",
+                    "name": "PE",
+                    "description": "",
+                    "status": "complete",
+                    "deprecated": False,
+                    "software": {"name": "bilby_pipe", "version": "1.2.3"},
+                    "analysts": [],
+                    "reviews": [{"review_status": "approved", "occurrence_uid": "r1"}],
+                    "input_files": [],
+                    "output_files": [],
+                    "configurations": [],
+                    "in_catalog": True,
+                    "review_status": "pending",
+                }
+            ]
+        }
+
+        doc = build_gwflow_es_doc(self.job, metadata)
+
+        self.assertEqual(doc["_gwcloud"]["reviewStatuses"], ["pending"])
+
     def test_build_gwflow_es_doc_uses_own_trigger_time(self):
         self.job.event_id = None
         self.job.trigger_time = 100.0

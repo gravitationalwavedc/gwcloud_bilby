@@ -237,7 +237,7 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
     # Validate the canonical analyses boundary before the raw, lossless payload
     # is submitted to Elasticsearch. Absent/null analyses remain valid, while
     # any malformed present entry rejects the whole source record.
-    parse_analyses(validated)
+    analyses = parse_analyses(validated)
 
     # Reject lossy round-trips (e.g. tuples -> lists, non-string dict keys ->
     # strings) so the indexed metadata is deeply equal to the input.
@@ -256,7 +256,10 @@ def build_gwflow_es_doc(job, metadata: dict) -> dict:
     )
 
     try:
-        review_statuses = _collect_review_statuses(validated, job)
+        if analyses:
+            review_statuses = list({analysis["review_status"] for analysis in analyses})
+        else:
+            review_statuses = _collect_review_statuses(validated, job)
     except RecursionError as exc:
         raise InvalidGWFlowMetadata("metadata is too deeply nested") from exc
 
