@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from types import MappingProxyType
 from typing import Any, Literal
@@ -636,7 +636,7 @@ def _build_presentation(payload: Mapping[str, Any], *, historical: bool) -> Meta
 
     info = _build_info_section(payload)
     if info.summary or info.detail:
-        sections.append(info)
+        sections.append(replace(info, summary=()))
         root_summary.extend(info.summary)
 
     for section_id in SECTION_ORDER[1:]:

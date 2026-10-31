@@ -67,6 +67,15 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         ):
             self.assertNotIn(omitted, partial)
 
+    def test_info_summary_fields_render_once_in_root_summary_only(self):
+        """Info summary fields must not be duplicated in the Info section."""
+        payload = json.loads(CORPUS_FIXTURE.read_text())
+        output = self.render(payload)
+        for label in ("Superevent name", "Libraries", "Version number", "Recorded"):
+            with self.subTest(label=label):
+                self.assertEqual(output.count(label), 1, f"{label!r} should render exactly once")
+        self.assertNotIn("Key fields", output)
+
     def test_each_present_empty_collection_omits_only_its_own_section(self):
         """Exercise the present ``[]`` branch, distinct from absent selectors above."""
         populated = json.loads(CORPUS_FIXTURE.read_text())

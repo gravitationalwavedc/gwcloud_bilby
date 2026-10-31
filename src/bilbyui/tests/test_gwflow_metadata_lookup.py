@@ -18,15 +18,13 @@ class GWFlowMetadataLookupTests(SimpleTestCase):
 
     def test_libraries_are_presented_in_canonical_order(self):
         presentation = build_metadata_presentation({"libraries": ["o4b", "o4a"]})
-        info = next(section for section in presentation.sections if section.id == "info")
-        libraries = next(field for field in (*info.summary, *info.detail) if field.path == "info.libraries")
+        libraries = next(field for field in presentation.summary if field.path == "info.libraries")
         self.assertEqual(libraries.raw_value, ["o4a", "o4b"])
 
         for value in (["o4a"], [], None):
             with self.subTest(libraries=value):
                 presentation = build_metadata_presentation({"libraries": value})
-                info = next(section for section in presentation.sections if section.id == "info")
-                libraries = next(field for field in (*info.summary, *info.detail) if field.path == "info.libraries")
+                libraries = next(field for field in presentation.summary if field.path == "info.libraries")
                 expected = value
                 self.assertEqual(libraries.raw_value, expected)
 
