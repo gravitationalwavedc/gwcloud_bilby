@@ -33,6 +33,15 @@ NULLABLE_REGISTERED_CONTAINERS = {
     ),
 }
 FORMATTER_BY_PATH = {field.key: field.formatter for fields in FIELD_REGISTRY.values() for field in fields}
+DISCLOSED_ONLY_CONTAINERS = frozenset(
+    {
+        "analyses[].analysts",
+        "analyses[].reviews",
+        "analyses[].configurations",
+        "analyses[].input_files",
+        "analyses[].output_files",
+    }
+)
 
 
 class VisibleMetadataParser(HTMLParser):
@@ -96,6 +105,20 @@ def fixture_scalar_leaves(value, path="", atomic_paths=frozenset()):
             yield from fixture_scalar_leaves(child, f"{path}[]", atomic_paths)
         return
     yield path, value
+
+
+def disclosed_text_values(value, path=""):
+    if path in NON_DISPLAYED:
+        return
+    if isinstance(value, dict):
+        for key, child in value.items():
+            yield from disclosed_text_values(child, f"{path}.{key}" if path else str(key))
+        return
+    if isinstance(value, list):
+        for child in value:
+            yield from disclosed_text_values(child, f"{path}[]")
+        return
+    yield format_value(value, "text")
 
 
 def registered_owner(path):
@@ -205,6 +228,16 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
                         0,
                         f"{leaf_path} is not reachable in rendered HTML",
                     )
+                elif owner in DISCLOSED_ONLY_CONTAINERS:
+                    section = self.section_for(owner)
+                    concrete_path = f"{section}.{owner.replace('analyses[]', 'analyses[0]')}"
+                    self.assertGreater(
+                        parsed.paths[concrete_path],
+                        0,
+                        f"{leaf_path} is not reachable in rendered HTML",
+                    )
+                    for rendered in disclosed_text_values(value, owner):
+                        self.assertIn(rendered, parsed.text)
                 else:
                     section = self.section_for(owner)
                     presentation_path = f"{section}.{owner}"
@@ -227,7 +260,7 @@ class GWFlowMetadataRoundTripTests(SimpleTestCase):
         self.assertIn("Review 4", parsed.text)
         self.assertIn("Reviewer 4", parsed.text)
         self.assertIn("Canonical review 4", parsed.text)
-        self.assertIn("2026-08-04 12:00:00 UTC", parsed.text)
+        self.assertIn("2026-08-04T12:00:00Z", parsed.text)
         self.assertNotIn('class="sr-only">All items:', html)
         self.assertNotIn("<script>", html)
         self.assertIn("&lt;script&gt;", html)
