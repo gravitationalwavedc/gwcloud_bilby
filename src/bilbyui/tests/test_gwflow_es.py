@@ -832,3 +832,18 @@ class TestParseAnalysesCanonical(BilbyTestCase):
         entry = self._pe(reviews=[{"review_status": "approved", "occurrence_uid": "r1"}])
         [analysis] = parse_analyses({"analyses": [entry]})
         self.assertEqual(analysis["review_status"], "approved")
+
+    def test_review_status_is_derived_rejected_when_any_review_rejected(self):
+        entry = self._pe(
+            reviews=[
+                {"review_status": "approved", "occurrence_uid": "r1"},
+                {"review_status": "rejected", "occurrence_uid": "r2"},
+            ]
+        )
+        [analysis] = parse_analyses({"analyses": [entry]})
+        self.assertEqual(analysis["review_status"], "rejected")
+
+    def test_review_status_is_derived_pending_when_not_all_approved(self):
+        entry = self._pe(reviews=[{"review_status": "pending", "occurrence_uid": "r1"}])
+        [analysis] = parse_analyses({"analyses": [entry]})
+        self.assertEqual(analysis["review_status"], "pending")
