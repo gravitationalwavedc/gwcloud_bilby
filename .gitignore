@@ -8,6 +8,7 @@ __generated__
 local.py
 .coverage
 .coverage.*
+*.py,cover
 .DS_Store
 src/job_uploads/
 bundle/coverage.xml
