@@ -200,9 +200,7 @@ _PE_RESULT_FIELDS = (
     FieldSpec("analyses[].output_files", "Output files", "list", "disclosure"),
     FieldSpec("analyses[].in_catalog", "In catalog", "boolean", "disclosure"),
 )
-_PE_DISCLOSED_ONLY_KEYS = frozenset(
-    {"analysts", "reviews", "configurations", "input_files", "output_files"}
-)
+_PE_DISCLOSED_ONLY_KEYS = frozenset({"analysts", "reviews", "configurations", "input_files", "output_files"})
 _PE_COMPARATIVE_FIELDS = tuple(
     spec
     for spec in _PE_RESULT_FIELDS
