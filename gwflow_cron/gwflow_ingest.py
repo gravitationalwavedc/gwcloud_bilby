@@ -554,6 +554,11 @@ def phase_file_mirror(jc: Any = None, gwc_client: Any = None, con: sqlite3.Conne
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description="GWFlow ingest cron job")
     parser.add_argument("--backfill", action="store_true", help="Lift per-run caps for backfill mode")
+    parser.add_argument(
+        "--skip-file-mirror",
+        action="store_true",
+        help="Run metadata and Bilby reconciliation without the file-mirror phase.",
+    )
     return parser.parse_args(args)
 
 
@@ -602,7 +607,8 @@ def run(args=None):
 
         rejections = []
         rejections.extend(phase_metadata(gwc_client=gwc, con=con))
-        rejections.extend(phase_file_mirror(jc=jc, gwc_client=gwc, con=con) or [])
+        if not parsed.skip_file_mirror:
+            rejections.extend(phase_file_mirror(jc=jc, gwc_client=gwc, con=con) or [])
         rejections.extend(phase_bilby_children(gwc_client=gwc, jc=jc, con=con))
 
         con.close()
