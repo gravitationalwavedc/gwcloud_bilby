@@ -28,11 +28,6 @@ PE_COLUMNS = (
     "description",
     "software.name",
     "software.version",
-    "analysts",
-    "reviews",
-    "configurations",
-    "input_files",
-    "output_files",
     "in_catalog",
 )
 PE_DEFAULTS = {"uid", "name", "status", "review_status", "deprecated"}

@@ -229,7 +229,7 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
             "Canonical review description",
             "Reviewer Name",
             "✓ True",
-            "2026-08-31 12:00:00 UTC",
+            "2026-08-31T12:00:00Z",
             "approved",
         ):
             self.assertIn(expected, output)
@@ -282,12 +282,49 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         )
         self.assertEqual(output.count("<table"), 2)
         self.assertEqual(output.count("<caption>"), 2)
-        self.assertEqual(output.count('scope="col"'), 21)
+        self.assertEqual(output.count('scope="col"'), 16)
         self.assertEqual(output.count('role="region"'), 2)
         self.assertIn('aria-label="GraceDB events, 7-column comparison"', output)
         self.assertIn(
-            'aria-label="Parameter estimation results, 14-column comparison"',
+            'aria-label="Parameter estimation results, 9-column comparison"',
             output,
         )
         self.assertIn("GraceDB events comparison, 1 record", output)
         self.assertIn("Parameter estimation results comparison, 1 record", output)
+
+    def test_pe_complex_fields_render_once_in_disclosure_not_as_columns(self):
+        output = self.render(
+            {
+                "analyses": [
+                    {
+                        "uid": "pe_1",
+                        "type": "pe",
+                        "name": "PE",
+                        "status": "complete",
+                        "review_status": "approved",
+                        "deprecated": False,
+                        "analysts": [{"name": "Analyst Name", "email_address": "analyst@example.test"}],
+                        "reviews": [
+                            {
+                                "occurrence_uid": "review-occurrence-1",
+                                "name": "Scientific review",
+                                "passed_review": True,
+                                "reviewers": [{"name": "Reviewer Name", "email_address": "reviewer@example.test"}],
+                            }
+                        ],
+                        "configurations": [{"key": "config-1"}],
+                        "input_files": [{"key": "input-1"}],
+                        "output_files": [{"key": "output-1"}],
+                    }
+                ]
+            }
+        )
+        for complex_key in (
+            "analysts",
+            "reviews",
+            "configurations",
+            "input_files",
+            "output_files",
+        ):
+            self.assertNotIn(f'data-column-key="{complex_key}"', output)
+            self.assertIn(f"pe.analyses[0].{complex_key}", output)

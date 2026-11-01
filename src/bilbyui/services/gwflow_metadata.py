@@ -200,6 +200,14 @@ _PE_RESULT_FIELDS = (
     FieldSpec("analyses[].output_files", "Output files", "list", "disclosure"),
     FieldSpec("analyses[].in_catalog", "In catalog", "boolean", "disclosure"),
 )
+_PE_DISCLOSED_ONLY_KEYS = frozenset(
+    {"analysts", "reviews", "configurations", "input_files", "output_files"}
+)
+_PE_COMPARATIVE_FIELDS = tuple(
+    spec
+    for spec in _PE_RESULT_FIELDS
+    if spec.key.removeprefix("analyses[].").split(".", 1)[0] not in _PE_DISCLOSED_ONLY_KEYS
+)
 
 FIELD_REGISTRY: Mapping[str, tuple[FieldSpec, ...]] = MappingProxyType(
     {
@@ -553,7 +561,7 @@ def _build_section(section_id: str, source_key: str, value: Any) -> MetadataSect
             section_id,
             records,
             source_key,
-            _PE_RESULT_FIELDS,
+            _PE_COMPARATIVE_FIELDS,
             frozenset({"uid", "name", "status", "review_status", "deprecated"}),
         )
         if table is not None:
@@ -564,15 +572,7 @@ def _build_section(section_id: str, source_key: str, value: Any) -> MetadataSect
                 source_key,
                 indexed_records,
                 frozenset(spec.key.removeprefix(f"{source_key}[].").split(".", 1)[0] for spec in _PE_RESULT_FIELDS),
-                frozenset(
-                    {
-                        "analysts",
-                        "reviews",
-                        "configurations",
-                        "input_files",
-                        "output_files",
-                    }
-                ),
+                _PE_DISCLOSED_ONLY_KEYS,
             )
         )
     elif section_id == "detchar":
