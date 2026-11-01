@@ -33,7 +33,7 @@ from job_controller import ClusterOffline, JobControllerClient
 from libraries import normalise_libraries
 from portal import PortalClient, PortalMalformedResponseError
 
-_LINKED_JOBS_QUERY = "{ gwflowLinkedBilbyJobs(sname: $sname) { id gwflowAnalysisUid } }"
+_LINKED_JOBS_QUERY = "query Linked($sname: String!) { gwflowLinkedBilbyJobs(sname: $sname) { id gwflowAnalysisUid } }"
 
 
 logger = logging.getLogger("gwflow_ingest")
