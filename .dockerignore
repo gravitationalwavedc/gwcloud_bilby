@@ -1,3 +1,15 @@
 .git
 bundle
 src/staticfiles
+docker/db
+docker/es
+docker/logs
+src/react
+gwflow_cron
+gwosc_cron
+docs
+.agents
+.env
+.env.*
+*.sql
+*.sql.gz
