@@ -321,10 +321,11 @@ def _set_ini_label(ini_text: str, name: str) -> str:
     whitespace tolerant); otherwise prepends "label = {name}\\n".
     """
     pattern = re.compile(r"^label\s*=[^\n]*", re.MULTILINE | re.IGNORECASE)
-    replacement = f"label = {name}".replace("\\", "\\\\")
+    label_line = f"label = {name}"
+    replacement = label_line.replace("\\", "\\\\")
     if pattern.search(ini_text):
         return pattern.sub(replacement, ini_text, count=1)
-    return f"{replacement}\n{ini_text}"
+    return f"{label_line}\n{ini_text}"
 
 
 def synthesize_job_tree(workdir: Path, name: str, ini_text: str, result_files: list[Path]) -> Path:
