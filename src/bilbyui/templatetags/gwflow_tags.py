@@ -20,14 +20,20 @@ EMPTY_MAPPING = "Empty mapping"
 MISSING_VALUE = "—"
 
 _STATUS_LABELS = {
+    "approved": "Approved",
+    "cancelled": "Cancelled",
     "complete": "Complete",
     "completed": "Completed",
     "failed": "Failed",
+    "pending": "Pending",
     "processing": "Processing",
     "queued": "Queued",
     "ready": "Ready",
+    "rejected": "Rejected",
     "running": "Running",
+    "stuck": "Stuck",
     "submitted": "Submitted",
+    "unstarted": "Unstarted",
 }
 
 _SUPERSCRIPT = str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹")

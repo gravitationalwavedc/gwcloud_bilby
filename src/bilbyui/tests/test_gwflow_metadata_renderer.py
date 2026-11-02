@@ -251,7 +251,7 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
             }
         )
         self.assertRegex(output, r'<span class="badge badge-dark">\s*Complete\s*</span>')
-        self.assertRegex(output, r'<span class="badge badge-secondary">\s*approved\s*</span>')
+        self.assertRegex(output, r'<span class="badge badge-secondary">\s*Approved\s*</span>')
         self.assertRegex(output, r'<span class="badge badge-dark">\s*✓ True\s*</span>')
 
     def test_comparative_sets_render_accessible_real_tables(self):
