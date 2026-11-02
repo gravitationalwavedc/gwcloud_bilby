@@ -54,6 +54,29 @@ class TestRenderGWFlowMetadataSection(BilbyTestCase):
         self.assertContains(rendered, 'hx-target="#detail-pane"')
         self.assertContains(rendered, "Retry")
 
+    @mock.patch("bilbyui.views.get_superevent", return_value=(None, "malformed"))
+    def test_malformed_renders_async_error_with_metadata_retry(self, mock_get_superevent):
+        response, stale = _render_gwflow_metadata_section(self.request, self.job.sname)
+
+        mock_get_superevent.assert_called_once_with(self.job.sname)
+        self.assertFalse(stale)
+        self.assertEqual(response.template_name, "bilbyui/_async_state.html")
+        rendered = response.render()
+        self.assertEqual(rendered.status_code, 200)
+        self.assertContains(rendered, "async-error")
+        self.assertContains(rendered, 'role="alert"')
+        self.assertContains(rendered, '<span class="sr-only">Error:</span>')
+        self.assertContains(
+            rendered,
+            "Couldn't load the metadata because the service is temporarily unavailable.",
+        )
+        self.assertContains(
+            rendered,
+            f'hx-get="{reverse("bilbyui:gwflow_job_metadata", args=[self.job.sname])}"',
+        )
+        self.assertContains(rendered, 'hx-target="#detail-pane"')
+        self.assertContains(rendered, "Retry")
+
     @mock.patch(
         "bilbyui.views.get_superevent",
         return_value=({"gracedb": {"events": [{"uid": "E1", "pipeline": "gstlal"}]}}, "live"),

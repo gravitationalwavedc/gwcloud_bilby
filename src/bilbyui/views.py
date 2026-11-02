@@ -1802,7 +1802,7 @@ def _render_gwflow_metadata_section(request, sname):
     stale = state == "stale"
     if state == "failed":
         raise Http404("Metadata not found")
-    if state == "down":
+    if state in ("down", "malformed"):
         return (
             TemplateResponse(
                 request,
