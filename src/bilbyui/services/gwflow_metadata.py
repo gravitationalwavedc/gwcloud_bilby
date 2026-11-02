@@ -21,7 +21,6 @@ Tier = Literal["summary", "detail", "disclosure"]
 TIERS = frozenset({"summary", "detail", "disclosure"})
 FORMATTER_NAMES = frozenset(
     {
-        "boolean",
         "link",
         "list",
         "people",
@@ -189,7 +188,7 @@ _PE_RESULT_FIELDS = (
     FieldSpec("analyses[].name", "Name", "text", "detail"),
     FieldSpec("analyses[].status", "Status", "status", "detail"),
     FieldSpec("analyses[].review_status", "Review status", "status", "detail"),
-    FieldSpec("analyses[].deprecated", "Deprecated", "boolean", "detail"),
+    FieldSpec("analyses[].deprecated", "Deprecated", "text", "detail"),
     FieldSpec("analyses[].description", "Description", "text", "disclosure"),
     FieldSpec("analyses[].software.name", "Software name", "text", "disclosure"),
     FieldSpec("analyses[].software.version", "Software version", "text", "disclosure"),
@@ -198,7 +197,7 @@ _PE_RESULT_FIELDS = (
     FieldSpec("analyses[].configurations", "Configurations", "list", "disclosure"),
     FieldSpec("analyses[].input_files", "Input files", "list", "disclosure"),
     FieldSpec("analyses[].output_files", "Output files", "list", "disclosure"),
-    FieldSpec("analyses[].in_catalog", "In catalog", "boolean", "disclosure"),
+    FieldSpec("analyses[].in_catalog", "In catalog", "text", "disclosure"),
 )
 
 FIELD_REGISTRY: Mapping[str, tuple[FieldSpec, ...]] = MappingProxyType(
@@ -209,7 +208,7 @@ FIELD_REGISTRY: Mapping[str, tuple[FieldSpec, ...]] = MappingProxyType(
             FieldSpec("version_number", "Version number", "text", "summary"),
             FieldSpec("record_timestamp", "Recorded", "utc_timestamp", "summary"),
             FieldSpec("commit_sha", "Commit", "text", "detail"),
-            FieldSpec("is_current", "Current version", "boolean", "detail"),
+            FieldSpec("is_current", "Current version", "text", "detail"),
         ),
         "gracedb": _GRACEDB_EVENT_FIELDS,
         "pe": _PE_RESULT_FIELDS,

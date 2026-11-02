@@ -8,7 +8,6 @@ from bilbyui.templatetags.gwflow_tags import (
     EMPTY_LIST,
     EMPTY_MAPPING,
     FORMATTERS,
-    boolean,
     format_value,
     get_item,
     human_value,
@@ -122,11 +121,6 @@ class GwflowFormatterTests(SimpleTestCase):
 
     def test_person_without_name_uses_neutral_placeholder(self):
         self.assertEqual(person({"some_unrelated": "value"}), "Unnamed person")
-
-    def test_boolean_formats_both_values_and_preserves_zero(self):
-        self.assertEqual(boolean(True), "✓ True")
-        self.assertEqual(boolean(False), "✗ False")
-        self.assertEqual(boolean(0), "0")
 
     def test_probability_preserves_bounds_and_formats_decimal(self):
         self.assertEqual(probability(0), "0")
@@ -300,7 +294,6 @@ class GwflowFormatterTests(SimpleTestCase):
         self.assertEqual(
             set(FORMATTERS),
             {
-                "boolean",
                 "link",
                 "list",
                 "people",

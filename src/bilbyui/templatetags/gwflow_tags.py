@@ -65,13 +65,6 @@ def text(value: Any) -> str:
     return str(value)
 
 
-def boolean(value: Any) -> str:
-    presence = _presence_text(value)
-    if presence is not None:
-        return presence
-    return text(value)
-
-
 def utc_timestamp(value: Any) -> str:
     presence = _presence_text(value)
     if presence is not None:
@@ -301,7 +294,6 @@ def human_value(value: Any) -> str:
 
 
 FORMATTERS = {
-    "boolean": boolean,
     "link": link,
     "list": list_value,
     "people": people,
@@ -339,7 +331,6 @@ def sort_items(value):
 
 register.filter("human_value", human_value)
 register.filter("text", text)
-register.filter("boolean", boolean)
 register.filter("utc_timestamp", utc_timestamp)
 register.filter("person", person)
 register.filter("probability", probability)
