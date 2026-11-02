@@ -18,6 +18,14 @@ class TestParseArgs(unittest.TestCase):
         parsed = gwflow_ingest.parse_args(["--backfill"])
         self.assertTrue(parsed.backfill)
 
+    def test_skip_file_mirror_flag_true(self):
+        parsed = gwflow_ingest.parse_args(["--skip-file-mirror"])
+        self.assertTrue(parsed.skip_file_mirror)
+
+    def test_skip_file_mirror_flag_default_false(self):
+        parsed = gwflow_ingest.parse_args([])
+        self.assertFalse(parsed.skip_file_mirror)
+
 
 class TestLinkedJobsQuery(unittest.TestCase):
     def test_query_declares_sname_variable(self):
@@ -296,6 +304,38 @@ class TestIngestWiring(GWFlowTestBase):
                 patch.object(settings, "JOB_CONTROLLER_BUNDLE", "bundle"),
             ):
                 self.assertEqual(gwflow_ingest.run([]), 1)
+
+    @patch("gwflow_ingest.phase_file_mirror")
+    @patch("gwflow_ingest.phase_bilby_children")
+    @patch("gwflow_ingest.phase_metadata")
+    @patch("gwflow_ingest.JobControllerClient")
+    @patch("gwflow_ingest.GWCloud")
+    def test_skip_file_mirror_omits_only_file_phase(
+        self,
+        mock_gwc_cls,
+        mock_jc_cls,
+        mock_phase_metadata,
+        mock_phase_bilby,
+        mock_phase_file_mirror,
+    ):
+        mock_gwc_cls.return_value = MagicMock()
+        mock_jc_cls.return_value = MagicMock()
+        mock_phase_metadata.return_value = []
+        mock_phase_bilby.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_file = Path(tmpdir) / "gwflow.db"
+            with (
+                patch.object(settings, "DB_PATH", str(db_file)),
+                patch.object(settings, "GWCLOUD_TOKEN", "token"),
+                patch.object(settings, "JOB_CONTROLLER_JWT_SECRET", "secret"),
+                patch.object(settings, "JOB_CONTROLLER_BUNDLE", "bundle"),
+            ):
+                self.assertEqual(gwflow_ingest.run(["--skip-file-mirror"]), 0)
+
+        mock_phase_metadata.assert_called_once()
+        mock_phase_bilby.assert_called_once()
+        mock_phase_file_mirror.assert_not_called()
 
 
 if __name__ == "__main__":
