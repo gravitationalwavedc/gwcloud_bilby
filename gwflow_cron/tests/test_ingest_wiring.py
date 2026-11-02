@@ -19,6 +19,12 @@ class TestParseArgs(unittest.TestCase):
         self.assertTrue(parsed.backfill)
 
 
+class TestLinkedJobsQuery(unittest.TestCase):
+    def test_query_declares_sname_variable(self):
+        self.assertIn("query Linked($sname: String!)", gwflow_ingest._LINKED_JOBS_QUERY)
+        self.assertIn("gwflowLinkedBilbyJobs(sname: $sname)", gwflow_ingest._LINKED_JOBS_QUERY)
+
+
 class TestIngestWiring(GWFlowTestBase):
     @patch("gwflow_ingest.phase_file_mirror")
     @patch("gwflow_ingest.phase_bilby_children")
