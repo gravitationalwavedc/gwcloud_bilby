@@ -112,8 +112,16 @@ class TestGWFlowMapping(BilbyTestCase):
         fields = _flatten_properties(self.mapping["mappings"]["properties"])
         aliases = {path: definition["path"] for path, definition in fields.items() if definition.get("type") == "alias"}
         self.assertEqual(aliases, GWFLOW_ALIASES)
-        self.assertTrue(set(aliases.values()) <= fields.keys())
-        self.assertNotIn("pastro", aliases)
+        # Alias targets must be declared fields or live under a declared
+        # dynamic object (e.g. metadata.catalog_connections), which
+        # Elasticsearch maps from indexed documents.
+        for target in aliases.values():
+            if target in fields:
+                continue
+            parent = target.rsplit(".", 1)[0]
+            self.assertIn(parent, fields)
+            self.assertNotEqual(fields[parent].get("dynamic"), "strict")
+        self.assertIn("pastro", aliases)
 
     def test_search_trigger_time_is_explicit_double(self):
         gwcloud = self.mapping["mappings"]["properties"]["_gwcloud"]["properties"]

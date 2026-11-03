@@ -38,8 +38,8 @@ class TestSearchRegistry(SimpleTestCase):
             [
                 "sname",
                 "review_statuses",
-                "metadata.analyses.configurations.waveform_approximant",
                 "snr",
+                "far",
             ],
         )
         self.assertEqual(
@@ -69,15 +69,15 @@ class TestSearchRegistry(SimpleTestCase):
         for alias, path in (
             ("snr", "metadata.gracedb_events.network_snr"),
             ("instruments", "metadata.detector_configurations.uid"),
-            ("far", "metadata.gracedb_events.far"),
-            ("pipeline", "metadata.gracedb_events.pipeline"),
+            ("far", "metadata.catalog_connections.far"),
+            ("pastro", "metadata.catalog_connections.p_astro"),
         ):
             with self.subTest(alias=alias):
                 self.assertEqual(documented_alias_path(by_advertised[alias]), path)
         for internal in ("sname", "libraries", "review_statuses", "is_pruned"):
             with self.subTest(internal=internal):
                 self.assertIsNone(documented_alias_path(by_advertised[internal]))
-        self.assertIsNone(documented_alias_path(by_advertised["metadata.analyses.configurations.waveform_approximant"]))
+        self.assertIsNone(documented_alias_path(by_advertised["metadata.analyses.uid"]))
 
     def test_seven_gwflow_aliases_map_to_canonical_envelope_paths(self):
         expected = {

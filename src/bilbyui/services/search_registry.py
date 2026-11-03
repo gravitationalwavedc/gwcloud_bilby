@@ -98,8 +98,8 @@ GWFLOW_ALIASES: dict[str, str] = {
     "last_updated_time": "_gwcloud.lastUpdatedTime",
     "is_pruned": "_gwcloud.isPruned",
     "snr": "metadata.gracedb_events.network_snr",
-    "far": "metadata.gracedb_events.far",
-    "pipeline": "metadata.gracedb_events.pipeline",
+    "far": "metadata.catalog_connections.far",
+    "pastro": "metadata.catalog_connections.p_astro",
     "instruments": "metadata.detector_configurations.uid",
 }
 
@@ -117,10 +117,7 @@ _DEFAULT_FIELD = [
     "metadata.analyses.review_status",
     "metadata.analyses.type",
     "metadata.gracedb_events.event_name",
-    "metadata.gracedb_events.pipeline",
-    "metadata.gracedb_events.state",
     "metadata.detector_configurations.uid",
-    "metadata.detector_configurations.name",
     "metadata.sname",
     "metadata.commit_sha",
 ]
