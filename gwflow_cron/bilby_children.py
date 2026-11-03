@@ -134,7 +134,7 @@ def _select_location(sname, uid, role, file_data, file_systems, index):
             return None, _rejection(sname, uid, "file location malformed", role=role, index=index)
         available.add(file_system)
         if file_system in ranks and path.strip():
-            ranked.append((ranks[file_system], path, (0, "") if url is None else (1, url), path))
+            ranked.append((ranks[file_system], path))
 
     if not ranked:
         return None, _rejection(
@@ -145,7 +145,7 @@ def _select_location(sname, uid, role, file_data, file_systems, index):
             file_systems=sorted(available),
             index=index,
         )
-    return min(ranked)[3], None
+    return min(ranked)[1], None
 
 
 def _select_file(sname, uid, role, relationship, file_systems, index):
