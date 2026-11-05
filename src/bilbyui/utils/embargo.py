@@ -10,7 +10,6 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import (
     Case,
-    FloatField,
     IntegerField,
     OuterRef,
     Q,
