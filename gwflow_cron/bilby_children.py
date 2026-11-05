@@ -15,6 +15,7 @@ class StageError(Exception):
 
 
 _TRUTHY_PREFERRED = (True, "true", "True", "yes")
+_PORTAL_BOOL_STRINGS = ("true", "1", "yes", "false", "0", "no")
 _HDF5_SUFFIXES = {".hdf5", ".h5"}
 
 
@@ -71,8 +72,10 @@ def _check_pe_fields(sname, analysis, index):
     if status not in _SUPPORTED_STATUSES:
         return _rejection(sname, uid, "status missing or unsupported", index=index)
 
-    if not isinstance(analysis.get("deprecated"), bool):
-        return _rejection(sname, uid, "deprecated missing or not a boolean", index=index)
+    deprecated = analysis.get("deprecated")
+    if not isinstance(deprecated, bool):
+        if not (isinstance(deprecated, str) and deprecated.strip().lower() in _PORTAL_BOOL_STRINGS):
+            return _rejection(sname, uid, "deprecated missing or not a boolean", index=index)
 
     if "software" not in analysis:
         return _rejection(sname, uid, "software missing", index=index)

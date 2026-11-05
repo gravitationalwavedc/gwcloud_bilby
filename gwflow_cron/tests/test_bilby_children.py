@@ -215,6 +215,26 @@ class TestSelectBilbyAnalyses(unittest.TestCase):
                 self.assertEqual(len(rejected), 1)
                 self.assertIn(field, rejected[0].reason)
 
+    def test_te_11b_deprecated_accepts_portal_string_booleans(self):
+        accepted = [True, False, "true", "false", "1", "0", "yes", "no", "TRUE", "False", " yes "]
+        for value in accepted:
+            with self.subTest(value=value):
+                detail = self.detail()
+                detail["analyses"][0]["deprecated"] = value
+                selected, rejected = self.select(detail)
+                self.assertEqual(len(selected), 1)
+                self.assertEqual(rejected, [])
+
+        rejected = [None, 1, 0, "banana", "maybe"]
+        for value in rejected:
+            with self.subTest(value=value):
+                detail = self.detail()
+                detail["analyses"][0]["deprecated"] = value
+                selected, rejected = self.select(detail)
+                self.assertEqual(selected, [])
+                self.assertEqual(len(rejected), 1)
+                self.assertIn("deprecated", rejected[0].reason)
+
     def test_te_12_event_validation_is_ignored(self):
         detail = build_superevent("S000001a")
         detail["analyses"] = [detail["analyses"][1]]
