@@ -23,6 +23,7 @@ class TestEditJobText(BilbyTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'name="name"')
+        self.assertContains(response, 'maxlength="255"')
         self.assertContains(response, "hx-post")
         self.assertContains(response, "save-button")
 
