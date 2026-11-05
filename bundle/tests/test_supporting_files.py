@@ -188,6 +188,48 @@ class TestSupportingFiles(TestCase):
                 },
             )
 
+    def test_psd4(self):
+        token = str(uuid.uuid4())
+        self.responses.add(
+            responses.GET,
+            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            body=(Path(__file__).parent.resolve() / "data/psd.txt").read_bytes(),
+            status=200,
+        )
+
+        token2 = str(uuid.uuid4())
+        self.responses.add(
+            responses.GET,
+            f"https://gwcloud.org.au/bilby/file_download/?fileId={token2}",
+            body=(Path(__file__).parent.resolve() / "data/psd.txt").read_bytes(),
+            status=200,
+        )
+
+        supporting_files = [
+            {"type": "psd", "key": None, "file_name": "shared.psd", "token": token},
+            {"type": "psd", "key": "V1", "file_name": "v1.psd", "token": token2},
+        ]
+
+        from core.submit import bilby_ini_to_args, prepare_supporting_files
+
+        with TemporaryDirectory() as working_directory, cd(working_directory):
+            args = bilby_ini_to_args(self.ini_file_v1)
+            prepare_supporting_files(args, supporting_files, working_directory)
+
+            for supporting_file in supporting_files:
+                self.assertTrue(
+                    (
+                        Path(working_directory)
+                        / "supporting_files"
+                        / supporting_file["type"]
+                        / supporting_file["file_name"]
+                    ).is_file()
+                )
+
+            args = self.perform_ini_save_load_cycle(args)
+
+            self.assertDictEqual(args.psd_dict, {"V1": "./supporting_files/psd/v1.psd"})
+
     def test_cal1(self):
         token = str(uuid.uuid4())
         self.responses.add(

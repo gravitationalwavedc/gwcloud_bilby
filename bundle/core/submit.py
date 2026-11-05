@@ -153,7 +153,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
             #     bilby_args.psd_dict = {}
             # bilby_args.psd_dict[key] = relative_path_to_psd_file
 
-            if not getattr(bilby_args, file_type_map[supporting_file["type"]]):
+            if not isinstance(getattr(bilby_args, file_type_map[supporting_file["type"]]), dict):
                 setattr(bilby_args, file_type_map[supporting_file["type"]], {})
 
             getattr(bilby_args, file_type_map[supporting_file["type"]])[supporting_file["key"]] = (
