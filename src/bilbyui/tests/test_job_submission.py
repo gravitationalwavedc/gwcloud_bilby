@@ -662,7 +662,7 @@ class TestJobSubmission(BilbyTestCase):
         )
 
         # Now create the event id, and check that creating the job succeeds
-        EventID.create(event_id="GW123456_123456", gps_time=1234.1234)
+        EventID.objects.create(event_id="GW123456_123456", gps_time=1234.1234)
 
         response = self.query(mutation, input_data=params["input"])
 
@@ -681,7 +681,7 @@ class TestJobSubmission(BilbyTestCase):
         self.addCleanup(reset_embargo_start_cache)
         mock_api_call.return_value = {"jobId": 4321}
 
-        EventID.create(
+        EventID.objects.create(
             event_id="GW150914_123456",
             gps_time=100.0,
             trigger_id="S123456a",
@@ -1167,7 +1167,7 @@ class TestCreateBilbyJob(BilbyTestCase):
 
     @patch.object(BilbyJob, "submit")
     def test_success_path_with_existing_event_id(self, mock_submit):
-        EventID.create(event_id="GW123456_123456", gps_time=1234.1234)
+        EventID.objects.create(event_id="GW123456_123456", gps_time=1234.1234)
 
         params = _make_params()
         params.data.event_id = "GW123456_123456"

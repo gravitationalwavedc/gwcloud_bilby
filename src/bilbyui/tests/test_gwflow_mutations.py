@@ -131,7 +131,7 @@ class TestGWFlowMutations(BilbyTestCase):
     def test_upsert_gwflow_job_create_and_update(self):
         self._auth_as(self.ingest_user)
 
-        event = EventID.create(
+        event = EventID.objects.create(
             event_id="GW230601_123456",
             gps_time=123456789.0,
             trigger_id="S230601ag",
@@ -1465,12 +1465,12 @@ class TestExactVersionIngest(BilbyTestCase):
 
         from bilbyui.views import upsert_gwflow_job
 
-        event = EventID.create(
+        event = EventID.objects.create(
             event_id="GW230601_123456",
             gps_time=123456789.0,
             trigger_id="S230601a",
         )
-        EventID.create(
+        EventID.objects.create(
             event_id="GW230601_999999",
             gps_time=123456999.0,
             trigger_id="S230601b",
@@ -1546,12 +1546,12 @@ class TestExactVersionIngest(BilbyTestCase):
 
         from bilbyui.views import upsert_gwflow_job
 
-        event = EventID.create(
+        event = EventID.objects.create(
             event_id="GW230601_123456",
             gps_time=123456789.0,
             trigger_id="S230601a",
         )
-        other_event = EventID.create(
+        other_event = EventID.objects.create(
             event_id="GW230601_999999",
             gps_time=123456999.0,
             trigger_id="S230601c",
@@ -2093,7 +2093,7 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_event_link_change_registers_one_reindex_callback(self):
         """GWF-9 rule 2: an exact-owner link change schedules one reindex."""
-        event = EventID.create(
+        event = EventID.objects.create(
             event_id="GW230801_123456",
             trigger_id="S230801d",
             gps_time=123.0,
@@ -2112,7 +2112,7 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_combined_trigger_and_link_change_registers_exactly_one_reindex(self):
         """GWF-9 rules 1–2: coherent trigger and owner-link changes reindex once."""
-        event = EventID.create(
+        event = EventID.objects.create(
             event_id="GW230801_654321",
             trigger_id="S230801e",
             gps_time=456.0,
@@ -2136,7 +2136,7 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
     @override_settings(GWFLOW_INGEST_USER=99)
     def test_unchanged_trigger_and_link_register_no_reindex_callback(self):
         """GWF-9 rules 1–2: unchanged resolved trigger and owner link do not reindex."""
-        event = EventID.create(
+        event = EventID.objects.create(
             event_id="GW230801_111111",
             trigger_id="S230801f",
             gps_time=789.0,
@@ -2177,12 +2177,12 @@ class TestGWFlowTriggerReindexCallbacks(BilbyTestCase):
     def test_older_delivery_registers_no_callbacks_and_preserves_state(self):
         import datetime
 
-        event = EventID.create(
+        event = EventID.objects.create(
             event_id="GW230801_222222",
             trigger_id="S230801d",
             gps_time=321.0,
         )
-        replacement = EventID.create(
+        replacement = EventID.objects.create(
             event_id="GW230801_333333",
             trigger_id="S230801e",
             gps_time=654.0,

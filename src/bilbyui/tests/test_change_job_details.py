@@ -87,7 +87,7 @@ class TestChangeJobDetails(BilbyTestCase):
         """
         Change details mutation should deny a non-LIGO user from linking their job to an embargoed LIGO event.
         """
-        EventID.create(
+        EventID.objects.create(
             event_id="GW150914_123456",
             gps_time=100.0,
             trigger_id="S123456a",

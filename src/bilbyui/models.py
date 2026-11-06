@@ -142,18 +142,6 @@ class EventID(models.Model):
     def visible_to(cls, user):
         return visible_to_user(cls.objects.all(), user, "EventID")
 
-    @classmethod
-    def create(cls, event_id, gps_time=None, trigger_id=None, nickname=None):
-        event = cls(
-            event_id=event_id,
-            trigger_id=trigger_id,
-            nickname=nickname,
-            gps_time=gps_time,
-        )
-        event.clean_fields()  # Validate IDs
-        event.save()
-        return event
-
     def update(self, gps_time=UNSET, trigger_id=None, nickname=None):
         if gps_time is not UNSET:
             self.gps_time = gps_time

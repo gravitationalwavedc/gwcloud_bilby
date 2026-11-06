@@ -991,23 +991,23 @@ class TestTriggerTimeAndGpsTimeSchema(BilbyTestCase):
         self.assertEqual(event_val.gps_time, 123456789.0)
 
     def test_event_id_create_helper(self):
-        # Test EventID.create with explicit gps_time=None
-        event_explicit_none = EventID.create(
+        # Test EventID.objects.create with explicit gps_time=None
+        event_explicit_none = EventID.objects.create(
             event_id="GW123456_000003",
             gps_time=None,
         )
         event_explicit_none.refresh_from_db()
         self.assertIsNone(event_explicit_none.gps_time)
 
-        # Test EventID.create with omitted gps_time (default parameter)
-        event_omitted = EventID.create(
+        # Test EventID.objects.create with omitted gps_time (default parameter)
+        event_omitted = EventID.objects.create(
             event_id="GW123456_000004",
         )
         event_omitted.refresh_from_db()
         self.assertIsNone(event_omitted.gps_time)
 
-        # Test EventID.create with non-null value
-        event_val = EventID.create(
+        # Test EventID.objects.create with non-null value
+        event_val = EventID.objects.create(
             event_id="GW123456_000005",
             gps_time=987654321.0,
         )

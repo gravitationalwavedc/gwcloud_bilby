@@ -90,32 +90,32 @@ class TestEventIDCreation(BilbyTestCase):
         self.assertEqual(event.gps_time, self.params["input"]["gpsTime"])
 
     def test_valid_legacy_event_id(self):
-        event = EventID.create(event_id="GW150914", gps_time=1126259462.391)
+        event = EventID.objects.create(event_id="GW150914", gps_time=1126259462.391)
         event.clean_fields()
         self.assertEqual(event.event_id, "GW150914")
         self.assertEqual(event.gps_time, 1126259462.391)
 
     def test_valid_canonical_event_id(self):
-        event = EventID.create(event_id="GW150914_095045", gps_time=1126259462.391)
+        event = EventID.objects.create(event_id="GW150914_095045", gps_time=1126259462.391)
         event.clean_fields()
         self.assertEqual(event.event_id, "GW150914_095045")
         self.assertEqual(event.gps_time, 1126259462.391)
 
     def test_valid_gracedb_event_id(self):
-        event = EventID.create(event_id="G409107", gps_time=1234567890.0)
+        event = EventID.objects.create(event_id="G409107", gps_time=1234567890.0)
         event.clean_fields()
         self.assertEqual(event.event_id, "G409107")
         self.assertEqual(event.gps_time, 1234567890.0)
 
     def test_valid_legacy_trigger_id(self):
-        event = EventID.create(event_id="GW123456", trigger_id="G184098", gps_time=1126259462.391)
+        event = EventID.objects.create(event_id="GW123456", trigger_id="G184098", gps_time=1126259462.391)
         event.clean_fields()
         self.assertEqual(event.event_id, "GW123456")
         self.assertEqual(event.trigger_id, "G184098")
         self.assertEqual(event.gps_time, 1126259462.391)
 
     def test_valid_superevent_trigger_id(self):
-        event = EventID.create(event_id="GW123456_123456", trigger_id="S230601ag", gps_time=1234567890.0)
+        event = EventID.objects.create(event_id="GW123456_123456", trigger_id="S230601ag", gps_time=1234567890.0)
         event.clean_fields()
         self.assertEqual(event.event_id, "GW123456_123456")
         self.assertEqual(event.trigger_id, "S230601ag")
@@ -660,15 +660,15 @@ class TestEventIDPermissions(BilbyTestCase):
 @override_settings(EMBARGO_START_TIME=100.0)
 class TestEventIDGetByEventId(BilbyTestCase):
     def setUp(self):
-        self.null_event = EventID.create(
+        self.null_event = EventID.objects.create(
             event_id="GW123456_123456",
             gps_time=None,
         )
-        self.public_event = EventID.create(
+        self.public_event = EventID.objects.create(
             event_id="GW123456_654321",
             gps_time=99.0,
         )
-        self.threshold_event = EventID.create(
+        self.threshold_event = EventID.objects.create(
             event_id="GW654321_123456",
             gps_time=100.0,
         )
@@ -703,15 +703,15 @@ class TestEventIDGetByEventId(BilbyTestCase):
 @override_settings(EMBARGO_START_TIME=100.0)
 class TestEventIDVisibleTo(BilbyTestCase):
     def setUp(self):
-        self.null_event = EventID.create(
+        self.null_event = EventID.objects.create(
             event_id="GW123456_123456",
             gps_time=None,
         )
-        self.public_event = EventID.create(
+        self.public_event = EventID.objects.create(
             event_id="GW123456_654321",
             gps_time=99.0,
         )
-        self.threshold_event = EventID.create(
+        self.threshold_event = EventID.objects.create(
             event_id="GW654321_123456",
             gps_time=100.0,
         )

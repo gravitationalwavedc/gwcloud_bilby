@@ -106,9 +106,9 @@ class TestElasticSearch(BilbyTestCase):
 
     @mock.patch("bilbyui.models.request_lookup_users", side_effect=request_lookup_users_mock)
     def test_build_bilby_es_doc_preserves_document_shape(self, lookup_users_mock):
-        event_id = EventID.create(
-            "GW123456_123456",
-            12345678,
+        event_id = EventID.objects.create(
+            event_id="GW123456_123456",
+            gps_time=12345678,
             trigger_id="S123456a",
             nickname="Test Nick",
         )
@@ -322,9 +322,9 @@ class TestElasticSearch(BilbyTestCase):
         label1 = Label.objects.create(name="label 1", description="my label 1", protected=True)
         label2 = Label.objects.create(name="label 2", description="my label 2", protected=False)
 
-        event_id = EventID.create(
-            "GW123456_123456",
-            12345678,
+        event_id = EventID.objects.create(
+            event_id="GW123456_123456",
+            gps_time=12345678,
             trigger_id="S123456a",
             nickname="Test Nick",
         )
@@ -486,9 +486,9 @@ class TestElasticSearch(BilbyTestCase):
         """
         Test that updating an event id schedules the related-job reindex fan-out.
         """
-        event_id = EventID.create(
-            "GW123456_123456",
-            12345678,
+        event_id = EventID.objects.create(
+            event_id="GW123456_123456",
+            gps_time=12345678,
             trigger_id="S123456a",
             nickname="Test Nick",
         )
@@ -751,9 +751,9 @@ class TestElasticSearch(BilbyTestCase):
         Test that the EventID post_save signal triggers reindex fan-out on commit, and performs no
         ES write or fan-out when the surrounding transaction rolls back
         """
-        event_id = EventID.create(
-            "GW123456_123456",
-            12345678,
+        event_id = EventID.objects.create(
+            event_id="GW123456_123456",
+            gps_time=12345678,
             trigger_id="S123456a",
             nickname="Test Nick",
         )

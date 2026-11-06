@@ -8,7 +8,7 @@ from bilbyui.tests.testcases import BilbyTestCase
 class TestEditJobEventId(BilbyTestCase):
     def setUp(self):
         self.authenticate()
-        self.event = EventID.create(
+        self.event = EventID.objects.create(
             event_id="GW150914_123456",
             gps_time=1126259462.391,
             trigger_id="S123456a",
