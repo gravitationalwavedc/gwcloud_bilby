@@ -1122,6 +1122,10 @@ def _create_event_id_guarded(event_id, gps_time, trigger_id=None, nickname=None)
         if trigger_id:
             existing_owner = EventID.objects.filter(trigger_id=trigger_id).order_by("id").first()
             if existing_owner is not None:
+                if not existing_owner.nickname and nickname:
+                    existing_owner.nickname = nickname
+                    existing_owner.clean_fields()
+                    existing_owner.save(update_fields=["nickname"])
                 return (
                     existing_owner,
                     f"EventID {existing_owner.event_id} already owns trigger "

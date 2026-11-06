@@ -439,6 +439,27 @@ class TestEventIDCollisionGuard(BilbyTestCase):
         self.assertEqual(EventID.objects.filter(trigger_id="S230518h").count(), 1)
         self.assertFalse(EventID.objects.filter(event_id="G407378").exists())
 
+    def test_reused_superevent_owner_backfills_requested_nickname(self):
+        existing = EventID.objects.create(
+            event_id="GW230518_125908",
+            trigger_id="S230518h",
+            gps_time=1368449966.2,
+        )
+
+        resolved, message = _create_event_id_guarded(
+            "G407378",
+            1368449966.166504,
+            trigger_id="S230518h",
+            nickname="backfilled-nickname",
+        )
+
+        self.assertEqual(resolved, existing)
+        self.assertIn("already owns trigger", message)
+        existing.refresh_from_db()
+        self.assertEqual(existing.nickname, "backfilled-nickname")
+        self.assertEqual(EventID.objects.filter(trigger_id="S230518h").count(), 1)
+        self.assertFalse(EventID.objects.filter(event_id="G407378").exists())
+
     def test_same_owner_is_idempotent_and_empty_fields_backfill(self):
         existing = EventID.objects.create(
             event_id="G700010",
