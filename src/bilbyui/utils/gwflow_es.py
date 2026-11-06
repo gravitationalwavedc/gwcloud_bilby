@@ -158,14 +158,14 @@ def _parse_analysis(entry, index):
                 raise InvalidGWFlowMetadata(f"{where}.software.{field} must be a string")
 
     if analysis_type == "pe":
-        if not isinstance(entry.get("in_catalog"), bool):
-            raise InvalidGWFlowMetadata(f"{where}.in_catalog must be a boolean for a pe analysis")
+        in_catalog = _parse_portal_bool(entry.get("in_catalog"))
     else:
         suggested = entry.get("suggested_detector_configuration_uids")
         if not isinstance(suggested, list):
             raise InvalidGWFlowMetadata(
                 f"{where}.suggested_detector_configuration_uids must be an array for an event_validation analysis"
             )
+        in_catalog = False
 
     reviews = []
     for review_index, review in enumerate(entry["reviews"]):
@@ -203,7 +203,7 @@ def _parse_analysis(entry, index):
         "input_files": entry["input_files"],
         "output_files": entry["output_files"],
         "configurations": entry["configurations"],
-        "in_catalog": entry.get("in_catalog") if analysis_type == "pe" else False,
+        "in_catalog": in_catalog,
         "suggested_detector_configuration_uids": (
             entry.get("suggested_detector_configuration_uids") if analysis_type == "event_validation" else []
         ),

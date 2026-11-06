@@ -263,7 +263,6 @@ class TestGoldenDocument(BilbyTestCase):
             ("software", "bilby", ".software must be an object or null"),
             ("software.name", None, ".software.name must be a string"),
             ("software.version", 1, ".software.version must be a string"),
-            ("in_catalog", None, ".in_catalog must be a boolean"),
             ("review", "approved", ".reviews[0] must be an object"),
             ("review.review_status", "unknown", ".reviews[0].review_status is not canonical"),
             ("review_status", "unknown", ".review_status is not canonical"),
@@ -288,6 +287,16 @@ class TestGoldenDocument(BilbyTestCase):
 
                 with self.assertRaisesRegex(InvalidGWFlowMetadata, message.replace("[", r"\[").replace("]", r"\]")):
                     build_gwflow_es_doc(job, detail)
+
+    def test_document_accepts_portal_string_boolean_in_catalog(self):
+        from bilbyui.utils.gwflow_es import parse_analyses
+
+        for raw, expected in (("false", False), ("true", True), ("1", True), ("yes", True)):
+            with self.subTest(raw=raw):
+                detail = golden_detail()
+                detail["analyses"][0]["in_catalog"] = raw
+                analyses = parse_analyses(detail)
+                self.assertIs(analyses[0]["in_catalog"], expected)
 
     def test_document_rejects_missing_required_analysis_fields_together(self):
         from bilbyui.utils.gwflow_es import InvalidGWFlowMetadata
