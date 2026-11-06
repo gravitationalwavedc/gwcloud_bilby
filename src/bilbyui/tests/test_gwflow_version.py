@@ -1352,6 +1352,8 @@ class GWFlowDiffReviewIdentityTestCase(SemanticDiffTestMixin, BilbyTestCase):
             ("pending", None),
             ("approved", True),
             ("rejected", False),
+            ("approved", "true"),
+            ("rejected", "false"),
         )
         for review_status, passed_review in valid_decisions:
             with self.subTest(

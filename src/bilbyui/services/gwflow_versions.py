@@ -157,8 +157,9 @@ def _validate_review_record(value: Any, occurrence_uid: str) -> bool:
         if not all(isinstance(reviewer[field], str) for field in _REVIEWER_KEYS):
             return False
 
-    if value["passed_review"] is not None and not isinstance(value["passed_review"], bool):
-        return False
+    passed_review = value["passed_review"]
+    if passed_review is not None:
+        passed_review = _parse_portal_bool(passed_review)
     if value["completion_date"] is not None and not isinstance(value["completion_date"], str):
         return False
     review_status = value["review_status"]
@@ -170,7 +171,7 @@ def _validate_review_record(value: Any, occurrence_uid: str) -> bool:
         "approved": True,
         "rejected": False,
     }[review_status]
-    return value["passed_review"] is expected_decision
+    return passed_review is expected_decision
 
 
 def _validate_gracedb_record(value: Any) -> bool:
