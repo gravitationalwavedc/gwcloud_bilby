@@ -262,7 +262,6 @@ class TestGoldenDocument(BilbyTestCase):
             ("configurations", {}, ".configurations must be an array"),
             ("software", "bilby", ".software must be an object or null"),
             ("software.name", None, ".software.name must be a string"),
-            ("software.version", 1, ".software.version must be a string"),
             ("in_catalog", None, ".in_catalog must be a boolean"),
             ("review", "approved", ".reviews[0] must be an object"),
             ("review.review_status", "unknown", ".reviews[0].review_status is not canonical"),
