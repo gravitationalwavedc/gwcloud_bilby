@@ -153,9 +153,8 @@ def _parse_analysis(entry, index):
     if software is not None:
         if not isinstance(software, dict):
             raise InvalidGWFlowMetadata(f"{where}.software must be an object or null")
-        for field in ("name", "version"):
-            if not isinstance(software.get(field), str):
-                raise InvalidGWFlowMetadata(f"{where}.software.{field} must be a string")
+        if not isinstance(software.get("name"), str):
+            raise InvalidGWFlowMetadata(f"{where}.software.name must be a string")
 
     if analysis_type == "pe":
         if not isinstance(entry.get("in_catalog"), bool):

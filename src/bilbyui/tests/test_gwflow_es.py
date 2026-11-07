@@ -820,6 +820,22 @@ class TestParseAnalysesCanonical(BilbyTestCase):
         [analysis] = parse_analyses({"analyses": [self._pe(software=None)]})
         self.assertIsNone(analysis["software"])
 
+    def test_software_without_version_is_accepted(self):
+        [analysis] = parse_analyses({"analyses": [self._pe(software={"name": "bilby"})]})
+        self.assertEqual(analysis["software"], {"name": "bilby"})
+
+    def test_software_with_non_string_version_is_accepted(self):
+        [analysis] = parse_analyses({"analyses": [self._pe(software={"name": "bilby", "version": 1})]})
+        self.assertEqual(analysis["software"], {"name": "bilby", "version": 1})
+
+    def test_software_non_dict_is_rejected(self):
+        with self.assertRaises(InvalidGWFlowMetadata):
+            parse_analyses({"analyses": [self._pe(software="bilby")]})
+
+    def test_software_missing_name_is_rejected(self):
+        with self.assertRaises(InvalidGWFlowMetadata):
+            parse_analyses({"analyses": [self._pe(software={"version": "1.2.3"})]})
+
     def test_legacy_section_keys_are_not_consumed(self):
         legacy = {"ParameterEstimation": {"results": [{"uid": "pe-legacy", "review_status": "approved"}]}}
         self.assertEqual(parse_analyses(legacy), [])
