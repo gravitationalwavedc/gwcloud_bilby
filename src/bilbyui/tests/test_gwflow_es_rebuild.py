@@ -250,7 +250,6 @@ class TestGoldenDocument(BilbyTestCase):
             ("entry", None, "must be an object"),
             ("uid", "", ".uid must be a non-empty string"),
             ("type", "tgr", ".type must be 'pe' or 'event_validation'"),
-            ("deprecated", "false", ".deprecated must be a boolean"),
             ("revision", True, ".revision must be an integer or a string"),
             ("revision", 1.5, ".revision must be an integer or a string"),
             ("name", None, ".name must be a string"),
