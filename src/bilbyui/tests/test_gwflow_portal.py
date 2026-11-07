@@ -836,6 +836,37 @@ class TestPortalRetryAndDiff(BilbyTestCase):
 
         self.assertEqual(gwflow_portal.get_diff(SNAME, 3, 7), (None, "malformed"))
 
+    def _assert_diff_malformed(self, **overrides):
+        payload = {
+            "sname": SNAME,
+            "baseline_version": 3,
+            "selected_version": 7,
+            "baseline_timestamp": "2026-08-01T00:00:00Z",
+            "selected_timestamp": "2026-08-10T12:00:00Z",
+            "changes": [],
+        }
+        payload.update(overrides)
+        with responses.RequestsMock() as mocked:
+            mocked.add(
+                responses.GET,
+                f"{PORTAL_URL}{DIFF_PATH}",
+                json=payload,
+                status=200,
+            )
+            data, state = gwflow_portal.get_diff(SNAME, 3, 7)
+
+        self.assertEqual((data, state), (None, "malformed"))
+        self.assertIsNone(caches["default"].get(f"gwflow:diff:{SNAME}:3:7"))
+
+    def test_get_diff_rejects_naive_timestamp(self):
+        self._assert_diff_malformed(baseline_timestamp="2026-08-01T00:00:00")
+
+    def test_get_diff_rejects_non_utc_timestamp(self):
+        self._assert_diff_malformed(selected_timestamp="2026-08-10T12:00:00+05:30")
+
+    def test_get_diff_rejects_empty_sname(self):
+        self._assert_diff_malformed(sname="")
+
     @responses.activate
     @mock.patch("bilbyui.utils.gwflow_portal.time.sleep", return_value=None)
     def test_get_diff_malformed_is_distinct_from_down(self, mock_sleep):

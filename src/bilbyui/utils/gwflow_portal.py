@@ -10,6 +10,7 @@ from django.conf import settings
 from django.core.cache import caches
 
 from bilbyui.models import EventID
+from bilbyui.services.gwflow_versions import _aware_timestamp, _non_empty_string
 from bilbyui.utils.embargo import _gwflow_trigger_time_from_metadata
 from bilbyui.utils.gwflow_es import _parse_portal_bool
 from bilbyui.utils.gwflow_version import normalise_current_history_timestamp
@@ -74,13 +75,13 @@ def _is_canonical_diff(data):
     return (
         isinstance(data, dict)
         and all(field in data for field in DIFF_REQUIRED_FIELDS)
-        and isinstance(data["sname"], str)
+        and _non_empty_string(data["sname"])
         and not isinstance(data["baseline_version"], bool)
         and isinstance(data["baseline_version"], int)
         and not isinstance(data["selected_version"], bool)
         and isinstance(data["selected_version"], int)
-        and isinstance(data["baseline_timestamp"], str)
-        and isinstance(data["selected_timestamp"], str)
+        and _aware_timestamp(data["baseline_timestamp"])
+        and _aware_timestamp(data["selected_timestamp"])
         and isinstance(data["changes"], list)
     )
 
