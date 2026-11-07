@@ -16,6 +16,7 @@ from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.utils.gwflow_es import (
     InvalidGWFlowMetadata,
     _collect_review_statuses,
+    _parse_portal_bool,
     build_gwflow_es_doc,
     get_es_client,
     gwflow_elastic_search_remove,
@@ -832,3 +833,22 @@ class TestParseAnalysesCanonical(BilbyTestCase):
         entry = self._pe(reviews=[{"review_status": "approved", "occurrence_uid": "r1"}])
         [analysis] = parse_analyses({"analyses": [entry]})
         self.assertEqual(analysis["review_status"], "approved")
+
+
+class TestParsePortalBool(BilbyTestCase):
+    def test_truthy_strings(self):
+        for value in ("true", "True", "TRUE", "1", "yes", "  true "):
+            self.assertTrue(_parse_portal_bool(value))
+
+    def test_falsy_strings(self):
+        for value in ("false", "False", "0", "no", "2", "anything", ""):
+            self.assertFalse(_parse_portal_bool(value))
+
+    def test_bool_values(self):
+        self.assertTrue(_parse_portal_bool(True))
+        self.assertFalse(_parse_portal_bool(False))
+
+    def test_only_integer_one_is_true(self):
+        self.assertTrue(_parse_portal_bool(1))
+        for value in (2, -1, 1.5, 0, 0.0):
+            self.assertFalse(_parse_portal_bool(value))

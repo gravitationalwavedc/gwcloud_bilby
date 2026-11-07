@@ -29,7 +29,7 @@ def _parse_portal_bool(value) -> bool:
         return value
     if isinstance(value, str):
         return value.strip().lower() in ("true", "1", "yes")
-    return bool(value)
+    return value == 1
 
 
 def _collect_review_statuses(metadata, job, path="", out=None):
