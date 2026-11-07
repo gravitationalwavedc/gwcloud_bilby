@@ -799,6 +799,13 @@ class TestParseAnalysesCanonical(BilbyTestCase):
         [analysis] = parse_analyses({"analyses": [self._pe(revision=1)]})
         self.assertEqual(analysis["revision"], 1)
 
+    def test_string_boolean_deprecated_is_coerced(self):
+        """A portal string boolean for deprecated is accepted and coerced to a real bool."""
+        [analysis] = parse_analyses({"analyses": [self._pe(deprecated="true")]})
+        self.assertIs(analysis["deprecated"], True)
+        [analysis] = parse_analyses({"analyses": [self._pe(deprecated="false")]})
+        self.assertIs(analysis["deprecated"], False)
+
     def test_event_validation_entry_is_returned_canonically(self):
         entry = self._pe(
             uid="S000001a-validation-report",

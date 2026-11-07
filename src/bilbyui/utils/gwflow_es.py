@@ -134,8 +134,7 @@ def _parse_analysis(entry, index):
     if status not in _ANALYSIS_STATUSES:
         raise InvalidGWFlowMetadata(f"{where}.status is not a canonical status: {status!r}")
 
-    if not isinstance(entry["deprecated"], bool):
-        raise InvalidGWFlowMetadata(f"{where}.deprecated must be a boolean")
+    deprecated = _parse_portal_bool(entry["deprecated"])
 
     revision = entry["revision"]
     if isinstance(revision, bool) or not isinstance(revision, (int, str)):
@@ -197,7 +196,7 @@ def _parse_analysis(entry, index):
         "status": status,
         "review_status": review_status,
         "software": software,
-        "deprecated": entry["deprecated"],
+        "deprecated": deprecated,
         "analysts": entry["analysts"],
         "reviews": reviews,
         "input_files": entry["input_files"],
