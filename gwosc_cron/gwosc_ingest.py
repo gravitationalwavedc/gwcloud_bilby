@@ -44,6 +44,22 @@ _JOB_NAME_RE = re.compile(r"[^a-z0-9_-]", re.IGNORECASE)
 _EVENT_ID_RE = re.compile(r"^GW\d{6}(_\d{6})?$")
 
 
+def _is_preferred(value) -> bool:
+    """Normalise a portal boolean-like ``is_preferred`` value to a real bool.
+
+    Portal payloads may carry boolean fields as strings (e.g. ``"false"``), so
+    a bare truthiness test would misclassify any non-empty string as true.
+    Treat ``True`` and ``"true"/"1"/"yes"`` (case-insensitive) as preferred
+    and everything else as false, mirroring the ``_TRUTHY_PREFERRED``
+    convention used for sibling portal fields.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes")
+    return bool(value)
+
+
 def compute_is_latest_version(event_name, shared_common_names):
     """Return True if *event_name* is the latest-versioned name among *shared_common_names*.
 
@@ -327,7 +343,7 @@ def _check_and_download_inner(con, cur):
         if ignored:
             continue
 
-        found = [v for v in parameters.values() if isinstance(v, dict) and v.get("is_preferred")]
+        found = [v for v in parameters.values() if isinstance(v, dict) and _is_preferred(v.get("is_preferred"))]
         if len(found) != 1:
             logger.error("Unable to find preferred job for %s 😠", event_name)
             save_sqlite_job(
