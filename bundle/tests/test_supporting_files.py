@@ -7,6 +7,7 @@ from unittest.case import TestCase
 
 import requests
 import responses
+import settings
 
 from tests.utils import args_to_bilby_ini, cd
 
@@ -59,7 +60,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=(Path(__file__).parent.resolve() / "data/psd.txt").read_bytes(),
             status=200,
         )
@@ -90,7 +91,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=(Path(__file__).parent.resolve() / "data/psd.txt").read_bytes(),
             status=200,
         )
@@ -98,7 +99,7 @@ class TestSupportingFiles(TestCase):
         token2 = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token2}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token2}",
             body=(Path(__file__).parent.resolve() / "data/psd.txt").read_bytes(),
             status=200,
         )
@@ -134,7 +135,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=(Path(__file__).parent.resolve() / "data/psd.txt").read_bytes(),
             status=200,
         )
@@ -142,7 +143,7 @@ class TestSupportingFiles(TestCase):
         token2 = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token2}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token2}",
             body=(Path(__file__).parent.resolve() / "data/psd.txt").read_bytes(),
             status=200,
         )
@@ -150,7 +151,7 @@ class TestSupportingFiles(TestCase):
         token3 = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token3}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token3}",
             body=(Path(__file__).parent.resolve() / "data/psd.txt").read_bytes(),
             status=200,
         )
@@ -192,7 +193,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -223,7 +224,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -231,7 +232,7 @@ class TestSupportingFiles(TestCase):
         token2 = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token2}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token2}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -268,7 +269,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -276,7 +277,7 @@ class TestSupportingFiles(TestCase):
         token2 = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token2}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token2}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -284,7 +285,7 @@ class TestSupportingFiles(TestCase):
         token3 = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token3}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token3}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -326,7 +327,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -357,7 +358,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=(Path(__file__).parent.resolve() / "data/gps_file_for_timeslides.txt").read_bytes(),
             status=200,
         )
@@ -365,7 +366,7 @@ class TestSupportingFiles(TestCase):
         token2 = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token2}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token2}",
             body=(Path(__file__).parent.resolve() / "data/timeslides.txt").read_bytes(),
             status=200,
         )
@@ -400,7 +401,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=(Path(__file__).parent.resolve() / "data/test_injection.json").read_bytes(),
             status=200,
         )
@@ -431,7 +432,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -462,7 +463,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -493,7 +494,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -512,7 +513,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -531,7 +532,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -554,7 +555,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body=self.content.encode("utf-8"),
             status=200,
         )
@@ -590,7 +591,7 @@ class TestSupportingFiles(TestCase):
         token = str(uuid.uuid4())
         self.responses.add(
             responses.GET,
-            f"https://gwcloud.org.au/bilby/file_download/?fileId={token}",
+            f"{settings.gwcloud_base_url}/bilby/file_download/?fileId={token}",
             body="Not Found",
             status=404,
         )

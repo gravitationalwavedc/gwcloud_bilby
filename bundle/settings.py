@@ -18,5 +18,8 @@ condor_accounting_user = "no.one"
 # Default working directory used when the job ID is not specified (e.g. for cluster file fetching)
 default_working_directory = "/"
 
+# Base URL of the GWCloud instance supporting files are downloaded from
+gwcloud_base_url = "https://gwcloud.org.au"
+
 with contextlib.suppress(ImportError):
     from local import *  # noqa: F403
