@@ -1,8 +1,9 @@
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 
 from bilbyui.models import BilbyJob
 from bilbyui.tests.test_utils import create_test_ini_string
@@ -148,6 +149,29 @@ class TestCleanupOrphanedJobDirs(BilbyTestCase):
         self.assertTrue(non_numeric_dir.exists())
         self.assertTrue(gitkeep_file.exists())
         self.assertTrue(numeric_file.exists())
+
+    def test_cleanup_delete_failure_is_reported_and_not_counted(self):
+        """A deletion failure must be reported and excluded from the success count,
+        and the command must exit non-zero instead of claiming the orphan was removed.
+        """
+        _, orphan_dir, *_ = self._setup_mixed_directory_tree()
+
+        out = StringIO()
+        with self.settings(JOB_UPLOAD_DIR=str(self.upload_dir)):
+            with mock.patch(
+                "bilbyui.management.commands.cleanup_orphaned_job_dirs.shutil.rmtree",
+                side_effect=OSError("permission denied"),
+            ):
+                with self.assertRaises(CommandError) as caught:
+                    call_command("cleanup_orphaned_job_dirs", "--delete", stdout=out)
+
+        self.assertEqual(caught.exception.returncode, 1)
+        output = out.getvalue()
+        self.assertIn(f"✗ Failed: {orphan_dir} (permission denied)", output)
+        self.assertNotIn(f"✓ Deleted: {orphan_dir}", output)
+        self.assertIn("Cleanup complete: 0 orphaned directories removed.", output)
+        self.assertIn("1 orphaned directory could not be removed.", output)
+        self.assertTrue(orphan_dir.exists())
 
     def test_cleanup_idempotency(self):
         """Running --delete a second time reports 0 orphaned directories found and makes no changes."""
