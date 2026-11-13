@@ -3,11 +3,14 @@ import shutil
 from pathlib import Path
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from bilbyui.models import BilbyJob
 
 logger = logging.getLogger(__name__)
+
+EXIT_OK = 0
+EXIT_FAILURES = 1
 
 
 class Command(BaseCommand):
@@ -82,8 +85,16 @@ class Command(BaseCommand):
         plural = "y" if count == 1 else "ies"
         self.stdout.write(f"Deleting {count} orphaned job director{plural} ({candidate_count} checked)...")
         deleted_count = 0
+        failed_count = 0
         for path in orphan_dirs:
-            shutil.rmtree(path, ignore_errors=True)
+            try:
+                shutil.rmtree(path)
+            except OSError as exc:
+                failed_count += 1
+                logger.error("Failed to delete orphaned job directory %s: %s", path, exc)
+                self.stdout.write(self.style.ERROR(f"  ✗ Failed: {path} ({exc})"))
+                continue
+
             deleted_count += 1
             logger.info("Deleted orphaned job directory: %s", path)
             self.stdout.write(self.style.SUCCESS(f"  ✓ Deleted: {path}"))
@@ -93,6 +104,24 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f"\nCleanup complete: {deleted_count} orphaned director{deleted_plural} removed.")
         )
+
+        if failed_count:
+            failed_plural = "y" if failed_count == 1 else "ies"
+            logger.error("Cleanup failed to remove %d orphaned director%s.", failed_count, failed_plural)
+            self.stdout.write(
+                self.style.ERROR(f"{failed_count} orphaned director{failed_plural} could not be removed.")
+            )
+            self._exit_code = EXIT_FAILURES
+
+    def execute(self, *args, **options):
+        self._exit_code = EXIT_OK
+        super().execute(*args, **options)
+        if self._exit_code != EXIT_OK:
+            raise CommandError(
+                f"cleanup_orphaned_job_dirs exited with code {self._exit_code}",
+                returncode=self._exit_code,
+            )
+        return self._exit_code
 
     def handle(self, *_args, **options):
         upload_dir = self._get_upload_dir()
