@@ -62,6 +62,12 @@ class TestSearchRegistry(SimpleTestCase):
             list(BILBY_GROUPS),
         )
 
+    def test_every_group_has_at_least_one_field(self):
+        for surface in ("gwflow", "bilby"):
+            for group in grouped_fields(surface):
+                with self.subTest(surface=surface, group=group["name"]):
+                    self.assertTrue(group["fields"])
+
     def test_grace_db_aliases_are_documented_and_envelope_aliases_are_not(self):
         """User-facing GraceDB aliases surface their full path in help; internal
         `_gwcloud.*` envelope aliases and non-alias fields do not."""
