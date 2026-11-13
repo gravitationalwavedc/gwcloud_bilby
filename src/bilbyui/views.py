@@ -1170,6 +1170,12 @@ def update_event_id(user, event_id, gps_time=UNSET, trigger_id=None, nickname=No
         event = EventID.get_by_event_id(event_id, user)
     except EventID.DoesNotExist:
         raise GraphQLError(f"Event ID '{event_id}' not found.")
+    if trigger_id and trigger_id != event.trigger_id:
+        existing_owner = EventID.objects.filter(trigger_id=trigger_id).exclude(pk=event.pk).order_by("id").first()
+        if existing_owner is not None:
+            raise GraphQLError(
+                f"EventID {existing_owner.event_id} already owns trigger {trigger_id!r}; no changes made."
+            )
     event.update(
         trigger_id=trigger_id,
         nickname=nickname,

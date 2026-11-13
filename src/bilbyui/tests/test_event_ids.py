@@ -357,6 +357,37 @@ class TestEventIDUpdating(BilbyTestCase):
         self.assertEqual(event.nickname, new_params["input"]["nickname"])
         self.assertEqual(event.gps_time, new_params["input"]["gpsTime"])
 
+    @silence_errors
+    def test_update_event_id_rejects_foreign_trigger_owner(self):
+        self.authenticate()
+        other_event = EventID.objects.create(
+            event_id="GW234567_234567",
+            trigger_id="S234567a",
+            gps_time=100.0,
+        )
+
+        response = self.query(
+            self.query_string,
+            input_data={
+                "eventId": self.original_event.event_id,
+                "triggerId": other_event.trigger_id,
+                "nickname": "should not apply",
+                "gpsTime": 87654321.87654321,
+            },
+        )
+        self.assertResponseHasErrors(response)
+        self.assertEqual(
+            response.errors[0]["message"],
+            f"EventID {other_event.event_id} already owns trigger {other_event.trigger_id!r}; no changes made.",
+        )
+
+        self.original_event.refresh_from_db()
+        other_event.refresh_from_db()
+        self.assertEqual(self.original_event.trigger_id, "S123456a")
+        self.assertEqual(self.original_event.nickname, "GW123456")
+        self.assertEqual(self.original_event.gps_time, 99.0)
+        self.assertEqual(other_event.trigger_id, "S234567a")
+
     def test_update_event_id_omitted_gps_time_preserves_value(self):
         self.authenticate()
 
