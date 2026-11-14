@@ -231,6 +231,12 @@ class VersionSnapshotCanonicalTestCase(BilbyTestCase):
         with self.assertRaisesRegex(ValueError, "version_number must be an integer"):
             self._snapshots([{"commit_sha": "a" * 40}])
 
+    def test_non_mapping_summary_is_rejected(self):
+        for value in (None, "x", 42):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "version summary must be a mapping"):
+                    self._snapshots([value])
+
     def test_true_version_number_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "version_number must be an integer"):
             self._snapshots([{"commit_sha": "a" * 40, "version_number": True}])
