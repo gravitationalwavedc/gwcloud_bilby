@@ -7,6 +7,7 @@ from django.utils import timezone
 from elasticsearch import helpers
 
 from bilbyui.models import GWFlowJob
+from bilbyui.services.jobs import _numeric_es_records
 from bilbyui.utils.gwflow_es import (
     InvalidGWFlowMetadata,
     build_gwflow_es_doc,
@@ -128,13 +129,13 @@ class Command(BaseCommand):
         existing = set()
         try:
             es = get_es_client()
-            for hit in helpers.scan(
+            hits = helpers.scan(
                 es,
                 index=settings.ELASTIC_SEARCH_GWFLOW_INDEX,
                 query={"query": {"match_all": {}}},
                 _source=False,
-            ):
-                existing.add(hit["_id"])
+            )
+            existing = {record["_id"] for record in _numeric_es_records(hits)}
         except Exception as exc:
             logger.warning("Could not scan ES for existing docs; skipping --no-doc: %s", exc)
             return candidates
