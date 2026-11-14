@@ -816,6 +816,25 @@ class TestParseAnalysesCanonical(BilbyTestCase):
         with self.assertRaises(InvalidGWFlowMetadata):
             parse_analyses({"analyses": [good, bad]})
 
+    def test_non_string_status_is_rejected_as_invalid_metadata(self):
+        for bad in ([], {}, 1):
+            with self.subTest(status=bad):
+                with self.assertRaises(InvalidGWFlowMetadata):
+                    parse_analyses({"analyses": [self._pe(status=bad)]})
+
+    def test_non_string_analysis_review_status_is_rejected_as_invalid_metadata(self):
+        for bad in ([], {}, 1):
+            with self.subTest(review_status=bad):
+                with self.assertRaises(InvalidGWFlowMetadata):
+                    parse_analyses({"analyses": [self._pe(review_status=bad)]})
+
+    def test_non_string_review_entry_review_status_is_rejected_as_invalid_metadata(self):
+        for bad in ([], {}, 1):
+            with self.subTest(review_status=bad):
+                entry = self._pe(reviews=[{"review_status": bad}])
+                with self.assertRaises(InvalidGWFlowMetadata):
+                    parse_analyses({"analyses": [entry]})
+
     def test_software_null_is_accepted(self):
         [analysis] = parse_analyses({"analyses": [self._pe(software=None)]})
         self.assertIsNone(analysis["software"])
