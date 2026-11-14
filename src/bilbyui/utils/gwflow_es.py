@@ -131,7 +131,7 @@ def _parse_analysis(entry, index):
         raise InvalidGWFlowMetadata(f"{where}.type must be 'pe' or 'event_validation'")
 
     status = entry["status"]
-    if status not in _ANALYSIS_STATUSES:
+    if not isinstance(status, str) or status not in _ANALYSIS_STATUSES:
         raise InvalidGWFlowMetadata(f"{where}.status is not a canonical status: {status!r}")
 
     if not isinstance(entry["deprecated"], bool):
@@ -172,7 +172,7 @@ def _parse_analysis(entry, index):
         if not isinstance(review, dict):
             raise InvalidGWFlowMetadata(f"{where}.reviews[{review_index}] must be an object")
         review_status = review.get("review_status")
-        if review_status is not None and review_status not in _REVIEW_STATUSES:
+        if review_status is not None and (not isinstance(review_status, str) or review_status not in _REVIEW_STATUSES):
             raise InvalidGWFlowMetadata(f"{where}.reviews[{review_index}].review_status is not canonical")
         reviews.append(review)
 
@@ -185,7 +185,7 @@ def _parse_analysis(entry, index):
             review_status = "rejected"
         else:
             review_status = "pending"
-    elif review_status not in _REVIEW_STATUSES:
+    elif not isinstance(review_status, str) or review_status not in _REVIEW_STATUSES:
         raise InvalidGWFlowMetadata(f"{where}.review_status is not canonical: {review_status!r}")
 
     return {
