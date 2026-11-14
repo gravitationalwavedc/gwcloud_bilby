@@ -185,6 +185,22 @@ class TestGWFlowESRetryCommand(BilbyTestCase):
         mock_get_version.assert_called_once_with(job.sname, job.current_version_number)
         self.assertIn("1 re-indexed", output)
 
+    @override_settings(IGNORE_ELASTIC_SEARCH=False)
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.helpers.scan")
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.get_es_client")
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.get_version")
+    @mock.patch("bilbyui.management.commands.gwflow_es_retry.gwflow_elastic_search_update")
+    def test_no_doc_ignores_non_numeric_es_id(self, mock_update, mock_get_version, mock_es, mock_scan):
+        """A corrupt non-numeric ES _id must not crash --no-doc recovery."""
+        job = self._make_job(age_hours=100)
+        mock_scan.return_value = iter([{"_id": "corrupt-non-numeric-id"}])
+        mock_get_version.return_value = ({"ParameterEstimation": {"results": []}}, "live")
+
+        output = self._run("--no-doc")
+
+        mock_get_version.assert_called_once_with(job.sname, job.current_version_number)
+        self.assertIn("1 re-indexed", output)
+
     @mock.patch("bilbyui.management.commands.gwflow_es_retry.Command.handle_job")
     def test_unexpected_error_fails(self, mock_handle_job):
         """An unexpected handle_job exception is logged, counted as failed, and raises."""
