@@ -104,6 +104,32 @@ class TestDeriveJobStatus(BilbyTestCase):
         self.assertEqual(status_name, "Completed")
         self.assertEqual(status_date, datetime.datetime(2024, 1, 1, 10, 0, 0, 0))
 
+    def test_unhashable_state_returns_draft(self):
+        history = [
+            {
+                "timestamp": "2024-01-01 10:00:00.000000 UTC",
+                "state": [],
+            }
+        ]
+
+        status_number, status_name, status_date = derive_job_status(history)
+
+        self.assertEqual(status_number, JobStatus.DRAFT)
+        self.assertEqual(status_name, "Unknown")
+        self.assertIsNone(status_date)
+
+    def test_unhashable_state_ignored_when_valid_entry_present(self):
+        history = [
+            {"timestamp": "2024-01-01 10:00:00.000000 UTC", "state": {"unexpected": "object"}},
+            {"timestamp": "2024-01-01 11:00:00.000000 UTC", "state": JobStatus.COMPLETED},
+        ]
+
+        status_number, status_name, status_date = derive_job_status(history)
+
+        self.assertEqual(status_number, JobStatus.COMPLETED)
+        self.assertEqual(status_name, "Completed")
+        self.assertEqual(status_date, datetime.datetime(2024, 1, 1, 11, 0, 0, 0))
+
     def test_latest_state_selected_by_timestamp(self):
         history = [
             {
