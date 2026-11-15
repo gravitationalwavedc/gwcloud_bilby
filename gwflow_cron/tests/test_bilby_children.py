@@ -200,6 +200,8 @@ class TestSelectBilbyAnalyses(unittest.TestCase):
             ("uid", None),
             ("status", None),
             ("status", "unknown"),
+            ("status", []),
+            ("status", {}),
             ("deprecated", None),
             ("deprecated", 1),
             ("input_files", None),
