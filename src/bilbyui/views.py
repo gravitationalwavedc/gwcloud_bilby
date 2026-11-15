@@ -1104,6 +1104,15 @@ def _create_event_id_guarded(event_id, gps_time, trigger_id=None, nickname=None)
                 f"differs from requested owner {trigger_id!r}; no changes made.",
             )
 
+        if not event.trigger_id and trigger_id:
+            existing_owner = EventID.objects.filter(trigger_id=trigger_id).exclude(pk=event.pk).order_by("id").first()
+            if existing_owner is not None:
+                return (
+                    event,
+                    f"EventID {existing_owner.event_id} already owns trigger "
+                    f"{trigger_id!r}; no duplicate {event_id} created.",
+                )
+
         changed_fields = []
         if not event.trigger_id and trigger_id:
             event.trigger_id = trigger_id
