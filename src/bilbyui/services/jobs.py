@@ -127,7 +127,7 @@ def _fetch_job_controller_jobs(jobs, user_id):
             job_controller_jobs = {
                 job_controller_ids[job["id"]]: job
                 for job in job_controller_result
-                if isinstance(job, dict) and "id" in job and job["id"] in job_controller_ids
+                if isinstance(job, dict) and isinstance(job.get("id"), (int, str)) and job["id"] in job_controller_ids
             }
     return job_controller_jobs
 
