@@ -83,7 +83,7 @@ def _check_pe_fields(sname, analysis, index):
         return _rejection(sname, uid, "uid missing or not a non-empty string", index=index)
 
     status = analysis.get("status")
-    if status not in _SUPPORTED_STATUSES:
+    if not isinstance(status, str) or status not in _SUPPORTED_STATUSES:
         return _rejection(sname, uid, "status missing or unsupported", index=index)
 
     if not isinstance(analysis.get("deprecated"), bool):
