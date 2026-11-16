@@ -1,5 +1,6 @@
 import datetime
 import logging
+from collections.abc import Hashable
 
 from bilbyui.status import JobStatus
 
@@ -30,7 +31,7 @@ def derive_job_status(history):
 
     valid_entries = []
     for entry in history:
-        if isinstance(entry, dict) and "state" in entry:
+        if isinstance(entry, dict) and "state" in entry and isinstance(entry["state"], Hashable):
             timestamp = parse_timestamp(entry)
             if timestamp is not None:
                 valid_entries.append((entry, timestamp))
