@@ -37,6 +37,12 @@ class TestResolveLibraries(unittest.TestCase):
         client = self._client([{"is_current": "false", "libraries": ["bilby"]}])
         self.assertEqual(resolve_libraries(client, "S1"), [])
 
+    def test_string_true_current_flags_select_current(self):
+        for value in ("1", "TRUE", "Yes"):
+            with self.subTest(value=value):
+                client = self._client([{"is_current": value, "libraries": ["bilby"]}])
+                self.assertEqual(resolve_libraries(client, "S1"), ["bilby"])
+
     def test_multiple_current_versions_uses_first(self):
         client = self._client(
             [
