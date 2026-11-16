@@ -34,6 +34,25 @@ class TestFetchJobControllerJobs(BilbyTestCase):
         mock_request_job_filter.assert_called_once_with(7, ids={42, 999})
 
     @mock.patch("bilbyui.services.jobs.request_job_filter")
+    def test_non_hashable_id_is_skipped(self, mock_request_job_filter):
+        mock_request_job_filter.return_value = (
+            "OK",
+            [
+                {"id": [], "history": []},
+                {"id": 42, "history": []},
+                {"id": "abc", "history": []},
+            ],
+        )
+
+        jobs = [_job(10, 42), _job(11, "abc")]
+
+        result = _fetch_job_controller_jobs(jobs, 7)
+
+        self.assertEqual(list(result.keys()), [10, 11])
+        self.assertEqual(result[10]["id"], 42)
+        self.assertEqual(result[11]["id"], "abc")
+
+    @mock.patch("bilbyui.services.jobs.request_job_filter")
     def test_non_ok_status_returns_empty(self, mock_request_job_filter):
         mock_request_job_filter.return_value = ("UNKNOWN", [])
 

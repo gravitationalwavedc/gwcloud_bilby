@@ -40,6 +40,24 @@ class TestCacheJobControllerJobs(BilbyTestCase):
             {1: {"id": 1, "name": "first"}, 2: {"id": 2, "name": "second"}},
         )
 
+    def test_non_hashable_id_is_skipped(self):
+        queryset = self._make_queryset([1, 2, 3])
+        context = Mock()
+
+        controller_response = [
+            {"id": [], "name": "list-id"},
+            {"id": 1, "name": "first"},
+            {"id": "abc", "name": "string-id"},
+        ]
+
+        with patch("bilbyui.schema.request_job_filter", return_value=("OK", controller_response)):
+            _cache_job_controller_jobs(queryset, user_id=7, context=context)
+
+        self.assertEqual(
+            context.job_controller_jobs,
+            {1: {"id": 1, "name": "first"}, "abc": {"id": "abc", "name": "string-id"}},
+        )
+
     def test_empty_controller_response_caches_empty_dict(self):
         queryset = self._make_queryset([1])
         context = Mock()
