@@ -112,7 +112,9 @@ def _cache_job_controller_jobs(queryset, user_id, context):
     job_controller_jobs = {}
     if job_controller_ids:
         _, jc_jobs = request_job_filter(user_id, ids=list(job_controller_ids))
-        job_controller_jobs = {job["id"]: job for job in jc_jobs if isinstance(job, dict) and "id" in job}
+        job_controller_jobs = {
+            job["id"]: job for job in jc_jobs if isinstance(job, dict) and isinstance(job.get("id"), (int, str))
+        }
     context.job_controller_jobs = job_controller_jobs
 
 
