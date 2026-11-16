@@ -299,6 +299,12 @@ def _check_and_download_inner(con, cur):
             record_job_failure(con, cur, event_name, error_msg)
             continue
 
+        if not isinstance(common_name, str) or not isinstance(catalog_shortname, str):
+            error_msg = f"Event {event_name} json payload has a non-string commonName or catalog.shortName"
+            logger.error(error_msg)
+            record_job_failure(con, cur, event_name, error_msg)
+            continue
+
         is_latest_version = _is_latest_version(event_name, all_events, common_name)
 
         # Check if this should be skipped for being in the wrong type of catalog
