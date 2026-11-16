@@ -216,6 +216,13 @@ class PortalClient:
                         "changed",
                         "result row must have a non-empty string record_timestamp",
                     )
+                if not isinstance(row_sname, str) or not row_sname:
+                    raise self._malformed(
+                        url,
+                        None,
+                        "changed",
+                        "result row must have a non-empty string sname",
+                    )
                 if since is None or record_timestamp >= since:
                     yield row
 

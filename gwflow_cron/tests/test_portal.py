@@ -638,6 +638,36 @@ class TestPortalClient(unittest.TestCase):
         )
 
     @responses.activate
+    def test_iter_changed_rejects_non_string_sname_with_context(self):
+        endpoint = f"{self.base_url}/api/v1/superevents/"
+        responses.add(
+            responses.GET,
+            endpoint,
+            json=self.envelope(
+                [
+                    {
+                        "sname": ["S260101a"],
+                        "record_timestamp": "2026-01-01T00:00:00Z",
+                    }
+                ]
+            ),
+            status=200,
+        )
+
+        with self.assertRaises(PortalMalformedResponseError) as caught:
+            list(self.client.iter_changed())
+
+        self.assertEqual(caught.exception.endpoint, endpoint)
+        self.assertEqual(
+            caught.exception.correlation_context,
+            (endpoint, None, "changed"),
+        )
+        self.assertEqual(
+            caught.exception.reason,
+            "result row must have a non-empty string sname",
+        )
+
+    @responses.activate
     def test_iter_changed_rejects_non_dict_row(self):
         endpoint = f"{self.base_url}/api/v1/superevents/"
         responses.add(
