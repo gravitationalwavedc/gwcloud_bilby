@@ -425,6 +425,26 @@ class TestGWFlowESUpdateRemove(BilbyTestCase):
         ELASTIC_SEARCH_API_KEY="test_key",
         ELASTIC_SEARCH_GWFLOW_INDEX="gwflow_test_idx",
     )
+    @patch("bilbyui.utils.gwflow_es.logger.exception")
+    @patch("elasticsearch.Elasticsearch")
+    def test_delete_es_transport_failure_is_logged_and_suppressed(self, mock_es_cls, logger_exception_mock):
+        mock_client = MagicMock()
+        mock_es_cls.return_value = mock_client
+        mock_client.delete.side_effect = elasticsearch.TransportError("boom")
+
+        job_id = self.job.id
+        self.job.delete()
+
+        self.assertFalse(GWFlowJob.objects.filter(id=job_id).exists())
+        mock_client.delete.assert_called_once()
+        logger_exception_mock.assert_called_once()
+
+    @override_settings(
+        IGNORE_ELASTIC_SEARCH=False,
+        ELASTIC_SEARCH_HOST="localhost",
+        ELASTIC_SEARCH_API_KEY="test_key",
+        ELASTIC_SEARCH_GWFLOW_INDEX="gwflow_test_idx",
+    )
     @patch("elasticsearch.Elasticsearch")
     def test_update_non_object_makes_zero_es_calls_and_leaves_doc_unchanged(self, mock_es_cls):
         mock_client = MagicMock()

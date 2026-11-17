@@ -1,4 +1,3 @@
-import contextlib
 import hashlib
 import json
 import logging
@@ -315,15 +314,21 @@ def gwflow_elastic_search_update(job, metadata: dict) -> None:
 
 def gwflow_elastic_search_remove(job) -> None:
     """
-    Delete the doc; swallow NotFoundError. No-op if IGNORE_ELASTIC_SEARCH.
+    Delete the doc; swallow NotFoundError and log transport/API failures so a
+    best-effort ES delete never aborts the database delete. No-op if
+    IGNORE_ELASTIC_SEARCH.
     """
     if getattr(settings, "IGNORE_ELASTIC_SEARCH", False):
         return
 
     es = get_es_client()
 
-    with contextlib.suppress(elasticsearch.NotFoundError):
+    try:
         es.delete(index=settings.ELASTIC_SEARCH_GWFLOW_INDEX, id=job.id)
+    except elasticsearch.NotFoundError:
+        pass
+    except (elasticsearch.exceptions.TransportError, elasticsearch.exceptions.ApiError):
+        logger.exception("Failed to remove Elasticsearch document for gwflow job %s", job.id)
 
 
 def eligible_gwflow_jobs():
