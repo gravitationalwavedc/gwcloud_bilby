@@ -2196,16 +2196,22 @@ def _build_result_file_entries(job):
 
     token_dict = FileDownloadToken.create_token_map(job, files)
 
-    return [
-        {
-            "path": file_entry.get("path", ""),
-            "is_dir": file_entry.get("isDir", False),
-            "file_size": file_entry.get("fileSize", 0),
-            "download_token": token_dict.get(file_entry.get("path", "")),
-        }
-        for file_entry in files
-        if isinstance(file_entry, dict)
-    ]
+    entries = []
+    for file_entry in files:
+        if not isinstance(file_entry, dict):
+            continue
+        path = file_entry.get("path", "")
+        if not isinstance(path, str):
+            path = ""
+        entries.append(
+            {
+                "path": path,
+                "is_dir": file_entry.get("isDir", False),
+                "file_size": file_entry.get("fileSize", 0),
+                "download_token": token_dict.get(path),
+            }
+        )
+    return entries
 
 
 def _build_result_files(job):

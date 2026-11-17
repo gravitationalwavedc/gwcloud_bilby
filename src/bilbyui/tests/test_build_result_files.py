@@ -137,6 +137,30 @@ class TestBuildResultFiles(BilbyTestCase):
         self.assertFalse(result[2]["is_dir"])
         self.assertEqual(result[2]["file_size"], 0)
 
+    def test_non_string_paths_do_not_crash(self):
+        job = BilbyJob.objects.create(
+            user_id=self.user.id,
+            name="normal_job",
+            description="normal",
+            job_controller_id=1,
+            ini_string=self.ini,
+        )
+        files = [
+            {"path": "/dir/file.txt", "isDir": False, "fileSize": 42},
+            {"path": ["/bad.txt"], "isDir": False, "fileSize": 2},
+            {"path": {"/bad2.txt": True}, "isDir": False, "fileSize": 3},
+        ]
+
+        with mock.patch.object(BilbyJob, "get_file_list", return_value=(True, files)):
+            result = _build_result_files(job)
+
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]["path"], "/dir/file.txt")
+        self.assertIsNotNone(result[0]["download_token"])
+        self.assertEqual(result[1], {"path": "", "is_dir": False, "file_size": 2, "download_token": None})
+        self.assertEqual(result[2], {"path": "", "is_dir": False, "file_size": 3, "download_token": None})
+        self.assertEqual(FileDownloadToken.objects.filter(job=job).count(), 1)
+
     def test_non_dict_file_entries_are_skipped(self):
         job = BilbyJob.objects.create(
             user_id=self.user.id,
