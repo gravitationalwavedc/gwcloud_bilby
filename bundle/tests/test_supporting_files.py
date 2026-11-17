@@ -586,6 +586,21 @@ class TestSupportingFiles(TestCase):
             # Non-dict entries are skipped, so no supporting_files directory is created
             self.assertFalse((Path(working_directory) / "supporting_files").exists())
 
+    def test_supporting_file_malformed_type_and_file_name(self):
+        from core.submit import bilby_ini_to_args, prepare_supporting_files
+
+        with TemporaryDirectory() as working_directory, cd(working_directory):
+            supporting_files = [
+                {"type": [], "key": "V1", "file_name": "test.psd", "token": "token"},
+                {"type": "psd", "key": "V1", "file_name": 123, "token": "token"},
+            ]
+
+            args = bilby_ini_to_args(self.ini_file_v1)
+            prepare_supporting_files(args, supporting_files, working_directory)
+
+            # Malformed type and file_name entries are skipped, so no supporting_files directory is created
+            self.assertFalse((Path(working_directory) / "supporting_files").exists())
+
     def test_supporting_file_download_failure(self):
         token = str(uuid.uuid4())
         self.responses.add(

@@ -103,7 +103,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
 
         # Skip supporting files with an unknown or missing type so that job submission does not
         # crash with a KeyError if the UI sends a type that is not in the file_type_map
-        if supporting_file.get("type") not in file_type_map:
+        if not isinstance(supporting_file.get("type"), str) or supporting_file.get("type") not in file_type_map:
             logger.warning(
                 "Skipping supporting file with unknown type: %s",
                 supporting_file.get("type"),
@@ -123,7 +123,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
         # file name (path traversal or absolute path) cannot write outside the supporting
         # files directory or crash job submission with a ValueError from relative_to
         file_name = supporting_file["file_name"]
-        if not file_name or file_name in (".", "..") or Path(file_name).name != file_name:
+        if not isinstance(file_name, str) or not file_name or file_name in (".", "..") or Path(file_name).name != file_name:
             logger.warning(
                 "Skipping supporting file with invalid file name: %s",
                 file_name,
