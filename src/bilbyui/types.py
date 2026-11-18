@@ -19,10 +19,6 @@ class BilbyJobCreationResult(graphene.ObjectType):
     supporting_files = graphene.List(BilbyJobSupportingFile)
 
 
-class CalibrationCommon:
-    pass
-
-
 class ChannelsCommon:
     hanford_channel = graphene.String()
     livingston_channel = graphene.String()
@@ -76,39 +72,11 @@ class DetectorOutput(graphene.ObjectType, DetectorCommon):
     pass
 
 
-class InjectionCommon:
-    pass
-
-
-class InjectionInput(InjectionCommon, graphene.InputObjectType):
-    pass
-
-
-class InjectionOutput(InjectionCommon, graphene.ObjectType):
-    pass
-
-
 class IniCommon:
     ini_string = graphene.String()
 
 
 class IniInput(IniCommon, graphene.InputObjectType):
-    pass
-
-
-class IniOutput(IniCommon, graphene.ObjectType):
-    pass
-
-
-class LikelihoodCommon:
-    pass
-
-
-class LikelihoodInput(LikelihoodCommon, graphene.InputObjectType):
-    pass
-
-
-class LikelihoodOutput(LikelihoodCommon, graphene.ObjectType):
     pass
 
 
@@ -121,18 +89,6 @@ class PriorInput(PriorCommon, graphene.InputObjectType):
 
 
 class PriorOutput(PriorCommon, graphene.ObjectType):
-    pass
-
-
-class PostProcessingCommon:
-    pass
-
-
-class PostProcessingInput(PostProcessingCommon, graphene.InputObjectType):
-    pass
-
-
-class PostProcessingOutput(PostProcessingCommon, graphene.ObjectType):
     pass
 
 
@@ -203,11 +159,6 @@ class JobParameterOutput(graphene.ObjectType):
 class JobIniInput(graphene.InputObjectType):
     details = JobDetailsInput()
     ini_string = IniInput()
-
-
-class JobIniOutput(graphene.ObjectType):
-    details = graphene.Field(JobDetailsOutput)
-    ini_string = graphene.Field(IniOutput)
 
 
 class SupportingFileUploadInput(graphene.InputObjectType):
