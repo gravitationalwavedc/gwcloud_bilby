@@ -2030,7 +2030,7 @@ def gwflow_job_history_version_partial(request, sname, version_number):
     data, state = get_version(sname, version_number)
     if state == "failed":
         raise Http404("Version not found")
-    if state == "down":
+    if state in ("down", "malformed"):
         return TemplateResponse(
             request,
             "bilbyui/_async_state.html",
