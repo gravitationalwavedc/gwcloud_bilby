@@ -128,18 +128,24 @@ def _degrade(value):
 
 def safe_json_dumps(value):
     """
-    Serialise ``value`` to a JSON string without raising on exotic types.
+    Serialise ``value`` to a strict JSON string without raising on exotic types.
 
-    JSON-serializable values are returned byte-identical to ``json.dumps``.
-    astropy Cosmology instances are serialised into a structured envelope
-    (see ``_serialise_cosmology``). Other known non-serializable types
-    (astropy Quantities, numpy arrays and scalars, mappings) are normalised
-    through ``_normalise`` into structured, round-trippable forms. Any
-    remaining unknown object is persisted through an explicit degradation
-    envelope (see ``_degrade``).
+    JSON-native finite values are returned byte-identical to ``json.dumps``.
+    Non-finite floats are stored as their string form (``"nan"`` / ``"inf"``)
+    so the persisted value remains valid JSON. astropy Cosmology instances are
+    serialised into a structured envelope (see ``_serialise_cosmology``). Other
+    known non-serializable types (astropy Quantities, numpy arrays and scalars,
+    mappings) are normalised through ``_normalise`` into structured,
+    round-trippable forms. Any remaining unknown object is persisted through an
+    explicit degradation envelope (see ``_degrade``).
     """
     try:
-        return json.dumps(value)
+        return json.dumps(value, allow_nan=False)
+    except ValueError:
+        # allow_nan=False rejects non-finite floats; _normalise stores them as
+        # strings, which keeps the persisted value strict JSON.
+        normalised, _ = _normalise(value)
+        return json.dumps(normalised)
     except TypeError:
         if isinstance(value, astropy.cosmology.Cosmology):
             return json.dumps(_serialise_cosmology(value))

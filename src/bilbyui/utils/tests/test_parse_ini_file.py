@@ -150,6 +150,25 @@ class TestSafeJsonDumps(BilbyTestCase):
         for value in native_values:
             self.assertEqual(safe_json_dumps(value), json.dumps(value))
 
+    def test_non_finite_floats_are_stored_as_strict_json(self):
+        # json.dumps defaults to emitting NaN/Infinity, which is not valid
+        # JSON. safe_json_dumps must persist the string form instead.
+        for value, expected in (
+            (float("nan"), "nan"),
+            (float("inf"), "inf"),
+            (float("-inf"), "-inf"),
+        ):
+            with self.subTest(value=value):
+                serialised = safe_json_dumps(value)
+                self.assertEqual(json.loads(serialised), expected)
+                # The stored value must itself be strict JSON.
+                json.dumps(json.loads(serialised), allow_nan=False)
+
+    def test_nested_non_finite_floats_are_stored_as_strict_json(self):
+        serialised = safe_json_dumps({"a": float("inf"), "b": [float("nan")]})
+        self.assertEqual(json.loads(serialised), {"a": "inf", "b": ["nan"]})
+        json.dumps(json.loads(serialised), allow_nan=False)
+
     def test_regression_original_typeerror(self):
         # Reproduce the original bug: json.dumps cannot handle a cosmology.
         cosmology = FlatLambdaCDM(
