@@ -1123,6 +1123,13 @@ class TestCreateBilbyJob(BilbyTestCase):
         job.refresh_from_db()
         self.assertEqual(job.trigger_time, 1126259462.391)
 
+    @patch.object(BilbyJob, "submit", side_effect=ValueError("submit failed"))
+    def test_failed_submission_rolls_back_job(self, mock_submit):
+        with self.assertRaises(ValueError):
+            create_bilby_job(self.user, _make_params())
+
+        self.assertEqual(BilbyJob.objects.count(), 0)
+
     @patch("bilbyui.views.resolve_job_trigger", return_value=2.0)
     @patch.object(BilbyJob, "submit")
     def test_structured_admission_delegates_to_public_resolver(self, mock_submit, mock_resolve):
