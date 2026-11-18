@@ -3,6 +3,8 @@ from unittest.mock import MagicMock, patch
 
 from graphql import GraphQLError
 
+from bilbyui.models import BilbyJob
+from bilbyui.tests.test_utils import create_test_ini_string
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.views import create_bilby_job_from_ini_string
 
@@ -43,6 +45,16 @@ class TestCreateBilbyJobFromIniString(BilbyTestCase):
 
         mock_parse_embargo.assert_called_once()
         mock_should_embargo.assert_called_once()
+
+    @patch("bilbyui.models.submit_job", side_effect=ValueError("submit failed"))
+    def test_failed_submission_rolls_back_job(self, mock_submit):
+        user = self.create_user(id=1)
+        params = _make_params(ini_string=create_test_ini_string({"label": "TestJob", "detectors": "['H1']"}))
+
+        with self.assertRaises(ValueError):
+            create_bilby_job_from_ini_string(user, params)
+
+        self.assertEqual(BilbyJob.objects.count(), 0)
 
     def _patch_successful_creation(self, has_supporting_files):
         bilby_job = MagicMock()
