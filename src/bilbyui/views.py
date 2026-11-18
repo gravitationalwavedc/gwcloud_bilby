@@ -362,20 +362,21 @@ def create_bilby_job(user, params):
         raise GraphQLError("Permission Denied.")
 
     try:
-        bilby_job = BilbyJob.objects.create(
-            user=user,
-            name=params.details.name,
-            description=params.details.description,
-            private=params.details.private,
-            ini_string=ini_string,
-            cluster=params.details.cluster,
-            event_id=event_id,
-        )
-        logger.info("Created Bilby job %s for user %s", bilby_job.id, user.id)
+        with transaction.atomic():
+            bilby_job = BilbyJob.objects.create(
+                user=user,
+                name=params.details.name,
+                description=params.details.description,
+                private=params.details.private,
+                ini_string=ini_string,
+                cluster=params.details.cluster,
+                event_id=event_id,
+            )
+            logger.info("Created Bilby job %s for user %s", bilby_job.id, user.id)
 
-        # Submit the job to the job controller
-        bilby_job.submit()
-        logger.info("Successfully submitted job %s to job controller", bilby_job.id)
+            # Submit the job to the job controller
+            bilby_job.submit()
+            logger.info("Successfully submitted job %s to job controller", bilby_job.id)
     except ValueError:
         logger.exception("Failed to create/submit job for user %s", user.id)
         raise
@@ -550,22 +551,23 @@ def create_bilby_job_from_ini_string(user, params):
     # Convert the modified arguments back to an ini string
     ini_string = bilby_args_to_ini_string(args)
 
-    bilby_job = BilbyJob(
-        user=user,
-        name=params.details.name,
-        description=params.details.description,
-        private=params.details.private,
-        ini_string=ini_string,
-        cluster=params.details.cluster,
-    )
-    bilby_job.save()
+    with transaction.atomic():
+        bilby_job = BilbyJob(
+            user=user,
+            name=params.details.name,
+            description=params.details.description,
+            private=params.details.private,
+            ini_string=ini_string,
+            cluster=params.details.cluster,
+        )
+        bilby_job.save()
 
-    # Save any supporting file records
-    supporting_file_details = SupportingFile.save_from_parsed(bilby_job, supporting_files)
+        # Save any supporting file records
+        supporting_file_details = SupportingFile.save_from_parsed(bilby_job, supporting_files)
 
-    # Submit the job to the job controller if there are no supporting files
-    if not bilby_job.has_supporting_files():
-        bilby_job.submit()
+        # Submit the job to the job controller if there are no supporting files
+        if not bilby_job.has_supporting_files():
+            bilby_job.submit()
 
     return bilby_job, supporting_file_details
 
