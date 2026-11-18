@@ -282,6 +282,25 @@ class TestGWFlowJobHistoryVersionPartial(BilbyTestCase):
         self.assertNotContains(response, "<!doctype html>")
         self.assertEqual(response.content.decode().count('role="alert"'), 1)
 
+    @mock.patch("bilbyui.views.get_version", return_value=(None, "malformed"))
+    def test_malformed_renders_error_state_with_version_retry(self, mock_get_version):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "async-error")
+        self.assertContains(response, 'role="alert"')
+        self.assertContains(
+            response,
+            "Couldn't load the version details because the service is temporarily unavailable.",
+        )
+        self.assertContains(
+            response,
+            f'hx-get="{reverse("bilbyui:gwflow_job_history_version", args=[self.job.sname, self.version_number])}"',
+        )
+        self.assertContains(response, 'hx-target="#gwflow-history-version"')
+        self.assertContains(response, "Retry")
+        self.assertNotContains(response, "<!doctype html>")
+
     @mock.patch("bilbyui.views.get_version", return_value=(None, "live"))
     def test_missing_version_raises_404(self, mock_get_version):
         response = self.client.get(self.url)
