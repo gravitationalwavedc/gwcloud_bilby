@@ -135,6 +135,20 @@ class TestSearchRegistry(SimpleTestCase):
         advertised_paths = {entry["path"] for entry in SEARCH_FIELDS}
         self.assertFalse(any(is_denied(str(path)) for path in advertised_paths))
 
+    def test_analyst_and_reviewer_emails_are_not_advertised(self):
+        """Non-displayed analyst/reviewer email PII must not appear in search help."""
+        email_paths = (
+            "metadata.analyses.analysts.email_address",
+            "metadata.analyses.reviews.reviewers.email_address",
+        )
+        for path in email_paths:
+            with self.subTest(path=path):
+                self.assertTrue(is_denied(path))
+
+        advertised = {str(entry["advertised"]) for group in grouped_fields("gwflow") for entry in group["fields"]}
+        self.assertNotIn("metadata.analyses.analysts.email_address", advertised)
+        self.assertNotIn("metadata.analyses.reviews.reviewers.email_address", advertised)
+
     def test_bilby_ini_fields_are_listed(self):
         ini_paths = {
             entry["path"]
