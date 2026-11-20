@@ -886,7 +886,10 @@ class UploadSupportingFilesMutation(relay.ClientIDMutation):
     result = graphene.Field(SupportingFileUploadResult)
 
     @classmethod
-    def mutate_and_get_payload(cls, _root, info, supporting_files):
+    def mutate_and_get_payload(cls, _root, info, supporting_files=None):
+        if supporting_files is None:
+            raise GraphQLError("A supporting files list is required.")
+
         file_tokens = [f.file_token for f in supporting_files]
         uploaded_files = [f.supporting_file for f in supporting_files]
 
