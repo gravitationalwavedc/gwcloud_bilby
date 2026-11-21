@@ -3095,8 +3095,6 @@ def upload_gwflow_file(user, gwflow_file_id, file):
         if calculated_md5 != gwflow_file.md5_sum:
             if part_path.exists():
                 part_path.unlink()
-            if dest_path.exists():
-                dest_path.unlink()
             raise GraphQLError("MD5 checksum mismatch")
 
     part_path.replace(dest_path)
