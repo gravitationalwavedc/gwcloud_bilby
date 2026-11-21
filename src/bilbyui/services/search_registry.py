@@ -73,6 +73,8 @@ DENIED_EXACT_PATHS = frozenset(
         "user",
         "ini.email",
         "ini.accounting_user",
+        "metadata.analyses.analysts.email_address",
+        "metadata.analyses.reviews.reviewers.email_address",
         "params.meta_data.command_line_args",
     }
 )
