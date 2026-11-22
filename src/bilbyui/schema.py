@@ -155,24 +155,6 @@ class UserBilbyJobFilter(FilterSet):
         )
 
 
-class PublicBilbyJobFilter(FilterSet):
-    class Meta:
-        model = BilbyJob
-        fields = "__all__"
-
-    order_by = OrderingFilter(
-        fields=(
-            ("last_updated", "last_updated"),
-            ("name", "name"),
-        )
-    )
-
-    @property
-    def qs(self):
-        user = self.request.user
-        return BilbyJob.public_bilby_job_filter(super().qs, user).select_related("user")
-
-
 class GWFlowJobNode(DjangoObjectType):
     class Meta:
         model = GWFlowJob
