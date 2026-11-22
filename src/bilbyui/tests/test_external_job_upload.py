@@ -4,6 +4,7 @@ from unittest import mock
 
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
+from django.db import DatabaseError
 from django.test import override_settings
 
 from bilbyui.constants import BilbyJobType
@@ -435,6 +436,44 @@ class TestUploadExternalBilbyJobDirect(BilbyTestCase):
         self.assertEqual(args.label, self.details.name)
         mock_create.assert_called_once_with(self.user, self.details, args, BilbyJobType.EXTERNAL)
         self.assertTrue(ExternalBilbyJob.objects.filter(job=job, url=self.result_url).exists())
+
+    @mock.patch("bilbyui.views.ExternalBilbyJob.objects.create")
+    @mock.patch("bilbyui.views._create_bilby_job_record")
+    @mock.patch("bilbyui.views._strip_supporting_file_args")
+    @mock.patch("bilbyui.views.prepare_args_for_data_input")
+    @mock.patch("bilbyui.views.check_job_embargo_status")
+    @mock.patch("bilbyui.views._parse_and_validate_ini")
+    def test_external_job_create_failure_rolls_back_bilby_job(
+        self,
+        mock_parse,
+        mock_embargo,
+        mock_prepare,
+        mock_strip,
+        mock_create,
+        mock_external_create,
+    ):
+        args = self._make_args()
+        mock_parse.return_value = args
+        mock_embargo.return_value = False
+
+        def create_bilby_job(*args, **kwargs):
+            return BilbyJob.objects.create(
+                user=self.user,
+                name=self.details.name,
+                description=self.details.description,
+                private=self.details.private,
+                ini_string="",
+                job_type=BilbyJobType.EXTERNAL,
+            )
+
+        mock_create.side_effect = create_bilby_job
+        mock_external_create.side_effect = DatabaseError("external job insert failed")
+
+        with self.assertRaises(DatabaseError):
+            upload_external_bilby_job(self.user, self.details, self.ini_file, self.result_url)
+
+        self.assertFalse(BilbyJob.objects.exists())
+        self.assertFalse(ExternalBilbyJob.objects.exists())
 
     @mock.patch("bilbyui.views.check_job_embargo_status")
     @mock.patch("bilbyui.views._parse_and_validate_ini")
