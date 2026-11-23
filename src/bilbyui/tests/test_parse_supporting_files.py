@@ -43,6 +43,15 @@ class TestParseSupportingFiles(BilbyTestCase):
         )
         self.assertIsNone(args.psd_dict)
 
+    def test_psd_dict_skips_non_string_values(self):
+        args = SimpleNamespace(psd_dict=None)
+
+        with self.assertLogs("bilbyui.views", level=logging.WARNING) as logs:
+            result = self._call(args=args, psd_dict="{'H1': '123', 'V1': '/tmp/psd'}")
+
+        self.assertEqual(result[SupportingFile.PSD], [{"V1": "/tmp/psd"}])
+        self.assertTrue(any("Skipping non-string supporting file value for psd_dict" in log for log in logs.output))
+
     def test_single_file_string_config(self):
         parser = SimpleNamespace(spline_calibration_envelope_dict="/tmp/cal.dat")
         args = SimpleNamespace(spline_calibration_envelope_dict="/tmp/cal.dat")
