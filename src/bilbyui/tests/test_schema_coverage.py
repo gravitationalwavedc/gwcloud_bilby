@@ -6,14 +6,13 @@ from unittest import mock
 from adacs_sso_plugin.constants import AUTHENTICATION_METHODS
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.http import HttpRequest
 from django.test import override_settings
 from graphql import GraphQLResolveInfo
 from graphql_relay import to_global_id
 
 from bilbyui.constants import BilbyJobType
 from bilbyui.models import BilbyJob, FileDownloadToken
-from bilbyui.schema import BilbyJobNode, PublicBilbyJobFilter, Query, _parse_file_size
+from bilbyui.schema import BilbyJobNode, Query, _parse_file_size
 from bilbyui.status import JobStatus
 from bilbyui.tests.test_utils import create_test_ini_string, silence_errors
 from bilbyui.tests.testcases import BilbyTestCase
@@ -44,11 +43,6 @@ class TestSchemaCoverage(BilbyTestCase):
             ini_string=create_test_ini_string({"detectors": "['H1']"}),
         )
         self.global_id = to_global_id("BilbyJobNode", self.job.id)
-
-    def test_public_bilby_job_filter_qs(self):
-        request = HttpRequest()
-        request.user = self.user
-        self.assertGreaterEqual(PublicBilbyJobFilter(request=request, queryset=BilbyJob.objects.all()).qs.count(), 0)
 
     def test_parse_file_size_valid_value_returns_decimal(self):
         self.assertEqual(_parse_file_size("1234"), Decimal("1234"))
