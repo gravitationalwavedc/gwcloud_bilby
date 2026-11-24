@@ -10,7 +10,6 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import (
     Case,
-    FloatField,
     IntegerField,
     OuterRef,
     Q,
@@ -212,40 +211,6 @@ def visible_to_user(qs, user, model_kind, *, threshold=None):
         )
 
     raise ValueError(f"Unsupported model kind: {model_kind!r}")
-
-
-def embargo_filter(qs, user):
-    if not user_subject_to_embargo(user):
-        return qs
-
-    return qs_embargo_filter(qs)
-
-
-def qs_embargo_filter(qs):
-    embargo_start = get_embargo_start()
-    return qs.annotate(
-        _embargo_trigger_time=Cast(
-            Subquery(
-                models.IniKeyValue.objects.filter(job=OuterRef("pk"), key="trigger_time", processed=True).values(
-                    "value",
-                ),
-            ),
-            FloatField(),
-        ),
-        simulated=Subquery(
-            models.IniKeyValue.objects.filter(job=OuterRef("pk"), key="n_simulation", processed=False).values("value")[
-                :1
-            ],
-        ),
-    ).filter(
-        Q(simulated__gt=0)
-        | (
-            Q(_embargo_trigger_time__lt=embargo_start)
-            & (Q(event_id__gps_time__lt=embargo_start) | Q(event_id__gps_time__isnull=True))
-            & (Q(gwflow_job__trigger_time__lt=embargo_start) | Q(gwflow_job__trigger_time__isnull=True))
-            & (Q(gwflow_job__event_id__gps_time__lt=embargo_start) | Q(gwflow_job__event_id__gps_time__isnull=True))
-        )
-    )
 
 
 def should_embargo_job(user, trigger_time, simulated):
