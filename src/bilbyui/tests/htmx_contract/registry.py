@@ -385,10 +385,9 @@ REGISTRY = (
         target="#event-id-modal-{job_id}",
         swap="outerHTML",
         kwargs="job",
-        statuses=frozenset({200, 503}),
+        statuses=frozenset({200}),
         focus=FocusExpectation("modal_search", "#event-id-search"),
         capabilities=frozenset({"loading", "announcement", "focus"}),
-        async_states=frozenset({"error"}),
         full_page=False,
     ),
     _contract(
