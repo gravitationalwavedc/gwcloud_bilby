@@ -448,6 +448,9 @@ def parse_supporting_files(parser, args, prior_file, gps_file, timeslide_file, i
             # ie. {'L1': './supporting_files/psd/L1-psd.dat', 'V1': './supporting_files/psd/V1-psd.dat'}
             supporting_files.setdefault(supporting_file_type, [])
             for k, f in config.items():
+                if not isinstance(f, str):
+                    logger.warning("Skipping non-string supporting file value for %s: %s", config_name, f)
+                    continue
                 supporting_files[supporting_file_type].append({k: f})
 
             # Clear this configuration item from the parser
