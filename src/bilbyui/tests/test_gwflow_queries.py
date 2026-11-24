@@ -6,7 +6,7 @@ from django.test import override_settings
 from graphql_relay.node.node import to_global_id
 
 from bilbyui.models import BilbyJob, EventID, GWFlowFile, GWFlowJob
-from bilbyui.schema import BilbyJobNode, GWFlowJobNode, PublicBilbyJobFilter, UserBilbyJobFilter
+from bilbyui.schema import BilbyJobNode, GWFlowJobNode, UserBilbyJobFilter
 from bilbyui.tests.testcases import BilbyTestCase
 from bilbyui.types import GWFlowFileType
 
@@ -426,9 +426,6 @@ class TestGWFlowQueries(BilbyTestCase):
         req_normal = DummyRequest(self.normal_user)
         user_filter = UserBilbyJobFilter(request=req_normal)
         self.assertIsNotNone(user_filter.qs)
-
-        public_filter = PublicBilbyJobFilter(request=req_normal)
-        self.assertIsNotNone(public_filter.qs)
 
     def test_gwflow_file_type_resolvers_edge_cases(self):
         file_type = GWFlowFileType()
