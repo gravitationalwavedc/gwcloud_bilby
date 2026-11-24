@@ -164,3 +164,16 @@ class TestApiTokenViews(BilbyTestCase):
         response = self.client.post(revoke_url)
 
         self.assertEqual(response.status_code, 404)
+
+    def test_revoke_missing_token_returns_retargeted_error_fragment(self):
+        self.authenticate()
+        missing_id = 999999
+        revoke_url = f"/api-token/{missing_id}/revoke/"
+
+        response = self.client.post(revoke_url)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response["HX-Retarget"], f'[data-token-id="{missing_id}"]')
+        self.assertEqual(response["HX-Reswap"], "outerHTML")
+        self.assertContains(response, f'data-token-id="{missing_id}"', status_code=404)
+        self.assertContains(response, "it no longer exists", status_code=404)
