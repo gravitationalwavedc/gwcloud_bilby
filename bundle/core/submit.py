@@ -130,6 +130,17 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
             )
             continue
 
+        # Skip supporting files whose key is not a string or None so that a malformed key
+        # (e.g. a list) is skipped instead of crashing job submission with a TypeError
+        # when the key is used as a dictionary key
+        key = supporting_file["key"]
+        if key is not None and not isinstance(key, str):
+            logger.warning(
+                "Skipping supporting file with invalid key: %s",
+                key,
+            )
+            continue
+
         # Make sure that the output directory exists for the supporting file type
         supporting_file_dir = Path(working_directory) / "supporting_files" / supporting_file["type"]
         supporting_file_dir.mkdir(exist_ok=True, parents=True)
@@ -147,7 +158,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
         relative_supporting_file_path = f"./{Path(supporting_file_path).relative_to(working_directory)}"
 
         # If this supporting file has a key, then the file is part of a dictionary, otherwise it's a single file
-        if supporting_file["key"]:
+        if key:
             # Pseudocode
             # if not bilby_args.psd_dict:
             #     bilby_args.psd_dict = {}
@@ -156,9 +167,7 @@ def prepare_supporting_files(bilby_args, supporting_files, working_directory):
             if not getattr(bilby_args, file_type_map[supporting_file["type"]]):
                 setattr(bilby_args, file_type_map[supporting_file["type"]], {})
 
-            getattr(bilby_args, file_type_map[supporting_file["type"]])[supporting_file["key"]] = (
-                relative_supporting_file_path
-            )
+            getattr(bilby_args, file_type_map[supporting_file["type"]])[key] = relative_supporting_file_path
         else:
             # Pseudocode
             # bilby_args.psd_dict = relative_path_to_psd_file
