@@ -186,14 +186,12 @@ CONTRACTS = {
             "content": REACHABLE,
             "empty": not_applicable("modal shell is always rendered"),
             "stale": not_applicable("modal open has no stale semantic"),
-            "error": REACHABLE,
-            "retry": REACHABLE,
+            "error": not_applicable("modal open performs no service call"),
+            "retry": not_applicable("modal open performs no service call"),
         },
         "evidence": [
-            "src/bilbyui/views.py:2271-2273",
             "src/bilbyui/templates/bilbyui/_job_field_event_id.html:13-35",
-            "src/bilbyui/templates/bilbyui/_event_id_modal_error.html:1-3",
-            "src/bilbyui/views.py:2285-2301",
+            "src/bilbyui/views.py:2554-2556",
         ],
     },
     "event_id_search": {

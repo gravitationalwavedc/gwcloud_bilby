@@ -2553,19 +2553,7 @@ def event_id_search(request):
 @resolve_job_ref_view
 def event_id_modal(request, job_id):
     job = _get_view_job_or_404(job_id, request.user)
-    try:
-        return TemplateResponse(request, "bilbyui/_event_id_modal.html", {"job": job})
-    except (ValidationError, ConnectionError, TimeoutError):
-        return TemplateResponse(
-            request,
-            "bilbyui/_event_id_modal_error.html",
-            {
-                "job": job,
-                "retry_url": reverse("bilbyui:event_id_modal", args=[job.id]),
-                "retry_target": f"#event-id-modal-{job.id}",
-            },
-            status=503,
-        )
+    return TemplateResponse(request, "bilbyui/_event_id_modal.html", {"job": job})
 
 
 @login_required
