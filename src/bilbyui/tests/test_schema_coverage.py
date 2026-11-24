@@ -206,6 +206,17 @@ class TestSchemaCoverage(BilbyTestCase):
             response.errors[0]["message"], "At least one supporting file upload token is invalid or expired."
         )
 
+    @silence_errors
+    def test_upload_supporting_files_missing_list(self):
+        mutation = (
+            "mutation($input: UploadSupportingFilesMutationInput!) "
+            "{ uploadSupportingFiles(input: $input) { result { result } } }"
+        )
+        for input_data in ({}, {"supportingFiles": None}):
+            response = self.query(mutation, variables={"input": input_data})
+            self.assertIsNone(response.data["uploadSupportingFiles"])
+            self.assertEqual(response.errors[0]["message"], "A supporting files list is required.")
+
     @override_settings(JOB_UPLOAD_DIR=TemporaryDirectory().name)
     @silence_errors
     def test_hdf5_job_upload_invalid_token(self):
