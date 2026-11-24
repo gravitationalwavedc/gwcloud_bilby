@@ -820,11 +820,12 @@ def upload_external_bilby_job(user, details, ini_file, result_url):
 
     _strip_supporting_file_args(args)
 
-    # Create the bilby job record
-    bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.EXTERNAL)
+    with transaction.atomic():
+        # Create the bilby job record
+        bilby_job = _create_bilby_job_record(user, details, args, BilbyJobType.EXTERNAL)
 
-    # Create the relevant External Bilby Job record as well
-    ExternalBilbyJob.objects.create(job=bilby_job, url=result_url)
+        # Create the relevant External Bilby Job record as well
+        ExternalBilbyJob.objects.create(job=bilby_job, url=result_url)
 
     logger.info("Successfully uploaded external job %s for user %s", bilby_job.id, user.id)
     return bilby_job
