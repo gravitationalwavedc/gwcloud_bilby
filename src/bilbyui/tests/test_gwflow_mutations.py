@@ -490,6 +490,63 @@ class TestGWFlowMutations(BilbyTestCase):
             self.assertEqual(gwflow_file.file_size, len(content))
 
     @override_settings(GWFLOW_INGEST_USER=99)
+    def test_upload_gwflow_file_reupload_bad_md5_keeps_existing_file(self):
+        self._auth_as(self.ingest_user)
+
+        job = GWFlowJob.objects.create(sname="S230601reupload", user=self.ingest_user)
+        content = b"sample binary file content"
+        correct_md5 = hashlib.md5(content).hexdigest()
+
+        gwflow_file = GWFlowFile.objects.create(
+            job=job,
+            analysis_uid="pe_1",
+            path="data.h5",
+            file_name="data.h5",
+            md5_sum=correct_md5,
+            uploaded=False,
+        )
+
+        query = """
+            mutation Upload($input: UploadGwflowFileMutationInput!) {
+                uploadGwflowFile(input: $input) {
+                    result {
+                        success
+                    }
+                }
+            }
+        """
+
+        file_id = to_global_id("GWFlowFileNode", gwflow_file.id)
+
+        with TemporaryDirectory() as tmpdir, override_settings(GWFLOW_FILE_UPLOAD_DIR=tmpdir):
+            dest_path = Path(tmpdir) / str(job.id) / str(gwflow_file.id)
+
+            good_file = io.BytesIO(content)
+            good_file.name = "data.h5"
+            res_good = self.file_query(
+                query,
+                input_data={"gwflowFileId": file_id, "file": None},
+                files={"input.file": good_file},
+            )
+            self.assertIsNone(res_good.errors)
+            self.assertTrue(dest_path.exists())
+
+            bad_file = io.BytesIO(b"wrong content")
+            bad_file.name = "data.h5"
+            res_bad = self.file_query(
+                query,
+                input_data={"gwflowFileId": file_id, "file": None},
+                files={"input.file": bad_file},
+            )
+            self.assertIsNotNone(res_bad.errors)
+            self.assertIn("MD5 checksum mismatch", res_bad.errors[0]["message"])
+
+            gwflow_file.refresh_from_db()
+            self.assertTrue(gwflow_file.uploaded)
+            self.assertTrue(dest_path.exists())
+            self.assertEqual(dest_path.read_bytes(), content)
+
+    @override_settings(GWFLOW_INGEST_USER=99)
     def test_link_and_unlink_bilby_job_to_gwflow(self):
         self._auth_as(self.ingest_user)
 
