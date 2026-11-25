@@ -399,6 +399,12 @@ def _ini_outdir(ini_text: str) -> str | None:
     parser = configparser.ConfigParser(interpolation=None)
     try:
         parser.read_string(ini_text)
+    except configparser.MissingSectionHeaderError:
+        parser = configparser.ConfigParser(interpolation=None)
+        try:
+            parser.read_string("[default]\n" + ini_text)
+        except configparser.Error:
+            return None
     except configparser.Error:
         return None
     for section in parser.sections():

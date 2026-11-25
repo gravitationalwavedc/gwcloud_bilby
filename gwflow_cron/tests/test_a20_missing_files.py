@@ -13,7 +13,7 @@ except ImportError:
 
 import settings
 import state
-from bilby_children import StageError, resolve_missing_path, stage_supporting_files
+from bilby_children import StageError, _ini_outdir, resolve_missing_path, stage_supporting_files
 from gwflow_ingest import phase_bilby_children
 from job_controller import FetchError
 
@@ -50,6 +50,11 @@ class TestResolveMissingPath(unittest.TestCase):
 
     def test_malformed_ini_returns_none_for_outdir(self):
         self.assertIsNone(resolve_missing_path("x/y.h5", "not = valid ini", None))
+
+    def test_sectionless_ini_outdir_resolves_relative_path(self):
+        ini = "label = job\noutdir = /citscratch/pe\n"
+        self.assertEqual(_ini_outdir(ini), "/citscratch/pe")
+        self.assertEqual(resolve_missing_path("dml/marginal.h5", ini, None), "/citscratch/pe/dml/marginal.h5")
 
 
 class TestStageSupportingFiles(unittest.TestCase):
