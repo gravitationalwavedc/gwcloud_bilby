@@ -33,7 +33,7 @@ def _render(value: Any, depth: int) -> str:
         pairs = format_html_join(
             "",
             "<dt>{}</dt><dd>{}</dd>",
-            ((_label(key), _render(item, depth + 1)) for key, item in value.items()),
+            ((_label(key), _render(item, depth + 1)) for key, item in value.items() if key != "email_address"),
         )
         return format_html("<dl>{}</dl>", pairs)
     if _is_list(value):

@@ -56,6 +56,32 @@ class GWFlowDiffRenderTagTestCase(BilbyTestCase):
         )
         self.assertNotIn("<script>", rendered)
 
+    def test_review_and_analyst_email_addresses_are_not_rendered(self):
+        review = {
+            "occurrence_uid": "review-occurrence-1",
+            "name": "Scientific review",
+            "description": "Canonical review description",
+            "reviewers": [{"name": "Reviewer Name", "email_address": "reviewer@example.test"}],
+            "passed_review": True,
+            "completion_date": "2024-01-01T00:00:00Z",
+            "review_status": "approved",
+        }
+        field_diffs = {
+            "reviewers": {
+                "baseline": [{"name": "Reviewer Name", "email_address": "reviewer@example.test"}],
+                "selected": [{"name": "Other Reviewer", "email_address": "other@example.test"}],
+            },
+        }
+
+        rendered = self.render({"review": review, "field_diffs": field_diffs})
+
+        self.assertNotIn("reviewer@example.test", rendered)
+        self.assertNotIn("other@example.test", rendered)
+        self.assertNotIn("Email address", rendered)
+        self.assertIn("Reviewer Name", rendered)
+        self.assertIn("Other Reviewer", rendered)
+        self.assertIn("Scientific review", rendered)
+
     def test_hostile_markup_is_escaped_in_keys_and_all_value_positions(self):
         hostile = "<script>alert(1)</script>"
         rendered = self.render(
