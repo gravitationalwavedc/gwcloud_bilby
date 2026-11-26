@@ -406,33 +406,37 @@ def _field(section: str, spec: FieldSpec, value: Any) -> PresentationField:
     )
 
 
+def _without_email(record: Any) -> Any:
+    if not isinstance(record, Mapping):
+        return record
+    return {nested_key: nested for nested_key, nested in record.items() if nested_key != "email_address"}
+
+
+def _sanitise_review(review: Any) -> Any:
+    if not isinstance(review, Mapping):
+        return review
+    sanitised_review = dict(review)
+    reviewers = sanitised_review.get("reviewers")
+    if isinstance(reviewers, list):
+        sanitised_review["reviewers"] = [_without_email(reviewer) for reviewer in reviewers]
+    elif isinstance(reviewers, Mapping):
+        sanitised_review["reviewers"] = _without_email(reviewers)
+    return sanitised_review
+
+
 def _disclosure_value(key: str, value: Any) -> Any:
     """Remove deliberately non-displayed email fields without hiding other metadata."""
-    if key == "analysts" and isinstance(value, list):
-        return [
-            {nested_key: nested for nested_key, nested in analyst.items() if nested_key != "email_address"}
-            if isinstance(analyst, Mapping)
-            else analyst
-            for analyst in value
-        ]
+    if key == "analysts":
+        if isinstance(value, list):
+            return [_without_email(analyst) for analyst in value]
+        if isinstance(value, Mapping):
+            return _without_email(value)
 
-    if key == "reviews" and isinstance(value, list):
-        sanitised_reviews = []
-        for review in value:
-            if not isinstance(review, Mapping):
-                sanitised_reviews.append(review)
-                continue
-            sanitised_review = dict(review)
-            reviewers = sanitised_review.get("reviewers")
-            if isinstance(reviewers, list):
-                sanitised_review["reviewers"] = [
-                    {nested_key: nested for nested_key, nested in reviewer.items() if nested_key != "email_address"}
-                    if isinstance(reviewer, Mapping)
-                    else reviewer
-                    for reviewer in reviewers
-                ]
-            sanitised_reviews.append(sanitised_review)
-        return sanitised_reviews
+    if key == "reviews":
+        if isinstance(value, list):
+            return [_sanitise_review(review) for review in value]
+        if isinstance(value, Mapping):
+            return _sanitise_review(value)
 
     return value
 
@@ -489,7 +493,7 @@ def _comparative(
         for spec in specs:
             relative_key = spec.key.removeprefix(f"{record_key}[].")
             raw = _lookup(record, relative_key)
-            cells.append(_field(section_id, spec, None if raw is _MISSING else raw))
+            cells.append(_field(section_id, spec, None if raw is _MISSING else _disclosure_value(relative_key, raw)))
         cell_tuple = tuple(cells)
         rows.append(ComparativeRow(cell_tuple[0].raw_value if cell_tuple else None, cell_tuple))
     if not rows:

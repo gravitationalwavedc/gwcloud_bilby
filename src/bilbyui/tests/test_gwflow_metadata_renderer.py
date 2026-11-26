@@ -236,6 +236,43 @@ class GWFlowMetadataRendererTests(SimpleTestCase):
         self.assertNotIn("analyst@example.test", output)
         self.assertNotIn("reviewer@example.test", output)
 
+    def test_mapping_shaped_people_and_reviews_do_not_render_email_addresses(self):
+        cases = (
+            (
+                "analysts mapping",
+                {"analysts": {"name": "Analyst Name", "email_address": "analyst@example.test"}},
+                "Analyst Name",
+            ),
+            (
+                "reviews mapping",
+                {
+                    "reviews": {
+                        "name": "Scientific review",
+                        "reviewers": {"name": "Reviewer Name", "email_address": "reviewer@example.test"},
+                    }
+                },
+                "Reviewer Name",
+            ),
+            (
+                "reviewers mapping",
+                {
+                    "reviews": [
+                        {
+                            "name": "Scientific review",
+                            "reviewers": {"name": "Reviewer Name", "email_address": "reviewer@example.test"},
+                        }
+                    ]
+                },
+                "Reviewer Name",
+            ),
+        )
+        for label, fields, expected_name in cases:
+            with self.subTest(shape=label):
+                output = self.render({"analyses": [{"uid": "pe_1", "type": "pe", **fields}]})
+                self.assertIn(expected_name, output)
+                self.assertNotIn("analyst@example.test", output)
+                self.assertNotIn("reviewer@example.test", output)
+
     def test_pe_status_review_and_deprecated_use_existing_badge_markup(self):
         output = self.render(
             {
