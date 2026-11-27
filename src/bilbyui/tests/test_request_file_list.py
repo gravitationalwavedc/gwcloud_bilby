@@ -132,6 +132,17 @@ class TestRequestFileListUploaded(BilbyTestCase):
         self.assertIn("/data/a.txt", paths)
         self.assertNotIn("/data/broken_link", paths)
 
+    @override_settings(IGNORE_ELASTIC_SEARCH=True, JOB_UPLOAD_DIR=TemporaryDirectory().name)
+    def test_non_recursive_listing_degrades_when_iterdir_fails(self):
+        job_dir = self.job.get_upload_directory()
+        (job_dir / "data").mkdir(parents=True, exist_ok=True)
+
+        for error in (FileNotFoundError, PermissionError):
+            with mock.patch.object(Path, "iterdir", side_effect=error):
+                success, file_list = request_file_list(self.job, "data", False)
+                self.assertTrue(success)
+                self.assertEqual(file_list, [])
+
     def test_non_uploaded_job_without_controller_id(self):
         job = BilbyJob.objects.create(
             user_id=self.user.id,

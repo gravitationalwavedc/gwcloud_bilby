@@ -72,16 +72,22 @@ def request_file_list(job, path, recursive, user_id=None):
                         file_list.append(entry)
         else:
             # Not a recursive search
-            for item in dir_path_obj.iterdir():
-                try:
-                    is_dir = item.is_dir()
-                except OSError:
-                    # Skip entries that cannot be stat'ed (e.g. an unreadable
-                    # subdirectory), consistent with _make_file_entry.
-                    continue
-                entry = _make_file_entry(item, is_dir, job_dir)
-                if entry is not None:
-                    file_list.append(entry)
+            try:
+                for item in dir_path_obj.iterdir():
+                    try:
+                        is_dir = item.is_dir()
+                    except OSError:
+                        # Skip entries that cannot be stat'ed (e.g. an unreadable
+                        # subdirectory), consistent with _make_file_entry.
+                        continue
+                    entry = _make_file_entry(item, is_dir, job_dir)
+                    if entry is not None:
+                        file_list.append(entry)
+            except OSError:
+                # The directory disappeared or became unreadable between the
+                # check above and iteration; degrade to an empty list, matching
+                # the recursive os.walk behaviour.
+                return True, []
 
         return True, file_list
 
