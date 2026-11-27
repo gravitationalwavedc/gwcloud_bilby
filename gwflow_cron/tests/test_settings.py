@@ -11,6 +11,8 @@ class TestSettings(unittest.TestCase):
         self.patchers = [
             patch.object(settings, "DB_PATH", "/tmp/test.db"),
             patch.object(settings, "GWCLOUD_TOKEN", "valid_token"),
+            patch.object(settings, "CBCFLOW_PORTAL_URL", "https://cbcflow.example.org.au"),
+            patch.object(settings, "CBCFLOW_PORTAL_TOKEN", "valid_portal_token"),
             patch.object(settings, "JOB_CONTROLLER_JWT_SECRET", "valid_secret"),
             patch.object(settings, "JOB_CONTROLLER_BUNDLE", "valid_bundle"),
             patch.object(settings, "ACCESSIBLE_FILE_SYSTEMS", ("fs_a", "fs_b")),
@@ -30,6 +32,18 @@ class TestSettings(unittest.TestCase):
 
     def test_missing_gwcloud_token_exits(self):
         with patch.object(settings, "GWCLOUD_TOKEN", ""):
+            with self.assertRaises(SystemExit) as cm:
+                settings.validate_settings()
+            self.assertEqual(cm.exception.code, 1)
+
+    def test_missing_cbcflow_portal_url_exits(self):
+        with patch.object(settings, "CBCFLOW_PORTAL_URL", None):
+            with self.assertRaises(SystemExit) as cm:
+                settings.validate_settings()
+            self.assertEqual(cm.exception.code, 1)
+
+    def test_missing_cbcflow_portal_token_exits(self):
+        with patch.object(settings, "CBCFLOW_PORTAL_TOKEN", ""):
             with self.assertRaises(SystemExit) as cm:
                 settings.validate_settings()
             self.assertEqual(cm.exception.code, 1)
@@ -64,17 +78,19 @@ class TestAccessibleFileSystems(unittest.TestCase):
 
     Covers env parsing (unset/blank/normal/whitespace) and validate_settings()'s
     fail-closed behaviour (unset, blank, empty-entry, duplicate-entry), plus a
-    regression check that the four pre-existing required settings are still
+    regression check that the pre-existing required settings are still
     validated unchanged.
     """
 
     def setUp(self):
-        # Only the four pre-existing required settings are patched valid here;
+        # Only the pre-existing required settings are patched valid here;
         # ACCESSIBLE_FILE_SYSTEMS is left to each test, since it is the subject
         # under test.
         self.patchers = [
             patch.object(settings, "DB_PATH", "/tmp/test.db"),
             patch.object(settings, "GWCLOUD_TOKEN", "valid_token"),
+            patch.object(settings, "CBCFLOW_PORTAL_URL", "https://cbcflow.example.org.au"),
+            patch.object(settings, "CBCFLOW_PORTAL_TOKEN", "valid_portal_token"),
             patch.object(settings, "JOB_CONTROLLER_JWT_SECRET", "valid_secret"),
             patch.object(settings, "JOB_CONTROLLER_BUNDLE", "valid_bundle"),
         ]
@@ -133,13 +149,21 @@ class TestAccessibleFileSystems(unittest.TestCase):
             self.assertEqual(cm.exception.code, 1)
 
     def test_st7_preexisting_required_settings_still_validated_unchanged(self):
-        """ST-7: the four pre-existing required settings are still validated, unchanged."""
+        """ST-7: the pre-existing required settings are still validated, unchanged."""
         with patch.object(settings, "ACCESSIBLE_FILE_SYSTEMS", ("fs_a", "fs_b")):
             with patch.object(settings, "DB_PATH", None):
                 with self.assertRaises(SystemExit) as cm:
                     settings.validate_settings()
                 self.assertEqual(cm.exception.code, 1)
             with patch.object(settings, "GWCLOUD_TOKEN", ""):
+                with self.assertRaises(SystemExit) as cm:
+                    settings.validate_settings()
+                self.assertEqual(cm.exception.code, 1)
+            with patch.object(settings, "CBCFLOW_PORTAL_URL", None):
+                with self.assertRaises(SystemExit) as cm:
+                    settings.validate_settings()
+                self.assertEqual(cm.exception.code, 1)
+            with patch.object(settings, "CBCFLOW_PORTAL_TOKEN", ""):
                 with self.assertRaises(SystemExit) as cm:
                     settings.validate_settings()
                 self.assertEqual(cm.exception.code, 1)

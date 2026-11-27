@@ -103,6 +103,26 @@ class TestIngestWiring(GWFlowTestBase):
                     gwflow_ingest.run([])
                 self.assertEqual(cm.exception.code, 1)
 
+        # Missing CBCFLOW_PORTAL_URL
+        with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
+            with (
+                patch.object(settings, "DB_PATH", tmp.name),
+                patch.object(settings, "CBCFLOW_PORTAL_URL", None),
+            ):
+                with self.assertRaises(SystemExit) as cm:
+                    gwflow_ingest.run([])
+                self.assertEqual(cm.exception.code, 1)
+
+        # Missing CBCFLOW_PORTAL_TOKEN
+        with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
+            with (
+                patch.object(settings, "DB_PATH", tmp.name),
+                patch.object(settings, "CBCFLOW_PORTAL_TOKEN", ""),
+            ):
+                with self.assertRaises(SystemExit) as cm:
+                    gwflow_ingest.run([])
+                self.assertEqual(cm.exception.code, 1)
+
         # Missing JOB_CONTROLLER_JWT_SECRET
         with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
             with (

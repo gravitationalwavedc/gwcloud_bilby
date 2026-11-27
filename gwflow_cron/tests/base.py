@@ -37,6 +37,8 @@ class GWFlowTestBase(unittest.TestCase):
         settings.LOCK_PATH = None
         settings.GWCLOUD_TOKEN = "VALID"
         settings.GWCLOUD_ENDPOINT = "https://gwcloud.org.au/graphql"
+        settings.CBCFLOW_PORTAL_URL = "https://cbcflow.example.org.au"
+        settings.CBCFLOW_PORTAL_TOKEN = "VALID_PORTAL_TOKEN"
         settings.JOB_CONTROLLER_JWT_SECRET = "VALID_SECRET"
         settings.JOB_CONTROLLER_BUNDLE = "VALID_BUNDLE"
         settings.ACCESSIBLE_FILE_SYSTEMS = ("fs_a", "fs_b")
