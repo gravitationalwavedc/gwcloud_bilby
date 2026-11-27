@@ -170,6 +170,29 @@ class TestGWFlowQueries(BilbyTestCase):
         self.assertIsNotNone(res.data["gwflowJob"])
         self.assertEqual(res.data["gwflowJob"]["sname"], "S230601ah")
 
+    def test_gwflow_job_node_query_hides_pruned(self):
+        query = """
+            query GetNode($id: ID!) {
+                gwflowJob(id: $id) {
+                    id
+                    sname
+                }
+            }
+        """
+        node_id_public = to_global_id("GWFlowJob", self.job_public.id)
+        node_id_pruned = to_global_id("GWFlowJob", self.job_pruned.id)
+
+        self._auth_as(self.normal_user)
+
+        res = self.query(query, variables={"id": node_id_public})
+        self.assertResponseNoErrors(res)
+        self.assertIsNotNone(res.data["gwflowJob"])
+        self.assertEqual(res.data["gwflowJob"]["sname"], "S230601ag")
+
+        res = self.query(query, variables={"id": node_id_pruned})
+        self.assertResponseNoErrors(res)
+        self.assertIsNone(res.data["gwflowJob"])
+
     @mock.patch("bilbyui.schema.list_gwflow_jobs")
     def test_gwflow_jobs_connection(self, mock_list_jobs):
         query = """

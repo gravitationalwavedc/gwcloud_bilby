@@ -172,7 +172,7 @@ class GWFlowJobNode(DjangoObjectType):
     @classmethod
     def get_queryset(cls, queryset, info):
         return visible_to_user(
-            queryset,
+            queryset.filter(is_pruned=False),
             info.context.user,
             "GWFlowJob",
         ).select_related("event_id", "user")
