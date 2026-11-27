@@ -207,6 +207,25 @@ class TestCleanupOrphanedJobDirs(BilbyTestCase):
 
         self.assertIn("0 directories checked. No candidate job directories found.", out.getvalue())
 
+    def test_cleanup_non_ascii_decimal_digit_dir_is_skipped(self):
+        """A directory named with non-ASCII decimal digits (Arabic-Indic "١٢٣",
+        fullwidth "１２３") must not be treated as a job candidate, even though
+        str.isdecimal() is True and int() maps them to 123. --delete must not
+        remove them.
+        """
+        arabic_indic_dir = self.upload_dir / "\u0661\u0662\u0663"
+        arabic_indic_dir.mkdir()
+        fullwidth_dir = self.upload_dir / "\uff11\uff12\uff13"
+        fullwidth_dir.mkdir()
+
+        out = StringIO()
+        with self.settings(JOB_UPLOAD_DIR=str(self.upload_dir)):
+            call_command("cleanup_orphaned_job_dirs", "--delete", stdout=out)
+
+        self.assertIn("0 directories checked. No candidate job directories found.", out.getvalue())
+        self.assertTrue(arabic_indic_dir.exists())
+        self.assertTrue(fullwidth_dir.exists())
+
     def test_cleanup_zero_candidate_directories(self):
         """When JOB_UPLOAD_DIR has no numeric subdirectories, reports 0 directories checked."""
         # Add non-numeric dir and file
