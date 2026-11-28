@@ -12,7 +12,6 @@
         {% if block.metadata %}
           <span class="gw-analysis-meta">
             {% if block.metadata.software %}<span>{{ block.metadata.software }}</span>{% endif %}
-            {% if block.metadata.waveform %}<span aria-hidden="true">·</span><span>{{ block.metadata.waveform }}</span>{% endif %}
             {% if block.metadata.run_status %}<span aria-hidden="true">·</span><span>{{ block.metadata.run_status }}</span>{% endif %}
             {% if block.metadata.review_status %}<span aria-hidden="true">·</span><span>{{ block.metadata.review_status }}</span>{% endif %}
           </span>

@@ -160,7 +160,6 @@ class TestBuildGWFlowAnalysisBlocks(BilbyTestCase):
         analyses = {
             "pe-uid-1": {
                 "software": "bilby",
-                "waveform": "IMRPhenomXPHM",
                 "run_status": "completed",
                 "review_status": "approved",
                 "deprecated": False,
@@ -176,7 +175,6 @@ class TestBuildGWFlowAnalysisBlocks(BilbyTestCase):
         analyses = {
             "analysis-only": {
                 "software": "bilby",
-                "waveform": "IMRPhenomXPHM",
                 "run_status": "pending",
                 "review_status": "",
                 "deprecated": False,
@@ -196,8 +194,8 @@ class TestBuildGWFlowAnalysisBlocks(BilbyTestCase):
         self._add_file("a-uid", "a.txt")
         self._add_file("m-uid", "m.txt")
         analyses = {
-            "m-uid": {"software": "bilby", "waveform": "", "run_status": "", "review_status": "", "deprecated": False},
-            "z-uid": {"software": "pycbc", "waveform": "", "run_status": "", "review_status": "", "deprecated": False},
+            "m-uid": {"software": "bilby", "run_status": "", "review_status": "", "deprecated": False},
+            "z-uid": {"software": "pycbc", "run_status": "", "review_status": "", "deprecated": False},
         }
 
         blocks = _build_gwflow_analysis_blocks(self.job, analyses)
